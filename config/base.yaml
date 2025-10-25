@@ -1,0 +1,159 @@
+# Base configuration for SBIR ETL Pipeline
+# This file contains default settings that are version controlled
+# Environment-specific overrides go in dev.yaml, prod.yaml, etc.
+
+pipeline:
+  name: "sbir-etl"
+  version: "0.1.0"
+  environment: "development"  # overridden by environment
+
+data_quality:
+  # Completeness thresholds (percentage of non-null values required)
+  completeness:
+    award_id: 1.00          # 100% required
+    company_name: 0.95      # 95% required
+    award_amount: 0.90      # 90% required
+    award_date: 0.95        # 95% required
+    program: 0.98           # 98% required
+
+  # Uniqueness requirements (no duplicates allowed)
+  uniqueness:
+    award_id: 1.00          # No duplicate award IDs
+
+  # Value range validation
+  validity:
+    award_amount_min: 0.0
+    award_amount_max: 5000000.0  # $5M max SBIR award
+    award_year_min: 1983         # SBIR program start
+    award_year_max: 2030         # Future limit
+
+  # Enrichment success rates
+  enrichment:
+    sam_gov_success_rate: 0.85   # 85% of companies should enrich successfully
+    usaspending_match_rate: 0.70 # 70% of awards should match USAspending data
+
+extraction:
+  sbir:
+    # SBIR CSV configuration
+    expected_columns:
+      - "Award ID"
+      - "Company Name"
+      - "Award Amount"
+      - "Award Date"
+      - "Program"
+      - "Phase"
+      - "Agency"
+    date_format: "%m/%d/%Y"
+    encoding: "utf-8"
+    chunk_size: 10000  # Process in chunks to manage memory
+
+  usaspending:
+    # USAspending PostgreSQL dump configuration
+    database_name: "usaspending"
+    table_name: "awards"
+    # DuckDB will import the PostgreSQL dump file
+    import_chunk_size: 50000
+
+validation:
+  # Schema validation settings
+  strict_schema: true
+  fail_on_first_error: false  # Collect all errors before failing
+
+  # Quality check settings
+  sample_size_for_checks: 1000  # Sample size for expensive checks
+  max_error_percentage: 0.05    # 5% error rate allowed
+
+enrichment:
+  sam_gov:
+    # SAM.gov API configuration
+    base_url: "https://api.sam.gov/entity-information/v3"
+    api_key_env_var: "SAM_GOV_API_KEY"
+    rate_limit_per_minute: 60
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 1
+
+  usaspending_api:
+    # USAspending API configuration (for additional enrichment)
+    base_url: "https://api.usaspending.gov/api/v2"
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+
+transformation:
+  # Business logic configuration
+  company_deduplication:
+    similarity_threshold: 0.85  # Fuzzy matching threshold
+    min_company_name_length: 3
+
+  award_normalization:
+    currency: "USD"
+    standardize_program_names: true
+    program_mappings:
+      "SBIR": "SBIR"
+      "STTR": "STTR"
+      "SBIR/STTR": "SBIR/STTR"
+
+  graph_preparation:
+    # Node and relationship preparation
+    batch_size: 1000
+    relationship_types:
+      - "AWARDED_TO"
+      - "FUNDED_BY"
+      - "SUBMITTED_BY"
+
+loading:
+  neo4j:
+    # Neo4j connection configuration
+    uri_env_var: "NEO4J_URI"
+    user_env_var: "NEO4J_USER"
+    password_env_var: "NEO4J_PASSWORD"
+
+    # Batch loading configuration
+    batch_size: 1000
+    parallel_threads: 4
+
+    # Constraints and indexes
+    create_constraints: true
+    create_indexes: true
+
+    # Transaction settings
+    transaction_timeout_seconds: 300
+    retry_on_deadlock: true
+    max_deadlock_retries: 3
+
+logging:
+  # Logging configuration
+  level: "INFO"
+  format: "json"  # "json" or "pretty"
+  file_path: "logs/sbir-etl.log"
+  max_file_size_mb: 100
+  backup_count: 5
+
+  # Context variables
+  include_stage: true
+  include_run_id: true
+  include_timestamps: true
+
+metrics:
+  # Metrics collection
+  enabled: true
+  collection_interval_seconds: 30
+  persist_to_file: true
+  metrics_file_path: "logs/metrics.json"
+
+  # Performance thresholds
+  warning_thresholds:
+    stage_duration_seconds: 3600  # 1 hour
+    memory_usage_mb: 2048         # 2GB
+    error_rate_percentage: 5.0
+
+duckdb:
+  # DuckDB configuration
+  database_path: "data/processed/sbir.duckdb"
+  memory_limit_gb: 4
+  threads: 4
+
+  # Query optimization
+  enable_object_cache: true
+  enable_query_profiler: false

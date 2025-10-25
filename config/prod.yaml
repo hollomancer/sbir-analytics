@@ -1,0 +1,45 @@
+# Production environment overrides
+# This file contains settings specific to production environment
+# These override values from base.yaml
+
+pipeline:
+  environment: "production"
+
+data_quality:
+  # Strict thresholds for production
+  completeness:
+    company_name: 0.98      # Higher threshold for prod
+    award_amount: 0.95      # Higher threshold for prod
+
+  enrichment:
+    sam_gov_success_rate: 0.90   # Higher success rate for prod
+    usaspending_match_rate: 0.75 # Higher match rate for prod
+
+extraction:
+  sbir:
+    chunk_size: 50000  # Larger chunks for production performance
+
+validation:
+  sample_size_for_checks: 10000  # Larger sample for prod quality
+  max_error_percentage: 0.02     # Stricter error rate for prod
+
+enrichment:
+  sam_gov:
+    rate_limit_per_minute: 60  # Full rate limit for prod
+    timeout_seconds: 20        # Shorter timeout for prod performance
+
+loading:
+  neo4j:
+    batch_size: 5000          # Larger batches for prod performance
+    parallel_threads: 8       # More threads for prod performance
+
+logging:
+  level: "WARNING"  # Less verbose logging in prod
+  format: "json"    # Structured format for prod monitoring
+
+metrics:
+  collection_interval_seconds: 60  # Less frequent metrics in prod
+
+duckdb:
+  memory_limit_gb: 8  # Higher memory limit for prod
+  threads: 8          # More threads for prod

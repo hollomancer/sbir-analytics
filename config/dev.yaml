@@ -1,0 +1,45 @@
+# Development environment overrides
+# This file contains settings specific to development environment
+# These override values from base.yaml
+
+pipeline:
+  environment: "development"
+
+data_quality:
+  # More lenient thresholds for development
+  completeness:
+    company_name: 0.90      # Lower threshold for dev testing
+    award_amount: 0.85      # Lower threshold for dev testing
+
+  enrichment:
+    sam_gov_success_rate: 0.75   # Lower success rate for dev
+    usaspending_match_rate: 0.60 # Lower match rate for dev
+
+extraction:
+  sbir:
+    chunk_size: 1000  # Smaller chunks for development
+
+validation:
+  sample_size_for_checks: 100  # Smaller sample for faster dev cycles
+  max_error_percentage: 0.10   # Allow more errors in dev
+
+enrichment:
+  sam_gov:
+    rate_limit_per_minute: 30  # Lower rate limit for dev
+    timeout_seconds: 60        # Longer timeout for dev debugging
+
+loading:
+  neo4j:
+    batch_size: 100           # Smaller batches for dev
+    parallel_threads: 1       # Single thread for easier debugging
+
+logging:
+  level: "DEBUG"
+  format: "pretty"  # Human-readable format for development
+
+metrics:
+  collection_interval_seconds: 10  # More frequent metrics in dev
+
+duckdb:
+  memory_limit_gb: 2  # Lower memory limit for dev
+  enable_query_profiler: true  # Enable profiling in dev
