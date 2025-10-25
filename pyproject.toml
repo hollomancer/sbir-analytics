@@ -1,0 +1,85 @@
+[tool.poetry]
+name = "sbir-etl"
+version = "0.1.0"
+description = "SBIR ETL Pipeline for Neo4j"
+authors = ["Conrad Hollomon <conrad.hollomon@pm.me>"]
+readme = "README.md"
+packages = [{include = "sbir_etl", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+dagster = "^1.7.0"
+dagster-webserver = "^1.7.0"
+pandas = "^2.2.0"
+neo4j = "^5.20.0"
+duckdb = "^1.0.0"
+pydantic = "^2.8.0"
+loguru = "^0.7.0"
+pyyaml = "^6.0.0"
+typer = "^0.12.0"
+rich = "^13.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+black = "^24.0.0"
+ruff = "^0.5.0"
+mypy = "^1.8.0"
+pytest-cov = "^5.0.0"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "dagster.*",
+    "neo4j.*",
+    "duckdb.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
