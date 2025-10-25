@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   neo4j:
     image: neo4j:5.20.0
     container_name: sbir-neo4j
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
     environment:
       - NEO4J_AUTH=neo4j/password123
       - NEO4J_PLUGINS=["apoc"]
@@ -39,15 +37,15 @@ services:
       - NEO4J_PASSWORD=password123
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./data:/app/data  # Mount data directory for SBIR CSV and DuckDB files
-      - ./config:/app/config  # Mount configuration
-      - ./logs:/app/logs  # Mount logs directory
-      - ./metrics:/app/metrics  # Mount metrics directory
+      - ./data:/app/data # Mount data directory for SBIR CSV and DuckDB files
+      - ./config:/app/config # Mount configuration
+      - ./logs:/app/logs # Mount logs directory
+      - ./metrics:/app/metrics # Mount metrics directory
     networks:
       - sbir-network
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000"]
     ports:
-      - "3000:3000"  # Dagster UI
+      - "3000:3000" # Dagster UI
 
   # Optional: DuckDB CLI container for data exploration
   duckdb:
@@ -57,9 +55,9 @@ services:
       - ./data:/data
     networks:
       - sbir-network
-    command: ["tail", "-f", "/dev/null"]  # Keep container running
+    command: ["tail", "-f", "/dev/null"] # Keep container running
     profiles:
-      - tools  # Only start with --profile tools
+      - tools # Only start with --profile tools
 
 volumes:
   neo4j_data:

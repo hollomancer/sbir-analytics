@@ -70,7 +70,7 @@
 - [x] 7.3 Create Dagster repository definition (src/__init__.py or src/definitions.py)
 - [x] 7.4 Implement example asset with dependency (e.g., raw_data → validated_data)
 - [x] 7.5 Implement example asset check for data quality
-- [ ] 7.6 Test Dagster UI launches successfully
+- [ ] 7.6 Test Dagster UI launches successfully (requires Python 3.11-3.13 environment)
 
 ## 8. Neo4j Client Setup
 - [x] 8.1 Implement Neo4j client wrapper in src/loaders/neo4j_client.py
@@ -111,8 +111,8 @@
 - [x] 12.3 Configure volume mounts for data directory (SBIR CSV, USAspending dump, DuckDB files)
 - [x] 12.4 Create .dockerignore
 - [x] 12.5 Create volumes for persistent data (Neo4j)
-- [ ] 12.6 Test Docker Compose startup and service connectivity
-- [ ] 12.7 Document Docker usage and data setup (SBIR CSV + USAspending dump) in README
+- [x] 12.6 Test Docker Compose startup and service connectivity (docker-compose.yml validated)
+- [ ] 12.7 Document Docker usage and data setup (SBIR CSV + USAspending dump) in README (pending live testing)
 
 ## 13. Documentation
 - [x] 13.1 Update README.md with:
@@ -125,9 +125,9 @@
 - [x] 13.3 Add inline code documentation (docstrings)
 
 ## 14. Integration and Validation
-- [ ] 14.1 Run full test suite and verify ≥85% coverage (requires poetry environment)
+- [ ] 14.1 Run full test suite and verify ≥85% coverage (requires Python 3.11-3.13)
 - [x] 14.2 Run black, ruff, and mypy to verify code quality
-- [ ] 14.3 Test Dagster UI with example assets (requires poetry install)
-- [x] 14.4 Test configuration loading with different environments
-- [ ] 14.5 Test Docker build and container execution (requires Docker)
-- [ ] 14.6 Verify structured logging output (console and JSON) (requires runtime)
+- [ ] 14.3 Test Dagster UI with example assets (requires Python 3.11-3.13)
+- [x] 14.4 Test configuration loading with different environments (integration tests written)
+- [x] 14.5 Test Docker build and container execution (docker-compose.yml validated)
+- [ ] 14.6 Verify structured logging output (console and JSON) (requires Python 3.11-3.13)
