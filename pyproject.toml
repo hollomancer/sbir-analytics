@@ -25,6 +25,11 @@ black = "^24.0.0"
 ruff = "^0.5.0"
 mypy = "^1.8.0"
 pytest-cov = "^5.0.0"
+bandit = "^1.7.0"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B601"]  # Skip assert checks and shell usage
 
 [tool.black]
 line-length = 100

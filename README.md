@@ -84,9 +84,23 @@ poetry run ruff check src tests
 # Type check
 poetry run mypy src
 
+# Security check
+poetry run bandit -r src
+
 # Run tests
 poetry run pytest
 ```
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI/CD with the following checks:
+
+- **Test**: Runs pytest with coverage on Python 3.11 and 3.12
+- **Lint**: Code formatting, linting, and type checking
+- **Security**: Bandit security vulnerability scanning
+- **Docker**: Build verification
+
+CI runs on pushes to `main`/`develop` branches and pull requests.
 
 ### Testing
 
