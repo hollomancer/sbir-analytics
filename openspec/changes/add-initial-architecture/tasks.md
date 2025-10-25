@@ -52,11 +52,17 @@
 
 ## 6. Pipeline Stage Structure
 - [ ] 6.1 Create src/extractors/ directory with __init__.py
+  - [ ] 6.1.1 Create placeholder for SBIR CSV extractor (sbir.py)
+  - [ ] 6.1.2 Create placeholder for USAspending DuckDB extractor (usaspending.py)
 - [ ] 6.2 Create src/validators/ directory with __init__.py
 - [ ] 6.3 Create src/enrichers/ directory with __init__.py
 - [ ] 6.4 Create src/transformers/ directory with __init__.py
 - [ ] 6.5 Create src/loaders/ directory with __init__.py
-- [ ] 6.6 Create placeholder modules for future implementation
+- [ ] 6.6 Create DuckDB utilities in src/utils/duckdb_client.py
+  - [ ] 6.6.1 Postgres dump import helper
+  - [ ] 6.6.2 CSV query helper
+  - [ ] 6.6.3 Connection management
+- [ ] 6.7 Create placeholder modules for future implementation
 
 ## 7. Dagster Setup
 - [ ] 7.1 Install Dagster and dagster-webserver dependencies
@@ -101,13 +107,12 @@
 - [ ] 12.1 Create Dockerfile with multi-stage build for application
 - [ ] 12.2 Create docker-compose.yml for local development with services:
   - [ ] 12.2.1 Neo4j service (graph database)
-  - [ ] 12.2.2 PostgreSQL service (USAspending data)
-  - [ ] 12.2.3 Application service (ETL pipeline)
-- [ ] 12.3 Create initialization script for loading compressed Postgres dump
+  - [ ] 12.2.2 Application service (ETL pipeline)
+- [ ] 12.3 Configure volume mounts for data directory (SBIR CSV, USAspending dump, DuckDB files)
 - [ ] 12.4 Create .dockerignore
-- [ ] 12.5 Create volumes for persistent data (Neo4j, PostgreSQL)
+- [ ] 12.5 Create volumes for persistent data (Neo4j)
 - [ ] 12.6 Test Docker Compose startup and service connectivity
-- [ ] 12.7 Document Docker usage in README
+- [ ] 12.7 Document Docker usage and data setup (SBIR CSV + USAspending dump) in README
 
 ## 13. Documentation
 - [ ] 13.1 Update README.md with:
