@@ -5,7 +5,8 @@
 The sbir-etl project processes SBIR (Small Business Innovation Research) program data from multiple government sources into a Neo4j graph database. The pipeline must:
 
 - Handle 250k+ awards with 2.5M+ relationships
-- Ingest data from CSV files initially (SBIR.gov, USAspending.gov)
+- Ingest SBIR data from bulk CSV files (SBIR.gov)
+- Query USAspending data from compressed PostgreSQL database
 - Enrich data via SAM.gov API
 - Support incremental updates
 - Maintain high data quality (≥95% completeness)
@@ -19,7 +20,8 @@ This is a greenfield project drawing patterns from three production SBIR systems
 - Python 3.11+ required
 - Neo4j as target database
 - Government API rate limits
-- Large CSV files (51GB USAspending database requires DuckDB)
+- Large SBIR CSV files from bulk export
+- USAspending provided as compressed PostgreSQL database
 
 ## Goals / Non-Goals
 
@@ -174,22 +176,33 @@ data_quality:
 - stdlib logging: More boilerplate, less intuitive
 - structlog: More complex configuration
 
-### 6. DuckDB for Large Dataset Querying
+### 6. DuckDB for Data Processing
 
-**Decision**: Use DuckDB for in-memory analytical queries on large CSVs (51GB USAspending)
+**Decision**: Use DuckDB to query both SBIR CSV files and USAspending Postgres dump data
 
 **Why**:
-- Fast analytical queries without loading entire CSV into memory
+- DuckDB can import data from Postgres dump files directly (or read decompressed SQL)
+- No need to run a separate PostgreSQL server/container
+- Fast analytical queries without loading entire datasets into memory
 - SQL interface for complex joins and filtering
 - Embeddable (no separate database server)
 - Zero-copy data sharing with pandas
+- Handles both CSV (SBIR) and Postgres dump (USAspending) formats
 
-**Usage**: Load USAspending CSV into DuckDB, query for relevant records, join with SBIR data
+**Data sources**:
+- **SBIR data**: Bulk CSV export from SBIR.gov → DuckDB or pandas
+- **USAspending data**: Compressed PostgreSQL dump → DuckDB import/query
+
+**Usage**: 
+- Import/decompress Postgres dump into DuckDB on first run (one-time setup)
+- Query SBIR CSV files via DuckDB for efficient filtering
+- Join USAspending and SBIR data using SQL queries
+- Export relevant subsets to pandas DataFrames for processing
 
 **Alternatives considered**:
-- Pandas only: 51GB file exceeds memory, slow
-- PostgreSQL: Operational overhead for temporary queries
-- Spark: Overkill for single-machine processing
+- Running PostgreSQL container: Operational overhead, unnecessary for read-only queries
+- Pandas only: Large files (multi-GB) may exceed memory
+- Loading everything into Neo4j: Unnecessary duplication of source data
 
 ### 7. Directory Structure
 
@@ -249,19 +262,22 @@ data/                     # Local data storage (gitignored)
 
 ### 8. Dependency Management
 
-**Decision**: Use Poetry (preferred) or pip-tools
+**Decision**: Use Poetry for dependency management
 
 **Why**:
-- Poetry: Modern, deterministic dependency resolution, built-in virtual env management
-- pip-tools: Simpler, minimal overhead if team prefers traditional requirements.txt
+- Modern, deterministic dependency resolution
+- Built-in virtual environment management
+- Automatic lock file generation (poetry.lock)
+- Better handling of transitive dependencies than pip-tools
+- Native support for development dependencies
 
 **Core dependencies**:
 - dagster, dagster-webserver - Orchestration
 - pandas - Data manipulation
 - neo4j - Graph database driver
+- duckdb - SQL queries on CSV and Postgres dump data
 - pydantic - Data validation
 - loguru - Structured logging
-- duckdb - Analytical queries
 - pyyaml - Configuration
 - typer, rich - CLI
 - pytest, black, ruff, mypy - Development tools
@@ -299,16 +315,18 @@ data/                     # Local data storage (gitignored)
 
 N/A - This is initial architecture setup, no migration needed
 
-## Open Questions
+## Resolved Questions
 
 1. **Dependency management preference**: Poetry vs. pip-tools?
-   - Recommendation: Poetry for better dependency resolution
+   - **Resolution**: Use Poetry for modern dependency management and deterministic builds
 
 2. **Neo4j deployment**: Aura (managed) vs. self-hosted?
-   - Defer to infrastructure team
+   - **Resolution**: Self-hosted Neo4j via Docker Compose for local development and flexibility
 
 3. **Initial data sources**: Start with SBIR CSV only, or include USAspending?
-   - Recommendation: SBIR first, add USAspending in subsequent change
+   - **Resolution**: Start with SBIR CSV and USAspending compressed PostgreSQL dump
+   - DuckDB will import/query the Postgres dump (no PostgreSQL server needed)
 
 4. **Docker containerization**: Include in initial setup or defer?
-   - Recommendation: Include basic Dockerfile for consistency
+   - **Resolution**: Include Docker and Docker Compose in initial setup
+   - docker-compose.yml will define services: Neo4j and application container

@@ -2,10 +2,10 @@
 
 ## 1. Project Scaffolding
 - [ ] 1.1 Create directory structure (src/, config/, tests/, data/)
-- [ ] 1.2 Initialize dependency management (pyproject.toml with Poetry or requirements.in with pip-tools)
+- [ ] 1.2 Initialize Poetry with pyproject.toml
 - [ ] 1.3 Create .gitignore (data/, logs/, .env, __pycache__, etc.)
 - [ ] 1.4 Create basic README.md with setup instructions
-- [ ] 1.5 Create Dockerfile for containerization
+- [ ] 1.5 Create Dockerfile for application container
 
 ## 2. Configuration Management
 - [ ] 2.1 Create config/ directory with base.yaml, dev.yaml, prod.yaml
@@ -98,11 +98,16 @@
 - [ ] 11.5 Document code quality commands in README
 
 ## 12. Docker and Deployment
-- [ ] 12.1 Create Dockerfile with multi-stage build
-- [ ] 12.2 Create docker-compose.yml for local development (Neo4j + app)
-- [ ] 12.3 Create .dockerignore
-- [ ] 12.4 Test Docker build and run
-- [ ] 12.5 Document Docker usage in README
+- [ ] 12.1 Create Dockerfile with multi-stage build for application
+- [ ] 12.2 Create docker-compose.yml for local development with services:
+  - [ ] 12.2.1 Neo4j service (graph database)
+  - [ ] 12.2.2 PostgreSQL service (USAspending data)
+  - [ ] 12.2.3 Application service (ETL pipeline)
+- [ ] 12.3 Create initialization script for loading compressed Postgres dump
+- [ ] 12.4 Create .dockerignore
+- [ ] 12.5 Create volumes for persistent data (Neo4j, PostgreSQL)
+- [ ] 12.6 Test Docker Compose startup and service connectivity
+- [ ] 12.7 Document Docker usage in README
 
 ## 13. Documentation
 - [ ] 13.1 Update README.md with:
