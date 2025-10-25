@@ -1,8 +1,9 @@
 """Pydantic models for SBIR award data."""
 
-from datetime import date
+from datetime import date, datetime
+from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class Award(BaseModel):

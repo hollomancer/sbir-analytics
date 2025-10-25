@@ -1,10 +1,43 @@
 """Configuration schemas using Pydantic for type-safe configuration."""
 
-from pydantic import BaseModel, Field, validator
+from pathlib import Path
+from pydantic import BaseModel, Field, field_validator
+
+
+class SbirValidationConfig(BaseModel):
+    """SBIR-specific validation configuration."""
+
+    pass_rate_threshold: float = Field(
+        default=0.95, description="Minimum pass rate required (0.95 = 95%)"
+    )
+    completeness_threshold: float = Field(
+        default=0.90, description="Completeness threshold for individual fields"
+    )
+    uniqueness_threshold: float = Field(
+        default=0.99, description="Uniqueness threshold for Contract IDs"
+    )
+
+
+class SbirDuckDBConfig(BaseModel):
+    """SBIR DuckDB extraction configuration."""
+
+    csv_path: str = Field(
+        default="data/raw/sbir/awards_data.csv", description="Path to SBIR CSV file"
+    )
+    database_path: str = Field(
+        default=":memory:", description="DuckDB database path (:memory: for in-memory)"
+    )
+    table_name: str = Field(default="sbir_awards", description="DuckDB table name")
+    batch_size: int = Field(default=10000, description="Batch size for chunked processing")
+    encoding: str = Field(default="utf-8", description="CSV file encoding")
 
 
 class DataQualityConfig(BaseModel):
     """Configuration for data quality checks."""
+
+    sbir_awards: SbirValidationConfig = Field(
+        default_factory=SbirValidationConfig, description="SBIR-specific validation thresholds"
+    )
 
     completeness: dict[str, float] = Field(
         default_factory=lambda: {
@@ -35,7 +68,8 @@ class DataQualityConfig(BaseModel):
         }
     )
 
-    @validator("completeness", "uniqueness", "enrichment")
+    @field_validator("completeness", "uniqueness", "enrichment")
+    @classmethod
     def validate_percentage(cls, v):
         """Validate that percentage values are between 0 and 1."""
         for key, value in v.items():
@@ -85,12 +119,8 @@ class Neo4jConfig(BaseModel):
 class ExtractionConfig(BaseModel):
     """Configuration for data extraction."""
 
-    sbir: dict[str, str] = Field(
-        default_factory=lambda: {
-            "date_format": "%m/%d/%Y",
-            "encoding": "utf-8",
-            "chunk_size": "10000",
-        }
+    sbir: SbirDuckDBConfig = Field(
+        default_factory=SbirDuckDBConfig, description="SBIR extraction configuration"
     )
     usaspending: dict[str, str] = Field(
         default_factory=lambda: {
@@ -109,7 +139,8 @@ class ValidationConfig(BaseModel):
     sample_size_for_checks: int = 1000
     max_error_percentage: float = 0.05
 
-    @validator("max_error_percentage")
+    @field_validator("max_error_percentage")
+    @classmethod
     def validate_error_percentage(cls, v):
         """Validate that error percentage is between 0 and 1."""
         if not (0.0 <= v <= 1.0):

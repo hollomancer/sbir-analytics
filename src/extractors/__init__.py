@@ -1,4 +1,5 @@
 """Data extraction modules for different sources."""
 
-# Placeholder for future extractor implementations
-__all__ = []
+from .sbir import SbirDuckDBExtractor
+
+__all__ = ["SbirDuckDBExtractor"]

@@ -6,12 +6,22 @@ from dagster import (
     ScheduleDefinition,
     define_asset_job,
     load_assets_from_modules,
+    load_asset_checks_from_modules,
 )
 
 from . import assets
+from .assets import sbir_ingestion
 
-# Load all assets from the assets module
-all_assets = load_assets_from_modules([assets])
+# Load all assets and checks from modules
+all_assets = load_assets_from_modules([assets, sbir_ingestion])
+all_asset_checks = load_asset_checks_from_modules([sbir_ingestion])
+
+# Define SBIR ingestion job (just the ingestion assets)
+sbir_ingestion_job = define_asset_job(
+    name="sbir_ingestion_job",
+    selection=AssetSelection.groups("sbir_ingestion"),
+    description="Extract, validate, and prepare SBIR awards data",
+)
 
 # Define a job that materializes all assets
 etl_job = define_asset_job(
@@ -31,6 +41,7 @@ daily_schedule = ScheduleDefinition(
 # Create the definitions object
 defs = Definitions(
     assets=all_assets,
-    jobs=[etl_job],
+    asset_checks=all_asset_checks,
+    jobs=[sbir_ingestion_job, etl_job],
     schedules=[daily_schedule],
 )
