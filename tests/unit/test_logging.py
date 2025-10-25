@@ -1,11 +1,8 @@
 """Unit tests for logging configuration."""
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from src.utils.logging_config import (
     LogContext,
@@ -30,11 +27,7 @@ class TestSetupLogging:
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = Path(temp_dir) / "test.log"
 
-            setup_logging(
-                level="INFO",
-                format_type="json",
-                file_path=str(log_file)
-            )
+            setup_logging(level="INFO", format_type="json", file_path=str(log_file))
 
             # Should not raise any exceptions
             assert True
@@ -120,10 +113,10 @@ class TestLogFunctions:
         """Test that all log functions are available."""
         from src.utils.logging_config import (
             log_debug,
-            log_info,
-            log_warning,
             log_error,
             log_exception,
+            log_info,
+            log_warning,
         )
 
         # Functions should exist
@@ -137,9 +130,9 @@ class TestLogFunctions:
         """Test that log functions don't raise exceptions."""
         from src.utils.logging_config import (
             log_debug,
+            log_error,
             log_info,
             log_warning,
-            log_error,
         )
 
         # These should not raise exceptions

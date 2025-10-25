@@ -3,7 +3,13 @@
 from .award import Award, RawAward
 from .company import Company, CompanyMatch, RawCompany
 from .patent import Patent, PatentCitation, RawPatent
-from .quality import DataQualitySummary, EnrichmentResult, QualityIssue, QualityReport, QualitySeverity
+from .quality import (
+    DataQualitySummary,
+    EnrichmentResult,
+    QualityIssue,
+    QualityReport,
+    QualitySeverity,
+)
 from .researcher import RawResearcher, Researcher
 
 __all__ = [

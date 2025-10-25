@@ -1,7 +1,6 @@
 """Pydantic models for SBIR award data."""
 
 from datetime import date
-from typing import Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -17,24 +16,24 @@ class Award(BaseModel):
     program: str = Field(..., description="SBIR or STTR program")
 
     # Optional fields
-    phase: Optional[str] = Field(None, description="Phase I, II, or III")
-    agency: Optional[str] = Field(None, description="Federal agency")
-    branch: Optional[str] = Field(None, description="Agency branch")
-    contract: Optional[str] = Field(None, description="Contract number")
-    abstract: Optional[str] = Field(None, description="Project abstract")
-    keywords: Optional[str] = Field(None, description="Project keywords")
+    phase: str | None = Field(None, description="Phase I, II, or III")
+    agency: str | None = Field(None, description="Federal agency")
+    branch: str | None = Field(None, description="Agency branch")
+    contract: str | None = Field(None, description="Contract number")
+    abstract: str | None = Field(None, description="Project abstract")
+    keywords: str | None = Field(None, description="Project keywords")
 
     # Enrichment fields (populated later)
-    company_duns: Optional[str] = Field(None, description="DUNS number from SAM.gov")
-    company_cage: Optional[str] = Field(None, description="CAGE code from SAM.gov")
-    company_address: Optional[str] = Field(None, description="Company address from SAM.gov")
-    company_city: Optional[str] = Field(None, description="Company city from SAM.gov")
-    company_state: Optional[str] = Field(None, description="Company state from SAM.gov")
-    company_zip: Optional[str] = Field(None, description="Company ZIP code from SAM.gov")
+    company_duns: str | None = Field(None, description="DUNS number from SAM.gov")
+    company_cage: str | None = Field(None, description="CAGE code from SAM.gov")
+    company_address: str | None = Field(None, description="Company address from SAM.gov")
+    company_city: str | None = Field(None, description="Company city from SAM.gov")
+    company_state: str | None = Field(None, description="Company state from SAM.gov")
+    company_zip: str | None = Field(None, description="Company ZIP code from SAM.gov")
 
     # USAspending enrichment
-    usaspending_id: Optional[str] = Field(None, description="USAspending.gov award ID")
-    fiscal_year: Optional[int] = Field(None, description="Fiscal year of award")
+    usaspending_id: str | None = Field(None, description="USAspending.gov award ID")
+    fiscal_year: int | None = Field(None, description="Fiscal year of award")
 
     @validator("award_amount")
     def validate_award_amount(cls, v):
@@ -66,28 +65,28 @@ class Award(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
-        json_encoders = {
-            date: lambda v: v.isoformat()
-        }
+        json_encoders = {date: lambda v: v.isoformat()}
 
 
 class RawAward(BaseModel):
     """Raw award data before validation/transformation."""
 
     # All fields are optional for raw data
-    award_id: Optional[str] = None
-    company_name: Optional[str] = None
-    award_amount: Optional[float] = None
-    award_date: Optional[str] = None  # Raw string date
-    program: Optional[str] = None
-    phase: Optional[str] = None
-    agency: Optional[str] = None
-    branch: Optional[str] = None
-    contract: Optional[str] = None
-    abstract: Optional[str] = None
-    keywords: Optional[str] = None
+    award_id: str | None = None
+    company_name: str | None = None
+    award_amount: float | None = None
+    award_date: str | None = None  # Raw string date
+    program: str | None = None
+    phase: str | None = None
+    agency: str | None = None
+    branch: str | None = None
+    contract: str | None = None
+    abstract: str | None = None
+    keywords: str | None = None
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True

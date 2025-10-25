@@ -1,7 +1,8 @@
 """Neo4j client wrapper for batch loading and transaction management."""
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger
 from neo4j import Driver, GraphDatabase, Session, Transaction
@@ -21,9 +22,9 @@ class Neo4jConfig(BaseModel):
 class LoadMetrics(BaseModel):
     """Metrics for Neo4j loading operations."""
 
-    nodes_created: Dict[str, int] = {}
-    nodes_updated: Dict[str, int] = {}
-    relationships_created: Dict[str, int] = {}
+    nodes_created: dict[str, int] = {}
+    nodes_updated: dict[str, int] = {}
+    relationships_created: dict[str, int] = {}
     errors: int = 0
     duration_seconds: float = 0.0
 
@@ -38,7 +39,7 @@ class Neo4jClient:
             config: Neo4j connection configuration
         """
         self.config = config
-        self._driver: Optional[Driver] = None
+        self._driver: Driver | None = None
         logger.info(f"Neo4j client initialized for {config.uri}")
 
     @property
@@ -116,8 +117,8 @@ class Neo4jClient:
         label: str,
         key_property: str,
         key_value: Any,
-        properties: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any],
+    ) -> dict[str, Any]:
         """Upsert a single node (create or update).
 
         Args:
@@ -146,8 +147,8 @@ class Neo4jClient:
         self,
         label: str,
         key_property: str,
-        nodes: List[Dict[str, Any]],
-        metrics: Optional[LoadMetrics] = None,
+        nodes: list[dict[str, Any]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Batch upsert nodes with transaction management.
 
@@ -226,8 +227,8 @@ class Neo4jClient:
         target_key: str,
         target_value: Any,
         rel_type: str,
-        properties: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create a relationship between two nodes.
 
         Args:
@@ -272,8 +273,8 @@ class Neo4jClient:
 
     def batch_create_relationships(
         self,
-        relationships: List[Tuple[str, str, Any, str, str, Any, str, Optional[Dict[str, Any]]]],
-        metrics: Optional[LoadMetrics] = None,
+        relationships: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Batch create relationships with transaction management.
 

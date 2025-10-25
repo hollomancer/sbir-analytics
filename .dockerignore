@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files
+data/
+*.csv
+*.db
+*.duckdb
+
+# Logs
+logs/
+*.log
+
+# Metrics
+metrics/
+
+# Environment
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Documentation
+*.md
+docs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# OpenSpec
+openspec/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# OS
+.DS_Store
+Thumbs.db

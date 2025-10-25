@@ -42,14 +42,7 @@ class TestDeepMergeDicts:
         base = {"data": {"quality": {"threshold": 0.8}}}
         override = {"data": {"quality": {"enabled": True}}}
         result = _deep_merge_dicts(base, override)
-        expected = {
-            "data": {
-                "quality": {
-                    "threshold": 0.8,
-                    "enabled": True
-                }
-            }
-        }
+        expected = {"data": {"quality": {"threshold": 0.8, "enabled": True}}}
         assert result == expected
 
     def test_override_replaces_non_dict(self):
@@ -156,13 +149,8 @@ class TestLoadConfigFromFiles:
             dev_file = config_dir / "dev.yaml"
             dev_file.write_text("pipeline:\n  name: dev\nsetting: dev_value\n")
 
-            result = load_config_from_files(
-                Path.cwd(), environment="dev", config_dir=config_dir
-            )
-            assert result == {
-                "pipeline": {"name": "dev"},
-                "setting": "dev_value"
-            }
+            result = load_config_from_files(Path.cwd(), environment="dev", config_dir=config_dir)
+            assert result == {"pipeline": {"name": "dev"}, "setting": "dev_value"}
 
     def test_missing_base_file(self):
         """Test error when base file is missing."""
@@ -211,7 +199,9 @@ class TestGetConfig:
 
             # Create invalid config
             base_file = config_dir / "base.yaml"
-            base_file.write_text("data_quality:\n  completeness:\n    award_id: 1.5\n")  # Invalid percentage
+            base_file.write_text(
+                "data_quality:\n  completeness:\n    award_id: 1.5\n"
+            )  # Invalid percentage
 
             with pytest.raises(ConfigurationError, match="Configuration validation failed"):
                 get_config(config_dir=config_dir, apply_env_overrides_flag=False)
@@ -255,7 +245,11 @@ class TestGetConfig:
             config1 = get_config(config_dir=config_dir, apply_env_overrides_flag=False)
 
             # Modify file
-            base_file.write_text(yaml.dump({"pipeline": {"name": "modified", "version": "1.0.0", "environment": "test"}}))
+            base_file.write_text(
+                yaml.dump(
+                    {"pipeline": {"name": "modified", "version": "1.0.0", "environment": "test"}}
+                )
+            )
 
             # Reload and get new config
             reload_config()

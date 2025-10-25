@@ -1,20 +1,17 @@
 """Example Dagster assets demonstrating the ETL pipeline structure."""
 
-from typing import Dict, Any
-from pathlib import Path
-
+import pandas as pd
 from dagster import (
-    asset,
-    AssetExecutionContext,
     AssetCheckResult,
     AssetCheckSeverity,
+    AssetExecutionContext,
+    asset,
     asset_check,
 )
 from loguru import logger
-import pandas as pd
 
-from ..validators.quality_checks import validate_sbir_awards
 from ..models.quality import QualitySeverity
+from ..validators.quality_checks import validate_sbir_awards
 
 
 @asset(

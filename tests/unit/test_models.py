@@ -1,7 +1,8 @@
 """Unit tests for data models."""
 
-import pytest
 from datetime import date
+
+import pytest
 
 from src.models import (
     Award,
@@ -25,7 +26,7 @@ class TestAwardModel:
             company_name="Test Company",
             award_amount=100000.0,
             award_date=date(2023, 1, 1),
-            program="SBIR"
+            program="SBIR",
         )
         assert award.award_id == "12345"
         assert award.program == "SBIR"  # Should be uppercased
@@ -38,7 +39,7 @@ class TestAwardModel:
                 company_name="Test Company",
                 award_amount=-1000.0,
                 award_date=date(2023, 1, 1),
-                program="SBIR"
+                program="SBIR",
             )
 
     def test_invalid_program(self):
@@ -49,7 +50,7 @@ class TestAwardModel:
                 company_name="Test Company",
                 award_amount=100000.0,
                 award_date=date(2023, 1, 1),
-                program="INVALID"
+                program="INVALID",
             )
 
     def test_program_normalization(self):
@@ -59,7 +60,7 @@ class TestAwardModel:
             company_name="Test Company",
             award_amount=100000.0,
             award_date=date(2023, 1, 1),
-            program="sbir"
+            program="sbir",
         )
         assert award.program == "SBIR"
 
@@ -72,7 +73,7 @@ class TestAwardModel:
                 award_amount=100000.0,
                 award_date=date(2023, 1, 1),
                 program="SBIR",
-                phase="IV"
+                phase="IV",
             )
 
     def test_phase_normalization(self):
@@ -83,7 +84,7 @@ class TestAwardModel:
             award_amount=100000.0,
             award_date=date(2023, 1, 1),
             program="SBIR",
-            phase="i"
+            phase="i",
         )
         assert award.phase == "I"
 
@@ -93,11 +94,7 @@ class TestCompanyModel:
 
     def test_valid_company(self):
         """Test creating a valid company."""
-        company = Company(
-            name="Test Company Inc.",
-            duns="123456789",
-            cage="ABC12"
-        )
+        company = Company(name="Test Company Inc.", duns="123456789", cage="ABC12")
         assert company.name == "Test Company Inc."
         assert company.duns == "123456789"
         assert company.cage == "ABC12"
@@ -105,33 +102,21 @@ class TestCompanyModel:
     def test_invalid_duns(self):
         """Test invalid DUNS number."""
         with pytest.raises(ValueError, match="DUNS must be 9 digits"):
-            Company(
-                name="Test Company",
-                duns="12345678"  # Too short
-            )
+            Company(name="Test Company", duns="12345678")  # Too short
 
     def test_duns_normalization(self):
         """Test DUNS number normalization."""
-        company = Company(
-            name="Test Company",
-            duns="123-456-789"  # With hyphens
-        )
+        company = Company(name="Test Company", duns="123-456-789")  # With hyphens
         assert company.duns == "123456789"
 
     def test_invalid_cage(self):
         """Test invalid CAGE code."""
         with pytest.raises(ValueError, match="CAGE code must be 5 characters"):
-            Company(
-                name="Test Company",
-                cage="ABCD"  # Too short
-            )
+            Company(name="Test Company", cage="ABCD")  # Too short
 
     def test_cage_normalization(self):
         """Test CAGE code normalization."""
-        company = Company(
-            name="Test Company",
-            cage="abc12"  # Lowercase
-        )
+        company = Company(name="Test Company", cage="abc12")  # Lowercase
         assert company.cage == "ABC12"
 
 
@@ -144,7 +129,7 @@ class TestResearcherModel:
             name="Dr. Jane Smith",
             email="jane.smith@university.edu",
             institution="Test University",
-            department="Computer Science"
+            department="Computer Science",
         )
         assert researcher.name == "Dr. Jane Smith"
         assert researcher.email == "jane.smith@university.edu"
@@ -158,7 +143,7 @@ class TestPatentModel:
         patent = Patent(
             patent_number="US12345678",
             title="Test Patent",
-            inventors=["Inventor One", "Inventor Two"]
+            inventors=["Inventor One", "Inventor Two"],
         )
         assert patent.patent_number == "US12345678"
         assert len(patent.inventors) == 2
@@ -166,20 +151,12 @@ class TestPatentModel:
     def test_invalid_patent_number(self):
         """Test invalid patent number."""
         with pytest.raises(ValueError, match="Patent number too short"):
-            Patent(
-                patent_number="US123",
-                title="Test Patent",
-                inventors=["Inventor One"]
-            )
+            Patent(patent_number="US123", title="Test Patent", inventors=["Inventor One"])
 
     def test_empty_inventors_list(self):
         """Test empty inventors list."""
         with pytest.raises(ValueError, match="Inventors list cannot be empty"):
-            Patent(
-                patent_number="US12345678",
-                title="Test Patent",
-                inventors=[]
-            )
+            Patent(patent_number="US12345678", title="Test Patent", inventors=[])
 
 
 class TestQualityModels:
@@ -193,7 +170,7 @@ class TestQualityModels:
             expected="string",
             message="Company name is required",
             severity=QualitySeverity.HIGH,
-            rule="completeness_check"
+            rule="completeness_check",
         )
         assert issue.field == "company_name"
         assert issue.severity == "high"  # Enum value
@@ -210,7 +187,7 @@ class TestQualityModels:
             completeness_score=0.8,
             validity_score=0.9,
             overall_score=0.85,
-            passed=True
+            passed=True,
         )
         assert report.record_id == "award_123"
         assert report.passed is True
@@ -224,7 +201,7 @@ class TestQualityModels:
             fields_enriched=["duns", "cage"],
             enrichment_success=True,
             enriched_data={"duns": "123456789"},
-            confidence_score=0.95
+            confidence_score=0.95,
         )
         assert result.record_id == "company_123"
         assert result.enrichment_success is True

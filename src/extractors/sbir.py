@@ -3,9 +3,9 @@
 This module provides functionality to extract SBIR award data from CSV files.
 """
 
-import pandas as pd
 from pathlib import Path
-from typing import Optional
+
+import pandas as pd
 
 from ..config.loader import get_config
 from ..utils import log_with_context
@@ -15,7 +15,7 @@ def extract_sbir_csv(
     file_path: Path,
     date_format: str = "%m/%d/%Y",
     encoding: str = "utf-8",
-    chunk_size: Optional[int] = None
+    chunk_size: int | None = None,
 ) -> pd.DataFrame:
     """Extract SBIR award data from CSV file.
 
@@ -45,18 +45,15 @@ def extract_sbir_csv(
                 # Read in chunks for large files
                 chunks = []
                 for chunk in pd.read_csv(
-                    file_path,
-                    encoding=encoding,
-                    chunksize=chunk_size,
-                    low_memory=False
+                    file_path, encoding=encoding, chunksize=chunk_size, low_memory=False
                 ):
                     chunks.append(chunk)
                 df = pd.concat(chunks, ignore_index=True)
             else:
                 df = pd.read_csv(file_path, encoding=encoding, low_memory=False)
 
-        except pd.errors.EmptyDataError:
-            raise ValueError(f"SBIR CSV file is empty: {file_path}")
+        except pd.errors.EmptyDataError as e:
+            raise ValueError(f"SBIR CSV file is empty: {file_path}") from e
 
         logger.info(f"Loaded {len(df)} rows from SBIR CSV")
 
@@ -69,21 +66,20 @@ def extract_sbir_csv(
         for date_col in date_columns:
             if date_col in df.columns:
                 try:
-                    df[date_col] = pd.to_datetime(df[date_col], format=date_format, errors='coerce')
+                    df[date_col] = pd.to_datetime(df[date_col], format=date_format, errors="coerce")
                     logger.info(f"Parsed dates in column '{date_col}'")
                 except Exception as e:
                     logger.warning(f"Failed to parse dates in column '{date_col}': {e}")
 
         # Standardize column names (convert to snake_case)
-        df.columns = df.columns.str.lower().str.replace(' ', '_')
+        df.columns = df.columns.str.lower().str.replace(" ", "_")
 
         logger.info(f"Extracted {len(df)} SBIR records with columns: {list(df.columns)}")
         return df
 
 
 def extract_sbir_from_config(
-    data_dir: Optional[Path] = None,
-    filename: str = "sbir_awards.csv"
+    data_dir: Path | None = None, filename: str = "sbir_awards.csv"
 ) -> pd.DataFrame:
     """Extract SBIR data using configuration settings.
 
@@ -107,5 +103,5 @@ def extract_sbir_from_config(
         file_path=file_path,
         date_format=extraction_config.get("date_format", "%m/%d/%Y"),
         encoding=extraction_config.get("encoding", "utf-8"),
-        chunk_size=int(extraction_config.get("chunk_size", 0)) or None
+        chunk_size=int(extraction_config.get("chunk_size", 0)) or None,
     )

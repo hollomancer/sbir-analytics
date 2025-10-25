@@ -4,10 +4,10 @@ version = "0.1.0"
 description = "SBIR ETL Pipeline for Neo4j"
 authors = ["Conrad Hollomon <conrad.hollomon@pm.me>"]
 readme = "README.md"
-packages = [{include = "sbir_etl", from = "src"}]
+packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.15"
 dagster = "^1.7.0"
 dagster-webserver = "^1.7.0"
 pandas = "^2.2.0"

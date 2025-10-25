@@ -1,7 +1,5 @@
 """Pydantic models for company data."""
 
-from typing import Optional
-
 from pydantic import BaseModel, Field, validator
 
 
@@ -10,30 +8,30 @@ class Company(BaseModel):
 
     # Core identifying fields
     name: str = Field(..., description="Company name")
-    duns: Optional[str] = Field(None, description="DUNS number (9 digits)")
-    cage: Optional[str] = Field(None, description="CAGE code (5 characters)")
+    duns: str | None = Field(None, description="DUNS number (9 digits)")
+    cage: str | None = Field(None, description="CAGE code (5 characters)")
 
     # Address information
-    address_line_1: Optional[str] = Field(None, description="Street address line 1")
-    address_line_2: Optional[str] = Field(None, description="Street address line 2")
-    city: Optional[str] = Field(None, description="City")
-    state: Optional[str] = Field(None, description="State or province")
-    zip_code: Optional[str] = Field(None, description="ZIP or postal code")
-    country: Optional[str] = Field(None, description="Country code")
+    address_line_1: str | None = Field(None, description="Street address line 1")
+    address_line_2: str | None = Field(None, description="Street address line 2")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="State or province")
+    zip_code: str | None = Field(None, description="ZIP or postal code")
+    country: str | None = Field(None, description="Country code")
 
     # Business information
-    business_type: Optional[str] = Field(None, description="Type of business entity")
-    naics_code: Optional[str] = Field(None, description="NAICS code")
-    naics_description: Optional[str] = Field(None, description="NAICS description")
+    business_type: str | None = Field(None, description="Type of business entity")
+    naics_code: str | None = Field(None, description="NAICS code")
+    naics_description: str | None = Field(None, description="NAICS description")
 
     # Contact information
-    phone: Optional[str] = Field(None, description="Phone number")
-    email: Optional[str] = Field(None, description="Email address")
+    phone: str | None = Field(None, description="Phone number")
+    email: str | None = Field(None, description="Email address")
 
     # Status and dates
-    sam_registration_status: Optional[str] = Field(None, description="SAM registration status")
-    sam_exclusion_status: Optional[str] = Field(None, description="SAM exclusion status")
-    last_updated: Optional[str] = Field(None, description="Last update date from SAM.gov")
+    sam_registration_status: str | None = Field(None, description="SAM registration status")
+    sam_exclusion_status: str | None = Field(None, description="SAM exclusion status")
+    last_updated: str | None = Field(None, description="Last update date from SAM.gov")
 
     @validator("duns")
     def validate_duns(cls, v):
@@ -68,6 +66,7 @@ class Company(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
 
 
@@ -75,18 +74,19 @@ class RawCompany(BaseModel):
     """Raw company data before validation/enrichment."""
 
     # All fields optional for raw data
-    name: Optional[str] = None
-    duns: Optional[str] = None
-    cage: Optional[str] = None
-    address_line_1: Optional[str] = None
-    address_line_2: Optional[str] = None
-    city: Optional[str] = None
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
-    country: Optional[str] = None
+    name: str | None = None
+    duns: str | None = None
+    cage: str | None = None
+    address_line_1: str | None = None
+    address_line_2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    country: str | None = None
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
 
 

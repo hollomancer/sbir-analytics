@@ -1,7 +1,7 @@
 """Pydantic models for data quality reporting."""
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,7 @@ class QualityIssue(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
         use_enum_values = True
 
@@ -45,7 +46,7 @@ class QualityReport(BaseModel):
     invalid_fields: int = Field(..., description="Number of invalid fields")
 
     # Issues by severity
-    issues: List[QualityIssue] = Field(default_factory=list, description="List of quality issues")
+    issues: list[QualityIssue] = Field(default_factory=list, description="List of quality issues")
 
     # Summary statistics
     completeness_score: float = Field(..., ge=0.0, le=1.0, description="Completeness percentage")
@@ -57,6 +58,7 @@ class QualityReport(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
 
 
@@ -69,20 +71,27 @@ class EnrichmentResult(BaseModel):
     timestamp: str = Field(..., description="When enrichment was performed")
 
     # Enrichment details
-    fields_enriched: List[str] = Field(default_factory=list, description="Fields that were enriched")
+    fields_enriched: list[str] = Field(
+        default_factory=list, description="Fields that were enriched"
+    )
     enrichment_success: bool = Field(..., description="Whether enrichment was successful")
 
     # Data added
-    enriched_data: Dict[str, Any] = Field(default_factory=dict, description="New data added during enrichment")
+    enriched_data: dict[str, Any] = Field(
+        default_factory=dict, description="New data added during enrichment"
+    )
 
     # Quality metrics
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence in enrichment accuracy")
+    confidence_score: float | None = Field(
+        None, ge=0.0, le=1.0, description="Confidence in enrichment accuracy"
+    )
 
     # Error information
-    error_message: Optional[str] = Field(None, description="Error message if enrichment failed")
+    error_message: str | None = Field(None, description="Error message if enrichment failed")
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True
 
 
@@ -100,19 +109,32 @@ class DataQualitySummary(BaseModel):
     invalid_records: int = Field(..., description="Number of records that failed quality checks")
 
     # Quality scores
-    average_completeness: float = Field(..., ge=0.0, le=1.0, description="Average completeness score")
+    average_completeness: float = Field(
+        ..., ge=0.0, le=1.0, description="Average completeness score"
+    )
     average_validity: float = Field(..., ge=0.0, le=1.0, description="Average validity score")
-    average_overall_score: float = Field(..., ge=0.0, le=1.0, description="Average overall quality score")
+    average_overall_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Average overall quality score"
+    )
 
     # Issue breakdown
-    issues_by_severity: Dict[str, int] = Field(default_factory=dict, description="Count of issues by severity")
-    issues_by_field: Dict[str, int] = Field(default_factory=dict, description="Count of issues by field")
-    issues_by_rule: Dict[str, int] = Field(default_factory=dict, description="Count of issues by validation rule")
+    issues_by_severity: dict[str, int] = Field(
+        default_factory=dict, description="Count of issues by severity"
+    )
+    issues_by_field: dict[str, int] = Field(
+        default_factory=dict, description="Count of issues by field"
+    )
+    issues_by_rule: dict[str, int] = Field(
+        default_factory=dict, description="Count of issues by validation rule"
+    )
 
     # Threshold compliance
-    completeness_threshold_met: bool = Field(..., description="Whether completeness threshold was met")
+    completeness_threshold_met: bool = Field(
+        ..., description="Whether completeness threshold was met"
+    )
     validity_threshold_met: bool = Field(..., description="Whether validity threshold was met")
 
     class Config:
         """Pydantic configuration."""
+
         validate_assignment = True

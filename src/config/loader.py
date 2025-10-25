@@ -3,7 +3,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
@@ -13,10 +13,11 @@ from .schemas import PipelineConfig
 
 class ConfigurationError(Exception):
     """Raised when configuration loading or validation fails."""
+
     pass
 
 
-def _deep_merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, with override taking precedence."""
     result = base.copy()
 
@@ -29,7 +30,7 @@ def _deep_merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[st
     return result
 
 
-def _apply_env_overrides(config_dict: Dict[str, Any], prefix: str = "SBIR_ETL") -> Dict[str, Any]:
+def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:
     """Apply environment variable overrides to configuration dictionary."""
     result = config_dict.copy()
 
@@ -38,7 +39,7 @@ def _apply_env_overrides(config_dict: Dict[str, Any], prefix: str = "SBIR_ETL") 
             continue
 
         # Remove prefix and split by double underscores
-        config_path = env_key[len(f"{prefix}__"):].lower().split("__")
+        config_path = env_key[len(f"{prefix}__") :].lower().split("__")
 
         # Navigate to the nested location
         current = result
@@ -77,10 +78,8 @@ def _convert_env_value(value: str) -> Any:
 
 
 def load_config_from_files(
-    base_path: Path,
-    environment: Optional[str] = None,
-    config_dir: Optional[Path] = None
-) -> Dict[str, Any]:
+    base_path: Path, environment: str | None = None, config_dir: Path | None = None
+) -> dict[str, Any]:
     """Load configuration from YAML files with environment-specific overrides."""
     if config_dir is None:
         config_dir = Path("config")
@@ -91,30 +90,30 @@ def load_config_from_files(
         raise ConfigurationError(f"Base configuration file not found: {base_file}")
 
     try:
-        with open(base_file, "r", encoding="utf-8") as f:
+        with open(base_file, encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
     except yaml.YAMLError as e:
-        raise ConfigurationError(f"Failed to parse base config: {e}")
+        raise ConfigurationError(f"Failed to parse base config: {e}") from e
 
     # Load environment-specific overrides
     if environment:
         env_file = config_dir / f"{environment}.yaml"
         if env_file.exists():
             try:
-                with open(env_file, "r", encoding="utf-8") as f:
+                with open(env_file, encoding="utf-8") as f:
                     env_config = yaml.safe_load(f) or {}
                 config = _deep_merge_dicts(config, env_config)
             except yaml.YAMLError as e:
-                raise ConfigurationError(f"Failed to parse {environment} config: {e}")
+                raise ConfigurationError(f"Failed to parse {environment} config: {e}") from e
 
     return config
 
 
 @lru_cache(maxsize=1)
 def get_config(
-    environment: Optional[str] = None,
-    config_dir: Optional[Path] = None,
-    apply_env_overrides_flag: bool = True
+    environment: str | None = None,
+    config_dir: Path | None = None,
+    apply_env_overrides_flag: bool = True,
 ) -> PipelineConfig:
     """Get validated configuration with caching.
 
@@ -136,9 +135,7 @@ def get_config(
 
         # Load configuration from files
         config_dict = load_config_from_files(
-            base_path=Path.cwd(),
-            environment=environment,
-            config_dir=config_dir
+            base_path=Path.cwd(), environment=environment, config_dir=config_dir
         )
 
         # Apply environment variable overrides
@@ -151,9 +148,9 @@ def get_config(
         return config
 
     except ValidationError as e:
-        raise ConfigurationError(f"Configuration validation failed: {e}")
+        raise ConfigurationError(f"Configuration validation failed: {e}") from e
     except Exception as e:
-        raise ConfigurationError(f"Configuration loading failed: {e}")
+        raise ConfigurationError(f"Configuration loading failed: {e}") from e
 
 
 def reload_config() -> None:

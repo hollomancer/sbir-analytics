@@ -3,10 +3,9 @@
 This module provides functionality to extract USAspending data from compressed PostgreSQL dumps using DuckDB.
 """
 
-import duckdb
 from pathlib import Path
-from typing import Optional, List
 
+import duckdb
 import pandas as pd
 
 from ..config.loader import get_config
@@ -16,7 +15,7 @@ from ..utils import log_with_context
 class DuckDBUSAspendingExtractor:
     """Extractor for USAspending data using DuckDB."""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         """Initialize the extractor.
 
         Args:
@@ -67,7 +66,7 @@ class DuckDBUSAspendingExtractor:
 
             try:
                 # Check if file is compressed
-                if dump_file.suffix == '.gz':
+                if dump_file.suffix == ".gz":
                     # For compressed files, we'll need to decompress first
                     # This is a simplified version - real implementation would handle compression
                     logger.warning("Compressed dump files not yet fully supported")
@@ -97,8 +96,8 @@ class DuckDBUSAspendingExtractor:
     def query_awards(
         self,
         table_name: str = "usaspending_awards",
-        limit: Optional[int] = None,
-        filters: Optional[dict] = None
+        limit: int | None = None,
+        filters: dict | None = None,
     ) -> pd.DataFrame:
         """Query awards data from imported table.
 
@@ -167,19 +166,15 @@ class DuckDBUSAspendingExtractor:
             return {
                 "table_name": table_name,
                 "row_count": row_count,
-                "columns": columns_df.to_dict('records') if not columns_df.empty else []
+                "columns": columns_df.to_dict("records") if not columns_df.empty else [],
             }
 
         except Exception as e:
-            return {
-                "table_name": table_name,
-                "error": str(e)
-            }
+            return {"table_name": table_name, "error": str(e)}
 
 
 def extract_usaspending_from_config(
-    data_dir: Optional[Path] = None,
-    dump_filename: str = "usaspending_dump.sql"
+    data_dir: Path | None = None, dump_filename: str = "usaspending_dump.sql"
 ) -> DuckDBUSAspendingExtractor:
     """Create USAspending extractor using configuration settings.
 

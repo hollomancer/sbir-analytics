@@ -1,4 +1,5 @@
 """Data loading modules for Neo4j database operations."""
 
-# Placeholder for future loader implementations
-__all__ = []
+from .neo4j_client import LoadMetrics, Neo4jClient, Neo4jConfig
+
+__all__ = ["Neo4jClient", "Neo4jConfig", "LoadMetrics"]

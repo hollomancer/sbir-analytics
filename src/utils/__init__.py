@@ -12,6 +12,7 @@ from .logging_config import (
     log_with_context,
     setup_logging,
 )
+from .metrics import MetricsCollector, PipelineMetrics
 
 __all__ = [
     # Logging
@@ -27,4 +28,7 @@ __all__ = [
     # DuckDB
     "DuckDBClient",
     "get_duckdb_client",
+    # Metrics
+    "MetricsCollector",
+    "PipelineMetrics",
 ]

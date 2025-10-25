@@ -3,21 +3,20 @@
 import sys
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
 from ..config.loader import get_config
 
 # Context variables for structured logging
-stage_context: ContextVar[Optional[str]] = ContextVar("stage", default=None)
-run_id_context: ContextVar[Optional[str]] = ContextVar("run_id", default=None)
+stage_context: ContextVar[str | None] = ContextVar("stage", default=None)
+run_id_context: ContextVar[str | None] = ContextVar("run_id", default=None)
 
 
 def setup_logging(
     level: str = "INFO",
     format_type: str = "json",
-    file_path: Optional[str] = None,
+    file_path: str | None = None,
     max_file_size_mb: int = 100,
     backup_count: int = 5,
     include_stage: bool = True,
@@ -108,7 +107,7 @@ def configure_logging_from_config() -> None:
 class LogContext:
     """Context manager for adding context to log messages."""
 
-    def __init__(self, stage: Optional[str] = None, run_id: Optional[str] = None):
+    def __init__(self, stage: str | None = None, run_id: str | None = None):
         """Initialize log context.
 
         Args:
@@ -146,10 +145,7 @@ class LogContext:
             run_id_context.reset(self.run_id_token)
 
 
-def log_with_context(
-    stage: Optional[str] = None,
-    run_id: Optional[str] = None
-):
+def log_with_context(stage: str | None = None, run_id: str | None = None):
     """Context manager for logging with context.
 
     Args:
@@ -165,39 +161,34 @@ def log_with_context(
 # Convenience functions for different log levels
 def log_debug(message: str, *args, **kwargs) -> None:
     """Log debug message."""
-    logger.bind(
-        stage=stage_context.get(),
-        run_id=run_id_context.get()
-    ).debug(message, *args, **kwargs)
+    logger.bind(stage=stage_context.get(), run_id=run_id_context.get()).debug(
+        message, *args, **kwargs
+    )
 
 
 def log_info(message: str, *args, **kwargs) -> None:
     """Log info message."""
-    logger.bind(
-        stage=stage_context.get(),
-        run_id=run_id_context.get()
-    ).info(message, *args, **kwargs)
+    logger.bind(stage=stage_context.get(), run_id=run_id_context.get()).info(
+        message, *args, **kwargs
+    )
 
 
 def log_warning(message: str, *args, **kwargs) -> None:
     """Log warning message."""
-    logger.bind(
-        stage=stage_context.get(),
-        run_id=run_id_context.get()
-    ).warning(message, *args, **kwargs)
+    logger.bind(stage=stage_context.get(), run_id=run_id_context.get()).warning(
+        message, *args, **kwargs
+    )
 
 
 def log_error(message: str, *args, **kwargs) -> None:
     """Log error message."""
-    logger.bind(
-        stage=stage_context.get(),
-        run_id=run_id_context.get()
-    ).error(message, *args, **kwargs)
+    logger.bind(stage=stage_context.get(), run_id=run_id_context.get()).error(
+        message, *args, **kwargs
+    )
 
 
 def log_exception(message: str, *args, **kwargs) -> None:
     """Log exception with traceback."""
-    logger.bind(
-        stage=stage_context.get(),
-        run_id=run_id_context.get()
-    ).exception(message, *args, **kwargs)
+    logger.bind(stage=stage_context.get(), run_id=run_id_context.get()).exception(
+        message, *args, **kwargs
+    )
