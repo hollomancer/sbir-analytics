@@ -1,7 +1,8 @@
 # Implementation Tasks
 
 ## 1. Research & Environment Prep
-- [ ] 1.1 Confirm licensing, auth requirements, and acceptable-use policies for SearXNG, Tavily, Brave Search API, Google Programmable Search, and Perplexica; capture in docs.
+- [x] 1.1 Confirm licensing, auth requirements, and acceptable-use policies for SearXNG, Tavily, Brave Search API, Google Programmable Search, and Perplexica; capture in docs.
+  - Notes: Inventory and initial verification artifacts created — see `openspec/changes/evaluate-web-search-enrichment/search_providers.md` for provider summaries and `openspec/changes/add-iterative-api-enrichment/providers.json` for the canonical provider registry. Automated discovery tooling (`scripts/openspec/fetch_provider_docs.py`) was used to fetch and annotate public documentation pages; follow-up manual verification of provider rate limits and licensing is required.
 - [ ] 1.2 Provision credentials or local deployments needed for benchmarking (Dockerized SearXNG/Perplexica, API keys for hosted services).
 - [ ] 1.3 Define the representative enrichment prompt set (companies, principal investigators, award transitions) and expected truth data for scoring.
 

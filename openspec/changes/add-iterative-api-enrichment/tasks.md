@@ -1,7 +1,8 @@
 # Implementation Tasks
 
 ## 1. Freshness Policy & Configuration
-- [ ] 1.1 Inventory every external enrichment API referenced in repo docs/config (SBIR.gov, USAspending, SAM.gov, NIH RePORTER, PatentsView, etc.) and document their release cadence + throttling limits.
+- [x] 1.1 Inventory every external enrichment API referenced in repo docs/config (SBIR.gov, USAspending, SAM.gov, NIH RePORTER, PatentsView, etc.) and document their release cadence + throttling limits.
+  - Notes: Implemented `openspec/changes/add-iterative-api-enrichment/inventory.md` and populated `openspec/changes/add-iterative-api-enrichment/providers.json`. Added `scripts/openspec/fetch_provider_docs.py` to automatically fetch and annotate provider docs (rate-limit headers, auth hints, delta support). Ran the discovery locally and updated `providers.json` with initial findings; follow-up verification of exact quotas/auth details is noted in the inventory.
 - [ ] 1.2 Add an `enrichment_refresh` section to `config/base.yaml` (and dev/prod overrides) with per-source cadence, batch size, and concurrency knobs.
 - [ ] 1.3 Define SLA defaults (max staleness days per source) and expose them through `src/config/schemas.py` so they are validated at load time.
 
