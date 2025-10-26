@@ -5,11 +5,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import duckdb
+import pandas as pd
 
 from ..config.loader import get_config
-from . import log_with_context
+from .logging_config import log_with_context
 
 if TYPE_CHECKING:
+    # For type checkers we still reference pandas types
     import pandas as pd
 
 
@@ -230,8 +232,7 @@ class DuckDBClient:
             True if table exists
         """
         try:
-            query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
-            # DuckDB uses different system catalog
+            # Use information_schema for DuckDB table existence check
             query = (
                 f"SELECT table_name FROM information_schema.tables WHERE table_name='{table_name}'"
             )
@@ -239,6 +240,132 @@ class DuckDBClient:
             return len(result) > 0
         except Exception:
             return False
+
+    def fetch_df_chunks(self, query: str, batch_size: int = 10000):
+        """
+        Generator that yields pandas DataFrames for a SQL query in chunked pages.
+
+        This implementation paginates using LIMIT/OFFSET and wraps the original
+        query in a subselect to avoid modifying user SQL. It is intentionally
+        conservative (uses offset-based pagination) which is suitable for
+        read-only analytical queries against DuckDB tables.
+
+        Args:
+            query: SQL query that selects the desired rows (no terminating semicolon)
+            batch_size: Number of rows per yielded DataFrame
+
+        Yields:
+            pandas.DataFrame objects with up to `batch_size` rows
+        """
+        # Normalize query (remove trailing semicolon if present)
+        base_query = query.strip().rstrip(";")
+        offset = 0
+
+        with log_with_context(stage="extract", run_id="fetch_df_chunks") as logger:
+            logger.info("Starting chunked fetch", batch_size=batch_size)
+
+            while True:
+                paged_query = (
+                    f"SELECT * FROM ({base_query}) AS sub LIMIT {batch_size} OFFSET {offset}"
+                )
+                df = self.execute_query_df(paged_query)
+
+                if df is None or len(df) == 0:
+                    logger.info("No more rows to fetch, ending chunked fetch", offset=offset)
+                    break
+
+                logger.debug("Yielding chunk", rows=len(df), offset=offset)
+                yield df
+
+                # Advance offset by number of rows actually returned to handle last partial page
+                offset += len(df)
+
+                # Stop early if last page was shorter than batch_size
+                if len(df) < batch_size:
+                    logger.info("Final chunk retrieved", rows=len(df), offset=offset)
+                    break
+
+    def import_csv_incremental(
+        self,
+        csv_path: Path,
+        table_name: str,
+        batch_size: int = 10000,
+        delimiter: str = ",",
+        header: bool = True,
+        encoding: str = "utf-8",
+        create_table_if_missing: bool = True,
+    ) -> bool:
+        """
+        Import a CSV into DuckDB incrementally using pandas chunking.
+
+        This method is intended for very large CSVs where importing the entire
+        file in one shot may be memory-heavy. It reads the CSV in pandas
+        chunks and writes each chunk into DuckDB. The first chunk creates the
+        table (or overwrites if it already exists and `create_table_if_missing` is False).
+        Subsequent chunks are appended.
+
+        Args:
+            csv_path: Path to CSV file
+            table_name: Destination DuckDB table name
+            batch_size: pandas chunk size
+            delimiter: CSV delimiter
+            header: Whether CSV has header row (True uses header=0)
+            encoding: File encoding
+            create_table_if_missing: If True and table does not exist, create it from first chunk
+
+        Returns:
+            True if import completed successfully, False on error
+        """
+        with log_with_context(stage="extract", run_id="csv_import_incremental") as logger:
+            logger.info(
+                f"Starting incremental CSV import into {table_name}", csv_path=str(csv_path)
+            )
+
+            if not csv_path.exists():
+                raise FileNotFoundError(f"CSV file not found: {csv_path}")
+
+            try:
+                first_chunk = True
+                # pandas.read_csv will raise if CSV can't be parsed; let that bubble
+                for chunk in pd.read_csv(
+                    csv_path,
+                    delimiter=delimiter,
+                    header=0 if header else None,
+                    encoding=encoding,
+                    chunksize=batch_size,
+                    dtype=str,  # read as strings to avoid type surprises; downstream logic can cast
+                    low_memory=False,
+                ):
+                    # Normalize column names (strip whitespace) to reduce surprises
+                    chunk.columns = [str(col).strip() for col in chunk.columns]
+
+                    if first_chunk:
+                        if create_table_if_missing or not self.table_exists(table_name):
+                            # Create table from first chunk
+                            created = self.create_table_from_df(chunk, table_name)
+                            if not created:
+                                logger.error("Failed to create table from first chunk")
+                                return False
+                        else:
+                            # Table exists: append first chunk
+                            with self.connection() as conn:
+                                conn.register("temp_chunk", chunk)
+                                conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
+                        first_chunk = False
+                    else:
+                        # Append subsequent chunks
+                        with self.connection() as conn:
+                            conn.register("temp_chunk", chunk)
+                            conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
+
+                    logger.info("Imported chunk", rows=len(chunk))
+
+                logger.info("Incremental CSV import complete", table_name=table_name)
+                return True
+
+            except Exception as e:
+                logger.error(f"Incremental CSV import failed: {e}")
+                return False
 
 
 def get_duckdb_client() -> DuckDBClient:

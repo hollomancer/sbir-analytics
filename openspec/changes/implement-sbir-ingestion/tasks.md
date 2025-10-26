@@ -12,36 +12,36 @@
   - [ ] 1.3.6 Personnel fields (Contact Name/Title/Phone/Email, PI, RI)
   - [ ] 1.3.7 Business classification (HUBZone, Woman Owned, Socially/Economically Disadvantaged)
   - [ ] 1.3.8 Company metadata (Number Employees, Company Website)
-- [ ] 1.4 Add Pydantic validators for data type conversions and optional fields
+- [x] 1.4 Add Pydantic validators for data type conversions and optional fields
 - [ ] 1.5 Write unit tests for SbirAward model (tests/unit/test_sbir_award_model.py)
 
 ## 2. DuckDB-Based CSV Extractor Implementation
-- [ ] 2.1 Create src/extractors/sbir.py module
-- [ ] 2.2 Implement SbirDuckDBExtractor class
-  - [ ] 2.2.1 Initialize DuckDB client (use existing src/utils/duckdb_client.py)
-  - [ ] 2.2.2 Import CSV to DuckDB table using duckdb_client.import_csv()
-  - [ ] 2.2.3 Verify import with table_exists() and get_table_info()
-  - [ ] 2.2.4 Implement query methods for filtered extraction
-    - [ ] extract_all() - Returns full dataset as DataFrame
-    - [ ] extract_by_year(year_start, year_end) - Filter by Award Year
-    - [ ] extract_by_agency(agencies) - Filter by Agency
-    - [ ] extract_by_phase(phases) - Filter by Phase
-  - [ ] 2.2.5 Implement chunked processing via fetch_df_chunk(batch_size)
+- [x] 2.1 Create src/extractors/sbir.py
+- [x] 2.2 Implement SbirDuckDBExtractor class
+  - [x] 2.2.1 Initialize DuckDB client (use existing src/utils/duckdb_client.py)
+  - [x] 2.2.2 Import CSV to DuckDB table using duckdb_client.import_csv()
+  - [x] 2.2.3 Verify import with table_exists() and get_table_info()
+  - [x] 2.2.4 Implement query methods for filtered extraction
+    - [x] extract_all() - Returns full dataset as DataFrame
+    - [x] extract_by_year(year_start, year_end) - Filter by Award Year
+    - [x] extract_by_agency(agencies) - Filter by Agency
+    - [x] extract_by_phase(phases) - Filter by Phase
+  - [x] 2.2.5 Implement chunked processing via fetch_df_chunk(batch_size)
   - [ ] 2.2.6 Column name mapping (handle quoted column names in SQL)
-- [ ] 2.3 Add extraction metadata tracking
-  - [ ] 2.3.1 File size and record count from DuckDB table stats
+- [x] 2.3 Add extraction metadata tracking
+  - [x] 2.3.1 File size and record count from DuckDB table stats
   - [ ] 2.3.2 Extraction timestamp
   - [ ] 2.3.3 Column validation (ensure all 42 expected columns present)
-  - [ ] 2.3.4 DuckDB table statistics (row count, memory usage)
-- [ ] 2.4 Implement SQL-based data quality checks
-  - [ ] 2.4.1 Count null values per column (SELECT COUNT(*) WHERE col IS NULL)
-  - [ ] 2.4.2 Identify duplicate Contract IDs with phase breakdown
-  - [ ] 2.4.3 Award amount statistics (min, max, avg, median)
-- [ ] 2.5 Implement error handling and logging
-  - [ ] 2.5.1 File not found errors
-  - [ ] 2.5.2 DuckDB import errors
-  - [ ] 2.5.3 SQL query errors
-  - [ ] 2.5.4 Progress logging for import and queries
+  - [x] 2.3.4 DuckDB table statistics (row count, memory usage)
+- [x] 2.4 Implement SQL-based data quality checks
+  - [x] 2.4.1 Count null values per column (SELECT COUNT(*) WHERE col IS NULL)
+  - [x] 2.4.2 Identify duplicate Contract IDs with phase breakdown
+  - [x] 2.4.3 Award amount statistics (min, max, avg, median)
+- [x] 2.5 Implement error handling and logging
+  - [x] 2.5.1 File not found errors
+  - [x] 2.5.2 DuckDB import errors
+  - [x] 2.5.3 SQL query errors
+  - [x] 2.5.4 Progress logging for import and queries
 - [ ] 2.6 Write unit tests for SbirDuckDBExtractor (tests/unit/test_sbir_extractor.py)
   - [ ] 2.6.1 Test CSV import to DuckDB
   - [ ] 2.6.2 Test filtered extraction queries
@@ -49,75 +49,75 @@
   - [ ] 2.6.4 Test metadata collection
 
 ## 3. SBIR-Specific Validation Rules
-- [ ] 3.1 Create src/validators/sbir_awards.py module
-- [ ] 3.2 Implement required field validation
-  - [ ] 3.2.1 Company name (non-empty string)
-  - [ ] 3.2.2 Award Title (non-empty string)
-  - [ ] 3.2.3 Agency (non-empty string)
-  - [ ] 3.2.4 Phase (enum: "Phase I", "Phase II", "Phase III")
-  - [ ] 3.2.5 Program (enum: "SBIR", "STTR")
-  - [ ] 3.2.6 Award Year (integer, range 1983-2026)
-  - [ ] 3.2.7 Award Amount (float, range $1 - $10,000,000)
-- [ ] 3.3 Implement format validation
-  - [ ] 3.3.1 UEI format (12 alphanumeric if present)
-  - [ ] 3.3.2 DUNS format (9 digits if present)
-  - [ ] 3.3.3 Email format (Contact Email, PI Email)
+- [x] 3.1 Create src/validators/sbir_awards.py module
+- [x] 3.2 Implement required field validation
+  - [x] 3.2.1 Company name (non-empty string)
+  - [x] 3.2.2 Award Title (non-empty string)
+  - [x] 3.2.3 Agency (non-empty string)
+  - [x] 3.2.4 Phase (enum: "Phase I", "Phase II", "Phase III")
+  - [x] 3.2.5 Program (enum: "SBIR", "STTR")
+  - [x] 3.2.6 Award Year (integer, range 1983-2026)
+  - [x] 3.2.7 Award Amount (float, range $1 - $10,000,000)
+- [x] 3.3 Implement format validation
+  - [x] 3.3.1 UEI format (12 alphanumeric if present)
+  - [x] 3.3.2 DUNS format (9 digits if present)
+  - [x] 3.3.3 Email format (Contact Email, PI Email)
   - [ ] 3.3.4 Phone number format
-  - [ ] 3.3.5 State code (2-letter US state codes)
-  - [ ] 3.3.6 ZIP code (5 or 9 digits)
-- [ ] 3.4 Implement business logic validation
-  - [ ] 3.4.1 Date consistency (Proposal Award Date ≤ Contract End Date)
+  - [x] 3.3.5 State code (2-letter US state codes)
+  - [x] 3.3.6 ZIP code (5 or 9 digits)
+- [x] 3.4 Implement business logic validation
+  - [x] 3.4.1 Date consistency (Proposal Award Date ≤ Contract End Date)
   - [ ] 3.4.2 Award Year matches Proposal Award Date year
   - [ ] 3.4.3 Phase consistency with Program (SBIR/STTR)
-- [ ] 3.5 Implement validate_sbir_awards function
-  - [ ] 3.5.1 Batch validation for DataFrame
-  - [ ] 3.5.2 Generate QualityReport with issues and metrics
-  - [ ] 3.5.3 Configurable thresholds (completeness, pass rate)
+- [x] 3.5 Implement validate_sbir_awards function
+  - [x] 3.5.1 Batch validation for DataFrame
+  - [x] 3.5.2 Generate QualityReport with issues and metrics
+  - [x] 3.5.3 Configurable thresholds (completeness, pass rate)
 - [ ] 3.6 Write unit tests for validation rules (tests/unit/test_sbir_validators.py)
 
 ## 4. Dagster SBIR Ingestion Assets
-- [ ] 4.1 Create src/assets/sbir_ingestion.py module
-- [ ] 4.2 Implement raw_sbir_awards asset
-  - [ ] 4.2.1 Initialize SbirDuckDBExtractor
-  - [ ] 4.2.2 Import CSV to DuckDB (log import time and row count)
-  - [ ] 4.2.3 Call extract_all() or filtered extraction if configured
-  - [ ] 4.2.4 Log extraction metadata (DuckDB stats, memory usage)
-  - [ ] 4.2.5 Return pandas DataFrame
-  - [ ] 4.2.6 Add asset description and group ("sbir_ingestion")
-- [ ] 4.3 Implement validated_sbir_awards asset
-  - [ ] 4.3.1 Depend on raw_sbir_awards
-  - [ ] 4.3.2 Call validate_sbir_awards
-  - [ ] 4.3.3 Filter to passing records
-  - [ ] 4.3.4 Log validation results
-  - [ ] 4.3.5 Return validated DataFrame
-- [ ] 4.4 Implement sbir_validation_report asset
-  - [ ] 4.4.1 Depend on raw_sbir_awards
-  - [ ] 4.4.2 Generate QualityReport
-  - [ ] 4.4.3 Write report to data/validated/sbir_validation_report.json
-  - [ ] 4.4.4 Return QualityReport object
-- [ ] 4.5 Implement sbir_data_quality_check asset check
-  - [ ] 4.5.1 Check validation pass rate ≥ 95%
-  - [ ] 4.5.2 Fail asset if threshold not met
-  - [ ] 4.5.3 Include quality metrics in check result
-- [ ] 4.6 Update src/definitions.py to include sbir_ingestion assets
+- [x] 4.1 Create src/assets/sbir_ingestion.py module
+- [x] 4.2 Implement raw_sbir_awards asset
+  - [x] 4.2.1 Initialize SbirDuckDBExtractor
+  - [x] 4.2.2 Import CSV to DuckDB (log import time and row count)
+  - [x] 4.2.3 Call extract_all() or filtered extraction if configured
+  - [x] 4.2.4 Log extraction metadata (DuckDB stats, memory usage)
+  - [x] 4.2.5 Return pandas DataFrame
+  - [x] 4.2.6 Add asset description and group ("sbir_ingestion")
+- [x] 4.3 Implement validated_sbir_awards asset
+  - [x] 4.3.1 Depend on raw_sbir_awards
+  - [x] 4.3.2 Call validate_sbir_awards
+  - [x] 4.3.3 Filter to passing records
+  - [x] 4.3.4 Log validation results
+  - [x] 4.3.5 Return validated DataFrame
+- [x] 4.4 Implement sbir_validation_report asset
+  - [x] 4.4.1 Depend on raw_sbir_awards
+  - [x] 4.4.2 Generate QualityReport
+  - [x] 4.4.3 Write report to data/validated/sbir_validation_report.json
+  - [x] 4.4.4 Return QualityReport object
+- [x] 4.5 Implement sbir_data_quality_check asset check
+  - [x] 4.5.1 Check validation pass rate ≥ 95%
+  - [x] 4.5.2 Fail asset if threshold not met
+  - [x] 4.5.3 Include quality metrics in check result
+- [x] 4.6 Update src/definitions.py to include sbir_ingestion assets
 - [ ] 4.7 Write integration tests (tests/integration/test_sbir_ingestion_assets.py)
 
 ## 5. Configuration Updates
-- [ ] 5.1 Update config/base.yaml
-  - [ ] 5.1.1 Add sbir_csv section with file path (data/raw/sbir/awards_data.csv)
-  - [ ] 5.1.2 Add DuckDB configuration
-    - [ ] database_path: ":memory:" (or path to persistent .duckdb file)
-    - [ ] table_name: "sbir_awards"
-  - [ ] 5.1.3 Add chunked processing config (batch_size: 10000)
-  - [ ] 5.1.4 Add SBIR-specific validation thresholds
-    - [ ] pass_rate_threshold: 0.95 (95% of records must pass validation)
-    - [ ] completeness_threshold (for individual fields)
-    - [ ] uniqueness_threshold (for duplicate detection)
+- [x] 5.1 Update config/base.yaml
+  - [x] 5.1.1 Add sbir_csv section with file path (data/raw/sbir/awards_data.csv)
+  - [x] 5.1.2 Add DuckDB configuration
+    - [x] database_path: ":memory:" (or path to persistent .duckdb file)
+    - [x] table_name: "sbir_awards"
+  - [x] 5.1.3 Add chunked processing config (batch_size: 10000)
+  - [x] 5.1.4 Add SBIR-specific validation thresholds
+    - [x] pass_rate_threshold: 0.95 (95% of records must pass validation)
+    - [x] completeness_threshold (for individual fields)
+    - [x] uniqueness_threshold (for duplicate detection)
 - [ ] 5.2 Update config/dev.yaml if needed for local testing
   - [ ] 5.2.1 Optional: Use persistent DuckDB file for faster dev iterations
-- [ ] 5.3 Update src/config/schemas.py
-  - [ ] 5.3.1 Add SbirDuckDBConfig model with csv_path, duckdb_path, table_name, batch_size
-  - [ ] 5.3.2 Add SbirValidationConfig to DataQualityConfig with pass_rate_threshold
+- [x] 5.3 Update src/config/schemas.py
+  - [x] 5.3.1 Add SbirDuckDBConfig model with csv_path, duckdb_path, table_name, batch_size
+  - [x] 5.3.2 Add SbirValidationConfig to DataQualityConfig with pass_rate_threshold
 - [ ] 5.4 Write unit tests for config schemas (tests/unit/test_sbir_config.py)
 
 ## 6. Sample Data and Fixtures
@@ -136,7 +136,7 @@
   - [ ] 7.2.1 Field descriptions from data dictionary
   - [ ] 7.2.2 Validation rules reference
   - [ ] 7.2.3 Example queries and usage
-- [ ] 7.3 Add inline docstrings to all new modules
+- [x] 7.3 Add inline docstrings to all new modules
 - [ ] 7.4 Update CONTRIBUTING.md if needed
 
 ## 8. Testing and Validation

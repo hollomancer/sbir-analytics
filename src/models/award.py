@@ -36,39 +36,41 @@ class Award(BaseModel):
     usaspending_id: str | None = Field(None, description="USAspending.gov award ID")
     fiscal_year: int | None = Field(None, description="Fiscal year of award")
 
-    @validator("award_amount")
-    def validate_award_amount(cls, v):
+    @field_validator("award_amount")
+    @classmethod
+    def validate_award_amount(cls, v: float) -> float:
         """Validate award amount is positive."""
         if v <= 0:
             raise ValueError("Award amount must be positive")
         return v
 
-    @validator("program")
-    def validate_program(cls, v):
+    @field_validator("program")
+    @classmethod
+    def validate_program(cls, v: str) -> str:
         """Validate program is SBIR or STTR."""
         if v.upper() not in ["SBIR", "STTR"]:
             raise ValueError("Program must be SBIR or STTR")
         return v.upper()
 
-    @validator("phase")
-    def validate_phase(cls, v):
+    @field_validator("phase")
+    @classmethod
+    def validate_phase(cls, v: str | None) -> str | None:
         """Validate phase if provided."""
         if v is not None and v.upper() not in ["I", "II", "III"]:
             raise ValueError("Phase must be I, II, or III")
         return v.upper() if v else v
 
-    @validator("fiscal_year")
-    def validate_fiscal_year(cls, v):
+    @field_validator("fiscal_year")
+    @classmethod
+    def validate_fiscal_year(cls, v: int | None) -> int | None:
         """Validate fiscal year range."""
         if v is not None and (v < 1983 or v > 2030):
             raise ValueError("Fiscal year must be between 1983 and 2030")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        json_encoders = {date: lambda v: v.isoformat()}
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )
 
 
 class RawAward(BaseModel):
@@ -87,7 +89,4 @@ class RawAward(BaseModel):
     abstract: str | None = None
     keywords: str | None = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
