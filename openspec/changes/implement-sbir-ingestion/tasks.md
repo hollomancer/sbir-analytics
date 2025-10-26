@@ -119,7 +119,7 @@
 - [x] 5.3 Update src/config/schemas.py
   - [x] 5.3.1 Add SbirDuckDBConfig model with csv_path, duckdb_path, table_name, batch_size
   - [x] 5.3.2 Add SbirValidationConfig to DataQualityConfig with pass_rate_threshold
-- [ ] 5.4 Write unit tests for config schemas (tests/unit/test_sbir_config.py)
+- [x] 5.4 Write unit tests for config schemas (tests/unit/test_sbir_config.py)
 
 ## 6. Sample Data and Fixtures
 - [x] 6.1 Create sample SBIR CSV for testing (tests/fixtures/sbir_sample.csv)
