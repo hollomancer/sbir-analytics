@@ -2,9 +2,9 @@ name: Container Build & Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   IMAGE_NAME: sbir-etl
@@ -51,6 +51,13 @@ jobs:
 
       - name: Show built image
         run: docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}' | rg "${{ env.IMAGE_NAME }}" || true
+
+      - name: Smoke test entrypoint
+        run: |
+          set -eux
+          echo "Running smoke test: validate image entrypoint responds to 'dagster --version'"
+          # Validate the built image can execute the dagster CLI. The image tag matches the one we built above.
+          docker run --rm "${{ env.IMAGE_NAME }}:ci-${{ github.sha }}" dagster --version
 
       - name: Start test compose and run pytest
         env:

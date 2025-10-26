@@ -51,7 +51,8 @@ code
 
 - [x] 5.1 Add `scripts/ci/build_container.sh` that builds the image with BuildKit cache and pushes to the local registry when `PUBLISH=1`.
   - Notes: Implemented `scripts/ci/build_container.sh`. The script builds with Docker Buildx, supports cache-from/cache-to flags, allows single-platform `--load` for local testing, and can `--push` to a registry when `PUBLISH=1`. It is intended for use in CI to produce `sbir-etl:<tag>` artifacts.
-- [ ] 5.2 Update `.github/workflows/ci.yml` (or create `container.yml`) to run: `docker build`, `docker compose -f docker/docker-compose.test.yml up --abort-on-container-exit`, and upload logs on failure.
+- [x] 5.2 Update `.github/workflows/ci.yml` (or create `container.yml`) to run: `docker build`, `docker compose -f docker/docker-compose.test.yml up --abort-on-container-exit`, and upload logs on failure.
+  - Notes: Implemented `.github/workflows/container-ci.yml`. The workflow builds the image (loads it into the runner), brings up an ephemeral Neo4j and the `app` test service via `docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build`, tears down the stack on completion, and uploads logs/artifacts on failure. The job uses Buildx and supports caching.
 - [ ] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
 - [ ] 5.4 Document how to tag and push images (e.g., `ghcr.io/org/sbir-etl:<sha>`) and where credentials live.
 
