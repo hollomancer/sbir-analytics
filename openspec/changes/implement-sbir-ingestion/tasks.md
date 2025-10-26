@@ -42,11 +42,11 @@
   - [x] 2.5.2 DuckDB import errors
   - [x] 2.5.3 SQL query errors
   - [x] 2.5.4 Progress logging for import and queries
-- [ ] 2.6 Write unit tests for SbirDuckDBExtractor (tests/unit/test_sbir_extractor.py)
-  - [ ] 2.6.1 Test CSV import to DuckDB
-  - [ ] 2.6.2 Test filtered extraction queries
-  - [ ] 2.6.3 Test chunked processing
-  - [ ] 2.6.4 Test metadata collection
+- [x] 2.6 Write unit tests for SbirDuckDBExtractor (tests/unit/test_sbir_extractor.py)
+  - [x] 2.6.1 Test CSV import to DuckDB
+  - [x] 2.6.2 Test filtered extraction queries
+  - [x] 2.6.3 Test chunked processing
+  - [x] 2.6.4 Test metadata collection
 
 ## 3. SBIR-Specific Validation Rules
 - [x] 3.1 Create src/validators/sbir_awards.py module
@@ -100,7 +100,7 @@
   - [x] 4.5.2 Fail asset if threshold not met
   - [x] 4.5.3 Include quality metrics in check result
 - [x] 4.6 Update src/definitions.py to include sbir_ingestion assets
-- [ ] 4.7 Write integration tests (tests/integration/test_sbir_ingestion_assets.py)
+- [x] 4.7 Write integration tests (tests/integration/test_sbir_ingestion_assets.py)
 
 ## 5. Configuration Updates
 - [x] 5.1 Update config/base.yaml
