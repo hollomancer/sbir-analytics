@@ -5,8 +5,8 @@ from dagster import (
     Definitions,
     ScheduleDefinition,
     define_asset_job,
-    load_assets_from_modules,
     load_asset_checks_from_modules,
+    load_assets_from_modules,
 )
 
 from . import assets

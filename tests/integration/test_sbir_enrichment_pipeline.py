@@ -1,13 +1,12 @@
 import json
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
-import pytest
 from dagster import build_asset_context
 
-from src.enrichers.company_enricher import enrich_awards_with_companies
 import src.assets.sbir_ingestion as assets_module
+from src.enrichers.company_enricher import enrich_awards_with_companies
 
 
 def _fixture_csv_path():

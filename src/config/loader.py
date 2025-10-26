@@ -7,10 +7,10 @@ and backward-compat shims are applied in `get_config()` so unit tests that
 inspect raw file merging can rely on an unmodified merge output.
 """
 
-from functools import lru_cache
 import os
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
@@ -22,7 +22,7 @@ class ConfigurationError(Exception):
     """Raised when configuration loading or validation fails."""
 
 
-def _deep_merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, with override taking precedence."""
     result = base.copy()
     for key, value in override.items():

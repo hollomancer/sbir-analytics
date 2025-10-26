@@ -7,7 +7,6 @@ import pytest
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.models.award import RawAward
 
-
 FIXTURE_CSV = Path("tests/fixtures/sbir_sample.csv")
 
 
@@ -41,8 +40,8 @@ def test_import_csv_returns_metadata_and_columns(tmp_path: Path):
     # Expect the fixture to match the project's expected SBIR column count (42)
     assert metadata["column_count"] == 42
 
-    # Fixture contains 6 sample rows
-    assert int(metadata["row_count"]) == 6
+    # Fixture contains 100 sample rows
+    assert int(metadata["row_count"]) == 100
 
     # Columns should be a list of strings and length matches column_count
     assert isinstance(metadata["columns"], list)
@@ -97,20 +96,21 @@ def test_extract_in_chunks_yields_expected_chunk_sizes(tmp_path: Path):
     # Import CSV so table exists
     metadata = extractor.import_csv(use_incremental=False)
     total_rows = int(metadata["row_count"])
-    assert total_rows == 6
+    assert total_rows == 100
 
-    # Request chunks of size 2 -> expect three chunks of 2
-    chunks = list(extractor.extract_in_chunks(batch_size=2))
+    # Request chunks of size 10 -> expect 10 chunks of 10
+    chunks = list(extractor.extract_in_chunks(batch_size=10))
     assert len(chunks) >= 1
-    assert all(len(chunk) <= 2 for chunk in chunks)
+    assert all(len(chunk) <= 10 for chunk in chunks)
 
     # Total rows across all chunks must equal the metadata row count
     concatenated = pd.concat(chunks, ignore_index=True) if len(chunks) > 0 else pd.DataFrame()
     assert len(concatenated) == total_rows
 
-    # Verify specific chunk sizing pattern (since fixture has 6 rows)
+    # Verify chunking behavior (fixture has 100 rows, batch_size=10)
     lengths = [len(c) for c in chunks]
-    assert lengths == [2, 2, 2] or lengths == [6]  # depending on pagination behavior
+    # Should be 10 chunks of 10 each
+    assert lengths == [10] * 10
 
 
 def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):

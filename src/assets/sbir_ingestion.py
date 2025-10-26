@@ -2,25 +2,24 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 import pandas as pd
 from dagster import (
-    asset,
-    AssetExecutionContext,
     AssetCheckResult,
     AssetCheckSeverity,
-    asset_check,
+    AssetExecutionContext,
     AssetIn,
-    Output,
     MetadataValue,
+    Output,
+    asset,
+    asset_check,
 )
 from loguru import logger
 
+from ..config.loader import get_config
 from ..extractors.sbir import SbirDuckDBExtractor
 from ..validators.sbir_awards import validate_sbir_awards
-from ..config.loader import get_config
-from ..utils.metrics import MetricsCollector
 
 
 @asset(
@@ -40,7 +39,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     sbir_config = config.extraction.sbir
 
     context.log.info(
-        f"Starting SBIR extraction",
+        "Starting SBIR extraction",
         extra={
             "csv_path": sbir_config.csv_path,
             "duckdb_path": sbir_config.database_path,
@@ -58,7 +57,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     # Import CSV to DuckDB
     import_metadata = extractor.import_csv()
 
-    context.log.info(f"CSV import complete", extra=import_metadata)
+    context.log.info("CSV import complete", extra=import_metadata)
 
     # Log column mapping (CSV column -> normalized field) for observability on first extraction
     actual_columns = import_metadata.get("columns", []) or []
@@ -142,7 +141,7 @@ def validated_sbir_awards(
     validated_df = raw_sbir_awards[~raw_sbir_awards.index.isin(error_rows)].copy()
 
     context.log.info(
-        f"Validation complete",
+        "Validation complete",
         extra={
             "total_records": quality_report.total_records,
             "passed_records": quality_report.passed_records,
@@ -174,7 +173,7 @@ def validated_sbir_awards(
 )
 def sbir_validation_report(
     context: AssetExecutionContext, raw_sbir_awards: pd.DataFrame
-) -> Output[Dict[str, Any]]:
+) -> Output[dict[str, Any]]:
     """
     Generate comprehensive quality report for SBIR data.
 

@@ -3,9 +3,7 @@ import pytest
 """Tests for RawAward -> Award parsing and coercion."""
 from datetime import date
 
-import pytest
-
-from src.models import RawAward, Award
+from src.models import Award, RawAward
 
 
 def test_to_award_parses_iso_and_date_strings():

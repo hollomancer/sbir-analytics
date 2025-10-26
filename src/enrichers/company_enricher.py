@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -43,7 +43,7 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
 # -------------------------
 
 
-def normalize_company_name(name: Optional[str]) -> str:
+def normalize_company_name(name: str | None) -> str:
     """
     Normalize a company name string for fuzzy matching:
     - Lowercase
@@ -84,10 +84,10 @@ def _build_company_indexes(
     company_name_col: str = "company",
     uei_col: str = "UEI",
     duns_col: str = "Duns",
-    state_col: Optional[str] = None,
-    zip_col: Optional[str] = None,
+    state_col: str | None = None,
+    zip_col: str | None = None,
     prefix_len: int = 2,
-) -> Dict[str, Dict]:
+) -> dict[str, dict]:
     """
     Precompute indexes used by the enricher:
       - comp_by_uei: mapping UEI -> company index
@@ -106,7 +106,7 @@ def _build_company_indexes(
     block_series = norm_series.map(lambda n: build_block_key(n, prefix_len))
 
     # UEI exact mapping (uppercased)
-    comp_by_uei: Dict[str, int] = {}
+    comp_by_uei: dict[str, int] = {}
     if uei_col in df.columns:
         for idx, v in df[uei_col].dropna().items():
             key = str(v).strip().upper()
@@ -114,7 +114,7 @@ def _build_company_indexes(
                 comp_by_uei[key] = idx
 
     # DUNS exact mapping (digits-only)
-    comp_by_duns: Dict[str, int] = {}
+    comp_by_duns: dict[str, int] = {}
     if duns_col in df.columns:
         for idx, v in df[duns_col].dropna().items():
             digits = "".join(ch for ch in str(v) if ch.isdigit())
@@ -122,7 +122,7 @@ def _build_company_indexes(
                 comp_by_duns[digits] = idx
 
     # Blocks dict: block_key -> list of indices
-    blocks: Dict[str, List[int]] = {}
+    blocks: dict[str, list[int]] = {}
     for idx, blk in block_series.items():
         blocks.setdefault(blk, []).append(idx)
 
@@ -150,8 +150,8 @@ def enrich_awards_with_companies(
     company_name_col: str = "company",
     uei_col: str = "UEI",
     duns_col: str = "Duns",
-    state_col: Optional[str] = None,
-    zip_col: Optional[str] = None,
+    state_col: str | None = None,
+    zip_col: str | None = None,
     prefix_len: int = 2,
     high_threshold: int = 90,
     low_threshold: int = 75,
@@ -277,7 +277,7 @@ def enrich_awards_with_companies(
         awards["_match_candidates"] = pd.NA
 
     # Precompute global choices mapping (index -> normalized name) for fallback
-    global_choices: Dict[int, str] = comp_norm.to_dict()
+    global_choices: dict[int, str] = comp_norm.to_dict()
 
     # For each award row, try exact matches first, then fuzzy candidates
     for ai, arow in awards.iterrows():
@@ -327,7 +327,7 @@ def enrich_awards_with_companies(
         if not norm_target:
             continue  # nothing to match
         # process.extract expects a mapping candidate -> string; returns tuples (candidate, score, _)
-        results: List[Tuple] = process.extract(
+        results: list[tuple] = process.extract(
             norm_target,
             choices,
             scorer=scorer,
@@ -341,7 +341,7 @@ def enrich_awards_with_companies(
         # is the original key from the choices mapping, but sometimes (choice_value, score).
         # Our `choices` is a mapping idx -> normalized_name, so we handle both forms and
         # perform a reverse lookup when necessary.
-        simple_results: List[Tuple[int, int]] = []
+        simple_results: list[tuple[int, int]] = []
         if results:
             # build reverse lookup from normalized name -> index for fallback
             reverse_map = {v: k for k, v in choices.items()}

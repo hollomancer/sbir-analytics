@@ -7,10 +7,10 @@ model to allow extra keys (previously `extra = "forbid"`), since environment
 overrides and external config sources may supply heterogeneous types.
 """
 
-from pathlib import Path
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SbirValidationConfig(BaseModel):

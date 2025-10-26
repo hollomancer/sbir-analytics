@@ -1,9 +1,8 @@
 """Pydantic model for SBIR award data from SBIR.gov CSV."""
 
 from datetime import date
-from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SbirAward(BaseModel):
@@ -16,69 +15,69 @@ class SbirAward(BaseModel):
 
     # Company Identification (7 fields)
     company: str = Field(..., description="Company name receiving the award")
-    address1: Optional[str] = Field(None, description="Primary address line")
-    address2: Optional[str] = Field(None, description="Secondary address line")
-    city: Optional[str] = Field(None, description="City")
-    state: Optional[str] = Field(None, description="State (2-letter code)")
-    zip: Optional[str] = Field(None, description="ZIP code (5 or 9 digits)")
-    company_website: Optional[str] = Field(None, description="Company website URL")
-    number_employees: Optional[int] = Field(None, description="Number of employees")
+    address1: str | None = Field(None, description="Primary address line")
+    address2: str | None = Field(None, description="Secondary address line")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="State (2-letter code)")
+    zip: str | None = Field(None, description="ZIP code (5 or 9 digits)")
+    company_website: str | None = Field(None, description="Company website URL")
+    number_employees: int | None = Field(None, description="Number of employees")
 
     # Award Details (7 fields)
     award_title: str = Field(..., description="Title of the award project")
-    abstract: Optional[str] = Field(None, description="Project abstract/description")
+    abstract: str | None = Field(None, description="Project abstract/description")
     agency: str = Field(..., description="Federal agency (NSF, DOD, DOE, HHS, NASA, etc.)")
-    branch: Optional[str] = Field(None, description="Agency branch/division")
+    branch: str | None = Field(None, description="Agency branch/division")
     phase: str = Field(..., description="Phase I, Phase II, or Phase III")
     program: str = Field(..., description="SBIR or STTR")
-    topic_code: Optional[str] = Field(None, description="Topic code from solicitation")
+    topic_code: str | None = Field(None, description="Topic code from solicitation")
 
     # Financial (2 fields)
     award_amount: float = Field(..., description="Award amount in USD", gt=0)
     award_year: int = Field(..., description="Year of award", ge=1983, le=2026)
 
     # Timeline/Dates (5 fields)
-    proposal_award_date: Optional[date] = Field(None, description="Date proposal was awarded")
-    contract_end_date: Optional[date] = Field(None, description="Contract end date")
-    solicitation_close_date: Optional[date] = Field(None, description="Solicitation closing date")
-    proposal_receipt_date: Optional[date] = Field(None, description="Date proposal was received")
-    date_of_notification: Optional[date] = Field(None, description="Date company was notified")
+    proposal_award_date: date | None = Field(None, description="Date proposal was awarded")
+    contract_end_date: date | None = Field(None, description="Contract end date")
+    solicitation_close_date: date | None = Field(None, description="Solicitation closing date")
+    proposal_receipt_date: date | None = Field(None, description="Date proposal was received")
+    date_of_notification: date | None = Field(None, description="Date company was notified")
 
     # Tracking/Identifiers (4 fields)
     agency_tracking_number: str = Field(..., description="Agency's internal tracking number")
     contract: str = Field(..., description="Contract number/ID")
-    solicitation_number: Optional[str] = Field(None, description="Solicitation number")
-    solicitation_year: Optional[int] = Field(
+    solicitation_number: str | None = Field(None, description="Solicitation number")
+    solicitation_year: int | None = Field(
         None, description="Year of solicitation", ge=1983, le=2026
     )
 
     # Company Identifiers (2 fields)
-    uei: Optional[str] = Field(None, description="Unique Entity Identifier (12 alphanumeric)")
-    duns: Optional[str] = Field(None, description="DUNS number (9 digits)")
+    uei: str | None = Field(None, description="Unique Entity Identifier (12 alphanumeric)")
+    duns: str | None = Field(None, description="DUNS number (9 digits)")
 
     # Business Classifications (3 fields)
-    hubzone_owned: Optional[bool] = Field(None, description="HUBZone owned business")
-    socially_and_economically_disadvantaged: Optional[bool] = Field(
+    hubzone_owned: bool | None = Field(None, description="HUBZone owned business")
+    socially_and_economically_disadvantaged: bool | None = Field(
         None, description="Socially and economically disadvantaged business"
     )
-    woman_owned: Optional[bool] = Field(None, description="Woman-owned business")
+    woman_owned: bool | None = Field(None, description="Woman-owned business")
 
     # Contact Person (4 fields)
-    contact_name: Optional[str] = Field(None, description="Primary contact name")
-    contact_title: Optional[str] = Field(None, description="Contact title/position")
-    contact_phone: Optional[str] = Field(None, description="Contact phone number")
-    contact_email: Optional[str] = Field(None, description="Contact email address")
+    contact_name: str | None = Field(None, description="Primary contact name")
+    contact_title: str | None = Field(None, description="Contact title/position")
+    contact_phone: str | None = Field(None, description="Contact phone number")
+    contact_email: str | None = Field(None, description="Contact email address")
 
     # Principal Investigator (4 fields)
-    pi_name: Optional[str] = Field(None, description="Principal Investigator name")
-    pi_title: Optional[str] = Field(None, description="PI title/position")
-    pi_phone: Optional[str] = Field(None, description="PI phone number")
-    pi_email: Optional[str] = Field(None, description="PI email address")
+    pi_name: str | None = Field(None, description="Principal Investigator name")
+    pi_title: str | None = Field(None, description="PI title/position")
+    pi_phone: str | None = Field(None, description="PI phone number")
+    pi_email: str | None = Field(None, description="PI email address")
 
     # Research Institution (3 fields)
-    ri_name: Optional[str] = Field(None, description="Research Institution name")
-    ri_poc_name: Optional[str] = Field(None, description="RI Point of Contact name")
-    ri_poc_phone: Optional[str] = Field(None, description="RI POC phone number")
+    ri_name: str | None = Field(None, description="Research Institution name")
+    ri_poc_name: str | None = Field(None, description="RI Point of Contact name")
+    ri_poc_phone: str | None = Field(None, description="RI POC phone number")
 
     # Validators
     @field_validator("phase")
@@ -99,7 +98,7 @@ class SbirAward(BaseModel):
 
     @field_validator("state")
     @classmethod
-    def validate_state(cls, v: Optional[str]) -> Optional[str]:
+    def validate_state(cls, v: str | None) -> str | None:
         """Validate state is 2-letter code if provided."""
         if v and len(v) != 2:
             raise ValueError(f"State must be 2-letter code, got '{v}'")
@@ -107,7 +106,7 @@ class SbirAward(BaseModel):
 
     @field_validator("zip")
     @classmethod
-    def validate_zip(cls, v: Optional[str]) -> Optional[str]:
+    def validate_zip(cls, v: str | None) -> str | None:
         """Validate ZIP code format if provided.
 
         Accepts a 5-digit ZIP or a 9-digit ZIP+4. For validation this strips any
@@ -124,7 +123,7 @@ class SbirAward(BaseModel):
 
     @field_validator("uei")
     @classmethod
-    def validate_uei(cls, v: Optional[str]) -> Optional[str]:
+    def validate_uei(cls, v: str | None) -> str | None:
         """Validate UEI format if provided (12 alphanumeric characters)."""
         if v and len(v) != 12:
             raise ValueError(f"UEI must be 12 characters, got '{v}' ({len(v)} chars)")
@@ -132,7 +131,7 @@ class SbirAward(BaseModel):
 
     @field_validator("duns")
     @classmethod
-    def validate_duns(cls, v: Optional[str]) -> Optional[str]:
+    def validate_duns(cls, v: str | None) -> str | None:
         """Validate DUNS format if provided (9 digits)."""
         if v and (len(v) != 9 or not v.isdigit()):
             raise ValueError(f"DUNS must be 9 digits, got '{v}'")
@@ -140,7 +139,7 @@ class SbirAward(BaseModel):
 
     @field_validator("contract_end_date")
     @classmethod
-    def validate_contract_end_date(cls, v: Optional[date], info) -> Optional[date]:
+    def validate_contract_end_date(cls, v: date | None, info) -> date | None:
         """Validate contract end date is after award date if both present."""
         if v and "proposal_award_date" in info.data:
             award_date = info.data["proposal_award_date"]
@@ -157,7 +156,7 @@ class SbirAward(BaseModel):
     )
 
 
-def parse_bool_from_csv(value: Optional[str]) -> Optional[bool]:
+def parse_bool_from_csv(value: str | None) -> bool | None:
     """Parse boolean values from CSV (Y/N or True/False)."""
     if not value or value.strip() == "":
         return None
@@ -169,7 +168,7 @@ def parse_bool_from_csv(value: Optional[str]) -> Optional[bool]:
     return None
 
 
-def parse_date_from_csv(value: Optional[str]) -> Optional[date]:
+def parse_date_from_csv(value: str | None) -> date | None:
     """Parse date from CSV string (YYYY-MM-DD format)."""
     if not value or value.strip() == "":
         return None
@@ -185,7 +184,7 @@ def parse_date_from_csv(value: Optional[str]) -> Optional[date]:
             return None
 
 
-def parse_int_from_csv(value: Optional[str]) -> Optional[int]:
+def parse_int_from_csv(value: str | None) -> int | None:
     """Parse integer from CSV, returning None for empty strings."""
     if not value or value.strip() == "":
         return None
@@ -195,7 +194,7 @@ def parse_int_from_csv(value: Optional[str]) -> Optional[int]:
         return None
 
 
-def parse_float_from_csv(value: Optional[str]) -> Optional[float]:
+def parse_float_from_csv(value: str | None) -> float | None:
     """Parse float from CSV, returning None for empty strings."""
     if not value or value.strip() == "":
         return None

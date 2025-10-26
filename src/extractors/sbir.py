@@ -1,18 +1,12 @@
 """SBIR data extraction using DuckDB."""
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Optional, List, Iterator
+
 import pandas as pd
 from loguru import logger
 
 from ..utils.duckdb_client import DuckDBClient
-from ..models.sbir_award import (
-    SbirAward,
-    parse_bool_from_csv,
-    parse_date_from_csv,
-    parse_int_from_csv,
-    parse_float_from_csv,
-)
 
 
 class SbirDuckDBExtractor:
@@ -45,7 +39,7 @@ class SbirDuckDBExtractor:
         self._imported = False
 
         logger.info(
-            f"Initialized SbirDuckDBExtractor",
+            "Initialized SbirDuckDBExtractor",
             csv_path=str(self.csv_path),
             duckdb_path=duckdb_path,
             table_name=table_name,
@@ -54,8 +48,8 @@ class SbirDuckDBExtractor:
     def import_csv(
         self,
         incremental: bool = False,
-        use_incremental: Optional[bool] = None,
-        batch_size: Optional[int] = None,
+        use_incremental: bool | None = None,
+        batch_size: int | None = None,
         delimiter: str = ",",
         header: bool = True,
         encoding: str = "utf-8",
@@ -219,7 +213,7 @@ class SbirDuckDBExtractor:
             "extraction_end_utc": extraction_end,
         }
 
-        logger.info(f"CSV import complete", **metadata)
+        logger.info("CSV import complete", **metadata)
 
         return metadata
 
@@ -252,10 +246,10 @@ class SbirDuckDBExtractor:
 
     def extract_in_chunks(
         self,
-        batch_size: Optional[int] = None,
-        start_year: Optional[int] = None,
-        end_year: Optional[int] = None,
-        query: Optional[str] = None,
+        batch_size: int | None = None,
+        start_year: int | None = None,
+        end_year: int | None = None,
+        query: str | None = None,
     ) -> Iterator[pd.DataFrame]:
         """
         Extract records from DuckDB in chunked pages to avoid loading the full table into memory.
@@ -294,7 +288,7 @@ class SbirDuckDBExtractor:
             logger.info(f"Yielding chunk with {len(df_chunk)} rows")
             yield df_chunk
 
-    def extract_by_year(self, start_year: int, end_year: Optional[int] = None) -> pd.DataFrame:
+    def extract_by_year(self, start_year: int, end_year: int | None = None) -> pd.DataFrame:
         """
         Extract SBIR awards filtered by Award Year.
 
@@ -322,7 +316,7 @@ class SbirDuckDBExtractor:
 
         return df
 
-    def extract_by_agency(self, agencies: List[str]) -> pd.DataFrame:
+    def extract_by_agency(self, agencies: list[str]) -> pd.DataFrame:
         """
         Extract SBIR awards filtered by Agency.
 
@@ -350,7 +344,7 @@ class SbirDuckDBExtractor:
 
         return df
 
-    def extract_by_phase(self, phases: List[str]) -> pd.DataFrame:
+    def extract_by_phase(self, phases: list[str]) -> pd.DataFrame:
         """
         Extract SBIR awards filtered by Phase.
 
@@ -429,7 +423,7 @@ class SbirDuckDBExtractor:
         high_nulls = missing_df[missing_df["null_percentage"] > 10]
 
         logger.info(
-            f"Missing value analysis complete",
+            "Missing value analysis complete",
             columns_with_high_nulls=len(high_nulls),
             total_columns=len(columns),
         )
@@ -464,7 +458,7 @@ class SbirDuckDBExtractor:
         df = self.duckdb_client.execute_query_df(query)
 
         logger.info(
-            f"Duplicate analysis complete",
+            "Duplicate analysis complete",
             duplicate_contracts=len(df),
             total_duplicate_records=df["record_count"].sum() if len(df) > 0 else 0,
         )
@@ -505,7 +499,7 @@ class SbirDuckDBExtractor:
             if col in df.columns:
                 df[col] = df[col].round(2)
 
-        logger.info(f"Award amount analysis complete", phase_agency_combinations=len(df))
+        logger.info("Award amount analysis complete", phase_agency_combinations=len(df))
 
         return df
 
@@ -552,9 +546,11 @@ class SbirDuckDBExtractor:
             "table_name": self.table_name,
             "total_records": table_info.get("row_count", 0),
             "total_columns": len(table_info.get("columns", [])),
-            "year_range": f"{year_stats['min_year']}-{year_stats['max_year']}"
-            if year_stats["min_year"]
-            else None,
+            "year_range": (
+                f"{year_stats['min_year']}-{year_stats['max_year']}"
+                if year_stats["min_year"]
+                else None
+            ),
             "unique_years": year_stats.get("year_count", 0),
             "unique_agencies": agency_stats.get("agency_count", 0),
             "phase_distribution": phase_dist.to_dict("records") if len(phase_dist) > 0 else [],

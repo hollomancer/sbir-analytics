@@ -1,9 +1,8 @@
 import json
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
-import pytest
 from dagster import build_asset_context
 
 import src.assets.sbir_ingestion as assets_module
@@ -74,7 +73,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
 
     # Assert basic properties of the raw extraction
     assert isinstance(raw_df, pd.DataFrame)
-    assert len(raw_df) == 6  # fixture contains 6 rows
+    assert len(raw_df) == 100  # fixture contains 100 rows
 
     # If metadata was returned via Output metadata, validate presence of extraction timestamps and columns
     metadata = getattr(raw_output, "metadata", None) or {}
@@ -120,7 +119,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
     assert report_path.exists(), f"Expected validation report at {report_path}"
 
     # Load and validate the report JSON contents
-    with open(report_path, "r", encoding="utf-8") as f:
+    with open(report_path, encoding="utf-8") as f:
         report_data = json.load(f)
 
     assert report_data.get("total_records") == report.get("total_records")
