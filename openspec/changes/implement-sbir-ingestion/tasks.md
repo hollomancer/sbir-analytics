@@ -62,18 +62,18 @@
   - [x] 3.3.1 UEI format (12 alphanumeric if present)
   - [x] 3.3.2 DUNS format (9 digits if present)
   - [x] 3.3.3 Email format (Contact Email, PI Email)
-  - [ ] 3.3.4 Phone number format
+  - [x] 3.3.4 Phone number format
   - [x] 3.3.5 State code (2-letter US state codes)
   - [x] 3.3.6 ZIP code (5 or 9 digits)
 - [x] 3.4 Implement business logic validation
   - [x] 3.4.1 Date consistency (Proposal Award Date ≤ Contract End Date)
-  - [ ] 3.4.2 Award Year matches Proposal Award Date year
-  - [ ] 3.4.3 Phase consistency with Program (SBIR/STTR)
+  - [x] 3.4.2 Award Year matches Proposal Award Date year
+  - [x] 3.4.3 Phase consistency with Program (SBIR/STTR)
 - [x] 3.5 Implement validate_sbir_awards function
   - [x] 3.5.1 Batch validation for DataFrame
   - [x] 3.5.2 Generate QualityReport with issues and metrics
   - [x] 3.5.3 Configurable thresholds (completeness, pass rate)
-- [ ] 3.6 Write unit tests for validation rules (tests/unit/test_sbir_validators.py)
+- [x] 3.6 Write unit tests for validation rules (tests/unit/test_sbir_validators.py)
 
 ## 4. Dagster SBIR Ingestion Assets
 - [x] 4.1 Create src/assets/sbir_ingestion.py module

@@ -73,6 +73,9 @@ VALID_US_STATES = {
 # Email validation regex
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
+# Phone validation regex
+PHONE_REGEX = re.compile(r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")
+
 
 def validate_required_field(value: any, field_name: str, row_index: int) -> Optional[QualityIssue]:
     """
@@ -322,6 +325,63 @@ def validate_zip_code(zip_code: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
+def validate_phone_format(phone: str, field_name: str, row_index: int) -> Optional[QualityIssue]:
+    """Validate phone number format."""
+    if pd.isna(phone) or phone == "":
+        return None  # Phone is optional
+
+    if not PHONE_REGEX.match(phone):
+        return QualityIssue(
+            severity=QualitySeverity.WARNING,
+            field=field_name,
+            message=f"Invalid phone format: '{phone}'",
+            row_index=row_index,
+        )
+
+    return None
+
+
+def validate_award_year_date_consistency(
+    award_year: int, proposal_date: Optional[date], row_index: int
+) -> Optional[QualityIssue]:
+    """Validate that Award Year matches Proposal Award Date year."""
+    if pd.isna(award_year) or pd.isna(proposal_date):
+        return None
+
+    if proposal_date.year != award_year:
+        return QualityIssue(
+            severity=QualitySeverity.WARNING,
+            field="Award Year",
+            message=f"Award Year {award_year} does not match Proposal Award Date year {proposal_date.year}",
+            row_index=row_index,
+        )
+
+    return None
+
+
+def validate_phase_program_consistency(
+    phase: str, program: str, row_index: int
+) -> Optional[QualityIssue]:
+    """Validate that Phase is consistent with Program."""
+    if pd.isna(phase) or pd.isna(program):
+        return None
+
+    valid_phases = {
+        "SBIR": ["Phase I", "Phase II", "Phase III"],
+        "STTR": ["Phase I", "Phase II", "Phase III"],
+    }
+
+    if phase not in valid_phases.get(program.upper(), []):
+        return QualityIssue(
+            severity=QualitySeverity.WARNING,
+            field="Phase",
+            message=f"Phase '{phase}' is not valid for Program '{program}'",
+            row_index=row_index,
+        )
+
+    return None
+
+
 def validate_date_consistency(
     award_date: Optional[date], end_date: Optional[date], row_index: int
 ) -> Optional[QualityIssue]:
@@ -412,6 +472,27 @@ def validate_sbir_award_record(row: pd.Series, row_index: int) -> List[QualityIs
         if issue:
             issues.append(issue)
 
+    # Phone format validation
+    issue = validate_phone_format(row.get("Contact Phone"), "Contact Phone", row_index)
+    if issue:
+        issues.append(issue)
+
+    issue = validate_phone_format(row.get("PI Phone"), "PI Phone", row_index)
+    if issue:
+        issues.append(issue)
+
+    # Award Year and Proposal Date consistency
+    issue = validate_award_year_date_consistency(
+        row.get("Award Year"), row.get("Proposal Award Date"), row_index
+    )
+    if issue:
+        issues.append(issue)
+
+    # Phase and Program consistency
+    issue = validate_phase_program_consistency(row.get("Phase"), row.get("Program"), row_index)
+    if issue:
+        issues.append(issue)
+
     return issues
 
 
@@ -442,7 +523,7 @@ def validate_sbir_awards(df: pd.DataFrame, pass_rate_threshold: float = 0.95) ->
     # Calculate pass/fail
     failed_rows = len(set(issue.row_index for issue in errors))
     passed_rows = len(df) - failed_rows
-    pass_rate = passed_rows / len(df) if len(df) > 0 else 0.0
+    pass_rate = passed_rows / len(df) if len(df) > 0 else 1.0  # Empty DataFrame passes
 
     # Determine overall status
     passed = pass_rate >= pass_rate_threshold

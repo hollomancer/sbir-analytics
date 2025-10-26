@@ -27,6 +27,7 @@ class QualityIssue(BaseModel):
     message: str = Field(..., description="Human-readable error message")
     severity: QualitySeverity = Field(..., description="Issue severity level")
     rule: str | None = Field(None, description="Validation rule that failed")
+    row_index: int | None = Field(None, description="Row index in the dataset")
 
     model_config = ConfigDict(validate_assignment=True, use_enum_values=True)
 
