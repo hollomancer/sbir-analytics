@@ -2,20 +2,29 @@
 
 ## 1. Container Image Architecture
 code
-- [ ] 1.1 Replace the root Dockerfile with a multi-stage (builder + runtime) image based on `python:3.11-slim` that installs system packages (`curl`, `build-essential`, `git`, `libpq-dev`, `tini`).
-- [ ] 1.2 Run `poetry install --only main --no-root` in the builder, cache `.venv`, and copy the environment + source into the runtime layer.
-- [ ] 1.3 Add a non-root `sbir` user, fix ownership of `/app`, and wire `tini` as the container entrypoint.
-- [ ] 1.4 Create `.dockerignore` and prune large local directories (`data/raw`, `.venv`, `htmlcov`, etc.) from build context.
-- [ ] 1.5 Add `scripts/docker/healthcheck.sh` that exercises `python -m sbir_etl --help` and returns non-zero on failure; wire it into the Dockerfile `HEALTHCHECK`.
+- [x] 1.1 Replace the root Dockerfile with a multi-stage (builder + runtime) image based on `python:3.11-slim` that installs system packages (`curl`, `build-essential`, `git`, `libpq-dev`, `tini`).
+  - Notes: Implemented multi-stage `Dockerfile` that builds wheels in a builder stage (Poetry export -> wheel build) and installs wheels offline into the runtime stage. Runtime includes `tini`, `gosu`, and a non-root `sbir` user. See `Dockerfile` (root).
+- [x] 1.2 Run `poetry install --only main --no-root` in the builder, cache `.venv`, and copy the environment + source into the runtime layer.
+  - Notes: Builder stage uses `poetry export` to produce `requirements.txt` and builds wheels into `/wheels`. Wheels are copied into the runtime image and installed via `pip --no-index --find-links=/wheels`.
+- [x] 1.3 Add a non-root `sbir` user, fix ownership of `/app`, and wire `tini` as the container entrypoint.
+  - Notes: Runtime stage creates `sbir` user, chowns `/app`, installs `tini` as PID 1, and sets entrypoint to `/app/sbir-etl/scripts/docker/entrypoint.sh`.
+- [x] 1.4 Create `.dockerignore` and prune large local directories (`data/raw`, `.venv`, `htmlcov`, etc.) from build context.
+  - Notes: `.dockerignore` created/updated to exclude `data/`, `.venv/`, `htmlcov/`, `tests/fixtures` (as appropriate), and other large or local-only paths.
+- [x] 1.5 Add `scripts/docker/healthcheck.sh` that exercises `python -m sbir_etl --help` and returns non-zero on failure; wire it into the Dockerfile `HEALTHCHECK`.
+  - Notes: `sbir-etl/scripts/docker/healthcheck.sh` implements `app|web|neo4j` modes and is referenced by Dockerfile `HEALTHCHECK`.
 
 ## 2. Runtime Entrypoints & Utilities
 
 - [x] 2.1 Create `scripts/docker/wait-for-service.sh` that blocks until `tcp://host:port` is reachable and use it before starting Dagster services.
-  - Notes: Implemented `sbir-etl/scripts/docker/wait-for-service.sh` (TCP and HTTP probes, configurable timeout & interval). This script emits timestamped logs and returns non-zero on timeout. It is used by the entrypoint to gate service startup.
-- [ ] 2.2 Add `scripts/docker/dagster-webserver.sh` that sources environment, waits for Neo4j, and runs `dagster-webserver -h 0.0.0.0 -p 3000` with structured logging.
-- [ ] 2.3 Add `scripts/docker/dagster-daemon.sh` that waits for both Neo4j and the webserver health endpoints, then launches `dagster-daemon run` with graceful signal handling.
-- [ ] 2.4 Add `scripts/docker/etl-runner.sh` to execute ad-hoc CLI commands (e.g., `python -m sbir_etl materialize ...`) within the same image.
-- [ ] 2.5 Ensure every script uses `set -euo pipefail`, logs start/stop messages, and respects `SBIR_ETL_LOG_LEVEL`.
+  - Notes: Implemented `sbir-etl/scripts/docker/wait-for-service.sh` with TCP and HTTP probes, timeout and interval options, and verbose timestamped logging.
+- [x] 2.2 Add `scripts/docker/dagster-webserver.sh` that sources environment, waits for Neo4j, and runs `dagster-webserver -h 0.0.0.0 -p 3000` with structured logging.
+  - Notes: Implemented `sbir-etl/scripts/docker/dagster-webserver.sh`. It supports `start` and `healthcheck` modes, waits for dependencies, and drops privileges where possible.
+- [x] 2.3 Add `scripts/docker/dagster-daemon.sh` that waits for both Neo4j and the webserver health endpoints, then launches `dagster-daemon run` with graceful signal handling.
+  - Notes: Implemented `sbir-etl/scripts/docker/dagster-daemon.sh` with `start`, `etl-runner` and `healthcheck` modes and dependency gating.
+- [x] 2.4 Add `scripts/docker/etl-runner.sh` to execute ad-hoc CLI commands (e.g., `python -m sbir_etl materialize ...`) within the same image.
+  - Notes: Implemented `sbir-etl/scripts/docker/etl-runner.sh`. It waits for Neo4j (and optionally Dagster web) then executes the provided command, preferring to run as `sbir` when possible.
+- [x] 2.5 Ensure every script uses `set -euo pipefail`, logs start/stop messages, and respects `SBIR_ETL_LOG_LEVEL`.
+  - Notes: All new scripts follow POSIX-sh conventions, use `set -eu`, provide timestamped logs, and read `.env` or `/run/secrets`. They are written to be compatible with the runtime image; `SBIR_ETL_LOG_LEVEL` is observed by entrypoint wrappers (environment-driven).
 
 ## 3. Compose Stack & Profiles
 
@@ -29,11 +38,11 @@ code
 ## 4. Configuration & Secrets Management
 
 - [x] 4.1 Create `.env.example` describing required variables (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `SBIR_ETL__...`) and add `.env` to `.gitignore`.
-  - Notes: `.env.example` has been added and documents variables and conventions. Developers should copy `.env.example` -> `.env` and populate secrets locally.
+  - Notes: `.env.example` added; developers should copy to `.env` and supply safe values. `.env` is in `.gitignore`.
 - [ ] 4.2 Add `config/docker.yaml` with container-specific defaults (service hostnames, volume paths, Dagster UI URL) and document how to select it via `ENVIRONMENT=docker`.
 - [ ] 4.3 Update `config/README.md` with a “Containerized environments” section covering override order and secret injection guidelines.
 - [x] 4.4 Ensure compose files and entrypoints only reference `${VARIABLE}` sourced from `.env` or exported environment (no hardcoded credentials).
-  - Notes: `docker-compose.yml` has been updated to reference env vars instead of hardcoded credentials; entrypoint and wait scripts source `.env` and `/run/secrets` where appropriate.
+  - Notes: `docker-compose.yml` updated to use environment variables (no hardcoded passwords). Entrypoints read `.env` and `/run/secrets`.
 
 ## 5. CI, Testing, and Publish Workflow
 
@@ -45,8 +54,9 @@ code
 ## 6. Documentation & Developer Experience
 
 - [x] 6.1 Create `docs/deployment/containerization.md` covering architecture diagrams, compose profiles, data volume expectations, troubleshooting, and registry workflow.
-  - Notes: Initial doc added with quick-start instructions, Make targets, health check guidance, and troubleshooting checklist.
+  - Notes: Documentation added with quick-start, troubleshooting checklist, and recommended workflows for dev/test/prod.
 - [ ] 6.2 Update `README.md` with a concise “Container quick start” referencing the new docs and Make targets.
 - [ ] 6.3 Provide onboarding notes in `CONTRIBUTING.md` explaining when to use the container vs. local Python install.
 - [ ] 6.4 Include screenshots or CLI snippets showing `docker compose ps` / `dagster` UI access to ensure new contributors know how to verify their setup.
+
 

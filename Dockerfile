@@ -44,7 +44,7 @@ WORKDIR /workspace
 
 # Install Poetry (pin controlled by ARG)
 RUN python -m pip install --upgrade pip setuptools wheel \
- && python -m pip install "poetry==${POETRY_VERSION}"
+ && python -m pip install "poetry==1.7.1"
 
 # Copy dependency manifests early to leverage layer cache
 COPY pyproject.toml poetry.lock* /workspace/
@@ -56,8 +56,7 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 # Build wheels for all requirements (and for this package) into /wheels
 RUN mkdir -p /wheels \
  && pip wheel --wheel-dir=/wheels -r requirements.txt \
- && # build local package wheel too
-    pip wheel --wheel-dir=/wheels .
+ && pip wheel --wheel-dir=/wheels .
 
 # At this point /wheels contains all binary/py wheels needed for runtime install
 # Copy wheels + requirements to a known place for runtime stage
