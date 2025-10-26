@@ -1,0 +1,785 @@
+{
+  "dump_path": "/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip",
+  "dump_size_gb": 16.68,
+  "profiling_timestamp": "2025-10-26T08:55:21.888544",
+  "data_format": "PostgreSQL COPY files (.dat.gz)",
+  "metadata": {
+    "tool": "unzip_analysis",
+    "data_files": [
+      {
+        "oid": 5412,
+        "filename": "pruned_data_store_api_dump/5412.dat.gz",
+        "size_compressed": 195310312,
+        "table_name": "recipient_lookup"
+      },
+      {
+        "oid": 5413,
+        "filename": "pruned_data_store_api_dump/5413.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5413"
+      },
+      {
+        "oid": 5414,
+        "filename": "pruned_data_store_api_dump/5414.dat.gz",
+        "size_compressed": 23253,
+        "table_name": "unknown_table_5414"
+      },
+      {
+        "oid": 5415,
+        "filename": "pruned_data_store_api_dump/5415.dat.gz",
+        "size_compressed": 41028,
+        "table_name": "unknown_table_5415"
+      },
+      {
+        "oid": 5416,
+        "filename": "pruned_data_store_api_dump/5416.dat.gz",
+        "size_compressed": 17871,
+        "table_name": "unknown_table_5416"
+      },
+      {
+        "oid": 5420,
+        "filename": "pruned_data_store_api_dump/5420.dat.gz",
+        "size_compressed": 27448772,
+        "table_name": "transaction_normalized"
+      },
+      {
+        "oid": 5422,
+        "filename": "pruned_data_store_api_dump/5422.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5422"
+      },
+      {
+        "oid": 5424,
+        "filename": "pruned_data_store_api_dump/5424.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5424"
+      },
+      {
+        "oid": 5426,
+        "filename": "pruned_data_store_api_dump/5426.dat.gz",
+        "size_compressed": 6292,
+        "table_name": "unknown_table_5426"
+      },
+      {
+        "oid": 5428,
+        "filename": "pruned_data_store_api_dump/5428.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5428"
+      },
+      {
+        "oid": 5429,
+        "filename": "pruned_data_store_api_dump/5429.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5429"
+      },
+      {
+        "oid": 5432,
+        "filename": "pruned_data_store_api_dump/5432.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5432"
+      },
+      {
+        "oid": 5434,
+        "filename": "pruned_data_store_api_dump/5434.dat.gz",
+        "size_compressed": 114,
+        "table_name": "unknown_table_5434"
+      },
+      {
+        "oid": 5436,
+        "filename": "pruned_data_store_api_dump/5436.dat.gz",
+        "size_compressed": 65374,
+        "table_name": "unknown_table_5436"
+      },
+      {
+        "oid": 5438,
+        "filename": "pruned_data_store_api_dump/5438.dat.gz",
+        "size_compressed": 36241,
+        "table_name": "unknown_table_5438"
+      },
+      {
+        "oid": 5439,
+        "filename": "pruned_data_store_api_dump/5439.dat.gz",
+        "size_compressed": 262,
+        "table_name": "unknown_table_5439"
+      },
+      {
+        "oid": 5440,
+        "filename": "pruned_data_store_api_dump/5440.dat.gz",
+        "size_compressed": 3956,
+        "table_name": "unknown_table_5440"
+      },
+      {
+        "oid": 5441,
+        "filename": "pruned_data_store_api_dump/5441.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5441"
+      },
+      {
+        "oid": 5442,
+        "filename": "pruned_data_store_api_dump/5442.dat.gz",
+        "size_compressed": 2758,
+        "table_name": "unknown_table_5442"
+      },
+      {
+        "oid": 5443,
+        "filename": "pruned_data_store_api_dump/5443.dat.gz",
+        "size_compressed": 2193,
+        "table_name": "unknown_table_5443"
+      },
+      {
+        "oid": 5444,
+        "filename": "pruned_data_store_api_dump/5444.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5444"
+      },
+      {
+        "oid": 5446,
+        "filename": "pruned_data_store_api_dump/5446.dat.gz",
+        "size_compressed": 1432,
+        "table_name": "unknown_table_5446"
+      },
+      {
+        "oid": 5448,
+        "filename": "pruned_data_store_api_dump/5448.dat.gz",
+        "size_compressed": 6465,
+        "table_name": "unknown_table_5448"
+      },
+      {
+        "oid": 5450,
+        "filename": "pruned_data_store_api_dump/5450.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5450"
+      },
+      {
+        "oid": 5451,
+        "filename": "pruned_data_store_api_dump/5451.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5451"
+      },
+      {
+        "oid": 5453,
+        "filename": "pruned_data_store_api_dump/5453.dat.gz",
+        "size_compressed": 90393919,
+        "table_name": "unknown_table_5453"
+      },
+      {
+        "oid": 5455,
+        "filename": "pruned_data_store_api_dump/5455.dat.gz",
+        "size_compressed": 196,
+        "table_name": "unknown_table_5455"
+      },
+      {
+        "oid": 5457,
+        "filename": "pruned_data_store_api_dump/5457.dat.gz",
+        "size_compressed": 639,
+        "table_name": "unknown_table_5457"
+      },
+      {
+        "oid": 5459,
+        "filename": "pruned_data_store_api_dump/5459.dat.gz",
+        "size_compressed": 76209,
+        "table_name": "unknown_table_5459"
+      },
+      {
+        "oid": 5461,
+        "filename": "pruned_data_store_api_dump/5461.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5461"
+      },
+      {
+        "oid": 5463,
+        "filename": "pruned_data_store_api_dump/5463.dat.gz",
+        "size_compressed": 873606660,
+        "table_name": "unknown_table_5463"
+      },
+      {
+        "oid": 5465,
+        "filename": "pruned_data_store_api_dump/5465.dat.gz",
+        "size_compressed": 443466939,
+        "table_name": "unknown_table_5465"
+      },
+      {
+        "oid": 5467,
+        "filename": "pruned_data_store_api_dump/5467.dat.gz",
+        "size_compressed": 3882,
+        "table_name": "unknown_table_5467"
+      },
+      {
+        "oid": 5468,
+        "filename": "pruned_data_store_api_dump/5468.dat.gz",
+        "size_compressed": 136639,
+        "table_name": "unknown_table_5468"
+      },
+      {
+        "oid": 5470,
+        "filename": "pruned_data_store_api_dump/5470.dat.gz",
+        "size_compressed": 49998173,
+        "table_name": "unknown_table_5470"
+      },
+      {
+        "oid": 5472,
+        "filename": "pruned_data_store_api_dump/5472.dat.gz",
+        "size_compressed": 62224477,
+        "table_name": "unknown_table_5472"
+      },
+      {
+        "oid": 5473,
+        "filename": "pruned_data_store_api_dump/5473.dat.gz",
+        "size_compressed": 5532169,
+        "table_name": "unknown_table_5473"
+      },
+      {
+        "oid": 5475,
+        "filename": "pruned_data_store_api_dump/5475.dat.gz",
+        "size_compressed": 334,
+        "table_name": "unknown_table_5475"
+      },
+      {
+        "oid": 5478,
+        "filename": "pruned_data_store_api_dump/5478.dat.gz",
+        "size_compressed": 120072177,
+        "table_name": "unknown_table_5478"
+      },
+      {
+        "oid": 5480,
+        "filename": "pruned_data_store_api_dump/5480.dat.gz",
+        "size_compressed": 1818199,
+        "table_name": "unknown_table_5480"
+      },
+      {
+        "oid": 5482,
+        "filename": "pruned_data_store_api_dump/5482.dat.gz",
+        "size_compressed": 134785,
+        "table_name": "unknown_table_5482"
+      },
+      {
+        "oid": 5483,
+        "filename": "pruned_data_store_api_dump/5483.dat.gz",
+        "size_compressed": 1423,
+        "table_name": "unknown_table_5483"
+      },
+      {
+        "oid": 5486,
+        "filename": "pruned_data_store_api_dump/5486.dat.gz",
+        "size_compressed": 1970,
+        "table_name": "unknown_table_5486"
+      },
+      {
+        "oid": 5488,
+        "filename": "pruned_data_store_api_dump/5488.dat.gz",
+        "size_compressed": 136629,
+        "table_name": "unknown_table_5488"
+      },
+      {
+        "oid": 5489,
+        "filename": "pruned_data_store_api_dump/5489.dat.gz",
+        "size_compressed": 134920,
+        "table_name": "unknown_table_5489"
+      },
+      {
+        "oid": 5492,
+        "filename": "pruned_data_store_api_dump/5492.dat.gz",
+        "size_compressed": 6304289,
+        "table_name": "unknown_table_5492"
+      },
+      {
+        "oid": 5494,
+        "filename": "pruned_data_store_api_dump/5494.dat.gz",
+        "size_compressed": 5012,
+        "table_name": "unknown_table_5494"
+      },
+      {
+        "oid": 5495,
+        "filename": "pruned_data_store_api_dump/5495.dat.gz",
+        "size_compressed": 4378,
+        "table_name": "unknown_table_5495"
+      },
+      {
+        "oid": 5497,
+        "filename": "pruned_data_store_api_dump/5497.dat.gz",
+        "size_compressed": 43763,
+        "table_name": "unknown_table_5497"
+      },
+      {
+        "oid": 5499,
+        "filename": "pruned_data_store_api_dump/5499.dat.gz",
+        "size_compressed": 1515696,
+        "table_name": "unknown_table_5499"
+      },
+      {
+        "oid": 5501,
+        "filename": "pruned_data_store_api_dump/5501.dat.gz",
+        "size_compressed": 7871585,
+        "table_name": "unknown_table_5501"
+      },
+      {
+        "oid": 5503,
+        "filename": "pruned_data_store_api_dump/5503.dat.gz",
+        "size_compressed": 27952,
+        "table_name": "unknown_table_5503"
+      },
+      {
+        "oid": 5506,
+        "filename": "pruned_data_store_api_dump/5506.dat.gz",
+        "size_compressed": 2720690,
+        "table_name": "unknown_table_5506"
+      },
+      {
+        "oid": 5508,
+        "filename": "pruned_data_store_api_dump/5508.dat.gz",
+        "size_compressed": 198072,
+        "table_name": "unknown_table_5508"
+      },
+      {
+        "oid": 5510,
+        "filename": "pruned_data_store_api_dump/5510.dat.gz",
+        "size_compressed": 9362617,
+        "table_name": "unknown_table_5510"
+      },
+      {
+        "oid": 5512,
+        "filename": "pruned_data_store_api_dump/5512.dat.gz",
+        "size_compressed": 25,
+        "table_name": "unknown_table_5512"
+      },
+      {
+        "oid": 5514,
+        "filename": "pruned_data_store_api_dump/5514.dat.gz",
+        "size_compressed": 58004,
+        "table_name": "unknown_table_5514"
+      },
+      {
+        "oid": 5515,
+        "filename": "pruned_data_store_api_dump/5515.dat.gz",
+        "size_compressed": 8357,
+        "table_name": "unknown_table_5515"
+      },
+      {
+        "oid": 5516,
+        "filename": "pruned_data_store_api_dump/5516.dat.gz",
+        "size_compressed": 449978,
+        "table_name": "unknown_table_5516"
+      },
+      {
+        "oid": 5518,
+        "filename": "pruned_data_store_api_dump/5518.dat.gz",
+        "size_compressed": 711145,
+        "table_name": "unknown_table_5518"
+      },
+      {
+        "oid": 5524,
+        "filename": "pruned_data_store_api_dump/5524.dat.gz",
+        "size_compressed": 47768512,
+        "table_name": "unknown_table_5524"
+      },
+      {
+        "oid": 5525,
+        "filename": "pruned_data_store_api_dump/5525.dat.gz",
+        "size_compressed": 47748114,
+        "table_name": "unknown_table_5525"
+      },
+      {
+        "oid": 5528,
+        "filename": "pruned_data_store_api_dump/5528.dat.gz",
+        "size_compressed": 338057,
+        "table_name": "unknown_table_5528"
+      },
+      {
+        "oid": 5529,
+        "filename": "pruned_data_store_api_dump/5529.dat.gz",
+        "size_compressed": 34061611,
+        "table_name": "unknown_table_5529"
+      },
+      {
+        "oid": 5530,
+        "filename": "pruned_data_store_api_dump/5530.dat.gz",
+        "size_compressed": 13067352971,
+        "table_name": "unknown_table_5530"
+      },
+      {
+        "oid": 5531,
+        "filename": "pruned_data_store_api_dump/5531.dat.gz",
+        "size_compressed": 55812463,
+        "table_name": "unknown_table_5531"
+      },
+      {
+        "oid": 5532,
+        "filename": "pruned_data_store_api_dump/5532.dat.gz",
+        "size_compressed": 122889,
+        "table_name": "unknown_table_5532"
+      },
+      {
+        "oid": 5533,
+        "filename": "pruned_data_store_api_dump/5533.dat.gz",
+        "size_compressed": 21926498,
+        "table_name": "unknown_table_5533"
+      },
+      {
+        "oid": 5534,
+        "filename": "pruned_data_store_api_dump/5534.dat.gz",
+        "size_compressed": 1279286090,
+        "table_name": "unknown_table_5534"
+      },
+      {
+        "oid": 5535,
+        "filename": "pruned_data_store_api_dump/5535.dat.gz",
+        "size_compressed": 748000973,
+        "table_name": "unknown_table_5535"
+      },
+      {
+        "oid": 5536,
+        "filename": "pruned_data_store_api_dump/5536.dat.gz",
+        "size_compressed": 50581486,
+        "table_name": "unknown_table_5536"
+      },
+      {
+        "oid": 5537,
+        "filename": "pruned_data_store_api_dump/5537.dat.gz",
+        "size_compressed": 442294639,
+        "table_name": "unknown_table_5537"
+      },
+      {
+        "oid": 5538,
+        "filename": "pruned_data_store_api_dump/5538.dat.gz",
+        "size_compressed": 95919128,
+        "table_name": "unknown_table_5538"
+      },
+      {
+        "oid": 5539,
+        "filename": "pruned_data_store_api_dump/5539.dat.gz",
+        "size_compressed": 119539926,
+        "table_name": "unknown_table_5539"
+      }
+    ],
+    "total_files": 74,
+    "tables_identified": 2
+  },
+  "table_samples": [
+    {
+      "table_name": "recipient_lookup",
+      "oid": 5412,
+      "sample_rows": 5,
+      "columns": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "sample_data": [
+        {
+          "0": 178613170,
+          "1": "K & K CONSTRUCTION SUPPLY INC",
+          "2": NaN,
+          "3": NaN,
+          "4": 18869431,
+          "5": "2025-06-20",
+          "6": "11400 WHITE ROCK RD",
+          "7": NaN,
+          "8": "RANCHO CORDOVA",
+          "9": 6.0,
+          "10": "USA",
+          "11": "CA",
+          "12": 95742.0,
+          "13": 6600.0,
+          "14": "{2X,8W,A2,HQ,XS}",
+          "15": NaN,
+          "16": "2L",
+          "17": "C111ATT311C8",
+          "18": "VFKQPG9ZEUD3"
+        },
+        {
+          "0": 82185679,
+          "1": "NEW ADVANCES FOR PEOPLE WITH DISABILITIES",
+          "2": 82185679.0,
+          "3": NaN,
+          "4": 18784361,
+          "5": "2025-05-27",
+          "6": "3400 N SILLECT AVE",
+          "7": NaN,
+          "8": "BAKERSFIELD",
+          "9": 20.0,
+          "10": "USA",
+          "11": "CA",
+          "12": 93308.0,
+          "13": 6363.0,
+          "14": "{A8}",
+          "15": NaN,
+          "16": "8H",
+          "17": "C111BG66D155",
+          "18": NaN
+        },
+        {
+          "0": 78269681,
+          "1": "MONARCO GROUP LLC, THE",
+          "2": NaN,
+          "3": NaN,
+          "4": 19781909,
+          "5": "2012-02-11",
+          "6": "1704 MAXWELL DR, STE 107",
+          "7": NaN,
+          "8": "WALL",
+          "9": NaN,
+          "10": "USA",
+          "11": "NJ",
+          "12": 7719.0,
+          "13": 3852.0,
+          "14": "{2X,8E,8W,A2,LJ,VW}",
+          "15": NaN,
+          "16": NaN,
+          "17": "C111CU96ZQA5",
+          "18": NaN
+        },
+        {
+          "0": 534602345,
+          "1": "PELEPOST EXPRESS CARGO",
+          "2": NaN,
+          "3": NaN,
+          "4": 20082785,
+          "5": "2009-01-10",
+          "6": "BUILDING 77/14",
+          "7": NaN,
+          "8": "IRBIL",
+          "9": NaN,
+          "10": "IRQ",
+          "11": NaN,
+          "12": NaN,
+          "13": NaN,
+          "14": "{2U,VW}",
+          "15": NaN,
+          "16": NaN,
+          "17": "C111DX5JM6X5",
+          "18": NaN
+        },
+        {
+          "0": 119417439,
+          "1": "RIDE ON ST. LOUIS, INC.",
+          "2": NaN,
+          "3": NaN,
+          "4": 18981822,
+          "5": "2024-11-27",
+          "6": "5 N LAKE DR",
+          "7": NaN,
+          "8": "HILLSBORO",
+          "9": 3.0,
+          "10": "USA",
+          "11": "MO",
+          "12": 63050.0,
+          "13": 4408.0,
+          "14": "{A8}",
+          "15": NaN,
+          "16": "8H",
+          "17": "C111FE1KRJF1",
+          "18": NaN
+        }
+      ]
+    },
+    {
+      "table_name": "transaction_normalized",
+      "oid": 5420,
+      "sample_rows": 5,
+      "columns": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28
+      ],
+      "sample_data": [
+        {
+          "0": "DBR",
+          "1": 262923,
+          "2": 807556.02,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 807556.02,
+          "10": 0.0,
+          "11": 0.0,
+          "12": 807556.02,
+          "13": 807556.02,
+          "14": 0.0,
+          "15": NaN,
+          "16": NaN,
+          "17": NaN,
+          "18": NaN,
+          "19": NaN,
+          "20": "2018-01-01",
+          "21": "2018-03-31",
+          "22": NaN,
+          "23": NaN,
+          "24": "2021-03-09 14:51:58.436266+00",
+          "25": "2021-03-09 14:51:58.436297+00",
+          "26": "f",
+          "27": 9663,
+          "28": 57055
+        },
+        {
+          "0": "DBR",
+          "1": 262924,
+          "2": 870442.53,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 870442.53,
+          "10": 0.0,
+          "11": 0.0,
+          "12": 870442.53,
+          "13": 870442.53,
+          "14": 0.0,
+          "15": NaN,
+          "16": NaN,
+          "17": NaN,
+          "18": NaN,
+          "19": NaN,
+          "20": "2018-01-01",
+          "21": "2018-03-31",
+          "22": NaN,
+          "23": NaN,
+          "24": "2021-03-09 14:51:58.436525+00",
+          "25": "2021-03-09 14:51:58.436546+00",
+          "26": "f",
+          "27": 9663,
+          "28": 60130
+        },
+        {
+          "0": "DBR",
+          "1": 262925,
+          "2": 821408.03,
+          "3": 1260.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 822668.03,
+          "10": 0.0,
+          "11": 1260.0,
+          "12": 822668.03,
+          "13": 822668.03,
+          "14": 0.0,
+          "15": NaN,
+          "16": NaN,
+          "17": NaN,
+          "18": NaN,
+          "19": NaN,
+          "20": "2018-01-01",
+          "21": "2018-03-31",
+          "22": NaN,
+          "23": NaN,
+          "24": "2021-03-09 14:51:58.436763+00",
+          "25": "2021-03-09 14:51:58.436782+00",
+          "26": "f",
+          "27": 9663,
+          "28": 63002
+        },
+        {
+          "0": "DBR",
+          "1": 262926,
+          "2": 794352.55,
+          "3": 0.0,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 794352.55,
+          "10": 22256.12,
+          "11": 0.0,
+          "12": 794352.55,
+          "13": 794352.55,
+          "14": 0.0,
+          "15": NaN,
+          "16": NaN,
+          "17": NaN,
+          "18": NaN,
+          "19": NaN,
+          "20": "2018-01-01",
+          "21": "2018-03-31",
+          "22": NaN,
+          "23": NaN,
+          "24": "2021-03-09 14:51:58.437018+00",
+          "25": "2021-03-09 14:51:58.43704+00",
+          "26": "f",
+          "27": 9663,
+          "28": 65521
+        },
+        {
+          "0": "DBR",
+          "1": 262927,
+          "2": 1388843.04,
+          "3": 239382.54,
+          "4": 0.0,
+          "5": 0.0,
+          "6": 0.0,
+          "7": 0.0,
+          "8": 0.0,
+          "9": 1628225.58,
+          "10": 2850993.7,
+          "11": 239382.54,
+          "12": 1467665.87,
+          "13": 1628225.58,
+          "14": 160559.71,
+          "15": NaN,
+          "16": NaN,
+          "17": NaN,
+          "18": NaN,
+          "19": NaN,
+          "20": "2018-01-01",
+          "21": "2018-03-31",
+          "22": NaN,
+          "23": NaN,
+          "24": "2021-03-09 14:51:58.437261+00",
+          "25": "2021-03-09 14:51:58.437281+00",
+          "26": "f",
+          "27": 9663,
+          "28": 69746
+        }
+      ]
+    }
+  ]
+}

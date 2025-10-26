@@ -53,7 +53,7 @@ class USAspendingCoverageAssessor:
         # Log key identifier coverage
         total = len(df)
         uei_count = df["UEI"].notna().sum()
-        duns_count = df["DUNS"].notna().sum()
+        duns_count = df["Duns"].notna().sum()
         contract_count = df["Contract"].notna().sum()
 
         logger.info(f"SBIR identifier coverage:")
@@ -110,7 +110,24 @@ class USAspendingCoverageAssessor:
             return pd.DataFrame()
 
         df = pd.DataFrame(sample_data)
-        logger.info(f"Loaded {len(df)} sample rows from profile")
+
+        # Debug: Show original columns
+        logger.info(f"Original columns in {table_name}: {list(df.columns)}")
+
+        # Map columns based on actual data structure from profiling
+        if table_name == "recipient_lookup":
+            # Based on profiling: columns are '0'=DUNS, '1'=company_name, '18'=UEI
+            column_mapping = {"0": "recipient_duns", "1": "recipient_name", "18": "recipient_uei"}
+            df = df.rename(columns=column_mapping)
+        elif table_name == "transaction_normalized":
+            # Transaction data - may not have recipient info directly
+            # This table contains financial transaction data
+            logger.warning(f"Table {table_name} contains transaction data, not recipient data")
+
+        # Debug: Show columns after mapping
+        logger.info(f"Columns after mapping in {table_name}: {list(df.columns)}")
+
+        logger.info(f"Loaded {len(df)} sample rows from profile for {table_name}")
         return df
 
     def _query_from_dump(self, table_name: str, limit: int) -> pd.DataFrame:
@@ -150,30 +167,41 @@ class USAspendingCoverageAssessor:
 
         Args:
             sbir_df: SBIR awards DataFrame
-            usaspending_df: USAspending transactions DataFrame
+            usaspending_df: USAspending recipient DataFrame
 
         Returns:
             Dictionary with coverage assessment results
         """
-        logger.info("Assessing coverage between SBIR and USAspending data")
+        logger.info("Assessing coverage between SBIR and USAspending recipient data")
 
         results = {
             "total_sbir_awards": len(sbir_df),
-            "total_usaspending_transactions": len(usaspending_df),
+            "total_usaspending_recipients": len(usaspending_df),
             "match_rates": {},
             "coverage_details": {},
+            "data_quality_notes": [],
         }
 
         # Clean and prepare data
         sbir_clean = self._prepare_sbir_data(sbir_df)
         usaspending_clean = self._prepare_usaspending_data(usaspending_df)
 
-        # Assess matches by identifier
-        identifiers = [
-            ("uei", "UEI", "recipient_uei"),
-            ("duns", "DUNS", "recipient_duns"),
-            ("contract", "Contract", "award_id_piid"),
-        ]
+        # Check if we have the expected columns
+        expected_cols = ["recipient_uei", "recipient_duns", "recipient_name"]
+        available_cols = [col for col in expected_cols if col in usaspending_clean.columns]
+        results["data_quality_notes"].append(f"Available USAspending columns: {available_cols}")
+
+        # Assess matches by identifier - only for available columns
+        identifiers = []
+        if "recipient_uei" in usaspending_clean.columns:
+            identifiers.append(("uei", "UEI", "recipient_uei"))
+        if "recipient_duns" in usaspending_clean.columns:
+            identifiers.append(("duns", "Duns", "recipient_duns"))
+
+        # Note: Contract matching would require transaction table, not recipient table
+        results["data_quality_notes"].append(
+            "Contract matching requires transaction_normalized table data"
+        )
 
         for identifier_name, sbir_col, usaspending_col in identifiers:
             match_rate = self._calculate_match_rate(
@@ -182,9 +210,17 @@ class USAspendingCoverageAssessor:
             results["match_rates"][identifier_name] = match_rate
 
         # Calculate overall coverage (any identifier match)
-        results["overall_coverage"] = self._calculate_overall_coverage(
-            sbir_clean, usaspending_clean
-        )
+        if identifiers:
+            results["overall_coverage"] = self._calculate_overall_coverage(
+                sbir_clean, usaspending_clean
+            )
+        else:
+            results["overall_coverage"] = {
+                "match_rate": 0.0,
+                "matched_awards": 0,
+                "total_awards": len(sbir_clean),
+            }
+            results["data_quality_notes"].append("No identifier columns available for matching")
 
         # Check target achievement
         target_rate = 0.70  # 70%
@@ -200,7 +236,7 @@ class USAspendingCoverageAssessor:
         # Clean identifiers
         df = df.copy()
         df["UEI"] = df["UEI"].astype(str).str.strip().str.upper()
-        df["DUNS"] = df["DUNS"].astype(str).str.strip()
+        df["Duns"] = df["Duns"].astype(str).str.strip()
         df["Contract"] = df["Contract"].astype(str).str.strip()
 
         # Replace empty strings with NaN
@@ -210,9 +246,14 @@ class USAspendingCoverageAssessor:
     def _prepare_usaspending_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepare USAspending data for matching."""
         df = df.copy()
-        df["recipient_uei"] = df["recipient_uei"].astype(str).str.strip().str.upper()
-        df["recipient_duns"] = df["recipient_duns"].astype(str).str.strip()
-        df["award_id_piid"] = df["award_id_piid"].astype(str).str.strip()
+
+        # Handle columns that may or may not exist
+        if "recipient_uei" in df.columns:
+            df["recipient_uei"] = df["recipient_uei"].astype(str).str.strip().str.upper()
+        if "recipient_duns" in df.columns:
+            df["recipient_duns"] = df["recipient_duns"].astype(str).str.strip()
+        if "award_id_piid" in df.columns:
+            df["award_id_piid"] = df["award_id_piid"].astype(str).str.strip()
 
         # Replace empty strings with NaN
         df = df.replace("", pd.NA)
@@ -259,18 +300,33 @@ class USAspendingCoverageAssessor:
         """Calculate overall coverage using any identifier."""
         # Create match flags for each identifier
         matches = []
+        breakdown = {}
 
-        # UEI matches
-        uei_matches = self._get_matches(sbir_df, usaspending_df, "UEI", "recipient_uei")
-        matches.append(uei_matches)
+        # UEI matches (if available)
+        if "recipient_uei" in usaspending_df.columns:
+            uei_matches = self._get_matches(sbir_df, usaspending_df, "UEI", "recipient_uei")
+            matches.append(uei_matches)
+            breakdown["uei_matches"] = len(uei_matches)
+        else:
+            breakdown["uei_matches"] = 0
 
-        # DUNS matches
-        duns_matches = self._get_matches(sbir_df, usaspending_df, "DUNS", "recipient_duns")
-        matches.append(duns_matches)
+        # DUNS matches (if available)
+        if "recipient_duns" in usaspending_df.columns:
+            duns_matches = self._get_matches(sbir_df, usaspending_df, "Duns", "recipient_duns")
+            matches.append(duns_matches)
+            breakdown["duns_matches"] = len(duns_matches)
+        else:
+            breakdown["duns_matches"] = 0
 
-        # Contract matches
-        contract_matches = self._get_matches(sbir_df, usaspending_df, "Contract", "award_id_piid")
-        matches.append(contract_matches)
+        # Contract matches (if available - would need transaction table)
+        if "award_id_piid" in usaspending_df.columns:
+            contract_matches = self._get_matches(
+                sbir_df, usaspending_df, "Contract", "award_id_piid"
+            )
+            matches.append(contract_matches)
+            breakdown["contract_matches"] = len(contract_matches)
+        else:
+            breakdown["contract_matches"] = 0
 
         # Combine all matches (any identifier)
         all_matched_indices = set()
@@ -284,11 +340,7 @@ class USAspendingCoverageAssessor:
             "match_rate": matched_sbir / total_sbir if total_sbir > 0 else 0.0,
             "matched_awards": matched_sbir,
             "total_awards": total_sbir,
-            "breakdown": {
-                "uei_matches": len(matches[0]),
-                "duns_matches": len(matches[1]),
-                "contract_matches": len(matches[2]),
-            },
+            "breakdown": breakdown,
         }
 
     def _get_matches(
@@ -348,7 +400,7 @@ def main():
     parser.add_argument(
         "--usaspending-dump",
         type=Path,
-        default=Path("/Volumes/X10 Pro/usaspending-db-subset_20251006.zip"),
+        default=Path("/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip"),
         help="Path to USAspending dump",
     )
     parser.add_argument(
@@ -375,6 +427,12 @@ def main():
         default=10000,
         help="Limit for USAspending sample size",
     )
+    parser.add_argument(
+        "--table-name",
+        type=str,
+        default="recipient_lookup",
+        help="USAspending table to analyze (recipient_lookup or transaction_normalized)",
+    )
 
     args = parser.parse_args()
 
@@ -389,7 +447,7 @@ def main():
 
         # Get USAspending sample
         usaspending_df = assessor.get_usaspending_sample(
-            table_name="transaction_normalized", limit=args.usaspending_limit
+            table_name=args.table_name, limit=args.usaspending_limit
         )
 
         # Assess coverage
@@ -401,13 +459,21 @@ def main():
         # Print summary
         print("\n=== USAspending Coverage Assessment Summary ===")
         print(f"SBIR Awards Analyzed: {results['total_sbir_awards']}")
-        print(f"USAspending Transactions Sampled: {results['total_usaspending_transactions']}")
-        print(".1%")
-        print(f"Target Achieved (≥70%): {results['target_achieved']}")
+        print(
+            f"USAspending Recipients Sampled: {results.get('total_usaspending_recipients', 'N/A')}"
+        )
+        if "overall_coverage" in results:
+            print(".1%")
+            print(f"Target Achieved (≥70%): {results['target_achieved']}")
 
         print("\nMatch Rates by Identifier:")
         for identifier, stats in results["match_rates"].items():
             print(".1%")
+
+        if results.get("data_quality_notes"):
+            print("\nData Quality Notes:")
+            for note in results["data_quality_notes"]:
+                print(f"- {note}")
 
         logger.info("Assessment complete")
 

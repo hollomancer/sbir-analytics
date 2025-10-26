@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Profile USAspending Postgres dump for SBIR ETL evaluation.
+"""Profile USAspending PostgreSQL COPY dump for SBIR ETL evaluation.
 
-This script analyzes the USAspending Postgres dump stored on removable media
-to provide schema information, table statistics, and enrichment coverage assessment
-without requiring full database restoration.
+This script analyzes the USAspending PostgreSQL data stored as compressed COPY files
+on removable media to provide schema information, table statistics, and enrichment
+coverage assessment.
 """
 
 import argparse
@@ -19,18 +19,26 @@ from loguru import logger
 
 
 class USAspendingDumpProfiler:
-    """Profiler for USAspending Postgres dumps."""
+    """Profiler for USAspending PostgreSQL COPY dumps."""
 
     def __init__(self, dump_path: Path, temp_dir: Optional[Path] = None):
         """Initialize profiler.
 
         Args:
-            dump_path: Path to the zipped Postgres dump
+            dump_path: Path to the zipped PostgreSQL COPY dump
             temp_dir: Temporary directory for scratch files (optional)
         """
         self.dump_path = dump_path
         self.temp_dir = temp_dir or Path("/tmp")
         self.connection: Optional[duckdb.DuckDBPyConnection] = None
+
+        # Known table OID mappings (PostgreSQL object IDs to table names)
+        # These may need to be verified/updated based on actual dump
+        self.table_oid_map = {
+            5412: "recipient_lookup",  # Appears to contain recipient/company data
+            5420: "transaction_normalized",  # Appears to contain transaction data
+            # Add more mappings as discovered
+        }
 
     def validate_dump_access(self) -> bool:
         """Validate that the dump file is accessible and appears valid.
@@ -42,11 +50,11 @@ class USAspendingDumpProfiler:
             logger.error(f"Dump file not found: {self.dump_path}")
             return False
 
-        # Check file size (should be ~51GB)
+        # Check file size (should be ~17GB for subset)
         size_gb = self.dump_path.stat().st_size / (1024**3)
         logger.info(".2f")
 
-        if size_gb < 40:  # Allow some tolerance
+        if size_gb < 5:  # Allow reasonable minimum for subset
             logger.warning(".2f")
             return False
 
@@ -64,81 +72,125 @@ class USAspendingDumpProfiler:
         logger.info("Dump file validation passed")
         return True
 
-    def get_dump_metadata_pg_restore(self) -> Dict:
-        """Get dump metadata using pg_restore --list.
+    def get_dump_metadata_from_files(self) -> Dict:
+        """Get dump metadata by analyzing the ZIP file contents.
 
         Returns:
             Dictionary with dump metadata
         """
-        logger.info("Analyzing dump with pg_restore --list")
+        logger.info("Analyzing dump file contents")
 
         try:
-            cmd = ["pg_restore", "--list", str(self.dump_path)]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # List contents of the ZIP file
+            cmd = ["unzip", "-l", str(self.dump_path)]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
             if result.returncode != 0:
-                logger.error(f"pg_restore failed: {result.stderr}")
-                return {"error": f"pg_restore failed: {result.stderr}"}
+                logger.error(f"unzip -l failed: {result.stderr}")
+                return {"error": f"unzip failed: {result.stderr}"}
 
-            # Parse pg_restore output
+            # Parse unzip output to find data files
             lines = result.stdout.strip().split("\n")
-            tables = []
+            data_files = []
             for line in lines:
-                if line.strip() and not line.startswith(";"):
+                if "pruned_data_store_api_dump/" in line and ".dat.gz" in line:
                     parts = line.split()
-                    if len(parts) >= 2 and parts[0] in ["TABLE", "TABLE DATA"]:
-                        table_name = parts[-1]
-                        if table_name not in [t["name"] for t in tables]:
-                            tables.append({"name": table_name, "type": parts[0]})
+                    if len(parts) >= 4:
+                        size = int(parts[0])
+                        filename = parts[-1]
+                        oid = int(filename.split("/")[-1].split(".")[0])
+                        data_files.append(
+                            {
+                                "oid": oid,
+                                "filename": filename,
+                                "size_compressed": size,
+                                "table_name": self.table_oid_map.get(oid, f"unknown_table_{oid}"),
+                            }
+                        )
 
-            return {"tool": "pg_restore", "tables": tables, "total_tables": len(tables)}
+            return {
+                "tool": "unzip_analysis",
+                "data_files": data_files,
+                "total_files": len(data_files),
+                "tables_identified": len(
+                    [f for f in data_files if f["table_name"] != f"unknown_table_{f['oid']}"]
+                ),
+            }
 
         except subprocess.TimeoutExpired:
-            logger.error("pg_restore --list timed out")
-            return {"error": "pg_restore timed out"}
+            logger.error("unzip -l timed out")
+            return {"error": "unzip timed out"}
         except FileNotFoundError:
-            logger.error("pg_restore command not found. Install PostgreSQL client tools.")
-            return {"error": "pg_restore not available"}
+            logger.error("unzip command not found.")
+            return {"error": "unzip not available"}
 
-    def get_table_sample_duckdb(self, table_name: str, limit: int = 5) -> Dict:
-        """Get sample rows from a table using DuckDB postgres_scanner.
+    def get_table_sample_from_copy_file(self, table_oid: int, limit: int = 5) -> Dict:
+        """Get sample rows from a PostgreSQL COPY file.
 
         Args:
-            table_name: Name of the table to sample
+            table_oid: PostgreSQL object ID for the table
             limit: Number of rows to sample
 
         Returns:
             Dictionary with sample data
         """
-        logger.info(f"Sampling {limit} rows from table: {table_name}")
+        table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
+        logger.info(f"Sampling {limit} rows from table {table_name} (OID: {table_oid})")
 
         try:
             # Create connection if needed
             if self.connection is None:
                 self.connection = duckdb.connect(":memory:")
-                # Install and load postgres_scanner extension
-                self.connection.execute("INSTALL postgres_scanner;")
-                self.connection.execute("LOAD postgres_scanner;")
 
-            # Create a temporary file path for the dump (postgres_scanner needs a file path)
-            temp_dump = self.temp_dir / f"temp_{table_name}_dump.sql"
-            if not temp_dump.exists():
-                # For ZIP files, we might need to extract or use a different approach
-                # For now, try direct access
+            # Create temporary directory for extraction
+            temp_dir = self.temp_dir / f"usaspending_extract_{table_oid}"
+            temp_dir.mkdir(exist_ok=True)
+
+            # Extract the specific file
+            filename = f"pruned_data_store_api_dump/{table_oid}.dat.gz"
+            temp_file = temp_dir / f"{table_oid}.dat"
+
+            cmd = ["unzip", "-p", str(self.dump_path), filename]
+            with open(temp_file, "wb") as f:
+                result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, timeout=60)
+
+            if result.returncode != 0:
+                return {
+                    "table_name": table_name,
+                    "error": f"Failed to extract file: {result.stderr.decode()}",
+                }
+
+            # Decompress the gzipped content
+            decompressed_file = temp_file.with_suffix(".decompressed")
+            try:
+                with open(temp_file, "rb") as f_in, open(decompressed_file, "wb") as f_out:
+                    import gzip
+
+                    f_out.write(gzip.decompress(f_in.read()))
+                temp_file = decompressed_file
+            except gzip.BadGzipFile:
+                # File might not be gzipped, use as-is
                 pass
 
-            # Query using postgres_scanner
-            # Note: This is a simplified approach. Real implementation may need
-            # to handle ZIP extraction or use pg_restore piping
-            query = f"""
-            SELECT * FROM postgres_scan('{self.dump_path}', '{table_name}')
-            LIMIT {limit}
-            """
+            # Read with pandas for PostgreSQL COPY format
+            df = pd.read_csv(
+                temp_file,
+                sep="\t",
+                header=None,
+                na_values=["\\N"],
+                nrows=limit,
+                on_bad_lines="skip",
+                engine="python",  # More flexible for complex formats
+            )
 
-            df = self.connection.execute(query).fetchdf()
+            # Clean up
+            import shutil
+
+            shutil.rmtree(temp_dir)
 
             return {
                 "table_name": table_name,
+                "oid": table_oid,
                 "sample_rows": len(df),
                 "columns": list(df.columns),
                 "sample_data": df.head(limit).to_dict("records"),
@@ -146,35 +198,38 @@ class USAspendingDumpProfiler:
 
         except Exception as e:
             logger.error(f"Failed to sample table {table_name}: {e}")
-            return {"table_name": table_name, "error": str(e)}
+            return {"table_name": table_name, "oid": table_oid, "error": str(e)}
 
-    def profile_dump(self, sample_tables: Optional[List[str]] = None) -> Dict:
+    def profile_dump(self, sample_oids: Optional[List[int]] = None) -> Dict:
         """Profile the entire dump.
 
         Args:
-            sample_tables: List of specific tables to sample (None for all)
+            sample_oids: List of specific table OIDs to sample (None for known tables)
 
         Returns:
             Complete profiling report
         """
-        logger.info("Starting USAspending dump profiling")
+        logger.info("Starting USAspending PostgreSQL COPY dump profiling")
 
         report = {
             "dump_path": str(self.dump_path),
             "dump_size_gb": round(self.dump_path.stat().st_size / (1024**3), 2),
             "profiling_timestamp": pd.Timestamp.now().isoformat(),
+            "data_format": "PostgreSQL COPY files (.dat.gz)",
             "metadata": {},
             "table_samples": [],
         }
 
         # Get basic metadata
-        report["metadata"] = self.get_dump_metadata_pg_restore()
+        report["metadata"] = self.get_dump_metadata_from_files()
 
-        # Sample tables if requested
-        if sample_tables:
-            for table_name in sample_tables:
-                sample = self.get_table_sample_duckdb(table_name)
-                report["table_samples"].append(sample)
+        # Sample tables - use known OIDs if none specified
+        if sample_oids is None:
+            sample_oids = list(self.table_oid_map.keys())
+
+        for oid in sample_oids:
+            sample = self.get_table_sample_from_copy_file(oid)
+            report["table_samples"].append(sample)
 
         return report
 
@@ -191,6 +246,56 @@ class USAspendingDumpProfiler:
             json.dump(report, f, indent=2, default=str)
 
         logger.info(f"Report saved to: {output_path}")
+
+        # Also save a human-readable summary
+        summary_path = output_path.with_suffix(".summary.md")
+        self.save_summary_report(report, summary_path)
+
+    def save_summary_report(self, report: Dict, output_path: Path):
+        """Save a human-readable summary report.
+
+        Args:
+            report: Profiling report dictionary
+            output_path: Path to save the summary
+        """
+        with open(output_path, "w") as f:
+            f.write("# USAspending PostgreSQL COPY Dump Profile Summary\n\n")
+            f.write(f"**Generated:** {report['profiling_timestamp']}\n")
+            f.write(f"**Dump Path:** {report['dump_path']}\n")
+            f.write(f"**Dump Size:** {report['dump_size_gb']} GB\n")
+            f.write(f"**Data Format:** {report['data_format']}\n\n")
+
+            metadata = report.get("metadata", {})
+            if "data_files" in metadata:
+                f.write("## Data Files\n\n")
+                f.write(f"**Total Files:** {metadata['total_files']}\n")
+                f.write(f"**Tables Identified:** {metadata['tables_identified']}\n\n")
+
+                f.write("| OID | Table Name | Size (compressed) |\n")
+                f.write("|-----|------------|-------------------|\n")
+                for file_info in metadata["data_files"]:
+                    f.write(
+                        f"| {file_info['oid']} | {file_info['table_name']} | {file_info['size_compressed']:,} bytes |\n"
+                    )
+                f.write("\n")
+
+            f.write("## Table Samples\n\n")
+            for sample in report.get("table_samples", []):
+                f.write(f"### {sample['table_name']} (OID: {sample.get('oid', 'unknown')})\n\n")
+                if "error" in sample:
+                    f.write(f"**Error:** {sample['error']}\n\n")
+                else:
+                    f.write(f"**Sample Rows:** {sample['sample_rows']}\n")
+                    f.write(f"**Columns:** {len(sample['columns'])}\n\n")
+
+                    if sample["sample_data"]:
+                        f.write("**Sample Data:**\n")
+                        f.write("```\n")
+                        for row in sample["sample_data"][:3]:  # Show first 3 rows
+                            f.write(f"{row}\n")
+                        f.write("```\n\n")
+
+        logger.info(f"Summary report saved to: {output_path}")
 
     def close(self):
         """Clean up resources."""
@@ -217,9 +322,10 @@ def main():
         help="Output path for profiling report",
     )
     parser.add_argument(
-        "--sample-tables",
+        "--sample-oids",
         nargs="*",
-        help="Specific tables to sample (default: transaction_normalized, awards, recipient_lookup)",
+        type=int,
+        help="Specific table OIDs to sample (default: known table OIDs)",
     )
     parser.add_argument(
         "--temp-dir", type=Path, default=Path("/tmp"), help="Temporary directory for scratch files"
@@ -233,15 +339,11 @@ def main():
     # Set up logging
     logger.add(sys.stderr, level="INFO")
 
-    # Default sample tables if none specified
-    sample_tables = args.sample_tables or [
-        "transaction_normalized",
-        "awards",
-        "recipient_lookup",
-        "recipient_profile",
-    ]
-
+    # Create profiler instance
     profiler = USAspendingDumpProfiler(args.dump_path, args.temp_dir)
+
+    # Default sample OIDs if none specified
+    sample_oids = args.sample_oids or list(profiler.table_oid_map.keys())
 
     try:
         # Validate dump access
@@ -254,8 +356,8 @@ def main():
             return
 
         # Run profiling
-        logger.info(f"Profiling dump with sample tables: {sample_tables}")
-        report = profiler.profile_dump(sample_tables)
+        logger.info(f"Profiling dump with sample OIDs: {sample_oids}")
+        report = profiler.profile_dump(sample_oids)
 
         # Save report
         profiler.save_report(report, args.output)
