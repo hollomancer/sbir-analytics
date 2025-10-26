@@ -9,7 +9,9 @@
     - `src/transition/features/` (vendor resolver and feature extractors)
     - `src/transition/config/` (configuration placeholders)
     - Added `src/transition/__init__.py` and initial `VendorResolver` implementation in `src/transition/features/vendor_resolver.py`.
-- [ ] 1.3 Add pytest fixtures for transition detection tests
+    - Basic unit test and fixtures scaffold added to accelerate verification (see tests/unit/test_vendor_resolver.py).
+- [x] 1.3 Add pytest fixtures for transition detection tests
+  - Notes: Added pytest fixture `sample_vendors` and an initial unit test suite for `VendorResolver` at `tests/unit/test_vendor_resolver.py`. These provide the initial fixtures and tests for vendor name/identifier matching and will be extended for broader transition detection fixtures.
 - [ ] 1.4 Verify DuckDB availability for large contract dataset analytics
 
 ## 2. Configuration Files
