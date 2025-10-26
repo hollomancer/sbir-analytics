@@ -1,230 +1,200 @@
-sbir-etl/docs/deployment/containerization.md
 # Containerization: SBIR ETL
 
-This document describes the containerized runtime for the SBIR ETL project:
-how images are built, how to run the project in development and CI, environment
-and secrets handling, and operational guidance for health checks, volumes, and
-troubleshooting.
+This document explains how to run, build, and test the SBIR ETL project inside containers.
+It includes a quick-start for local development, CI guidance, and references to the repository's
+README and Makefile for convenient shortcuts.
 
 Table of contents
 - Overview
-- Key artifacts
-- Prerequisites
-- Environment files and secrets
-- Build the image
-- Dev: local compose (bind mounts)
-- Test: ephemeral compose for CI
-- Prod: production-like compose
-- Entrypoints and wait-for semantics
-- Health checks and readiness
-- Volumes & persistency
-- CI integration and testing
-- Best practices & tips (macOS, caching)
+- Quick prerequisites
+- Quick-start (recommended)
+  - Local: build & dev
+  - Local: run an ad-hoc ETL command
+  - Local: run containerized tests
+- Files you should know
+- Build and publish (CI-friendly)
+- Compose overlays and profiles
+- Entrypoints & service startup behavior
+- Health checks & volumes
 - Troubleshooting checklist
+- Links / README references
 
 Overview
 --------
-We use Docker + Compose to provide a reproducible runtime for local development,
-CI, and production-like testing. The repository contains:
-- A multi-stage Dockerfile that separates dependency installation (builder)
-  from the runtime image.
-- Service-specific entrypoint scripts (webserver, daemon, ad-hoc runner).
-- Compose-based profiles for `dev`, `test`, and production-like runs.
-- A `.env.example` documenting environment variables and an expectation that
-  each developer will create their own `.env` locally (and keep it out of git).
-- Make targets to simplify local workflows (build, up, test).
+We provide a multi-stage Dockerfile and a set of Compose overlays to support three primary workflows:
 
-Key artifacts
--------------
-Paths referenced in this document (examples):
-- Docker Compose base: `docker-compose.yml`
-- Dev overlay: `docker/docker-compose.dev.yml` (dev-only profile)
-- Test overlay: `docker/docker-compose.test.yml` (CI)
-- Entrypoint scripts: `sbir-etl/scripts/docker/entrypoint.sh`
-- Wait-for helper: `sbir-etl/scripts/docker/wait-for-service.sh`
-- Makefile: `Makefile`
-- Env template: `.env.example`
+- Local development (fast iteration with bind mounts and auto-reload).
+- Containerized testing (ephemeral Neo4j + running `pytest` inside the built image).
+- Production-like runs (named volumes, deterministic images).
+
+The goal is to make the runtime reproducible across laptops, CI, and staging while keeping developer
+iteration fast and safe.
 
 Quick prerequisites
 -------------------
-- Docker CLI (with `docker compose` plugin) installed locally
-- For macOS: recommend Docker Desktop 4.x or later
-- Recommended: `make` to use Makefile helpers
-- Optional (for faster local dev): `watchfiles` in dev image used only in the
-  dev profile for automatic reloads
+- Docker with the `docker compose` plugin (Docker Desktop or Docker Engine with Compose V2).
+- GNU `make` for convenience (or use the `docker compose` commands directly).
+- Optional but helpful: `jq`, `yq` (for reading config), `py-spy` for profiling Python processes.
 
-Environment & secrets
----------------------
-Do NOT commit real secrets. The repo contains `.env.example` which documents the
-variables Compose expects. Copy it and fill in values:
+Quick-start (recommended)
+-------------------------
+The repo contains helpful Makefile targets. The quick path below assumes you have copied `.env.example`
+to `.env` and set at minimum Neo4j credentials for local testing.
 
-```/dev/null/example.env#L1-8
+1) Prepare environment (one-time)
+```/dev/null/example.commands#L1-6
 cp .env.example .env
-# Edit .env and set NEO4J_PASSWORD and any other secrets.
+# Edit .env and set NEO4J_USER / NEO4J_PASSWORD (local dev credentials only)
 ```
 
-Key rules:
-- `.env` is for local, developer-side secrets and MUST be in `.gitignore`.
-- Compose files must reference secrets and credentials via `${VAR_NAME}`.
-- For CI or production, prefer secret injection from the platform (GitHub
-  Actions secrets, cloud secret manager) instead of a file-based `.env`.
-
-Build the image
----------------
-We use a multi-stage build (builder → runtime). The builder installs system
-packages and Python deps; the runtime image is lean and uses a non-root user.
-
-Build locally:
-
-```/dev/null/example.commands#L1-6
-# Build locally using builder + runtime layers
+2) Build the image locally (multi-stage Dockerfile)
+```/dev/null/example.commands#L7-12
+# Build the runtime image locally (used by dev compose or direct docker run)
 make docker-build
-# Or:
+# Or (explicit):
 docker build -t sbir-etl:local -f Dockerfile .
 ```
 
-Dev: local compose
-------------------
-The `dev` profile mounts local source and config directories into the container,
-making iteration fast. It also enables auto-reload (`watchfiles`) in the
-Dagster development entrypoint.
-
-Start dev stack:
-
-```/dev/null/example.commands#L10-18
-cp .env.example .env   # one-time (fill secrets)
+3) Start the development stack (recommended for iterative work)
+```/dev/null/example.commands#L13-22
+# Start dev compose (dev overlay bind-mounts src/config for live edit)
 make docker-up-dev
-# OR manually:
+
+# OR
 docker compose --env-file .env --profile dev -f docker-compose.yml -f docker/docker-compose.dev.yml up --build
 ```
 
-Notes:
-- The `dev` profile bind-mounts `./src`, `./config`, `./data`, `./logs` into the
-  container so containers write artifacts to host directories for easy debugging.
-- Use `make docker-logs SERVICE=app` to tail logs.
+- The `dev` profile mounts local `src/`, `config/`, `data/`, `logs/`, and `reports/` folders into containers.
+- The runtime entrypoint honors `ENABLE_WATCHFILES=1` (if present) to enable auto-reload for `dagster dev`.
 
-Test: containerized CI compose
-------------------------------
-The test compose overlay provisions ephemeral services and runs `pytest`
-inside a container. It is used by CI to validate the image and runtime.
+4) Run an ad-hoc ETL command inside the image (etl-runner)
+```/dev/null/example.commands#L23-30
+# Run an ad-hoc command using the etl-runner service:
+docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml run --rm etl-runner -- python -m src.scripts.run_some_job --arg value
 
-Run locally (ephemeral):
+# Or use the Makefile helper if you prefer:
+make docker-exec SERVICE=dagster-webserver CMD="python -m src.scripts.run_some_job --arg value"
+```
 
-```/dev/null/example.commands#L20-26
+5) Run containerized tests (CI-like local run)
+```/dev/null/example.commands#L31-38
+# Run ephemeral Neo4j + test service (the app image runs pytest)
 make docker-test
+
 # Or:
 docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build
 ```
 
-The test overlay:
-- Starts an ephemeral Neo4j instance with a small test dataset.
-- Starts the app container configured to run tests (`pytest`) and then exits.
-- If any container exits non-zero, the Compose run fails.
+Files you should know
+---------------------
+- `Dockerfile` — multi-stage image (builder + runtime). The runtime target is used by Compose services.
+- `docker-compose.yml` — base compose file declaring core services and named volumes.
+- `docker/docker-compose.dev.yml` — dev overlay: bind mounts, dev profile, watch/reload knobs.
+- `docker/docker-compose.test.yml` — test overlay: ephemeral Neo4j + `app` service that runs `pytest`.
+- `Makefile` — convenience commands: `docker-build`, `docker-up-dev`, `docker-test`, `docker-down`, `docker-logs`.
+- `scripts/ci/build_container.sh` — CI-friendly build script (Buildx-supporting).
+- `scripts/docker/entrypoint.sh` — container entrypoint used by runtime images.
+- `scripts/docker/wait-for-service.sh` — robust wait-for utility used by entrypoint scripts.
+- `config/docker.yaml` — container default settings and hints (do not put secrets here).
+- `.env.example` — template for local environment variables; copy to `.env` for development.
 
-Prod: production-like compose
------------------------------
-The base `docker-compose.yml` targets production-like usage and uses named
-volumes (no host source bind mounts). Deployments should inject secrets into
-environment variables or use the deployment platform's secret management.
+Build and publish (CI-friendly)
+-------------------------------
+CI should:
+1. Build the multi-stage image (using Buildx for caching when available).
+2. Run containerized tests by bringing up `docker/docker-compose.test.yml`.
+3. Optionally push the image to a registry if tests pass.
 
-Example (production-like run):
-
-```/dev/null/example.commands#L28-34
-# Ensure .env has production values or the environment provides them
-docker compose --env-file .env -f docker-compose.yml up -d --build
+Example GH Actions / CI steps (high-level):
+```/dev/null/example.ci#L1-14
+# Checkout repo
+# Prepare .env from .env.example (inject secrets from CI)
+# Build image with Buildx or load locally:
+scripts/ci/build_container.sh  # supports cache-from/cache-to and --push when PUBLISH=1
+# Run compose test overlay:
+docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build
+# Collect logs/artifacts on failure and teardown
 ```
 
-Entrypoints & waiting for dependencies
+Compose overlays and profiles
+----------------------------
+- The base `docker-compose.yml` defines services and named volumes that are suitable for production-like runs.
+- `docker/docker-compose.dev.yml` overlays bind mounts for local dev and enables a `dev` profile. It intentionally mounts `src` and `config` so code edits are visible without rebuilding the image.
+- `docker/docker-compose.test.yml` overlays an ephemeral Neo4j service and an `app` service that executes `pytest` inside the built image. It's used by CI to validate the built artifact.
+
+Entrypoints & service startup behavior
 -------------------------------------
-Entrypoints are provided under `sbir-etl/scripts/docker/entrypoint.sh`. Each
-service uses the same image but different entrypoint arguments to start the
-webserver, daemon, or run ad-hoc commands.
+All services in the runtime image share a common entrypoint script which:
 
-Important behavior:
-- Entrypoint scripts attempt to source `.env` (and /run/secrets) before starting.
-- Entrypoint uses `wait-for-service.sh` to wait for Neo4j (Bolt port) and the
-  Dagster web API to be healthy before starting dependent services.
-- Entrypoints will exit non-zero if dependencies do not become healthy in a
-  configurable timeout.
+- Loads environment variables from `/app/.env` (if present), `/app/config/.env`, and `/run/secrets/*` (if secret files are mounted).
+- Uses `wait-for-service.sh` to wait for required dependencies (Neo4j Bolt port, Dagster web API) before starting.
+- Drops privileges to a non-root `sbir` user when possible (using `gosu` or similar).
+- Executes the service-specific command (e.g., `dagster dev`, `dagster-daemon run`, or ad-hoc CLI commands).
 
-Health checks and readiness
----------------------------
-- Compose services declare health checks where applicable:
-  - Neo4j: checks via `cypher-shell` with credentials.
-  - Dagster webserver: polls `/server_info` expecting HTTP 200.
-- Entrypoint `wait-for-service.sh` provides a robust TCP/HTTP probe with logs
-  and configurable timeouts so you can see progress in container logs.
-- CI uses health-check gating and `depends_on: condition: service_healthy` to
-  reduce flakiness.
+Important: the entrypoint returns non-zero when dependencies do not become healthy within the configured timeout so CI and orchestrators can detect failures quickly.
 
-Volumes & data persistence
---------------------------
-- Neo4j uses named volumes: `neo4j_data`, `neo4j_logs`, `neo4j_import`. These
-  preserve the graph across container restarts.
-- Dev profile uses host bind mounts for `./data`, `./logs`, `./config`, and
-  `./metrics` so artifacts are accessible on the host.
-- For very large data on macOS, be aware that bind mounts can be slow; prefer
-  named volumes for heavy files.
+Health checks & volumes
+-----------------------
+Health checks:
+- Neo4j: `cypher-shell` check using credentials (configured in `.env`) and repeated with retries to allow DB warm-up.
+- Dagster webserver: HTTP probe for `/server_info` expecting an HTTP 2xx response.
 
-CI integration
---------------
-Recommended CI workflow (GitHub Actions):
-1. Build the multi-stage image (cache layers).
-2. Run the test compose overlay to start ephemeral Neo4j and execute `pytest`.
-3. If tests pass, optionally push the image to the registry.
-
-High-level example (CI job steps):
-
-```/dev/null/example.ci#L1-12
-- name: Build image
-  run: make docker-build
-- name: Run containerized tests
-  run: make docker-test
-```
-
-Best practices & tips
---------------------
-- Keep secrets out of version control — use `.env.example` and platform secrets.
-- Use the Makefile targets rather than raw docker compose commands for
-  consistent behavior across environments.
-- MacOS performance:
-  - Avoid mounting extremely large directories into containers.
-  - Mount only `src/` and `config/` for dev, or use a named volume for data.
-- Use multi-stage builds to minimize final image size and speed up CI rebuilds.
-- Use `tini` or equivalent as PID 1 in the final image to handle signals.
+Volumes:
+- Named volumes are defined in the base compose: `neo4j_data`, `neo4j_logs`, `neo4j_import`, `reports`, `logs`, `data`, `config`, `metrics`.
+- Dev overlay replaces the named volumes with host bind mounts for `src`, `config`, `data`, `logs` to make development easier.
+- On macOS, heavy bind mounts for very large data may be slow; prefer a named volume for large datasets.
 
 Troubleshooting checklist
 -------------------------
-If something fails to start:
-1. Check container logs: `make docker-logs SERVICE=app`
-2. Inspect progress file for profiler or service health (if applicable):
-   The profiler and entrypoints emit clear startup logging and progress messages.
-3. Verify `.env` contains `NEO4J_USER/NEO4J_PASSWORD` and `SBIR_ETL__NEO4J__...`
-4. For webserver failures, curl the health endpoint from host:
-```/dev/null/example.commands#L40-46
-curl http://localhost:3000/server_info
-```
-5. If Neo4j fails to start, check `neo4j_logs` volume and container logs for
-   JVM or plugin errors.
-6. If containerized tests fail, run `docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up` and inspect the test container logs.
+If a service fails to start or tests are flaky:
 
-Next steps & recommended milestones
-----------------------------------
-- Milestone 1 (done): `.env.example`, Compose secrets replaced, wait-for script.
-- Milestone 2: Add multi-stage Dockerfile + entrypoint integration (if not yet present).
-- Milestone 3: Add `docker/docker-compose.dev.yml` and `docker/docker-compose.test.yml`.
-- Milestone 4: Add CI job to build and test image in container.
+1. Check container logs:
+```/dev/null/example.commands#L39-46
+# Tail logs for a service (example service: dagster-webserver)
+make docker-logs SERVICE=dagster-webserver
+# or
+docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml logs -f dagster-webserver
+```
+
+2. Check health & progress files:
+- The profiler scripts and entrypoints write progress/diagnostic messages to `reports/` and `logs/`. Inspect `reports/progress/` for in-progress profiling state when streaming large dumps.
+
+3. Ensure `.env` is present and contains expected credentials:
+```/dev/null/example.commands#L47-52
+cp .env.example .env
+# Edit .env and set NEO4J_PASSWORD and other secrets for local dev
+```
+
+4. If Neo4j fails to respond:
+- Inspect the Neo4j container logs and the `neo4j_logs` volume for JVM errors or plugin problems.
+- Ensure the `NEO4J_AUTH` environment is set correctly (or `NEO4J_USER`/`NEO4J_PASSWORD` are provided).
+
+5. If tests inside the container fail:
+- Run the test compose locally (`make docker-test`) and inspect the `app` container logs produced during the test run.
+- Ensure the `app` image used by the test overlay contains the repository code/artifacts (CI build must produce the image with the source studied by tests).
+
+6. Profiling / performance:
+- Use `py-spy` against the running Python PID to collect a flamegraph if CPU is tied up (install locally).
+- Use `tracemalloc` or the repository's `performance_monitor` utilities to export metrics to `reports/performance_metrics.json`.
+
+Links / README references
+------------------------
+- Top-level README: reference instructions for local dev and for working with code.
+- Makefile: use `make docker-build`, `make docker-up-dev`, `make docker-test`, `make docker-down`.
+- Config reference: `config/docker.yaml` (defaults & notes).
+- Entrypoint & scripts: `sbir-etl/scripts/docker/entrypoint.sh` and `sbir-etl/scripts/docker/wait-for-service.sh`.
+- CI helpers: `scripts/ci/build_container.sh` and `.github/workflows/container-ci.yml`.
+
+Recommended next steps for teams
+-------------------------------
+- Keep `.env.example` up-to-date with any new required environment variables and document their purpose.
+- Use the `docker/docker-compose.test.yml` overlay in CI so the same image that passes tests is what is promoted for publishing.
+- Run containerized tests regularly in CI and upload container logs/artifacts if failures occur to aid debugging.
+- Consider adding a scheduled performance job (nightly) that runs slow benchmarks in an isolated environment rather than blocking the main CI pipeline.
 
 If you want, I can:
-- Create the Compose overlays and CI workflow skeleton.
-- Add the multi-stage `Dockerfile` and finalize entrypoint integration.
-- Add a short troubleshooting checklist specific to Neo4j plugin/version issues.
+- Add sample debug commands to this doc that target a specific failing service.
+- Produce a short runbook that automates log collection and packaging for sharing with teammates.
+- Add a small checklist for onboarding new contributors to use the container workflow.
 
-Contact / reference
--------------------
-- Entrypoint: `sbir-etl/scripts/docker/entrypoint.sh`
-- Health wait helper: `sbir-etl/scripts/docker/wait-for-service.sh`
-- Make helpers: `Makefile`
-- Compose file: `docker-compose.yml` (base)
-
-End of containerization guide.
+End of document.

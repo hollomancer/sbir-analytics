@@ -132,7 +132,11 @@ The pipeline uses USAspending data for SBIR award enrichment and technology tran
 - Poetry (for dependency management)
 - Docker and Docker Compose (for local development)
 
-### Setup
+### Recommended workflows
+
+This project supports two primary development workflows: a local Python-based workflow (Poetry + local services) and a containerized workflow (Docker Compose). Use the containerized workflow for consistent dev/test environments and for CI parity; use the local Python workflow when iterating on quick code changes without rebuilding images.
+
+### Local (Poetry) Setup
 
 1. **Clone and install dependencies:**
    ```bash
@@ -152,15 +156,66 @@ The pipeline uses USAspending data for SBIR award enrichment and technology tran
    # Edit local.yaml with your settings
    ```
 
-4. **Start local services:**
+4. **Start local services (if using Docker for services):**
    ```bash
    docker-compose up -d
    ```
 
-5. **Run the pipeline:**
+5. **Run the pipeline (Dagster dev):**
    ```bash
    poetry run dagster dev
    ```
+
+### Container quick-start (recommended)
+
+The repository provides Compose overlays and Makefile helpers to run the project inside containers for development and CI. See `docs/deployment/containerization.md` for full details.
+
+1. Copy the environment template and set local test credentials (do not commit `.env`):
+   ```bash
+   cp .env.example .env
+   # Edit .env and set NEO4J_USER / NEO4J_PASSWORD (local dev values)
+   ```
+
+2. Build the runtime image (multi-stage Dockerfile):
+   ```bash
+   make docker-build
+   # or use the CI-friendly build script:
+   ./scripts/ci/build_container.sh
+   ```
+
+3. Start the development stack (bind-mounts for live-editing):
+   ```bash
+   make docker-up-dev
+   # OR
+   docker compose --env-file .env --profile dev -f docker-compose.yml -f docker/docker-compose.dev.yml up --build
+   ```
+
+4. Run an ad-hoc ETL command inside the image:
+   ```bash
+   docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml run --rm etl-runner -- python -m src.scripts.run_some_job --arg value
+   ```
+
+5. Run containerized tests (ephemeral Neo4j + pytest inside the built image):
+   ```bash
+   make docker-test
+   # OR
+   docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build
+   ```
+
+6. Tail logs or exec into a running service:
+   ```bash
+   make docker-logs SERVICE=dagster-webserver
+   make docker-exec SERVICE=dagster-webserver CMD="sh"
+   # Dagster UI should be available at http://localhost:3000 by default
+   ```
+
+### Configuration and docs
+
+- Use `config/docker.yaml` for non-sensitive container defaults. Do not store secrets in config files.
+- The entrypoint scripts load `.env` and `/run/secrets/*` and will wait for Neo4j and Dagster web to be healthy before starting services.
+- For full operational details, healthcheck semantics, and troubleshooting steps, see:
+  `docs/deployment/containerization.md`
+
 
 ## Configuration
 

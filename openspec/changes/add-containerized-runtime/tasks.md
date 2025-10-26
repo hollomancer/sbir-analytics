@@ -36,7 +36,8 @@ code
   - Notes: Implemented `docker/docker-compose.dev.yml` which provides developer-friendly bind-mounts for `src`, `config`, `data`, `logs`, and `reports`. The compose file supports a `dev` profile and the runtime entrypoint honors an `ENABLE_WATCHFILES` environment flag to enable hot-reload behavior for local development.
 - [x] 3.4 Add `docker/docker-compose.test.yml` that runs `pytest` inside the container with an ephemeral Neo4j instance for CI.
   - Notes: Implemented `docker/docker-compose.test.yml` which defines an ephemeral Neo4j service and an `app` test service that runs `pytest` using the built image. The compose file is intended for CI usage and references the `sbir-etl:ci-${GITHUB_SHA}` image produced by the CI build script. Verified basic behavior via the Makefile `docker-test` target.
-- [ ] 3.5 Configure `depends_on` with `condition: service_healthy` and add HTTP/Bolt health checks for each service.
+- [x] 3.5 Configure `depends_on` with `condition: service_healthy` and add HTTP/Bolt health checks for each service.
+  - Notes: Health checks and `depends_on` gating were added to the base and overlay compose files. Neo4j, Dagster webserver, and daemon services include lightweight healthchecks (cypher-shell for Neo4j, HTTP /server_info for Dagster) and start-up sequencing via `depends_on: condition: service_healthy`. Entrypoint wait-for semantics remain as a fallback for environments where `depends_on.condition` isn't supported.
 - [x] 3.6 Document compose targets via `Makefile` (`make docker-up`, `make docker-down`, `make docker-test`).
   - Notes: Added Makefile targets to support building, bringing up the dev stack, running containerized tests, tearing down stacks, and tailing logs. See top-level `Makefile` for `docker-build`, `docker-up-dev`, `docker-test`, `docker-down`, and helper targets.
 
@@ -44,8 +45,10 @@ code
 
 - [x] 4.1 Create `.env.example` describing required variables (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `SBIR_ETL__...`) and add `.env` to `.gitignore`.
   - Notes: `.env.example` added; developers should copy to `.env` and supply safe values. `.env` is in `.gitignore`.
-- [ ] 4.2 Add `config/docker.yaml` with container-specific defaults (service hostnames, volume paths, Dagster UI URL) and document how to select it via `ENVIRONMENT=docker`.
-- [ ] 4.3 Update `config/README.md` with a “Containerized environments” section covering override order and secret injection guidelines.
+- [x] 4.2 Add `config/docker.yaml` with container-specific defaults (service hostnames, volume paths, Dagster UI URL) and document how to select it via `ENVIRONMENT=docker`.
+  - Notes: Implemented `config/docker.yaml` containing conservative defaults for image naming, registry hints, Neo4j and Dagster defaults, named volumes, and CI helper paths. The file is advisory (no secrets) and is referenced from docs and helper scripts.
+- [x] 4.3 Update `config/README.md` with a “Containerized environments” section covering override order and secret injection guidelines.
+  - Notes: `config/README.md` updated with container-focused guidance: override precedence (env > .env > YAML), secret mounting conventions, recommended Makefile workflows, and CI hints referencing `scripts/ci/build_container.sh`.
 - [x] 4.4 Ensure compose files and entrypoints only reference `${VARIABLE}` sourced from `.env` or exported environment (no hardcoded credentials).
   - Notes: `docker-compose.yml` updated to use environment variables (no hardcoded passwords). Entrypoints read `.env` and `/run/secrets`.
 
@@ -63,8 +66,11 @@ code
 
 - [x] 6.1 Create `docs/deployment/containerization.md` covering architecture diagrams, compose profiles, data volume expectations, troubleshooting, and registry workflow.
   - Notes: Documentation added with quick-start, troubleshooting checklist, and recommended workflows for dev/test/prod.
-- [ ] 6.2 Update `README.md` with a concise “Container quick start” referencing the new docs and Make targets.
-- [ ] 6.3 Provide onboarding notes in `CONTRIBUTING.md` explaining when to use the container vs. local Python install.
-- [ ] 6.4 Include screenshots or CLI snippets showing `docker compose ps` / `dagster` UI access to ensure new contributors know how to verify their setup.
+- [x] 6.2 Update `README.md` with a concise “Container quick start” referencing the new docs and Make targets.
+  - Notes: `README.md` updated to include a short container quick-start that points to `docs/deployment/containerization.md` and the Makefile targets (`make docker-build`, `make docker-up-dev`, `make docker-test`).
+- [x] 6.3 Provide onboarding notes in `CONTRIBUTING.md` explaining when to use the container vs. local Python install.
+  - Notes: `CONTRIBUTING.md` updated with onboarding guidance: when to prefer the containerized workflow, how to prepare `.env`, and links to the dev/test compose overlays.
+- [x] 6.4 Include screenshots or CLI snippets showing `docker compose ps` / `dagster` UI access to ensure new contributors know how to verify their setup.
+  - Notes: Added CLI snippets and example commands to `docs/deployment/containerization.md` and `README.md`. Screenshots may be added later as assets, but the runbook now includes exact commands to verify `docker compose ps` and access Dagster UI on `localhost:3000`.
 
 

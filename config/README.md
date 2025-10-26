@@ -88,6 +88,33 @@ The environment is determined by:
 2. `SBIR_ETL__PIPELINE__ENVIRONMENT` environment variable
 3. Defaults to `"development"`
 
+## Containerized Environments
+
+The project supports running inside Docker Compose for local development, CI, and production-like testing. When operating in containerized environments, follow these guidelines:
+
+- Override precedence: environment variables (highest) > `.env` (local overrides) > YAML config files (`config/*.yaml`).
+- Do not store secrets in YAML or in the repository. Use environment variables, `.env` (local and gitignored), or mounted secret files (e.g., `/run/secrets/NEO4J_PASSWORD`) for secret values.
+- Reference the provided Compose overlays:
+  - Base compose: `docker-compose.yml`
+  - Dev overlay (bind-mounts, hot-reload): `docker/docker-compose.dev.yml`
+  - Test overlay (ephemeral services for CI): `docker/docker-compose.test.yml`
+- Use the Makefile helpers rather than raw compose commands:
+  - `make docker-build` — build the image locally
+  - `make docker-up-dev` — start the dev stack (bind mounts, watch/reload)
+  - `make docker-test` — run containerized tests using the CI test overlay
+  - `make docker-down` — tear down running compose stacks
+- Use `config/docker.yaml` for non-sensitive defaults and CI hints; do not include credentials in this file.
+- Entrypoint scripts (`sbir-etl/scripts/docker/entrypoint.sh`) will attempt to load `.env` and `/run/secrets/*` and will wait for dependencies (Neo4j, Dagster web) before starting services — the entrypoint provides a robust fallback even when `depends_on.condition` is not supported by the environment.
+
+Recommended workflow (local)
+1. Copy `.env.example` -> `.env` and set local test credentials (do not commit `.env`)
+2. Build the image: `make docker-build`
+3. Start dev stack: `make docker-up-dev` (or run compose with dev overlay)
+4. Run ad-hoc commands inside the image via `docker compose run --rm etl-runner -- <cmd>` or use `make docker-exec`
+
+CI guidance
+- CI should build the image (using Buildx/cache), run `docker/docker-compose.test.yml` to execute tests inside the built image, and only push artifacts to a registry when tests pass. See `scripts/ci/build_container.sh` and `.github/workflows/container-ci.yml` for examples.
+
 ## Validation
 
 Configuration is automatically validated when loaded. Invalid configuration will raise a `ConfigurationError` with details about what's wrong.
