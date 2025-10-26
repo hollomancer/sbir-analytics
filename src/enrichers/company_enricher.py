@@ -181,6 +181,22 @@ def enrich_awards_with_companies(
       - match metadata columns in the awards DataFrame:
         `_matched_company_idx`, `_match_score`, `_match_method`, optionally `_match_candidates`
     """
+    # Fallback detection for common header name synonyms.
+    # If the caller provided a column name that is not present, attempt to locate
+    # a reasonable alternative in the provided DataFrames.
+    if award_company_col not in awards_df.columns:
+        for cand in ("Company", "company", "Company Name"):
+            if cand in awards_df.columns:
+                award_company_col = cand
+                break
+
+    if company_name_col not in companies_df.columns:
+        for cand in ("Company Name", "company", "Company"):
+            if cand in companies_df.columns:
+                company_name_col = cand
+                break
+
+    # If either column is still missing after attempted fallbacks, raise a clear error.
     if award_company_col not in awards_df.columns:
         raise KeyError(f"award_company_col '{award_company_col}' not in awards_df")
     if company_name_col not in companies_df.columns:
@@ -189,6 +205,49 @@ def enrich_awards_with_companies(
     # Defensive copies
     awards = awards_df.copy()
     companies = companies_df.copy()
+
+    # Create canonical company/name and company_url columns to smooth differences
+    # between various CSV header names ("Company" vs "Company Name",
+    # "Company Website" vs "Company URL").
+    # Award-side canonical company column
+    if "company" not in awards.columns:
+        if award_company_col in awards.columns:
+            awards["company"] = awards[award_company_col].astype(str)
+        else:
+            awards["company"] = ""
+
+    # Company-side canonical company column
+    if "company" not in companies.columns:
+        if company_name_col in companies.columns:
+            companies["company"] = companies[company_name_col].astype(str)
+        else:
+            # fallback to first available column
+            companies["company"] = (
+                companies.iloc[:, 0].astype(str) if len(companies.columns) > 0 else ""
+            )
+
+    # Canonical company URL column detection + normalization
+    if "company_url" not in awards.columns:
+        for cand in ("Company Website", "Company URL", "company_website", "company url"):
+            if cand in awards.columns:
+                awards["company_url"] = awards[cand].replace("", pd.NA)
+                break
+        else:
+            awards["company_url"] = pd.NA
+
+    if "company_url" not in companies.columns:
+        for cand in ("Company URL", "Company Website", "company_website", "company url"):
+            if cand in companies.columns:
+                companies["company_url"] = companies[cand].replace("", pd.NA)
+                break
+        else:
+            companies["company_url"] = pd.NA
+
+    # Add normalized name helpers (used for blocking / matching later)
+    if "_norm_name" not in companies.columns:
+        companies["_norm_name"] = companies["company"].astype(str).map(normalize_company_name)
+    if "_norm_name" not in awards.columns:
+        awards["_norm_name"] = awards["company"].astype(str).map(normalize_company_name)
 
     # Build indexes
     idx = _build_company_indexes(

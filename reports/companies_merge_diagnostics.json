@@ -1,0 +1,11 @@
+{
+  "total_input_rows": 19444,
+  "unique_by_uei": 9347,
+  "unique_by_duns": 3848,
+  "leftover_rows": 6249,
+  "canonical_count": 19442,
+  "sources": {
+    "company_search_1761473678.csv": 9929,
+    "company_search_1761473980.csv": 9515
+  }
+}
