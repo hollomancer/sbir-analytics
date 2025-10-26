@@ -2,7 +2,7 @@
   "file": "data/raw/uspto/documentid_admin.dta",
   "sample_rows": 100,
   "approx_total_rows": null,
-  "analyzed_at": "2025-10-26T20:56:35.705038Z",
+  "analyzed_at": "2025-10-26T20:59:12.551313Z",
   "columns": {
     "rf_id": {
       "dtype": "int32",

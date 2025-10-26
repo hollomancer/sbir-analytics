@@ -2,7 +2,7 @@
   "file": "data/raw/uspto/documentid.dta",
   "sample_rows": 100,
   "approx_total_rows": null,
-  "analyzed_at": "2025-10-26T20:56:35.689348Z",
+  "analyzed_at": "2025-10-26T20:59:12.519332Z",
   "columns": {
     "rf_id": {
       "dtype": "int32",
@@ -109,4 +109,226 @@
       "nonnull_fraction": 0.68,
       "unique_values": 61,
       "top_values": {
-        
+        "1979-02-01 00:00:00": 2,
+        "1980-06-27 00:00:00": 2,
+        "1979-03-02 00:00:00": 2,
+        "1979-04-03 00:00:00": 2,
+        "1978-11-14 00:00:00": 2
+      }
+    },
+    "appno_country": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "US": 100
+      },
+      "min_len": 2,
+      "max_len": 2,
+      "sample_values": [
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US"
+      ]
+    },
+    "pgpub_doc_num": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "": 100
+      },
+      "min_len": 0,
+      "max_len": 0,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "pgpub_date": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 0,
+      "null_count": 100,
+      "nonnull_fraction": 0.0,
+      "unique_values": 0,
+      "top_values": {}
+    },
+    "pgpub_country": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "": 100
+      },
+      "min_len": 0,
+      "max_len": 0,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "grant_doc_num": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 99,
+      "top_values": {
+        "4239098": 2,
+        "5858003": 1,
+        "4251495": 1,
+        "3367898": 1,
+        "2967800": 1
+      },
+      "min_len": 7,
+      "max_len": 7,
+      "sample_values": [
+        "5858003",
+        "4149772",
+        "3936602",
+        "4131690",
+        "D244456",
+        "D244831",
+        "D244454",
+        "4497695",
+        "3969721",
+        "3931566"
+      ]
+    },
+    "grant_date": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 67,
+      "null_count": 33,
+      "nonnull_fraction": 0.67,
+      "unique_values": 43,
+      "top_values": {
+        "1980-12-16 00:00:00": 5,
+        "1980-12-09 00:00:00": 5,
+        "1981-02-17 00:00:00": 4,
+        "1980-12-23 00:00:00": 4,
+        "1980-12-30 00:00:00": 4
+      }
+    },
+    "grant_country": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "US": 100
+      },
+      "min_len": 2,
+      "max_len": 2,
+      "sample_values": [
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US",
+        "US"
+      ]
+    }
+  },
+  "key_candidates": [
+    "appno_doc_num",
+    "grant_doc_num"
+  ],
+  "present_common_field_names": [
+    "rf_id",
+    "grant_doc_num"
+  ],
+  "duplicate_estimates": [
+    {
+      "column": "appno_doc_num",
+      "duplicate_fraction": 0.01
+    },
+    {
+      "column": "grant_doc_num",
+      "duplicate_fraction": 0.01
+    }
+  ],
+  "coverage_summary": {
+    "rf_id": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 65
+    },
+    "title": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 68
+    },
+    "lang": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 2
+    },
+    "appno_doc_num": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 99
+    },
+    "appno_date": {
+      "nonnull_fraction": 0.68,
+      "unique_count": 61
+    },
+    "appno_country": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "pgpub_doc_num": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "pgpub_date": {
+      "nonnull_fraction": 0.0,
+      "unique_count": 0
+    },
+    "pgpub_country": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "grant_doc_num": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 99
+    },
+    "grant_date": {
+      "nonnull_fraction": 0.67,
+      "unique_count": 43
+    },
+    "grant_country": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    }
+  }
+}

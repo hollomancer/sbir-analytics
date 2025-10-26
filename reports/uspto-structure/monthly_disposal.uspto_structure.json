@@ -2,7 +2,7 @@
   "file": "data/raw/uspto/monthly_disposal.dta",
   "sample_rows": 100,
   "approx_total_rows": null,
-  "analyzed_at": "2025-10-26T20:56:35.883240Z",
+  "analyzed_at": "2025-10-26T20:59:12.896961Z",
   "columns": {
     "appl_month": {
       "dtype": "datetime64[ns]",
@@ -11,4 +11,3058 @@
       "nonnull_fraction": 1.0,
       "unique_values": 1,
       "top_values": {
-        
+        "1981-01-01 00:00:00": 100
+      }
+    },
+    "calendar_month": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 100,
+      "top_values": {
+        "1981-01-01 00:00:00": 1,
+        "1986-04-01 00:00:00": 1,
+        "1987-02-01 00:00:00": 1,
+        "1987-01-01 00:00:00": 1,
+        "1986-12-01 00:00:00": 1
+      }
+    },
+    "months_since_filing": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 100,
+      "top_values": {
+        "0": 1,
+        "63": 1,
+        "73": 1,
+        "72": 1,
+        "71": 1
+      },
+      "min": 0.0,
+      "max": 99.0,
+      "mean": 49.5
+    },
+    "nber11_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "0": 42,
+        "2": 7,
+        "71": 7,
+        "6": 3,
+        "7": 3
+      },
+      "min": 0.0,
+      "max": 71.0,
+      "mean": 17.54
+    },
+    "nber12_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "0": 41,
+        "1": 6,
+        "122": 6,
+        "3": 5,
+        "7": 4
+      },
+      "min": 0.0,
+      "max": 122.0,
+      "mean": 26.79
+    },
+    "nber13_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "0": 45,
+        "1": 8,
+        "58": 7,
+        "57": 5,
+        "8": 4
+      },
+      "min": 0.0,
+      "max": 58.0,
+      "mean": 12.99
+    },
+    "nber14_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 54,
+      "top_values": {
+        "2": 13,
+        "3": 11,
+        "265": 7,
+        "5": 5,
+        "264": 3
+      },
+      "min": 2.0,
+      "max": 265.0,
+      "mean": 68.19
+    },
+    "nber15_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 41,
+      "top_values": {
+        "0": 26,
+        "196": 9,
+        "2": 8,
+        "3": 7,
+        "1": 6
+      },
+      "min": 0.0,
+      "max": 196.0,
+      "mean": 44.71
+    },
+    "nber19_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 66,
+      "top_values": {
+        "2": 14,
+        "5": 6,
+        "957": 4,
+        "1": 4,
+        "3": 3
+      },
+      "min": 0.0,
+      "max": 958.0,
+      "mean": 231.5
+    },
+    "nber21_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 43,
+      "top_values": {
+        "6": 15,
+        "8": 15,
+        "12": 10,
+        "251": 10,
+        "11": 6
+      },
+      "min": 6.0,
+      "max": 251.0,
+      "mean": 74.56
+    },
+    "nber22_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 36,
+      "top_values": {
+        "1": 34,
+        "2": 15,
+        "139": 12,
+        "3": 3,
+        "4": 3
+      },
+      "min": 1.0,
+      "max": 139.0,
+      "mean": 40.28
+    },
+    "nber23_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 21,
+      "top_values": {
+        "1": 30,
+        "0": 28,
+        "39": 13,
+        "36": 5,
+        "3": 5
+      },
+      "min": 0.0,
+      "max": 39.0,
+      "mean": 11.53
+    },
+    "nber24_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 31,
+      "top_values": {
+        "0": 48,
+        "89": 12,
+        "1": 4,
+        "88": 4,
+        "87": 2
+      },
+      "min": 0.0,
+      "max": 89.0,
+      "mean": 25.62
+    },
+    "nber25_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 6,
+      "top_values": {
+        "0": 56,
+        "6": 29,
+        "1": 8,
+        "2": 5,
+        "5": 1
+      },
+      "min": 0.0,
+      "max": 6.0,
+      "mean": 2.0
+    },
+    "nber31_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 47,
+      "top_values": {
+        "3": 15,
+        "5": 14,
+        "2": 7,
+        "12": 5,
+        "6": 5
+      },
+      "min": 2.0,
+      "max": 300.0,
+      "mean": 73.74
+    },
+    "nber32_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 38,
+      "top_values": {
+        "0": 25,
+        "125": 13,
+        "2": 9,
+        "6": 8,
+        "10": 4
+      },
+      "min": 0.0,
+      "max": 125.0,
+      "mean": 34.42
+    },
+    "nber33_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber39_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 24,
+      "top_values": {
+        "1": 28,
+        "35": 16,
+        "2": 14,
+        "5": 8,
+        "3": 7
+      },
+      "min": 1.0,
+      "max": 35.0,
+      "mean": 11.11
+    },
+    "nber41_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 38,
+      "top_values": {
+        "0": 19,
+        "1": 18,
+        "3": 9,
+        "173": 7,
+        "2": 6
+      },
+      "min": 0.0,
+      "max": 174.0,
+      "mean": 45.12
+    },
+    "nber42_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "0": 28,
+        "2": 26,
+        "80": 9,
+        "1": 5,
+        "79": 4
+      },
+      "min": 0.0,
+      "max": 80.0,
+      "mean": 22.04
+    },
+    "nber43_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "0": 21,
+        "1": 14,
+        "2": 12,
+        "184": 10,
+        "183": 6
+      },
+      "min": 0.0,
+      "max": 184.0,
+      "mean": 50.8
+    },
+    "nber44_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "2": 25,
+        "0": 18,
+        "104": 13,
+        "1": 9,
+        "10": 3
+      },
+      "min": 0.0,
+      "max": 104.0,
+      "mean": 31.6
+    },
+    "nber45_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 42,
+      "top_values": {
+        "0": 24,
+        "1": 12,
+        "264": 8,
+        "3": 6,
+        "5": 4
+      },
+      "min": 0.0,
+      "max": 264.0,
+      "mean": 68.02
+    },
+    "nber46_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "0": 47,
+        "50": 14,
+        "45": 4,
+        "2": 4,
+        "7": 4
+      },
+      "min": 0.0,
+      "max": 50.0,
+      "mean": 15.65
+    },
+    "nber49_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 40,
+      "top_values": {
+        "0": 34,
+        "2": 16,
+        "186": 8,
+        "185": 3,
+        "180": 2
+      },
+      "min": 0.0,
+      "max": 186.0,
+      "mean": 50.14
+    },
+    "nber51_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 53,
+      "top_values": {
+        "0": 15,
+        "9": 10,
+        "444": 7,
+        "3": 6,
+        "12": 4
+      },
+      "min": 0.0,
+      "max": 444.0,
+      "mean": 114.74
+    },
+    "nber52_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 43,
+      "top_values": {
+        "0": 15,
+        "1": 10,
+        "265": 8,
+        "5": 7,
+        "10": 5
+      },
+      "min": 0.0,
+      "max": 265.0,
+      "mean": 72.91
+    },
+    "nber53_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 50,
+      "top_values": {
+        "2": 14,
+        "4": 11,
+        "325": 8,
+        "12": 7,
+        "5": 6
+      },
+      "min": 2.0,
+      "max": 326.0,
+      "mean": 96.41
+    },
+    "nber54_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "2": 30,
+        "0": 20,
+        "1": 14,
+        "62": 12,
+        "36": 2
+      },
+      "min": 0.0,
+      "max": 62.0,
+      "mean": 17.2
+    },
+    "nber55_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "0": 20,
+        "2": 19,
+        "4": 6,
+        "6": 6,
+        "243": 5
+      },
+      "min": 0.0,
+      "max": 244.0,
+      "mean": 64.61
+    },
+    "nber59_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 52,
+      "top_values": {
+        "19": 13,
+        "5": 12,
+        "387": 7,
+        "2": 7,
+        "4": 4
+      },
+      "min": 2.0,
+      "max": 387.0,
+      "mean": 110.22
+    },
+    "nber61_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "0": 25,
+        "206": 10,
+        "2": 8,
+        "3": 8,
+        "5": 5
+      },
+      "min": 0.0,
+      "max": 206.0,
+      "mean": 47.17
+    },
+    "nber62_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "0": 28,
+        "1": 27,
+        "84": 8,
+        "3": 5,
+        "82": 2
+      },
+      "min": 0.0,
+      "max": 84.0,
+      "mean": 20.19
+    },
+    "nber63_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 36,
+      "top_values": {
+        "0": 34,
+        "4": 15,
+        "154": 12,
+        "2": 6,
+        "8": 2
+      },
+      "min": 0.0,
+      "max": 154.0,
+      "mean": 42.14
+    },
+    "nber64_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 34,
+      "top_values": {
+        "0": 29,
+        "2": 13,
+        "115": 9,
+        "4": 7,
+        "114": 5
+      },
+      "min": 0.0,
+      "max": 115.0,
+      "mean": 31.86
+    },
+    "nber65_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "0": 45,
+        "152": 8,
+        "1": 6,
+        "3": 6,
+        "5": 4
+      },
+      "min": 0.0,
+      "max": 152.0,
+      "mean": 39.57
+    },
+    "nber66_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 37,
+      "top_values": {
+        "0": 34,
+        "162": 10,
+        "6": 6,
+        "3": 5,
+        "4": 5
+      },
+      "min": 0.0,
+      "max": 162.0,
+      "mean": 42.04
+    },
+    "nber67_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "2": 24,
+        "0": 20,
+        "61": 10,
+        "1": 8,
+        "4": 7
+      },
+      "min": 0.0,
+      "max": 61.0,
+      "mean": 17.34
+    },
+    "nber68_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 37,
+      "top_values": {
+        "0": 18,
+        "138": 11,
+        "2": 10,
+        "7": 9,
+        "1": 8
+      },
+      "min": 0.0,
+      "max": 138.0,
+      "mean": 34.5
+    },
+    "nber69_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 55,
+      "top_values": {
+        "2": 12,
+        "3": 12,
+        "8": 9,
+        "734": 7,
+        "6": 5
+      },
+      "min": 2.0,
+      "max": 734.0,
+      "mean": 185.92
+    },
+    "nber70_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "0": 43,
+        "3": 19,
+        "25": 12,
+        "21": 3,
+        "16": 3
+      },
+      "min": 0.0,
+      "max": 25.0,
+      "mean": 6.72
+    },
+    "nber80_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "10": 16,
+        "2": 12,
+        "0": 10,
+        "1": 10,
+        "177": 9
+      },
+      "min": 0.0,
+      "max": 177.0,
+      "mean": 47.71
+    },
+    "total_pen": {
+      "dtype": "float32",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 91,
+      "top_values": {
+        "19.0": 4,
+        "22.0": 3,
+        "7432.0": 2,
+        "34.0": 2,
+        "24.0": 2
+      },
+      "min": 18.0,
+      "max": 7432.0,
+      "mean": 1949.5999755859375
+    },
+    "nber1_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 72,
+      "top_values": {
+        "4": 7,
+        "5": 7,
+        "1669": 4,
+        "3": 4,
+        "11": 4
+      },
+      "min": 2.0,
+      "max": 1670.0,
+      "mean": 401.72
+    },
+    "nber2_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 50,
+      "top_values": {
+        "7": 15,
+        "9": 12,
+        "524": 10,
+        "15": 7,
+        "14": 6
+      },
+      "min": 7.0,
+      "max": 524.0,
+      "mean": 153.99
+    },
+    "nber3_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 56,
+      "top_values": {
+        "4": 15,
+        "3": 7,
+        "9": 7,
+        "460": 5,
+        "20": 4
+      },
+      "min": 3.0,
+      "max": 460.0,
+      "mean": 119.27
+    },
+    "nber4_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 61,
+      "top_values": {
+        "0": 18,
+        "1041": 5,
+        "6": 5,
+        "13": 4,
+        "3": 3
+      },
+      "min": 0.0,
+      "max": 1042.0,
+      "mean": 283.37
+    },
+    "nber5_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 76,
+      "top_values": {
+        "4": 7,
+        "15": 4,
+        "6": 4,
+        "5": 3,
+        "1728": 3
+      },
+      "min": 4.0,
+      "max": 1728.0,
+      "mean": 476.09
+    },
+    "nber6_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 68,
+      "top_values": {
+        "2": 12,
+        "1806": 7,
+        "3": 6,
+        "5": 4,
+        "24": 3
+      },
+      "min": 2.0,
+      "max": 1806.0,
+      "mean": 460.73
+    },
+    "nber7_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "0": 43,
+        "3": 19,
+        "25": 12,
+        "21": 3,
+        "16": 3
+      },
+      "min": 0.0,
+      "max": 25.0,
+      "mean": 6.72
+    },
+    "nber8_pen": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "10": 16,
+        "2": 12,
+        "0": 10,
+        "1": 10,
+        "177": 9
+      },
+      "min": 0.0,
+      "max": 177.0,
+      "mean": 47.71
+    },
+    "nber11_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "37": 43,
+        "36": 9,
+        "0": 8,
+        "34": 6,
+        "25": 4
+      },
+      "min": 0.0,
+      "max": 37.0,
+      "mean": 27.99
+    },
+    "nber12_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "68": 48,
+        "0": 11,
+        "67": 5,
+        "66": 5,
+        "64": 4
+      },
+      "min": 0.0,
+      "max": 68.0,
+      "mean": 52.56
+    },
+    "nber13_iss": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 15,
+      "top_values": {
+        "29": 60,
+        "0": 15,
+        "26": 6,
+        "25": 3,
+        "28": 3
+      },
+      "min": 0.0,
+      "max": 29.0,
+      "mean": 22.6
+    },
+    "nber14_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 48,
+      "top_values": {
+        "178": 13,
+        "177": 13,
+        "0": 11,
+        "176": 5,
+        "174": 3
+      },
+      "min": 0.0,
+      "max": 178.0,
+      "mean": 132.98
+    },
+    "nber15_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 33,
+      "top_values": {
+        "146": 32,
+        "144": 13,
+        "0": 9,
+        "145": 8,
+        "141": 6
+      },
+      "min": 0.0,
+      "max": 146.0,
+      "mean": 113.29
+    },
+    "nber19_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 50,
+      "top_values": {
+        "503": 23,
+        "0": 8,
+        "502": 7,
+        "499": 6,
+        "498": 4
+      },
+      "min": 0.0,
+      "max": 503.0,
+      "mean": 382.09
+    },
+    "nber21_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 38,
+      "top_values": {
+        "188": 19,
+        "187": 16,
+        "190": 15,
+        "0": 10,
+        "184": 4
+      },
+      "min": 0.0,
+      "max": 190.0,
+      "mean": 135.01
+    },
+    "nber22_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 34,
+      "top_values": {
+        "107": 49,
+        "0": 12,
+        "106": 3,
+        "105": 3,
+        "100": 3
+      },
+      "min": 0.0,
+      "max": 107.0,
+      "mean": 77.54
+    },
+    "nber23_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "34": 30,
+        "35": 28,
+        "0": 22,
+        "32": 5,
+        "30": 2
+      },
+      "min": 0.0,
+      "max": 35.0,
+      "mean": 24.27
+    },
+    "nber24_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "69": 48,
+        "0": 18,
+        "68": 4,
+        "64": 3,
+        "67": 2
+      },
+      "min": 0.0,
+      "max": 69.0,
+      "mean": 48.14
+    },
+    "nber25_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 6,
+      "top_values": {
+        "6": 56,
+        "0": 29,
+        "5": 8,
+        "4": 5,
+        "1": 1
+      },
+      "min": 0.0,
+      "max": 6.0,
+      "mean": 4.0
+    },
+    "nber31_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 38,
+      "top_values": {
+        "180": 15,
+        "179": 14,
+        "0": 11,
+        "181": 7,
+        "178": 5
+      },
+      "min": 0.0,
+      "max": 181.0,
+      "mean": 136.6
+    },
+    "nber32_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "72": 25,
+        "68": 13,
+        "0": 13,
+        "70": 11,
+        "67": 4
+      },
+      "min": 0.0,
+      "max": 72.0,
+      "mean": 51.34
+    },
+    "nber33_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber39_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 22,
+      "top_values": {
+        "27": 28,
+        "26": 21,
+        "0": 16,
+        "24": 8,
+        "23": 3
+      },
+      "min": 0.0,
+      "max": 27.0,
+      "mean": 18.85
+    },
+    "nber41_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "139": 19,
+        "138": 18,
+        "137": 15,
+        "0": 10,
+        "2": 3
+      },
+      "min": 0.0,
+      "max": 139.0,
+      "mean": 101.57
+    },
+    "nber42_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 22,
+      "top_values": {
+        "49": 34,
+        "50": 28,
+        "0": 9,
+        "1": 4,
+        "6": 3
+      },
+      "min": 0.0,
+      "max": 50.0,
+      "mean": 36.16
+    },
+    "nber43_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "134": 47,
+        "0": 16,
+        "133": 3,
+        "130": 3,
+        "127": 3
+      },
+      "min": 0.0,
+      "max": 134.0,
+      "mean": 96.16
+    },
+    "nber44_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 30,
+      "top_values": {
+        "82": 25,
+        "84": 18,
+        "0": 15,
+        "83": 9,
+        "2": 3
+      },
+      "min": 0.0,
+      "max": 84.0,
+      "mean": 57.74
+    },
+    "nber45_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 36,
+      "top_values": {
+        "167": 24,
+        "164": 15,
+        "0": 13,
+        "166": 12,
+        "165": 3
+      },
+      "min": 0.0,
+      "max": 167.0,
+      "mean": 122.37
+    },
+    "nber46_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "48": 47,
+        "0": 14,
+        "5": 4,
+        "46": 4,
+        "41": 4
+      },
+      "min": 0.0,
+      "max": 48.0,
+      "mean": 33.02
+    },
+    "nber49_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "143": 34,
+        "142": 19,
+        "0": 11,
+        "1": 3,
+        "2": 2
+      },
+      "min": 0.0,
+      "max": 143.0,
+      "mean": 103.84
+    },
+    "nber51_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 38,
+      "top_values": {
+        "269": 27,
+        "273": 16,
+        "0": 11,
+        "272": 8,
+        "271": 4
+      },
+      "min": 0.0,
+      "max": 273.0,
+      "mean": 202.23
+    },
+    "nber52_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "156": 25,
+        "0": 14,
+        "153": 11,
+        "152": 11,
+        "155": 4
+      },
+      "min": 0.0,
+      "max": 156.0,
+      "mean": 112.31
+    },
+    "nber53_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 40,
+      "top_values": {
+        "198": 28,
+        "199": 14,
+        "0": 13,
+        "197": 4,
+        "194": 4
+      },
+      "min": 0.0,
+      "max": 199.0,
+      "mean": 139.46
+    },
+    "nber54_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 22,
+      "top_values": {
+        "53": 30,
+        "55": 20,
+        "0": 15,
+        "54": 14,
+        "2": 2
+      },
+      "min": 0.0,
+      "max": 55.0,
+      "mean": 38.83
+    },
+    "nber55_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 29,
+      "top_values": {
+        "143": 32,
+        "145": 20,
+        "0": 12,
+        "144": 4,
+        "136": 3
+      },
+      "min": 0.0,
+      "max": 145.0,
+      "mean": 103.24
+    },
+    "nber59_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 46,
+      "top_values": {
+        "212": 13,
+        "223": 12,
+        "0": 10,
+        "226": 7,
+        "221": 5
+      },
+      "min": 0.0,
+      "max": 226.0,
+      "mean": 157.32
+    },
+    "nber61_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 31,
+      "top_values": {
+        "109": 25,
+        "107": 16,
+        "106": 11,
+        "0": 11,
+        "108": 4
+      },
+      "min": 0.0,
+      "max": 109.0,
+      "mean": 82.3
+    },
+    "nber62_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 25,
+      "top_values": {
+        "49": 55,
+        "0": 11,
+        "48": 6,
+        "1": 3,
+        "47": 2
+      },
+      "min": 0.0,
+      "max": 49.0,
+      "mean": 37.12
+    },
+    "nber63_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "99": 42,
+        "98": 15,
+        "0": 12,
+        "94": 2,
+        "1": 2
+      },
+      "min": 0.0,
+      "max": 99.0,
+      "mean": 71.29
+    },
+    "nber64_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "92": 29,
+        "91": 14,
+        "0": 14,
+        "89": 7,
+        "90": 4
+      },
+      "min": 0.0,
+      "max": 92.0,
+      "mean": 66.03
+    },
+    "nber65_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "80": 45,
+        "0": 12,
+        "78": 7,
+        "79": 6,
+        "76": 4
+      },
+      "min": 0.0,
+      "max": 80.0,
+      "mean": 57.52
+    },
+    "nber66_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 32,
+      "top_values": {
+        "93": 34,
+        "0": 12,
+        "91": 10,
+        "92": 7,
+        "90": 6
+      },
+      "min": 0.0,
+      "max": 93.0,
+      "mean": 67.38
+    },
+    "nber67_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 25,
+      "top_values": {
+        "43": 24,
+        "45": 20,
+        "0": 10,
+        "41": 9,
+        "44": 8
+      },
+      "min": 0.0,
+      "max": 45.0,
+      "mean": 31.65
+    },
+    "nber68_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 31,
+      "top_values": {
+        "73": 26,
+        "72": 17,
+        "0": 11,
+        "71": 10,
+        "69": 7
+      },
+      "min": 0.0,
+      "max": 73.0,
+      "mean": 55.11
+    },
+    "nber69_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 46,
+      "top_values": {
+        "438": 15,
+        "441": 13,
+        "442": 12,
+        "0": 9,
+        "439": 6
+      },
+      "min": 0.0,
+      "max": 442.0,
+      "mean": 327.11
+    },
+    "nber70_iss": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber80_iss": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "total_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 81,
+      "top_values": {
+        "0": 8,
+        "4549": 7,
+        "4547": 3,
+        "4546": 2,
+        "4487": 2
+      },
+      "min": 0.0,
+      "max": 4549.0,
+      "mean": 3327.02
+    },
+    "nber1_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 61,
+      "top_values": {
+        "961": 13,
+        "960": 10,
+        "0": 8,
+        "958": 4,
+        "959": 3
+      },
+      "min": 0.0,
+      "max": 961.0,
+      "mean": 731.51
+    },
+    "nber2_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 45,
+      "top_values": {
+        "407": 15,
+        "403": 13,
+        "405": 12,
+        "0": 10,
+        "404": 7
+      },
+      "min": 0.0,
+      "max": 407.0,
+      "mean": 288.96
+    },
+    "nber3_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 49,
+      "top_values": {
+        "279": 15,
+        "0": 11,
+        "275": 8,
+        "280": 7,
+        "269": 5
+      },
+      "min": 0.0,
+      "max": 280.0,
+      "mean": 206.79
+    },
+    "nber4_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 53,
+      "top_values": {
+        "765": 18,
+        "0": 9,
+        "756": 8,
+        "760": 6,
+        "763": 5
+      },
+      "min": 0.0,
+      "max": 765.0,
+      "mean": 550.86
+    },
+    "nber5_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 61,
+      "top_values": {
+        "0": 10,
+        "1054": 7,
+        "1052": 4,
+        "1049": 4,
+        "1047": 4
+      },
+      "min": 0.0,
+      "max": 1054.0,
+      "mean": 753.39
+    },
+    "nber6_iss": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 57,
+      "top_values": {
+        "1082": 12,
+        "0": 9,
+        "1081": 8,
+        "1071": 7,
+        "1080": 5
+      },
+      "min": 0.0,
+      "max": 1082.0,
+      "mean": 795.51
+    },
+    "nber7_iss": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber8_iss": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber11_abn": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "34": 42,
+        "33": 8,
+        "0": 7,
+        "31": 5,
+        "30": 5
+      },
+      "min": 0.0,
+      "max": 34.0,
+      "mean": 25.47
+    },
+    "nber12_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "54": 41,
+        "51": 14,
+        "52": 8,
+        "53": 6,
+        "0": 6
+      },
+      "min": 0.0,
+      "max": 54.0,
+      "mean": 42.65
+    },
+    "nber13_abn": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 19,
+      "top_values": {
+        "29": 45,
+        "25": 8,
+        "28": 8,
+        "0": 7,
+        "1": 5
+      },
+      "min": 0.0,
+      "max": 29.0,
+      "mean": 22.41
+    },
+    "nber14_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 36,
+      "top_values": {
+        "85": 24,
+        "83": 13,
+        "84": 9,
+        "0": 7,
+        "70": 4
+      },
+      "min": 0.0,
+      "max": 85.0,
+      "mean": 63.83
+    },
+    "nber15_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "50": 26,
+        "49": 21,
+        "0": 10,
+        "48": 8,
+        "44": 3
+      },
+      "min": 0.0,
+      "max": 50.0,
+      "mean": 38.0
+    },
+    "nber19_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 58,
+      "top_values": {
+        "454": 14,
+        "452": 9,
+        "2": 4,
+        "455": 4,
+        "453": 4
+      },
+      "min": 1.0,
+      "max": 456.0,
+      "mean": 345.41
+    },
+    "nber21_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 21,
+      "top_values": {
+        "55": 31,
+        "52": 12,
+        "0": 12,
+        "53": 9,
+        "51": 9
+      },
+      "min": 0.0,
+      "max": 55.0,
+      "mean": 41.43
+    },
+    "nber22_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 21,
+      "top_values": {
+        "31": 34,
+        "30": 22,
+        "0": 12,
+        "1": 10,
+        "29": 4
+      },
+      "min": 0.0,
+      "max": 31.0,
+      "mean": 21.18
+    },
+    "nber23_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 5,
+      "top_values": {
+        "4": 66,
+        "3": 17,
+        "0": 13,
+        "1": 3,
+        "2": 1
+      },
+      "min": 0.0,
+      "max": 4.0,
+      "mean": 3.2
+    },
+    "nber24_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 17,
+      "top_values": {
+        "20": 59,
+        "0": 12,
+        "19": 7,
+        "1": 4,
+        "15": 3
+      },
+      "min": 0.0,
+      "max": 20.0,
+      "mean": 15.24
+    },
+    "nber25_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber31_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "117": 22,
+        "116": 20,
+        "114": 11,
+        "0": 5,
+        "5": 3
+      },
+      "min": 0.0,
+      "max": 117.0,
+      "mean": 89.66
+    },
+    "nber32_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "53": 35,
+        "0": 13,
+        "51": 8,
+        "48": 7,
+        "52": 5
+      },
+      "min": 0.0,
+      "max": 53.0,
+      "mean": 39.24
+    },
+    "nber33_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "0": 100
+      },
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0
+    },
+    "nber39_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 7,
+      "top_values": {
+        "7": 42,
+        "6": 25,
+        "0": 16,
+        "5": 9,
+        "2": 4
+      },
+      "min": 0.0,
+      "max": 7.0,
+      "mean": 5.04
+    },
+    "nber41_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "35": 43,
+        "34": 20,
+        "1": 8,
+        "33": 4,
+        "28": 4
+      },
+      "min": 0.0,
+      "max": 35.0,
+      "mean": 27.31
+    },
+    "nber42_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 17,
+      "top_values": {
+        "30": 33,
+        "29": 26,
+        "0": 14,
+        "28": 6,
+        "27": 4
+      },
+      "min": 0.0,
+      "max": 30.0,
+      "mean": 21.8
+    },
+    "nber43_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "48": 31,
+        "50": 21,
+        "49": 14,
+        "0": 10,
+        "1": 8
+      },
+      "min": 0.0,
+      "max": 50.0,
+      "mean": 37.04
+    },
+    "nber44_abn": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 12,
+      "top_values": {
+        "20": 55,
+        "0": 13,
+        "18": 9,
+        "1": 5,
+        "15": 5
+      },
+      "min": 0.0,
+      "max": 20.0,
+      "mean": 14.66
+    },
+    "nber45_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 34,
+      "top_values": {
+        "97": 45,
+        "0": 8,
+        "90": 6,
+        "95": 4,
+        "93": 4
+      },
+      "min": 0.0,
+      "max": 97.0,
+      "mean": 73.61
+    },
+    "nber46_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 3,
+      "top_values": {
+        "2": 62,
+        "0": 29,
+        "1": 9
+      },
+      "min": 0.0,
+      "max": 2.0,
+      "mean": 1.33
+    },
+    "nber49_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "43": 35,
+        "42": 16,
+        "41": 11,
+        "0": 8,
+        "40": 4
+      },
+      "min": 0.0,
+      "max": 43.0,
+      "mean": 32.02
+    },
+    "nber51_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 43,
+      "top_values": {
+        "171": 15,
+        "166": 10,
+        "169": 8,
+        "0": 7,
+        "168": 5
+      },
+      "min": 0.0,
+      "max": 171.0,
+      "mean": 127.03
+    },
+    "nber52_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "109": 15,
+        "108": 14,
+        "107": 10,
+        "0": 8,
+        "106": 7
+      },
+      "min": 0.0,
+      "max": 109.0,
+      "mean": 79.78
+    },
+    "nber53_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "116": 15,
+        "125": 14,
+        "124": 11,
+        "1": 8,
+        "123": 6
+      },
+      "min": 0.0,
+      "max": 125.0,
+      "mean": 90.13
+    },
+    "nber54_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 6,
+      "top_values": {
+        "7": 82,
+        "0": 12,
+        "4": 2,
+        "6": 2,
+        "1": 1
+      },
+      "min": 0.0,
+      "max": 7.0,
+      "mean": 5.97
+    },
+    "nber55_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 30,
+      "top_values": {
+        "99": 43,
+        "95": 14,
+        "97": 6,
+        "1": 5,
+        "91": 3
+      },
+      "min": 0.0,
+      "max": 99.0,
+      "mean": 76.15
+    },
+    "nber59_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 34,
+      "top_values": {
+        "159": 29,
+        "156": 14,
+        "158": 9,
+        "0": 7,
+        "157": 5
+      },
+      "min": 0.0,
+      "max": 159.0,
+      "mean": 119.46
+    },
+    "nber61_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 28,
+      "top_values": {
+        "97": 37,
+        "96": 10,
+        "0": 10,
+        "93": 7,
+        "95": 5
+      },
+      "min": 0.0,
+      "max": 97.0,
+      "mean": 76.53
+    },
+    "nber62_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 21,
+      "top_values": {
+        "35": 28,
+        "34": 28,
+        "0": 8,
+        "33": 6,
+        "28": 5
+      },
+      "min": 0.0,
+      "max": 35.0,
+      "mean": 26.69
+    },
+    "nber63_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "55": 34,
+        "52": 20,
+        "0": 13,
+        "53": 6,
+        "33": 2
+      },
+      "min": 0.0,
+      "max": 55.0,
+      "mean": 40.57
+    },
+    "nber64_abn": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 16,
+      "top_values": {
+        "22": 34,
+        "23": 30,
+        "0": 9,
+        "1": 5,
+        "15": 4
+      },
+      "min": 0.0,
+      "max": 23.0,
+      "mean": 17.11
+    },
+    "nber65_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 26,
+      "top_values": {
+        "72": 52,
+        "71": 10,
+        "0": 8,
+        "2": 3,
+        "69": 3
+      },
+      "min": 0.0,
+      "max": 72.0,
+      "mean": 54.91
+    },
+    "nber66_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 27,
+      "top_values": {
+        "69": 36,
+        "66": 16,
+        "67": 10,
+        "0": 10,
+        "22": 2
+      },
+      "min": 0.0,
+      "max": 69.0,
+      "mean": 52.58
+    },
+    "nber67_abn": {
+      "dtype": "int8",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 12,
+      "top_values": {
+        "16": 62,
+        "0": 18,
+        "15": 7,
+        "3": 2,
+        "7": 2
+      },
+      "min": 0.0,
+      "max": 16.0,
+      "mean": 12.01
+    },
+    "nber68_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 30,
+      "top_values": {
+        "65": 18,
+        "64": 18,
+        "60": 16,
+        "0": 12,
+        "63": 6
+      },
+      "min": 0.0,
+      "max": 65.0,
+      "mean": 48.39
+    },
+    "nber69_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 47,
+      "top_values": {
+        "290": 24,
+        "288": 10,
+        "0": 7,
+        "289": 6,
+        "272": 4
+      },
+      "min": 0.0,
+      "max": 290.0,
+      "mean": 220.97
+    },
+    "nber70_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "25": 43,
+        "22": 19,
+        "0": 12,
+        "4": 3,
+        "9": 3
+      },
+      "min": 0.0,
+      "max": 25.0,
+      "mean": 18.28
+    },
+    "nber80_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "167": 16,
+        "175": 12,
+        "177": 10,
+        "176": 10,
+        "0": 9
+      },
+      "min": 0.0,
+      "max": 177.0,
+      "mean": 129.29
+    },
+    "total_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 84,
+      "top_values": {
+        "2865": 4,
+        "2864": 4,
+        "2863": 4,
+        "2860": 3,
+        "1": 2
+      },
+      "min": 1.0,
+      "max": 2866.0,
+      "mean": 2156.38
+    },
+    "nber1_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 64,
+      "top_values": {
+        "706": 14,
+        "702": 7,
+        "2": 4,
+        "707": 4,
+        "705": 4
+      },
+      "min": 1.0,
+      "max": 708.0,
+      "mean": 537.77
+    },
+    "nber2_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 35,
+      "top_values": {
+        "110": 31,
+        "106": 12,
+        "0": 12,
+        "107": 7,
+        "105": 3
+      },
+      "min": 0.0,
+      "max": 110.0,
+      "mean": 81.05
+    },
+    "nber3_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 44,
+      "top_values": {
+        "177": 22,
+        "176": 13,
+        "175": 5,
+        "0": 5,
+        "171": 4
+      },
+      "min": 0.0,
+      "max": 177.0,
+      "mean": 133.94
+    },
+    "nber4_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 42,
+      "top_values": {
+        "277": 21,
+        "276": 12,
+        "273": 8,
+        "1": 5,
+        "270": 4
+      },
+      "min": 0.0,
+      "max": 277.0,
+      "mean": 207.77
+    },
+    "nber5_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 62,
+      "top_values": {
+        "670": 14,
+        "666": 7,
+        "651": 4,
+        "667": 3,
+        "664": 3
+      },
+      "min": 0.0,
+      "max": 670.0,
+      "mean": 498.52
+    },
+    "nber6_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 58,
+      "top_values": {
+        "722": 18,
+        "0": 7,
+        "721": 6,
+        "720": 4,
+        "717": 4
+      },
+      "min": 0.0,
+      "max": 722.0,
+      "mean": 549.76
+    },
+    "nber7_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 18,
+      "top_values": {
+        "25": 43,
+        "22": 19,
+        "0": 12,
+        "4": 3,
+        "9": 3
+      },
+      "min": 0.0,
+      "max": 25.0,
+      "mean": 18.28
+    },
+    "nber8_abn": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 39,
+      "top_values": {
+        "167": 16,
+        "175": 12,
+        "177": 10,
+        "176": 10,
+        "0": 9
+      },
+      "min": 0.0,
+      "max": 177.0,
+      "mean": 129.29
+    }
+  },
+  "key_candidates": [
+    "calendar_month",
+    "months_since_filing"
+  ],
+  "present_common_field_names": [],
+  "duplicate_estimates": [
+    {
+      "column": "calendar_month",
+      "duplicate_fraction": 0.0
+    },
+    {
+      "column": "months_since_filing",
+      "duplicate_fraction": 0.0
+    }
+  ],
+  "coverage_summary": {
+    "appl_month": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "calendar_month": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 100
+    },
+    "months_since_filing": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 100
+    },
+    "nber11_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber12_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber13_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber14_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 54
+    },
+    "nber15_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 41
+    },
+    "nber19_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 66
+    },
+    "nber21_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 43
+    },
+    "nber22_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 36
+    },
+    "nber23_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 21
+    },
+    "nber24_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 31
+    },
+    "nber25_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 6
+    },
+    "nber31_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 47
+    },
+    "nber32_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 38
+    },
+    "nber33_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber39_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 24
+    },
+    "nber41_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 38
+    },
+    "nber42_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber43_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber44_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber45_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 42
+    },
+    "nber46_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber49_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 40
+    },
+    "nber51_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 53
+    },
+    "nber52_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 43
+    },
+    "nber53_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 50
+    },
+    "nber54_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber55_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber59_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 52
+    },
+    "nber61_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber62_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber63_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 36
+    },
+    "nber64_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 34
+    },
+    "nber65_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber66_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 37
+    },
+    "nber67_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber68_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 37
+    },
+    "nber69_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 55
+    },
+    "nber70_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber80_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "total_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 91
+    },
+    "nber1_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 72
+    },
+    "nber2_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 50
+    },
+    "nber3_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 56
+    },
+    "nber4_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 61
+    },
+    "nber5_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 76
+    },
+    "nber6_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 68
+    },
+    "nber7_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber8_pen": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber11_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber12_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber13_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 15
+    },
+    "nber14_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 48
+    },
+    "nber15_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 33
+    },
+    "nber19_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 50
+    },
+    "nber21_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 38
+    },
+    "nber22_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 34
+    },
+    "nber23_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber24_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber25_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 6
+    },
+    "nber31_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 38
+    },
+    "nber32_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber33_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber39_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 22
+    },
+    "nber41_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber42_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 22
+    },
+    "nber43_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber44_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 30
+    },
+    "nber45_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 36
+    },
+    "nber46_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber49_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber51_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 38
+    },
+    "nber52_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber53_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 40
+    },
+    "nber54_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 22
+    },
+    "nber55_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 29
+    },
+    "nber59_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 46
+    },
+    "nber61_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 31
+    },
+    "nber62_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 25
+    },
+    "nber63_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber64_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber65_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber66_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 32
+    },
+    "nber67_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 25
+    },
+    "nber68_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 31
+    },
+    "nber69_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 46
+    },
+    "nber70_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber80_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "total_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 81
+    },
+    "nber1_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 61
+    },
+    "nber2_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 45
+    },
+    "nber3_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 49
+    },
+    "nber4_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 53
+    },
+    "nber5_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 61
+    },
+    "nber6_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 57
+    },
+    "nber7_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber8_iss": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber11_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber12_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber13_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 19
+    },
+    "nber14_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 36
+    },
+    "nber15_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber19_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 58
+    },
+    "nber21_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 21
+    },
+    "nber22_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 21
+    },
+    "nber23_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 5
+    },
+    "nber24_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 17
+    },
+    "nber25_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber31_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber32_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber33_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "nber39_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 7
+    },
+    "nber41_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber42_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 17
+    },
+    "nber43_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber44_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 12
+    },
+    "nber45_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 34
+    },
+    "nber46_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 3
+    },
+    "nber49_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber51_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 43
+    },
+    "nber52_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber53_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "nber54_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 6
+    },
+    "nber55_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 30
+    },
+    "nber59_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 34
+    },
+    "nber61_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 28
+    },
+    "nber62_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 21
+    },
+    "nber63_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber64_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 16
+    },
+    "nber65_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 26
+    },
+    "nber66_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 27
+    },
+    "nber67_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 12
+    },
+    "nber68_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 30
+    },
+    "nber69_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 47
+    },
+    "nber70_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber80_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    },
+    "total_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 84
+    },
+    "nber1_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 64
+    },
+    "nber2_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 35
+    },
+    "nber3_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 44
+    },
+    "nber4_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 42
+    },
+    "nber5_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 62
+    },
+    "nber6_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 58
+    },
+    "nber7_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 18
+    },
+    "nber8_abn": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 39
+    }
+  }
+}

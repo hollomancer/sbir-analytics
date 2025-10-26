@@ -2,7 +2,7 @@
   "file": "data/raw/uspto/historical_masterfile.dta",
   "sample_rows": 100,
   "approx_total_rows": null,
-  "analyzed_at": "2025-10-26T20:56:35.722106Z",
+  "analyzed_at": "2025-10-26T20:59:12.570177Z",
   "columns": {
     "appl_id": {
       "dtype": "object",
@@ -175,4 +175,184 @@
       "nonnull_fraction": 0.51,
       "unique_values": 50,
       "top_values": {
-        
+        "1995-06-06 00:00:00": 2,
+        "1994-01-25 00:00:00": 1,
+        "1986-09-17 00:00:00": 1,
+        "1988-07-27 00:00:00": 1,
+        "1977-03-12 00:00:00": 1
+      }
+    },
+    "prior_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 43,
+      "null_count": 57,
+      "nonnull_fraction": 0.43,
+      "unique_values": 43,
+      "top_values": {
+        "1991-03-29 00:00:00": 1,
+        "1994-06-29 00:00:00": 1,
+        "1995-04-12 00:00:00": 1,
+        "1987-09-30 00:00:00": 1,
+        "2002-04-12 00:00:00": 1
+      }
+    },
+    "pub_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 0,
+      "null_count": 100,
+      "nonnull_fraction": 0.0,
+      "unique_values": 0,
+      "top_values": {}
+    },
+    "disp_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 99,
+      "top_values": {
+        "2007-08-28 00:00:00": 2,
+        "1908-10-20 00:00:00": 1,
+        "2000-11-14 00:00:00": 1,
+        "1991-04-26 00:00:00": 1,
+        "1982-10-12 00:00:00": 1
+      }
+    },
+    "disp_ty": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 2,
+      "top_values": {
+        "ISS": 89,
+        "ABN": 11
+      },
+      "min_len": 3,
+      "max_len": 3,
+      "sample_values": [
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS",
+        "ISS"
+      ]
+    },
+    "exp_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 89,
+      "null_count": 11,
+      "nonnull_fraction": 0.89,
+      "unique_values": 89,
+      "top_values": {
+        "1925-10-19 00:00:00": 1,
+        "1900-02-19 00:00:00": 1,
+        "1999-10-11 00:00:00": 1,
+        "2003-06-23 00:00:00": 1,
+        "1906-09-16 00:00:00": 1
+      }
+    },
+    "exp_dt_max": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 0,
+      "null_count": 100,
+      "nonnull_fraction": 0.0,
+      "unique_values": 0,
+      "top_values": {}
+    },
+    "pta": {
+      "dtype": "int16",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 4,
+      "top_values": {
+        "0": 97,
+        "807": 1,
+        "19": 1,
+        "1095": 1
+      },
+      "min": 0.0,
+      "max": 1095.0,
+      "mean": 19.21
+    }
+  },
+  "key_candidates": [
+    "patent",
+    "disp_dt"
+  ],
+  "present_common_field_names": [],
+  "duplicate_estimates": [
+    {
+      "column": "patent",
+      "duplicate_fraction": 0.0
+    },
+    {
+      "column": "disp_dt",
+      "duplicate_fraction": 0.01
+    }
+  ],
+  "coverage_summary": {
+    "appl_id": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 46
+    },
+    "pubno": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "patent": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 100
+    },
+    "nber": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 30
+    },
+    "uspc": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 85
+    },
+    "uspc_sub": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 86
+    },
+    "appl_dt": {
+      "nonnull_fraction": 0.51,
+      "unique_count": 50
+    },
+    "prior_dt": {
+      "nonnull_fraction": 0.43,
+      "unique_count": 43
+    },
+    "pub_dt": {
+      "nonnull_fraction": 0.0,
+      "unique_count": 0
+    },
+    "disp_dt": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 99
+    },
+    "disp_ty": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 2
+    },
+    "exp_dt": {
+      "nonnull_fraction": 0.89,
+      "unique_count": 89
+    },
+    "exp_dt_max": {
+      "nonnull_fraction": 0.0,
+      "unique_count": 0
+    },
+    "pta": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 4
+    }
+  }
+}

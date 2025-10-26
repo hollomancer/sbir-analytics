@@ -139,3 +139,91 @@
   - **ack_dt** (datetime64[ns]): nonnull_fraction=0.0 unique=0
 
 
+## File: documentid.dta
+
+- Sample rows analyzed: 100
+- Candidate key columns: ['appno_doc_num', 'grant_doc_num']
+- Common USPTO-like fields present: ['rf_id', 'grant_doc_num']
+- Top columns (summary):
+
+  - **rf_id** (int32): nonnull_fraction=1.0 unique=65
+  - **title** (object): nonnull_fraction=1.0 unique=68
+  - **lang** (object): nonnull_fraction=1.0 unique=2
+  - **appno_doc_num** (object): nonnull_fraction=1.0 unique=99
+  - **appno_date** (datetime64[ns]): nonnull_fraction=0.68 unique=61
+  - **appno_country** (object): nonnull_fraction=1.0 unique=1
+  - **pgpub_doc_num** (object): nonnull_fraction=1.0 unique=1
+  - **pgpub_date** (datetime64[ns]): nonnull_fraction=0.0 unique=0
+  - **pgpub_country** (object): nonnull_fraction=1.0 unique=1
+  - **grant_doc_num** (object): nonnull_fraction=1.0 unique=99
+
+
+## File: documentid_admin.dta
+
+- Sample rows analyzed: 100
+- Candidate key columns: ['grant_doc_num']
+- Common USPTO-like fields present: ['rf_id', 'grant_doc_num']
+- Top columns (summary):
+
+  - **rf_id** (int32): nonnull_fraction=1.0 unique=96
+  - **appno_doc_num** (object): nonnull_fraction=1.0 unique=1
+  - **grant_doc_num** (object): nonnull_fraction=1.0 unique=100
+  - **admin_appl_id_for_grant** (object): nonnull_fraction=1.0 unique=4
+  - **admin_pat_no_for_appno** (object): nonnull_fraction=1.0 unique=1
+  - **error** (object): nonnull_fraction=1.0 unique=1
+
+
+## File: historical_masterfile.dta
+
+- Sample rows analyzed: 100
+- Candidate key columns: ['patent', 'disp_dt']
+- Top columns (summary):
+
+  - **appl_id** (object): nonnull_fraction=1.0 unique=46
+  - **pubno** (object): nonnull_fraction=1.0 unique=1
+  - **patent** (object): nonnull_fraction=1.0 unique=100
+  - **nber** (object): nonnull_fraction=1.0 unique=30
+  - **uspc** (object): nonnull_fraction=1.0 unique=85
+  - **uspc_sub** (object): nonnull_fraction=1.0 unique=86
+  - **appl_dt** (datetime64[ns]): nonnull_fraction=0.51 unique=50
+  - **prior_dt** (datetime64[ns]): nonnull_fraction=0.43 unique=43
+  - **pub_dt** (datetime64[ns]): nonnull_fraction=0.0 unique=0
+  - **disp_dt** (datetime64[ns]): nonnull_fraction=1.0 unique=99
+
+
+## File: monthly.dta
+
+- Sample rows analyzed: 100
+- Candidate key columns: ['month', 'nber19_inforce', 'nber21_inforce', 'nber22_inforce', 'nber23_inforce', 'nber25_inforce', 'nber31_inforce', 'nber32_inforce', 'nber41_inforce', 'nber46_inforce', 'nber51_inforce', 'nber69_inforce', 'total_inforce', 'nber1_inforce', 'nber2_inforce', 'nber3_inforce', 'nber4_inforce', 'nber5_inforce', 'nber6_inforce', 'nber14_inforce', 'nber39_inforce', 'nber49_inforce', 'nber53_inforce', 'nber63_inforce', 'total_app', 'nber24_inforce', 'nber68_inforce']
+- Top columns (summary):
+
+  - **month** (datetime64[ns]): nonnull_fraction=1.0 unique=100
+  - **nber11_app** (int16): nonnull_fraction=1.0 unique=50
+  - **nber12_app** (int16): nonnull_fraction=1.0 unique=64
+  - **nber13_app** (int16): nonnull_fraction=1.0 unique=40
+  - **nber14_app** (int16): nonnull_fraction=1.0 unique=80
+  - **nber15_app** (int16): nonnull_fraction=1.0 unique=87
+  - **nber19_app** (int16): nonnull_fraction=1.0 unique=88
+  - **nber21_app** (int16): nonnull_fraction=1.0 unique=81
+  - **nber22_app** (int16): nonnull_fraction=1.0 unique=89
+  - **nber23_app** (int16): nonnull_fraction=1.0 unique=74
+
+
+## File: monthly_disposal.dta
+
+- Sample rows analyzed: 100
+- Candidate key columns: ['calendar_month', 'months_since_filing']
+- Top columns (summary):
+
+  - **appl_month** (datetime64[ns]): nonnull_fraction=1.0 unique=1
+  - **calendar_month** (datetime64[ns]): nonnull_fraction=1.0 unique=100
+  - **months_since_filing** (int16): nonnull_fraction=1.0 unique=100
+  - **nber11_pen** (int16): nonnull_fraction=1.0 unique=39
+  - **nber12_pen** (int16): nonnull_fraction=1.0 unique=35
+  - **nber13_pen** (int16): nonnull_fraction=1.0 unique=28
+  - **nber14_pen** (int16): nonnull_fraction=1.0 unique=54
+  - **nber15_pen** (int16): nonnull_fraction=1.0 unique=41
+  - **nber19_pen** (int16): nonnull_fraction=1.0 unique=66
+  - **nber21_pen** (int16): nonnull_fraction=1.0 unique=43
+
+
