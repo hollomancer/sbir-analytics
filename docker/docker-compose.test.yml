@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Ephemeral Neo4j instance for CI tests
   neo4j:
@@ -70,7 +68,3 @@ volumes:
     driver: local
   neo4j_import_ci:
     driver: local
-
-networks:
-  sbir-network:
-    external: true

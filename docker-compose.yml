@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Base docker-compose file for sbir-etl
 # - Defines core services used by dev / test overlays
 # - Intended to be extended by docker/docker-compose.dev.yml and docker/docker-compose.test.yml
