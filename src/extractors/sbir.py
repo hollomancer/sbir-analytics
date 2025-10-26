@@ -54,6 +54,7 @@ class SbirDuckDBExtractor:
     def import_csv(
         self,
         incremental: bool = False,
+        use_incremental: Optional[bool] = None,
         batch_size: Optional[int] = None,
         delimiter: str = ",",
         header: bool = True,
@@ -80,6 +81,11 @@ class SbirDuckDBExtractor:
         from datetime import datetime
 
         logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
+
+        # Backwards-compatibility: accept legacy `use_incremental` parameter name.
+        # If provided, it overrides the `incremental` argument.
+        if use_incremental is not None:
+            incremental = bool(use_incremental)
 
         if not self.csv_path.exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")

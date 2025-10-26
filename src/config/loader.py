@@ -1,9 +1,16 @@
-"""Configuration loader with YAML file loading and environment variable overrides."""
+#!/usr/bin/env python3
+"""Configuration loader: minimal file merging + get_config that applies defaults.
 
-import os
+This module intentionally keeps `load_config_from_files` minimal: it only reads
+and deep-merges YAML files (base + optional environment). All runtime defaults
+and backward-compat shims are applied in `get_config()` so unit tests that
+inspect raw file merging can rely on an unmodified merge output.
+"""
+
 from functools import lru_cache
+import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 import yaml
 from pydantic import ValidationError
@@ -14,50 +21,20 @@ from .schemas import PipelineConfig
 class ConfigurationError(Exception):
     """Raised when configuration loading or validation fails."""
 
-    pass
 
-
-def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+def _deep_merge_dicts(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Deep merge two dictionaries, with override taking precedence."""
     result = base.copy()
-
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge_dicts(result[key], value)
         else:
             result[key] = value
-
-    return result
-
-
-def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:
-    """Apply environment variable overrides to configuration dictionary."""
-    result = config_dict.copy()
-
-    for env_key, env_value in os.environ.items():
-        if not env_key.startswith(f"{prefix}__"):
-            continue
-
-        # Remove prefix and split by double underscores
-        config_path = env_key[len(f"{prefix}__") :].lower().split("__")
-
-        # Navigate to the nested location
-        current = result
-        for path_part in config_path[:-1]:
-            if path_part not in current:
-                current[path_part] = {}
-            current = current[path_part]
-
-        # Set the final value, attempting type conversion
-        final_key = config_path[-1]
-        current[final_key] = _convert_env_value(env_value)
-
     return result
 
 
 def _convert_env_value(value: str) -> Any:
     """Convert environment variable string to appropriate type."""
-    # Try boolean conversion
     if value.lower() in ("true", "false"):
         return value.lower() == "true"
 
@@ -77,15 +54,47 @@ def _convert_env_value(value: str) -> Any:
     return value
 
 
+def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:
+    """Apply environment variable overrides to configuration dictionary.
+
+    Example:
+      SBIR_ETL__NEO4J__URI=bolt://... -> config_dict["neo4j"]["uri"] = "bolt://..."
+    """
+    result = config_dict.copy()
+
+    for env_key, env_value in os.environ.items():
+        if not env_key.startswith(f"{prefix}__"):
+            continue
+
+        # Remove prefix and split by double underscores
+        config_path = env_key[len(f"{prefix}__") :].lower().split("__")
+
+        # Navigate to the nested location, creating dicts as needed
+        current = result
+        for path_part in config_path[:-1]:
+            if path_part not in current or not isinstance(current[path_part], dict):
+                current[path_part] = {}
+            current = current[path_part]
+
+        final_key = config_path[-1]
+        current[final_key] = _convert_env_value(env_value)
+
+    return result
+
+
 def load_config_from_files(
     base_path: Path, environment: str | None = None, config_dir: Path | None = None
 ) -> dict[str, Any]:
-    """Load configuration from YAML files with environment-specific overrides."""
+    """Load configuration from YAML files with environment-specific overrides.
+
+    This is intentionally a thin function: it only loads `base.yaml` and merges
+    an optional `<environment>.yaml` on top of it. It does NOT inject defaults or
+    map legacy keys; those behaviors belong to `get_config()`.
+    """
     if config_dir is None:
         config_dir = Path("config")
 
-    # Load base configuration
-    base_file = config_dir / "base.yaml"
+    base_file = Path(config_dir) / "base.yaml"
     if not base_file.exists():
         raise ConfigurationError(f"Base configuration file not found: {base_file}")
 
@@ -95,9 +104,8 @@ def load_config_from_files(
     except yaml.YAMLError as e:
         raise ConfigurationError(f"Failed to parse base config: {e}") from e
 
-    # Load environment-specific overrides
     if environment:
-        env_file = config_dir / f"{environment}.yaml"
+        env_file = Path(config_dir) / f"{environment}.yaml"
         if env_file.exists():
             try:
                 with open(env_file, encoding="utf-8") as f:
@@ -105,58 +113,6 @@ def load_config_from_files(
                 config = _deep_merge_dicts(config, env_config)
             except yaml.YAMLError as e:
                 raise ConfigurationError(f"Failed to parse {environment} config: {e}") from e
-
-    # Backwards-compatibility mapping:
-    # Older configs used a `loading: { neo4j: { ... } }` structure. Map that into
-    # top-level `neo4j` so Pydantic schema consumers can access `config.neo4j.*`.
-    if "loading" in config and isinstance(config["loading"], dict):
-        loading = config.pop("loading")
-        if "neo4j" in loading:
-            # If a top-level neo4j section already exists, deep-merge loading.neo4j into it.
-            if "neo4j" not in config:
-                config["neo4j"] = loading["neo4j"]
-            else:
-                config["neo4j"] = _deep_merge_dicts(
-                    config.get("neo4j", {}), loading.get("neo4j", {})
-                )
-
-    # Ensure neo4j defaults are present so tests and callers can safely read expected keys.
-    config.setdefault("neo4j", {})
-    neo = config["neo4j"]
-
-    # Determine default Neo4j URI with environment-specific fallback. Priority:
-    # 1. Explicit environment variable NE4J_URI (if present)
-    # 2. If not present, choose a sensible default based on the requested environment:
-    #    - production/prod -> prod-neo4j host
-    #    - otherwise -> localhost for dev/local testing
-    default_uri = os.getenv("NEO4J_URI")
-    if not default_uri:
-        if environment in ("prod", "production"):
-            default_uri = "bolt://prod-neo4j:7687"
-        else:
-            default_uri = "bolt://localhost:7687"
-
-    neo.setdefault("uri", default_uri)
-    neo.setdefault("username", os.getenv("NEO4J_USER", "neo4j"))
-    neo.setdefault("password", os.getenv("NEO4J_PASSWORD", "neo4j"))
-    neo.setdefault("database", os.getenv("NEO4J_DATABASE", "neo4j"))
-    neo.setdefault("batch_size", neo.get("batch_size", 1000))
-    neo.setdefault("parallel_threads", neo.get("parallel_threads", 4))
-
-    # Ensure logging defaults (console/file enabled flags) so env overrides like
-    # SBIR_ETL__LOGGING__CONSOLE_ENABLED work and attributes exist on the model.
-    config.setdefault("logging", {})
-    logging_cfg = config["logging"]
-    logging_cfg.setdefault("console_enabled", logging_cfg.get("console_enabled", True))
-    logging_cfg.setdefault("file_enabled", logging_cfg.get("file_enabled", True))
-    logging_cfg.setdefault("level", logging_cfg.get("level", "INFO"))
-    logging_cfg.setdefault("format", logging_cfg.get("format", "json"))
-
-    # Provide a monitoring defaults section expected by tests/consumers.
-    config.setdefault("monitoring", {})
-    monitoring = config["monitoring"]
-    monitoring.setdefault("enabled", monitoring.get("enabled", True))
-    monitoring.setdefault("endpoint", monitoring.get("endpoint", None))
 
     return config
 
@@ -169,34 +125,81 @@ def get_config(
 ) -> PipelineConfig:
     """Get validated configuration with caching.
 
-    Args:
-        environment: Environment name (e.g., 'dev', 'prod'). If None, uses SBIR_ETL__PIPELINE__ENVIRONMENT env var or 'development'.
-        config_dir: Directory containing config files. Defaults to 'config'.
-        apply_env_overrides_flag: Whether to apply environment variable overrides.
-
-    Returns:
-        Validated PipelineConfig instance.
-
-    Raises:
-        ConfigurationError: If configuration loading or validation fails.
+    Responsibility:
+    - Load merged file config via `load_config_from_files`
+    - Apply environment variable overrides (if requested)
+    - Map legacy keys (e.g., `loading.neo4j`) into expected top-level keys
+    - Inject runtime defaults (neo4j URI defaults, logging flags, monitoring)
+    - Validate and return a PipelineConfig instance
     """
     try:
-        # Determine environment
+        # Determine environment name
         if environment is None:
             environment = os.getenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "development")
 
-        # Load configuration from files
+        # Load merged files
         config_dict = load_config_from_files(
             base_path=Path.cwd(), environment=environment, config_dir=config_dir
         )
 
-        # Apply environment variable overrides
+        # Apply environment variable overrides (high precedence)
         if apply_env_overrides_flag:
             config_dict = _apply_env_overrides(config_dict)
 
-        # Validate with Pydantic
-        config = PipelineConfig(**config_dict)
+        # Backwards-compatibility: if config uses `loading: { neo4j: ... }` map it
+        # to top-level `neo4j` but do not otherwise alter non-neo4j keys here.
+        if isinstance(config_dict.get("loading"), dict) and "neo4j" in config_dict.get(
+            "loading", {}
+        ):
+            loading = config_dict.get("loading", {}) or {}
+            neo_from_loading = loading.get("neo4j", {})
+            existing_neo = config_dict.get("neo4j", {}) or {}
+            config_dict["neo4j"] = _deep_merge_dicts(existing_neo, neo_from_loading)
 
+        # Ensure top-level neo4j dict exists and set sensible runtime defaults.
+        config_dict.setdefault("neo4j", {})
+        neo = config_dict["neo4j"]
+
+        # Prioritize explicit environment variable NE04J_URI; else choose default by env
+        explicit_uri = os.getenv("NEO4J_URI")
+        if explicit_uri:
+            default_uri = explicit_uri
+        else:
+            if environment and environment.lower() in ("prod", "production"):
+                default_uri = "bolt://prod-neo4j:7687"
+            else:
+                default_uri = "bolt://localhost:7687"
+
+        neo.setdefault("uri", default_uri)
+        neo.setdefault("username", os.getenv("NEO4J_USER", "neo4j"))
+        neo.setdefault("password", os.getenv("NEO4J_PASSWORD", "neo4j"))
+        neo.setdefault("database", os.getenv("NEO4J_DATABASE", "neo4j"))
+        neo.setdefault("batch_size", neo.get("batch_size", 1000))
+        neo.setdefault("parallel_threads", neo.get("parallel_threads", 4))
+
+        # Logging defaults
+        config_dict.setdefault("logging", {})
+        logging_cfg = config_dict["logging"]
+        # If an env-var override already supplied these keys, don't overwrite them.
+        logging_cfg.setdefault("console_enabled", logging_cfg.get("console_enabled", True))
+        logging_cfg.setdefault("file_enabled", logging_cfg.get("file_enabled", True))
+        logging_cfg.setdefault("level", logging_cfg.get("level", "INFO"))
+        logging_cfg.setdefault("format", logging_cfg.get("format", "json"))
+        logging_cfg.setdefault("file_path", logging_cfg.get("file_path", "logs/sbir-etl.log"))
+        logging_cfg.setdefault("max_file_size_mb", logging_cfg.get("max_file_size_mb", 100))
+        logging_cfg.setdefault("backup_count", logging_cfg.get("backup_count", 5))
+        logging_cfg.setdefault("include_stage", logging_cfg.get("include_stage", True))
+        logging_cfg.setdefault("include_run_id", logging_cfg.get("include_run_id", True))
+        logging_cfg.setdefault("include_timestamps", logging_cfg.get("include_timestamps", True))
+
+        # Monitoring defaults
+        config_dict.setdefault("monitoring", {})
+        monitoring = config_dict["monitoring"]
+        monitoring.setdefault("enabled", monitoring.get("enabled", False))
+        monitoring.setdefault("endpoint", monitoring.get("endpoint", None))
+
+        # Validate with Pydantic PipelineConfig
+        config = PipelineConfig(**config_dict)
         return config
 
     except ValidationError as e:
@@ -208,10 +211,3 @@ def get_config(
 def reload_config() -> None:
     """Clear configuration cache to force reload on next access."""
     get_config.cache_clear()
-
-
-# Convenience function for getting current environment
-def get_current_environment() -> str:
-    """Get the current environment name."""
-    config = get_config()
-    return config.pipeline.get("environment", "development")
