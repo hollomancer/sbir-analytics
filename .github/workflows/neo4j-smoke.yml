@@ -1,0 +1,144 @@
+name: Neo4j Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Smoke test mode: "dry-run" (no secrets) or "live" (uses NEO4J credentials from secrets)'
+        required: false
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - live
+
+jobs:
+  neo4j-smoke:
+    name: Neo4j smoke (mode: ${{ github.event.inputs.mode || 'dry-run' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker/neo4j.compose.override.yml
+      PROFILE: neo4j
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare .env (dry-run or live)
+        run: |
+          set -eux
+          # Ensure we have a .env for compose; start from example if present
+          if [ -f .env.example ]; then
+            cp .env.example .env || true
+          else
+            touch .env
+          fi
+
+          # If running in live mode, inject secrets into .env so compose and scripts can pick them up.
+          if [ "${{ github.event.inputs.mode }}" = "live" ]; then
+            if [ -z "${{ secrets.NEO4J_PASSWORD || '' }}" ]; then
+              echo "NEO4J_PASSWORD secret not provided; failing live run."
+              exit 2
+            fi
+            # Append or override values in .env (simple append; prefer secrets in CI)
+            echo "NEO4J_USER=${{ secrets.NEO4J_USER }}" >> .env
+            echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env
+            # Optionally set NEO4J_AUTH
+            echo "NEO4J_AUTH=${{ secrets.NEO4J_USER }}/${{ secrets.NEO4J_PASSWORD }}" >> .env
+          else
+            echo "Dry-run mode: no secrets injected."
+          fi
+
+      - name: Build runtime image used for schema / scripts
+        run: |
+          set -eux
+          # Build the runtime target so we can run schema scripts inside a container attached to the compose network.
+          docker build --target runtime -t sbir-etl:smoke .
+
+      - name: Start Neo4j (compose, neo4j profile)
+        run: |
+          set -eux
+          docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
+
+      - name: Wait for Neo4j health (make neo4j-check)
+        # Use Makefile target that runs cypher-shell check; this will surface a non-zero exit code if unhealthy
+        run: |
+          set -eux
+          # retry make neo4j-check a few times to allow container boot
+          tries=0
+          until make neo4j-check || [ "$tries" -ge 6 ]; do
+            tries=$((tries+1))
+            echo "neo4j not healthy yet; retry #$tries"
+            sleep 5
+          done
+          if [ "$tries" -ge 6 ]; then
+            echo "Neo4j did not become healthy in time"
+            exit 1
+          fi
+
+      - name: Apply schema (dry-run or live)
+        id: apply_schema
+        run: |
+          set -eux
+          # Use the runtime image built above and attach to the compose network so hostname 'neo4j' resolves.
+          NETWORK_NAME="sbir-network"
+          # Ensure the compose network exists
+          docker network inspect "${NETWORK_NAME}" >/dev/null 2>&1 || true
+
+          if [ "${{ github.event.inputs.mode }}" = "dry-run" ]; then
+            echo "Running apply_schema in dry-run mode"
+            docker run --rm --network "${NETWORK_NAME}" -e NEO4J_URI="bolt://neo4j:7687" sbir-etl:smoke \
+              python scripts/neo4j/apply_schema.py --dry-run
+          else
+            echo "Running apply_schema in live mode (will connect to Neo4j)"
+            docker run --rm --network "${NETWORK_NAME}" \
+              -e NEO4J_URI="bolt://neo4j:7687" \
+              -e NEO4J_USER="${{ secrets.NEO4J_USER }}" \
+              -e NEO4J_PASSWORD="${{ secrets.NEO4J_PASSWORD }}" \
+              sbir-etl:smoke python scripts/neo4j/apply_schema.py
+          fi
+
+      - name: Smoke test - run a simple cypher query (sanity)
+        run: |
+          set -eux
+          # Attempt a lightweight sanity query using cypher-shell inside a short-lived container.
+          # Prefer using docker compose exec if possible; fallback to docker run attached to network.
+          if command -v docker-compose >/dev/null 2>&1; then
+            # Try exec against running neo4j container
+            CONTAINER="$(docker ps --filter 'name=sbir-neo4j' --format '{{.Names}}' | head -n1 || true)"
+            if [ -n "$CONTAINER" ]; then
+              echo "Running cypher-shell sanity query inside container ${CONTAINER}"
+              docker exec "$CONTAINER" sh -c "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1"
+            else
+              echo "Neo4j container not found by name; attempting to run a temporary container attached to compose network"
+              docker run --rm --network sbir-network byrnedo/alpine-curl:latest sh -c "apk add --no-cache openjdk11-jre-headless jq || true; echo 'sanity check placeholder'"
+            fi
+          else
+            echo "docker-compose not detected; skipping exec sanity check"
+          fi
+
+    # Always attempt to tear down compose resources (but do not remove named volumes by default)
+      - name: Tear down compose (always)
+        if: always()
+        run: |
+          set -eux
+          docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans
+
+      - name: Upload logs and artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neo4j-smoke-logs
+          path: |
+            logs/
+            reports/ || true
+
+      - name: Success note
+        if: success()
+        run: echo "Neo4j smoke test completed successfully (mode=${{ github.event.inputs.mode }})"

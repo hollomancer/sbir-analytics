@@ -39,8 +39,8 @@
   - Notes: Added `docs/neo4j/server.md` with runbook, quick-start, YAML/config pointers, and troubleshooting steps. It references the new override compose, config template, scripts, and Makefile targets.
 - [x] 5.2 Update `README.md` and `CONTRIBUTING.md` with a “Running the Neo4j server” quickstart linking to the doc.
   - Notes: `README.md` and `config/README.md` were updated to reference containerization and neo4j runbook. `CONTRIBUTING.md` was updated earlier to include container onboarding guidance.
-- [ ] 5.3 Add CI smoke test (`.github/workflows/neo4j.yml`) that brings up `neo4j` profile, runs `make neo4j-check`, executes `scripts/neo4j/apply_schema.py`, and tears everything down.
-  - Notes: Remains open. CI smoke workflow can be added to bring up the `neo4j` profile and run `make neo4j-check` + `apply_schema.py`. Because CI credential handling differs across orgs, recommend implementing this workflow when registry/secret access is provisioned for CI.
+- [ ] 5.3 Add CI smoke test (`.github/workflows/neo4j.yml`) that brings up the `neo4j` profile, runs `make neo4j-check`, executes `scripts/neo4j/apply_schema.py`, and tears everything down.
+  - Status: IN-PROGRESS — a draft smoke workflow has been implemented at `.github/workflows/neo4j-smoke.yml`. The draft supports `dry-run` (no secrets) and `live` modes (uses CI-provided Neo4j credentials). Next steps: verify the `live` mode with organization CI secrets and finalize the workflow; after verification mark this task complete.
 
 ## Summary / Archive
 - Status: Core Neo4j server implementation artifacts (compose override, runtime config template, bootstrap/schema/backup/restore scripts, Makefile helpers, and runbook docs) have been implemented and committed. Remaining work is focused on CI guard/automation (2.3), remote backup sync documentation/automation (4.3), and adding an optional CI smoke workflow (5.3).
