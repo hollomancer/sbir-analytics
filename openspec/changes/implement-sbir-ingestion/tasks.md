@@ -141,28 +141,28 @@
 - [x] 7.4 Update CONTRIBUTING.md if needed
 
 ## 8. Testing and Validation
-- [ ] 8.1 Run unit tests for all new modules
-  - [ ] 8.1.1 SbirAward model tests
-  - [ ] 8.1.2 SbirCsvExtractor tests
-  - [ ] 8.1.3 SBIR validator tests
-  - [ ] 8.1.4 Config schema tests
-- [ ] 8.2 Run integration tests
-  - [ ] 8.2.1 Dagster asset tests with sample data
-  - [ ] 8.2.2 End-to-end pipeline test (CSV → validated DataFrame)
+- [x] 8.1 Run unit tests for all new modules
+  - [x] 8.1.1 SbirAward model tests
+  - [x] 8.1.2 SbirCsvExtractor tests
+  - [x] 8.1.3 SBIR validator tests
+  - [x] 8.1.4 Config schema tests
+- [x] 8.2 Run integration tests
+  - [x] 8.2.1 Dagster asset tests with sample data
+  - [x] 8.2.2 End-to-end pipeline test (CSV → validated DataFrame)
 - [ ] 8.3 Test with full dataset (533K records)
   - [ ] 8.3.1 Verify memory usage with chunked processing
   - [ ] 8.3.2 Measure execution time
   - [ ] 8.3.3 Verify validation metrics
-- [ ] 8.4 Run code quality checks
-  - [ ] 8.4.1 Black formatting
-  - [ ] 8.4.2 Ruff linting
-  - [ ] 8.4.3 MyPy type checking
-- [ ] 8.5 Test Dagster UI
-  - [ ] 8.5.1 Launch Dagster UI (dagster dev)
-  - [ ] 8.5.2 Materialize raw_sbir_awards asset
-  - [ ] 8.5.3 Materialize validated_sbir_awards asset
-  - [ ] 8.5.4 Review validation report and quality check results
-  - [ ] 8.5.5 Verify asset lineage graph
+- [x] 8.4 Run code quality checks
+  - [x] 8.4.1 Black formatting
+  - [x] 8.4.2 Ruff linting
+  - [x] 8.4.3 MyPy type checking
+- [x] 8.5 Test Dagster UI
+  - [x] 8.5.1 Launch Dagster UI (dagster dev)
+  - [x] 8.5.2 Materialize raw_sbir_awards asset
+  - [x] 8.5.3 Materialize validated_sbir_awards asset
+  - [x] 8.5.4 Review validation report and quality check results
+  - [x] 8.5.5 Verify asset lineage graph
 
 ## 9. Performance Optimization
 - [ ] 9.1 Profile CSV extraction with full dataset

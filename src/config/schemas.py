@@ -26,6 +26,14 @@ class SbirValidationConfig(BaseModel):
         default=0.99, description="Uniqueness threshold for Contract IDs"
     )
 
+    @field_validator("pass_rate_threshold", "completeness_threshold", "uniqueness_threshold")
+    @classmethod
+    def validate_threshold(cls, v: float) -> float:
+        """Validate that threshold is between 0.0 and 1.0."""
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("Threshold must be between 0.0 and 1.0")
+        return v
+
 
 class SbirDuckDBConfig(BaseModel):
     """SBIR DuckDB extraction configuration."""
