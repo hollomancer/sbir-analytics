@@ -323,10 +323,17 @@ main() {
       ;;
 
     *)
-      # If the first argument appears to be a command (has a '/'), run it directly.
-      # Otherwise show usage.
-      if [ -x "$service" ] || echo "$service" | grep -q '/'; then
-        log "Executing provided path/command: $service $*"
+      # Fallback: treat unknown service names as direct commands if they exist
+      if echo "$service" | grep -q '/'; then
+        if [ -x "$service" ]; then
+          log "Executing provided path: $service $*"
+          exec "$service" "$@"
+        else
+          log "Path not executable: $service"
+          exit 2
+        fi
+      elif command -v "$service" >/dev/null 2>&1; then
+        log "Executing command from PATH: $service $*"
         exec "$service" "$@"
       else
         log "Unrecognized service: $service"
