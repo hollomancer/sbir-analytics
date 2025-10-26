@@ -44,9 +44,11 @@
   - Notes: `resolve_by_duns` implemented with exact-match semantics and score = 1.0 for matches.
 - [x] 4.5 Implement fuzzy name matching with rapidfuzz (threshold ≥0.90)
   - Notes: Name normalization and fuzzy matching implemented (`resolve_by_name`) using `rapidfuzz` when available and difflib fallback; configurable thresholds `fuzzy_threshold` and `fuzzy_secondary_threshold`.
-- [ ] 4.6 Create vendor cross-walk table (mapping all identifiers)
+- [x] 4.6 Create vendor cross-walk table (mapping all identifiers)
+  - Notes: Implemented `src/transition/features/vendor_crosswalk.py` providing `CrosswalkRecord`, `VendorCrosswalk` manager, persistence helpers (JSONL/Parquet), DuckDB integration helpers, and alias/merge utilities. The manager supports add/merge semantics, name/identifier indices, and save/load functions to persist the cross-walk.
   - Notes: Cross-walk persistence (DB-backed table) not yet implemented; in-memory indices exist as scaffolding and a cross-walk table will be added later.
-- [ ] 4.7 Handle company acquisitions and name changes
+- [x] 4.7 Handle company acquisitions and name changes
+  - Notes: Added acquisition/alias handling to `VendorCrosswalk` including `handle_acquisition` which records provenance, optionally merges acquired records into acquirers, preserves alias history, and updates indices. This includes provenance metadata and optional non-destructive aliasing when merge is not desired.
   - Notes: Complex acquisition/name-change handling is a planned enhancement that requires historical linkage data; remain open.
 - [x] 4.8 Add vendor match confidence tracking
   - Notes: `VendorMatch` includes a `score` field and `VendorResolver` populates scores for fuzzy matches; the transformer/pipeline will persist these confidence scores.
