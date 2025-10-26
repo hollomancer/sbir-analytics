@@ -50,9 +50,9 @@ def enriched_sbir_awards(
         sbir_company_col="Company",
         sbir_uei_col="UEI",
         sbir_duns_col="Duns",
-        recipient_name_col="usaspending_recipient_recipient_name",
-        recipient_uei_col="usaspending_recipient_recipient_uei",
-        recipient_duns_col="usaspending_recipient_recipient_duns",
+        recipient_name_col="recipient_name",
+        recipient_uei_col="recipient_uei",
+        recipient_duns_col="recipient_duns",
         high_threshold=90,
         low_threshold=75,
         return_candidates=True,
@@ -81,9 +81,9 @@ def enriched_sbir_awards(
     metadata = {
         "num_records": len(enriched_df),
         "match_rate": f"{match_rate:.1%}",
-        "matched_awards": matched_awards,
-        "exact_matches": exact_matches,
-        "fuzzy_matches": fuzzy_matches,
+        "matched_awards": int(matched_awards),
+        "exact_matches": int(exact_matches),
+        "fuzzy_matches": int(fuzzy_matches),
         "enrichment_columns": [
             col for col in enriched_df.columns if col.startswith("usaspending_")
         ],

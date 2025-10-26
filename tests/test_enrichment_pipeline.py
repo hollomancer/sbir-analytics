@@ -36,7 +36,7 @@ def sample_sbir_data():
             },
             {
                 "Company": "BioTech Labs LLC",
-                "UEI": "B2C3D4E5F6G7H8I9",
+                "UEI": "",
                 "Duns": "987654321",
                 "Contract": "C-2023-0002",
                 "Award Title": "Biotech Research Platform",
@@ -109,6 +109,12 @@ def large_usaspending_data():
             "recipient_state": ["TS"] * 500,
         }
     )
+
+
+@pytest.fixture
+def root_path():
+    """Return the project root path."""
+    return Path(__file__).parent.parent
 
 
 class TestUSAspendingEnrichment:
@@ -234,16 +240,17 @@ class TestPerformanceMonitoring:
 
         # Check timing was recorded
         assert "test_block" in monitor.metrics
-        assert monitor.metrics["test_block"]["duration"] >= 0.01
+        assert monitor.metrics["test_block"][0]["duration"] >= 0.01
 
 
 class TestEnrichmentPipelineIntegration:
     """Test end-to-end enrichment pipeline integration."""
 
     @patch("src.assets.sbir_ingestion.get_config")
-    def test_sbir_ingestion_assets(self, mock_get_config, tmp_path, monkeypatch):
+    def test_sbir_ingestion_assets(self, mock_get_config, tmp_path, monkeypatch, root_path):
         """Test SBIR ingestion asset execution."""
         # Mock configuration
+        csv_path = root_path / "tests" / "fixtures" / "sbir_sample.csv"
         mock_config = type(
             "Config",
             (),
@@ -256,7 +263,7 @@ class TestEnrichmentPipelineIntegration:
                             "SBIR",
                             (),
                             {
-                                "csv_path": "tests/fixtures/sbir_sample.csv",
+                                "csv_path": str(csv_path),
                                 "database_path": str(tmp_path / "test.db"),
                                 "table_name": "test_sbir",
                             },
@@ -299,24 +306,18 @@ class TestEnrichmentPipelineIntegration:
         )()
         mock_get_config.return_value = mock_config
 
-        # Mock the recipient lookup asset
-        with patch.object(
-            sbir_usaspending_enrichment, "usaspending_recipient_lookup"
-        ) as mock_recipient:
-            mock_recipient.return_value = sample_usaspending_data
+        # Test enrichment asset
+        context = build_asset_context()
+        result = sbir_usaspending_enrichment.enriched_sbir_awards(
+            context, sample_sbir_data, sample_usaspending_data
+        )
 
-            # Test enrichment asset
-            context = build_asset_context()
-            result = sbir_usaspending_enrichment.enriched_sbir_awards(
-                context, sample_sbir_data, sample_usaspending_data
-            )
+        assert isinstance(result.value, pd.DataFrame)
+        assert len(result.value) == len(sample_sbir_data)
 
-            assert isinstance(result.value, pd.DataFrame)
-            assert len(result.value) == len(sample_sbir_data)
-
-            # Check enrichment metadata
-            assert "match_rate" in result.metadata
-            assert "matched_awards" in result.metadata
+        # Check enrichment metadata
+        assert "match_rate" in result.metadata
+        assert "matched_awards" in result.metadata
 
     def test_enrichment_quality_metrics(self, sample_sbir_data, sample_usaspending_data):
         """Test enrichment quality metrics calculation."""
@@ -361,7 +362,7 @@ class TestLargeDatasetHandling:
             enriched = enrich_sbir_with_usaspending(large_sbir_data, large_usaspending_data)
 
         # Should complete within reasonable time
-        duration = monitor.metrics["large_dataset_enrichment"]["duration"]
+        duration = monitor.metrics["large_dataset_enrichment"][0]["duration"]
         assert duration < 30  # Should complete in less than 30 seconds
 
         # Should have some matches
