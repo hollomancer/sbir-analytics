@@ -1,4 +1,3 @@
-sbir - etl / src / assets / sbir_usaspending_enrichment.py
 """Dagster assets for SBIR-USAspending enrichment pipeline."""
 
 import pandas as pd
