@@ -18,8 +18,6 @@
 #   - ENVIRONMENT=dev
 #   - SERVICE_STARTUP_TIMEOUT
 #
-version: "3.9"
-
 x-common-args: &common-args
   restart: unless-stopped
   env_file:

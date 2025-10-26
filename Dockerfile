@@ -120,6 +120,9 @@ RUN set -eux; \
 # Note: in dev profile these paths can be bind-mounted to allow live edit.
 COPY . /app
 
+# Ensure directories expected for bind mounts/volumes exist even when .dockerignore skips them
+RUN mkdir -p /app/logs /app/data /app/reports /app/config /app/metrics
+
 # Ensure entrypoint scripts are executable (use actual runtime path and make all scripts executable)
 RUN chmod -R +x /app/scripts/docker || true
 

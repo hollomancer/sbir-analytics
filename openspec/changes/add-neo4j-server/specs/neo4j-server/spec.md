@@ -12,7 +12,7 @@ The project SHALL provide reproducible Neo4j deployments for development, CI, an
 - **AND** expose Bolt (7687) and HTTP (7474) ports with health checks defined in Compose
 
 #### Scenario: Memory & plugin tuning via environment
-- **WHEN** engineers set values such as `NEO4J_dbms_memory_heap_max__size` or `NEO4J_PLUGINS` in `.env`
+- **WHEN** engineers set values such as `NEO4J_server_memory_heap_max__size` or `NEO4J_PLUGINS` in `.env`
 - **THEN** the compose profile SHALL pass them to the container
 - **AND** the resulting configuration SHALL be reflected in `neo4j.conf` so that dev/CI/prod runs behave consistently
 

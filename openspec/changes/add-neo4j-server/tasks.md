@@ -40,7 +40,14 @@
 - [x] 5.2 Update `README.md` and `CONTRIBUTING.md` with a “Running the Neo4j server” quickstart linking to the doc.
   - Notes: `README.md` and `config/README.md` were updated to reference containerization and neo4j runbook. `CONTRIBUTING.md` was updated earlier to include container onboarding guidance.
 - [ ] 5.3 Add CI smoke test (`.github/workflows/neo4j.yml`) that brings up the `neo4j` profile, runs `make neo4j-check`, executes `scripts/neo4j/apply_schema.py`, and tears everything down.
-  - Status: IN-PROGRESS — a draft smoke workflow has been implemented at `.github/workflows/neo4j-smoke.yml`. The draft supports `dry-run` (no secrets) and `live` modes (uses CI-provided Neo4j credentials). Next steps: verify the `live` mode with organization CI secrets and finalize the workflow; after verification mark this task complete.
+  - Status: READY FOR FINAL TESTING — A draft smoke workflow was implemented at `.github/workflows/neo4j-smoke.yml` and the workflow has been updated to handle both `dry-run` and `live` modes, including:
+    - compose/network fixes to ensure the `sbir-network` is created when needed,
+    - conditional health-check logic that uses `docker inspect` for `dry-run` and `make neo4j-check` for `live`,
+    - support for workflow_dispatch inputs (`NEO4J_USER`/`NEO4J_PASSWORD`) to facilitate temporary test credentials.
+  - Next steps to complete this task:
+    1. Trigger the smoke workflow in `live` mode using valid Neo4j credentials (either as repository secrets or via workflow inputs). For initial testing you may provide temporary/fake credentials via workflow inputs; for production validation use repo secrets.
+    2. Confirm `make neo4j-check` passes, `apply_schema.py` connects and completes (or runs in dry-run), and the workflow tears down the compose stack cleanly.
+    3. If the live run is successful, mark this task done in the openspec tasks file; if any failures occur, capture the workflow logs and iterate on the workflow or scripts as needed.
 
 ## Summary / Archive
 - Status: Core Neo4j server implementation artifacts (compose override, runtime config template, bootstrap/schema/backup/restore scripts, Makefile helpers, and runbook docs) have been implemented and committed. Remaining work is focused on CI guard/automation (2.3), remote backup sync documentation/automation (4.3), and adding an optional CI smoke workflow (5.3).

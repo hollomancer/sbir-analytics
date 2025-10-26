@@ -90,20 +90,46 @@ jobs:
           set -eux
           docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
 
-      - name: Wait for Neo4j health (make neo4j-check)
-        # Use Makefile target that runs cypher-shell check; this will surface a non-zero exit code if unhealthy
+      - name: Wait for Neo4j health (make neo4j-check or docker inspect)
+        # In live mode we run the Makefile health check which uses cypher-shell (requires credentials).
+        # In dry-run mode we wait for the container to appear running/healthy via docker inspect to avoid requiring credentials.
         run: |
           set -eux
-          # retry make neo4j-check a few times to allow container boot
-          tries=0
-          until make neo4j-check || [ "$tries" -ge 6 ]; do
-            tries=$((tries+1))
-            echo "neo4j not healthy yet; retry #$tries"
-            sleep 5
-          done
-          if [ "$tries" -ge 6 ]; then
-            echo "Neo4j did not become healthy in time"
-            exit 1
+          MODE="${{ github.event.inputs.mode || 'dry-run' }}"
+          echo "Health check mode: ${MODE}"
+          # Helper: retry loop
+          wait_for() {
+            cmd="$1"
+            tries=0
+            until $cmd || [ "$tries" -ge 6 ]; do
+              tries=$((tries+1))
+              echo "neo4j not ready yet; retry #$tries"
+              sleep 5
+            done
+            if [ "$tries" -ge 6 ]; then
+              return 1
+            fi
+            return 0
+          }
+          if [ "${MODE}" = "dry-run" ]; then
+            echo "Dry-run health check: waiting for neo4j container to be running or report healthy"
+            # Prefer health status if available, otherwise check running container presence
+            wait_for "sh -c 'status=$(docker inspect --format \"{{.State.Health.Status}}\" sbir-neo4j 2>/dev/null || echo \"\"); \
+              if [ \"${status}\" = \"healthy\" ]; then exit 0; fi; \
+              if docker ps --filter \"name=sbir-neo4j\" --filter status=running --format \"{{.Names}}\" | grep -q .; then exit 0; fi; exit 1'"
+            if [ $? -ne 0 ]; then
+              echo "Neo4j did not become ready in time (dry-run)"
+              exit 1
+            fi
+            echo "Neo4j container appears running/healthy (dry-run)"
+          else
+            echo "Live health check: using Makefile target neo4j-check (requires credentials present)"
+            wait_for "make neo4j-check"
+            if [ $? -ne 0 ]; then
+              echo "Neo4j did not become healthy in time"
+              exit 1
+            fi
+            echo "Neo4j passed live health check"
           fi
 
       - name: Apply schema (dry-run or live)

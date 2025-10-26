@@ -7,8 +7,8 @@ services:
       # Use env file (.env) created by the workflow to inject credentials
       - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
       - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
-      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size:-256M}
-      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size:-512M}
+      - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-256M}
+      - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-512M}
     ports:
       - "7474:7474" # HTTP
       - "7687:7687" # Bolt

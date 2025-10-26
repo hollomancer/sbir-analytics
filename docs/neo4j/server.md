@@ -69,17 +69,17 @@ Configuration (env vars)
 - NEO4J_PASSWORD / NEO4J_ADMIN_PASSWORD — admin password (do not commit)
 - NEO4J_READONLY_PASSWORD — optional, password for read-only analyst user
 - NEO4J_PLUGINS — optional plugin list (e.g., `["apoc"]`)
-- NEO4J_dbms_memory_pagecache_size — pagecache size (e.g., `256M`)
-- NEO4J_dbms_memory_heap_max__size — JVM heap max (e.g., `512M`)
+- NEO4J_server_memory_pagecache_size — pagecache size (e.g., `256M`)
+- NEO4J_server_memory_heap_max__size — JVM heap max (e.g., `512M`)
 - NEO4J_HTTP_PORT / NEO4J_BOLT_PORT — overridden ports if needed
 
 neo4j.conf
 - A template runtime config lives at `config/neo4j/neo4j.conf`. This file contains the most common tunables:
 ```sbir-etl/config/neo4j/neo4j.conf#L1-40
 # Example snippet from the template:
-dbms.memory.heap.initial_size=${NEO4J_dbms_memory_heap_initial_size:-512m}
-dbms.memory.heap.max_size=${NEO4J_dbms_memory_heap_max__size:-512m}
-dbms.memory.pagecache.size=${NEO4J_dbms_memory_pagecache_size:-256M}
+server.memory.heap.initial_size=${NEO4J_server_memory_heap_initial__size:-512m}
+server.memory.heap.max_size=${NEO4J_server_memory_heap_max__size:-512m}
+server.memory.pagecache.size=${NEO4J_server_memory_pagecache_size:-256M}
 dbms.default_listen_address=0.0.0.0
 dbms.connector.bolt.listen_address=0.0.0.0:7687
 dbms.connector.http.listen_address=0.0.0.0:7474
@@ -167,7 +167,7 @@ Troubleshooting checklist
 4. Schema install fails:
    - Check `scripts/neo4j/apply_schema.py` logs; inspect error text to determine if the statements are already present or incompatible with the server version.
 5. Slow imports or OOM:
-   - Increase `dbms.memory.heap.max_size` and `dbms.memory.pagecache.size` in `config/neo4j/neo4j.conf` and restart.
+   - Increase `server.memory.heap.max_size` and `server.memory.pagecache.size` in `config/neo4j/neo4j.conf` and restart.
    - Consider chunked loads and prefer offline import tools for large initial imports.
 
 Operational notes & best practices
