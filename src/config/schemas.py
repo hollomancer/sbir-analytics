@@ -1,6 +1,15 @@
-"""Configuration schemas using Pydantic for type-safe configuration."""
+"""Configuration schemas using Pydantic for type-safe configuration.
+
+This version relaxes several strict string-typed dict annotations to accept
+non-string values (ints, floats, bools, etc.) and converts/coerces common
+string-number inputs where appropriate. It also relaxes the root `PipelineConfig`
+model to allow extra keys (previously `extra = "forbid"`), since environment
+overrides and external config sources may supply heterogeneous types.
+"""
 
 from pathlib import Path
+from typing import Any, Mapping
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -38,8 +47,8 @@ class DataQualityConfig(BaseModel):
     sbir_awards: SbirValidationConfig = Field(
         default_factory=SbirValidationConfig, description="SBIR-specific validation thresholds"
     )
-
-    completeness: dict[str, float] = Field(
+    # Allow numbers (int/float/bool) as well as strings for percentages and thresholds.
+    completeness: dict[str, Any] = Field(
         default_factory=lambda: {
             "award_id": 1.00,
             "company_name": 0.95,
@@ -48,12 +57,12 @@ class DataQualityConfig(BaseModel):
             "program": 0.98,
         }
     )
-    uniqueness: dict[str, float] = Field(
+    uniqueness: dict[str, Any] = Field(
         default_factory=lambda: {
             "award_id": 1.00,
         }
     )
-    validity: dict[str, float] = Field(
+    validity: dict[str, Any] = Field(
         default_factory=lambda: {
             "award_amount_min": 0.0,
             "award_amount_max": 5000000.0,
@@ -61,7 +70,7 @@ class DataQualityConfig(BaseModel):
             "award_year_max": 2030,
         }
     )
-    enrichment: dict[str, float] = Field(
+    enrichment: dict[str, Any] = Field(
         default_factory=lambda: {
             "sam_gov_success_rate": 0.85,
             "usaspending_match_rate": 0.70,
@@ -70,33 +79,46 @@ class DataQualityConfig(BaseModel):
 
     @field_validator("completeness", "uniqueness", "enrichment")
     @classmethod
-    def validate_percentage(cls, v):
-        """Validate that percentage values are between 0 and 1."""
+    def validate_percentage(cls, v: Mapping[str, Any]) -> dict[str, float]:
+        """Validate and coerce percentage-like values to floats between 0 and 1.
+
+        Accepts ints/floats/strings (e.g. "0.85" or 0.85) and converts strings to float.
+        """
+        if not isinstance(v, Mapping):
+            raise TypeError("Expected a mapping for percentage configuration")
+        out: dict[str, float] = {}
         for key, value in v.items():
-            if not (0.0 <= value <= 1.0):
-                raise ValueError(f"{key} must be between 0.0 and 1.0, got {value}")
-        return v
+            # Coerce strings like "0.85" or numeric types to float
+            try:
+                num = float(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"{key} must be a number (0.0-1.0), got {value!r}")
+            if not (0.0 <= num <= 1.0):
+                raise ValueError(f"{key} must be between 0.0 and 1.0, got {num}")
+            out[key] = num
+        return out
 
 
 class EnrichmentConfig(BaseModel):
     """Configuration for data enrichment services."""
 
-    sam_gov: dict[str, str] = Field(
+    # Relaxed to accept numeric and boolean values if provided by environment vars.
+    sam_gov: dict[str, Any] = Field(
         default_factory=lambda: {
             "base_url": "https://api.sam.gov/entity-information/v3",
             "api_key_env_var": "SAM_GOV_API_KEY",
-            "rate_limit_per_minute": "60",
-            "timeout_seconds": "30",
-            "retry_attempts": "3",
-            "retry_backoff_seconds": "1",
+            "rate_limit_per_minute": 60,
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "retry_backoff_seconds": 1,
         }
     )
-    usaspending_api: dict[str, str] = Field(
+    usaspending_api: dict[str, Any] = Field(
         default_factory=lambda: {
             "base_url": "https://api.usaspending.gov/api/v2",
-            "timeout_seconds": "30",
-            "retry_attempts": "3",
-            "retry_backoff_seconds": "2",
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "retry_backoff_seconds": 2,
         }
     )
 
@@ -104,9 +126,18 @@ class EnrichmentConfig(BaseModel):
 class Neo4jConfig(BaseModel):
     """Configuration for Neo4j database connection."""
 
+    # Primary connection fields (application-level)
+    uri: str = Field(default="bolt://localhost:7687", description="Neo4j Bolt URI")
+    username: str = Field(default="neo4j", description="Neo4j username")
+    password: str = Field(default="neo4j", description="Neo4j password")
+    database: str = Field(default="neo4j", description="Neo4j database/catalog")
+
+    # Backwards-compatible env-var key names retained for loader compatibility
     uri_env_var: str = "NEO4J_URI"
     user_env_var: str = "NEO4J_USER"
     password_env_var: str = "NEO4J_PASSWORD"
+
+    # Performance / loading options
     batch_size: int = 1000
     parallel_threads: int = 4
     create_constraints: bool = True
@@ -122,11 +153,12 @@ class ExtractionConfig(BaseModel):
     sbir: SbirDuckDBConfig = Field(
         default_factory=SbirDuckDBConfig, description="SBIR extraction configuration"
     )
-    usaspending: dict[str, str] = Field(
+    # Allow import_chunk_size to be int if provided from numeric sources
+    usaspending: dict[str, Any] = Field(
         default_factory=lambda: {
             "database_name": "usaspending",
             "table_name": "awards",
-            "import_chunk_size": "50000",
+            "import_chunk_size": 50000,
         }
     )
 
@@ -141,31 +173,35 @@ class ValidationConfig(BaseModel):
 
     @field_validator("max_error_percentage")
     @classmethod
-    def validate_error_percentage(cls, v):
-        """Validate that error percentage is between 0 and 1."""
-        if not (0.0 <= v <= 1.0):
-            raise ValueError(f"max_error_percentage must be between 0.0 and 1.0, got {v}")
-        return v
+    def validate_error_percentage(cls, v: Any) -> float:
+        """Coerce and validate error percentage to be between 0 and 1."""
+        try:
+            num = float(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"max_error_percentage must be numeric, got {v!r}")
+        if not (0.0 <= num <= 1.0):
+            raise ValueError(f"max_error_percentage must be between 0.0 and 1.0, got {num}")
+        return num
 
 
 class TransformationConfig(BaseModel):
     """Configuration for data transformation."""
 
-    company_deduplication: dict[str, str] = Field(
+    company_deduplication: dict[str, Any] = Field(
         default_factory=lambda: {
-            "similarity_threshold": "0.85",
-            "min_company_name_length": "3",
+            "similarity_threshold": 0.85,
+            "min_company_name_length": 3,
         }
     )
-    award_normalization: dict[str, str] = Field(
+    award_normalization: dict[str, Any] = Field(
         default_factory=lambda: {
             "currency": "USD",
-            "standardize_program_names": "true",
+            "standardize_program_names": True,
         }
     )
-    graph_preparation: dict[str, str] = Field(
+    graph_preparation: dict[str, Any] = Field(
         default_factory=lambda: {
-            "batch_size": "1000",
+            "batch_size": 1000,
         }
     )
 
@@ -182,6 +218,26 @@ class LoggingConfig(BaseModel):
     include_run_id: bool = True
     include_timestamps: bool = True
 
+    # Flags controlling output destinations; present so environment overrides work predictably
+    console_enabled: bool = True
+    file_enabled: bool = True
+
+    @field_validator("format")
+    @classmethod
+    def _normalize_format(cls, v: str) -> str:
+        """Normalize common format synonyms into the canonical values used by the app.
+
+        Accepts 'pretty'/'text' -> 'text', 'json'/'structured' -> 'json'.
+        """
+        if not isinstance(v, str):
+            return v
+        vv = v.lower()
+        if vv in ("pretty", "text", "plain"):
+            return "text"
+        if vv in ("json", "structured"):
+            return "json"
+        return v
+
 
 class MetricsConfig(BaseModel):
     """Configuration for metrics collection."""
@@ -190,11 +246,11 @@ class MetricsConfig(BaseModel):
     collection_interval_seconds: int = 30
     persist_to_file: bool = True
     metrics_file_path: str = "logs/metrics.json"
-    warning_thresholds: dict[str, str] = Field(
+    warning_thresholds: dict[str, Any] = Field(
         default_factory=lambda: {
-            "stage_duration_seconds": "3600",
-            "memory_usage_mb": "2048",
-            "error_rate_percentage": "5.0",
+            "stage_duration_seconds": 3600,
+            "memory_usage_mb": 2048,
+            "error_rate_percentage": 5.0,
         }
     )
 
@@ -212,7 +268,7 @@ class DuckDBConfig(BaseModel):
 class PipelineConfig(BaseModel):
     """Root configuration model for the SBIR ETL pipeline."""
 
-    pipeline: dict[str, str] = Field(
+    pipeline: dict[str, Any] = Field(
         default_factory=lambda: {
             "name": "sbir-etl",
             "version": "0.1.0",
@@ -231,7 +287,12 @@ class PipelineConfig(BaseModel):
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
 
     class Config:
-        """Pydantic configuration."""
+        """Pydantic configuration.
+
+        NOTE: `extra` is set to "allow" so environment overrides and other external
+        sources that inject extra keys will not cause validation to fail. This makes
+        it easier to layer env-var based overrides onto the base config files.
+        """
 
         validate_assignment = True
-        extra = "forbid"
+        extra = "allow"

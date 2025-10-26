@@ -106,6 +106,58 @@ def load_config_from_files(
             except yaml.YAMLError as e:
                 raise ConfigurationError(f"Failed to parse {environment} config: {e}") from e
 
+    # Backwards-compatibility mapping:
+    # Older configs used a `loading: { neo4j: { ... } }` structure. Map that into
+    # top-level `neo4j` so Pydantic schema consumers can access `config.neo4j.*`.
+    if "loading" in config and isinstance(config["loading"], dict):
+        loading = config.pop("loading")
+        if "neo4j" in loading:
+            # If a top-level neo4j section already exists, deep-merge loading.neo4j into it.
+            if "neo4j" not in config:
+                config["neo4j"] = loading["neo4j"]
+            else:
+                config["neo4j"] = _deep_merge_dicts(
+                    config.get("neo4j", {}), loading.get("neo4j", {})
+                )
+
+    # Ensure neo4j defaults are present so tests and callers can safely read expected keys.
+    config.setdefault("neo4j", {})
+    neo = config["neo4j"]
+
+    # Determine default Neo4j URI with environment-specific fallback. Priority:
+    # 1. Explicit environment variable NE4J_URI (if present)
+    # 2. If not present, choose a sensible default based on the requested environment:
+    #    - production/prod -> prod-neo4j host
+    #    - otherwise -> localhost for dev/local testing
+    default_uri = os.getenv("NEO4J_URI")
+    if not default_uri:
+        if environment in ("prod", "production"):
+            default_uri = "bolt://prod-neo4j:7687"
+        else:
+            default_uri = "bolt://localhost:7687"
+
+    neo.setdefault("uri", default_uri)
+    neo.setdefault("username", os.getenv("NEO4J_USER", "neo4j"))
+    neo.setdefault("password", os.getenv("NEO4J_PASSWORD", "neo4j"))
+    neo.setdefault("database", os.getenv("NEO4J_DATABASE", "neo4j"))
+    neo.setdefault("batch_size", neo.get("batch_size", 1000))
+    neo.setdefault("parallel_threads", neo.get("parallel_threads", 4))
+
+    # Ensure logging defaults (console/file enabled flags) so env overrides like
+    # SBIR_ETL__LOGGING__CONSOLE_ENABLED work and attributes exist on the model.
+    config.setdefault("logging", {})
+    logging_cfg = config["logging"]
+    logging_cfg.setdefault("console_enabled", logging_cfg.get("console_enabled", True))
+    logging_cfg.setdefault("file_enabled", logging_cfg.get("file_enabled", True))
+    logging_cfg.setdefault("level", logging_cfg.get("level", "INFO"))
+    logging_cfg.setdefault("format", logging_cfg.get("format", "json"))
+
+    # Provide a monitoring defaults section expected by tests/consumers.
+    config.setdefault("monitoring", {})
+    monitoring = config["monitoring"]
+    monitoring.setdefault("enabled", monitoring.get("enabled", True))
+    monitoring.setdefault("endpoint", monitoring.get("endpoint", None))
+
     return config
 
 

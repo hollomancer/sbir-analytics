@@ -49,9 +49,13 @@ class Patent(BaseModel):
 
     @validator("inventors")
     def validate_inventors(cls, v):
-        """Validate inventors list."""
-        if v and len(v) == 0:
-            raise ValueError("Inventors list cannot be empty if provided")
+        """Validate inventors list.
+
+        If an empty list is explicitly provided, treat it as invalid.
+        Require at least one inventor when the field is present.
+        """
+        if isinstance(v, list) and len(v) == 0:
+            raise ValueError("Inventors list cannot be empty")
         return v
 
     class Config:

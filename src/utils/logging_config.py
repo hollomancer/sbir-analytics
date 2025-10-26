@@ -15,7 +15,8 @@ run_id_context: ContextVar[str | None] = ContextVar("run_id", default=None)
 
 def setup_logging(
     level: str = "INFO",
-    format_type: str = "json",
+    format: str | None = None,
+    format_type: str | None = None,
     file_path: str | None = None,
     max_file_size_mb: int = 100,
     backup_count: int = 5,
@@ -25,18 +26,17 @@ def setup_logging(
 ) -> None:
     """Set up structured logging configuration.
 
-    Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR)
-        format_type: Format type ("json" or "pretty")
-        file_path: Path to log file (None for console only)
-        max_file_size_mb: Maximum log file size in MB
-        backup_count: Number of backup files to keep
-        include_stage: Whether to include pipeline stage in logs
-        include_run_id: Whether to include run ID in logs
-        include_timestamps: Whether to include timestamps
+    Notes:
+    - Accepts both `format` and `format_type` for backward compatibility; `format_type`
+      takes precedence if provided.
+    - Invalid logging level names are handled gracefully by falling back to 'INFO'.
     """
     # Remove default handler
     logger.remove()
+
+    # Choose format_type, prefer explicit format_type, then format, default to "json"
+    chosen_format = format_type or format or "json"
+    format_type_local = chosen_format
 
     # Create format string based on configuration
     format_parts = []
@@ -54,7 +54,7 @@ def setup_logging(
 
     format_parts.append("<level>{message}</level>")
 
-    if format_type == "json":
+    if format_type_local == "json":
         # Use JSON format for structured logging
         log_format = "{message}"
         serialize = True
@@ -63,13 +63,27 @@ def setup_logging(
         log_format = " | ".join(format_parts)
         serialize = False
 
+    # Validate logging level; fallback to INFO if invalid
+    safe_level = "INFO"
+    try:
+        # This will raise if the level name doesn't exist in loguru
+        logger.level(level)
+        safe_level = level
+    except Exception:
+        # Best-effort warning; don't raise if logger isn't configured yet
+        try:
+            logger.warning(f"Invalid logging level '{level}' provided; falling back to 'INFO'")
+        except Exception:
+            pass
+        safe_level = "INFO"
+
     # Add console handler
     logger.add(
         sys.stdout,
-        level=level,
+        level=safe_level,
         format=log_format,
         serialize=serialize,
-        colorize=format_type != "json",
+        colorize=format_type_local != "json",
     )
 
     # Add file handler if specified
@@ -79,7 +93,7 @@ def setup_logging(
 
         logger.add(
             log_file_path,
-            level=level,
+            level=safe_level,
             format=log_format,
             serialize=serialize,
             rotation=f"{max_file_size_mb} MB",

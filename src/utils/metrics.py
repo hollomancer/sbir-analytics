@@ -34,10 +34,16 @@ class PipelineMetrics:
         if self.duration_seconds > 0 and self.records_processed > 0:
             self.throughput_records_per_second = self.records_processed / self.duration_seconds
 
+        # Prepare throughput display safely (avoid formatting None)
+        if self.throughput_records_per_second is None:
+            throughput_display = "N/A"
+        else:
+            throughput_display = f"{self.throughput_records_per_second:.2f} records/sec"
+
         logger.info(
             f"Pipeline stage '{self.stage}' completed: "
             f"{self.records_processed} records in {self.duration_seconds:.2f}s "
-            f"({self.throughput_records_per_second:.2f} records/sec)"
+            f"({throughput_display})"
         )
 
     def add_error(self, error_message: str) -> None:

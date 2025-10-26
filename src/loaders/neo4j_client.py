@@ -6,7 +6,7 @@ from typing import Any
 
 from loguru import logger
 from neo4j import Driver, GraphDatabase, Session, Transaction
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Neo4jConfig(BaseModel):
@@ -22,9 +22,10 @@ class Neo4jConfig(BaseModel):
 class LoadMetrics(BaseModel):
     """Metrics for Neo4j loading operations."""
 
-    nodes_created: dict[str, int] = {}
-    nodes_updated: dict[str, int] = {}
-    relationships_created: dict[str, int] = {}
+    # Use Field(default_factory=...) to avoid shared mutable defaults between instances.
+    nodes_created: dict[str, int] = Field(default_factory=dict)
+    nodes_updated: dict[str, int] = Field(default_factory=dict)
+    relationships_created: dict[str, int] = Field(default_factory=dict)
     errors: int = 0
     duration_seconds: float = 0.0
 
@@ -131,17 +132,34 @@ class Neo4jClient:
         Returns:
             Result summary with operation details
         """
+        # Use ON CREATE to mark newly-created nodes with a temporary flag so we can
+        # reliably distinguish create vs match. We then remove the temporary flag
+        # in a cleanup step so we don't persist internal metadata.
         query = f"""
         MERGE (n:{label} {{{key_property}: $key_value}})
-        SET n += $properties
-        RETURN n,
-               CASE WHEN n.{key_property} = $key_value THEN 'updated' ELSE 'created' END as operation
+        ON CREATE SET n += $properties, n.__created_flag = true
+        ON MATCH SET n += $properties
+        RETURN n, CASE WHEN n.__created_flag IS NOT NULL THEN 'created' ELSE 'updated' END AS operation
         """
 
         result = tx.run(query, key_value=key_value, properties=properties)
         record = result.single()
 
-        return {"operation": record["operation"] if record else "unknown"}
+        op = record["operation"] if record else "unknown"
+
+        # Try to remove the internal flag to avoid leaving behind helper properties.
+        # This is best-effort and non-fatal if it fails.
+        try:
+            if op == "created":
+                tx.run(
+                    f"MATCH (n:{label} {{{key_property}: $key_value}}) REMOVE n.__created_flag",
+                    key_value=key_value,
+                )
+        except Exception:
+            # Ignore cleanup errors - they are not critical for correctness of upsert.
+            pass
+
+        return {"operation": op}
 
     def batch_upsert_nodes(
         self,
