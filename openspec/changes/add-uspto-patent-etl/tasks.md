@@ -11,12 +11,18 @@
 
 ## 2. Pydantic Models
 
-- [ ] 2.1 Create PatentAssignment model (rf_id, file_id, correspondent, dates, conveyance)
-- [ ] 2.2 Create PatentAssignee model (rf_id, name, address fields)
-- [ ] 2.3 Create PatentAssignor model (rf_id, name, execution/acknowledgment dates)
-- [ ] 2.4 Create PatentDocument model (rf_id, application/publication/grant numbers)
-- [ ] 2.5 Create PatentConveyance model (rf_id, type, employer_assign flag)
-- [ ] 2.6 Add validation rules for dates, document numbers, entity names
+- [x] 2.1 Create PatentAssignment model (rf_id, file_id, correspondent, dates, conveyance)
+  - Notes: Implemented `src/models/uspto_models.py` with `PatentAssignment` and related models; includes `rf_id`, `file_id`, conveyance links, and normalization helpers.
+- [x] 2.2 Create PatentAssignee model (rf_id, name, address fields)
+  - Notes: `PatentAssignee` model added to `src/models/uspto_models.py` with address fields, identifier normalization, and metadata.
+- [x] 2.3 Create PatentAssignor model (rf_id, name, execution/acknowledgment dates)
+  - Notes: `PatentAssignor` model added with execution/acknowledgment date parsing and validation.
+- [x] 2.4 Create PatentDocument model (rf_id, application/publication/grant numbers)
+  - Notes: `PatentDocument` model added with application/publication/grant identifiers and date fields; includes normalization logic.
+- [x] 2.5 Create PatentConveyance model (rf_id, type, employer_assign flag)
+  - Notes: `PatentConveyance` model implemented with `ConveyanceType` enum and date parsing for recorded_date.
+- [x] 2.6 Add validation rules for dates, document numbers, entity names
+  - Notes: Validation and normalization helpers (`_parse_date`, `_normalize_identifier`, `_normalize_name`) included and used across the models. See `src/models/uspto_models.py` for details.
 
 ## 3. USPTO Extractor (Stage 1: Extract)
 
