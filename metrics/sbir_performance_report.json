@@ -1,0 +1,101 @@
+{
+  "timestamp": 1761480606.01608,
+  "dataset_info": {
+    "csv_path": "data/raw/sbir/awards_data.csv",
+    "expected_records": 533000
+  },
+  "system_info": {
+    "cpu_count": 4,
+    "memory_total_gb": 16.0
+  },
+  "csv_import_profiling": [
+    {
+      "method": "native",
+      "success": false,
+      "error": "CSV import validation failed: expected 42 columns, found 0. Columns discovered: []",
+      "duration_seconds": 1.08,
+      "records_per_second": 0.0,
+      "metadata": {}
+    },
+    {
+      "method": "incremental_batch_10000",
+      "success": false,
+      "error": "CSV import validation failed: expected 42 columns, found 0. Columns discovered: []",
+      "duration_seconds": 0.66,
+      "records_per_second": 0.0,
+      "metadata": {}
+    },
+    {
+      "method": "incremental_batch_50000",
+      "success": false,
+      "error": "CSV import validation failed: expected 42 columns, found 0. Columns discovered: []",
+      "duration_seconds": 2.82,
+      "records_per_second": 0.0,
+      "metadata": {}
+    }
+  ],
+  "chunked_extraction_profiling": [],
+  "validation_profiling": [
+    {
+      "sample_size": 100,
+      "success": true,
+      "error": null,
+      "duration_seconds": 0.01,
+      "records_per_second": 10045.03,
+      "validation_metrics": {
+        "total_records": 100,
+        "passed_records": 0,
+        "failed_records": 100,
+        "pass_rate": 0.0,
+        "issues_count": 100
+      }
+    },
+    {
+      "sample_size": 500,
+      "success": true,
+      "error": null,
+      "duration_seconds": 0.04,
+      "records_per_second": 13352.55,
+      "validation_metrics": {
+        "total_records": 500,
+        "passed_records": 0,
+        "failed_records": 500,
+        "pass_rate": 0.0,
+        "issues_count": 500
+      }
+    },
+    {
+      "sample_size": 1000,
+      "success": true,
+      "error": null,
+      "duration_seconds": 0.08,
+      "records_per_second": 11776.2,
+      "validation_metrics": {
+        "total_records": 1000,
+        "passed_records": 0,
+        "failed_records": 1000,
+        "pass_rate": 0.0,
+        "issues_count": 1000
+      }
+    },
+    {
+      "sample_size": 5000,
+      "success": true,
+      "error": null,
+      "duration_seconds": 0.38,
+      "records_per_second": 13333.08,
+      "validation_metrics": {
+        "total_records": 5000,
+        "passed_records": 0,
+        "failed_records": 5000,
+        "pass_rate": 0.0,
+        "issues_count": 5000
+      }
+    }
+  ],
+  "end_to_end_pipeline": {
+    "success": false,
+    "error": "CSV import validation failed: expected 42 columns, found 0. Columns discovered: []",
+    "total_duration_seconds": 2.61
+  }
+}

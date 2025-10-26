@@ -513,10 +513,14 @@ def validate_sbir_awards(df: pd.DataFrame, pass_rate_threshold: float = 0.95) ->
 
     all_issues: list[QualityIssue] = []
 
-    # Validate each record
+    # Validate each record with progress logging
     for idx, row in df.iterrows():
         issues = validate_sbir_award_record(row, idx)
         all_issues.extend(issues)
+
+        # Log progress every 1000 records
+        if (idx + 1) % 1000 == 0:
+            logger.info(f"Validated {idx + 1}/{len(df)} records ({(idx + 1) / len(df) * 100:.1f}%)")
 
     # Count errors vs warnings
     errors = [i for i in all_issues if i.severity == QualitySeverity.ERROR]
