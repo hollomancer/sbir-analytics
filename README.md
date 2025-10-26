@@ -84,6 +84,46 @@ The SBIR awards CSV contains the following data categories:
    - Review quality report for issues
    - Monitor asset check results
 
+## USAspending Data Evaluation
+
+The pipeline uses USAspending data for SBIR award enrichment and technology transition detection. Due to the dataset size (~51GB compressed), evaluation is performed directly from removable media without copying to local storage.
+
+### Removable Media Workflow
+
+1. **Mount Drive**:
+   ```bash
+   # Insert "X10 Pro" drive - automatically mounts at /Volumes/X10 Pro
+   ls /Volumes/X10\ Pro/usaspending-db-subset_20251006.zip
+   ```
+
+2. **Profile Dataset**:
+   ```bash
+   # Generate profiling report
+   python scripts/profile_usaspending_dump.py --output reports/usaspending_subset_profile.json
+
+   # Check profiling stats
+   python scripts/get_usaspending_stats.py --check-available
+   ```
+
+3. **Assess Coverage**:
+   ```bash
+   # Evaluate enrichment potential
+   python scripts/assess_usaspending_coverage.py --output reports/usaspending_coverage_assessment.json
+   ```
+
+### Key Findings
+
+- **Data Source**: PostgreSQL dump subset with transaction, award, and recipient tables
+- **Coverage Target**: ≥70% match rate between SBIR awards and USAspending transactions
+- **Enrichment Fields**: UEI/DUNS matching, NAICS codes, place of performance, agency details
+- **Transition Detection**: Competition data, award history, obligated amounts
+
+### Documentation
+
+- **Evaluation Guide**: `docs/data/usaspending-evaluation.md`
+- **Profiling Report**: `reports/usaspending_subset_profile.md`
+- **Coverage Assessment**: `reports/usaspending_coverage_assessment.json`
+
 ## Quick Start
 
 ### Prerequisites
