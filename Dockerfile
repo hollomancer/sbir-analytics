@@ -49,6 +49,11 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 # Copy dependency manifests early to leverage layer cache
 COPY pyproject.toml poetry.lock* /workspace/
 
+# Ensure README and package sources are available for Poetry metadata when building wheels.
+# Some build tools (Poetry) read README and package metadata from the workspace; copying
+# the project source into the builder context ensures metadata generation succeeds in CI.
+COPY . /workspace/
+
 # Export a requirements.txt for pip-based wheel building (only main dependencies)
 # --without-hashes simplifies wheel building in isolated environments
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --only main
@@ -127,7 +132,7 @@ EXPOSE 3000
 
 # Use tini as PID 1 for proper signal handling; keep entrypoint as shell script in repo
 # Provide a default CMD that is friendly for containers; runtime behavior controlled via entrypoint args
-ENTRYPOINT ["/usr/bin/tini", "--", "/app/sbir-etl/scripts/docker/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/scripts/docker/entrypoint.sh"]
 CMD ["dagster-webserver"]
 
 # Healthcheck: ensure Python can import package (lightweight check)

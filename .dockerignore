@@ -50,6 +50,7 @@ Dockerfile
 
 # Documentation
 *.md
+!README.md
 docs/
 
 # Testing
