@@ -1,20 +1,24 @@
 {
-  "total_sbir_awards": 100,
-  "total_usaspending_recipients": 5,
+  "total_sbir_awards": 1000,
+  "total_usaspending_recipients": 10000,
   "match_rates": {
     "uei": {
-      "match_rate": 0.01,
-      "matched_awards": 1,
-      "total_awards_with_id": 100,
-      "total_usaspending_with_id": 5,
-      "matched_ids_sample": ["NAN"]
-    },
-    "duns": {
       "match_rate": 0.0,
       "matched_awards": 0,
-      "total_awards_with_id": 100,
-      "total_usaspending_with_id": 5,
+      "total_awards_with_id": 1000,
+      "total_usaspending_with_id": 10000,
       "matched_ids_sample": []
+    },
+    "duns": {
+      "match_rate": 0.003,
+      "matched_awards": 3,
+      "total_awards_with_id": 1000,
+      "total_usaspending_with_id": 10000,
+      "matched_ids_sample": [
+        "nan",
+        "859244204.0",
+        "78285646.0"
+      ]
     }
   },
   "coverage_details": {},
@@ -23,12 +27,12 @@
     "Contract matching requires transaction_normalized table data"
   ],
   "overall_coverage": {
-    "match_rate": 0.28,
-    "matched_awards": 28,
-    "total_awards": 100,
+    "match_rate": 0.238,
+    "matched_awards": 238,
+    "total_awards": 1000,
     "breakdown": {
-      "uei_matches": 28,
-      "duns_matches": 0,
+      "uei_matches": 0,
+      "duns_matches": 238,
       "contract_matches": 0
     }
   },

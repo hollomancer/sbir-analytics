@@ -1,6 +1,6 @@
 # USAspending PostgreSQL COPY Dump Profile Summary
 
-**Generated:** 2025-10-26T08:55:21.888544
+**Generated:** 2025-10-26T09:12:38.432291
 **Dump Path:** /Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip
 **Dump Size:** 16.68 GB
 **Data Format:** PostgreSQL COPY files (.dat.gz)
@@ -91,19 +91,21 @@
 
 ### recipient_lookup (OID: 5412)
 
-**Sample Rows:** 5
+**Total Rows:** 3382233
+**Sampled Rows:** 10000
 **Columns:** 19
 
 **Sample Data:**
 ```
-{0: 178613170, 1: 'K & K CONSTRUCTION SUPPLY INC', 2: nan, 3: nan, 4: 18869431, 5: '2025-06-20', 6: '11400 WHITE ROCK RD', 7: nan, 8: 'RANCHO CORDOVA', 9: 6.0, 10: 'USA', 11: 'CA', 12: 95742.0, 13: 6600.0, 14: '{2X,8W,A2,HQ,XS}', 15: nan, 16: '2L', 17: 'C111ATT311C8', 18: 'VFKQPG9ZEUD3'}
-{0: 82185679, 1: 'NEW ADVANCES FOR PEOPLE WITH DISABILITIES', 2: 82185679.0, 3: nan, 4: 18784361, 5: '2025-05-27', 6: '3400 N SILLECT AVE', 7: nan, 8: 'BAKERSFIELD', 9: 20.0, 10: 'USA', 11: 'CA', 12: 93308.0, 13: 6363.0, 14: '{A8}', 15: nan, 16: '8H', 17: 'C111BG66D155', 18: nan}
-{0: 78269681, 1: 'MONARCO GROUP LLC, THE', 2: nan, 3: nan, 4: 19781909, 5: '2012-02-11', 6: '1704 MAXWELL DR, STE 107', 7: nan, 8: 'WALL', 9: nan, 10: 'USA', 11: 'NJ', 12: 7719.0, 13: 3852.0, 14: '{2X,8E,8W,A2,LJ,VW}', 15: nan, 16: nan, 17: 'C111CU96ZQA5', 18: nan}
+{0: 178613170.0, 1: 'K & K CONSTRUCTION SUPPLY INC', 2: nan, 3: nan, 4: 18869431, 5: '2025-06-20', 6: '11400 WHITE ROCK RD', 7: nan, 8: 'RANCHO CORDOVA', 9: 6.0, 10: 'USA', 11: 'CA', 12: '95742', 13: 6600.0, 14: '{2X,8W,A2,HQ,XS}', 15: nan, 16: '2L', 17: 'C111ATT311C8', 18: 'VFKQPG9ZEUD3'}
+{0: 82185679.0, 1: 'NEW ADVANCES FOR PEOPLE WITH DISABILITIES', 2: 82185679.0, 3: nan, 4: 18784361, 5: '2025-05-27', 6: '3400 N SILLECT AVE', 7: nan, 8: 'BAKERSFIELD', 9: 20.0, 10: 'USA', 11: 'CA', 12: '93308', 13: 6363.0, 14: '{A8}', 15: nan, 16: '8H', 17: 'C111BG66D155', 18: nan}
+{0: 78269681.0, 1: 'MONARCO GROUP LLC, THE', 2: nan, 3: nan, 4: 19781909, 5: '2012-02-11', 6: '1704 MAXWELL DR, STE 107', 7: nan, 8: 'WALL', 9: nan, 10: 'USA', 11: 'NJ', 12: '07719', 13: 3852.0, 14: '{2X,8E,8W,A2,LJ,VW}', 15: nan, 16: nan, 17: 'C111CU96ZQA5', 18: nan}
 ```
 
 ### transaction_normalized (OID: 5420)
 
-**Sample Rows:** 5
+**Total Rows:** 585235
+**Sampled Rows:** 10000
 **Columns:** 29
 
 **Sample Data:**

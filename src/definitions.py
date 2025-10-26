@@ -10,10 +10,12 @@ from dagster import (
 )
 
 from . import assets
-from .assets import sbir_ingestion
+from .assets import sbir_ingestion, usaspending_ingestion, sbir_usaspending_enrichment
 
 # Load all assets and checks from modules
-all_assets = load_assets_from_modules([assets, sbir_ingestion])
+all_assets = load_assets_from_modules(
+    [assets, sbir_ingestion, usaspending_ingestion, sbir_usaspending_enrichment]
+)
 all_asset_checks = load_asset_checks_from_modules([sbir_ingestion])
 
 # Define SBIR ingestion job (just the ingestion assets)

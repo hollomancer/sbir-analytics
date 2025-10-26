@@ -124,7 +124,7 @@ class USAspendingDumpProfiler:
             logger.error("unzip command not found.")
             return {"error": "unzip not available"}
 
-    def get_table_sample_from_copy_file(self, table_oid: int, limit: int = 5) -> Dict:
+    def get_table_sample_from_copy_file(self, table_oid: int, limit: int = 10000) -> Dict:
         """Get sample rows from a PostgreSQL COPY file.
 
         Args:
@@ -172,6 +172,15 @@ class USAspendingDumpProfiler:
                 # File might not be gzipped, use as-is
                 pass
 
+            # Count total rows
+            cmd_count = ["wc", "-l", str(temp_file)]
+            result_count = subprocess.run(cmd_count, capture_output=True, text=True, timeout=30)
+            if result_count.returncode == 0:
+                row_count = int(result_count.stdout.split()[0])
+            else:
+                row_count = None
+                logger.warning(f"Could not count rows for {table_name}")
+
             # Read with pandas for PostgreSQL COPY format
             df = pd.read_csv(
                 temp_file,
@@ -191,7 +200,8 @@ class USAspendingDumpProfiler:
             return {
                 "table_name": table_name,
                 "oid": table_oid,
-                "sample_rows": len(df),
+                "total_rows": row_count,
+                "sampled_rows": len(df),
                 "columns": list(df.columns),
                 "sample_data": df.head(limit).to_dict("records"),
             }
@@ -204,7 +214,7 @@ class USAspendingDumpProfiler:
         """Profile the entire dump.
 
         Args:
-            sample_oids: List of specific table OIDs to sample (None for known tables)
+            sample_oids: List of specific table OIDs to sample (None for all tables)
 
         Returns:
             Complete profiling report
@@ -223,9 +233,9 @@ class USAspendingDumpProfiler:
         # Get basic metadata
         report["metadata"] = self.get_dump_metadata_from_files()
 
-        # Sample tables - use known OIDs if none specified
+        # Sample tables - use all OIDs if none specified
         if sample_oids is None:
-            sample_oids = list(self.table_oid_map.keys())
+            sample_oids = [f["oid"] for f in report["metadata"].get("data_files", [])]
 
         for oid in sample_oids:
             sample = self.get_table_sample_from_copy_file(oid)
@@ -285,7 +295,8 @@ class USAspendingDumpProfiler:
                 if "error" in sample:
                     f.write(f"**Error:** {sample['error']}\n\n")
                 else:
-                    f.write(f"**Sample Rows:** {sample['sample_rows']}\n")
+                    f.write(f"**Total Rows:** {sample.get('total_rows', 'unknown')}\n")
+                    f.write(f"**Sampled Rows:** {sample['sampled_rows']}\n")
                     f.write(f"**Columns:** {len(sample['columns'])}\n\n")
 
                     if sample["sample_data"]:
@@ -325,7 +336,7 @@ def main():
         "--sample-oids",
         nargs="*",
         type=int,
-        help="Specific table OIDs to sample (default: known table OIDs)",
+        help="Specific table OIDs to sample (default: all tables)",
     )
     parser.add_argument(
         "--temp-dir", type=Path, default=Path("/tmp"), help="Temporary directory for scratch files"
@@ -342,8 +353,8 @@ def main():
     # Create profiler instance
     profiler = USAspendingDumpProfiler(args.dump_path, args.temp_dir)
 
-    # Default sample OIDs if none specified
-    sample_oids = args.sample_oids or list(profiler.table_oid_map.keys())
+    # Default sample OIDs if none specified (None means all)
+    sample_oids = args.sample_oids
 
     try:
         # Validate dump access

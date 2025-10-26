@@ -61,6 +61,7 @@ class DuckDBUSAspendingExtractor:
             True if import successful, False otherwise
         """
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
+            dump_file = Path(dump_file)
             logger.info(f"Importing PostgreSQL dump from {dump_file}")
 
             if not dump_file.exists():
@@ -83,7 +84,7 @@ class DuckDBUSAspendingExtractor:
                 return False
 
     def _import_zipped_dump(self, dump_file: Path, table_name: str) -> bool:
-        """Import zipped PostgreSQL dump using postgres_scanner or pg_restore."""
+        """Import zipped PostgreSQL dump using postgres_scanner, COPY files, or pg_restore."""
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
             conn = self.connect()
 
@@ -116,10 +117,111 @@ class DuckDBUSAspendingExtractor:
 
             except Exception as e:
                 logger.warning(f"Direct postgres_scanner access failed: {e}")
+                logger.info("Attempting COPY file extraction")
+
+                # Try extracting COPY files
+                if self._import_copy_files(dump_file, table_name):
+                    return True
+
                 logger.info("Falling back to pg_restore extraction")
 
                 # Fallback: extract dump temporarily and import
                 return self._extract_and_import_dump(dump_file, table_name)
+
+    def _import_copy_files(self, dump_file: Path, table_name: str) -> bool:
+        """Import PostgreSQL COPY files from ZIP archive."""
+        with log_with_context(stage="extract", run_id="usaspending_import") as logger:
+            conn = self.connect()
+
+            try:
+                # List files in ZIP to find .dat.gz files
+                cmd = ["unzip", "-l", str(dump_file)]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+
+                if result.returncode != 0:
+                    logger.error(f"unzip -l failed: {result.stderr}")
+                    return False
+
+                # Parse for .dat.gz files
+                copy_files = []
+                for line in result.stdout.split("\n"):
+                    if ".dat.gz" in line:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            filename = parts[-1]
+                            oid = int(filename.split("/")[-1].split(".")[0])
+                            copy_files.append({"oid": oid, "filename": filename})
+
+                if not copy_files:
+                    logger.warning("No .dat.gz files found in ZIP")
+                    return False
+
+                logger.info(f"Found {len(copy_files)} COPY files in ZIP")
+
+                # Create tables for each COPY file
+                for file_info in copy_files:
+                    oid = file_info["oid"]
+                    filename = file_info["filename"]
+                    table_name_for_file = f"{table_name}_{oid}"
+
+                    logger.info(f"Importing {filename} as {table_name_for_file}")
+
+                    # Extract and decompress the file
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        temp_file = Path(temp_dir) / f"{oid}.dat"
+
+                        # Extract specific file
+                        extract_cmd = ["unzip", "-p", str(dump_file), filename]
+                        with open(temp_file, "wb") as f:
+                            result = subprocess.run(extract_cmd, stdout=f, stderr=subprocess.PIPE)
+
+                        if result.returncode != 0:
+                            logger.error(f"Failed to extract {filename}: {result.stderr.decode()}")
+                            continue
+
+                        # Decompress if gzipped
+                        decompressed_file = temp_file
+                        try:
+                            import gzip
+
+                            with (
+                                open(temp_file, "rb") as f_in,
+                                open(decompressed_file.with_suffix(".decompressed"), "wb") as f_out,
+                            ):
+                                f_out.write(gzip.decompress(f_in.read()))
+                            decompressed_file = decompressed_file.with_suffix(".decompressed")
+                        except gzip.BadGzipFile:
+                            pass  # Not gzipped
+
+                        # Load into DuckDB
+                        try:
+                            create_query = f"""
+                            CREATE TABLE IF NOT EXISTS {table_name_for_file} AS
+                            SELECT * FROM read_csv_auto('{decompressed_file}',
+                                delim='\t',
+                                nullstr='\\N',
+                                header=false
+                            )
+                            """
+                            conn.execute(create_query)
+                            logger.info(f"Created table {table_name_for_file}")
+                        except Exception as e:
+                            logger.error(f"Failed to create table {table_name_for_file}: {e}")
+
+                # Create a union view for transaction_normalized if multiple tables
+                txn_tables = [f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5420]
+                if txn_tables:
+                    union_query = (
+                        f"CREATE OR REPLACE VIEW {table_name} AS SELECT * FROM {txn_tables[0]}"
+                    )
+                    conn.execute(union_query)
+                    logger.info(f"Created view {table_name} from {txn_tables[0]}")
+
+                return True
+
+            except Exception as e:
+                logger.error(f"Failed to import COPY files: {e}")
+                return False
 
     def _extract_and_import_dump(self, dump_file: Path, table_name: str) -> bool:
         """Extract dump to temporary location and import."""
