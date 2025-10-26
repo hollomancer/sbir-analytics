@@ -101,6 +101,7 @@
   - [x] 4.5.3 Include quality metrics in check result
 - [x] 4.6 Update src/definitions.py to include sbir_ingestion assets
 - [x] 4.7 Write integration tests (tests/integration/test_sbir_ingestion_assets.py)
+  - [x] 4.7.1 Add integration test to run company enricher in the SBIR asset pipeline (tests/integration/test_sbir_enrichment_pipeline.py)
 
 ## 5. Configuration Updates
 - [x] 5.1 Update config/base.yaml
