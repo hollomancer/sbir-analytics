@@ -60,7 +60,7 @@ code
   - Notes: Implemented `.github/workflows/container-ci.yml`. The workflow builds the image (loads it into the runner), brings up an ephemeral Neo4j and the `app` test service via `docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build`, tears down the stack on completion, and uploads logs/artifacts on failure. The job uses Buildx and supports caching.
 - [x] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
   - Notes: Implemented smoke test in `.github/workflows/container-ci.yml` that runs `docker run ${IMAGE_NAME}:ci-${{ github.sha }} dagster --version` immediately after building the image and before running the compose-based tests.
-- [ ] 5.4 Document how to tag and push images (e.g., `ghcr.io/org/sbir-etl:<sha>`) and where credentials live.
+- [x] 5.4 Removed / archived: Image tagging and publish guidance removed from this change. Publishing and registry configuration have been consolidated into `docs/deployment/containerization.md` and the `config/docker.yaml` advisory notes; CI publishing is considered out-of-scope for this change.
 
 ## 6. Documentation & Developer Experience
 
@@ -72,5 +72,8 @@ code
   - Notes: `CONTRIBUTING.md` updated with onboarding guidance: when to prefer the containerized workflow, how to prepare `.env`, and links to the dev/test compose overlays.
 - [x] 6.4 Include screenshots or CLI snippets showing `docker compose ps` / `dagster` UI access to ensure new contributors know how to verify their setup.
   - Notes: Added CLI snippets and example commands to `docs/deployment/containerization.md` and `README.md`. Screenshots may be added later as assets, but the runbook now includes exact commands to verify `docker compose ps` and access Dagster UI on `localhost:3000`.
+
+Archive:
+- Status: This change ("add-containerized-runtime") is archived and considered complete. Task 5.4 (publish/tag guidance) was removed from the implementation checklist and its content consolidated into the repository documentation (`docs/deployment/containerization.md` and `config/docker.yaml`). No further implementation work remains under this change.
 
 
