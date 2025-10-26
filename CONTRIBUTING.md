@@ -213,6 +213,40 @@ pytest --cov=src --cov-report=term-missing
 pytest -n auto
 ```
 
+## SBIR Data Ingestion Guidelines
+
+### Working with SBIR Data
+
+When contributing to SBIR data ingestion components:
+
+1. **Data Source Awareness**: Always reference the official SBIR.gov data dictionary and field definitions
+2. **Validation Rules**: Any changes to validation logic must maintain backward compatibility
+3. **Performance Considerations**: Test changes with the full ~533K record dataset
+4. **Sample Data**: Use `tests/fixtures/sbir_sample.csv` for development testing
+
+### SBIR-Specific Testing
+
+- **Validation Tests**: Add unit tests for new validation rules in `test_sbir_validators.py`
+- **Integration Tests**: Test end-to-end SBIR pipeline in `test_sbir_ingestion_assets.py`
+- **Edge Cases**: Include tests for missing UEI, old awards, and invalid formats
+- **Performance**: Monitor memory usage and processing time for large datasets
+
+### Configuration Changes
+
+When modifying SBIR configuration:
+
+- Update `config/base.yaml` for new settings
+- Add validation in `src/config/schemas.py`
+- Document configuration options in `docs/sbir_ingestion.md`
+- Test configuration loading and overrides
+
+### Documentation Updates
+
+- Update field descriptions in `docs/sbir_ingestion.md` when data structure changes
+- Maintain API documentation for extractor and validator classes
+- Keep validation rules documentation current
+- Update README.md SBIR section for user-facing changes
+
 ## Commit Message Guidelines
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:

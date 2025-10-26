@@ -22,6 +22,68 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 - **Logging**: Structured logging with loguru (JSON for production, pretty for development)
 - **Quality Gates**: Configurable data quality checks at each pipeline stage
 
+## SBIR Data Ingestion
+
+### Data Source
+
+The pipeline processes SBIR (Small Business Innovation Research) and STTR (Small Business Technology Transfer) award data from the official SBIR.gov database. The primary data source is a comprehensive CSV export containing historical award information from 1983 to present.
+
+**Data Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
+- **Format**: CSV with 42 columns
+- **Record Count**: ~533,000 awards (as of 2024)
+- **Update Frequency**: Monthly exports available
+- **Coverage**: All federal agencies participating in SBIR/STTR programs
+
+### CSV Structure
+
+The SBIR awards CSV contains the following data categories:
+
+| Category | Fields | Description |
+|----------|--------|-------------|
+| **Company Info** | 7 fields | Company name, address, website, employee count |
+| **Award Details** | 7 fields | Title, abstract, agency, phase, program, topic code |
+| **Financial** | 2 fields | Award amount, award year |
+| **Timeline** | 5 fields | Award date, end date, solicitation dates |
+| **Tracking** | 4 fields | Agency tracking number, contract, solicitation info |
+| **Identifiers** | 2 fields | UEI (Unique Entity ID), DUNS number |
+| **Classifications** | 3 fields | HUBZone, disadvantaged, woman-owned status |
+| **Contacts** | 8 fields | Primary contact and PI information |
+| **Research Institution** | 3 fields | RI name, POC details (STTR only) |
+
+### Usage Instructions
+
+1. **Download Data**:
+   ```bash
+   # Download from SBIR.gov (manual process)
+   # Place in data/raw/sbir/awards_data.csv
+   ```
+
+2. **Configure Pipeline**:
+   ```yaml
+   # config/base.yaml
+   sbir:
+     csv_path: "data/raw/sbir/awards_data.csv"
+     duckdb:
+       database_path: ":memory:"
+       table_name: "sbir_awards"
+   ```
+
+3. **Run Ingestion**:
+   ```bash
+   # Start Dagster UI
+   poetry run dagster dev
+
+   # Materialize SBIR assets in order:
+   # 1. raw_sbir_awards
+   # 2. validated_sbir_awards
+   # 3. sbir_validation_report
+   ```
+
+4. **Monitor Quality**:
+   - Check validation pass rate (target: ≥95%)
+   - Review quality report for issues
+   - Monitor asset check results
+
 ## Quick Start
 
 ### Prerequisites

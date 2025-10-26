@@ -129,16 +129,16 @@
 - [x] 6.2 Document sample data structure in tests/fixtures/README.md
 
 ## 7. Documentation
-- [ ] 7.1 Add SBIR ingestion section to README.md
-  - [ ] 7.1.1 Data source description
-  - [ ] 7.1.2 CSV structure and field counts
-  - [ ] 7.1.3 Usage instructions
-- [ ] 7.2 Create docs/sbir_ingestion.md with detailed documentation
-  - [ ] 7.2.1 Field descriptions from data dictionary
-  - [ ] 7.2.2 Validation rules reference
-  - [ ] 7.2.3 Example queries and usage
+- [x] 7.1 Add SBIR ingestion section to README.md
+  - [x] 7.1.1 Data source description
+  - [x] 7.1.2 CSV structure and field counts
+  - [x] 7.1.3 Usage instructions
+- [x] 7.2 Create docs/sbir_ingestion.md with detailed documentation
+  - [x] 7.2.1 Field descriptions from data dictionary
+  - [x] 7.2.2 Validation rules reference
+  - [x] 7.2.3 Example queries and usage
 - [x] 7.3 Add inline docstrings to all new modules
-- [ ] 7.4 Update CONTRIBUTING.md if needed
+- [x] 7.4 Update CONTRIBUTING.md if needed
 
 ## 8. Testing and Validation
 - [ ] 8.1 Run unit tests for all new modules
