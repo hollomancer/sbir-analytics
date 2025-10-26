@@ -472,7 +472,10 @@ tomli = "<3"
 toposort = ">=1.0"
 tqdm = "<5"
 tzdata = "*"
-universal_pathlib = {version = "*", markers = "python_version < \"3.12\""}
+universal_pathlib = [
+    {version = "*", markers = "python_version < \"3.12\""},
+    {version = ">=0.2.0", markers = "python_version >= \"3.12\""},
+]
 watchdog = ">=0.8.3,<7"
 
 [package.extras]
@@ -1645,7 +1648,10 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.23.2", markers = "python_version == \"3.11\""}
+numpy = [
+    {version = ">=1.23.2", markers = "python_version == \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
+]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
 tzdata = ">=2022.7"
@@ -3390,5 +3396,5 @@ propcache = ">=0.2.1"
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.11,<3.12"
-content-hash = "22d20beb1d6f6132e418fe894150ae03257218dd4b0309086221fd49fe8a2f29"
+python-versions = ">=3.11,<3.13"
+content-hash = "ba21b8573515bc805548e5b5a997efaeb5bcb4f4354db53e1660d0c43d36041e"
