@@ -3,7 +3,12 @@
 ## 1. Project Setup & Dependencies
 
 - [ ] 1.1 Promote rapidfuzz to main dependencies (needed for vendor name matching)
-- [ ] 1.2 Create src/transition/ module structure (detection/, features/, config/)
+- [x] 1.2 Create src/transition/ module structure (detection/, features/, config/)
+  - Notes: Implemented `src/transition/` package with scaffolds:
+    - `src/transition/detection/` (detection pipeline stubs)
+    - `src/transition/features/` (vendor resolver and feature extractors)
+    - `src/transition/config/` (configuration placeholders)
+    - Added `src/transition/__init__.py` and initial `VendorResolver` implementation in `src/transition/features/vendor_resolver.py`.
 - [ ] 1.3 Add pytest fixtures for transition detection tests
 - [ ] 1.4 Verify DuckDB availability for large contract dataset analytics
 
