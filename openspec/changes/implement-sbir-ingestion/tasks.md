@@ -1,19 +1,19 @@
 # Implementation Tasks
 
 ## 1. Data Model Enhancement
-- [ ] 1.1 Review SBIR data dictionary (docs/data-dictionaries/sbir_awards_data_dictionary.xlsx)
-- [ ] 1.2 Analyze CSV structure and data types (42 columns, 533K records)
-- [ ] 1.3 Update src/models/award.py with complete SbirAward model
-  - [ ] 1.3.1 Company identification fields (Company, UEI, DUNS, Address1-2, City, State, Zip)
-  - [ ] 1.3.2 Award details (Title, Abstract, Agency, Branch, Phase, Program)
-  - [ ] 1.3.3 Financial fields (Award Amount, Award Year)
-  - [ ] 1.3.4 Timeline fields (Proposal Award Date, Contract End Date, Solicitation dates)
-  - [ ] 1.3.5 Tracking fields (Agency Tracking Number, Contract, Solicitation Number)
-  - [ ] 1.3.6 Personnel fields (Contact Name/Title/Phone/Email, PI, RI)
-  - [ ] 1.3.7 Business classification (HUBZone, Woman Owned, Socially/Economically Disadvantaged)
-  - [ ] 1.3.8 Company metadata (Number Employees, Company Website)
+- [x] 1.1 Review SBIR data dictionary (docs/data-dictionaries/sbir_awards_data_dictionary.xlsx)
+- [x] 1.2 Analyze CSV structure and data types (42 columns, 533K records)
+- [x] 1.3 Update src/models/award.py with complete SbirAward model
+  - [x] 1.3.1 Company identification fields (Company, UEI, DUNS, Address1-2, City, State, Zip)
+  - [x] 1.3.2 Award details (Title, Abstract, Agency, Branch, Phase, Program)
+  - [x] 1.3.3 Financial fields (Award Amount, Award Year)
+  - [x] 1.3.4 Timeline fields (Proposal Award Date, Contract End Date, Solicitation dates)
+  - [x] 1.3.5 Tracking fields (Agency Tracking Number, Contract, Solicitation Number)
+  - [x] 1.3.6 Personnel fields (Contact Name/Title/Phone/Email, PI, RI)
+  - [x] 1.3.7 Business classification (HUBZone, Woman Owned, Socially/Economically Disadvantaged)
+  - [x] 1.3.8 Company metadata (Number Employees, Company Website)
 - [x] 1.4 Add Pydantic validators for data type conversions and optional fields
-- [ ] 1.5 Write unit tests for SbirAward model (tests/unit/test_sbir_award_model.py)
+- [x] 1.5 Write unit tests for SbirAward model (tests/unit/test_sbir_award_model.py)
 
 ## 2. DuckDB-Based CSV Extractor Implementation
 - [x] 2.1 Create src/extractors/sbir.py
