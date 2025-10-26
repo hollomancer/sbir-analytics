@@ -36,12 +36,20 @@ class DuckDBClient:
     @staticmethod
     def escape_identifier(identifier: str) -> str:
         """Return a DuckDB-safe identifier (table/column name)."""
-        return duckdb.escape_identifier(identifier)
+        try:
+            return duckdb.escape_identifier(identifier)  # type: ignore[attr-defined]
+        except AttributeError:
+            double_quoted = identifier.replace('"', '""')
+            return f'"{double_quoted}"'
 
     @staticmethod
     def escape_literal(value: str) -> str:
         """Return a DuckDB-safe string literal."""
-        return duckdb.escape_string_literal(value)
+        try:
+            return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
+        except AttributeError:
+            escaped = value.replace("\\", "\\\\").replace("'", "''")
+            return "'" + escaped + "'"
 
     @contextmanager
     def connection(self):

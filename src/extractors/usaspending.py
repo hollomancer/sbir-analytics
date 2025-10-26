@@ -30,11 +30,19 @@ class DuckDBUSAspendingExtractor:
 
     @staticmethod
     def _escape_identifier(identifier: str) -> str:
-        return duckdb.escape_identifier(identifier)
+        try:
+            return duckdb.escape_identifier(identifier)  # type: ignore[attr-defined]
+        except AttributeError:
+            double_quoted = identifier.replace('"', '""')
+            return f'"{double_quoted}"'
 
     @staticmethod
     def _escape_literal(value: str) -> str:
-        return duckdb.escape_string_literal(value)
+        try:
+            return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
+        except AttributeError:
+            escaped = value.replace("\\", "\\\\").replace("'", "''")
+            return "'" + escaped + "'"
 
     def connect(self) -> duckdb.DuckDBPyConnection:
         """Get or create database connection."""
