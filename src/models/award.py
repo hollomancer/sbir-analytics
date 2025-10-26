@@ -152,14 +152,22 @@ class Award(BaseModel):
     @field_validator("company_uei")
     @classmethod
     def validate_company_uei(cls, v: str | None) -> str | None:
-        """Validate UEI if provided: expected to be 12 alphanumeric characters."""
+        """Normalize and validate UEI if provided.
+
+        This validator strips any non-alphanumeric characters (hyphens, spaces,
+        etc.) from the input and then expects the remaining characters to be a
+        12-character alphanumeric UEI. The returned value is uppercased.
+        """
         if v is None:
             return v
         if not isinstance(v, str):
             raise ValueError("Company UEI must be a string")
-        cleaned = v.strip()
-        if len(cleaned) != 12 or not cleaned.isalnum():
-            raise ValueError("Company UEI must be a 12-character alphanumeric string")
+        # Remove non-alphanumeric characters commonly present in raw input (spaces, hyphens)
+        cleaned = "".join(ch for ch in v if ch.isalnum()).strip()
+        if len(cleaned) != 12:
+            raise ValueError(
+                "Company UEI must be a 12-character alphanumeric string after removing separators"
+            )
         return cleaned.upper()
 
     @field_validator("company_duns")

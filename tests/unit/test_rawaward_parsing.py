@@ -1,5 +1,9 @@
 import pytest
+
+"""Tests for RawAward -> Award parsing and coercion."""
 from datetime import date
+
+import pytest
 
 from src.models import RawAward, Award
 
@@ -73,3 +77,51 @@ def test_to_award_contract_date_before_proposal_raises():
         ValueError, match="contract_end_date must be on or after proposal_award_date"
     ):
         raw.to_award()
+
+
+def test_uei_and_duns_parsing_variants():
+    """Ensure UEI and DUNS with hyphens/spaces are normalized by to_award()."""
+    raw1 = RawAward(
+        award_id="R-UEI-1",
+        company_name="UEICo",
+        award_amount="1000",
+        award_date="2023-01-01",
+        program="SBIR",
+        company_uei="abc-123-def456",
+        company_duns="123 456 789",
+    )
+
+    award1 = raw1.to_award()
+    assert isinstance(award1, Award)
+    # UEI should be stripped of separators and uppercased
+    assert award1.company_uei == "ABC123DEF456"
+    # DUNS should be digits only
+    assert award1.company_duns == "123456789"
+
+    raw2 = RawAward(
+        award_id="R-UEI-2",
+        company_name="UEICo",
+        award_amount="2000",
+        award_date="2023-01-01",
+        program="SBIR",
+        company_uei="abc 123 def456",
+        company_duns="123-456-789",
+    )
+
+    award2 = raw2.to_award()
+    assert award2.company_uei == "ABC123DEF456"
+    assert award2.company_duns == "123456789"
+
+    # Invalid UEI (after stripping) should raise during validation
+    raw_bad = RawAward(
+        award_id="R-UEI-BAD",
+        company_name="UEIBad",
+        award_amount="500",
+        award_date="2023-01-01",
+        program="SBIR",
+        company_uei="short-ue",
+        company_duns="123-456-789",
+    )
+
+    with pytest.raises(ValueError, match="12-character"):
+        raw_bad.to_award()

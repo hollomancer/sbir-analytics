@@ -1,5 +1,6 @@
 """DuckDB client utilities for data processing."""
 
+import csv
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -93,6 +94,7 @@ class DuckDBClient:
         delimiter: str = ",",
         header: bool = True,
         encoding: str = "utf-8",
+        quote: str = '"',
     ) -> bool:
         """Import CSV file into DuckDB table.
 
@@ -117,7 +119,8 @@ class DuckDBClient:
             SELECT * FROM read_csv_auto('{csv_path}',
                 delim='{delimiter}',
                 header={header},
-                encoding='{encoding}')
+                encoding='{encoding}',
+                quote='{quote}')
             """
 
             try:
@@ -335,6 +338,8 @@ class DuckDBClient:
                     chunksize=batch_size,
                     dtype=str,  # read as strings to avoid type surprises; downstream logic can cast
                     low_memory=False,
+                    quoting=csv.QUOTE_MINIMAL,
+                    quotechar='"',
                 ):
                     # Normalize column names (strip whitespace) to reduce surprises
                     chunk.columns = [str(col).strip() for col in chunk.columns]

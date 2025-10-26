@@ -120,6 +120,7 @@ class SbirDuckDBExtractor:
                 delimiter=delimiter,
                 header=header,
                 encoding=encoding,
+                quote='"',
             )
             import_duration = time.time() - start_time
 
