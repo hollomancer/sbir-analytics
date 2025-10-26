@@ -144,6 +144,134 @@ class TestAwardModel:
         assert award.contact_email == "user@example.com"
         assert award.contact_phone == "555-1234"
 
+    def test_award_year_matches_award_date(self):
+        """award_year must match the year portion of award_date when provided."""
+        # matching year should succeed
+        award = Award(
+            award_id="A-YEAR-OK",
+            company_name="Year Co",
+            award_amount=10000.0,
+            award_date=date(2023, 6, 15),
+            program="SBIR",
+            award_year=2023,
+        )
+        assert award.award_year == 2023
+
+        # mismatched year should raise
+        with pytest.raises(ValueError, match="award_year must match award_date year"):
+            Award(
+                award_id="A-YEAR-BAD",
+                company_name="Year Co",
+                award_amount=10000.0,
+                award_date=date(2023, 6, 15),
+                program="SBIR",
+                award_year=2022,
+            )
+
+    def test_contract_date_order(self):
+        """contract_end_date must be on or after proposal_award_date."""
+        # valid ordering
+        award = Award(
+            award_id="A-DATES-OK",
+            company_name="Dates Co",
+            award_amount=25000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            proposal_award_date=date(2023, 1, 1),
+            contract_end_date=date(2023, 12, 31),
+        )
+        assert award.contract_end_date >= award.proposal_award_date
+
+        # invalid ordering should raise
+        with pytest.raises(
+            ValueError, match="contract_end_date must be on or after proposal_award_date"
+        ):
+            Award(
+                award_id="A-DATES-BAD",
+                company_name="Dates Co",
+                award_amount=25000.0,
+                award_date=date(2023, 1, 1),
+                program="SBIR",
+                proposal_award_date=date(2023, 6, 1),
+                contract_end_date=date(2023, 5, 1),
+            )
+
+    def test_state_and_zip_validation(self):
+        """State code normalized to uppercase 2-letter and ZIP normalized to digits (5 or 9)."""
+        award = Award(
+            award_id="A-LOC",
+            company_name="Loc Co",
+            award_amount=30000.0,
+            award_date=date(2023, 2, 2),
+            program="SBIR",
+            company_state="ca",
+            company_zip="12345-6789",
+        )
+        assert award.company_state == "CA"
+        assert award.company_zip == "123456789"
+
+        with pytest.raises(ValueError, match="State code must be 2 letters"):
+            Award(
+                award_id="A-LOC-BAD",
+                company_name="Loc Co",
+                award_amount=30000.0,
+                award_date=date(2023, 2, 2),
+                program="SBIR",
+                company_state="CAL",
+                company_zip="12345",
+            )
+
+        with pytest.raises(ValueError, match="ZIP code must be 5 or 9 digits"):
+            Award(
+                award_id="A-ZIP-BAD",
+                company_name="Loc Co",
+                award_amount=30000.0,
+                award_date=date(2023, 2, 2),
+                program="SBIR",
+                company_state="NY",
+                company_zip="12-34",
+            )
+
+    def test_number_of_employees_non_negative(self):
+        """number_of_employees must be non-negative when provided."""
+        award = Award(
+            award_id="A-EMP-OK",
+            company_name="Emp Co",
+            award_amount=45000.0,
+            award_date=date(2023, 3, 3),
+            program="SBIR",
+            number_of_employees=50,
+        )
+        assert award.number_of_employees == 50
+
+        with pytest.raises(ValueError, match="non-negative"):
+            Award(
+                award_id="A-EMP-BAD",
+                company_name="Emp Co",
+                award_amount=45000.0,
+                award_date=date(2023, 3, 3),
+                program="SBIR",
+                number_of_employees=-5,
+            )
+
+    def test_business_flags_and_award_title(self):
+        """Business classification flags and award_title should be stored as provided."""
+        award = Award(
+            award_id="A-BUS",
+            company_name="Business Co",
+            award_amount=80000.0,
+            award_date=date(2023, 4, 4),
+            program="SBIR",
+            award_title="Research Project",
+            is_hubzone=True,
+            is_woman_owned=False,
+            is_socially_disadvantaged=True,
+        )
+        assert award.award_title == "Research Project"
+        assert award.is_hubzone is True
+        assert award.is_woman_owned is False
+        assert award.is_socially_disadvantaged is True
+
 
 class TestCompanyModel:
     """Test Company model validation."""

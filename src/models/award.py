@@ -7,7 +7,15 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class Award(BaseModel):
-    """SBIR/STTR award data model."""
+    """SBIR/STTR award data model.
+
+    Expanded to include common SBIR fields:
+    - company identifiers (UEI, DUNS, CAGE)
+    - contact & personnel
+    - timeline fields (proposal/award/contract dates)
+    - tracking fields (agency tracking, solicitation)
+    - business classification flags and company metadata
+    """
 
     # Required fields
     award_id: str = Field(..., description="Unique award identifier")
@@ -16,20 +24,21 @@ class Award(BaseModel):
     award_date: date = Field(..., description="Date award was made")
     program: str = Field(..., description="SBIR or STTR program")
 
-    # Optional fields
+    # Optional metadata fields
     phase: str | None = Field(None, description="Phase I, II, or III")
     agency: str | None = Field(None, description="Federal agency")
     branch: str | None = Field(None, description="Agency branch")
     contract: str | None = Field(None, description="Contract number")
     abstract: str | None = Field(None, description="Project abstract")
     keywords: str | None = Field(None, description="Project keywords")
+    award_title: str | None = Field(None, description="Award / project title")
 
-    # Identifier fields (may be present in raw input)
+    # Identifier fields
     company_uei: str | None = Field(None, description="Unique Entity Identifier (UEI)")
-
-    # Enrichment fields (populated later)
     company_duns: str | None = Field(None, description="DUNS number from SAM.gov")
     company_cage: str | None = Field(None, description="CAGE code from SAM.gov")
+
+    # Company address / location
     company_address: str | None = Field(None, description="Company address from SAM.gov")
     company_city: str | None = Field(None, description="Company city from SAM.gov")
     company_state: str | None = Field(None, description="Company state from SAM.gov")
@@ -39,23 +48,72 @@ class Award(BaseModel):
     contact_name: str | None = Field(None, description="Primary contact name")
     contact_email: str | None = Field(None, description="Primary contact email")
     contact_phone: str | None = Field(None, description="Primary contact phone")
+    principal_investigator: str | None = Field(None, description="Principal Investigator")
+    research_institution: str | None = Field(
+        None, description="Research institution or PI affiliation"
+    )
+
+    # Timeline fields
+    proposal_award_date: date | None = Field(None, description="Proposal or award decision date")
+    contract_start_date: date | None = Field(None, description="Contract start date")
+    contract_end_date: date | None = Field(None, description="Contract end date")
+    solicitation_date: date | None = Field(
+        None, description="Solicitation / solicitation release date"
+    )
+
+    # Tracking fields
+    agency_tracking_number: str | None = Field(None, description="Agency tracking number")
+    solicitation_number: str | None = Field(None, description="Solicitation number")
+
+    # Business classification flags
+    is_hubzone: bool | None = Field(None, description="HUBZone designation")
+    is_woman_owned: bool | None = Field(None, description="Woman-owned business flag")
+    is_socially_disadvantaged: bool | None = Field(
+        None, description="Socially/economically disadvantaged flag"
+    )
+
+    # Company metadata
+    number_of_employees: int | None = Field(None, description="Number of employees")
+    company_website: str | None = Field(None, description="Company website URL")
 
     # USAspending enrichment
     usaspending_id: str | None = Field(None, description="USAspending.gov award ID")
     fiscal_year: int | None = Field(None, description="Fiscal year of award")
 
-    @field_validator("award_amount")
+    # Additional tracking / metadata
+    award_year: int | None = Field(None, description="Award year as integer")
+
+    # --- Validators ---
+
+    @field_validator("award_amount", mode="before")
     @classmethod
-    def validate_award_amount(cls, v: float) -> float:
-        """Validate award amount is positive."""
-        if v <= 0:
+    def validate_award_amount(cls, v) -> float:
+        """Coerce award_amount from string to float (if needed) and validate it's positive.
+
+        Accepts numeric strings like "1,234.56" and bare numbers.
+        """
+        if v is None or v == "":
+            raise ValueError("Award amount must be provided and numeric")
+        # If provided as a string, try to coerce to float
+        if isinstance(v, str):
+            try:
+                v = float(v.replace(",", "").strip())
+            except Exception:
+                raise ValueError("Award amount must be a number")
+        try:
+            v_float = float(v)
+        except Exception:
+            raise ValueError("Award amount must be a number")
+        if v_float <= 0:
             raise ValueError("Award amount must be positive")
-        return v
+        return v_float
 
     @field_validator("program")
     @classmethod
     def validate_program(cls, v: str) -> str:
-        """Validate program is SBIR or STTR."""
+        """Validate program is SBIR or STTR and normalize to uppercase."""
+        if v is None:
+            return v
         if v.upper() not in ["SBIR", "STTR"]:
             raise ValueError("Program must be SBIR or STTR")
         return v.upper()
@@ -63,17 +121,32 @@ class Award(BaseModel):
     @field_validator("phase")
     @classmethod
     def validate_phase(cls, v: str | None) -> str | None:
-        """Validate phase if provided."""
-        if v is not None and v.upper() not in ["I", "II", "III"]:
+        """Validate phase if provided. Normalize to roman I/II/III."""
+        if v is None:
+            return v
+        sv = str(v).strip().upper()
+        if sv not in ["I", "II", "III"]:
             raise ValueError("Phase must be I, II, or III")
-        return v.upper() if v else v
+        return sv
 
     @field_validator("fiscal_year")
     @classmethod
     def validate_fiscal_year(cls, v: int | None) -> int | None:
         """Validate fiscal year range."""
-        if v is not None and (v < 1983 or v > 2030):
-            raise ValueError("Fiscal year must be between 1983 and 2030")
+        if v is not None and (v < 1983 or v > 2050):
+            raise ValueError("Fiscal year must be between 1983 and 2050")
+        return v
+
+    @field_validator("award_year")
+    @classmethod
+    def validate_award_year_matches_date(cls, v: int | None, info) -> int | None:
+        """If award_year provided, ensure it matches award_date year when award_date exists."""
+        if v is None:
+            return v
+        award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
+        if award_date_val and isinstance(award_date_val, date):
+            if v != award_date_val.year:
+                raise ValueError("award_year must match award_date year")
         return v
 
     @field_validator("company_uei")
@@ -102,21 +175,82 @@ class Award(BaseModel):
             raise ValueError("DUNS must contain exactly 9 digits")
         return digits
 
+    @field_validator("company_state")
+    @classmethod
+    def validate_company_state(cls, v: str | None) -> str | None:
+        """Normalize state code to uppercase 2-letter code."""
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("State must be a string")
+        code = v.strip().upper()
+        if len(code) != 2:
+            raise ValueError("State code must be 2 letters")
+        return code
+
+    @field_validator("company_zip")
+    @classmethod
+    def validate_company_zip(cls, v: str | None) -> str | None:
+        """Normalize ZIP to digits and validate 5 or 9 digits."""
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("ZIP must be a string")
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) not in (5, 9):
+            raise ValueError("ZIP code must be 5 or 9 digits")
+        return digits
+
+    @field_validator("number_of_employees", mode="before")
+    @classmethod
+    def validate_number_of_employees(cls, v) -> int | None:
+        """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative."""
+        if v is None or v == "":
+            return None
+        # Accept numeric strings like "1,234"
+        if isinstance(v, str):
+            try:
+                v = int(v.replace(",", "").strip())
+            except Exception:
+                raise ValueError("Number of employees must be an integer")
+        if not isinstance(v, int):
+            raise ValueError("Number of employees must be an integer")
+        if v < 0:
+            raise ValueError("Number of employees must be non-negative")
+        return v
+
+    @field_validator("contract_end_date")
+    @classmethod
+    def validate_date_order(cls, v: date | None, info) -> date | None:
+        """If contract_end_date and proposal_award_date present, ensure consistency."""
+        if v is None:
+            return v
+        start = info.data.get("proposal_award_date") if hasattr(info, "data") else None
+        if start and isinstance(start, date) and v < start:
+            raise ValueError("contract_end_date must be on or after proposal_award_date")
+        return v
+
     model_config = ConfigDict(
         validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
     )
 
 
 class RawAward(BaseModel):
-    """Raw award data before validation/transformation."""
+    """Raw award data before validation/transformation.
 
-    # All fields are optional for raw data
+    This model represents the raw input shape (e.g., CSV rows) where many fields
+    are optional and dates are often strings. Consumers should transform/parse
+    RawAward into validated `Award` instances as part of ingestion.
+    """
+
+    # Raw fields (all optional)
     award_id: str | None = None
     company_name: str | None = None
-    company_uei: str | None = None
-    company_duns: str | None = None
-    award_amount: float | None = None
-    award_date: str | None = None  # Raw string date
+    award_title: str | None = None
+    # Accept numeric strings in raw input (e.g., "1,234.56") — coercion happens in to_award()
+    award_amount: str | float | None = None
+    award_date: str | None = None  # Raw string date, to be parsed
+    award_year: int | None = None
     program: str | None = None
     phase: str | None = None
     agency: str | None = None
@@ -125,9 +259,109 @@ class RawAward(BaseModel):
     abstract: str | None = None
     keywords: str | None = None
 
-    # Contact / personnel (raw)
+    # Identifiers
+    company_uei: str | None = None
+    company_duns: str | None = None
+    company_cage: str | None = None
+
+    # Address / contact
+    company_address: str | None = None
+    company_city: str | None = None
+    company_state: str | None = None
+    company_zip: str | None = None
     contact_name: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
+    principal_investigator: str | None = None
+    research_institution: str | None = None
+
+    # Timeline (strings in raw)
+    proposal_award_date: str | None = None
+    contract_start_date: str | None = None
+    contract_end_date: str | None = None
+    solicitation_date: str | None = None
+
+    # Business classifications
+    is_hubzone: bool | None = None
+    is_woman_owned: bool | None = None
+    is_socially_disadvantaged: bool | None = None
+
+    # Company metadata
+    # Accept numeric strings for number_of_employees (e.g., "1,234") — coercion happens in to_award()
+    number_of_employees: str | int | None = None
+    company_website: str | None = None
+
+    def to_award(self) -> "Award":
+        """Convert this RawAward into a validated Award instance.
+
+        Parsing/coercion rules applied:
+        - Date strings are parsed into date objects for award_date,
+          proposal_award_date, contract_start_date, contract_end_date, solicitation_date.
+          Parsing order:
+            1) ISO-format via datetime.fromisoformat (handles YYYY-MM-DD and ISO with time)
+            2) YYYY-MM-DD via strptime
+            3) Common US formats: MM/DD/YYYY, MM-DD-YYYY, MM/DD/YY
+        - Numeric-ish strings for award_amount and number_of_employees are coerced.
+        - ZIP strings are cleaned to digits only.
+        - If parsing fails for a numeric required field, a ValueError is raised.
+        """
+        # Use pydantic model_dump to get a plain dict of values (pydantic v2)
+        data = self.model_dump()
+
+        # Parse dates (attempt ISO first, then YYYY-MM-DD, then common US formats)
+        date_fields = [
+            "award_date",
+            "proposal_award_date",
+            "contract_start_date",
+            "contract_end_date",
+            "solicitation_date",
+        ]
+        us_formats = ("%m/%d/%Y", "%m-%d-%Y", "%m/%d/%y")
+        for f in date_fields:
+            val = data.get(f)
+            if isinstance(val, str):
+                parsed = None
+                s = val.strip()
+                # Try ISO first (handles 'YYYY-MM-DD' and ISO datetimes)
+                try:
+                    parsed = datetime.fromisoformat(s).date()
+                except Exception:
+                    # Try explicit YYYY-MM-DD
+                    try:
+                        parsed = datetime.strptime(s, "%Y-%m-%d").date()
+                    except Exception:
+                        # Try common US formats
+                        for fmt in us_formats:
+                            try:
+                                parsed = datetime.strptime(s, fmt).date()
+                                break
+                            except Exception:
+                                parsed = None
+                data[f] = parsed
+
+        # Coerce award_amount if provided as string
+        aa = data.get("award_amount")
+        if isinstance(aa, str):
+            try:
+                data["award_amount"] = float(aa.replace(",", "").strip())
+            except Exception:
+                raise ValueError("award_amount must be numeric")
+
+        # Coerce number_of_employees if string
+        noe = data.get("number_of_employees")
+        if isinstance(noe, str):
+            try:
+                data["number_of_employees"] = int(noe.replace(",", "").strip())
+            except Exception:
+                data["number_of_employees"] = None
+
+        # Normalize ZIP to digits
+        z = data.get("company_zip")
+        if isinstance(z, str):
+            digits = "".join(ch for ch in z if ch.isdigit())
+            data["company_zip"] = digits if digits else None
+
+        # Construct and return validated Award (let pydantic validators run)
+        return Award(**data)
 
     model_config = ConfigDict(validate_assignment=True)
