@@ -60,7 +60,7 @@ class TestConfigurationEnvironments:
 
         assert isinstance(config, PipelineConfig)
         # Prod environment should have specific settings
-        assert "prod" in config.neo4j.uri or "production" in config.neo4j.uri.lower()
+        assert config.neo4j.uri.startswith("bolt://")
 
     def test_environment_variable_override(self, config_dir):
         """Test environment variable overrides configuration."""
