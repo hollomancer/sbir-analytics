@@ -1,0 +1,386 @@
+{
+  "generated_by": "assistant",
+  "purpose": "Canonical list of web-search / meta-search providers to evaluate for the Evaluate Web Search Enrichment change. Seeded with known or likely documentation URLs where available and marked for verification.",
+  "notes": "Entries are intentionally conservative and include a verification.status field. Please verify each docs URL, API doc URL, and rate-limit / auth details before using them to configure connectors or CI.",
+  "providers": [
+    {
+      "id": "searxng",
+      "name": "SearXNG",
+      "short_description": "Open-source meta-search engine that proxies multiple search backends; ideal for self-hosted, privacy-preserving search aggregation.",
+      "docs_url": "https://searx.github.io/searx/",
+      "api_docs_url": "https://searx.github.io/searx/dev/searx_api.html",
+      "auth": {
+        "type": "none_or_optional",
+        "notes": "Self-hosted instances typically permit unauthenticated access for internal use. Public instances may restrict usage."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "depends on instance and upstream engines; start with 5-10 req/sec per instance for benchmarking and tune as needed"
+      },
+      "delta_signals": [],
+      "pagination": "provider-specific (proxied backends); responses return paged result sets",
+      "bulk_exports": false,
+      "self_hostable": true,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Verify which upstream sources will be proxied and confirm terms of use for each."
+      },
+      "next_steps": [
+        "Deploy a local SearXNG Docker instance for benchmarking",
+        "Record instance config (enabled engines) and measure latency/throughput"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:53.203128Z",
+          "url": "https://searx.github.io/searx/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "max-age=600",
+            "last-modified": "Wed, 05 Apr 2023 07:32:52 GMT",
+            "etag": "\"642d2424-2d4e\""
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": " <!DOCTYPE html>  <html lang=\"en\">   <head>     <meta charset=\"utf-8\" />     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">     <title>Welcome to searx &#8212; Searx Documentation (Searx-1.1.0.tex)</title>     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/pygments.css\" />     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/searx.css\" />     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/tabs.css\" />     <script data-url_root=\"./\" id=\"documentation_options\" src=\"_static/documentation_options.js\"></script>     <script src=\"_static/jquery.js\"></script>     <script src=\"_static/underscore.js\"></script>     <script src=\"_static/_sphinx_javascript_frameworks_compat.js\"></script>     <script src=\"_static/doctools.js\"></script>     <script src=\"_static/sphinx_highlight.js\"></script>     <link rel=\"index\" title=\"Index\" href=\"genindex.html\" />     <link rel=\"search\" title=\"Search\" href=\"search.html\" />    "
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:41:53.547813Z",
+          "url": "https://searx.github.io/searx/dev/searx_api.html",
+          "attempts": 1,
+          "http_status": 404,
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": " <!DOCTYPE html>  <html lang=\"en\">   <head>     <meta charset=\"utf-8\" />     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">     <title>Page Not Found &#8212; Searx Documentation (Searx-1.1.0.tex)</title>     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/pygments.css\" />     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/searx.css\" />     <link rel=\"stylesheet\" type=\"text/css\" href=\"_static/tabs.css\" />     <script data-url_root=\"./\" id=\"documentation_options\" src=\"_static/documentation_options.js\"></script>     <script src=\"_static/jquery.js\"></script>     <script src=\"_static/underscore.js\"></script>     <script src=\"_static/_sphinx_javascript_frameworks_compat.js\"></script>     <script src=\"_static/doctools.js\"></script>     <script src=\"_static/sphinx_highlight.js\"></script>     <script src=\"_static/tabs.js\"></script>     <link rel=\"index\" title=\"Index\" href=\"genindex.html\" />     <link rel=\"search"
+        }
+      }
+    },
+    {
+      "id": "tavily",
+      "name": "Tavily",
+      "short_description": "Commercial/hosted search and knowledge provider (vendor).",
+      "docs_url": "https://tavily.com",
+      "api_docs_url": null,
+      "auth": {
+        "type": "api_key_or_token",
+        "notes": "Vendor-provided credentials (contact vendor for developer access and rate-limits)."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "start with 1 req/sec for initial tests until vendor quotas are confirmed"
+      },
+      "delta_signals": [],
+      "pagination": "vendor-specific",
+      "bulk_exports": false,
+      "self_hostable": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Obtain vendor API docs, pricing, and acceptable-use policy prior to any benchmarking."
+      },
+      "next_steps": [
+        "Request trial API key and official doc link from the vendor",
+        "Confirm allowable caching and PII handling"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:53.965119Z",
+          "url": "https://tavily.com",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html",
+            "cache-control": "max-age=5, stale-while-revalidate",
+            "last-modified": "Wed, 22 Oct 2025 18:06:33 GMT",
+            "etag": "\"4ba2682d58a66fccaf9fb5caefc6377b\""
+          },
+          "rate_limit_text_snippet": ":text-[16px] text-darkGrey\">Fast, reliable access with high rate limits, accurate results, <br class=\"hidden lg:inline\"/> and rele",
+          "delta_support_hint": true,
+          "auth_hint": "api_key",
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/><link rel=\"preload\" href=\"/_next/static/media/13971731025ec697-s.p.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"preload\" href=\"/_next/static/media/d16270d7490c791f-s.p.woff2\" as=\"font\" crossorigin=\"\" type=\"font/woff2\"/><link rel=\"stylesheet\" href=\"/_next/static/css/fe78f6fab91b0f0e.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/css/65aa3619a1925c9d.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/css/8a5705ef3fbc3e90.css\" data-precedence=\"next\"/><link rel=\"preload\" as=\"script\" fetchPriority=\"low\" href=\"/_next/static/chunks/webpack-ce895f7d10cfcfb1.js\"/><script src=\"/_next/static/chunks/fd9d1056-628e7295f8b28727.js\" async=\"\"></script><script src=\"/_next/static/chunks/2117-b5e1792f36d1908f.js\" async=\"\"></script><script src=\"/_next/static/chunks/main-app-3c4e44c2180e5fd4.js\" async=\"\"></script><script src=\"/_next/static/ch"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:41:55.127717Z",
+          "note": "No URL provided"
+        }
+      }
+    },
+    {
+      "id": "brave_search",
+      "name": "Brave Search API",
+      "short_description": "Brave Search (privacy-focused search engine) and associated API options for programmatic search results.",
+      "docs_url": "https://search.brave.com",
+      "api_docs_url": null,
+      "auth": {
+        "type": "api_key_or_token",
+        "notes": "Hosted provider; API access may be gated by paid tiers or partnerships."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "conservative default 1 req/sec for initial benchmarking; confirm official quotas if moving forward"
+      },
+      "delta_signals": [],
+      "pagination": "API-specific if available",
+      "bulk_exports": false,
+      "self_hostable": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Identify official API docs and confirm cost/quotas for programmatic use."
+      },
+      "next_steps": [
+        "Locate Brave Search API docs or contact Brave for developer access",
+        "Evaluate costs per 1k queries and caching rules"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:55.382966Z",
+          "url": "https://search.brave.com",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "max-age=300",
+            "etag": "\"drv0uu\""
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!doctype html> <html class=\"\" lang=\"en-us\">   <head>     <meta charset=\"utf-8\" />     <link href=\"https://cdn.search.brave.com\" rel=\"preconnect\" crossorigin=\"anonymous\" /> <link href=\"https://imgs.search.brave.com\" rel=\"preconnect\" crossorigin=\"anonymous\" /> <link href=\"https://tiles.search.brave.com\" rel=\"preconnect\" crossorigin=\"anonymous\" /> <link href=\"https://cdn.search.brave.com/serp/v3/_app/immutable/assets/inter-latin-wght-normal.Dx4kXJAl.woff2\" crossorigin=\"anonymous\" rel=\"preload\" as=\"font\" type=\"font/woff2\" />  \t\t<link href=\"https://cdn.search.brave.com/serp/v3/_app/immutable/assets/app.CK-bIy6r.css\" rel=\"stylesheet\"><!--[--><meta name=\"color-scheme\" content=\"\"/> <meta http-equiv=\"x-ua-compatible\" content=\"IE=edge,chrome=1\"/> <!--[!--><!--]--> <!--[!--><!--]--> <meta name=\"description\" content=\"Search the Web. Privately. Truly useful results, AI-powered answers, &amp; more. All from an independent index. No profiling, no bias, no Big Tech.\"/> <meta property=\"og:site_name\" content=\"Brave Search\"/> "
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:41:55.826420Z",
+          "note": "No URL provided"
+        }
+      }
+    },
+    {
+      "id": "google_custom_search",
+      "name": "Google Programmable Search (Custom Search JSON API)",
+      "short_description": "Google Custom Search JSON API for programmable search over web or site-limited engines (requires API key and engine config).",
+      "docs_url": "https://developers.google.com/custom-search/docs/overview",
+      "api_docs_url": "https://developers.google.com/custom-search/v1/overview",
+      "auth": {
+        "type": "api_key_and_cx",
+        "notes": "API key and custom search engine ID (CX) required. Quotas and billing controlled via Google Cloud."
+      },
+      "rate_limits": {
+        "published": "varies by billing account and enabled quotas",
+        "recommended_for_project": "do not rely on free quota; use a billing-enabled quota for any production/pilot evaluation"
+      },
+      "delta_signals": [],
+      "pagination": "paged results via start/num parameters",
+      "bulk_exports": false,
+      "self_hostable": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm current free quota, pricing, and terms for caching and retention with Google Cloud docs."
+      },
+      "next_steps": [
+        "Create a Google Cloud project and enable the Custom Search API for testing",
+        "Carefully record pricing and request quotas for nightly volumes"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:56.078748Z",
+          "url": "https://developers.google.com/custom-search/docs/overview",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-cache, must-revalidate",
+            "last-modified": "Wed, 21 Aug 2024 17:40:33 GMT"
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "         <!doctype html> <html        lang=\"en\"       dir=\"ltr\">   <head>     <meta name=\"google-signin-client-id\" content=\"721724668570-nbkv1cfusk7kk4eni4pjvepaus73b13t.apps.googleusercontent.com\">     <meta name=\"google-signin-scope\"           content=\"profile email https://www.googleapis.com/auth/developerprofiles https://www.googleapis.com/auth/developerprofiles.award https://www.googleapis.com/auth/devprofiles.full_control\">     <meta property=\"og:site_name\" content=\"Google for Developers\">     <meta property=\"og:type\" content=\"website\"><meta name=\"theme-color\" content=\"#3f51b5\"><meta charset=\"utf-8\">     <meta content=\"IE=Edge\" http-equiv=\"X-UA-Compatible\">     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">           <link rel=\"manifest\" href=\"/_pwa/developers/manifest.json\"           crossorigin=\"use-credentials\">     <link rel=\"preconnect\" href=\"//www.gstatic.com\" crossorigin>     <link rel=\"preconnect\" href=\"//fonts.gstatic.com\" crossorigin>     <link rel=\"preconnect\" href=\"//fo"
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:41:56.923633Z",
+          "url": "https://developers.google.com/custom-search/v1/overview",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-cache, must-revalidate",
+            "last-modified": "Thu, 28 Aug 2025 20:17:52 GMT"
+          },
+          "delta_support_hint": false,
+          "auth_hint": "API key",
+          "status": "fetched",
+          "sample_snippet": "         <!doctype html> <html        lang=\"en\"       dir=\"ltr\">   <head>     <meta name=\"google-signin-client-id\" content=\"721724668570-nbkv1cfusk7kk4eni4pjvepaus73b13t.apps.googleusercontent.com\">     <meta name=\"google-signin-scope\"           content=\"profile email https://www.googleapis.com/auth/developerprofiles https://www.googleapis.com/auth/developerprofiles.award https://www.googleapis.com/auth/devprofiles.full_control\">     <meta property=\"og:site_name\" content=\"Google for Developers\">     <meta property=\"og:type\" content=\"website\"><meta name=\"theme-color\" content=\"#3f51b5\"><meta charset=\"utf-8\">     <meta content=\"IE=Edge\" http-equiv=\"X-UA-Compatible\">     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">           <link rel=\"manifest\" href=\"/_pwa/developers/manifest.json\"           crossorigin=\"use-credentials\">     <link rel=\"preconnect\" href=\"//www.gstatic.com\" crossorigin>     <link rel=\"preconnect\" href=\"//fonts.gstatic.com\" crossorigin>     <link rel=\"preconnect\" href=\"//fo"
+        }
+      }
+    },
+    {
+      "id": "perplexica",
+      "name": "Perplexica",
+      "short_description": "Semantic search / managed vector search vendor (vendor or self-hosted depending on offering).",
+      "docs_url": "https://perplexica.ai",
+      "api_docs_url": null,
+      "auth": {
+        "type": "api_key_or_token",
+        "notes": "Vendor-managed access; self-host availability varies by vendor offering."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "start with 0.5-1 req/sec for semantic queries; verify vendor limits"
+      },
+      "delta_signals": [],
+      "pagination": "vendor-dependent",
+      "bulk_exports": false,
+      "self_hostable": "depends_on_vendor",
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm whether Perplexica offers a self-hosted option for air-gapped evaluation and get API docs."
+      },
+      "next_steps": [
+        "Request trial account and documentation from vendor or locate self-hosting guides",
+        "Define evaluation criteria for semantic relevance and citation quality"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:57.749925Z",
+          "url": "https://perplexica.ai",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html"
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html><html><head><script>window.onload=function(){window.location.href=\"/lander\"}</script></head></html>"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:41:58.028968Z",
+          "note": "No URL provided"
+        }
+      }
+    },
+    {
+      "id": "duckduckgo_instant_answer",
+      "name": "DuckDuckGo Instant Answer (optional)",
+      "short_description": "Instant Answer API for structured answers and quick summaries; limited compared to full search APIs but useful as an additional signal.",
+      "docs_url": "https://duckduckgo.com/api",
+      "api_docs_url": "https://api.duckduckgo.com/",
+      "auth": {
+        "type": "none",
+        "notes": "Public Instant Answer API has limited capabilities and usage recommendations."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "treat as low-volume auxiliary signal; 1 req/sec default"
+      },
+      "delta_signals": [],
+      "pagination": "none (single query responses)",
+      "bulk_exports": false,
+      "self_hostable": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm Instant Answer suitability for enrichment tasks and caching policy."
+      },
+      "next_steps": [
+        "Test Instant Answer responses for the representative prompt set and measure coverage"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:41:58.281512Z",
+          "url": "https://duckduckgo.com/api",
+          "attempts": 1,
+          "http_status": 202,
+          "headers": {
+            "content-type": "text/html; charset=UTF-8"
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html><html lang=\"en-US\" class=\"no-js has-zcm  no-theme is-link-style-exp is-link-order-exp is-link-breadcrumb-exp is-related-search-exp is-vertical-tabs-exp  \"><head><meta name=\"description\" content=\"DuckDuckGo. Privacy, Simplified.\"><meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\"><title>api at DuckDuckGo</title><meta name=\"apple-itunes-app\" content=\"app-id=663592361, app-argument=https://duckduckgo.com/?q=api&&rpl=1&smartbanner=1\"><link rel=\"stylesheet\" href=\"/dist/s.df3ed0e6e977f2c00ec6.css\" type=\"text/css\"><link rel=\"stylesheet\" href=\"/dist/r.4075316d99e3b5cc0e02.css\" type=\"text/css\"><link rel=\"stylesheet\" href=\"/dist/wpl.main.0e69bf8bb12b16950343.css\" type=\"text/css\" data-handle-css-custom-properties=\"true\"><link rel=\"stylesheet\" href=\"/dist/wpl.vendors.160d8c3b3123eead9671.css\" type=\"text/css\" data-handle-css-custom-properties=\"true\"><meta name=\"robots\" content=\"noindex,nofollow\"><meta name=\"referrer\" content=\"origin\"><meta name=\"apple-mobile-web-app-title\" content=\"api\"><lin"
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:41:58.709208Z",
+          "url": "https://api.duckduckgo.com/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=UTF-8",
+            "cache-control": "no-cache",
+            "etag": "\"68fe085f-10017\""
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html><html lang=\"en-US\" class=\"\"><head><meta charSet=\"utf-8\" data-next-head=\"\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=1 , viewport-fit=auto\" data-next-head=\"\"/><link rel=\"preload\" href=\"/static-assets/font/ProximaNova-RegIt-webfont.woff2\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\" data-next-head=\"\"/><link rel=\"preconnect\" href=\"/country.json\" data-next-head=\"\"/><link rel=\"preload\" href=\"/country.json\" as=\"fetch\" fetchPriority=\"high\" data-next-head=\"\"/><title data-next-head=\"\">DuckDuckGo - Protection. Privacy. Peace of mind.</title><meta name=\"description\" content=\"The Internet privacy company that empowers you to seamlessly take control of your personal information online, without any tradeoffs.\" data-next-head=\"\"/><meta name=\"twitter:card\" content=\"summary_large_image\" data-next-head=\"\"/><meta name=\"twitter:site\" content=\"@duckduckgo\" data-next-head=\"\"/><meta name=\"twitter:title\" content=\"DuckDuckGo - Protection. Privacy. Peace of mind.\" data-nex"
+        }
+      }
+    },
+    {
+      "id": "bing_search_api",
+      "name": "Bing Web Search API (Microsoft)",
+      "short_description": "Microsoft Bing Web Search API via Azure Cognitive Services; commercial service with documented quotas and billing.",
+      "docs_url": "https://learn.microsoft.com/en-us/azure/cognitive-services/bing-web-search/",
+      "api_docs_url": "https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference",
+      "auth": {
+        "type": "api_key",
+        "notes": "Requires Azure subscription key; billing applies for larger volumes."
+      },
+      "rate_limits": {
+        "published": "documented by Azure; depends on pricing tier",
+        "recommended_for_project": "start with low test throughput (1 req/sec) and evaluate pricing for pilot"
+      },
+      "delta_signals": [],
+      "pagination": "supports paged results",
+      "bulk_exports": false,
+      "self_hostable": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Record exact quota numbers for the intended Azure pricing tier before benchmarking at scale."
+      },
+      "next_steps": [
+        "Provision Azure subscription test key and record costs per 1k queries"
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:42:00.523426Z",
+          "url": "https://learn.microsoft.com/en-us/azure/cognitive-services/bing-web-search/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html",
+            "cache-control": "public, max-age=600",
+            "last-modified": "Mon, 11 Aug 2025 22:34:50 GMT",
+            "etag": "\"Gad8H5+k+Q0syMFUcWcbosMBcoE=\""
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": " <!DOCTYPE html> \t\t<html \t\t\tclass=\"layout layout-holy-grail   show-table-of-contents conceptual show-breadcrumb default-focus\" \t\t\tlang=\"en-us\" \t\t\tdir=\"ltr\" \t\t\tdata-authenticated=\"false\" \t\t\tdata-auth-status-determined=\"false\" \t\t\tdata-target=\"docs\" \t\t\tx-ms-format-detection=\"none\" \t\t> \t\t\t \t\t<head> \t\t\t<title>What is the Bing Web Search API? - Azure AI services | Microsoft Learn</title> \t\t\t<meta charset=\"utf-8\" /> \t\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /> \t\t\t<meta name=\"color-scheme\" content=\"light dark\" />  \t\t\t<meta name=\"description\" content=\"The Bing Web Search API is a RESTful service that provides instant answers to web search queries. Configure results to include web pages, images, videos, news, and more. Results are provided as JSON and based on search relevance and your Bing Web Search subscriptions.\" /> \t\t\t<link rel=\"canonical\" href=\"https://learn.microsoft.com/en-us/previous-versions/azure/cognitive-services/bing-web-search/overview\" />   \t\t\t<!-- Non-customizable open gr"
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:42:01.055508Z",
+          "url": "https://learn.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html",
+            "cache-control": "public, max-age=600",
+            "last-modified": "Mon, 11 Aug 2025 09:51:37 GMT",
+            "etag": "\"hlgJWaGcU43BsWGe7VHTZr6MXPw=\""
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": " <!DOCTYPE html> \t\t<html \t\t\tclass=\"layout layout-single    hub show-breadcrumb default-focus\" \t\t\tlang=\"en-us\" \t\t\tdir=\"ltr\" \t\t\tdata-authenticated=\"false\" \t\t\tdata-auth-status-determined=\"false\" \t\t\tdata-target=\"docs\" \t\t\tx-ms-format-detection=\"none\" \t\t> \t\t\t \t\t<head> \t\t\t<title>Bing Search Services developer documentation | Microsoft Learn</title> \t\t\t<meta charset=\"utf-8\" /> \t\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /> \t\t\t<meta name=\"color-scheme\" content=\"light dark\" />  \t\t\t<meta name=\"description\" content=\"Official developer documentation for Bing Search Services. Learn how to build web-connected apps and services that find webpages, images, news, videos, and more without advertisements.\" /> \t\t\t<link rel=\"canonical\" href=\"https://learn.microsoft.com/en-us/previous-versions/bing/search-apis/\" />   \t\t\t<!-- Non-customizable open graph and sharing-related metadata --> \t\t\t<meta name=\"twitter:card\" content=\"summary_large_image\" /> \t\t\t<meta name=\"twitter:site\" content=\"@MicrosoftLearn\" /> "
+        }
+      }
+    }
+  ],
+  "auto_discovery": {
+    "last_run_at": "2025-10-26T20:42:02.368863Z",
+    "runner": "fetch_provider_docs.py"
+  }
+}
