@@ -124,90 +124,126 @@ class USAspendingDumpProfiler:
             logger.error("unzip command not found.")
             return {"error": "unzip not available"}
 
-    def get_table_sample_from_copy_file(self, table_oid: int, limit: int = 10000) -> Dict:
-        """Get sample rows from a PostgreSQL COPY file.
+    def get_table_sample_from_copy_file(
+        self, table_oid: int, limit: int = 10000, chunk_size: int = 100000
+    ) -> Dict:
+        """Stream-sample rows from a PostgreSQL COPY file inside the ZIP archive.
+
+        This implementation streams the compressed `.dat.gz` file directly from the ZIP
+        (via `unzip -p`) and reads it incrementally so we:
+          - avoid extracting large files to disk,
+          - can report progress while scanning large files,
+          - produce a representative sample (first `limit` rows by default),
+          - and return an overall row count computed while streaming.
 
         Args:
             table_oid: PostgreSQL object ID for the table
-            limit: Number of rows to sample
+            limit: Number of rows to sample (kept in memory)
+            chunk_size: Progress reporting interval (number of rows)
 
         Returns:
-            Dictionary with sample data
+            Dictionary with sample data and simple progress/diagnostics
         """
         table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
-        logger.info(f"Sampling {limit} rows from table {table_name} (OID: {table_oid})")
+        logger.info(
+            f"Streaming sample up to {limit} rows from table {table_name} (OID: {table_oid})"
+        )
+
+        filename = f"pruned_data_store_api_dump/{table_oid}.dat.gz"
+        cmd = ["unzip", "-p", str(self.dump_path), filename]
+
+        sample_records = []
+        total_rows = 0
+        columns_detected = None
+        last_report = 0
 
         try:
-            # Create connection if needed
-            if self.connection is None:
-                self.connection = duckdb.connect(":memory:")
+            # Start the unzip subprocess and stream stdout
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Create temporary directory for extraction
-            temp_dir = self.temp_dir / f"usaspending_extract_{table_oid}"
-            temp_dir.mkdir(exist_ok=True)
+            # Attempt to treat stdout as a gzip stream; fall back to raw stream if not gzipped.
+            import gzip
+            from io import BufferedReader, TextIOWrapper
 
-            # Extract the specific file
-            filename = f"pruned_data_store_api_dump/{table_oid}.dat.gz"
-            temp_file = temp_dir / f"{table_oid}.dat"
+            stream = proc.stdout  # binary stream
 
-            cmd = ["unzip", "-p", str(self.dump_path), filename]
-            with open(temp_file, "wb") as f:
-                result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, timeout=60)
-
-            if result.returncode != 0:
-                return {
-                    "table_name": table_name,
-                    "error": f"Failed to extract file: {result.stderr.decode()}",
-                }
-
-            # Decompress the gzipped content
-            decompressed_file = temp_file.with_suffix(".decompressed")
             try:
-                with open(temp_file, "rb") as f_in, open(decompressed_file, "wb") as f_out:
-                    import gzip
+                gz = gzip.GzipFile(fileobj=stream)
+                reader = TextIOWrapper(BufferedReader(gz), encoding="utf-8", errors="replace")
+                logger.info(f"Using gzip stream reader for {filename}")
+            except (OSError, gzip.BadGzipFile):
+                # Not gzipped; read directly
+                reader = TextIOWrapper(BufferedReader(stream), encoding="utf-8", errors="replace")
+                logger.info(f"Using raw stream reader for {filename}")
 
-                    f_out.write(gzip.decompress(f_in.read()))
-                temp_file = decompressed_file
-            except gzip.BadGzipFile:
-                # File might not be gzipped, use as-is
-                pass
+            # Iterate lines and build small in-memory sample (first `limit` rows)
+            for line in reader:
+                total_rows += 1
 
-            # Count total rows
-            cmd_count = ["wc", "-l", str(temp_file)]
-            result_count = subprocess.run(cmd_count, capture_output=True, text=True, timeout=30)
-            if result_count.returncode == 0:
-                row_count = int(result_count.stdout.split()[0])
+                # Progress reporting every chunk_size rows
+                if total_rows - last_report >= chunk_size:
+                    logger.info(
+                        f"Sampling progress for OID {table_oid}: {total_rows} rows scanned..."
+                    )
+                    last_report = total_rows
+
+                # Parse COPY (tab-separated) row
+                row_vals = line.rstrip("\n").split("\t")
+                # Lazily determine number of columns from first row we keep
+                if columns_detected is None:
+                    columns_detected = list(range(len(row_vals)))
+
+                # Only keep up to `limit` sample rows
+                if len(sample_records) < limit:
+                    # Represent row as dict: column_index -> value (mimic pandas read_csv behavior earlier)
+                    row_dict = {i: (v if v != "\\N" else None) for i, v in enumerate(row_vals)}
+                    sample_records.append(row_dict)
+
+            # Finish reading; ensure subprocess ended
+            proc.stdout.close()
+            _, stderr = proc.communicate(timeout=30)
+            if proc.returncode not in (0, None):
+                stderr_text = (
+                    stderr.decode("utf-8", errors="replace")
+                    if isinstance(stderr, bytes)
+                    else str(stderr)
+                )
+                logger.warning(f"Stream reader subprocess returned non-zero: {stderr_text}")
+
+            # Build a small DataFrame for column metadata using the sampled rows (if any)
+            if sample_records:
+                df_sample = pd.DataFrame(sample_records)
+                sampled_rows = len(df_sample)
+                columns = list(df_sample.columns)
             else:
-                row_count = None
-                logger.warning(f"Could not count rows for {table_name}")
-
-            # Read with pandas for PostgreSQL COPY format
-            df = pd.read_csv(
-                temp_file,
-                sep="\t",
-                header=None,
-                na_values=["\\N"],
-                nrows=limit,
-                on_bad_lines="skip",
-                engine="python",  # More flexible for complex formats
-            )
-
-            # Clean up
-            import shutil
-
-            shutil.rmtree(temp_dir)
+                df_sample = pd.DataFrame()
+                sampled_rows = 0
+                columns = columns_detected or []
 
             return {
                 "table_name": table_name,
                 "oid": table_oid,
-                "total_rows": row_count,
-                "sampled_rows": len(df),
-                "columns": list(df.columns),
-                "sample_data": df.head(limit).to_dict("records"),
+                "total_rows": total_rows,
+                "sampled_rows": sampled_rows,
+                "columns": columns,
+                "sample_data": df_sample.head(limit).to_dict("records"),
+                "progress": {"reported_interval": chunk_size},
             }
 
+        except subprocess.TimeoutExpired:
+            logger.error(f"Streaming timed out for {filename}")
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            return {"table_name": table_name, "oid": table_oid, "error": "stream timeout"}
         except Exception as e:
-            logger.error(f"Failed to sample table {table_name}: {e}")
+            logger.error(f"Failed to stream-sample table {table_name}: {e}")
+            # Attempt to kill subprocess if still running
+            try:
+                proc.kill()
+            except Exception:
+                pass
             return {"table_name": table_name, "oid": table_oid, "error": str(e)}
 
     def profile_dump(self, sample_oids: Optional[List[int]] = None) -> Dict:
