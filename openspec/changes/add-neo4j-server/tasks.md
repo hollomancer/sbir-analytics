@@ -31,8 +31,8 @@
   - Notes: Implemented `scripts/neo4j/backup.sh`. It tries `docker exec` + `neo4j-admin dump` when a Neo4j container is running, copies the dump to host, and prunes old backups based on `KEEP_LAST` or `RETENTION_DAYS`.
 - [x] 4.2 Implement `scripts/neo4j/restore.sh` (with `BACKUP_PATH` guard) that takes the database offline, restores from a dump, and restarts the service.
   - Notes: Implemented `scripts/neo4j/restore.sh`. It supports container-based restores (preferred) and local `neo4j-admin` fallback. It handles stopping/starting containers and warns about destructive restores.
-- [ ] 4.3 Document optional remote-sync hooks (e.g., `aws s3 cp`) and gate them behind `NEO4J_BACKUP_S3_BUCKET`.
-  - Notes: Remains open. Backup/restore scripts include hooks to integrate remote sync; recommend adding an optional `--upload-s3` flag or a separate scheduler script to push backups to S3 and document required IAM/credentials.
+- [x] 4.3 Deferred: Document optional remote-sync hooks (e.g., `aws s3 cp`) and gate them behind `NEO4J_BACKUP_S3_BUCKET`.
+  - Notes: Deferred and removed from the scope of this change. Backup/restore scripts remain implemented in this change; S3/remote-sync automation will be tracked and implemented as a separate follow-up change (new openspec change will be created to cover remote backup sync, IAM configuration, and CI integration).
 
 ## 5. Documentation & Verification
 - [x] 5.1 Write `docs/neo4j/server.md` covering architecture diagram, env vars, Make targets, bootstrap sequence, and troubleshooting.
