@@ -1,0 +1,178 @@
+{
+  "file": "data/raw/uspto/historical_masterfile.dta",
+  "sample_rows": 100,
+  "approx_total_rows": null,
+  "analyzed_at": "2025-10-26T20:56:35.722106Z",
+  "columns": {
+    "appl_id": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 46,
+      "top_values": {
+        "": 55,
+        "06908348": 1,
+        "06140947": 1,
+        "07227431": 1,
+        "08468408": 1
+      },
+      "min_len": 0,
+      "max_len": 8,
+      "sample_values": [
+        "",
+        "08186218",
+        "08536833",
+        "07499443",
+        "",
+        "",
+        "07080329",
+        "06780393",
+        "",
+        ""
+      ]
+    },
+    "pubno": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "": 100
+      },
+      "min_len": 0,
+      "max_len": 0,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "patent": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 100,
+      "top_values": {
+        "0901622": 1,
+        "5276408": 1,
+        "4143585": 1,
+        "-1677445": 1,
+        "4353205": 1
+      },
+      "min_len": 6,
+      "max_len": 8,
+      "sample_values": [
+        "0901622",
+        "5448746",
+        "5648952",
+        "5130085",
+        "2442492",
+        "2688017",
+        "4766611",
+        "4674461",
+        "2903632",
+        "1843470"
+      ]
+    },
+    "nber": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 30,
+      "top_values": {
+        "51": 10,
+        "19": 9,
+        "69": 8,
+        "14": 6,
+        "55": 6
+      },
+      "min_len": 2,
+      "max_len": 2,
+      "sample_values": [
+        "65",
+        "22",
+        "24",
+        "52",
+        "51",
+        "14",
+        "63",
+        "53",
+        "46",
+        "51"
+      ]
+    },
+    "uspc": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 85,
+      "top_values": {
+        "430": 3,
+        "101": 2,
+        "428": 2,
+        "504": 2,
+        "52": 2
+      },
+      "min_len": 1,
+      "max_len": 3,
+      "sample_values": [
+        "30",
+        "712",
+        "369",
+        "420",
+        "241",
+        "544",
+        "2",
+        "123",
+        "257",
+        "242"
+      ]
+    },
+    "uspc_sub": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 86,
+      "top_values": {
+        "452": 2,
+        "155": 2,
+        "96": 2,
+        "8": 2,
+        "210": 2
+      },
+      "min_len": 1,
+      "max_len": 3,
+      "sample_values": [
+        "452",
+        "210",
+        "116",
+        "40",
+        "223",
+        "210",
+        "160",
+        "500",
+        "42",
+        "422"
+      ]
+    },
+    "appl_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 51,
+      "null_count": 49,
+      "nonnull_fraction": 0.51,
+      "unique_values": 50,
+      "top_values": {
+        

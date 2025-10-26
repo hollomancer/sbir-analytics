@@ -1,0 +1,115 @@
+{
+  "file": "data/raw/uspto/assignor.dta",
+  "sample_rows": 100,
+  "approx_total_rows": null,
+  "analyzed_at": "2025-10-26T20:58:49.208263Z",
+  "columns": {
+    "rf_id": {
+      "dtype": "int32",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 57,
+      "top_values": {
+        "37880715": 7,
+        "37880689": 4,
+        "37880720": 4,
+        "37880724": 4,
+        "37880727": 4
+      },
+      "min": 12800340.0,
+      "max": 37880737.0,
+      "mean": 37527101.04
+    },
+    "or_name": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 97,
+      "top_values": {
+        "STRUTZEL,HANS": 2,
+        "ARMSTRONG, THOMAS R.": 2,
+        "HOHEISEL,KLAUS": 2,
+        "MIMOUN HUBERT": 1,
+        "GOETH, HANNS": 1
+      },
+      "min_len": 10,
+      "max_len": 43,
+      "sample_values": [
+        "ATALA, ANTHONY",
+        "NORTHERN ELECTRIC COMPANY LIMITED",
+        "ARMSTRONG, THOMAS R.",
+        "ARMSTRONG, THOMAS R.",
+        "GOULD INC.",
+        "SUTURES, INC.",
+        "DEKNATEL, INC.",
+        "GERLING, JOHN E.",
+        "KERTESZ, GABOR",
+        "VAGO, GYORGY"
+      ]
+    },
+    "exec_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 96,
+      "null_count": 4,
+      "nonnull_fraction": 0.96,
+      "unique_values": 55,
+      "top_values": {
+        "1979-02-14 00:00:00": 7,
+        "1980-07-25 00:00:00": 5,
+        "1980-07-26 00:00:00": 4,
+        "1978-10-31 00:00:00": 4,
+        "1978-06-01 00:00:00": 4
+      }
+    },
+    "ack_dt": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 0,
+      "null_count": 100,
+      "nonnull_fraction": 0.0,
+      "unique_values": 0,
+      "top_values": {}
+    }
+  },
+  "key_candidates": [
+    "or_name",
+    "rf_id",
+    "exec_dt"
+  ],
+  "present_common_field_names": [
+    "rf_id"
+  ],
+  "duplicate_estimates": [
+    {
+      "column": "or_name",
+      "duplicate_fraction": 0.03
+    },
+    {
+      "column": "rf_id",
+      "duplicate_fraction": 0.43
+    },
+    {
+      "column": "exec_dt",
+      "duplicate_fraction": 0.45
+    }
+  ],
+  "coverage_summary": {
+    "rf_id": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 57
+    },
+    "or_name": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 97
+    },
+    "exec_dt": {
+      "nonnull_fraction": 0.96,
+      "unique_count": 55
+    },
+    "ack_dt": {
+      "nonnull_fraction": 0.0,
+      "unique_count": 0
+    }
+  }
+}

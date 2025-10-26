@@ -1,0 +1,112 @@
+{
+  "file": "data/raw/uspto/documentid.dta",
+  "sample_rows": 100,
+  "approx_total_rows": null,
+  "analyzed_at": "2025-10-26T20:56:35.689348Z",
+  "columns": {
+    "rf_id": {
+      "dtype": "int32",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 65,
+      "top_values": {
+        "36250888": 13,
+        "36920537": 13,
+        "37880712": 11,
+        "36960452": 2,
+        "12800340": 1
+      },
+      "min": 12800340.0,
+      "max": 37880749.0,
+      "mean": 37226005.58
+    },
+    "title": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 68,
+      "top_values": {
+        "": 32,
+        "HYDRAULICALLY DAMPED AUTOMATIC PLAY COMPENSATION DEVICE FOR MOTOR VEHICLE CLUTCHES": 2,
+        "SYSTEMS AND METHODS FOR PROMOTING TISSUE GROWTH": 1,
+        "FILMS OF IMPROVED UNIFORMITY AND PROCESSES AND COMPOSITIONS THEREFOR": 1,
+        "APPARATUS FOR FILLING AND HEAT SEALING A BAG": 1
+      },
+      "min_len": 0,
+      "max_len": 146,
+      "sample_values": [
+        "SYSTEMS AND METHODS FOR PROMOTING TISSUE GROWTH",
+        "OPTICAL FIBRE HAVING LOW MODE DISPERSION",
+        "",
+        "POLYMER COATED HEAT INSULATED ELECTRICAL CONDUCTOR AND METHOD OF MANUFACTURE",
+        "",
+        "",
+        "",
+        "PLATING CURRENT AUTOMATIC SWITCHING METHOD AND APPARATUS",
+        "",
+        ""
+      ]
+    },
+    "lang": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 2,
+      "top_values": {
+        "en": 68,
+        "": 32
+      },
+      "min_len": 0,
+      "max_len": 2,
+      "sample_values": [
+        "en",
+        "en",
+        "",
+        "en",
+        "",
+        "",
+        "",
+        "en",
+        "",
+        ""
+      ]
+    },
+    "appno_doc_num": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 99,
+      "top_values": {
+        "06026704": 2,
+        "08326711": 1,
+        "06064679": 1,
+        "04436322": 1,
+        "03698909": 1
+      },
+      "min_len": 8,
+      "max_len": 8,
+      "sample_values": [
+        "08326711",
+        "05855408",
+        "05517218",
+        "05574608",
+        "05604353",
+        "05604141",
+        "05604142",
+        "06467046",
+        "05630159",
+        "05531341"
+      ]
+    },
+    "appno_date": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 68,
+      "null_count": 32,
+      "nonnull_fraction": 0.68,
+      "unique_values": 61,
+      "top_values": {
+        

@@ -1,0 +1,191 @@
+{
+  "file": "data/raw/uspto/documentid_admin.dta",
+  "sample_rows": 100,
+  "approx_total_rows": null,
+  "analyzed_at": "2025-10-26T20:56:35.705038Z",
+  "columns": {
+    "rf_id": {
+      "dtype": "int32",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 96,
+      "top_values": {
+        "62430013": 4,
+        "206900812": 2,
+        "81530337": 1,
+        "204420509": 1,
+        "173530157": 1
+      },
+      "min": 40790074.0,
+      "max": 292750096.0,
+      "mean": 97881300.6
+    },
+    "appno_doc_num": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "": 100
+      },
+      "min_len": 0,
+      "max_len": 0,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "grant_doc_num": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 100,
+      "top_values": {
+        "4213621": 1,
+        "4187469": 1,
+        "4199198": 1,
+        "4104329": 1,
+        "3737087": 1
+      },
+      "min_len": 6,
+      "max_len": 7,
+      "sample_values": [
+        "4213621",
+        "3793559",
+        "3162947",
+        "3958213",
+        "0342167",
+        "3634783",
+        "4151847",
+        "3932684",
+        "3804613",
+        "5828388"
+      ]
+    },
+    "admin_appl_id_for_grant": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 4,
+      "top_values": {
+        "": 97,
+        "09301931": 1,
+        "09541281": 1,
+        "07869583": 1
+      },
+      "min_len": 0,
+      "max_len": 8,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "admin_pat_no_for_appno": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "": 100
+      },
+      "min_len": 0,
+      "max_len": 0,
+      "sample_values": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "error": {
+      "dtype": "object",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 1,
+      "top_values": {
+        "missing appno_doc_num": 100
+      },
+      "min_len": 21,
+      "max_len": 21,
+      "sample_values": [
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num",
+        "missing appno_doc_num"
+      ]
+    }
+  },
+  "key_candidates": [
+    "grant_doc_num"
+  ],
+  "present_common_field_names": [
+    "rf_id",
+    "grant_doc_num"
+  ],
+  "duplicate_estimates": [
+    {
+      "column": "grant_doc_num",
+      "duplicate_fraction": 0.0
+    }
+  ],
+  "coverage_summary": {
+    "rf_id": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 96
+    },
+    "appno_doc_num": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "grant_doc_num": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 100
+    },
+    "admin_appl_id_for_grant": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 4
+    },
+    "admin_pat_no_for_appno": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    },
+    "error": {
+      "nonnull_fraction": 1.0,
+      "unique_count": 1
+    }
+  }
+}

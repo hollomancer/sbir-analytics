@@ -1,0 +1,14 @@
+{
+  "file": "data/raw/uspto/monthly.dta",
+  "sample_rows": 100,
+  "approx_total_rows": null,
+  "analyzed_at": "2025-10-26T20:56:35.771252Z",
+  "columns": {
+    "month": {
+      "dtype": "datetime64[ns]",
+      "nonnull_count": 100,
+      "null_count": 0,
+      "nonnull_fraction": 1.0,
+      "unique_values": 100,
+      "top_values": {
+        
