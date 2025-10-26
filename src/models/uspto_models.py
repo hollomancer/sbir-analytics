@@ -1,4 +1,3 @@
-sbir - etl / src / models / uspto_models.py
 from __future__ import annotations
 
 """
@@ -27,7 +26,6 @@ import re
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
-
 
 # ---- Utilities ----
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
