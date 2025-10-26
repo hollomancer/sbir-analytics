@@ -4,13 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Smoke test mode: "dry-run" (no secrets) or "live" (uses NEO4J credentials from secrets)'
+        description: 'Smoke test mode: "dry-run" (no secrets) or "live" (uses NEO4J credentials from secrets or provided inputs)'
         required: false
         default: dry-run
         type: choice
         options:
           - dry-run
           - live
+      NEO4J_USER:
+        description: 'Optional NEO4J user to use for live mode (overrides repository secret if provided)'
+        required: false
+        default: ''
+        type: string
+      NEO4J_PASSWORD:
+        description: 'Optional NEO4J password to use for live mode (overrides repository secret if provided)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   neo4j-smoke:
@@ -40,17 +50,31 @@ jobs:
             touch .env
           fi
 
-          # If running in live mode, inject secrets into .env so compose and scripts can pick them up.
+          # If running in live mode, prefer inputs; fall back to repository secrets if inputs are empty.
           if [ "${{ github.event.inputs.mode }}" = "live" ]; then
-            if [ -z "${{ secrets.NEO4J_PASSWORD || '' }}" ]; then
-              echo "NEO4J_PASSWORD secret not provided; failing live run."
+            # Capture potential inputs (may be empty strings if not provided)
+            NEO4J_INPUT_USER="${{ github.event.inputs.NEO4J_USER }}"
+            NEO4J_INPUT_PASSWORD="${{ github.event.inputs.NEO4J_PASSWORD }}"
+
+            # If inputs are empty, fall back to repo secrets (may also be empty)
+            if [ -z "${NEO4J_INPUT_USER}" ]; then
+              NEO4J_INPUT_USER="${{ secrets.NEO4J_USER }}"
+            fi
+            if [ -z "${NEO4J_INPUT_PASSWORD}" ]; then
+              NEO4J_INPUT_PASSWORD="${{ secrets.NEO4J_PASSWORD }}"
+            fi
+
+            # Fail if we still do not have a password (cannot proceed in live mode)
+            if [ -z "${NEO4J_INPUT_PASSWORD}" ]; then
+              echo "NEO4J_PASSWORD not provided via inputs or repository secrets; failing live run."
               exit 2
             fi
-            # Append or override values in .env (simple append; prefer secrets in CI)
-            echo "NEO4J_USER=${{ secrets.NEO4J_USER }}" >> .env
-            echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env
+
+            # Append or override values in .env (simple append; prefer inputs first, then secrets)
+            echo "NEO4J_USER=${NEO4J_INPUT_USER}" >> .env
+            echo "NEO4J_PASSWORD=${NEO4J_INPUT_PASSWORD}" >> .env
             # Optionally set NEO4J_AUTH
-            echo "NEO4J_AUTH=${{ secrets.NEO4J_USER }}/${{ secrets.NEO4J_PASSWORD }}" >> .env
+            echo "NEO4J_AUTH=${NEO4J_INPUT_USER}/${NEO4J_INPUT_PASSWORD}" >> .env
           else
             echo "Dry-run mode: no secrets injected."
           fi
