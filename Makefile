@@ -1,0 +1,151 @@
+# Makefile - Container build / dev / test helpers for sbir-etl
+#
+# Usage:
+#   make help
+#   make docker-build
+#   make docker-up-dev
+#   make docker-down
+#   make docker-test
+#   make docker-logs SERVICE=app
+#   make docker-exec SERVICE=app CMD="sh"
+#
+# Override defaults with environment variables, for example:
+#   make docker-build IMAGE_NAME=myregistry/myimage:tag
+
+SHELL := /bin/sh
+
+# Configurable variables (can be overridden on the make command line)
+IMAGE_NAME ?= sbir-etl:latest
+DOCKER_REGISTRY ?=
+DOCKER_TAG ?= latest
+BUILD_CONTEXT ?= .
+DOCKERFILE ?= Dockerfile
+
+# Compose files / overlays
+COMPOSE_BASE ?= docker-compose.yml
+COMPOSE_DEV ?= docker/docker-compose.dev.yml
+COMPOSE_TEST ?= docker/docker-compose.test.yml
+
+# Compose command (supports 'docker compose' or 'docker-compose' depending on environment)
+DOCKER_COMPOSE ?= docker compose
+
+# Default service to tail logs or exec into
+SERVICE ?= app
+
+# Number of seconds to wait for containers to be healthy before reporting
+STARTUP_TIMEOUT ?= 120
+
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check
+
+help:
+	@printf "\nMakefile targets for container workflow\n\n"
+	@printf "  make docker-build      Build image locally (multi-stage Dockerfile assumed)\n"
+	@printf "  make docker-buildx     Build with buildx (useful for multi-platform)\n"
+	@printf "  make docker-up-dev     Start development compose stack (dev profile, bind mounts)\n"
+	@printf "  make docker-up-prod    Start production-like compose stack (no bind mounts)\n"
+	@printf "  make docker-down       Stop compose stack and remove anonymous volumes\n"
+	@printf "  make docker-rebuild    Rebuild images and restart dev stack\n"
+	@printf "  make docker-test       Run containerized tests via the test compose profile\n"
+	@printf "  make docker-logs       Tail logs for a service (SERVICE=%s)\n" "$(SERVICE)"
+	@printf "  make docker-exec       Exec into a running container (SERVICE=%s, CMD='sh')\n" "$(SERVICE)"
+	@printf "  make docker-push       Tag and push image to registry (DOCKER_REGISTRY must be set)\n"
+	@printf "  make env-check         Verify .env exists and warn if missing\n\n"
+
+# ---------------------------
+# Build targets
+# ---------------------------
+
+docker-build:
+	@echo "Building Docker image: $(IMAGE_NAME)"
+	@DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+
+docker-buildx:
+	@echo "Building Docker image with buildx (multi-platform / cache optional)"
+	# Example: adjust --platform and cache options as needed
+	@docker buildx build --load -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+
+# ---------------------------
+# Compose / runtime targets
+# ---------------------------
+
+docker-up-dev: env-check
+	@echo "Starting development compose stack (dev profile)"
+	@$(DOCKER_COMPOSE) --env-file .env --profile dev -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) up -d --build
+	@echo "Waiting up to $(STARTUP_TIMEOUT)s for services to become healthy..."
+	@$(DOCKER_COMPOSE) --env-file .env ps
+
+docker-up-prod: env-check
+	@echo "Starting production-like compose stack (no dev overlays)"
+	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) up -d --build
+	@$(DOCKER_COMPOSE) --env-file .env ps
+
+docker-down:
+	@echo "Stopping compose stack and removing anonymous volumes"
+	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) down --remove-orphans
+
+docker-rebuild: docker-down docker-build docker-up-dev
+	@echo "Rebuilt and restarted dev stack"
+
+# ---------------------------
+# Test / CI targets
+# ---------------------------
+
+docker-test: env-check
+	@echo "Running containerized tests using test compose"
+	@if [ -f "$(COMPOSE_TEST)" ]; then \
+	  $(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) up --abort-on-container-exit --build; \
+	  status=$$?; \
+	  echo "Tearing down test containers..."; \
+	  $(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) down --remove-orphans --volumes; \
+	  exit $$status; \
+	else \
+	  echo "No test compose overlay found at $(COMPOSE_TEST)"; exit 2; \
+	fi
+
+# ---------------------------
+# Logs / exec helpers
+# ---------------------------
+
+docker-logs:
+	@echo "Tailing logs for service: $(SERVICE)"
+	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) logs -f --tail=200 $(SERVICE)
+
+docker-exec:
+	@CMD=${CMD:-sh}; \
+	echo "Executing in service $(SERVICE): $$CMD"; \
+	$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) exec --user root $(SERVICE) sh -c "$$CMD"
+
+# ---------------------------
+# Registry / publish
+# ---------------------------
+
+docker-push: env-check
+ifndef DOCKER_REGISTRY
+	$(error DOCKER_REGISTRY is not set. Example: DOCKER_REGISTRY=ghcr.io/myorg)
+endif
+	@REPO=$(DOCKER_REGISTRY); \
+	TAG=$(DOCKER_TAG); \
+	TARGET="$${REPO}/$${IMAGE_NAME%%:*}:$${TAG}"; \
+	echo "Tagging image $(IMAGE_NAME) -> $$TARGET"; \
+	docker tag $(IMAGE_NAME) $$TARGET; \
+	echo "Pushing $$TARGET"; \
+	docker push $$TARGET
+
+# ---------------------------
+# Environment / safety checks
+# ---------------------------
+
+env-check:
+	@if [ ! -f .env ]; then \
+	  echo "*** .env file not found. Copy .env.example to .env and set required values (NEO4J_USER, NEO4J_PASSWORD, etc.)"; \
+	  echo "    cp .env.example .env"; \
+	  exit 1; \
+	else \
+	  echo ".env found"; \
+	fi
+
+# ---------------------------
+# Convenience aliases
+# ---------------------------
+
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check

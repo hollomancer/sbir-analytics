@@ -6,10 +6,10 @@ services:
       - "7474:7474" # HTTP
       - "7687:7687" # Bolt
     environment:
-      - NEO4J_AUTH=neo4j/password123
-      - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_dbms_memory_pagecache_size=1G
-      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=${NEO4J_PLUGINS}
+      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size}
+      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size}
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -17,7 +17,11 @@ services:
     networks:
       - sbir-network
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password123 'RETURN 1'"]
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u ${NEO4J_USER} -p ${NEO4J_PASSWORD} 'RETURN 1'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,11 +35,11 @@ services:
       neo4j:
         condition: service_healthy
     environment:
-      - ENVIRONMENT=dev
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASSWORD=password123
-      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=${ENVIRONMENT}
+      - SBIR_ETL__NEO4J__BOLT_URL=${SBIR_ETL__NEO4J__BOLT_URL}
+      - SBIR_ETL__NEO4J__USERNAME=${SBIR_ETL__NEO4J__USERNAME}
+      - SBIR_ETL__NEO4J__PASSWORD=${SBIR_ETL__NEO4J__PASSWORD}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
     volumes:
       - ./data:/app/data # Mount data directory for SBIR CSV and DuckDB files
       - ./config:/app/config # Mount configuration
