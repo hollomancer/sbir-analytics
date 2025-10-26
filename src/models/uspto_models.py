@@ -145,10 +145,11 @@ class PatentAssignee(BaseModel):
 
     @field_validator("name", mode="before")
     @classmethod
-    def _normalize_name(cls, v):
+    def _validate_name(cls, v):
         if not v or not str(v).strip():
             raise ValueError("Assignee name must be non-empty")
-        return _normalize_name(v)
+        # Preserve original name but normalize whitespace
+        return " ".join(str(v).strip().split())
 
     @field_validator("postal_code", mode="before")
     @classmethod

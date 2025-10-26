@@ -1,6 +1,5 @@
 # sbir-etl/tests/unit/test_uspto_assets.py
 import pytest
-from types import SimpleNamespace
 
 # Attempt to import the asset check under test; skip if module missing.
 uspto_assets = pytest.importorskip("src.assets.uspto_assets", reason="uspto assets module missing")
@@ -8,34 +7,15 @@ uspto_rf_id_asset_check = getattr(uspto_assets, "uspto_rf_id_asset_check", None)
 if uspto_rf_id_asset_check is None:
     pytest.skip("uspto_rf_id_asset_check not found", allow_module_level=True)
 
-
-class DummyLogger:
-    def info(self, *args, **kwargs):
-        # noop logger for tests
-        return None
-
-    def debug(self, *args, **kwargs):
-        return None
-
-    def warning(self, *args, **kwargs):
-        return None
-
-    def error(self, *args, **kwargs):
-        return None
-
-
-class DummyContext:
-    """Minimal fake Dagster context exposing .log used by the asset check."""
-
-    def __init__(self):
-        self.log = DummyLogger()
+# Import Dagster testing utilities
+from dagster import build_asset_context
 
 
 def test_uspto_rf_id_asset_check_pass():
     """
     When all validated_uspto_assignments report success=True, the asset check should pass.
     """
-    ctx = DummyContext()
+    ctx = build_asset_context()
 
     # Simulate results from validated_uspto_assignments: one file, success True
     validated_results = {
@@ -59,7 +39,7 @@ def test_uspto_rf_id_asset_check_fail():
     When any validated_uspto_assignments reports success=False (i.e., duplicates/errors),
     the asset check should fail (passed == False).
     """
-    ctx = DummyContext()
+    ctx = build_asset_context()
 
     validated_results = {
         "/data/raw/uspto/assignment1.csv": {
@@ -89,4 +69,7 @@ def test_uspto_rf_id_asset_check_fail():
         )
         # Accept either presence or not; if present ensure it's >= 1
         if dup_count is not None:
-            assert int(dup_count) >= 1
+            # Handle Dagster MetadataValue objects that have a .value attribute
+            actual_value = getattr(dup_count, "value", dup_count)
+            assert int(actual_value) >= 1
+`

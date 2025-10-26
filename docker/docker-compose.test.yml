@@ -56,12 +56,24 @@ services:
         condition: service_healthy
     networks:
       - sbir-network
-    # Override default runtime command to run tests
-    # The app image should contain the repository code/build artifacts so pytest runs inside the container.
+    # Override default runtime command to run tests and (in CI) install test/dev deps at startup.
+    # The app image contains the repository code; we install heavier test dependencies at container start
+    # to keep the built image lightweight. This command will:
+    #  1) install test dependencies (pip-based fallback)
+    #  2) run pytest
+    #  3) run a lightweight Dagster in-process job to materialize USPTO assets and evaluate checks
     command: >
       sh -c "
+        set -eux;
+        echo 'Installing CI test dependencies (pip) inside container';
+        # Install only the heavy test/dev packages needed for CI runs.
+        # Prefer pip since Poetry is not available in the runtime image.
+        pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
         echo 'Running pytest inside container';
-        pytest -q
+        pytest -q;
+        echo 'Running Dagster uspto_validation_job runner (in-process)';
+        # Exit non-zero if the runner fails so CI detects the failure.
+        python /app/scripts/ci/run_uspto_job.py;
       "
     working_dir: /app
     volumes:

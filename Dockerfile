@@ -98,10 +98,14 @@ COPY --from=builder /wheels /wheels
 COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
 
 # Install all wheels from /wheels into the runtime environment using pip
-# This avoids network fetches at runtime and ensures deterministic installs
+# This avoids network fetches at runtime and ensures deterministic installs.
+# NOTE: heavy test/dev dependencies (pandas, pyarrow, pyreadstat) are intentionally
+# omitted from the runtime image to keep the image lightweight. CI and test runs
+# should install those packages at container startup (for example via `poetry install`
+# or `pip install` in the test command). See CI docker-compose.test.yml for the
+# test-time install step.
 RUN pip install --upgrade pip setuptools wheel \
- && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt \
- && pip install --no-cache-dir pandas pyarrow pyreadstat
+ && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt
 
 # Install gosu (used to drop privileges when needed)
 # Download a static gosu binary; adapt to architecture automatically via dpkg-architecture if needed.
