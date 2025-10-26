@@ -34,14 +34,22 @@
 
 ## 4. Vendor Resolution Module
 
-- [ ] 4.1 Create VendorResolver in src/transition/features/vendor_resolver.py
-- [ ] 4.2 Implement UEI exact matching (primary method, confidence: 0.99)
-- [ ] 4.3 Implement CAGE code matching (defense-specific, confidence: 0.95)
-- [ ] 4.4 Implement DUNS number matching (legacy, confidence: 0.90)
-- [ ] 4.5 Implement fuzzy name matching with rapidfuzz (threshold ≥0.90)
+- [x] 4.1 Create VendorResolver in src/transition/features/vendor_resolver.py
+  - Notes: Implemented `VendorResolver` with in-memory indices and convenience factory `build_resolver_from_iterable`.
+- [x] 4.2 Implement UEI exact matching (primary method, confidence: 0.99)
+  - Notes: `resolve_by_uei` implemented with exact-match semantics and score = 1.0 for matches.
+- [x] 4.3 Implement CAGE code matching (defense-specific, confidence: 0.95)
+  - Notes: `resolve_by_cage` implemented with exact-match semantics and score = 1.0 for matches.
+- [x] 4.4 Implement DUNS number matching (legacy, confidence: 0.90)
+  - Notes: `resolve_by_duns` implemented with exact-match semantics and score = 1.0 for matches.
+- [x] 4.5 Implement fuzzy name matching with rapidfuzz (threshold ≥0.90)
+  - Notes: Name normalization and fuzzy matching implemented (`resolve_by_name`) using `rapidfuzz` when available and difflib fallback; configurable thresholds `fuzzy_threshold` and `fuzzy_secondary_threshold`.
 - [ ] 4.6 Create vendor cross-walk table (mapping all identifiers)
+  - Notes: Cross-walk persistence (DB-backed table) not yet implemented; in-memory indices exist as scaffolding and a cross-walk table will be added later.
 - [ ] 4.7 Handle company acquisitions and name changes
-- [ ] 4.8 Add vendor match confidence tracking
+  - Notes: Complex acquisition/name-change handling is a planned enhancement that requires historical linkage data; remain open.
+- [x] 4.8 Add vendor match confidence tracking
+  - Notes: `VendorMatch` includes a `score` field and `VendorResolver` populates scores for fuzzy matches; the transformer/pipeline will persist these confidence scores.
 
 ## 5. Federal Contracts Ingestion
 
