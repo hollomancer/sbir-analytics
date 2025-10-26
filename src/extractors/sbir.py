@@ -36,6 +36,7 @@ class SbirDuckDBExtractor:
         self.csv_path = Path(csv_path)
         self.table_name = table_name
         self.duckdb_client = DuckDBClient(database_path=duckdb_path)
+        self._table_identifier = self.duckdb_client.escape_identifier(table_name)
         self._imported = False
 
         logger.info(
@@ -278,7 +279,8 @@ class SbirDuckDBExtractor:
 
         logger.info(f"Extracting all records from '{self.table_name}'")
 
-        query = f"SELECT * FROM {self.table_name}"
+        table_identifier = self._table_identifier
+        query = f"SELECT * FROM {table_identifier}"  # nosec B608
         df = self.duckdb_client.execute_query_df(query)
 
         logger.info(f"Extracted {len(df)} records")
@@ -312,12 +314,15 @@ class SbirDuckDBExtractor:
         if query:
             base_query = query
         else:
+            table_identifier = self._table_identifier
             if start_year is not None:
                 if end_year is None:
                     end_year = start_year
-                base_query = f'SELECT * FROM {self.table_name} WHERE "Award Year" BETWEEN {start_year} AND {end_year}'
+                base_query = (
+                    f'SELECT * FROM {table_identifier} WHERE "Award Year" BETWEEN {start_year} AND {end_year}'  # nosec B608
+                )
             else:
-                base_query = f"SELECT * FROM {self.table_name}"
+                base_query = f"SELECT * FROM {table_identifier}"  # nosec B608
 
         logger.info(
             "Starting chunked extraction",
@@ -346,10 +351,11 @@ class SbirDuckDBExtractor:
 
         logger.info(f"Extracting records for Award Year {start_year}-{end_year}")
 
+        table_identifier = self._table_identifier
         query = f"""
-        SELECT * FROM {self.table_name}
+        SELECT * FROM {table_identifier}
         WHERE "Award Year" BETWEEN {start_year} AND {end_year}
-        """
+        """  # nosec B608
 
         df = self.duckdb_client.execute_query_df(query)
 
@@ -371,13 +377,15 @@ class SbirDuckDBExtractor:
 
         logger.info(f"Extracting records for agencies: {agencies}")
 
-        # Build SQL IN clause
-        agency_list = ", ".join(f"'{agency}'" for agency in agencies)
+        table_identifier = self._table_identifier
+        agency_literals = ", ".join(
+            self.duckdb_client.escape_literal(agency) for agency in agencies
+        )
 
         query = f"""
-        SELECT * FROM {self.table_name}
-        WHERE Agency IN ({agency_list})
-        """
+        SELECT * FROM {table_identifier}
+        WHERE Agency IN ({agency_literals})
+        """  # nosec B608
 
         df = self.duckdb_client.execute_query_df(query)
 
@@ -402,10 +410,13 @@ class SbirDuckDBExtractor:
         # Build SQL IN clause
         phase_list = ", ".join(f"'{phase}'" for phase in phases)
 
+        table_identifier = self._table_identifier
+        phase_literals = ", ".join(self.duckdb_client.escape_literal(p) for p in phases)
+
         query = f"""
-        SELECT * FROM {self.table_name}
-        WHERE Phase IN ({phase_list})
-        """
+        SELECT * FROM {table_identifier}
+        WHERE Phase IN ({phase_literals})
+        """  # nosec B608
 
         df = self.duckdb_client.execute_query_df(query)
 
@@ -433,11 +444,12 @@ class SbirDuckDBExtractor:
         for col in columns:
             null_counts.append(f'SUM(CASE WHEN "{col}" IS NULL THEN 1 ELSE 0 END) AS "{col}"')
 
+        table_identifier = self._table_identifier
         query = f"""
         SELECT
             {', '.join(null_counts)}
-        FROM {self.table_name}
-        """
+        FROM {table_identifier}
+        """  # nosec B608
 
         result = self.duckdb_client.execute_query_df(query)
 
@@ -482,6 +494,7 @@ class SbirDuckDBExtractor:
 
         logger.info("Analyzing duplicate Contract IDs")
 
+        table_identifier = self._table_identifier
         query = f"""
         SELECT
             Contract,
@@ -489,12 +502,12 @@ class SbirDuckDBExtractor:
             COUNT(*) as record_count,
             STRING_AGG(DISTINCT Phase, ', ') as phases,
             STRING_AGG(DISTINCT CAST("Award Year" AS VARCHAR), ', ') as years
-        FROM {self.table_name}
+        FROM {table_identifier}
         WHERE Contract IS NOT NULL AND Contract != ''
         GROUP BY Contract, Company
         HAVING COUNT(*) > 1
         ORDER BY record_count DESC, Contract
-        """
+        """  # nosec B608
 
         df = self.duckdb_client.execute_query_df(query)
 
@@ -517,6 +530,7 @@ class SbirDuckDBExtractor:
 
         logger.info("Analyzing award amount statistics")
 
+        table_identifier = self._table_identifier
         query = f"""
         SELECT
             Phase,
@@ -527,11 +541,11 @@ class SbirDuckDBExtractor:
             AVG("Award Amount") as avg_amount,
             MEDIAN("Award Amount") as median_amount,
             SUM("Award Amount") as total_funding
-        FROM {self.table_name}
+        FROM {table_identifier}
         WHERE "Award Amount" IS NOT NULL
         GROUP BY Phase, Agency
         ORDER BY total_funding DESC
-        """
+        """  # nosec B608
 
         df = self.duckdb_client.execute_query_df(query)
 
@@ -556,31 +570,32 @@ class SbirDuckDBExtractor:
         table_info = self.duckdb_client.get_table_info(self.table_name)
 
         # Get min/max years
+        table_identifier = self._table_identifier
         year_query = f"""
         SELECT
             MIN("Award Year") as min_year,
             MAX("Award Year") as max_year,
             COUNT(DISTINCT "Award Year") as year_count
-        FROM {self.table_name}
+        FROM {table_identifier}
         WHERE "Award Year" IS NOT NULL
-        """
+        """  # nosec B608
         year_stats = self.duckdb_client.execute_query(year_query)[0]
 
         # Get agency count
         agency_query = f"""
         SELECT COUNT(DISTINCT Agency) as agency_count
-        FROM {self.table_name}
+        FROM {table_identifier}
         WHERE Agency IS NOT NULL
-        """
+        """  # nosec B608
         agency_stats = self.duckdb_client.execute_query(agency_query)[0]
 
         # Get phase distribution
         phase_query = f"""
         SELECT Phase, COUNT(*) as count
-        FROM {self.table_name}
+        FROM {table_identifier}
         GROUP BY Phase
         ORDER BY count DESC
-        """
+        """  # nosec B608
         phase_dist = self.duckdb_client.execute_query_df(phase_query)
 
         stats = {

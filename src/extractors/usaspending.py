@@ -28,6 +28,14 @@ class DuckDBUSAspendingExtractor:
         self.db_path = db_path or ":memory:"
         self.connection = None
 
+    @staticmethod
+    def _escape_identifier(identifier: str) -> str:
+        return duckdb.escape_identifier(identifier)
+
+    @staticmethod
+    def _escape_literal(value: str) -> str:
+        return duckdb.escape_string_literal(value)
+
     def connect(self) -> duckdb.DuckDBPyConnection:
         """Get or create database connection."""
         if self.connection is None:
@@ -87,26 +95,28 @@ class DuckDBUSAspendingExtractor:
         """Import zipped PostgreSQL dump using postgres_scanner, COPY files, or pg_restore."""
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
             conn = self.connect()
+            table_identifier = self._escape_identifier(table_name)
+            dump_literal = self._escape_literal(str(dump_file))
 
             try:
                 # Try direct postgres_scanner access first
                 logger.info("Attempting direct postgres_scanner access to zipped dump")
                 test_query = (
-                    f"SELECT 1 FROM postgres_scan('{dump_file}', 'transaction_normalized') LIMIT 1"
+                    f"SELECT 1 FROM postgres_scan({dump_literal}, 'transaction_normalized') LIMIT 1"
                 )
                 conn.execute(test_query)
                 logger.info("Direct postgres_scanner access successful")
 
                 # Create view for the main table
                 create_view_query = f"""
-                CREATE OR REPLACE VIEW {table_name} AS
-                SELECT * FROM postgres_scan('{dump_file}', 'transaction_normalized')
-                """
+                CREATE OR REPLACE VIEW {table_identifier} AS
+                SELECT * FROM postgres_scan({dump_literal}, 'transaction_normalized')
+                """  # nosec B608
                 conn.execute(create_view_query)
 
                 # Get approximate row count (this may be slow on removable media)
                 try:
-                    count_query = f"SELECT COUNT(*) FROM {table_name}"
+                    count_query = f"SELECT COUNT(*) FROM {table_identifier}"  # nosec B608
                     result = conn.execute(count_query).fetchone()
                     row_count = result[0] if result else 0
                     logger.info(f"Created view with approximately {row_count} rows")
@@ -163,6 +173,7 @@ class DuckDBUSAspendingExtractor:
                     oid = file_info["oid"]
                     filename = file_info["filename"]
                     table_name_for_file = f"{table_name}_{oid}"
+                    table_identifier = self._escape_identifier(table_name_for_file)
 
                     logger.info(f"Importing {filename} as {table_name_for_file}")
 
@@ -195,14 +206,15 @@ class DuckDBUSAspendingExtractor:
 
                         # Load into DuckDB
                         try:
+                            file_literal = self._escape_literal(str(decompressed_file))
                             create_query = f"""
-                            CREATE TABLE IF NOT EXISTS {table_name_for_file} AS
-                            SELECT * FROM read_csv_auto('{decompressed_file}',
+                            CREATE TABLE IF NOT EXISTS {table_identifier} AS
+                            SELECT * FROM read_csv_auto({file_literal},
                                 delim='\t',
                                 nullstr='\\N',
                                 header=false
                             )
-                            """
+                            """  # nosec B608
                             conn.execute(create_query)
                             logger.info(f"Created table {table_name_for_file}")
                         except Exception as e:

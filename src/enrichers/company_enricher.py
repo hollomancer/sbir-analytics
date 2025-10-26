@@ -361,37 +361,28 @@ def enrich_awards_with_companies(
                         candidate_value = r[0]
                         score = int(r[1])
                         key = r[2]
-                        # Prefer the explicit key if it matches one of our choice keys
+                        candidate_idx = None
                         if key in choices:
-                            idx_candidate = int(key)
+                            candidate_idx = _coerce_int(key)
                         elif candidate_value in reverse_map:
-                            idx_candidate = int(reverse_map[candidate_value])
-                        else:
-                            # Try to coerce key or candidate_value to int as a last resort
-                            try:
-                                idx_candidate = int(key)
-                            except Exception:
-                                try:
-                                    idx_candidate = int(candidate_value)
-                                except Exception:
-                                    # Unable to resolve a valid candidate index
-                                    continue
-                        simple_results.append((idx_candidate, score))
+                            candidate_idx = int(reverse_map[candidate_value])
+                        if candidate_idx is None:
+                            candidate_idx = _coerce_int(key) or _coerce_int(candidate_value)
+                        if candidate_idx is None:
+                            continue
+                        simple_results.append((candidate_idx, score))
                     else:
                         # Fallback tuple shape: (choice_value, score)
                         candidate_value = r[0]
                         score = int(r[1])
                         if candidate_value in reverse_map:
-                            idx_candidate = int(reverse_map[candidate_value])
-                            simple_results.append((idx_candidate, score))
+                            candidate_idx = int(reverse_map[candidate_value])
                         else:
-                            # Attempt numeric conversion of candidate_value as last resort
-                            try:
-                                idx_candidate = int(candidate_value)
-                                simple_results.append((idx_candidate, score))
-                            except Exception:
-                                continue
-                except Exception:
+                            candidate_idx = _coerce_int(candidate_value)
+                        if candidate_idx is None:
+                            continue
+                        simple_results.append((candidate_idx, score))
+                except (TypeError, ValueError):
                     # Defensive: skip malformed result entries
                     continue
 
