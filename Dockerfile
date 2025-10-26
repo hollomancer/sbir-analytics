@@ -74,7 +74,8 @@ FROM ${IMAGE_PY} AS runtime
 
 ENV PATH=/usr/local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
 
 # Install tini and utilities required at runtime (gosu will be added via download)
 RUN apt-get update && apt-get install -y --no-install-recommends \
