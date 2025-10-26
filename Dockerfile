@@ -54,9 +54,9 @@ COPY pyproject.toml poetry.lock* /workspace/
 # the project source into the builder context ensures metadata generation succeeds in CI.
 COPY . /workspace/
 
-# Export a requirements.txt for pip-based wheel building (only main dependencies)
+# Export a requirements.txt for pip-based wheel building (main + dev groups for test tooling)
 # --without-hashes simplifies wheel building in isolated environments
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --only main
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --with dev
 
 # Build wheels for all requirements (and for this package) into /wheels
 RUN mkdir -p /wheels \
