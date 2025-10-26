@@ -92,8 +92,7 @@ class SbirDuckDBExtractor:
 
         start_time = time.time()
 
-        # Import CSV to DuckDB (either incremental or fast native import)
-        # If the caller explicitly requests incremental, do that first.
+        # Import CSV to DuckDB with fallback strategies for complex CSV files
         if incremental:
             batch = batch_size or 10000
             success = self.duckdb_client.import_csv_incremental(
@@ -106,8 +105,7 @@ class SbirDuckDBExtractor:
             )
             import_duration = time.time() - start_time
         else:
-            # Try native DuckDB import first (fast). If it succeeds but yields
-            # zero rows or an unexpected column count, fall back to incremental import.
+            # Try native DuckDB import first (fast)
             success = self.duckdb_client.import_csv(
                 csv_path=self.csv_path,
                 table_name=self.table_name,
@@ -118,7 +116,7 @@ class SbirDuckDBExtractor:
             )
             import_duration = time.time() - start_time
 
-            # If native import succeeded, verify basic sanity (row count and column count).
+            # If native import succeeded, verify basic sanity
             if success:
                 try:
                     table_info_check = self.duckdb_client.get_table_info(self.table_name)
@@ -128,7 +126,7 @@ class SbirDuckDBExtractor:
                     row_count_check = 0
                     columns_meta_check = []
 
-                # Extract discovered column names from DESCRIBE-like output
+                # Extract discovered column names
                 discovered_columns = []
                 for c in columns_meta_check:
                     if isinstance(c, dict):
@@ -141,28 +139,71 @@ class SbirDuckDBExtractor:
                     else:
                         discovered_columns.append(str(c))
 
-                # If native import appears to be wrong (no rows or incorrect column count),
-                # attempt incremental import as a robust fallback.
+                # If native import appears to be wrong, try pandas-based import as fallback
                 expected_column_count = 42
                 if row_count_check == 0 or len(discovered_columns) != expected_column_count:
                     logger.warning(
-                        "Native DuckDB CSV import produced unexpected results; falling back to incremental import",
+                        "Native DuckDB CSV import produced unexpected results; trying pandas fallback",
                         row_count=row_count_check,
                         discovered_columns_count=len(discovered_columns),
                     )
-                    # Choose a sensible batch size for the fallback
-                    fallback_batch = batch_size or 10000
 
-                    # Try incremental import as a fallback; allow creation of the table if missing.
-                    success = self.duckdb_client.import_csv_incremental(
-                        csv_path=self.csv_path,
-                        table_name=self.table_name,
-                        batch_size=fallback_batch,
-                        delimiter=delimiter,
-                        header=header,
-                        encoding=encoding,
-                        create_table_if_missing=True,
-                    )
+                    # Try pandas-based import as fallback for complex CSV files
+                    try:
+                        import pandas as pd
+
+                        logger.info("Attempting pandas-based CSV import fallback")
+
+                        # Read CSV with pandas (handles embedded newlines better)
+                        pandas_start = time.time()
+                        df = pd.read_csv(
+                            self.csv_path,
+                            delimiter=delimiter,
+                            header=0 if header else None,
+                            encoding=encoding,
+                            quoting=pd.QUOTE_MINIMAL,
+                            escapechar="\\",
+                            low_memory=False,
+                        )
+
+                        # Import DataFrame to DuckDB
+                        success = self.duckdb_client.create_table_from_df(df, self.table_name)
+                        pandas_duration = time.time() - pandas_start
+
+                        if success:
+                            logger.info(
+                                "Pandas fallback import successful",
+                                rows=len(df),
+                                duration_seconds=round(pandas_duration, 2),
+                            )
+                            import_duration = time.time() - start_time  # Update total duration
+                        else:
+                            logger.error("Pandas fallback import failed")
+                            # Fall back to incremental import
+                            fallback_batch = batch_size or 10000
+                            success = self.duckdb_client.import_csv_incremental(
+                                csv_path=self.csv_path,
+                                table_name=self.table_name,
+                                batch_size=fallback_batch,
+                                delimiter=delimiter,
+                                header=header,
+                                encoding=encoding,
+                                create_table_if_missing=True,
+                            )
+
+                    except Exception as e:
+                        logger.warning(f"Pandas fallback failed: {e}; trying incremental import")
+                        # Final fallback to incremental import
+                        fallback_batch = batch_size or 10000
+                        success = self.duckdb_client.import_csv_incremental(
+                            csv_path=self.csv_path,
+                            table_name=self.table_name,
+                            batch_size=fallback_batch,
+                            delimiter=delimiter,
+                            header=header,
+                            encoding=encoding,
+                            create_table_if_missing=True,
+                        )
 
         # Get table info
         table_info = self.duckdb_client.get_table_info(self.table_name)

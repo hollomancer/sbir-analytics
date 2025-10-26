@@ -141,8 +141,9 @@ class DuckDBClient:
                 encoding='{encoding}',
                 quote='{quote}',
                 sample_size=100000,
-                max_line_size=1000000,
-                ignore_errors=true)
+                max_line_size=10000000,
+                ignore_errors=true,
+                union_by_name=true)
             """
 
             try:
