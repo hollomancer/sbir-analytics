@@ -1,6 +1,6 @@
 """Pydantic models for researcher data."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Researcher(BaseModel):
@@ -28,10 +28,7 @@ class Researcher(BaseModel):
     linkedin: str | None = Field(None, description="LinkedIn profile URL")
     google_scholar: str | None = Field(None, description="Google Scholar profile URL")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class RawResearcher(BaseModel):
@@ -45,7 +42,4 @@ class RawResearcher(BaseModel):
     title: str | None = None
     expertise: str | None = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)

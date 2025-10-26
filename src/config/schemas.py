@@ -10,7 +10,7 @@ overrides and external config sources may supply heterogeneous types.
 from pathlib import Path
 from typing import Any, Mapping
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class SbirValidationConfig(BaseModel):
@@ -286,13 +286,7 @@ class PipelineConfig(BaseModel):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
 
-    class Config:
-        """Pydantic configuration.
-
-        NOTE: `extra` is set to "allow" so environment overrides and other external
-        sources that inject extra keys will not cause validation to fail. This makes
-        it easier to layer env-var based overrides onto the base config files.
-        """
-
-        validate_assignment = True
-        extra = "allow"
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra="allow",
+    )

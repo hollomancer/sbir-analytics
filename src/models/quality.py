@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class QualitySeverity(str, Enum):
@@ -28,11 +28,7 @@ class QualityIssue(BaseModel):
     severity: QualitySeverity = Field(..., description="Issue severity level")
     rule: str | None = Field(None, description="Validation rule that failed")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        use_enum_values = True
+    model_config = ConfigDict(validate_assignment=True, use_enum_values=True)
 
 
 class QualityReport(BaseModel):
@@ -59,10 +55,7 @@ class QualityReport(BaseModel):
     # Pass/fail status
     passed: bool = Field(..., description="Whether record passed quality checks")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class EnrichmentResult(BaseModel):
@@ -92,10 +85,7 @@ class EnrichmentResult(BaseModel):
     # Error information
     error_message: str | None = Field(None, description="Error message if enrichment failed")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class DataQualitySummary(BaseModel):
@@ -137,7 +127,4 @@ class DataQualitySummary(BaseModel):
     )
     validity_threshold_met: bool = Field(..., description="Whether validity threshold was met")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
