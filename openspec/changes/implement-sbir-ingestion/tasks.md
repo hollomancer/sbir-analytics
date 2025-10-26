@@ -30,8 +30,8 @@
   - [ ] 2.2.6 Column name mapping (handle quoted column names in SQL)
 - [x] 2.3 Add extraction metadata tracking
   - [x] 2.3.1 File size and record count from DuckDB table stats
-  - [ ] 2.3.2 Extraction timestamp
-  - [ ] 2.3.3 Column validation (ensure all 42 expected columns present)
+  - [x] 2.3.2 Extraction timestamp
+  - [x] 2.3.3 Column validation (ensure all 42 expected columns present)
   - [x] 2.3.4 DuckDB table statistics (row count, memory usage)
 - [x] 2.4 Implement SQL-based data quality checks
   - [x] 2.4.1 Count null values per column (SELECT COUNT(*) WHERE col IS NULL)

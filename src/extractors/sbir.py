@@ -1,7 +1,7 @@
 """SBIR data extraction using DuckDB."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Iterator
 import pandas as pd
 from loguru import logger
 
@@ -51,26 +51,67 @@ class SbirDuckDBExtractor:
             table_name=table_name,
         )
 
-    def import_csv(self) -> dict:
+    def import_csv(
+        self,
+        incremental: bool = False,
+        batch_size: Optional[int] = None,
+        delimiter: str = ",",
+        header: bool = True,
+        encoding: str = "utf-8",
+    ) -> dict:
         """
         Import SBIR CSV into DuckDB table.
 
-        Returns:
-            Dictionary with import metadata (record count, duration, etc.)
-        """
-        import time
+        Supports two modes:
+         - Bulk import via DuckDB's native read_csv_auto (fast, single-step)
+         - Incremental import via pandas chunking (lower memory footprint)
 
-        logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
+        Args:
+            incremental: If True, use incremental pandas-chunk import
+            batch_size: Chunk size for incremental import (defaults to 10000)
+            delimiter: CSV delimiter
+            header: Whether CSV has header row
+            encoding: File encoding
+def import_csv(self, use_incremental: bool = False, chunk_size: Optional[int] = None) -> dict:
+    """
+    Import SBIR CSV into DuckDB table.
 
-        if not self.csv_path.exists():
-            raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
+    Adds:
+    - optional incremental import (pandas chunked)
+    - column validation (expects 42 columns)
+    - extraction start/end timestamps in returned metadata
 
-        # Get file size
-        file_size_mb = self.csv_path.stat().st_size / (1024 * 1024)
+    Returns:
+        Dictionary with import metadata (record count, duration, etc.)
+    """
+    import time
+    from datetime import datetime
 
-        start_time = time.time()
+    logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
 
-        # Import CSV to DuckDB
+    if not self.csv_path.exists():
+        raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
+
+    # Record extraction start timestamp (UTC)
+    extraction_start = datetime.utcnow().isoformat()
+
+    # Get file size
+    file_size_mb = self.csv_path.stat().st_size / (1024 * 1024)
+
+    start_time = time.time()
+
+    # Import CSV to DuckDB (either incremental or fast native import)
+    if use_incremental:
+        batch = chunk_size or 10000
+        success = self.duckdb_client.import_csv_incremental(
+            csv_path=self.csv_path,
+            table_name=self.table_name,
+            batch_size=batch,
+            delimiter=",",
+            header=True,
+            encoding="utf-8",
+        )
+    else:
         success = self.duckdb_client.import_csv(
             csv_path=self.csv_path,
             table_name=self.table_name,
@@ -79,32 +120,63 @@ class SbirDuckDBExtractor:
             encoding="utf-8",
         )
 
-        if not success:
-            raise RuntimeError(f"Failed to import CSV to DuckDB")
+    if not success:
+        raise RuntimeError(f"Failed to import CSV to DuckDB")
 
-        import_duration = time.time() - start_time
+    import_duration = time.time() - start_time
 
-        # Get table info
-        table_info = self.duckdb_client.get_table_info(self.table_name)
-        row_count = table_info.get("row_count", 0)
-        columns = table_info.get("columns", [])
-        column_count = len(columns)
+    # Get table info
+    table_info = self.duckdb_client.get_table_info(self.table_name)
+    row_count = table_info.get("row_count", 0)
+    columns_meta = table_info.get("columns", [])
+    # columns_meta may be a list of dicts from DESCRIBE; extract names if present
+    columns = []
+    for c in columns_meta:
+        if isinstance(c, dict):
+            # try common keys
+            if "column_name" in c:
+                columns.append(c["column_name"])
+            elif "name" in c:
+                columns.append(c["name"])
+            else:
+                # fallback: convert whole dict to string
+                columns.append(str(c))
+        else:
+            columns.append(str(c))
+    column_count = len(columns)
 
-        self._imported = True
+    # Basic column-count validation: spec mandates 42 columns in SBIR.gov CSV format
+    expected_column_count = 42
+    if column_count != expected_column_count:
+        # Fail fast with clear message listing discovered columns to aid debugging
+        raise RuntimeError(
+            f"CSV import validation failed: expected {expected_column_count} columns, "
+            f"found {column_count}. Columns discovered: {columns}"
+        )
 
-        metadata = {
-            "csv_path": str(self.csv_path),
-            "file_size_mb": round(file_size_mb, 2),
-            "table_name": self.table_name,
-            "row_count": row_count,
-            "column_count": column_count,
-            "import_duration_seconds": round(import_duration, 2),
-            "records_per_second": round(row_count / import_duration) if import_duration > 0 else 0,
-        }
+    self._imported = True
 
-        logger.info(f"CSV import complete", **metadata)
+    # Record extraction end timestamp (UTC)
+    extraction_end = datetime.utcnow().isoformat()
 
-        return metadata
+    metadata = {
+        "csv_path": str(self.csv_path),
+        "file_size_mb": round(file_size_mb, 2),
+        "table_name": self.table_name,
+        "row_count": row_count,
+        "column_count": column_count,
+        "columns": columns,
+        "import_duration_seconds": round(import_duration, 2),
+        "records_per_second": round(row_count / import_duration) if import_duration > 0 else 0,
+        "used_incremental": bool(use_incremental),
+        "chunk_size": chunk_size or None,
+        "extraction_start_utc": extraction_start,
+        "extraction_end_utc": extraction_end,
+    }
+
+    logger.info(f"CSV import complete", **metadata)
+
+    return metadata
 
     def _ensure_imported(self):
         """Ensure CSV has been imported to DuckDB."""
@@ -132,6 +204,50 @@ class SbirDuckDBExtractor:
         logger.info(f"Extracted {len(df)} records")
 
         return df
+
+    def extract_in_chunks(
+        self,
+        batch_size: Optional[int] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        query: Optional[str] = None,
+    ) -> Iterator[pd.DataFrame]:
+        """
+        Extract records from DuckDB in chunked pages to avoid loading the full table into memory.
+
+        Args:
+            batch_size: Number of rows per chunk. If None, defaults to 10000.
+            start_year: Optional start year to filter by Award Year (inclusive).
+            end_year: Optional end year to filter by Award Year (inclusive). If provided without start_year, start_year == end_year.
+            query: Optional custom SQL query (OVERWRITES start_year/end_year if provided).
+
+        Yields:
+            pandas DataFrame chunks
+        """
+        self._ensure_imported()
+
+        # Determine effective batch size
+        effective_batch = batch_size or 10000
+
+        if query:
+            base_query = query
+        else:
+            if start_year is not None:
+                if end_year is None:
+                    end_year = start_year
+                base_query = f"SELECT * FROM {self.table_name} WHERE \"Award Year\" BETWEEN {start_year} AND {end_year}"
+            else:
+                base_query = f"SELECT * FROM {self.table_name}"
+
+        logger.info(
+            "Starting chunked extraction",
+            extra={"table": self.table_name, "batch_size": effective_batch},
+        )
+
+        # Use DuckDB client's chunked fetcher
+        for df_chunk in self.duckdb_client.fetch_df_chunks(base_query, batch_size=effective_batch):
+            logger.info(f"Yielding chunk with {len(df_chunk)} rows")
+            yield df_chunk
 
     def extract_by_year(self, start_year: int, end_year: Optional[int] = None) -> pd.DataFrame:
         """
