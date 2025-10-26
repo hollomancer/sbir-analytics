@@ -24,7 +24,7 @@ on:
 
 jobs:
   neo4j-smoke:
-    name: Neo4j smoke (mode: ${{ github.event.inputs.mode || 'dry-run' }})
+    name: Neo4j smoke (mode: ${{ github.event.inputs.mode }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -175,13 +175,13 @@ jobs:
 
     # Always attempt to tear down compose resources (but do not remove named volumes by default)
       - name: Tear down compose (always)
-        if: always()
+        if: ${{ always() }}
         run: |
           set -eux
           docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans
 
       - name: Upload logs and artifacts on failure
-        if: failure()
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: neo4j-smoke-logs
@@ -190,5 +190,5 @@ jobs:
             reports/ || true
 
       - name: Success note
-        if: success()
+        if: ${{ success() }}
         run: echo "Neo4j smoke test completed successfully (mode=${{ github.event.inputs.mode }})"
