@@ -120,9 +120,8 @@ RUN set -eux; \
 # Note: in dev profile these paths can be bind-mounted to allow live edit.
 COPY . /app
 
-# Ensure entrypoint scripts are executable
-RUN chmod +x /app/sbir-etl/scripts/docker/entrypoint.sh || true || true; \
-    chmod +x /app/sbir-etl/scripts/docker/wait-for-service.sh || true || true
+# Ensure entrypoint scripts are executable (use actual runtime path and make all scripts executable)
+RUN chmod -R +x /app/scripts/docker || true
 
 # Make sure /app owned by sbir user
 RUN chown -R sbir:sbir /app
