@@ -24,7 +24,7 @@ on:
 
 jobs:
   neo4j-smoke:
-    name: Neo4j smoke (mode: ${{ github.event.inputs.mode }})
+    name: Neo4j smoke
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
