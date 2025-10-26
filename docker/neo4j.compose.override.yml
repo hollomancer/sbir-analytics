@@ -1,0 +1,83 @@
+version: "3.9"
+
+# Override compose for running a standalone Neo4j server for local debugging / troubleshooting.
+# Usage:
+#   # Start only the neo4j profile (overrides base docker-compose.yml neo4j service)
+#   docker compose --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up --build
+#
+# This override:
+# - Declares a `neo4j` profile so the DB can be started independently of app services
+# - Mounts a local `config/neo4j/neo4j.conf` into the container (read-only)
+# - Exposes default Bolt/HTTP ports for local access
+# - Mounts named volumes for data/logs/import/metrics
+# - Provides optional mounts for TLS certificates and plugin folders
+# - Uses an explicit healthcheck that mirrors what entrypoints use elsewhere
+#
+services:
+  neo4j:
+    profiles: ["neo4j"]
+    image: neo4j:5.20.0
+    container_name: sbir-neo4j-standalone
+    environment:
+      # Prefer NEO4J_AUTH if present; otherwise fall back to NEO4J_USER/NEO4J_PASSWORD.
+      # Provide values via .env (do not commit secrets).
+      - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      # Optional plugins list (comma separated or JSON depending on image expectations)
+      - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
+      # Helpful memory tuning knobs (can also be passed as env in .env)
+      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size:-256M}
+      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size:-512M}
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"   # HTTP
+      - "${NEO4J_BOLT_PORT:-7687}:7687"   # Bolt
+    volumes:
+      # Persistent named volumes (defined below) - default for production-like runs
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      # Mount a repo-local neo4j.conf if present to customize runtime settings
+      - ./config/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf:ro
+      # Optional: mount a certs directory for TLS configuration if you have certs locally
+      - ./config/neo4j/certs:/certs:ro
+      # Optional: mount plugins directory if developing/prototyping plugins
+      - ./config/neo4j/plugins:/plugins:rw
+    # Healthcheck: lightweight cypher-shell probe using provided credentials. Matches the base compose behavior.
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - sbir-network
+
+# Named volumes used by the neo4j override. These are intended to be shared with the base compose.
+volumes:
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  neo4j_import:
+    driver: local
+
+networks:
+  sbir-network:
+    external: true
+
+# Notes / guidance:
+# - The `./config/neo4j/neo4j.conf` mount is optional; if not present, the container will use the default image config.
+# - Provide secrets (passwords) via .env (gitignored) or secret mounts. Example .env entries:
+#     NEO4J_USER=neo4j
+#     NEO4J_PASSWORD=local_test_password
+#     NEO4J_PLUGINS=["apoc"]
+# - The override intentionally exposes ports to the host for troubleshooting. Be careful when using on shared networks.
+# - To remove data and reset the DB, use Makefile helpers (if available) or remove the named volumes:
+#     docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --volumes
+#     docker volume rm <project>_neo4j_data
+#
+# Example: start neo4j, open cypher-shell
+#   cp .env.example .env && edit .env to set NEO4J_PASSWORD
+#   docker compose --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
+#   docker compose exec neo4j cypher-shell -u $NEO4J_USER -p $NEO4J_PASSWORD "MATCH (n) RETURN count(n);"
