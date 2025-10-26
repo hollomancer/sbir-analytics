@@ -171,9 +171,13 @@ def column_summary(df, sample_size: int = DEFAULT_SAMPLE) -> Dict[str, Any]:
         dtype = str(ser.dtype)
         # top values
         try:
-            top = ser.dropna().value_counts(dropna=True).head(5).to_dict()
+            # Use value_counts but ensure keys/values are JSON-serializable.
+            raw_top = ser.dropna().value_counts(dropna=True).head(5).to_dict()
+            # Convert potentially non-string keys (e.g., Timestamp) to strings and counts to ints.
+            top = {str(k): int(v) for k, v in raw_top.items()}
         except Exception:
             top = {}
+        dtype = str(ser.dtype)
         col_info: Dict[str, Any] = {
             "dtype": dtype,
             "nonnull_count": nonnull_count,
