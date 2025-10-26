@@ -186,47 +186,61 @@ class USPTOExtractor:
         If the model import is unavailable or construction fails for a row,
         yields the raw dict (with an '_error' key describing the issue).
         """
+
+        def _filter_none(d: Dict) -> Dict:
+            """Remove keys with None values to allow Pydantic defaults to be used."""
+            return {k: v for k, v in d.items() if v is not None}
+
         for row in self.stream_rows(file_path, chunk_size=chunk_size):
             if PatentAssignment is not None:
                 try:
                     # Map relevant fields heuristically: allow model to validate/coerce
                     # Attempt to construct PatentAssignment from the raw row dict
+                    # Filter None values so Pydantic defaults are applied
                     pa = PatentAssignment(
                         rf_id=row.get("rf_id") or row.get("record_id") or row.get("id"),
                         file_id=row.get("file_id"),
-                        document=dict(
-                            grant_number=row.get("grant_doc_num") or row.get("grant_number"),
-                            application_number=row.get("application_number"),
-                            publication_number=row.get("publication_number"),
-                            filing_date=row.get("filing_date"),
-                            publication_date=row.get("publication_date"),
-                            grant_date=row.get("grant_date"),
-                            title=row.get("title"),
-                            abstract=row.get("abstract"),
+                        document=_filter_none(
+                            dict(
+                                grant_number=row.get("grant_doc_num") or row.get("grant_number"),
+                                application_number=row.get("application_number"),
+                                publication_number=row.get("publication_number"),
+                                filing_date=row.get("filing_date"),
+                                publication_date=row.get("publication_date"),
+                                grant_date=row.get("grant_date"),
+                                title=row.get("title"),
+                                abstract=row.get("abstract"),
+                            )
                         ),
-                        conveyance=dict(
-                            rf_id=row.get("conveyance_rf_id"),
-                            conveyance_type=row.get("conveyance_type"),
-                            description=row.get("conveyance_text"),
-                            recorded_date=row.get("recorded_date"),
+                        conveyance=_filter_none(
+                            dict(
+                                rf_id=row.get("conveyance_rf_id"),
+                                conveyance_type=row.get("conveyance_type"),
+                                description=row.get("conveyance_text"),
+                                recorded_date=row.get("recorded_date"),
+                            )
                         ),
-                        assignee=dict(
-                            rf_id=row.get("assignee_rf_id"),
-                            name=row.get("assignee_name"),
-                            street=row.get("assignee_street"),
-                            city=row.get("assignee_city"),
-                            state=row.get("assignee_state"),
-                            postal_code=row.get("assignee_postal"),
-                            country=row.get("assignee_country"),
-                            uei=row.get("assignee_uei"),
-                            cage=row.get("assignee_cage"),
-                            duns=row.get("assignee_duns"),
+                        assignee=_filter_none(
+                            dict(
+                                rf_id=row.get("assignee_rf_id"),
+                                name=row.get("assignee_name"),
+                                street=row.get("assignee_street"),
+                                city=row.get("assignee_city"),
+                                state=row.get("assignee_state"),
+                                postal_code=row.get("assignee_postal"),
+                                country=row.get("assignee_country"),
+                                uei=row.get("assignee_uei"),
+                                cage=row.get("assignee_cage"),
+                                duns=row.get("assignee_duns"),
+                            )
                         ),
-                        assignor=dict(
-                            rf_id=row.get("assignor_rf_id"),
-                            name=row.get("assignor_name"),
-                            execution_date=row.get("execution_date"),
-                            acknowledgment_date=row.get("acknowledgment_date"),
+                        assignor=_filter_none(
+                            dict(
+                                rf_id=row.get("assignor_rf_id"),
+                                name=row.get("assignor_name"),
+                                execution_date=row.get("execution_date"),
+                                acknowledgment_date=row.get("acknowledgment_date"),
+                            )
                         ),
                         execution_date=row.get("execution_date"),
                         recorded_date=row.get("recorded_date"),
