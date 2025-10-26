@@ -136,6 +136,10 @@ class USAspendingDumpProfiler:
           - produce a representative sample (first `limit` rows by default),
           - and return an overall row count computed while streaming.
 
+        Additionally, this method writes per-OID progress JSON files to `reports/progress/`
+        and instruments the sampling block with the global `performance_monitor` so we
+        capture duration and memory usage for each table scan.
+
         Args:
             table_oid: PostgreSQL object ID for the table
             limit: Number of rows to sample (kept in memory)
@@ -144,6 +148,10 @@ class USAspendingDumpProfiler:
         Returns:
             Dictionary with sample data and simple progress/diagnostics
         """
+        # Local imports to keep top-level imports stable
+        from src.utils.performance_monitor import performance_monitor
+        import json
+
         table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
         logger.info(
             f"Streaming sample up to {limit} rows from table {table_name} (OID: {table_oid})"
@@ -157,58 +165,94 @@ class USAspendingDumpProfiler:
         columns_detected = None
         last_report = 0
 
+        progress_dir = Path("reports/progress")
+        progress_dir.mkdir(parents=True, exist_ok=True)
+        progress_path = progress_dir / f"{table_oid}.json"
+
+        # Ensure we write an initial progress file to indicate start
+        with open(progress_path, "w") as pf:
+            json.dump(
+                {
+                    "table_name": table_name,
+                    "oid": table_oid,
+                    "status": "started",
+                    "sample_limit": limit,
+                },
+                pf,
+                indent=2,
+            )
+
         try:
-            # Start the unzip subprocess and stream stdout
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Instrument the streaming scan with performance monitoring
+            with performance_monitor.monitor_block(f"profile_oid_{table_oid}"):
+                # Start the unzip subprocess and stream stdout
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-            # Attempt to treat stdout as a gzip stream; fall back to raw stream if not gzipped.
-            import gzip
-            from io import BufferedReader, TextIOWrapper
+                # Attempt to treat stdout as a gzip stream; fall back to raw stream if not gzipped.
+                import gzip
+                from io import BufferedReader, TextIOWrapper
 
-            stream = proc.stdout  # binary stream
+                stream = proc.stdout  # binary stream
 
-            try:
-                gz = gzip.GzipFile(fileobj=stream)
-                reader = TextIOWrapper(BufferedReader(gz), encoding="utf-8", errors="replace")
-                logger.info(f"Using gzip stream reader for {filename}")
-            except (OSError, gzip.BadGzipFile):
-                # Not gzipped; read directly
-                reader = TextIOWrapper(BufferedReader(stream), encoding="utf-8", errors="replace")
-                logger.info(f"Using raw stream reader for {filename}")
-
-            # Iterate lines and build small in-memory sample (first `limit` rows)
-            for line in reader:
-                total_rows += 1
-
-                # Progress reporting every chunk_size rows
-                if total_rows - last_report >= chunk_size:
-                    logger.info(
-                        f"Sampling progress for OID {table_oid}: {total_rows} rows scanned..."
+                try:
+                    gz = gzip.GzipFile(fileobj=stream)
+                    reader = TextIOWrapper(BufferedReader(gz), encoding="utf-8", errors="replace")
+                    logger.info(f"Using gzip stream reader for {filename}")
+                except (OSError, gzip.BadGzipFile):
+                    # Not gzipped; read directly
+                    reader = TextIOWrapper(
+                        BufferedReader(stream), encoding="utf-8", errors="replace"
                     )
-                    last_report = total_rows
+                    logger.info(f"Using raw stream reader for {filename}")
 
-                # Parse COPY (tab-separated) row
-                row_vals = line.rstrip("\n").split("\t")
-                # Lazily determine number of columns from first row we keep
-                if columns_detected is None:
-                    columns_detected = list(range(len(row_vals)))
+                # Iterate lines and build small in-memory sample (first `limit` rows)
+                for line in reader:
+                    total_rows += 1
 
-                # Only keep up to `limit` sample rows
-                if len(sample_records) < limit:
-                    # Represent row as dict: column_index -> value (mimic pandas read_csv behavior earlier)
-                    row_dict = {i: (v if v != "\\N" else None) for i, v in enumerate(row_vals)}
-                    sample_records.append(row_dict)
+                    # Progress reporting every chunk_size rows
+                    if total_rows - last_report >= chunk_size:
+                        logger.info(
+                            f"Sampling progress for OID {table_oid}: {total_rows} rows scanned..."
+                        )
+                        last_report = total_rows
 
-            # Finish reading; ensure subprocess ended
-            proc.stdout.close()
-            _, stderr = proc.communicate(timeout=30)
-            if proc.returncode not in (0, None):
-                stderr_text = (
-                    stderr.decode("utf-8", errors="replace")
-                    if isinstance(stderr, bytes)
-                    else str(stderr)
-                )
-                logger.warning(f"Stream reader subprocess returned non-zero: {stderr_text}")
+                        # Write intermediate progress file
+                        with open(progress_path, "w") as pf:
+                            json.dump(
+                                {
+                                    "table_name": table_name,
+                                    "oid": table_oid,
+                                    "status": "in-progress",
+                                    "total_rows_scanned": total_rows,
+                                    "sampled_rows": len(sample_records),
+                                    "reported_interval": chunk_size,
+                                },
+                                pf,
+                                indent=2,
+                            )
+
+                    # Parse COPY (tab-separated) row
+                    row_vals = line.rstrip("\n").split("\t")
+                    # Lazily determine number of columns from first row we keep
+                    if columns_detected is None:
+                        columns_detected = list(range(len(row_vals)))
+
+                    # Only keep up to `limit` sample rows
+                    if len(sample_records) < limit:
+                        # Represent row as dict: column_index -> value (mimic pandas read_csv behavior earlier)
+                        row_dict = {i: (v if v != "\\N" else None) for i, v in enumerate(row_vals)}
+                        sample_records.append(row_dict)
+
+                # Finish reading; ensure subprocess ended
+                proc.stdout.close()
+                _, stderr = proc.communicate(timeout=30)
+                if proc.returncode not in (0, None):
+                    stderr_text = (
+                        stderr.decode("utf-8", errors="replace")
+                        if isinstance(stderr, bytes)
+                        else str(stderr)
+                    )
+                    logger.warning(f"Stream reader subprocess returned non-zero: {stderr_text}")
 
             # Build a small DataFrame for column metadata using the sampled rows (if any)
             if sample_records:
@@ -220,6 +264,20 @@ class USAspendingDumpProfiler:
                 sampled_rows = 0
                 columns = columns_detected or []
 
+            # Write final progress with metrics
+            final_progress = {
+                "table_name": table_name,
+                "oid": table_oid,
+                "status": "completed",
+                "total_rows_scanned": total_rows,
+                "sampled_rows": sampled_rows,
+                "columns_detected": columns,
+                "reported_interval": chunk_size,
+                "metrics": performance_monitor.get_latest_metric(f"profile_oid_{table_oid}"),
+            }
+            with open(progress_path, "w") as pf:
+                json.dump(final_progress, pf, indent=2, default=str)
+
             return {
                 "table_name": table_name,
                 "oid": table_oid,
@@ -227,7 +285,7 @@ class USAspendingDumpProfiler:
                 "sampled_rows": sampled_rows,
                 "columns": columns,
                 "sample_data": df_sample.head(limit).to_dict("records"),
-                "progress": {"reported_interval": chunk_size},
+                "progress_file": str(progress_path),
             }
 
         except subprocess.TimeoutExpired:
@@ -236,21 +294,44 @@ class USAspendingDumpProfiler:
                 proc.kill()
             except Exception:
                 pass
+            with open(progress_path, "w") as pf:
+                json.dump(
+                    {"table_name": table_name, "oid": table_oid, "status": "timeout"}, pf, indent=2
+                )
             return {"table_name": table_name, "oid": table_oid, "error": "stream timeout"}
         except Exception as e:
-            logger.error(f"Failed to stream-sample table {table_name}: {e}")
+            # Log full exception with stack trace for easier debugging
+            logger.exception(f"Failed to stream-sample table {table_name}")
             # Attempt to kill subprocess if still running
             try:
                 proc.kill()
             except Exception:
                 pass
+            with open(progress_path, "w") as pf:
+                json.dump(
+                    {
+                        "table_name": table_name,
+                        "oid": table_oid,
+                        "status": "error",
+                        "error": str(e),
+                    },
+                    pf,
+                    indent=2,
+                )
             return {"table_name": table_name, "oid": table_oid, "error": str(e)}
 
-    def profile_dump(self, sample_oids: Optional[List[int]] = None) -> Dict:
+    def profile_dump(
+        self,
+        sample_oids: Optional[List[int]] = None,
+        sample_limit: int = 10000,
+        chunk_size: int = 100000,
+    ) -> Dict:
         """Profile the entire dump.
 
         Args:
             sample_oids: List of specific table OIDs to sample (None for all tables)
+            sample_limit: Number of sample rows to collect per table
+            chunk_size: Progress reporting interval (rows)
 
         Returns:
             Complete profiling report
@@ -274,7 +355,12 @@ class USAspendingDumpProfiler:
             sample_oids = [f["oid"] for f in report["metadata"].get("data_files", [])]
 
         for oid in sample_oids:
-            sample = self.get_table_sample_from_copy_file(oid)
+            logger.info(
+                f"Beginning sample for OID: {oid} with limit={sample_limit}, chunk_size={chunk_size}"
+            )
+            sample = self.get_table_sample_from_copy_file(
+                oid, limit=sample_limit, chunk_size=chunk_size
+            )
             report["table_samples"].append(sample)
 
         return report
@@ -375,6 +461,18 @@ def main():
         help="Specific table OIDs to sample (default: all tables)",
     )
     parser.add_argument(
+        "--sample-limit",
+        type=int,
+        default=10000,
+        help="Number of sample rows to collect per table (kept in memory)",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=100000,
+        help="Progress reporting chunk size (number of rows)",
+    )
+    parser.add_argument(
         "--temp-dir", type=Path, default=Path("/tmp"), help="Temporary directory for scratch files"
     )
     parser.add_argument(
@@ -402,9 +500,13 @@ def main():
             logger.info("Validation successful")
             return
 
-        # Run profiling
-        logger.info(f"Profiling dump with sample OIDs: {sample_oids}")
-        report = profiler.profile_dump(sample_oids)
+        # Run profiling (respect sample limits and chunk size)
+        logger.info(
+            f"Profiling dump with sample OIDs: {sample_oids} (sample_limit={args.sample_limit}, chunk_size={args.chunk_size})"
+        )
+        report = profiler.profile_dump(
+            sample_oids, sample_limit=args.sample_limit, chunk_size=args.chunk_size
+        )
 
         # Save report
         profiler.save_report(report, args.output)
@@ -414,7 +516,8 @@ def main():
     except KeyboardInterrupt:
         logger.info("Profiling interrupted by user")
     except Exception as e:
-        logger.error(f"Profiling failed: {e}")
+        # Emit full stacktrace to make root cause debugging easier
+        logger.exception("Profiling failed")
         sys.exit(1)
     finally:
         profiler.close()

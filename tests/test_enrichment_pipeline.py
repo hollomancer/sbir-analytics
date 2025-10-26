@@ -1,4 +1,3 @@
-sbir - etl / tests / test_enrichment_pipeline.py
 """Comprehensive test suite for SBIR-USAspending enrichment pipeline.
 
 Tests cover:
