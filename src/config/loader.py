@@ -142,10 +142,6 @@ def get_config(
             base_path=Path.cwd(), environment=environment, config_dir=config_dir
         )
 
-        # Apply environment variable overrides (high precedence)
-        if apply_env_overrides_flag:
-            config_dict = _apply_env_overrides(config_dict)
-
         # Backwards-compatibility: if config uses `loading: { neo4j: ... }` map it
         # to top-level `neo4j` but do not otherwise alter non-neo4j keys here.
         if isinstance(config_dict.get("loading"), dict) and "neo4j" in config_dict.get(
@@ -197,6 +193,12 @@ def get_config(
         monitoring = config_dict["monitoring"]
         monitoring.setdefault("enabled", monitoring.get("enabled", False))
         monitoring.setdefault("endpoint", monitoring.get("endpoint", None))
+
+        # Apply environment variable overrides (high precedence) after
+        # file-based merging and any backwards-compatible mapping so that
+        # environment variables always take precedence.
+        if apply_env_overrides_flag:
+            config_dict = _apply_env_overrides(config_dict)
 
         # Validate with Pydantic PipelineConfig
         config = PipelineConfig(**config_dict)
