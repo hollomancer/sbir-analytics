@@ -1,0 +1,334 @@
+{
+  "generated_by": "assistant",
+  "purpose": "Canonical list of external enrichment providers for the Add Iterative API Enrichment change. Contains authoritative doc links where known and placeholders for items that require verification. Use this as the single-place reference when implementing connectors and configuring rate limits / auth.",
+  "notes": "Fields with 'verification.status' == 'needs_verification' should be validated by an engineer (retrieve live docs, confirm rate limits and auth model, and update this file). Do not store secrets here.",
+  "providers": [
+    {
+      "id": "sbir_gov",
+      "name": "SBIR.gov",
+      "short_description": "Primary source for SBIR award records and bulk CSV exports.",
+      "docs_url": "https://www.sbir.gov",
+      "api_docs_url": "https://www.sbir.gov/about-data (verify exact export/API URLs)",
+      "auth": {
+        "type": "none_or_public",
+        "notes": "Primary distribution is bulk CSV downloads. If an API exists, check docs for any API key requirements."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "treat bulk download as single file; avoid frequent repeated downloads. For any API endpoints assume a conservative 1-2 req/sec until verified."
+      },
+      "delta_signals": [
+        "award_date",
+        "last_updated (if present)",
+        "award_id (compare to previously stored payload)"
+      ],
+      "pagination": "bulk CSV export; if API used, check provider for pagination scheme",
+      "bulk_exports": true,
+      "repo_references": [
+        "scripts/profile_usaspending_dump.py (example for sampling large dumps)",
+        "docs referencing SBIR.gov exports (CET_CLASSIFIER_ANALYSIS.md)"
+      ],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm canonical export endpoint(s) and update docs_url/api_docs_url with exact endpoints and cadence (monthly/daily etc)."
+      },
+      "next_steps": [
+        "Locate official SBIR.gov export page and record the canonical download URLs and update this file",
+        "Add sample CSV fixture to tests if not present"
+      ]
+    },
+    {
+      "id": "usaspending",
+      "name": "USAspending (usaspending.gov)",
+      "short_description": "Award and transaction-level enrichment (transaction history, recipient metadata).",
+      "docs_url": "https://api.usaspending.gov/docs/endpoints",
+      "auth": {
+        "type": "public_api_or_key",
+        "notes": "Public API available. Confirm if high-volume access needs an API key or special arrangements."
+      },
+      "rate_limits": {
+        "published": "check docs",
+        "recommended_for_project": "conservative: 1-5 req/sec for iterative pulls; use bulk dumps for large scans"
+      },
+      "delta_signals": [
+        "modification_number",
+        "action_date",
+        "last_modified_date",
+        "If-Modified-Since / ETag where supported"
+      ],
+      "pagination": "supports page/token pagination; bulk dumps (COPY) available for large scale",
+      "bulk_exports": true,
+      "repo_references": [
+        "scripts/profile_usaspending_dump.py",
+        "scripts/run_full_enrichment.py"
+      ],
+      "verification": {
+        "status": "partial",
+        "comment": "Docs URL is provided; confirm real-world rate limit numbers and any API key requirements for CI."
+      },
+      "next_steps": [
+        "Confirm exact rate limits and If-Modified-Since/ETag behavior",
+        "Record recommended batch_size and concurrency in config/base.yaml"
+      ]
+    },
+    {
+      "id": "sam_gov",
+      "name": "SAM.gov",
+      "short_description": "Entity registry and awardee matching (CAGE, registration metadata).",
+      "docs_url": "https://api.sam.gov",
+      "api_docs_url": "https://open.gsa.gov/apis/sam-api/",
+      "auth": {
+        "type": "api_key",
+        "notes": "API key required for production/high-volume usage. Register for developer access to obtain keys."
+      },
+      "rate_limits": {
+        "published": "varies by endpoint",
+        "recommended_for_project": "start with 1 req/sec and backoff aggressively on 429"
+      },
+      "delta_signals": [
+        "lastModifiedDate",
+        "registration_update_ts"
+      ],
+      "pagination": "supports pagination and filters for updated_since; check docs for tokens/limits",
+      "bulk_exports": false,
+      "repo_references": [
+        "CET_CLASSIFIER_ANALYSIS.md mentions SAM.gov awardee matching"
+      ],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Obtain SAM.gov developer docs for endpoints we intend to use; request test API key."
+      },
+      "next_steps": [
+        "Register a SAM.gov dev account and obtain test API key",
+        "Add SAM entry to config/base.yaml enrichment_refresh section with placeholders"
+      ]
+    },
+    {
+      "id": "nih_reporter",
+      "name": "NIH RePORTER / NIH APIs",
+      "short_description": "Grant and project metadata used to enrich award abstracts and PI information.",
+      "docs_url": "https://api.reporter.nih.gov/",
+      "auth": {
+        "type": "public_or_none",
+        "notes": "Many NIH endpoints are public for basic queries. Confirm for specific endpoints."
+      },
+      "rate_limits": {
+        "published": "see NIH docs",
+        "recommended_for_project": "1-2 req/sec for unauthenticated usage; use caching"
+      },
+      "delta_signals": [
+        "lastUpdate",
+        "project_start/project_end"
+      ],
+      "pagination": "supports pagination; bulk export available",
+      "bulk_exports": true,
+      "repo_references": [
+        "CET_CLASSIFIER_ANALYSIS.md (NIH integration references)"
+      ],
+      "verification": {
+        "status": "partial",
+        "comment": "Docs linked; team should confirm available 'modified since' filters and rate limits for CI use."
+      },
+      "next_steps": [
+        "Test NIH endpoints for updated-since filtering and document response formats",
+        "Create unit fixtures for NIH responses"
+      ]
+    },
+    {
+      "id": "patentsview",
+      "name": "PatentsView",
+      "short_description": "Patent metadata for organizations (patent dates, assignees).",
+      "docs_url": "https://patentsview.org/apis/api-overview.html",
+      "auth": {
+        "type": "public",
+        "notes": "No API key normally required for public endpoints; check for rate guidance."
+      },
+      "rate_limits": {
+        "published": "polite-use; check docs",
+        "recommended_for_project": "1-2 req/sec; prefer filtered queries per organization"
+      },
+      "delta_signals": [
+        "patent_date",
+        "last_updated"
+      ],
+      "pagination": "supports pagination and query filters",
+      "bulk_exports": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm pagination and recommended throttle policies for large batch enrichment."
+      },
+      "next_steps": [
+        "Record exact endpoint URLs for common queries (by assignee/company)",
+        "Add to enrichment_refresh config with sample batch sizes"
+      ]
+    },
+    {
+      "id": "opencorporates",
+      "name": "OpenCorporates",
+      "short_description": "Company registry lookup for normalized company metadata and identifiers.",
+      "docs_url": "https://api.opencorporates.com/documentation/API-Reference",
+      "auth": {
+        "type": "api_key_or_token",
+        "notes": "Free tier exists but with strict rate limits; paid plans for higher volume."
+      },
+      "rate_limits": {
+        "published": "varies by plan",
+        "recommended_for_project": "use paid or negotiated plan for bulk enrichment; otherwise very conservative throttling"
+      },
+      "delta_signals": [
+        "updated_at",
+        "company_number_change_events"
+      ],
+      "pagination": "page-based; bulk license available for large datasets",
+      "bulk_exports": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Decide on paid vs free plan depending on expected enrichment throughput."
+      },
+      "next_steps": [
+        "Identify business cases needing OpenCorporates and request API keys if proceeding",
+        "Add test harness using recorded responses"
+      ]
+    },
+    {
+      "id": "sec_edgar",
+      "name": "SEC EDGAR",
+      "short_description": "Public company filings and disclosure data.",
+      "docs_url": "https://www.sec.gov/edgar/sec-api-documentation",
+      "auth": {
+        "type": "public",
+        "notes": "EDGAR indexes are public; follow SEC polite-use guidance and identify bulk endpoints if needed."
+      },
+      "rate_limits": {
+        "published": "SEC publishes polite-use guidance (avoid hammering endpoints). Historically 1 req/sec recommended for crawls.",
+        "recommended_for_project": "1 req/sec for heavy operations; use bulk feeds where available."
+      },
+      "delta_signals": [
+        "filing_date",
+        "accession_number"
+      ],
+      "pagination": "feeds / pagination; consult API docs for index endpoints",
+      "bulk_exports": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm EDGAR API details for targeted enrichment use-cases (e.g., company-level filings)."
+      },
+      "next_steps": [
+        "Map SEC filings to company entities and define which filing types are relevant for enrichment"
+      ]
+    },
+    {
+      "id": "dla_cage_bis",
+      "name": "DLA / CAGE / BIS (Defense registries)",
+      "short_description": "CAGE codes, export control, and vendor registry information relevant for defense-related awards.",
+      "docs_url": "https://www.dla.mil (verify authoritative endpoints)",
+      "auth": {
+        "type": "varies",
+        "notes": "Sources differ and may require agreements or special access."
+      },
+      "rate_limits": {
+        "published": null,
+        "recommended_for_project": "treat as restricted-access: coordinate with ops/infra to request access and quotas"
+      },
+      "delta_signals": [
+        "registration_update_ts",
+        "last_modified"
+      ],
+      "pagination": "varies",
+      "bulk_exports": "possible for some registries; confirm per-source",
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Identify authoritative endpoints and access constraints. Might not be public."
+      },
+      "next_steps": [
+        "Engage security/ops to determine legal and access constraints before integration"
+      ]
+    },
+    {
+      "id": "orcid",
+      "name": "ORCID",
+      "short_description": "Researcher/investigator identifiers (PI affiliation and publications).",
+      "docs_url": "https://info.orcid.org/documentation/api-tutorials/",
+      "auth": {
+        "type": "oauth2_or_api_key",
+        "notes": "Member API and public API modes vary in auth and rate limits."
+      },
+      "rate_limits": {
+        "published": "varies by API tier",
+        "recommended_for_project": "use caching; limit to a few requests per second"
+      },
+      "delta_signals": [
+        "last-modified-date"
+      ],
+      "pagination": "paginated",
+      "bulk_exports": false,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Confirm API access pattern for bulk PI enrichment and whether member API is needed."
+      },
+      "next_steps": [
+        "Register a developer account if PI enrichment is required at scale"
+      ]
+    },
+    {
+      "id": "openalex",
+      "name": "OpenAlex",
+      "short_description": "Scholarly metadata (works, authors, institutions) used as an alternative to proprietary scholarly sources.",
+      "docs_url": "https://docs.openalex.org/",
+      "auth": {
+        "type": "public",
+        "notes": "No API key typically required; rate limits apply."
+      },
+      "rate_limits": {
+        "published": "see docs; public quotas exist",
+        "recommended_for_project": "start with 1-2 req/sec for iterative pulls; use bulk data dumps for large-scale operations"
+      },
+      "delta_signals": [
+        "updated_date"
+      ],
+      "pagination": "cursor/paging supported; bulk dumps available",
+      "bulk_exports": true,
+      "repo_references": [],
+      "verification": {
+        "status": "partial",
+        "comment": "Docs linked; confirm exact delta fields and recommended query parameters for institution/author enrichment."
+      },
+      "next_steps": [
+        "Add OpenAlex to enrichment_refresh config with a default cadence"
+      ]
+    },
+    {
+      "id": "openfec",
+      "name": "OpenFEC",
+      "short_description": "Campaign finance data, candidate and contribution records.",
+      "docs_url": "https://api.open.fec.gov/developers/",
+      "auth": {
+        "type": "api_key",
+        "notes": "An API key is required for OpenFEC API usage."
+      },
+      "rate_limits": {
+        "published": "documented per API key; check API dashboard",
+        "recommended_for_project": "1-2 req/sec unless higher quotas provisioned"
+      },
+      "delta_signals": [
+        "filing_date",
+        "last_updated"
+      ],
+      "pagination": "paginated; bulk data available",
+      "bulk_exports": true,
+      "repo_references": [],
+      "verification": {
+        "status": "needs_verification",
+        "comment": "Only include if political funding analysis is within scope; otherwise keep as optional connector."
+      },
+      "next_steps": [
+        "Decide whether political enrichment is required and, if so, register for API keys"
+      ]
+    }
+  ]
+}
