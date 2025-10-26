@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class ValidationResult(BaseModel):
@@ -15,10 +15,7 @@ class ValidationResult(BaseModel):
     message: str
     severity: str = "medium"
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class CompletenessCheck(BaseModel):
@@ -27,7 +24,8 @@ class CompletenessCheck(BaseModel):
     required_fields: list[str] = Field(default_factory=list)
     threshold: float = Field(default=0.95, ge=0.0, le=1.0)
 
-    @validator("threshold")
+    @field_validator("threshold")
+    @classmethod
     def validate_threshold(cls, v):
         """Validate threshold is between 0 and 1."""
         if not (0.0 <= v <= 1.0):
@@ -50,7 +48,8 @@ class ValueRangeCheck(BaseModel):
     max_value: float | None = None
     allowed_values: list[Any] | None = None
 
-    @validator("allowed_values")
+    @field_validator("allowed_values")
+    @classmethod
     def validate_allowed_values(cls, v):
         """Validate allowed values is not empty if provided."""
         if v is not None and len(v) == 0:
@@ -65,7 +64,4 @@ class ValidationConfig(BaseModel):
     uniqueness: dict[str, float] = Field(default_factory=dict)
     value_ranges: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)

@@ -1,6 +1,6 @@
 """Pydantic models for company data."""
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class Company(BaseModel):
@@ -33,41 +33,42 @@ class Company(BaseModel):
     sam_exclusion_status: str | None = Field(None, description="SAM exclusion status")
     last_updated: str | None = Field(None, description="Last update date from SAM.gov")
 
-    @validator("duns")
+    @field_validator("duns")
+    @classmethod
     def validate_duns(cls, v):
         """Validate DUNS number format."""
-        if v is not None:
-            # Remove any hyphens or spaces
-            clean_duns = v.replace("-", "").replace(" ", "")
-            if not clean_duns.isdigit() or len(clean_duns) != 9:
-                raise ValueError("DUNS must be 9 digits")
-            return clean_duns
-        return v
+        if v is None:
+            return v
+        # Remove any hyphens or spaces
+        clean_duns = v.replace("-", "").replace(" ", "")
+        if not clean_duns.isdigit() or len(clean_duns) != 9:
+            raise ValueError("DUNS must be 9 digits")
+        return clean_duns
 
-    @validator("cage")
+    @field_validator("cage")
+    @classmethod
     def validate_cage(cls, v):
         """Validate CAGE code format."""
-        if v is not None:
-            # CAGE codes are typically 5 characters
-            if len(v) != 5:
-                raise ValueError("CAGE code must be 5 characters")
-            return v.upper()
-        return v
+        if v is None:
+            return v
+        # CAGE codes are typically 5 characters
+        if len(v) != 5:
+            raise ValueError("CAGE code must be 5 characters")
+        return v.upper()
 
-    @validator("zip_code")
+    @field_validator("zip_code")
+    @classmethod
     def validate_zip_code(cls, v):
         """Validate ZIP code format."""
-        if v is not None:
-            # Basic validation - should be numeric with optional hyphen
-            clean_zip = v.replace("-", "").replace(" ", "")
-            if not clean_zip.isdigit() or len(clean_zip) < 5:
-                raise ValueError("Invalid ZIP code format")
+        if v is None:
+            return v
+        # Basic validation - should be numeric with optional hyphen
+        clean_zip = v.replace("-", "").replace(" ", "")
+        if not clean_zip.isdigit() or len(clean_zip) < 5:
+            raise ValueError("Invalid ZIP code format")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class RawCompany(BaseModel):
@@ -84,10 +85,7 @@ class RawCompany(BaseModel):
     zip_code: str | None = None
     country: str | None = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class CompanyMatch(BaseModel):
@@ -98,7 +96,8 @@ class CompanyMatch(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Match confidence (0-1)")
     match_method: str = Field(..., description="Method used for matching")
 
-    @validator("confidence_score")
+    @field_validator("confidence_score")
+    @classmethod
     def validate_confidence(cls, v):
         """Validate confidence score is between 0 and 1."""
         if not (0.0 <= v <= 1.0):

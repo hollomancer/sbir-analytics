@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class Patent(BaseModel):
@@ -37,7 +37,8 @@ class Patent(BaseModel):
     # SBIR connection
     sbir_award_id: str | None = Field(None, description="Associated SBIR award ID")
 
-    @validator("patent_number")
+    @field_validator("patent_number")
+    @classmethod
     def validate_patent_number(cls, v):
         """Validate patent number format."""
         if v:
@@ -47,7 +48,8 @@ class Patent(BaseModel):
                 raise ValueError("Patent number too short")
         return v
 
-    @validator("inventors")
+    @field_validator("inventors")
+    @classmethod
     def validate_inventors(cls, v):
         """Validate inventors list.
 
@@ -58,11 +60,9 @@ class Patent(BaseModel):
             raise ValueError("Inventors list cannot be empty")
         return v
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        json_encoders = {date: lambda v: v.isoformat()}
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )
 
 
 class RawPatent(BaseModel):
@@ -79,10 +79,9 @@ class RawPatent(BaseModel):
     uspc_class: str | None = None
     cpc_class: str | None = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )
 
 
 class PatentCitation(BaseModel):
@@ -93,8 +92,6 @@ class PatentCitation(BaseModel):
     citation_type: str = Field(..., description="Type of citation")
     citation_date: date | None = Field(None, description="Date of citation")
 
-    class Config:
-        """Pydantic configuration."""
-
-        validate_assignment = True
-        json_encoders = {date: lambda v: v.isoformat()}
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )
