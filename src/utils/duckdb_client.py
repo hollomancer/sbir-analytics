@@ -120,7 +120,10 @@ class DuckDBClient:
                 delim='{delimiter}',
                 header={header},
                 encoding='{encoding}',
-                quote='{quote}')
+                quote='{quote}',
+                sample_size=100000,
+                max_line_size=1000000,
+                ignore_errors=true)
             """
 
             try:

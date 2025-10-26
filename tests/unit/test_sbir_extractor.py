@@ -1,8 +1,8 @@
-import csv
-import os
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.models.award import RawAward
@@ -224,7 +224,7 @@ def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):
             "Agency Tracking Number": "ATN-0100",
             "Contract": "C-2019-0001",
             "Solicitation Number": "SOL-2019-01",
-            "UEI": "NWUEI000000",
+            "UEI": "NWUEI0000000",
             "Duns": "000000001",
             "HUBZone Owned": "N",
             "Socially and Economically Disadvantaged": "N",
@@ -263,7 +263,7 @@ def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):
             "Agency Tracking Number": "ATN-0003",
             "Contract": "C-2022-0003",
             "Solicitation Number": "SOL-2022-05",
-            "UEI": "TSUEI123456",
+            "UEI": "TSUEI1234567",
             "Duns": "123-456-789",
             "HUBZone Owned": "Y",
             "Socially and Economically Disadvantaged": "Y",
@@ -423,8 +423,14 @@ def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):
         raw_data["award_id"] = row_dict.get("Contract") or f"test-{len(awards)}"
 
         # Create RawAward and convert to Award
+        if len(awards) == 2:  # Debug the failing row
+            print(f"raw_data for failing row: {raw_data}")
         raw_award = RawAward(**raw_data)
-        award = raw_award.to_award()
+        try:
+            award = raw_award.to_award()
+        except Exception as e:
+            print(f"Failed on row {len(awards)}: {e}")
+            raise
         awards.append(award)
 
     # Assert we got 6 awards
@@ -449,7 +455,7 @@ def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):
     assert techstart.award_amount == 1000000.00  # coerced from "1,000,000.00"
     assert techstart.number_of_employees == 1000  # coerced from "1,000"
     assert techstart.proposal_award_date.month == 5 and techstart.proposal_award_date.day == 15
-    assert techstart.company_uei == "TSUEI123456"  # normalized
+    assert techstart.company_uei == "TSUEI1234567"  # normalized
     assert techstart.company_duns == "123456789"  # normalized from "123-456-789"
     assert techstart.is_hubzone is True
     assert techstart.is_woman_owned is True
