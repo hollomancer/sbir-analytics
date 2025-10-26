@@ -1,15 +1,27 @@
+version: "3.9"
+
+# Base docker-compose file for sbir-etl
+# - Defines core services used by dev / test overlays
+# - Intended to be extended by docker/docker-compose.dev.yml and docker/docker-compose.test.yml
+#
+# Environment variables are read from a top-level .env file when used by Makefile / CI:
+#   - NEO4J_USER / NEO4J_PASSWORD
+#   - NEO4J_AUTH (optional, e.g., "neo4j/password")
+#   - SBIR_ETL__NEO4J__HOST / SBIR_ETL__NEO4J__PORT (defaults provided below)
+#   - ENVIRONMENT (dev|test|prod)
+#   - SERVICE_STARTUP_TIMEOUT
+#
 services:
   neo4j:
     image: neo4j:5.20.0
     container_name: sbir-neo4j
-    ports:
-      - "7474:7474" # HTTP
-      - "7687:7687" # Bolt
     environment:
-      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
-      - NEO4J_PLUGINS=${NEO4J_PLUGINS}
-      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size}
-      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size}
+      # Prefer explicit NEO4J_AUTH if set, otherwise construct from user/password
+      - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -17,52 +29,152 @@ services:
     networks:
       - sbir-network
     healthcheck:
+      # Lightweight healthcheck using cypher-shell; requires NEO4J_USER/NEO4J_PASSWORD set in env or .env
       test:
         [
           "CMD-SHELL",
-          "cypher-shell -u ${NEO4J_USER} -p ${NEO4J_PASSWORD} 'RETURN 1'",
+          "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1",
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
 
-  app:
+  dagster-webserver:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sbir-etl-app
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
+    container_name: sbir-dagster-web
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      # Optional: allow dev overlay to set ENABLE_WATCHFILES=1
+      ENABLE_WATCHFILES: ${ENABLE_WATCHFILES:-0}
+      # Command to run; entrypoint uses ENV_DAGSTER_CMD when present
+      ENV_DAGSTER_CMD: ${ENV_DAGSTER_CMD:-dagster dev -h 0.0.0.0 -p 3000}
+      HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
+      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
+    volumes:
+      # Default to named volumes; dev overlay can override with bind-mounts for live edit
+      - reports:/app/reports
+      - logs:/app/logs
+      - data:/app/data
+      - config:/app/config
+    ports:
+      - "${DAGSTER_PORT:-3000}:3000"
     depends_on:
       neo4j:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS --max-time 3 http://localhost:${HEALTHCHECK_PORT:-3000}${HEALTHCHECK_PATH:-/server_info} || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - sbir-network
+    restart: unless-stopped
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
+    container_name: sbir-dagster-daemon
     environment:
-      - ENVIRONMENT=${ENVIRONMENT}
-      - SBIR_ETL__NEO4J__BOLT_URL=${SBIR_ETL__NEO4J__BOLT_URL}
-      - SBIR_ETL__NEO4J__USERNAME=${SBIR_ETL__NEO4J__USERNAME}
-      - SBIR_ETL__NEO4J__PASSWORD=${SBIR_ETL__NEO4J__PASSWORD}
-      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
     volumes:
-      - ./data:/app/data # Mount data directory for SBIR CSV and DuckDB files
-      - ./config:/app/config # Mount configuration
-      - ./logs:/app/logs # Mount logs directory
-      - ./metrics:/app/metrics # Mount metrics directory
+      - reports:/app/reports
+      - logs:/app/logs
+      - data:/app/data
+      - config:/app/config
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      dagster-webserver:
+        condition: service_healthy
+    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q 'dagster-daemon' || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - sbir-network
-    command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000"]
-    ports:
-      - "3000:3000" # Dagster UI
+    restart: unless-stopped
 
-  # Optional: DuckDB CLI container for data exploration
-  duckdb:
-    image: davidgasquez/duckdb:latest
-    container_name: sbir-duckdb
+  etl-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
+    container_name: sbir-etl-runner
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
     volumes:
-      - ./data:/data
+      - reports:/app/reports
+      - logs:/app/logs
+      - data:/app/data
+      - config:/app/config
+      - ./:/app:ro
+    entrypoint: ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner"]
+    # Default command keeps runner idle; use `docker compose run etl-runner -- <cmd>` to execute jobs
+    command:
+      [
+        "--",
+        "sh",
+        "-c",
+        "echo 'etl-runner ready; run with docker compose run etl-runner -- <cmd>' && sleep infinity",
+      ]
+    depends_on:
+      neo4j:
+        condition: service_healthy
     networks:
       - sbir-network
-    command: ["tail", "-f", "/dev/null"] # Keep container running
+    restart: "no"
+
+  tools:
+    image: python:3.11-slim
+    container_name: sbir-tools
     profiles:
-      - tools # Only start with --profile tools
+      - tools
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - ./:/workspace:rw
+      - data:/workspace/data:rw
+      - reports:/workspace/reports:rw
+      - logs:/workspace/logs:rw
+    working_dir: /workspace
+    command: ["tail", "-f", "/dev/null"]
+    networks:
+      - sbir-network
+    restart: "no"
 
+# Named volumes used by services. Dev overlays may mount host directories instead.
 volumes:
   neo4j_data:
     driver: local
@@ -70,7 +182,25 @@ volumes:
     driver: local
   neo4j_import:
     driver: local
+  reports:
+    driver: local
+  logs:
+    driver: local
+  data:
+    driver: local
+  config:
+    driver: local
+  metrics:
+    driver: local
 
 networks:
   sbir-network:
+    name: sbir-network
     driver: bridge
+# Notes:
+# - Use docker/docker-compose.dev.yml to override volumes with bind-mounts for developer iteration.
+# - Use docker/docker-compose.test.yml in CI to bring up ephemeral Neo4j and run containerized tests.
+# - The entrypoint script in the runtime image (`/app/scripts/docker/entrypoint.sh`) handles waiting for dependencies,
+#   reading .env files, dropping privileges, and executing service commands.
+# - `depends_on.condition: service_healthy` requires Docker Compose v2+ behavior. If your environment does not support
+#   this, rely on explicit wait scripts (wait-for-service.sh) or the entrypoint's dependency checks.

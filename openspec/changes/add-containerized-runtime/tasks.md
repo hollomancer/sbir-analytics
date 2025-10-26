@@ -28,8 +28,10 @@ code
 
 ## 3. Compose Stack & Profiles
 
-- [ ] 3.1 Redesign `docker-compose.yml` to declare services: `neo4j`, `dagster-webserver`, `dagster-daemon`, `etl-runner`, and `duckdb` (tools profile).
-- [ ] 3.2 Add named volumes for Neo4j data/logs/import and for persisted metrics/log directories.
+- [x] 3.1 Redesign `docker-compose.yml` to declare services: `neo4j`, `dagster-webserver`, `dagster-daemon`, `etl-runner`, and `duckdb` (tools profile).
+  - Notes: Implemented base `docker-compose.yml` that defines core services and a pattern for overlays. The base compose centralizes service definitions and exposes ports/envs used by dev and test overlays.
+- [x] 3.2 Add named volumes for Neo4j data/logs/import and for persisted metrics/log directories.
+  - Notes: Added named volumes (`neo4j_data`, `neo4j_logs`, `neo4j_import`, `reports`, `logs`, `data`, `config`, `metrics`) in the base compose to provide persistent storage; dev overlays may override these with bind mounts for local iteration.
 - [x] 3.3 Introduce `docker/docker-compose.dev.yml` that bind-mounts `src/`, `config/`, `data/`, `logs/`, and `metrics/`, enables the `dev` profile, and injects `watchfiles` reloader when running `dagster dev` locally.
   - Notes: Implemented `docker/docker-compose.dev.yml` which provides developer-friendly bind-mounts for `src`, `config`, `data`, `logs`, and `reports`. The compose file supports a `dev` profile and the runtime entrypoint honors an `ENABLE_WATCHFILES` environment flag to enable hot-reload behavior for local development.
 - [x] 3.4 Add `docker/docker-compose.test.yml` that runs `pytest` inside the container with an ephemeral Neo4j instance for CI.
@@ -53,7 +55,8 @@ code
   - Notes: Implemented `scripts/ci/build_container.sh`. The script builds with Docker Buildx, supports cache-from/cache-to flags, allows single-platform `--load` for local testing, and can `--push` to a registry when `PUBLISH=1`. It is intended for use in CI to produce `sbir-etl:<tag>` artifacts.
 - [x] 5.2 Update `.github/workflows/ci.yml` (or create `container.yml`) to run: `docker build`, `docker compose -f docker/docker-compose.test.yml up --abort-on-container-exit`, and upload logs on failure.
   - Notes: Implemented `.github/workflows/container-ci.yml`. The workflow builds the image (loads it into the runner), brings up an ephemeral Neo4j and the `app` test service via `docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build`, tears down the stack on completion, and uploads logs/artifacts on failure. The job uses Buildx and supports caching.
-- [ ] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
+- [x] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
+  - Notes: Implemented smoke test in `.github/workflows/container-ci.yml` that runs `docker run ${IMAGE_NAME}:ci-${{ github.sha }} dagster --version` immediately after building the image and before running the compose-based tests.
 - [ ] 5.4 Document how to tag and push images (e.g., `ghcr.io/org/sbir-etl:<sha>`) and where credentials live.
 
 ## 6. Documentation & Developer Experience

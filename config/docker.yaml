@@ -1,0 +1,151 @@
+# sbir-etl/config/docker.yaml
+#
+# Default containerized environment configuration for sbir-etl.
+#
+# Purpose:
+#  - Provide a single source of defaults for container/dev/test profiles.
+#  - This file is intended to be read by helper scripts and documented in README.
+#  - Local overrides should be applied via:
+#      1) environment variables (preferred for secrets)
+#      2) .env file at repository root (for local dev only; keep out of VCS)
+#      3) CI pipeline secrets (for build/publish steps)
+#
+# Notes:
+#  - Values here are conservative defaults; change them per-environment.
+#  - Do NOT commit production secrets into this file. Use environment variables or secret mounts.
+#  - The compose files use environment interpolation for many of these values.
+#
+# Example usage:
+#   # read with yq/jq or a small Python loader to merge into runtime env
+#   yq e '.neo4j.host' config/docker.yaml
+
+# Top-level configuration groups
+environment:
+  name: "dev"                # dev | test | prod; can be overridden via ENV var ENVIRONMENT
+  service_startup_timeout: 120  # seconds to wait for dependency service health in entrypoints
+
+image:
+  name: "sbir-etl"           # base image name (no registry)
+  tag_template: "ci-{sha}"   # template used by CI tooling; replace {sha} with commit SHA locally
+  runtime_target: "runtime"  # Dockerfile multi-stage target to use for runtime images
+
+registry:
+  # Set registry host in CI to push images (example: ghcr.io/my-org)
+  host: ""
+  repository_prefix: ""      # optional prefix for image names, e.g. "ghcr.io/myorg"
+
+build:
+  buildx_builder: "sbir-builder"
+  platforms: ["linux/amd64"]
+  cache_from: ""             # e.g. "type=gha"
+  cache_to: ""               # e.g. "type=gha,mode=max"
+  publish_on_ci: false       # when true CI publish step will push image to registry
+
+neo4j:
+  # Connection and service defaults used by compose and entrypoint scripts.
+  host: "neo4j"
+  http_port: 7474
+  bolt_port: 7687
+  # Authentication: prefer environment variables; do NOT commit secrets here
+  user: "neo4j"
+  password: "change_me"      # local placeholder; replace in .env for local dev or via CI secrets
+  # Memory sizing recommendations for local dev vs CI
+  memory:
+    pagecache_size: "256M"
+    heap_max_size: "512M"
+  # Named volumes (compose will define these by default)
+  volumes:
+    data: "neo4j_data"
+    logs: "neo4j_logs"
+    import: "neo4j_import"
+  healthcheck:
+    # cypher-shell check; entrypoint will use credentials from env/.env
+    interval: "10s"
+    timeout: "5s"
+    retries: 12
+    start_period: "10s"
+
+dagster:
+  host: "0.0.0.0"
+  port: 3000
+  health_path: "/server_info"
+  # The command used to start the web service in dev vs prod; entrypoint honors ENV_DAGSTER_CMD
+  cmd_dev: "dagster dev -h 0.0.0.0 -p 3000"
+  cmd_prod: "dagster api -h 0.0.0.0 -p 3000"
+  enable_watchfiles: true    # dev-only; entrypoint toggles behavior when set
+  volumes:
+    reports: "reports"
+    logs: "logs"
+    data: "data"
+    config: "config"
+    metrics: "metrics"
+  healthcheck:
+    interval: "10s"
+    timeout: "3s"
+    retries: 5
+    start_period: "5s"
+
+services:
+  # Service-level orchestration hints used by compose overlays and CI scripts.
+  dagster_web:
+    depends_on:
+      - neo4j
+    condition: "service_healthy"
+  dagster_daemon:
+    depends_on:
+      - neo4j
+      - dagster_web
+    condition: "service_healthy"
+  etl_runner:
+    depends_on:
+      - neo4j
+    condition: "service_healthy"
+
+compose:
+  base_file: "docker-compose.yml"
+  dev_overlay: "docker/docker-compose.dev.yml"
+  test_overlay: "docker/docker-compose.test.yml"
+  # When using docker compose v2, depends_on.condition: service_healthy is supported.
+  use_service_health_condition: true
+
+volumes:
+  # Default named volumes. Dev overlay may replace these with host bind mounts for iteration.
+  neo4j_data: "neo4j_data"
+  neo4j_logs: "neo4j_logs"
+  neo4j_import: "neo4j_import"
+  reports: "reports"
+  logs: "logs"
+  data: "data"
+  config: "config"
+  metrics: "metrics"
+
+ci:
+  # CI-specific knobs used by workflows or helper scripts.
+  workflow_file: ".github/workflows/container-ci.yml"
+  build_script: "scripts/ci/build_container.sh"
+  test_compose: "docker/docker-compose.test.yml"
+  smoke_test_cmd: "dagster --version"
+  # When publishing to GHCR/GCR/ACR, set registry.host and repository_prefix via CI pipeline secrets.
+
+security:
+  # Guidance and defaults for secret injection at runtime
+  env_file: ".env"               # local-only .env path (should be gitignored)
+  secret_mount_path: "/run/secrets"  # path where orchestrators mount secrets into containers
+  secret_conventions:
+    - "NEO4J_PASSWORD"          # example secret names to be provided via env or secret mount
+    - "DOCKER_REGISTRY_TOKEN"
+
+logging:
+  # Application-level logging defaults (these are advisory; apps read env to set levels)
+  level: "INFO"                 # DEBUG | INFO | WARN | ERROR
+  format: "json"                # plain | json (json better for structured logging in containers)
+  rotate:
+    enabled: true
+    max_size_mb: 100
+    backups: 5
+
+notes:
+  - "Override sensitive values (passwords, tokens) via environment variables or CI secrets — do not store them here."
+  - "For local development, copy .env.example -> .env and set NEO4J_PASSWORD to a local test value."
+  - "Use the provided Makefile targets (make docker-build, make docker-up-dev, make docker-test) to operate the stack."
+  - "When adding new container services, document their config keys here so compose overlays and tooling can reference them."

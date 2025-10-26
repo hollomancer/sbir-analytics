@@ -9,12 +9,36 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        environment:
+          NEO4J_AUTH: none
+        options: >-
+          --health-cmd "curl -f http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Wait for Neo4j
+      run: |
+        echo "Waiting for Neo4j to be ready..."
+        until curl -s -f -o /dev/null "http://localhost:7474"; do
+          echo "Neo4j not ready, sleeping..."
+          sleep 5
+        done
+        echo "Neo4j is ready!"
+
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
