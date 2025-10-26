@@ -9,8 +9,6 @@ Provides:
 This module uses the streaming validators implemented in `sbir-etl/src/quality/uspto_validators.py`.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Dict, List

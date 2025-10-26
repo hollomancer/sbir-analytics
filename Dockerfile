@@ -100,7 +100,8 @@ COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
 # Install all wheels from /wheels into the runtime environment using pip
 # This avoids network fetches at runtime and ensures deterministic installs
 RUN pip install --upgrade pip setuptools wheel \
- && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt
+ && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt \
+ && pip install --no-cache-dir pandas pyarrow pyreadstat
 
 # Install gosu (used to drop privileges when needed)
 # Download a static gosu binary; adapt to architecture automatically via dpkg-architecture if needed.

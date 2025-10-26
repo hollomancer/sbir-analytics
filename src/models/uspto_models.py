@@ -72,7 +72,8 @@ def _normalize_name(name: Optional[str]) -> Optional[str]:
     n = " ".join(str(name).strip().split())
     # Replace multiple punctuation variants with single spaces for matching purposes
     n = re.sub(r"[,/&\.]+", " ", n)
-    return n
+    # Strip any trailing/leading spaces created by the substitution
+    return n.strip()
 
 
 # ---- Enums ----
@@ -148,6 +149,14 @@ class PatentAssignee(BaseModel):
         if not v or not str(v).strip():
             raise ValueError("Assignee name must be non-empty")
         return _normalize_name(v)
+
+    @field_validator("postal_code", mode="before")
+    @classmethod
+    def _coerce_postal_code(cls, v):
+        """Coerce numeric postal codes to strings (pandas often reads them as int)."""
+        if v is None or v == "":
+            return None
+        return str(v)
 
     @field_validator("uei", "cage", "duns", mode="before")
     @classmethod

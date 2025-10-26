@@ -45,6 +45,8 @@ services:
       - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j:7687
       - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER}
       - SBIR_ETL__NEO4J__PASSWORD=${NEO4J_PASSWORD}
+      # USPTO raw data directory inside container (mounted from repo workspace)
+      - SBIR_ETL__USPTO__RAW_DIR=/app/data/raw/uspto
       - PYTHONUNBUFFERED=1
       # Allow coverage artifacts to write to a writable location since /app is mounted read-only
       - COVERAGE_FILE=/tmp/.coverage
@@ -66,6 +68,9 @@ services:
       # Mount workspace for potential test artifacts (optional); CI runner repo is copied into image,
       # but mounting ensures tests that rely on workspace files can access them.
       - ./:/app:ro
+      # Mount a writable raw data directory for USPTO test fixtures and asset validations.
+      # This allows the Dagster asset `raw_uspto_assignments` to discover files under ./data/raw/uspto.
+      - ./data/raw/uspto:/app/data/raw/uspto:rw
     restart: "no"
 
 volumes:
