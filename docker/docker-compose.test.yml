@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  # Ephemeral Neo4j instance for CI tests
+  neo4j:
+    image: neo4j:5.20.0
+    container_name: sbir-neo4j-ci
+    environment:
+      # Use env file (.env) created by the workflow to inject credentials
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
+      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size:-256M}
+      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size:-512M}
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    volumes:
+      - neo4j_data_ci:/data
+      - neo4j_logs_ci:/logs
+      - neo4j_import_ci:/var/lib/neo4j/import
+    networks:
+      - sbir-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u ${NEO4J_USER} -p ${NEO4J_PASSWORD} 'RETURN 1' >/dev/null 2>&1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: "no"
+
+  # App service: use the image built earlier in the workflow and run pytest
+  app:
+    image: sbir-etl:ci-${GITHUB_SHA}
+    container_name: sbir-app-test
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=test
+      # Provide SBIR_ETL connection settings pointing at the test Neo4j service
+      - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j:7687
+      - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER}
+      - SBIR_ETL__NEO4J__PASSWORD=${NEO4J_PASSWORD}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - sbir-network
+    # Override default runtime command to run tests
+    # The app image should contain the repository code/build artifacts so pytest runs inside the container.
+    command: >
+      sh -c "
+        echo 'Running pytest inside container';
+        pytest -q
+      "
+    working_dir: /app
+    volumes:
+      # Mount workspace for potential test artifacts (optional); CI runner repo is copied into image,
+      # but mounting ensures tests that rely on workspace files can access them.
+      - ./:/app:ro
+    restart: "no"
+
+volumes:
+  neo4j_data_ci:
+    driver: local
+  neo4j_logs_ci:
+    driver: local
+  neo4j_import_ci:
+    driver: local
+
+networks:
+  sbir-network:
+    external: true
