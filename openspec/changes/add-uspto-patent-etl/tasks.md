@@ -64,14 +64,22 @@
 
 ## 7. Patent Assignment Transformer (Stage 4: Transform)
 
-- [ ] 7.1 Create PatentAssignmentTransformer in src/transformers/patent_transformer.py
-- [ ] 7.2 Implement join logic to combine assignment + conveyance + assignee + assignor + documentid
-- [ ] 7.3 Normalize entity names (trim whitespace, uppercase, remove special chars)
+- [x] 7.1 Create PatentAssignmentTransformer in src/transformers/patent_transformer.py
+  - Notes: Implemented `src/transformers/patent_transformer.py` with `PatentAssignmentTransformer` offering `transform_row` and `transform_chunk` APIs. The transformer builds `PatentAssignment` models (or returns raw rows with `_error` on failure).
+- [x] 7.2 Implement join logic to combine assignment + conveyance + assignee + assignor + documentid
+  - Notes: The transformer heuristically joins document, conveyance, assignee, and assignor fields present in the incoming row and maps them into the `PatentAssignment` model.
+- [x] 7.3 Normalize entity names (trim whitespace, uppercase, remove special chars)
+  - Notes: Name normalization routines implemented (`_normalize_name`) used by the transformer and Pydantic models for consistent matching.
 - [ ] 7.4 Standardize addresses (parse city, state, country, postcode)
-- [ ] 7.5 Parse conveyance text for assignment types (license, sale, merger, security interest)
-- [ ] 7.6 Extract structured dates from execution/acknowledgment fields
-- [ ] 7.7 Link patents to SBIR companies via fuzzy matching on grant_doc_num
+  - Notes: Address parsing/standardization not implemented yet; planned to use a lightweight address parsing utility or libpostal integration in a follow-up.
+- [x] 7.5 Parse conveyance text for assignment types (license, sale, merger, security interest)
+  - Notes: Conveyance inference heuristics implemented via `_infer_conveyance_type` in the transformer; detects assignments, licenses, security interest, mergers and flags employer-assign hints.
+- [x] 7.6 Extract structured dates from execution/acknowledgment fields
+  - Notes: Date parsing/validation helpers included and used by the transformer and Pydantic models (accepts ISO and common date formats).
+- [x] 7.7 Link patents to SBIR companies via fuzzy matching on grant_doc_num
+  - Notes: Basic grant-doc -> SBIR company linking implemented using an optional `sbir_company_grant_index` passed to the transformer; exact and fuzzy matching supported with configurable thresholds.
 - [ ] 7.8 Calculate assignment chain metadata (hops, time spans)
+  - Notes: Chain-level analytics and hop calculations remain to be implemented in a later pass (requires cross-record aggregation).
 
 ## 8. Dagster Assets - Transformation
 
