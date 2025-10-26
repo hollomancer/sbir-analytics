@@ -8,7 +8,7 @@
       "name": "SBIR.gov",
       "short_description": "Primary source for SBIR award records and bulk CSV exports.",
       "docs_url": "https://www.sbir.gov",
-      "api_docs_url": "https://www.sbir.gov/about-data (verify exact export/API URLs)",
+      "api_docs_url": "https://www.sbir.gov/about-data",
       "auth": {
         "type": "none_or_public",
         "notes": "Primary distribution is bulk CSV downloads. If an API exists, check docs for any API key requirements."
@@ -35,7 +35,34 @@
       "next_steps": [
         "Locate official SBIR.gov export page and record the canonical download URLs and update this file",
         "Add sample CSV fixture to tests if not present"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:31:24.756295Z",
+          "url": "https://www.sbir.gov",
+          "attempts": 2,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=UTF-8",
+            "cache-control": "must-revalidate, no-cache, private"
+          },
+          "rate_limit_text_snippet": "meta charset=\"utf-8\" /> <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-2JN1MJTXM1\"></script> <script>windo",
+          "delta_support_hint": true,
+          "status": "fetched",
+          "sample_snippet": "  <!DOCTYPE html> <html lang=\"en\" dir=\"ltr\" prefix=\"og: https://ogp.me/ns#\">   <head>     <meta charset=\"utf-8\" /> <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-2JN1MJTXM1\"></script> <script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments)};gtag(\"js\", new Date());gtag(\"set\", \"developer_id.dMDhkMT\", true);gtag(\"config\", \"G-2JN1MJTXM1\", {\"groups\":\"default\",\"page_placeholder\":\"PLACEHOLDER_page_location\"});</script> <link rel=\"canonical\" href=\"https://www.sbir.gov/node\" /> <meta name=\"Generator\" content=\"Drupal 10 (https://www.drupal.org)\" /> <meta name=\"MobileOptimized\" content=\"width\" /> <meta name=\"HandheldFriendly\" content=\"true\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /> <link rel=\"icon\" href=\"/sites/all/themes/sbir/favicon.ico\" type=\"image/vnd.microsoft.icon\" />      <title>| SBIR</title>     <link rel=\"stylesheet\" media=\"all\" href=\"/sites/default/files/css/css_OHNADYyGAjHp5wPgfu2fhu2PpOzKcYzfz2ydQxXcXYw.css?delta=0&amp;l"
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:31:25.256692Z",
+          "url": "https://www.sbir.gov/about-data",
+          "attempts": 2,
+          "status": "fetched",
+          "error": "Exception: URL can't contain control characters. '/about-data (verify exact export/API URLs)' (found at least ' ')",
+          "http_status": 404,
+          "rate_limit_text_snippet": "meta charset=\"utf-8\" /> <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-2JN1MJTXM1\"></script> <script>windo",
+          "delta_support_hint": true,
+          "sample_snippet": "  <!DOCTYPE html> <html lang=\"en\" dir=\"ltr\" prefix=\"og: https://ogp.me/ns#\">   <head>     <meta charset=\"utf-8\" /> <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-2JN1MJTXM1\"></script> <script>window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments)};gtag(\"js\", new Date());gtag(\"set\", \"developer_id.dMDhkMT\", true);gtag(\"config\", \"G-2JN1MJTXM1\", {\"groups\":\"default\",\"page_location\":\"/404.html?page=\" + document.location.pathname + document.location.search + \"&from=\" + document.referrer});</script> <link rel=\"canonical\" href=\"https://www.sbir.gov/about-data\" /> <meta name=\"Generator\" content=\"Drupal 10 (https://www.drupal.org)\" /> <meta name=\"MobileOptimized\" content=\"width\" /> <meta name=\"HandheldFriendly\" content=\"true\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /> <link rel=\"icon\" href=\"/sites/all/themes/sbir/favicon.ico\" type=\"image/vnd.microsoft.icon\" />      <title>Page not found | SBIR</title>     <link rel=\"stylesheet\" media=\"all\" h"
+        }
+      }
     },
     {
       "id": "usaspending",
@@ -69,7 +96,26 @@
       "next_steps": [
         "Confirm exact rate limits and If-Modified-Since/ETag behavior",
         "Record recommended batch_size and concurrency in config/base.yaml"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:27:59.392290Z",
+          "url": "https://api.usaspending.gov/docs/endpoints",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "   <!DOCTYPE html> <html lang=\"en\">   <head>     <meta charset=\"utf-8\">     <title>USAspending API</title>     <link rel=\"stylesheet\" href='https://files.usaspending.gov/django_static/css/google-fonts.css'>     <link rel=\"stylesheet\" href='https://files.usaspending.gov/django_static/css/monokai-sublime.css'>     <link rel=\"stylesheet\" href='https://files.usaspending.gov/django_static/css/main.css'>     <script src='https://files.usaspending.gov/django_static/js/modernizr.js'></script>     <style>       .logo {width:350px;padding:15px;margin-right:20px;}       .row-fluid outter-wrap {padding-top: 30px;}       p { max-width: 80rem;}       h1{ font-size: 5rem;}       h2 {font-size: 4rem;}       .outter-wrap { margin-top:204px; }       #sidebar{margin-top: 100px;}     </style>   </head>   <body>     <div class=\"container-fluid usa-da-header\">         <div class=\"row\">             <nav class=\"navbar\">                 <div class=\"container usa-da-header-container\">                     <h1>                       <a "
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:00.340295Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "sam_gov",
@@ -101,7 +147,28 @@
       "next_steps": [
         "Register a SAM.gov dev account and obtain test API key",
         "Add SAM entry to config/base.yaml enrichment_refresh section with placeholders"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:00.595606Z",
+          "url": "https://api.sam.gov",
+          "attempts": 1,
+          "http_status": 401,
+          "delta_support_hint": false,
+          "auth_hint": "API_KEY",
+          "status": "fetched",
+          "sample_snippet": "<html><body><h1>API_KEY_INVALID</h1><p>An invalid API key was supplied. Please submit with a valid API key.</p></body></html>"
+        },
+        "api_docs_url": {
+          "checked_at": "2025-10-26T20:28:00.864425Z",
+          "url": "https://open.gsa.gov/apis/sam-api/",
+          "attempts": 1,
+          "http_status": 404,
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<html lang=\"en\">     <head>         <title>404 Error, Page Not Found</title>         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">         <style>             #main {                 margin: 12% auto;             }             @media (min-width: 1025px) {                 #main {                     width: 60%;                 }             }             @media (max-width: 1025px) {                 #main {                     width: 75%;                 }             }             #title {                 font-size: 40px;                 padding-bottom: 2px;                 border-bottom: 3px solid #205493;             }             #pages-explanation {                 font-style: italic;             }             body {                 font-family: \"Merriweather\", \"Georgia\", \"Cambria\", \"Times New Roman\", \"Times\", serif;             }             p {                 font-size: 1.25em;                 margin: 50px 0 40px 0;             }         </style>     </head>     <body>         <di"
+        }
+      }
     },
     {
       "id": "nih_reporter",
@@ -132,7 +199,29 @@
       "next_steps": [
         "Test NIH endpoints for updated-since filtering and document response formats",
         "Create unit fixtures for NIH responses"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:01.829279Z",
+          "url": "https://api.reporter.nih.gov/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html",
+            "last-modified": "Fri, 08 Aug 2025 12:36:02 GMT",
+            "etag": "\"1dc0861000df24c\""
+          },
+          "rate_limit_text_snippet": "ers, it is recommended that users post no more than one URL request per second and limit large jobs to either weekends or weekdays between",
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "﻿<!DOCTYPE html><html lang=\"en-US\"><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\"content=\"IE=edge\"><meta name=\"description\"content=\"NIH RePORTER APIs are designed to programmatically expose relevant scientific awards data from NIH and other federal agencies to interested users in health sciences research community.\"><meta name=\"keywords\"content=\"nih reporter api, federal, reporter, public health, scientific awards, scientific, awards, project number, sm appl id, nih appl id, api endpoint, bulk project data retrieval, search api, fetch api, hhs, nih, federal agencies\"><meta name=\"author\"content=\"metatags generator\"><meta name=\"robots\"content=\"index, follow\"><meta name=\"revisit-after\"content=\"3 month\"><title>NIH RePORTER API</title><link href=\"./css/reset.css\"media=\"screen\"rel=\"stylesheet\"type=\"text/css\"><link href=\"./css/screen.css\"media=\"screen\"rel=\"stylesheet\"type=\"text/css\"><link href=\"./css/reset.css\"media=\"print\"rel=\"stylesheet\"type=\"text/css\"><link href=\"./css/print.css\"media=\"print\"rel=\""
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:02.206611Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "patentsview",
@@ -161,7 +250,23 @@
       "next_steps": [
         "Record exact endpoint URLs for common queries (by assignee/company)",
         "Add to enrichment_refresh config with sample batch sizes"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:02.462143Z",
+          "url": "https://patentsview.org/apis/api-overview.html",
+          "attempts": 1,
+          "http_status": 403,
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!doctype html> <html>  <head> \t<meta charset=\"utf-8\" /> \t<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" /> \t<meta name=\"description\" content=\"Azure WAF JS Challenge\" /> \t<title>Azure WAF</title> \t<style> \t\thtml * { \t\t\tfont-family: \"Segoe UI\", SegoeUI, \"Helvetica Neue\", Helvetica, Arial, sans-serif \t\t}  \t\tbody { \t\t\tdisplay: flex; \t\t\tflex-direction: column; \t\t\theight: 100vh; \t\t\twidth: 100vw; \t\t\tmargin: 0; \t\t\t-webkit-font-smoothing: antialiased; \t\t\t-moz-osx-font-smoothing: grayscale \t\t}  \t\t@media (prefers-color-scheme:dark) { \t\t\tbody { \t\t\t\tbackground-color: #252525; \t\t\t\tcolor: #fff \t\t\t} \t\t}  \t\t@media (prefers-color-scheme:light) { \t\t\tbody { \t\t\t\tbackground-color: #fff; \t\t\t\tcolor: #252525 \t\t\t} \t\t}  \t\t#header { \t\t\theight: 10% \t\t}  \t\t#main { \t\t\tdisplay: flex; \t\t\tflex: 1; \t\t\tflex-direction: column; \t\t\tjustify-content: flex-start \t\t}  \t\t#azure-ref { \t\t\tpadding-left: 3px; \t\t\tfont-size: 9px; \t\t\tcolor: #7a7a7a \t\t}  \t\th3 { \t\t\tfont-size: 19px; \t\t\tmargin-bottom: 0 \t\t}  \t\t.error-div { \t\t\theight: 100%; \t\t"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:02.756529Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "opencorporates",
@@ -190,7 +295,28 @@
       "next_steps": [
         "Identify business cases needing OpenCorporates and request API keys if proceeding",
         "Add test harness using recorded responses"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:03.011919Z",
+          "url": "https://api.opencorporates.com/documentation/API-Reference",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html;charset=utf-8"
+          },
+          "rate_limit_text_snippet": "en refused. This is the status code will be returned during rate limiting</li> <li>404 Not Found: The URI requested is invalid or",
+          "delta_support_hint": false,
+          "auth_hint": "API key",
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html> <html lang=\"en\"> <head>   <meta charset=\"utf-8\" /> <script type=\"text/javascript\">window.NREUM||(NREUM={});NREUM.info={\"beacon\":\"bam.nr-data.net\",\"errorBeacon\":\"bam.nr-data.net\",\"licenseKey\":\"4ef2171e94\",\"applicationID\":\"5704060\",\"transactionName\":\"IVoNTBEKWloAShtnWAxUF0oCSnlGAFZXdUELGiR9N0VSWQZNWVFfFlQXUQwLGR4+ZhsLEj8eSg==\",\"queueTime\":0,\"applicationTime\":2,\"agent\":\"\"}</script> <script type=\"text/javascript\">(window.NREUM||(NREUM={})).init={ajax:{deny_list:[\"bam.nr-data.net\"]}};(window.NREUM||(NREUM={})).loader_config={licenseKey:\"4ef2171e94\",applicationID:\"5704060\",browserID:\"5704072\"};;/*! For license information please see nr-loader-rum-1.301.0.min.js.LICENSE.txt */ (()=>{var e,t,r={122:(e,t,r)=>{\"use strict\";r.d(t,{a:()=>i});var n=r(944);function i(e,t){try{if(!e||\"object\"!=typeof e)return(0,n.R)(3);if(!t||\"object\"!=typeof t)return(0,n.R)(4);const r=Object.create(Object.getPrototypeOf(t),Object.getOwnPropertyDescriptors(t)),a=0===Object.keys(r).length?e:r;for(let o in a)if(void 0!==e[o])t"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:03.749430Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "sec_edgar",
@@ -218,7 +344,23 @@
       },
       "next_steps": [
         "Map SEC filings to company entities and define which filing types are relevant for enrichment"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:04.002204Z",
+          "url": "https://www.sec.gov/edgar/sec-api-documentation",
+          "attempts": 1,
+          "http_status": 403,
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\"> <html xmlns=\"http://www.w3.org/1999/xhtml\"> <head> <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" /> <title>SEC.gov | Request Rate Threshold Exceeded</title> <style> html {height: 100%} body {height: 100%; margin:0; padding:0;} #header {background-color:#003968; color:#fff; padding:15px 20px 10px 20px;font-family:Arial, Helvetica, sans-serif; font-size:20px; border-bottom:solid 5px #000;} #footer {background-color:#003968; color:#fff; padding:15px 20px;font-family:Arial, Helvetica, sans-serif; font-size:20px;} #content {max-width:650px;margin:60px auto; padding:0 20px 100px 20px; background-image:url(seal_bw.png);background-repeat:no-repeat;background-position:50% 100%;} h1 {font-family:Georgia, Times, serif; font-size:20px;} h2 {text-align:center; font-family:Georgia, Times, serif; font-size:20px; width:100%; border-bottom:solid #999 1px;padding-bottom:10px; margin-bot"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:04.509549Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "dla_cage_bis",
@@ -246,7 +388,21 @@
       },
       "next_steps": [
         "Engage security/ops to determine legal and access constraints before integration"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:04.764982Z",
+          "url": "https://www.dla.mil",
+          "attempts": 1,
+          "status": "error",
+          "error": "Exception: URL can't contain control characters. 'www.dla.mil (verify authoritative endpoints)' (found at least ' ')"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:04.777781Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "orcid",
@@ -273,7 +429,29 @@
       },
       "next_steps": [
         "Register a developer account if PI enrichment is required at scale"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:05.030617Z",
+          "url": "https://info.orcid.org/documentation/api-tutorials/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=UTF-8",
+            "cache-control": "max-age=15552000, must-revalidate"
+          },
+          "rate_limit_text_snippet": "ium plugin. -->   <link rel='dns-prefetch' href='//www.googletagmanager.com' /> <link rel='dns-prefetch' href='//stats.wp.co",
+          "delta_support_hint": true,
+          "auth_hint": "OAuth",
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html> <html lang=\"en-US\"> <head > <meta charset=\"UTF-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' /> \t<style>img:is([sizes=\"auto\" i], [sizes^=\"auto,\" i]) { contain-intrinsic-size: 3000px 1500px }</style> \t<!-- OneTrust Cookies Consent Notice start for orcid.org -->\r <script type=\"text/javascript\" src=\"https://cdn.cookielaw.org/consent/5a6d60d3-b085-4e48-8afa-d707c7afc419/OtAutoBlock.js\" ></script>\r <script src=\"https://cdn.cookielaw.org/scripttemplates/otSDKStub.js\" data-document-language=\"true\" type=\"text/javascript\" charset=\"UTF-8\" data-domain-script=\"5a6d60d3-b085-4e48-8afa-d707c7afc419\" ></script>\r <script type=\"text/javascript\">\r function OptanonWrapper() { }\r </script>\r <!-- OneTrust Cookies Consent Notice end for orcid.org --><meta name=\"uri-translation\" content=\"on\" /><link rel=\"alternate\" hreflang=\"en\" href=\"https://info.orcid.org/documentation/api-tutor"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:06.278067Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "openalex",
@@ -300,7 +478,28 @@
       },
       "next_steps": [
         "Add OpenAlex to enrichment_refresh config with a default cadence"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:06.531128Z",
+          "url": "https://docs.openalex.org/",
+          "attempts": 1,
+          "http_status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=0, must-revalidate"
+          },
+          "rate_limit_text_snippet": "sidebar-list-default:before:w-px\" href=\"/how-to-use-the-api/rate-limits-and-authentication\">Rate limits and authentication</a></li",
+          "delta_support_hint": false,
+          "status": "fetched",
+          "sample_snippet": "<!DOCTYPE html><html lang=\"en\" class=\"rounded-corners theme-clean no-tint sidebar-default sidebar-list-default links-default depth-subtle __variable_ec5c78 __variable_80f980 __variable_c5e58d font-Inter\"><head><meta charSet=\"utf-8\"/><link rel=\"preconnect\" href=\"https://static-2v.gitbook.com\" crossorigin=\"\"/><link rel=\"preconnect\" href=\"https://api.gitbook.com/cache/\"/><link rel=\"preconnect\" href=\"https://ka-p.fontawesome.com/releases/v6.6.0/\"/><link rel=\"preconnect\" href=\"https://static-2v.gitbook.com\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1\"/><link rel=\"preload\" as=\"image\" fetchPriority=\"high\" imageSrcSet=\"https://docs.openalex.org/~gitbook/image?url=https%3A%2F%2F1345475681-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Forganizations%252Fq9WAeozYo93Avo9VPiOf%252Fsites%252Fsite_i5XLJ%252Ficon%252FZd5emJmGrKZJrAW9DqSp%252Ftricon.png%3Falt%3Dmedia%26token%3Dd51524ff-adc3-4aaa-89fd-199b151a3fd7&amp;width=32&amp;dpr=1&amp;quality=100&amp;si"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:07.083960Z",
+          "note": "No URL provided"
+        }
+      }
     },
     {
       "id": "openfec",
@@ -328,7 +527,36 @@
       },
       "next_steps": [
         "Decide whether political enrichment is required and, if so, register for API keys"
-      ]
+      ],
+      "discovery": {
+        "docs_url": {
+          "checked_at": "2025-10-26T20:28:07.336012Z",
+          "url": "https://api.open.fec.gov/developers/",
+          "attempts": 1,
+          "http_status": 200,
+          "rate_limit_headers": {
+            "x-ratelimit-limit": "120",
+            "x-ratelimit-remaining": "119"
+          },
+          "headers": {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "public, max-age=3600"
+          },
+          "delta_support_hint": false,
+          "auth_hint": "apiKey",
+          "status": "fetched",
+          "sample_snippet": "<!doctype html>  <html>   <head>     <title>OpenFEC API Documentation</title>     <link       href=\"https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700\"       rel=\"stylesheet\"     />     <link       rel=\"stylesheet\"       type=\"text/css\"       href=\"/docs/static/dist/main.css\"     />     <link       rel=\"icon\"       type=\"image/png\"       href=\"/docs/static/favicon.ico\"     />     <style>       html {         box-sizing: border-box;         overflow: -moz-scrollbars-vertical;         overflow-y: scroll;       }        *,       *:before,       *:after {         box-sizing: inherit;       }        body {         margin: 0;         background: #fafafa;       }        label[for=\"user_first_name\"]:before {         content: \" *\";         color: #e87723;         font-weight: 1000;         font-family: \"Verdana\";       }        label[for=\"user_last_name\"]:before {         content: \" *\";         color: #e87723;         font-weight: 1000;         font-family: \"Ver"
+        },
+        "api_docs_url": {
+          "status": "no_url",
+          "checked_at": "2025-10-26T20:28:08.268035Z",
+          "note": "No URL provided"
+        }
+      }
     }
-  ]
+  ],
+  "auto_discovery": {
+    "last_run_at": "2025-10-26T20:31:25.812114Z",
+    "runner": "fetch_provider_docs.py"
+  }
 }
