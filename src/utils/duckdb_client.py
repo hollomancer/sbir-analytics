@@ -29,21 +29,34 @@ class DuckDBClient:
         self.database_path = database_path or ":memory:"
         self.read_only = read_only
         self._connection = None
+        # For in-memory databases, maintain a persistent connection
+        self._persistent_conn = None if self.database_path != ":memory:" else None
 
     @contextmanager
     def connection(self):
         """Context manager for database connection."""
-        conn = None
-        try:
-            conn = duckdb.connect(self.database_path, read_only=self.read_only)
-            # Configure connection
-            conn.execute("SET enable_object_cache=true")
-            conn.execute("SET memory_limit='4GB'")
-            conn.execute("SET threads=4")
-            yield conn
-        finally:
-            if conn:
-                conn.close()
+        if self.database_path == ":memory:":
+            # For in-memory databases, use persistent connection
+            if self._persistent_conn is None:
+                self._persistent_conn = duckdb.connect(self.database_path, read_only=self.read_only)
+                # Configure connection
+                self._persistent_conn.execute("SET enable_object_cache=true")
+                self._persistent_conn.execute("SET memory_limit='4GB'")
+                self._persistent_conn.execute("SET threads=4")
+            yield self._persistent_conn
+        else:
+            # For file-based databases, use temporary connections
+            conn = None
+            try:
+                conn = duckdb.connect(self.database_path, read_only=self.read_only)
+                # Configure connection
+                conn.execute("SET enable_object_cache=true")
+                conn.execute("SET memory_limit='4GB'")
+                conn.execute("SET threads=4")
+                yield conn
+            finally:
+                if conn:
+                    conn.close()
 
     def execute_query(
         self, query: str, parameters: dict[str, Any] | None = None
@@ -67,6 +80,12 @@ class DuckDBClient:
             columns = [desc[0] for desc in result.description]
             rows = result.fetchall()
             return [dict(zip(columns, row, strict=False)) for row in rows]
+
+    def close(self):
+        """Close persistent connection if it exists."""
+        if self._persistent_conn:
+            self._persistent_conn.close()
+            self._persistent_conn = None
 
     def execute_query_df(
         self, query: str, parameters: dict[str, Any] | None = None
@@ -130,10 +149,10 @@ class DuckDBClient:
                 with self.connection() as conn:
                     conn.execute(query)
 
-                # Get row count
-                count_query = f"SELECT COUNT(*) FROM {table_name}"
-                result = self.execute_query(count_query)
-                row_count = result[0]["count_star()"] if result else 0
+                    # Get row count using the same connection
+                    count_query = f"SELECT COUNT(*) as count FROM {table_name}"
+                    result = conn.execute(count_query).fetchall()
+                    row_count = result[0][0] if result else 0
 
                 logger.info(f"Imported {row_count} rows into table '{table_name}'")
                 return True
@@ -197,7 +216,12 @@ class DuckDBClient:
                     conn.register("temp_df", df)
                     conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_df")
 
-                logger.info(f"Created table '{table_name}' with {len(df)} rows")
+                    # Get row count using the same connection
+                    count_query = f"SELECT COUNT(*) as count FROM {table_name}"
+                    result = conn.execute(count_query).fetchall()
+                    row_count = result[0][0] if result else 0
+
+                logger.info(f"Created table '{table_name}' with {row_count} rows")
                 return True
 
             except Exception as e:
@@ -214,14 +238,16 @@ class DuckDBClient:
             Dictionary with table information
         """
         try:
-            # Get column information
-            describe_query = f"DESCRIBE {table_name}"
-            columns = self.execute_query(describe_query)
+            with self.connection() as conn:
+                # Get column information
+                describe_query = f"DESCRIBE {table_name}"
+                columns_result = conn.execute(describe_query)
+                columns = columns_result.fetchall()
 
-            # Get row count
-            count_query = f"SELECT COUNT(*) as row_count FROM {table_name}"
-            count_result = self.execute_query(count_query)
-            row_count = count_result[0]["row_count"] if count_result else 0
+                # Get row count
+                count_query = f"SELECT COUNT(*) as row_count FROM {table_name}"
+                count_result = conn.execute(count_query).fetchall()
+                row_count = count_result[0][0] if count_result else 0
 
             return {"table_name": table_name, "row_count": row_count, "columns": columns}
 
@@ -238,12 +264,11 @@ class DuckDBClient:
             True if table exists
         """
         try:
-            # Use information_schema for DuckDB table existence check
-            query = (
-                f"SELECT table_name FROM information_schema.tables WHERE table_name='{table_name}'"
-            )
-            result = self.execute_query(query)
-            return len(result) > 0
+            with self.connection() as conn:
+                # Use information_schema for DuckDB table existence check
+                query = f"SELECT table_name FROM information_schema.tables WHERE table_name='{table_name}'"
+                result = conn.execute(query).fetchall()
+                return len(result) > 0
         except Exception:
             return False
 
@@ -331,44 +356,51 @@ class DuckDBClient:
                 raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
             try:
-                first_chunk = True
-                # pandas.read_csv will raise if CSV can't be parsed; let that bubble
-                for chunk in pd.read_csv(
-                    csv_path,
-                    delimiter=delimiter,
-                    header=0 if header else None,
-                    encoding=encoding,
-                    chunksize=batch_size,
-                    dtype=str,  # read as strings to avoid type surprises; downstream logic can cast
-                    low_memory=False,
-                    quoting=csv.QUOTE_MINIMAL,
-                    quotechar='"',
-                ):
-                    # Normalize column names (strip whitespace) to reduce surprises
-                    chunk.columns = [str(col).strip() for col in chunk.columns]
+                with self.connection() as conn:
+                    first_chunk = True
+                    total_rows = 0
+                    # pandas.read_csv will raise if CSV can't be parsed; let that bubble
+                    for chunk in pd.read_csv(
+                        csv_path,
+                        delimiter=delimiter,
+                        header=0 if header else None,
+                        encoding=encoding,
+                        chunksize=batch_size,
+                        dtype=str,  # read as strings to avoid type surprises; downstream logic can cast
+                        low_memory=False,
+                        quoting=csv.QUOTE_MINIMAL,
+                        quotechar='"',
+                    ):
+                        # Normalize column names (strip whitespace) to reduce surprises
+                        chunk.columns = [str(col).strip() for col in chunk.columns]
 
-                    if first_chunk:
-                        if create_table_if_missing or not self.table_exists(table_name):
-                            # Create table from first chunk
-                            created = self.create_table_from_df(chunk, table_name)
-                            if not created:
-                                logger.error("Failed to create table from first chunk")
-                                return False
-                        else:
-                            # Table exists: append first chunk
-                            with self.connection() as conn:
+                        if first_chunk:
+                            if create_table_if_missing or not self.table_exists(table_name):
+                                # Create table from first chunk
+                                conn.register("temp_df", chunk)
+                                conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_df")
+                            else:
+                                # Table exists: append first chunk
                                 conn.register("temp_chunk", chunk)
                                 conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
-                        first_chunk = False
-                    else:
-                        # Append subsequent chunks
-                        with self.connection() as conn:
+                            first_chunk = False
+                        else:
+                            # Append subsequent chunks
                             conn.register("temp_chunk", chunk)
                             conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
 
-                    logger.info("Imported chunk", rows=len(chunk))
+                        total_rows += len(chunk)
+                        logger.info("Imported chunk", rows=len(chunk), total_rows=total_rows)
 
-                logger.info("Incremental CSV import complete", table_name=table_name)
+                    # Get final row count
+                    count_result = conn.execute(
+                        f"SELECT COUNT(*) as count FROM {table_name}"
+                    ).fetchall()
+                    final_count = count_result[0][0] if count_result else 0
+
+                logger.info(
+                    "Incremental CSV import complete", table_name=table_name, total_rows=final_count
+                )
                 return True
 
             except Exception as e:
