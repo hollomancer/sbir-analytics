@@ -220,16 +220,82 @@ class USPTOExtractor:
         """
         Stream rows from a .dta (Stata) file in chunks.
 
-        Strategy:
-        - Try pandas iterator (read_stata iterator + get_chunk)
-        - If not supported or fails, try pyreadstat with row_limit
-        - As a last resort, read full file with pandas (only for smaller files)
+        Strategy (enhanced):
+        - Probe file metadata (when available) to detect Stata release/version differences.
+        - Try pandas iterator (read_stata iterator + get_chunk).
+        - If iterator fails, try pyreadstat with row_limit, and inspect metadata for format/version.
+        - Normalize column names (common variant mapping) to canonical keys to make downstream mapping stable.
+        - As a last resort, read full file with pandas (only for smaller files).
         """
         if pd is None:
             raise RuntimeError("pandas is required to read .dta files for USPTO extraction")
 
+        def _normalize_row_keys(row: Dict) -> Dict:
+            """
+            Normalize keys from various release variations to canonical keys used by the pipeline.
+            This mapping is intentionally conservative and can be extended as we see real variants.
+            """
+            key_map = {
+                # common variations => canonical
+                "grant_doc_num": ["grant_doc_num", "grant_docnum", "grant_number", "patent_number"],
+                "application_number": ["application_number", "app_num", "applicationno"],
+                "publication_number": ["publication_number", "pub_num", "pub_no"],
+                "filing_date": ["filing_date", "file_dt", "application_date"],
+                "publication_date": ["publication_date", "pub_date"],
+                "grant_date": ["grant_date", "issue_date", "grant_dt"],
+                "assignee_name": ["assignee_name", "assignee", "assignee_org", "assignee_org_name"],
+                "assignor_name": ["assignor_name", "assignor", "grantor_name"],
+                "conveyance_text": ["conveyance_text", "conveyance", "text"],
+                "recorded_date": ["recorded_date", "record_date", "recorded_dt"],
+                "rf_id": ["rf_id", "record_id", "id"],
+                "file_id": ["file_id", "fileid"],
+            }
+            normalized = {}
+            # lower-case map of incoming keys for quick lookup
+            incoming_map = {k.lower(): k for k in row.keys()}
+            # For each canonical key, find the first incoming variant present
+            for canon, variants in key_map.items():
+                found = None
+                for v in variants:
+                    k = v.lower()
+                    if k in incoming_map:
+                        found = incoming_map[k]
+                        break
+                if found:
+                    normalized[canon] = row.get(found)
+            # copy over any keys that are already canonical or not remapped, preserving case
+            for k, v in row.items():
+                if k not in normalized:
+                    normalized[k] = v
+            return normalized
+
+        def _detect_stata_release_with_pyreadstat(p) -> Optional[str]:
+            """Attempt to discover Stata file format/version via pyreadstat metadata, if available."""
+            if pyreadstat is None:
+                return None
+            try:
+                meta = pyreadstat.read_dta_metadata(str(p))
+                # pyreadstat meta may expose file_format_version or other attributes
+                version = getattr(meta, "file_format_version", None) or getattr(
+                    meta, "format_version", None
+                )
+                if version is not None:
+                    return str(version)
+            except Exception:
+                # not critical - just return None
+                return None
+            return None
+
         try:
-            # Try pandas iterator approach
+            # Attempt to detect file variant first (best-effort)
+            try:
+                release_hint = _detect_stata_release_with_pyreadstat(path)
+                if release_hint:
+                    LOG.debug("Detected Stata format/version for %s: %s", path, release_hint)
+            except Exception:
+                release_hint = None
+
+            # Try pandas iterator approach first (fast for many .dta files)
             LOG.debug("Attempting pandas read_stata iterator for %s", path)
             try:
                 reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
@@ -239,23 +305,24 @@ class USPTOExtractor:
                     except StopIteration:
                         break
                     except Exception as e:
-                        # pandas iterator may raise for some .dta versions; fallthrough to fallback
+                        # pandas iterator may raise for some .dta versions; fallback to pyreadstat
                         LOG.debug("pandas iterator get_chunk error: %s", e)
                         raise
                     for rec in chunk.to_dict(orient="records"):
-                        yield rec
+                        yield _normalize_row_keys(rec)
                 return
             except Exception:
                 LOG.debug(
                     "pandas iterator approach failed for %s; trying pyreadstat fallback", path
                 )
 
-            # Fallback: pyreadstat if available
+            # Fallback: pyreadstat if available - use row_limit and row_offset for chunked reads
             if pyreadstat is not None:
                 LOG.debug("Using pyreadstat.read_dta row_limit for %s", path)
                 offset = 0
                 while True:
                     try:
+                        # pyreadstat returns (df, meta)
                         df, meta = pyreadstat.read_dta(
                             str(path), row_limit=chunk_size, row_offset=offset
                         )
@@ -265,17 +332,21 @@ class USPTOExtractor:
                     if df is None or df.shape[0] == 0:
                         break
                     for rec in df.to_dict(orient="records"):
-                        yield rec
+                        yield _normalize_row_keys(rec)
                     offset += df.shape[0]
                 return
 
-            # Last resort: read entire file (may be large)
-            LOG.warning("Reading entire .dta file into memory for %s (last resort)", path)
+            # Last resort: read entire file (may be large) - but attempt to rename columns using heuristics
+            LOG.warning(
+                "Falling back to reading entire .dta file into memory for %s (last resort)", path
+            )
             df_full = pd.read_stata(path)
+            # Normalize column names (lowercase, trim) to help mapping downstream
+            df_full.columns = [str(c).strip() for c in df_full.columns]
             for i in range(0, len(df_full), chunk_size):
                 chunk = df_full.iloc[i : i + chunk_size]
                 for rec in chunk.to_dict(orient="records"):
-                    yield rec
+                    yield _normalize_row_keys(rec)
             return
 
         except Exception as e:
