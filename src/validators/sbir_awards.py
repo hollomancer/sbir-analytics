@@ -156,9 +156,14 @@ def validate_award_year(year: int, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_award_amount(amount: float, row_index: int) -> Optional[QualityIssue]:
-    """Validate Award Amount is positive and within reasonable range."""
-    if pd.isna(amount):
+def validate_award_amount(amount: float | str, row_index: int) -> Optional[QualityIssue]:
+    """Validate Award Amount is positive and within reasonable range.
+
+    Accept string inputs (e.g., \"1,000,000.00\") by coercing to float. If coercion
+    fails, return an ERROR QualityIssue indicating the award amount must be numeric.
+    """
+    # Treat empty / missing as required error
+    if pd.isna(amount) or (isinstance(amount, str) and str(amount).strip() == ""):
         return QualityIssue(
             severity=QualitySeverity.ERROR,
             field="Award Amount",
@@ -166,19 +171,44 @@ def validate_award_amount(amount: float, row_index: int) -> Optional[QualityIssu
             row_index=row_index,
         )
 
-    if amount <= 0:
+    # Coerce string representations (allow commas)
+    amount_val: float
+    if isinstance(amount, str):
+        try:
+            amount_val = float(amount.replace(",", "").strip())
+        except Exception:
+            return QualityIssue(
+                severity=QualitySeverity.ERROR,
+                field="Award Amount",
+                message=f"Award Amount must be numeric, got: '{amount}'",
+                row_index=row_index,
+            )
+    else:
+        # Assume it's already numeric-ish
+        try:
+            amount_val = float(amount)
+        except Exception:
+            return QualityIssue(
+                severity=QualitySeverity.ERROR,
+                field="Award Amount",
+                message=f"Award Amount must be numeric, got: '{amount}'",
+                row_index=row_index,
+            )
+
+    # Validate numeric value
+    if amount_val <= 0:
         return QualityIssue(
             severity=QualitySeverity.ERROR,
             field="Award Amount",
-            message=f"Award Amount must be positive, got {amount}",
+            message=f"Award Amount must be positive, got {amount_val}",
             row_index=row_index,
         )
 
-    if amount > 10_000_000:
+    if amount_val > 10_000_000:
         return QualityIssue(
             severity=QualitySeverity.WARNING,
             field="Award Amount",
-            message=f"Award Amount ${amount:,.2f} exceeds typical maximum of $10M",
+            message=f"Award Amount ${amount_val:,.2f} exceeds typical maximum of $10M",
             row_index=row_index,
         )
 

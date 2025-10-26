@@ -74,7 +74,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
 
     # Assert basic properties of the raw extraction
     assert isinstance(raw_df, pd.DataFrame)
-    assert len(raw_df) == 3  # fixture contains 3 rows
+    assert len(raw_df) == 6  # fixture contains 6 rows
 
     # If metadata was returned via Output metadata, validate presence of extraction timestamps and columns
     metadata = getattr(raw_output, "metadata", None) or {}
