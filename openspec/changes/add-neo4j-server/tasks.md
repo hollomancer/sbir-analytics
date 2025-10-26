@@ -15,8 +15,8 @@
   - Notes: `config/README.md` updated with Neo4j-specific environment variable guidance and secret handling best practices. `.env.example` should be updated by the team as needed (placeholders and guidance provided in docs).
 - [x] 2.2 Implement `scripts/neo4j/bootstrap_users.sh` that rotates the default password, creates an ingest role, and seeds a read-only account for analysts.
   - Notes: Implemented `scripts/neo4j/bootstrap_users.sh` — idempotent user/role bootstrap with optional admin rotation, ingest and readonly user creation. Script uses `cypher-shell` and supports dry-run.
-- [ ] 2.3 Add CI/lint guard (pre-commit or `openspec validate` hook) that fails if `.env`-style secrets ever appear in tracked files.
-  - Notes: Remains open. Recommend adding a simple pre-commit hook or CI lint step to scan for `NEO4J_PASSWORD=` or other variable patterns in committed files.
+- [x] 2.3 Add CI/lint guard (pre-commit or `openspec validate` hook) that fails if `.env`-style secrets ever appear in tracked files.
+  - Notes: Implemented a repository-level pre-commit configuration (`.pre-commit-config.yaml`) including `detect-secrets` and a conservative local grep hook to catch `NEO4J_PASSWORD`, `NEO4J_AUTH`, AWS keys, and similar patterns. Also added a CI job `.github/workflows/secret-scan.yml` which runs the same checks on pushes and PRs (and scheduled scans). This task is complete.
 
 ## 3. Schema Bootstrap & Health
 - [x] 3.1 Build `scripts/neo4j/apply_schema.py` using the existing `Neo4jClient` to apply indexes/constraints idempotently and report metrics.
