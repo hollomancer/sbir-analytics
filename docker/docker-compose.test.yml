@@ -42,6 +42,9 @@ services:
       - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER}
       - SBIR_ETL__NEO4J__PASSWORD=${NEO4J_PASSWORD}
       - PYTHONUNBUFFERED=1
+      # Allow coverage artifacts to write to a writable location since /app is mounted read-only
+      - COVERAGE_FILE=/tmp/.coverage
+      - COVERAGE_HTML_DIR=/tmp/htmlcov
     depends_on:
       neo4j:
         condition: service_healthy
