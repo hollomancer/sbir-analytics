@@ -31,6 +31,17 @@ class DuckDBClient:
         self._connection = None
         # For in-memory databases, maintain a persistent connection
         self._persistent_conn = None if self.database_path != ":memory:" else None
+        self._identifier_cache: dict[str, str] = {}
+
+    @staticmethod
+    def escape_identifier(identifier: str) -> str:
+        """Return a DuckDB-safe identifier (table/column name)."""
+        return duckdb.escape_identifier(identifier)
+
+    @staticmethod
+    def escape_literal(value: str) -> str:
+        """Return a DuckDB-safe string literal."""
+        return duckdb.escape_string_literal(value)
 
     @contextmanager
     def connection(self):
@@ -133,9 +144,12 @@ class DuckDBClient:
             if not csv_path.exists():
                 raise FileNotFoundError(f"CSV file not found: {csv_path}")
 
+            table_identifier = self.escape_identifier(table_name)
+            csv_literal = self.escape_literal(str(csv_path))
+
             query = f"""
-            CREATE TABLE IF NOT EXISTS {table_name} AS
-            SELECT * FROM read_csv_auto('{csv_path}',
+            CREATE TABLE IF NOT EXISTS {table_identifier} AS
+            SELECT * FROM read_csv_auto({csv_literal},
                 delim='{delimiter}',
                 header={header},
                 encoding='{encoding}',
@@ -151,7 +165,7 @@ class DuckDBClient:
                     conn.execute(query)
 
                     # Get row count using the same connection
-                    count_query = f"SELECT COUNT(*) as count FROM {table_name}"
+                    count_query = f"SELECT COUNT(*) as count FROM {table_identifier}"  # nosec B608
                     result = conn.execute(count_query).fetchall()
                     row_count = result[0][0] if result else 0
 
@@ -215,10 +229,11 @@ class DuckDBClient:
                 with self.connection() as conn:
                     # Register DataFrame
                     conn.register("temp_df", df)
-                    conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_df")
+                    table_identifier = self.escape_identifier(table_name)
+                    conn.execute(f"CREATE TABLE {table_identifier} AS SELECT * FROM temp_df")  # nosec B608
 
                     # Get row count using the same connection
-                    count_query = f"SELECT COUNT(*) as count FROM {table_name}"
+                    count_query = f"SELECT COUNT(*) as count FROM {table_identifier}"  # nosec B608
                     result = conn.execute(count_query).fetchall()
                     row_count = result[0][0] if result else 0
 
@@ -239,14 +254,15 @@ class DuckDBClient:
             Dictionary with table information
         """
         try:
+            table_identifier = self.escape_identifier(table_name)
             with self.connection() as conn:
                 # Get column information
-                describe_query = f"DESCRIBE {table_name}"
+                describe_query = f"DESCRIBE {table_identifier}"  # nosec B608
                 columns_result = conn.execute(describe_query)
                 columns = columns_result.fetchall()
 
                 # Get row count
-                count_query = f"SELECT COUNT(*) as row_count FROM {table_name}"
+                count_query = f"SELECT COUNT(*) as row_count FROM {table_identifier}"  # nosec B608
                 count_result = conn.execute(count_query).fetchall()
                 row_count = count_result[0][0] if count_result else 0
 
@@ -267,7 +283,11 @@ class DuckDBClient:
         try:
             with self.connection() as conn:
                 # Use information_schema for DuckDB table existence check
-                query = f"SELECT table_name FROM information_schema.tables WHERE table_name='{table_name}'"
+                table_literal = self.escape_literal(table_name)
+                query = (
+                    "SELECT table_name FROM information_schema.tables "
+                    f"WHERE table_name={table_literal}"
+                )  # nosec B608
                 result = conn.execute(query).fetchall()
                 return len(result) > 0
         except Exception:
@@ -352,6 +372,7 @@ class DuckDBClient:
             logger.info(
                 f"Starting incremental CSV import into {table_name}", csv_path=str(csv_path)
             )
+            table_identifier = self.escape_identifier(table_name)
 
             if not csv_path.exists():
                 raise FileNotFoundError(f"CSV file not found: {csv_path}")
@@ -379,24 +400,30 @@ class DuckDBClient:
                             if create_table_if_missing or not self.table_exists(table_name):
                                 # Create table from first chunk
                                 conn.register("temp_df", chunk)
-                                conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_df")
+                                conn.execute(
+                                    f"CREATE TABLE {table_identifier} AS SELECT * FROM temp_df"
+                                )  # nosec B608
                             else:
                                 # Table exists: append first chunk
                                 conn.register("temp_chunk", chunk)
-                                conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
+                                conn.execute(
+                                    f"INSERT INTO {table_identifier} SELECT * FROM temp_chunk"
+                                )  # nosec B608
                             first_chunk = False
                         else:
                             # Append subsequent chunks
                             conn.register("temp_chunk", chunk)
-                            conn.execute(f"INSERT INTO {table_name} SELECT * FROM temp_chunk")
+                            conn.execute(
+                                f"INSERT INTO {table_identifier} SELECT * FROM temp_chunk"
+                            )  # nosec B608
 
                         total_rows += len(chunk)
                         logger.info("Imported chunk", rows=len(chunk), total_rows=total_rows)
 
                     # Get final row count
                     count_result = conn.execute(
-                        f"SELECT COUNT(*) as count FROM {table_name}"
-                    ).fetchall()
+                        f"SELECT COUNT(*) as count FROM {table_identifier}"
+                    ).fetchall()  # nosec B608
                     final_count = count_result[0][0] if count_result else 0
 
                 logger.info(

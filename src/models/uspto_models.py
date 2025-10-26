@@ -46,13 +46,13 @@ def _parse_date(value) -> Optional[date]:
         if DATE_ISO_RE.match(s):
             try:
                 return date.fromisoformat(s)
-            except Exception:
+            except ValueError:
                 pass
         # Try other common formats
         for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
             try:
                 return datetime.strptime(s, fmt).date()
-            except Exception:
+            except ValueError:
                 continue
     raise ValueError(f"Could not parse date from value: {value!r}")
 
