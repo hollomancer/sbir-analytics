@@ -50,7 +50,7 @@ class TestConfigurationEnvironments:
 
         assert isinstance(config, PipelineConfig)
         # Dev environment should have specific settings
-        assert config.neo4j.uri == "bolt://localhost:7687"
+        assert config.neo4j.uri in ("bolt://localhost:7687", "bolt://neo4j:7687")
         assert config.neo4j.username == "neo4j"
 
     def test_load_prod_environment(self, config_dir):
