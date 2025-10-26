@@ -2,7 +2,8 @@
 
 ## 1. Project Setup & Dependencies
 
-- [ ] 1.1 Promote rapidfuzz to main dependencies (needed for vendor name matching)
+- [x] 1.1 Promote rapidfuzz to main dependencies (needed for vendor name matching)
+  - Notes: `rapidfuzz = {extras = ["simd"], version = "^3.9.1"}` is already present in `[tool.poetry.dependencies]` section of pyproject.toml. Ready for use in vendor name matching and fuzzy resolution.
 - [x] 1.2 Create src/transition/ module structure (detection/, features/, config/)
   - Notes: Implemented `src/transition/` package with scaffolds:
     - `src/transition/detection/` (detection pipeline stubs)
@@ -12,15 +13,21 @@
     - Basic unit test and fixtures scaffold added to accelerate verification (see tests/unit/test_vendor_resolver.py).
 - [x] 1.3 Add pytest fixtures for transition detection tests
   - Notes: Added pytest fixture `sample_vendors` and an initial unit test suite for `VendorResolver` at `tests/unit/test_vendor_resolver.py`. These provide the initial fixtures and tests for vendor name/identifier matching and will be extended for broader transition detection fixtures.
-- [ ] 1.4 Verify DuckDB availability for large contract dataset analytics
+- [x] 1.4 Verify DuckDB availability for large contract dataset analytics
+  - Notes: DuckDB `^1.0.0` is already available in `[tool.poetry.dependencies]`. Confirmed to be installed and ready for large contract dataset analytics (6.7M+ records). Can be used for memory-efficient processing of USAspending data.
 
 ## 2. Configuration Files
 
-- [ ] 2.1 Create config/transition/detection.yaml (scoring weights, thresholds)
-- [ ] 2.2 Create config/transition/presets.yaml (high-precision, broad-discovery, balanced)
-- [ ] 2.3 Add timing window configuration (default: 0-24 months)
-- [ ] 2.4 Add vendor matching configuration (fuzzy threshold, identifier priority)
-- [ ] 2.5 Document transition configuration in config/transition/README.md
+- [x] 2.1 Create config/transition/detection.yaml (scoring weights, thresholds)
+  - Notes: Created comprehensive detection configuration with scoring weights for 6 signals (agency continuity: 0.25, timing proximity: 0.20, competition type: 0.20, patent signal: 0.15, cet alignment: 0.10, vendor match: 0.10). Includes confidence thresholds (High: ≥0.85, Likely: ≥0.65, Possible: <0.65), vendor matching priorities (UEI→CAGE→DUNS→fuzzy), timing windows (0-24 months default), and performance tuning parameters.
+- [x] 2.2 Create config/transition/presets.yaml (high-precision, broad-discovery, balanced)
+  - Notes: Implemented 6 preset configurations: high_precision (conservative, confidence ≥0.85, 12-month window), balanced (default, ≥0.65, 24-month window), broad_discovery (exploratory, ≥0.50, 36-month window), research (no threshold, 48-month window), phase_2_focus (optimized for Phase II awards), and cet_focused (emphasizes technology area alignment). Each preset includes custom scoring weights and signal configurations.
+- [x] 2.3 Add timing window configuration (default: 0-24 months)
+  - Notes: Timing window configuration implemented in detection.yaml with default 0-24 months after Phase II completion. Includes preset-specific overrides: 12 months (high_precision), 24 months (balanced/phase_2_focus), 36 months (broad_discovery), 48 months (research). Scoring curves for timing proximity with multipliers: 0-3mo (1.0x), 3-12mo (0.75x), 12-24mo (0.50x).
+- [x] 2.4 Add vendor matching configuration (fuzzy threshold, identifier priority)
+  - Notes: Vendor matching configuration includes priority-based resolution (UEI→CAGE→DUNS→fuzzy_name) with fuzzy thresholds: primary 0.85 (strict), secondary 0.70 (exploratory), algorithm token_set_ratio via rapidfuzz. Name normalization rules (uppercase, remove special chars, collapse whitespace). Cross-walk persistence with JSONL/Parquet support.
+- [x] 2.5 Document transition configuration in config/transition/README.md
+  - Notes: Created comprehensive README documenting all configuration files, quick start guide, configuration parameters (timing window, vendor matching, scoring signals, confidence levels), 4 detailed configuration examples (production/research/phase II/CET-focused), code examples for loading configuration, best practices, and troubleshooting guide. Total: 397 lines of documentation.
 
 ## 3. Pydantic Data Models
 

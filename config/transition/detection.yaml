@@ -1,0 +1,310 @@
+# Transition Detection Configuration
+# Scoring weights, thresholds, and detection parameters for SBIR transition detection
+
+transition_detection:
+  # Global detection parameters
+  enabled: true
+
+  # Timing window for transition detection (months after award completion)
+  timing_window:
+    min_months: 0        # Earliest transition (immediate)
+    max_months: 24       # Latest transition (2 years after completion)
+    default_months: 24   # Default window for queries
+
+  # Batch processing configuration
+  batch_size: 1000       # Number of awards to process per batch
+  chunk_size: 10000      # Records per chunk for memory efficiency
+
+  # Base score configuration
+  base_score: 0.15       # Minimum baseline score for any transition
+
+  # Confidence classification thresholds
+  confidence_thresholds:
+    high: 0.85           # High confidence minimum
+    likely: 0.65         # Likely confidence minimum
+    possible: 0.00       # Possible (below likely)
+
+  # Overall score normalization
+  score:
+    normalization: "minmax"  # How to normalize final score (minmax or sigmoid)
+    min_value: 0.0
+    max_value: 1.0
+
+# Scoring signal weights and parameters
+scoring:
+
+  # Agency continuity signal
+  agency_continuity:
+    enabled: true
+    weight: 0.25              # Relative weight in overall score
+    same_agency_bonus: 0.25   # Bonus if same agency
+    cross_service_bonus: 0.125  # Bonus if cross-agency (same dept)
+    different_dept_bonus: 0.05  # Minimal bonus for different department
+
+  # Timing proximity signal (days from award completion to contract start)
+  timing_proximity:
+    enabled: true
+    weight: 0.20
+    windows:
+      - range: [0, 90]        # 0-3 months
+        score: 1.0
+      - range: [91, 365]      # 3-12 months
+        score: 0.75
+      - range: [366, 730]     # 12-24 months
+        score: 0.5
+      - range: [731, 1095]    # 24-36 months (extended window)
+        score: 0.25
+    # Penalty for gaps beyond max window
+    beyond_window_penalty: 0.0
+
+  # Competition type signal
+  competition_type:
+    enabled: true
+    weight: 0.20
+    sole_source_bonus: 0.20
+    limited_competition_bonus: 0.10
+    full_and_open_bonus: 0.0
+    set_aside_bonus: 0.05
+
+  # Patent signal (commercialization indicator)
+  patent_signal:
+    enabled: true
+    weight: 0.15
+    has_patent_bonus: 0.05
+    patent_pre_contract_bonus: 0.03  # Filed before contract
+    patent_topic_match_bonus: 0.02   # TF-IDF similarity ≥0.7
+    patent_similarity_threshold: 0.7
+
+  # CET area alignment signal
+  cet_alignment:
+    enabled: true
+    weight: 0.10
+    same_cet_area_bonus: 0.05
+    related_cet_area_bonus: 0.02
+
+  # Vendor match quality signal
+  vendor_match:
+    enabled: true
+    weight: 0.10
+    exact_uei_match: 1.0      # Perfect match on UEI
+    exact_cage_match: 0.95    # Defense CAGE code match
+    exact_duns_match: 0.90    # Legacy DUNS match
+    fuzzy_name_match: 0.80    # Fuzzy name match threshold
+    address_match: 0.70       # Address-based fallback
+
+# Vendor matching configuration
+vendor_matching:
+  enabled: true
+
+  # Matching order (priority)
+  priority:
+    - "uei"        # SAM.gov Unique Entity ID (highest priority)
+    - "cage"       # Defense CAGE code
+    - "duns"       # Dun & Bradstreet number
+    - "fuzzy_name" # Fuzzy company name matching
+
+  # Fuzzy matching parameters
+  fuzzy_matching:
+    enabled: true
+    threshold: 0.85          # Primary fuzzy match threshold
+    secondary_threshold: 0.70  # Secondary fuzzy match threshold
+    algorithm: "token_set_ratio"  # rapidfuzz algorithm
+
+  # Name normalization
+  name_normalization:
+    uppercase: true
+    remove_special_chars: true
+    remove_suffixes: ["Inc", "LLC", "Corp", "Ltd", "Inc.", "LLC.", "Corp.", "Ltd."]
+    collapse_whitespace: true
+
+  # Cross-walk persistence
+  crosswalk:
+    enabled: true
+    persist_format: "parquet"  # jsonl or parquet
+    persist_path: "data/processed/vendor_crosswalk.parquet"
+
+# Contract ingestion configuration
+contracts:
+  enabled: true
+
+  # USAspending data configuration
+  usaspending:
+    source: "usaspending_dump"  # csv, database, api
+    compression: "gzip"
+    encoding: "utf-8"
+    batch_size: 100000          # Contracts per batch
+
+  # Contract field mappings and validation
+  fields:
+    # Required fields for transition detection
+    required:
+      - "piid"                  # Procurement Instrument ID
+      - "vendor_name"           # Vendor/contractor name
+      - "contract_start_date"
+      - "contract_end_date"
+      - "contract_value"
+      - "agency_code"
+      - "agency_name"
+      - "competition_type"
+
+    # Identifiers to extract
+    identifiers:
+      - "uei"
+      - "cage_code"
+      - "duns_number"
+
+  # Contract quality thresholds
+  quality:
+    completeness_threshold: 0.90  # 90% field completeness required
+    min_contract_value: 1000      # Minimum $1000 contract
+    max_contract_value: 1000000000  # Maximum $1B contract
+    valid_years: [2015, 2025]     # Valid contract date range
+
+# Award configuration
+awards:
+  enabled: true
+
+  # Award completion date requirements
+  completion:
+    use_phase_completion_date: true  # Use phase end date vs award date
+    required_fields:
+      - "award_completion_date"
+      - "award_amount"
+      - "program"  # Phase I/II/III
+
+  # Phase-specific parameters
+  phases:
+    phase_1:
+      typical_duration_months: 6
+      typical_award_amount_min: 50000
+      typical_award_amount_max: 225000
+      include_in_detection: true
+
+    phase_2:
+      typical_duration_months: 24
+      typical_award_amount_min: 100000
+      typical_award_amount_max: 750000
+      include_in_detection: true
+
+    phase_3:
+      # Phase III awards are target contracts (commercialization success)
+      typical_duration_months: 24
+      include_in_detection: false  # Phase III is what we're detecting to
+
+# Patent integration configuration
+patents:
+  enabled: true
+
+  # Patent filing date parameters
+  filing:
+    min_date_before_award: 12     # Months before award start
+    max_date_after_award: 60      # Months after award completion
+
+  # Patent-to-company linkage
+  linkage:
+    enabled: true
+    threshold: 0.80               # Fuzzy match threshold
+    use_assignee_matching: true   # Match via assignee name
+
+  # Topic similarity (for patent-contract matching)
+  topic_similarity:
+    enabled: true
+    algorithm: "tfidf"
+    threshold: 0.70
+    min_tokens: 3
+
+# CET (Critical & Emerging Technology) integration
+cet_integration:
+  enabled: true
+
+  # CET classification parameters
+  classification:
+    use_award_classification: true   # Use award's CET classification
+    infer_from_contract: true        # Infer CET from contract description
+
+  # CET area alignment scoring
+  alignment:
+    enabled: true
+    exact_match_bonus: 0.05
+    related_area_bonus: 0.02
+
+  # CET areas to track
+  high_priority_areas:
+    - "AI/Machine Learning"
+    - "Quantum Computing"
+    - "Advanced Manufacturing"
+    - "Biotechnology"
+    - "Semiconductors"
+    - "5G/6G Communications"
+    - "Hypersonics"
+
+# Data quality and validation
+data_quality:
+
+  # Detection validation thresholds
+  detection:
+    min_success_rate: 0.99       # 99% of awards should be processable
+    min_vendor_match_rate: 0.90  # 90% vendor match target
+
+  # Processing validation
+  processing:
+    max_error_percentage: 1.0    # Fail if >1% of records have errors
+    warn_threshold_percentage: 0.5
+
+  # Score distribution validation
+  score_validation:
+    expected_high_confidence_rate: 0.20  # Expect ~20% high confidence
+    expected_likely_rate: 0.35           # Expect ~35% likely
+    expected_possible_rate: 0.45         # Expect ~45% possible
+
+# Performance optimization
+performance:
+
+  # Memory management
+  memory:
+    duckdb_cache_mb: 2048        # DuckDB memory allocation
+    vendor_resolver_cache_size: 10000  # Cache vendor lookups
+
+  # Processing parallelization
+  parallelization:
+    enabled: true
+    num_workers: 4               # Parallel workers
+    batch_per_worker: 250        # Batches per worker
+
+  # Caching configuration
+  caching:
+    enabled: true
+    vendor_resolutions: true
+    patent_lookups: true
+    award_to_company_links: true
+
+# Output configuration
+output:
+
+  # Detection results format
+  format: "parquet"              # parquet, csv, or both
+
+  # Output paths
+  paths:
+    detections: "data/processed/transition_detections.parquet"
+    evidence: "data/processed/transition_evidence.parquet"
+    analytics: "data/processed/transition_analytics.parquet"
+
+  # Neo4j loading
+  neo4j:
+    enabled: true
+    batch_size: 1000
+    create_relationships: true
+    store_evidence_bundle: true   # Store full evidence as JSON
+
+# Logging and monitoring
+logging:
+  level: "INFO"
+  format: "json"
+
+  # Metrics collection
+  metrics:
+    enabled: true
+    track_by_agency: true
+    track_by_cet_area: true
+    track_by_phase: true

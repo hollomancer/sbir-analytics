@@ -1,0 +1,403 @@
+# Transition Detection Presets
+# Pre-configured detection modes for different use cases and analysis needs
+
+presets:
+
+  # High-Precision Mode: Conservative detection with strict thresholds
+  high_precision:
+    name: "High Precision"
+    description: "Conservative detection - only high-confidence transitions with strict vendor matching"
+    use_case: "Production reporting and official transition metrics"
+
+    # Scoring overrides
+    scoring:
+      base_score: 0.20  # Slightly higher base
+      weights:
+        agency_continuity: 0.30
+        timing_proximity: 0.25
+        competition_type: 0.20
+        patent_signal: 0.15
+        cet_alignment: 0.10
+        text_similarity: 0.0
+
+      timing_proximity:
+        windows:
+          - range: [0, 90]
+            score: 1.0
+          - range: [91, 180]
+            score: 0.85
+          - range: [181, 365]
+            score: 0.70
+          - range: [366, 730]
+            score: 0.0  # Cut off after 12 months
+
+    # Vendor matching overrides
+    vendor_matching:
+      fuzzy_threshold: 0.95  # Very strict fuzzy matching
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        # Exclude fuzzy matching
+
+    # Confidence thresholds
+    confidence:
+      high: 0.90  # Raise threshold
+      likely: 0.75
+      possible: 0.50
+
+    # Timing window
+    timing_window:
+      max_months_after_completion: 12  # Tighter 12-month window
+
+    # Enabled signals (exclude text similarity)
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+
+    disabled_signals:
+      - "text_similarity"
+      - "cet_alignment"  # Optional in high-precision
+
+    # Output filtering
+    output:
+      min_confidence_level: "high"  # Only output high-confidence
+      include_evidence: true
+      include_audit_trail: true
+
+
+  # Balanced Mode: Default configuration (recommended)
+  balanced:
+    name: "Balanced"
+    description: "Balanced detection - reasonable precision and recall for most use cases"
+    use_case: "General transition analysis and portfolio assessment"
+
+    # Scoring (use defaults from detection.yaml)
+    scoring:
+      base_score: 0.15
+      weights:
+        agency_continuity: 0.25
+        timing_proximity: 0.20
+        competition_type: 0.15
+        patent_signal: 0.10
+        cet_alignment: 0.05
+        text_similarity: 0.10
+
+      timing_proximity:
+        windows:
+          - range: [0, 90]
+            score: 1.0
+          - range: [91, 180]
+            score: 0.85
+          - range: [181, 365]
+            score: 0.75
+          - range: [366, 730]
+            score: 0.50
+
+    # Vendor matching (standard thresholds)
+    vendor_matching:
+      fuzzy_threshold: 0.85
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        - "fuzzy_name"
+
+    # Confidence thresholds (standard)
+    confidence:
+      high: 0.85
+      likely: 0.65
+      possible: 0.0
+
+    # Timing window (standard 24 months)
+    timing_window:
+      max_months_after_completion: 24
+
+    # Enable all signals
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+      - "cet_alignment"
+
+    disabled_signals:
+      - "text_similarity"  # Expensive, optional
+
+    # Output all confidence levels
+    output:
+      min_confidence_level: "possible"
+      include_evidence: true
+      include_audit_trail: false
+
+
+  # Broad Discovery Mode: Exploratory detection
+  broad_discovery:
+    name: "Broad Discovery"
+    description: "Exploratory detection - find all potential transitions with lower thresholds"
+    use_case: "Research, exploratory analysis, identifying edge cases"
+
+    # Lower scoring thresholds
+    scoring:
+      base_score: 0.10  # Lower base score
+      weights:
+        agency_continuity: 0.20
+        timing_proximity: 0.20
+        competition_type: 0.15
+        patent_signal: 0.15
+        cet_alignment: 0.05
+        text_similarity: 0.25  # Higher weight on text similarity
+
+      timing_proximity:
+        windows:
+          - range: [0, 90]
+            score: 1.0
+          - range: [91, 180]
+            score: 0.80
+          - range: [181, 365]
+            score: 0.70
+          - range: [366, 730]
+            score: 0.50
+          - range: [731, 1095]
+            score: 0.25  # Extended window to 36 months
+
+    # Relaxed vendor matching
+    vendor_matching:
+      fuzzy_threshold: 0.75  # Lower threshold
+      fuzzy_secondary_threshold: 0.65
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        - "fuzzy_name"
+
+    # Lower confidence thresholds
+    confidence:
+      high: 0.75
+      likely: 0.55
+      possible: 0.0
+
+    # Extended timing window
+    timing_window:
+      max_months_after_completion: 36  # 3-year window
+
+    # Enable all signals including text similarity
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+      - "cet_alignment"
+      - "text_similarity"
+
+    disabled_signals: []
+
+    # Output all results
+    output:
+      min_confidence_level: "possible"
+      include_evidence: true
+      include_audit_trail: true
+      include_all_candidates: true  # Include non-matching records
+
+
+  # Research Mode: Maximum detail for analysis
+  research:
+    name: "Research"
+    description: "Research mode - capture all signals and detailed evidence for analysis"
+    use_case: "Academic research, algorithm development, comprehensive analysis"
+
+    # All signals enabled with equal weighting
+    scoring:
+      base_score: 0.0  # No base score bias
+      weights:
+        agency_continuity: 0.20
+        timing_proximity: 0.20
+        competition_type: 0.20
+        patent_signal: 0.20
+        cet_alignment: 0.20
+        text_similarity: 0.0  # Handled separately
+
+      # Fine-grained timing windows
+      timing_proximity:
+        windows:
+          - range: [0, 30]
+            score: 1.0
+          - range: [31, 60]
+            score: 0.95
+          - range: [61, 90]
+            score: 0.90
+          - range: [91, 180]
+            score: 0.75
+          - range: [181, 365]
+            score: 0.65
+          - range: [366, 730]
+            score: 0.45
+          - range: [731, 1095]
+            score: 0.25
+          - range: [1096, 1460]
+            score: 0.10  # Extended to 4 years
+
+    # Very permissive vendor matching
+    vendor_matching:
+      fuzzy_threshold: 0.70
+      fuzzy_secondary_threshold: 0.60
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        - "fuzzy_name"
+
+    # No confidence filtering
+    confidence:
+      high: 0.0  # No threshold filtering
+      likely: 0.0
+      possible: 0.0
+
+    # Extended timing window
+    timing_window:
+      max_months_after_completion: 48  # 4-year window
+
+    # All signals enabled
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+      - "cet_alignment"
+      - "text_similarity"
+
+    disabled_signals: []
+
+    # Detailed output
+    output:
+      min_confidence_level: "possible"
+      include_evidence: true
+      include_audit_trail: true
+      include_scoring_breakdown: true
+      include_all_signals: true
+      include_non_matching: true
+      include_candidate_contracts: true
+
+
+  # Phase II Focus: Optimized for Phase II awards (highest transition potential)
+  phase_2_focus:
+    name: "Phase II Focus"
+    description: "Optimized for Phase II awards - target highest-value SBIR investments"
+    use_case: "Phase II portfolio analysis and commercialization tracking"
+
+    scoring:
+      base_score: 0.15
+      weights:
+        agency_continuity: 0.30  # Agencies continue funding
+        timing_proximity: 0.25
+        competition_type: 0.20  # Sole source more common post-Phase II
+        patent_signal: 0.15  # Phase II results in more IP
+        cet_alignment: 0.10
+        text_similarity: 0.0
+
+    # Standard vendor matching
+    vendor_matching:
+      fuzzy_threshold: 0.85
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        - "fuzzy_name"
+
+    # Phase II specific timing (shorter window, tighter matching)
+    timing_window:
+      max_months_after_completion: 24
+      description: "Phase II completion typically 24 months after start"
+
+    # Phase II specific signals
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+      - "cet_alignment"
+
+    disabled_signals:
+      - "text_similarity"
+
+    # Filter to Phase II only
+    award_filter:
+      phases: ["Phase II"]
+      min_award_amount: 100000
+      max_award_amount: 750000
+
+    output:
+      min_confidence_level: "likely"
+      include_evidence: true
+      include_audit_trail: false
+
+
+  # CET-Focused Mode: Emphasis on technology area alignment
+  cet_focused:
+    name: "CET Focused"
+    description: "CET-focused detection - emphasize technology area alignment"
+    use_case: "Critical technology transition analysis and CET portfolio assessment"
+
+    scoring:
+      base_score: 0.15
+      weights:
+        agency_continuity: 0.20
+        timing_proximity: 0.20
+        competition_type: 0.15
+        patent_signal: 0.15
+        cet_alignment: 0.30  # Much higher CET weight
+        text_similarity: 0.0
+
+    # Vendor matching
+    vendor_matching:
+      fuzzy_threshold: 0.85
+      priority:
+        - "uei"
+        - "cage"
+        - "duns"
+        - "fuzzy_name"
+
+    # Standard timing
+    timing_window:
+      max_months_after_completion: 24
+
+    # All signals enabled
+    enabled_signals:
+      - "agency_continuity"
+      - "timing_proximity"
+      - "competition_type"
+      - "patent_signal"
+      - "cet_alignment"
+
+    disabled_signals:
+      - "text_similarity"
+
+    # Filter to high-priority CET areas
+    cet_filter:
+      enabled: true
+      high_priority_only: true
+
+    output:
+      min_confidence_level: "likely"
+      include_evidence: true
+      partition_by: ["cet_area", "confidence"]
+
+# Default preset selection
+default_preset: "balanced"
+
+# Preset metadata for UI/documentation
+metadata:
+  version: "1.0"
+  last_updated: "2025-10-26"
+  author: "SBIR ETL Team"
+
+  # Preset recommendations
+  recommendations:
+    production: "high_precision"
+    analysis: "balanced"
+    exploration: "broad_discovery"
+    research: "research"
+    phase_2_analysis: "phase_2_focus"
+    cet_analysis: "cet_focused"
