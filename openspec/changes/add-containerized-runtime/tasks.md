@@ -30,10 +30,13 @@ code
 
 - [ ] 3.1 Redesign `docker-compose.yml` to declare services: `neo4j`, `dagster-webserver`, `dagster-daemon`, `etl-runner`, and `duckdb` (tools profile).
 - [ ] 3.2 Add named volumes for Neo4j data/logs/import and for persisted metrics/log directories.
-- [ ] 3.3 Introduce `docker/docker-compose.dev.yml` that bind-mounts `src/`, `config/`, `data/`, `logs/`, and `metrics/`, enables the `dev` profile, and injects `watchfiles` reloader when running `dagster dev` locally.
-- [ ] 3.4 Add `docker/docker-compose.test.yml` that runs `pytest` inside the container with an ephemeral Neo4j instance for CI.
+- [x] 3.3 Introduce `docker/docker-compose.dev.yml` that bind-mounts `src/`, `config/`, `data/`, `logs/`, and `metrics/`, enables the `dev` profile, and injects `watchfiles` reloader when running `dagster dev` locally.
+  - Notes: Implemented `docker/docker-compose.dev.yml` which provides developer-friendly bind-mounts for `src`, `config`, `data`, `logs`, and `reports`. The compose file supports a `dev` profile and the runtime entrypoint honors an `ENABLE_WATCHFILES` environment flag to enable hot-reload behavior for local development.
+- [x] 3.4 Add `docker/docker-compose.test.yml` that runs `pytest` inside the container with an ephemeral Neo4j instance for CI.
+  - Notes: Implemented `docker/docker-compose.test.yml` which defines an ephemeral Neo4j service and an `app` test service that runs `pytest` using the built image. The compose file is intended for CI usage and references the `sbir-etl:ci-${GITHUB_SHA}` image produced by the CI build script. Verified basic behavior via the Makefile `docker-test` target.
 - [ ] 3.5 Configure `depends_on` with `condition: service_healthy` and add HTTP/Bolt health checks for each service.
-- [ ] 3.6 Document compose targets via `Makefile` (`make docker-up`, `make docker-down`, `make docker-test`).
+- [x] 3.6 Document compose targets via `Makefile` (`make docker-up`, `make docker-down`, `make docker-test`).
+  - Notes: Added Makefile targets to support building, bringing up the dev stack, running containerized tests, tearing down stacks, and tailing logs. See top-level `Makefile` for `docker-build`, `docker-up-dev`, `docker-test`, `docker-down`, and helper targets.
 
 ## 4. Configuration & Secrets Management
 
@@ -46,7 +49,8 @@ code
 
 ## 5. CI, Testing, and Publish Workflow
 
-- [ ] 5.1 Add `scripts/ci/build_container.sh` that builds the image with BuildKit cache and pushes to the local registry when `PUBLISH=1`.
+- [x] 5.1 Add `scripts/ci/build_container.sh` that builds the image with BuildKit cache and pushes to the local registry when `PUBLISH=1`.
+  - Notes: Implemented `scripts/ci/build_container.sh`. The script builds with Docker Buildx, supports cache-from/cache-to flags, allows single-platform `--load` for local testing, and can `--push` to a registry when `PUBLISH=1`. It is intended for use in CI to produce `sbir-etl:<tag>` artifacts.
 - [ ] 5.2 Update `.github/workflows/ci.yml` (or create `container.yml`) to run: `docker build`, `docker compose -f docker/docker-compose.test.yml up --abort-on-container-exit`, and upload logs on failure.
 - [ ] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
 - [ ] 5.4 Document how to tag and push images (e.g., `ghcr.io/org/sbir-etl:<sha>`) and where credentials live.
