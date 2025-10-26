@@ -108,9 +108,18 @@ class SbirAward(BaseModel):
     @field_validator("zip")
     @classmethod
     def validate_zip(cls, v: Optional[str]) -> Optional[str]:
-        """Validate ZIP code format if provided."""
-        if v and not (len(v) == 5 or len(v) == 10):  # 5 digits or ZIP+4 (12345-6789)
-            raise ValueError(f"ZIP must be 5 or 10 characters (ZIP+4), got '{v}'")
+        """Validate ZIP code format if provided.
+
+        Accepts a 5-digit ZIP or a 9-digit ZIP+4. For validation this strips any
+        non-digit characters and ensures exactly 5 or 9 digits remain. The
+        original formatting is preserved when the input is valid.
+        """
+        if v:
+            digits = "".join(ch for ch in v if ch.isdigit())
+            if len(digits) not in (5, 9):
+                raise ValueError(
+                    f"ZIP must contain 5 or 9 digits after removing separators, got '{v}'"
+                )
         return v
 
     @field_validator("uei")
