@@ -35,6 +35,11 @@ class Award(BaseModel):
     company_state: str | None = Field(None, description="Company state from SAM.gov")
     company_zip: str | None = Field(None, description="Company ZIP code from SAM.gov")
 
+    # Contact / personnel
+    contact_name: str | None = Field(None, description="Primary contact name")
+    contact_email: str | None = Field(None, description="Primary contact email")
+    contact_phone: str | None = Field(None, description="Primary contact phone")
+
     # USAspending enrichment
     usaspending_id: str | None = Field(None, description="USAspending.gov award ID")
     fiscal_year: int | None = Field(None, description="Fiscal year of award")
@@ -119,5 +124,10 @@ class RawAward(BaseModel):
     contract: str | None = None
     abstract: str | None = None
     keywords: str | None = None
+
+    # Contact / personnel (raw)
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
 
     model_config = ConfigDict(validate_assignment=True)

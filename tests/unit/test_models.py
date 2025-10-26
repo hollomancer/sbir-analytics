@@ -88,6 +88,62 @@ class TestAwardModel:
         )
         assert award.phase == "I"
 
+    def test_valid_uei_and_duns(self):
+        """Test that UEI and DUNS are accepted and normalized."""
+        award = Award(
+            award_id="A-UEI-DUNS",
+            company_name="UEI Company",
+            award_amount=50000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_uei="ABCDEF123456",
+            company_duns="123-456-789",
+        )
+        # UEI should be stored uppercase and unchanged if valid
+        assert award.company_uei == "ABCDEF123456"
+        # DUNS should be normalized to digits only
+        assert award.company_duns == "123456789"
+
+    def test_invalid_uei(self):
+        """Short or non-alphanumeric UEI should raise."""
+        with pytest.raises(
+            ValueError, match="Company UEI must be a 12-character alphanumeric string"
+        ):
+            Award(
+                award_id="A-BAD-UEI",
+                company_name="Bad UEI Co",
+                award_amount=10000.0,
+                award_date=date(2023, 1, 1),
+                program="SBIR",
+                company_uei="SHORT",
+            )
+
+    def test_invalid_duns(self):
+        """DUNS with wrong digit count should raise."""
+        with pytest.raises(ValueError, match="DUNS must contain exactly 9 digits"):
+            Award(
+                award_id="A-BAD-DUNS",
+                company_name="Bad DUNS Co",
+                award_amount=10000.0,
+                award_date=date(2023, 1, 1),
+                program="SBIR",
+                company_duns="12-345",
+            )
+
+    def test_contact_fields(self):
+        """Contact email and phone should be stored as provided."""
+        award = Award(
+            award_id="A-CONTACT",
+            company_name="Contact Co",
+            award_amount=75000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            contact_email="user@example.com",
+            contact_phone="555-1234",
+        )
+        assert award.contact_email == "user@example.com"
+        assert award.contact_phone == "555-1234"
+
 
 class TestCompanyModel:
     """Test Company model validation."""
