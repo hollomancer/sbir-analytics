@@ -145,6 +145,44 @@ env-check:
 	fi
 
 # ---------------------------
+# Neo4j helpers
+# ---------------------------
+
+neo4j-up: env-check
+	@echo "Starting Neo4j (profile neo4j) using docker/neo4j.compose.override.yml"
+	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
+	@echo "Neo4j started (give it a few seconds to become healthy)"
+
+neo4j-down:
+	@echo "Stopping Neo4j (profile neo4j)"
+	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans --volumes
+
+neo4j-reset: neo4j-down
+	@echo "Resetting Neo4j named volumes (neo4j_data, neo4j_logs, neo4j_import)"
+	-@docker volume rm neo4j_data neo4j_logs neo4j_import 2>/dev/null || true
+	@echo "Volumes removed (if they existed). Starting fresh Neo4j..."
+	@$(MAKE) neo4j-up
+
+neo4j-backup:
+	@echo "Running Neo4j backup script"
+	@mkdir -p ${BACKUP_DIR:-backups/neo4j} || true
+	@BACKUP_DIR=${BACKUP_DIR:-backups/neo4j} DB_NAME=${DB_NAME:-neo4j} ${SHELL} scripts/neo4j/backup.sh
+
+neo4j-restore:
+	@if [ -z "${BACKUP_PATH:-}" ]; then \
+	  echo "Please provide BACKUP_PATH=/path/to/dump to restore"; exit 2; \
+	fi
+	@echo "Restoring Neo4j from ${BACKUP_PATH}"
+	@${SHELL} scripts/neo4j/restore.sh --backup-path "${BACKUP_PATH}"
+
+neo4j-check:
+	@echo "Running Neo4j health check"
+	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j run --rm neo4j sh -c "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"
+	@echo "Neo4j health check completed (exit code 0 indicates healthy)"
+
+.PHONY: neo4j-up neo4j-down neo4j-reset neo4j-backup neo4j-restore neo4j-check
+
+# ---------------------------
 # Convenience aliases
 # ---------------------------
 
