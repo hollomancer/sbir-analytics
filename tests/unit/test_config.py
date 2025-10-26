@@ -89,9 +89,11 @@ class TestApplyEnvOverrides:
     """Test environment variable override application."""
 
     def test_no_env_vars(self):
-        """Test with no environment variables."""
+        """Test with no SBIR_ETL environment variables."""
         config = {"pipeline": {"name": "test"}}
-        result = _apply_env_overrides(config)
+        sanitized = {k: v for k, v in os.environ.items() if not k.startswith("SBIR_ETL__")}
+        with patch.dict(os.environ, sanitized, clear=True):
+            result = _apply_env_overrides(config)
         assert result == config
 
     @patch.dict(os.environ, {"SBIR_ETL__PIPELINE__NAME": "overridden"})
