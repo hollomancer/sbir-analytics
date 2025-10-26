@@ -38,6 +38,9 @@ services:
     environment:
       - ENVIRONMENT=test
       - PYTHONPATH=/app
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USERNAME=${NEO4J_USER}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
       # Provide SBIR_ETL connection settings pointing at the test Neo4j service
       - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j:7687
       - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER}
