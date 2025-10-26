@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Sequence
+from typing import Optional
 
 import pandas as pd
 
@@ -36,6 +37,14 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
     raise ImportError(
         "rapidfuzz is required for the company enricher. Install via `pip install rapidfuzz`."
     ) from e
+
+
+def _coerce_int(value: object) -> Optional[int]:
+    """Best-effort conversion to int without propagating errors."""
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
 
 
 # -------------------------

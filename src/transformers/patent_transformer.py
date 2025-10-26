@@ -134,6 +134,77 @@ class PatentAssignmentTransformer:
         return s.strip()
 
     @staticmethod
+    def _parse_address(
+        text: Optional[Any],
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """
+        Heuristic address parser for assignee/assignor free-text address fields.
+
+        Returns a tuple: (street, city, state, postal_code, country).
+        This is intentionally lightweight: uses simple splits and patterns to extract common US-style addresses.
+        For robust parsing consider integrating libpostal or a dedicated address parsing library.
+        """
+        if text is None:
+            return None, None, None, None, None
+        s = str(text).strip()
+        if not s:
+            return None, None, None, None, None
+
+        # Attempt quick heuristics:
+        # - Split on commas and assign segments: street, city, state + zip, country
+        parts = [p.strip() for p in s.split(",") if p.strip()]
+        street = city = state = postal = country = None
+
+        if len(parts) == 1:
+            # Single-line address; try to extract ZIP-like token (5 digits) and state (2 letters)
+            tokens = parts[0].split()
+            # Look for 5-digit zip
+            zip_token = next(
+                (t for t in reversed(tokens) if re.fullmatch(r"\d{5}(-\d{4})?", t)), None
+            )
+            if zip_token:
+                postal = zip_token
+                # remove zip token from tokens
+                tokens = [t for t in tokens if t != zip_token]
+            # try last token as state abbreviation (2 letters)
+            if tokens:
+                last = tokens[-1]
+                if re.fullmatch(r"[A-Za-z]{2}", last):
+                    state = last.upper()
+                    tokens = tokens[:-1]
+            street = " ".join(tokens) if tokens else parts[0]
+        else:
+            # Common case: "123 Main St, Springfield, IL 62704, USA"
+            street = parts[0] if len(parts) >= 1 else None
+            if len(parts) >= 2:
+                city = parts[1]
+            if len(parts) >= 3:
+                third = parts[2]
+                # third often contains state + postal
+                m = re.search(r"([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)", third)
+                if m:
+                    state = m.group(1).upper()
+                    postal = m.group(2)
+                else:
+                    # try to split numeric zip from trailing token
+                    tok = third.split()
+                    if tok and re.fullmatch(r"\d{5}(-\d{4})?", tok[-1]):
+                        postal = tok[-1]
+                        if len(tok) >= 2 and re.fullmatch(r"[A-Za-z]{2}", tok[-2]):
+                            state = tok[-2].upper()
+            if len(parts) >= 4:
+                country = parts[3]
+
+        # Normalize empty strings to None
+        def _clean(x):
+            if x is None:
+                return None
+            xx = str(x).strip()
+            return xx if xx else None
+
+        return _clean(street), _clean(city), _clean(state), _clean(postal), _clean(country)
+
+    @staticmethod
     def _parse_date(value: Optional[Any]) -> Optional[date]:
         # Delegate to models' parsing where possible; keep simple ISO acceptance here
         if value is None or value == "":
@@ -286,14 +357,32 @@ class PatentAssignmentTransformer:
             doc = {"_error": f"document_build_failed: {e}"}
 
         try:
+            # Try to parse a combined address if explicit street/city/state not provided
+            street = _get("assignee_street")
+            city = _get("assignee_city")
+            state = _get("assignee_state")
+            postal = _get("assignee_postal")
+            country = _get("assignee_country")
+            # If any of the main address pieces are missing, attempt to parse from `assignee_address` or `assignee_full_address`
+            if not any([street, city, state, postal, country]):
+                addr_text = (
+                    _get("assignee_address")
+                    or _get("assignee_full_address")
+                    or _get("assignee_addr")
+                )
+                if addr_text:
+                    parsed = self._parse_address(addr_text)
+                    if parsed:
+                        street, city, state, postal, country = parsed
+
             assignee = PatentAssignee(
                 rf_id=_get("assignee_rf_id"),
                 name=self._normalize_name(_get("assignee_name")),
-                street=_get("assignee_street"),
-                city=_get("assignee_city"),
-                state=_get("assignee_state"),
-                postal_code=_get("assignee_postal"),
-                country=_get("assignee_country"),
+                street=street,
+                city=city,
+                state=state,
+                postal_code=postal,
+                country=country,
                 uei=self._normalize_identifier(_get("assignee_uei")),
                 cage=self._normalize_identifier(_get("assignee_cage")),
                 duns=self._normalize_identifier(_get("assignee_duns")),
