@@ -4,10 +4,14 @@
 
 - [x] 1.1 Complete USPTO data structure analysis script
   - Notes: Added `scripts/uspto/analyze_uspto_structure.py` which samples USPTO .dta/.csv/.parquet files, produces per-file JSON summaries and a Markdown run summary, and writes reports to `reports/uspto-structure/`. The script was run locally to generate initial findings (see reports directory).
-- [ ] 1.2 Document table schemas and relationships in detail
-- [ ] 1.3 Generate data quality baseline report (completeness, duplicates, missing values)
-- [ ] 1.4 Design Neo4j graph schema for patents and assignments
-- [ ] 1.5 Map USPTO fields to graph node/relationship properties
+- [x] 1.2 Document table schemas and relationships in detail
+  - Notes: Created `docs/schemas/patent-assignment-schema.md` with comprehensive documentation of all five USPTO tables (assignment, documentid, assignee, assignor, assignment_conveyance), their schemas, relationships, data quality issues, and SBIR integration strategy.
+- [x] 1.3 Generate data quality baseline report (completeness, duplicates, missing values)
+  - Notes: Generated `docs/uspto_data_quality_baseline.md` with detailed analysis of 100-row sample per table, including completeness metrics (97.6% aggregate), primary key uniqueness (100%), critical issues (30% NULL grant_doc_num), and recommendations for ETL pipeline.
+- [x] 1.4 Design Neo4j graph schema for patents and assignments
+  - Notes: Created `docs/schemas/patent-neo4j-schema.md` with complete Neo4j data model: 5 node types (Patent, PatentAssignment, PatentEntity, Award, Company), 6 relationship types (ASSIGNED_VIA, ASSIGNED_TO, ASSIGNED_FROM, FUNDED_BY, OWNS, CHAIN_OF), with indexes, constraints, and example queries for patent chains and SBIR linkage.
+- [x] 1.5 Map USPTO fields to graph node/relationship properties
+  - Notes: Created `docs/schemas/patent-field-mapping.md` with field-by-field mapping from USPTO Stata tables to Neo4j properties, including transformation logic (name normalization, date parsing, address standardization), validation rules, and implementation checklist.
 
 ## 2. Pydantic Models
 
