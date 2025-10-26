@@ -89,7 +89,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src --cov-report=term-missing --cov-report=html"
+addopts = "-v --cov=src --cov-report=term-missing --cov-report=html:/tmp/htmlcov"
 
 [build-system]
 requires = ["poetry-core"]
