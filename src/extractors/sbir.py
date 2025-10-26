@@ -72,111 +72,149 @@ class SbirDuckDBExtractor:
             delimiter: CSV delimiter
             header: Whether CSV has header row
             encoding: File encoding
-def import_csv(self, use_incremental: bool = False, chunk_size: Optional[int] = None) -> dict:
-    """
-    Import SBIR CSV into DuckDB table.
 
-    Adds:
-    - optional incremental import (pandas chunked)
-    - column validation (expects 42 columns)
-    - extraction start/end timestamps in returned metadata
+        Returns:
+            Dictionary with import metadata (record count, duration, etc.)
+        """
+        import time
+        from datetime import datetime
 
-    Returns:
-        Dictionary with import metadata (record count, duration, etc.)
-    """
-    import time
-    from datetime import datetime
+        logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
 
-    logger.info(f"Importing CSV to DuckDB table '{self.table_name}'")
+        if not self.csv_path.exists():
+            raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
 
-    if not self.csv_path.exists():
-        raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
+        # Record extraction start timestamp (UTC)
+        extraction_start = datetime.utcnow().isoformat()
 
-    # Record extraction start timestamp (UTC)
-    extraction_start = datetime.utcnow().isoformat()
+        # Get file size (MB)
+        file_size_mb = self.csv_path.stat().st_size / (1024 * 1024)
 
-    # Get file size
-    file_size_mb = self.csv_path.stat().st_size / (1024 * 1024)
+        start_time = time.time()
 
-    start_time = time.time()
-
-    # Import CSV to DuckDB (either incremental or fast native import)
-    if use_incremental:
-        batch = chunk_size or 10000
-        success = self.duckdb_client.import_csv_incremental(
-            csv_path=self.csv_path,
-            table_name=self.table_name,
-            batch_size=batch,
-            delimiter=",",
-            header=True,
-            encoding="utf-8",
-        )
-    else:
-        success = self.duckdb_client.import_csv(
-            csv_path=self.csv_path,
-            table_name=self.table_name,
-            delimiter=",",
-            header=True,
-            encoding="utf-8",
-        )
-
-    if not success:
-        raise RuntimeError(f"Failed to import CSV to DuckDB")
-
-    import_duration = time.time() - start_time
-
-    # Get table info
-    table_info = self.duckdb_client.get_table_info(self.table_name)
-    row_count = table_info.get("row_count", 0)
-    columns_meta = table_info.get("columns", [])
-    # columns_meta may be a list of dicts from DESCRIBE; extract names if present
-    columns = []
-    for c in columns_meta:
-        if isinstance(c, dict):
-            # try common keys
-            if "column_name" in c:
-                columns.append(c["column_name"])
-            elif "name" in c:
-                columns.append(c["name"])
-            else:
-                # fallback: convert whole dict to string
-                columns.append(str(c))
+        # Import CSV to DuckDB (either incremental or fast native import)
+        # If the caller explicitly requests incremental, do that first.
+        if incremental:
+            batch = batch_size or 10000
+            success = self.duckdb_client.import_csv_incremental(
+                csv_path=self.csv_path,
+                table_name=self.table_name,
+                batch_size=batch,
+                delimiter=delimiter,
+                header=header,
+                encoding=encoding,
+            )
+            import_duration = time.time() - start_time
         else:
-            columns.append(str(c))
-    column_count = len(columns)
+            # Try native DuckDB import first (fast). If it succeeds but yields
+            # zero rows or an unexpected column count, fall back to incremental import.
+            success = self.duckdb_client.import_csv(
+                csv_path=self.csv_path,
+                table_name=self.table_name,
+                delimiter=delimiter,
+                header=header,
+                encoding=encoding,
+            )
+            import_duration = time.time() - start_time
 
-    # Basic column-count validation: spec mandates 42 columns in SBIR.gov CSV format
-    expected_column_count = 42
-    if column_count != expected_column_count:
-        # Fail fast with clear message listing discovered columns to aid debugging
-        raise RuntimeError(
-            f"CSV import validation failed: expected {expected_column_count} columns, "
-            f"found {column_count}. Columns discovered: {columns}"
-        )
+            # If native import succeeded, verify basic sanity (row count and column count).
+            if success:
+                try:
+                    table_info_check = self.duckdb_client.get_table_info(self.table_name)
+                    row_count_check = int(table_info_check.get("row_count", 0))
+                    columns_meta_check = table_info_check.get("columns", []) or []
+                except Exception:
+                    row_count_check = 0
+                    columns_meta_check = []
 
-    self._imported = True
+                # Extract discovered column names from DESCRIBE-like output
+                discovered_columns = []
+                for c in columns_meta_check:
+                    if isinstance(c, dict):
+                        if "column_name" in c:
+                            discovered_columns.append(c["column_name"])
+                        elif "name" in c:
+                            discovered_columns.append(c["name"])
+                        else:
+                            discovered_columns.append(str(c))
+                    else:
+                        discovered_columns.append(str(c))
 
-    # Record extraction end timestamp (UTC)
-    extraction_end = datetime.utcnow().isoformat()
+                # If native import appears to be wrong (no rows or incorrect column count),
+                # attempt incremental import as a robust fallback.
+                expected_column_count = 42
+                if row_count_check == 0 or len(discovered_columns) != expected_column_count:
+                    logger.warning(
+                        "Native DuckDB CSV import produced unexpected results; falling back to incremental import",
+                        row_count=row_count_check,
+                        discovered_columns_count=len(discovered_columns),
+                    )
+                    # Choose a sensible batch size for the fallback
+                    fallback_batch = batch_size or 10000
 
-    metadata = {
-        "csv_path": str(self.csv_path),
-        "file_size_mb": round(file_size_mb, 2),
-        "table_name": self.table_name,
-        "row_count": row_count,
-        "column_count": column_count,
-        "columns": columns,
-        "import_duration_seconds": round(import_duration, 2),
-        "records_per_second": round(row_count / import_duration) if import_duration > 0 else 0,
-        "used_incremental": bool(use_incremental),
-        "chunk_size": chunk_size or None,
-        "extraction_start_utc": extraction_start,
-        "extraction_end_utc": extraction_end,
-    }
+                    # Try incremental import as a fallback; allow creation of the table if missing.
+                    success = self.duckdb_client.import_csv_incremental(
+                        csv_path=self.csv_path,
+                        table_name=self.table_name,
+                        batch_size=fallback_batch,
+                        delimiter=delimiter,
+                        header=header,
+                        encoding=encoding,
+                        create_table_if_missing=True,
+                    )
 
-    logger.info(f"CSV import complete", **metadata)
+        # Get table info
+        table_info = self.duckdb_client.get_table_info(self.table_name)
+        row_count = table_info.get("row_count", 0)
+        columns_meta = table_info.get("columns", [])
+        # columns_meta may be a list of dicts from DESCRIBE; extract names if present
+        columns = []
+        for c in columns_meta:
+            if isinstance(c, dict):
+                # try common keys
+                if "column_name" in c:
+                    columns.append(c["column_name"])
+                elif "name" in c:
+                    columns.append(c["name"])
+                else:
+                    # fallback: convert whole dict to string
+                    columns.append(str(c))
+            else:
+                columns.append(str(c))
+        column_count = len(columns)
 
-    return metadata
+        # Basic column-count validation: spec mandates 42 columns in SBIR.gov CSV format
+        expected_column_count = 42
+        if column_count != expected_column_count:
+            # Fail fast with clear message listing discovered columns to aid debugging
+            raise RuntimeError(
+                f"CSV import validation failed: expected {expected_column_count} columns, "
+                f"found {column_count}. Columns discovered: {columns}"
+            )
+
+        self._imported = True
+
+        # Record extraction end timestamp (UTC)
+        extraction_end = datetime.utcnow().isoformat()
+
+        metadata = {
+            "csv_path": str(self.csv_path),
+            "file_size_mb": round(file_size_mb, 2),
+            "table_name": self.table_name,
+            "row_count": row_count,
+            "column_count": column_count,
+            "columns": columns,
+            "import_duration_seconds": round(import_duration, 2),
+            "records_per_second": round(row_count / import_duration) if import_duration > 0 else 0,
+            "used_incremental": bool(incremental),
+            "chunk_size": batch_size or None,
+            "extraction_start_utc": extraction_start,
+            "extraction_end_utc": extraction_end,
+        }
+
+        logger.info(f"CSV import complete", **metadata)
+
+        return metadata
 
     def _ensure_imported(self):
         """Ensure CSV has been imported to DuckDB."""
@@ -235,7 +273,7 @@ def import_csv(self, use_incremental: bool = False, chunk_size: Optional[int] = 
             if start_year is not None:
                 if end_year is None:
                     end_year = start_year
-                base_query = f"SELECT * FROM {self.table_name} WHERE \"Award Year\" BETWEEN {start_year} AND {end_year}"
+                base_query = f'SELECT * FROM {self.table_name} WHERE "Award Year" BETWEEN {start_year} AND {end_year}'
             else:
                 base_query = f"SELECT * FROM {self.table_name}"
 

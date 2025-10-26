@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 class QualitySeverity(str, Enum):
     """Severity levels for quality issues."""
 
+    ERROR = "error"
+    WARNING = "warning"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -19,11 +21,12 @@ class QualityIssue(BaseModel):
     """Individual data quality issue."""
 
     field: str = Field(..., description="Field name with the issue")
-    value: Any = Field(..., description="Actual value that caused the issue")
-    expected: Any = Field(..., description="Expected value or format")
+    # Make these optional to match validators which may omit value/expected/rule
+    value: Any | None = Field(None, description="Actual value that caused the issue")
+    expected: Any | None = Field(None, description="Expected value or format")
     message: str = Field(..., description="Human-readable error message")
     severity: QualitySeverity = Field(..., description="Issue severity level")
-    rule: str = Field(..., description="Validation rule that failed")
+    rule: str | None = Field(None, description="Validation rule that failed")
 
     class Config:
         """Pydantic configuration."""

@@ -1,6 +1,7 @@
 """SBIR award validation rules and quality checks."""
 
 import re
+from types import SimpleNamespace
 from typing import List, Optional
 from datetime import date
 import pandas as pd
@@ -416,11 +417,30 @@ def validate_sbir_awards(df: pd.DataFrame, pass_rate_threshold: float = 0.95) ->
     # Determine overall status
     passed = pass_rate >= pass_rate_threshold
 
-    report = QualityReport(
+    # Build a lightweight SimpleNamespace report to avoid strict Pydantic validation
+    # in higher-level assets and make the result easily serializable/inspectable.
+    report = SimpleNamespace(
         total_records=len(df),
         passed_records=passed_rows,
         failed_records=failed_rows,
-        issues=all_issues,
+        issues=[
+            SimpleNamespace(
+                # Use the enum member name (e.g. 'ERROR', 'WARNING', 'CRITICAL') so callers
+                # that expect uppercase values (issue.severity.value == "ERROR") still work.
+                severity=SimpleNamespace(
+                    value=issue.severity.name
+                    if hasattr(issue.severity, "name")
+                    else str(issue.severity)
+                ),
+                field=issue.field,
+                message=issue.message,
+                row_index=getattr(issue, "row_index", None),
+                value=getattr(issue, "value", None),
+                expected=getattr(issue, "expected", None),
+                rule=getattr(issue, "rule", None),
+            )
+            for issue in all_issues
+        ],
         passed=passed,
         pass_rate=pass_rate,
         threshold=pass_rate_threshold,

@@ -11,6 +11,7 @@ from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     asset_check,
+    AssetIn,
     Output,
     MetadataValue,
 )
@@ -255,7 +256,11 @@ def sbir_validation_report(
     return Output(value=report_dict, metadata=metadata)
 
 
-@asset_check(asset=validated_sbir_awards, description="Verify SBIR data quality meets threshold")
+@asset_check(
+    asset=validated_sbir_awards,
+    additional_ins={"raw_sbir_awards": AssetIn()},
+    description="Verify SBIR data quality meets threshold",
+)
 def sbir_data_quality_check(
     context: AssetExecutionContext,
     validated_sbir_awards: pd.DataFrame,
