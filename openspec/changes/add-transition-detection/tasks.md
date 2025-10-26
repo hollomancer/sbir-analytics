@@ -31,13 +31,13 @@
 
 ## 3. Pydantic Data Models
 
-- [ ] 3.1 Create Transition model in src/models/transition_models.py
-- [ ] 3.2 Create EvidenceBundle model (comprehensive audit trail)
-- [ ] 3.3 Create TransitionSignals models (Agency, Timing, Competition, Patent, CET)
-- [ ] 3.4 Create FederalContract model in src/models/contract_models.py
-- [ ] 3.5 Create VendorMatch model (cross-walk tracking)
-- [ ] 3.6 Create TransitionProfile model (company-level aggregation)
-- [ ] 3.7 Add validation rules for transition models
+- [x] 3.1 Create Transition model in src/models/transition_models.py
+- [x] 3.2 Create EvidenceBundle model (comprehensive audit trail)
+- [x] 3.3 Create TransitionSignals models (Agency, Timing, Competition, Patent, CET)
+- [x] 3.4 Create FederalContract model in src/models/contract_models.py
+- [x] 3.5 Create VendorMatch model (cross-walk tracking)
+- [x] 3.6 Create TransitionProfile model (company-level aggregation)
+- [x] 3.7 Add validation rules for transition models
 
 ## 4. Vendor Resolution Module
 
