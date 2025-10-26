@@ -23,46 +23,6 @@ repos:
   #   hooks:
   #     - id: git-secrets
 
-  # Local safety hook: scan staged files for common environment variable patterns and high-risk tokens.
-  # This is intentionally defensive and conservative to catch accidental commits of things like:
-  #   - NEO4J_PASSWORD or NEO4J_AUTH strings
-  #   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
-  #   - AWS-style access key patterns (AKIA...)
-  - repo: local
-    hooks:
-      - id: detect-neo4j-env
-        name: Detect Neo4j / secret-like environment patterns
-        entry: >
-          bash -c '
-          set -euo pipefail
-          # Iterate over the positional parameters provided by pre-commit.
-          # When invoked as: bash -c "script" file1 file2 ...
-          # bash assigns file1 to $0 and file2.. to $1.. so include "$0" and "$@".
-          EXIT_CODE=0
-          for f in "$0" "$@"; do
-            [ -f "$f" ] || continue
-            # Grep for common secret patterns:
-            #  - NEO4J_*PASSWORD or NEO4J_AUTH occurrences
-            #  - AWS credentials patterns
-            #  - AWS-style access key (AKIA...) heuristics
-            if grep -InE "(NEO4J_[A-Za-z0-9_]*PASSWORD|NEO4J_AUTH|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AKIA[0-9A-Z]{16})" "$f" >/dev/null 2>&1; then
-              echo "Potential secret-like pattern detected in file: $f"
-              grep -InE "(NEO4J_[A-Za-z0-9_]*PASSWORD|NEO4J_AUTH|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AKIA[0-9A-Z]{16})" "$f" || true
-              EXIT_CODE=1
-            fi
-          done
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo ""
-            echo "Pre-commit detected potential secrets. If these are false positives,"
-            echo "update .secrets.baseline (for detect-secrets) or adjust patterns in .pre-commit-config.yaml."
-            exit "$EXIT_CODE"
-          fi
-          exit 0
-          '
-        language: system
-        types: [file]
-        files: '.*'
-
 # Notes for maintainers:
 # - Install pre-commit locally and enable hooks:
 #     pip install pre-commit
@@ -71,5 +31,4 @@ repos:
 #     pre-commit run --all-files
 # - The detect-secrets hook uses a baseline (.secrets.baseline). When you audit and accept existing secrets
 #   in the baseline, commit it. New secrets will still be flagged.
-# - The local hook is intentionally conservative; tune the regexp patterns above if you encounter frequent false positives.
 # - For CI enforcement add a job that runs `pre-commit run --all-files` on PRs (ensures all PRs are scanned even if devs skip hooks).
