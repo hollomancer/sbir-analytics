@@ -24,6 +24,9 @@ class Award(BaseModel):
     abstract: str | None = Field(None, description="Project abstract")
     keywords: str | None = Field(None, description="Project keywords")
 
+    # Identifier fields (may be present in raw input)
+    company_uei: str | None = Field(None, description="Unique Entity Identifier (UEI)")
+
     # Enrichment fields (populated later)
     company_duns: str | None = Field(None, description="DUNS number from SAM.gov")
     company_cage: str | None = Field(None, description="CAGE code from SAM.gov")
@@ -68,6 +71,32 @@ class Award(BaseModel):
             raise ValueError("Fiscal year must be between 1983 and 2030")
         return v
 
+    @field_validator("company_uei")
+    @classmethod
+    def validate_company_uei(cls, v: str | None) -> str | None:
+        """Validate UEI if provided: expected to be 12 alphanumeric characters."""
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("Company UEI must be a string")
+        cleaned = v.strip()
+        if len(cleaned) != 12 or not cleaned.isalnum():
+            raise ValueError("Company UEI must be a 12-character alphanumeric string")
+        return cleaned.upper()
+
+    @field_validator("company_duns")
+    @classmethod
+    def validate_company_duns(cls, v: str | None) -> str | None:
+        """Normalize and validate DUNS if provided: must contain 9 digits."""
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("DUNS must be provided as a string")
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) != 9:
+            raise ValueError("DUNS must contain exactly 9 digits")
+        return digits
+
     model_config = ConfigDict(
         validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
     )
@@ -79,6 +108,8 @@ class RawAward(BaseModel):
     # All fields are optional for raw data
     award_id: str | None = None
     company_name: str | None = None
+    company_uei: str | None = None
+    company_duns: str | None = None
     award_amount: float | None = None
     award_date: str | None = None  # Raw string date
     program: str | None = None
