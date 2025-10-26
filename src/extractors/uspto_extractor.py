@@ -384,6 +384,16 @@ class USPTOExtractor:
             if pyreadstat is not None:
                 LOG.debug("Using pyreadstat.read_dta row_limit for %s", path)
                 offset = 0
+                rows_yielded = 0
+                total_rows = None
+                # Try to get a row count hint from metadata (best-effort)
+                try:
+                    meta_hint = pyreadstat.read_dta_metadata(str(path))
+                    total_rows = getattr(meta_hint, "number_of_rows", None) or getattr(
+                        meta_hint, "rows", None
+                    )
+                except Exception:
+                    total_rows = None
                 while True:
                     try:
                         # pyreadstat returns (df, meta)
@@ -397,7 +407,32 @@ class USPTOExtractor:
                         break
                     for rec in df.to_dict(orient="records"):
                         yield _normalize_row_keys(rec)
+                    rows_yielded += df.shape[0]
                     offset += df.shape[0]
+                    # Periodic progress logging to help monitor long reads
+                    if self.log_every and rows_yielded % self.log_every == 0:
+                        if total_rows:
+                            try:
+                                pct = rows_yielded / int(total_rows) * 100.0
+                                LOG.info(
+                                    "Streaming %s via pyreadstat: %d/%s rows (%.1f%%)",
+                                    path.name,
+                                    rows_yielded,
+                                    total_rows,
+                                    pct,
+                                )
+                            except Exception:
+                                LOG.info(
+                                    "Streaming %s via pyreadstat: %d rows processed (total unknown)",
+                                    path.name,
+                                    rows_yielded,
+                                )
+                        else:
+                            LOG.info(
+                                "Streaming %s via pyreadstat: %d rows processed",
+                                path.name,
+                                rows_yielded,
+                            )
                 return
 
             # Last resort: read entire file (may be large) - but attempt to rename columns using heuristics
@@ -488,11 +523,57 @@ class USPTOExtractor:
             return None
         return None
 
+    def _detect_stata_release(self, file_path: Union[str, Path]) -> Optional[int]:
+        """
+        Best-effort detection of Stata release version for .dta files.
+
+        Strategy:
+         - Prefer pyreadstat metadata when available (reads file metadata).
+         - Fall back to a lightweight header sniff (non-exhaustive) if pyreadstat unavailable.
+        Returns:
+         - Integer Stata release (e.g., 117, 118) when detectable, otherwise None.
+        """
+        p = Path(file_path)
+        if pyreadstat is not None:
+            try:
+                meta = pyreadstat.read_dta_metadata(str(p))
+                version = getattr(meta, "file_format_version", None) or getattr(
+                    meta, "format_version", None
+                )
+                if version is not None:
+                    try:
+                        return int(version)
+                    except Exception:
+                        # Coerce "118.0" -> 118, or take integer prefix where possible
+                        try:
+                            return int(str(version).split(".")[0])
+                        except Exception:
+                            return None
+            except Exception:
+                # non-fatal; return None to indicate unknown
+                return None
+        # Lightweight header inspection fallback (may not be reliable for all files)
+        try:
+            with open(p, "rb") as fh:
+                header = fh.read(256)
+                import re
+
+                m = re.search(rb"release[\s=]*([0-9]{3})", header, re.IGNORECASE)
+                if m:
+                    try:
+                        return int(m.group(1))
+                    except Exception:
+                        return None
+        except Exception:
+            return None
+        return None
+
     def supported_files_summary(self) -> Dict[str, int]:
-        """Return a summary count of supported files found in the input directory."""
+        """Return a summary count of supported files found in the input directory (with logging)."""
         files = self.discover_files()
         by_ext: Dict[str, int] = {}
         for f in files:
             by_ext.setdefault(f.suffix.lower(), 0)
             by_ext[f.suffix.lower()] += 1
+        LOG.info("USPTO files discovered: %s", by_ext)
         return by_ext

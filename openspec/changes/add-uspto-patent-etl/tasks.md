@@ -36,9 +36,12 @@
   - Notes: The extractor uses pandas iterator and pyreadstat fallbacks to support chunked iteration and safe sampling; chunk_size is configurable.
 - [x] 3.3 Add memory-efficient streaming for large files (documentid.dta: 1.5GB)
   - Notes: Streaming implemented with parquet/pyarrow row-group handling and chunked pandas/pyreadstat reads for large Stata files to avoid excessive memory use.
-- [ ] 3.4 Handle Stata format variations (Release 117 vs 118)
-- [ ] 3.5 Add error handling for corrupt or incomplete files
-- [ ] 3.6 Log extraction progress with record counts and throughput metrics
+- [x] 3.4 Handle Stata format variations (Release 117 vs 118)
+  - Notes: Added `_detect_stata_release` helper and a pyreadstat metadata probe to detect file format/version. The extractor now uses a release heuristic to skip pandas iterator for newer Stata releases and falls back to pyreadstat row-limited reads or a conservative header sniff when needed. Detection is best-effort and non-fatal.
+- [x] 3.5 Add error handling for corrupt or incomplete files
+  - Notes: Enhanced error handling across readers: `stream_rows` honors `continue_on_error` and yields a record containing `_error` and `_file` when a file-level exception occurs. Individual format readers (CSV, DTA, Parquet) are wrapped with try/except and log structured exceptions; pyreadstat/pandas fallbacks are used to continue processing where possible.
+- [x] 3.6 Log extraction progress with record counts and throughput metrics
+  - Notes: Implemented periodic progress logging: `stream_rows` reports rows/sec and end-of-stream summary; `_stream_dta` now logs periodic progress for pyreadstat chunked reads (rows processed and percent when total_rows hint available). Frequency is controlled by `self.log_every`.
 
 ## 4. Dagster Assets - Extraction
 
