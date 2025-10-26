@@ -59,6 +59,18 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
 
     context.log.info(f"CSV import complete", extra=import_metadata)
 
+    # Log column mapping (CSV column -> normalized field) for observability on first extraction
+    actual_columns = import_metadata.get("columns", []) or []
+    # Best-effort normalized field names (lowercase snake_case) for easier consumption in UI
+    column_mapping = {
+        col: col.strip().lower().replace(" ", "_").replace("-", "_") for col in actual_columns
+    }
+    try:
+        context.log.info("Column mapping discovered", extra={"column_mapping": column_mapping})
+    except Exception:
+        # In non-Dagster contexts context.log may not accept 'extra' the same way; swallow safely
+        logger.info("Column mapping discovered", column_mapping)
+
     # Extract all records
     df = extractor.extract_all()
 
@@ -77,6 +89,13 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         "year_range": table_stats.get("year_range"),
         "unique_agencies": table_stats.get("unique_agencies"),
         "phase_distribution": MetadataValue.json(table_stats.get("phase_distribution", [])),
+        # Include extraction timestamps and discovered columns/mapping for traceability
+        "extraction_start_utc": import_metadata.get("extraction_start_utc")
+        or import_metadata.get("import_start"),
+        "extraction_end_utc": import_metadata.get("extraction_end_utc")
+        or import_metadata.get("import_end"),
+        "column_mapping": MetadataValue.json(column_mapping),
+        "columns": MetadataValue.json(import_metadata.get("columns", [])),
         "preview": MetadataValue.md(df.head(10).to_markdown()),
     }
 
