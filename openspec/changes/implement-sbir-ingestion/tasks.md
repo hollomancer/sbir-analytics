@@ -122,11 +122,11 @@
 - [ ] 5.4 Write unit tests for config schemas (tests/unit/test_sbir_config.py)
 
 ## 6. Sample Data and Fixtures
-- [ ] 6.1 Create sample SBIR CSV for testing (tests/fixtures/sbir_sample.csv)
-  - [ ] 6.1.1 Include 100 representative records
-  - [ ] 6.1.2 Include edge cases (missing UEI, old awards, max amounts)
-  - [ ] 6.1.3 Include invalid records for validation testing
-- [ ] 6.2 Document sample data structure in tests/fixtures/README.md
+- [x] 6.1 Create sample SBIR CSV for testing (tests/fixtures/sbir_sample.csv)
+  - [x] 6.1.1 Include 100 representative records
+  - [x] 6.1.2 Include edge cases (missing UEI, old awards, max amounts)
+  - [x] 6.1.3 Include invalid records for validation testing
+- [x] 6.2 Document sample data structure in tests/fixtures/README.md
 
 ## 7. Documentation
 - [ ] 7.1 Add SBIR ingestion section to README.md
