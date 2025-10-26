@@ -2,7 +2,8 @@
 
 ## 1. Data Analysis & Schema Design
 
-- [ ] 1.1 Complete USPTO data structure analysis script
+- [x] 1.1 Complete USPTO data structure analysis script
+  - Notes: Added `scripts/uspto/analyze_uspto_structure.py` which samples USPTO .dta/.csv/.parquet files, produces per-file JSON summaries and a Markdown run summary, and writes reports to `reports/uspto-structure/`. The script was run locally to generate initial findings (see reports directory).
 - [ ] 1.2 Document table schemas and relationships in detail
 - [ ] 1.3 Generate data quality baseline report (completeness, duplicates, missing values)
 - [ ] 1.4 Design Neo4j graph schema for patents and assignments
