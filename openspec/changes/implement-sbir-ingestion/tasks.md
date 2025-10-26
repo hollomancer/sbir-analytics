@@ -27,7 +27,7 @@
     - [x] extract_by_agency(agencies) - Filter by Agency
     - [x] extract_by_phase(phases) - Filter by Phase
   - [x] 2.2.5 Implement chunked processing via fetch_df_chunk(batch_size)
-  - [ ] 2.2.6 Column name mapping (handle quoted column names in SQL)
+  - [x] 2.2.6 Column name mapping (handle quoted column names in SQL)
 - [x] 2.3 Add extraction metadata tracking
   - [x] 2.3.1 File size and record count from DuckDB table stats
   - [x] 2.3.2 Extraction timestamp
@@ -114,8 +114,8 @@
     - [x] pass_rate_threshold: 0.95 (95% of records must pass validation)
     - [x] completeness_threshold (for individual fields)
     - [x] uniqueness_threshold (for duplicate detection)
-- [ ] 5.2 Update config/dev.yaml if needed for local testing
-  - [ ] 5.2.1 Optional: Use persistent DuckDB file for faster dev iterations
+- [x] 5.2 Update config/dev.yaml if needed for local testing
+  - [x] 5.2.1 Optional: Use persistent DuckDB file for faster dev iterations
 - [x] 5.3 Update src/config/schemas.py
   - [x] 5.3.1 Add SbirDuckDBConfig model with csv_path, duckdb_path, table_name, batch_size
   - [x] 5.3.2 Add SbirValidationConfig to DataQualityConfig with pass_rate_threshold
