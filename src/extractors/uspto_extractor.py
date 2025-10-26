@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 from pathlib import Path
 from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 
@@ -88,11 +89,20 @@ class USPTOExtractor:
         Optional list of filename patterns to include (defaults to all supported extensions).
     """
 
-    def __init__(self, input_dir: Union[str, Path], file_globs: Optional[Iterable[str]] = None):
+    def __init__(
+        self,
+        input_dir: Union[str, Path],
+        file_globs: Optional[Iterable[str]] = None,
+        *,
+        continue_on_error: bool = True,
+        log_every: int = 50000,
+    ):
         self.input_dir = Path(input_dir)
         if not self.input_dir.exists():
             raise FileNotFoundError(f"Input directory does not exist: {self.input_dir}")
         self.file_globs = list(file_globs) if file_globs else []
+        self.continue_on_error = continue_on_error
+        self.log_every = max(0, int(log_every))
         LOG.debug("Initialized USPTOExtractor on %s", self.input_dir)
 
     def discover_files(self) -> List[Path]:
@@ -125,6 +135,39 @@ class USPTOExtractor:
             A mapping of column -> value for each row in the dataset.
         """
         path = Path(file_path)
+        start = time.perf_counter()
+        yielded = 0
+        try:
+            for rec in self._stream_rows_for_extension(path, chunk_size):
+                yielded += 1
+                if self.log_every and yielded % self.log_every == 0:
+                    elapsed = max(time.perf_counter() - start, 1e-6)
+                    LOG.info(
+                        "Streaming %s (%s rows processed, %.1f rows/sec)",
+                        path.name,
+                        yielded,
+                        yielded / elapsed,
+                    )
+                yield rec
+        except Exception as exc:
+            LOG.exception("Failed streaming %s: %s", path, exc)
+            if self.continue_on_error:
+                yield {"_error": str(exc), "_file": str(path)}
+            else:
+                raise
+        finally:
+            elapsed = max(time.perf_counter() - start, 1e-6)
+            LOG.info(
+                "Completed streaming %s: %s rows in %.2fs (%.1f rows/sec)",
+                path.name,
+                yielded,
+                elapsed,
+                yielded / elapsed,
+            )
+
+    def _stream_rows_for_extension(
+        self, path: Path, chunk_size: int
+    ) -> Generator[Dict, None, None]:
         ext = path.suffix.lower()
         if ext == ".csv":
             yield from self._stream_csv(path, chunk_size)
@@ -288,6 +331,7 @@ class USPTOExtractor:
 
         try:
             # Attempt to detect file variant first (best-effort)
+            release_hint = None
             try:
                 release_hint = _detect_stata_release_with_pyreadstat(path)
                 if release_hint:
@@ -295,25 +339,45 @@ class USPTOExtractor:
             except Exception:
                 release_hint = None
 
+            release_numeric: Optional[int] = None
+            if release_hint:
+                try:
+                    release_numeric = int(release_hint)
+                except ValueError:
+                    release_numeric = None
+            if release_numeric is None:
+                release_numeric = self._detect_stata_release(path)
+                if release_numeric:
+                    LOG.debug("Header-based Stata release for %s: %s", path, release_numeric)
+
+            skip_pandas = release_numeric is not None and release_numeric >= 118
+
             # Try pandas iterator approach first (fast for many .dta files)
-            LOG.debug("Attempting pandas read_stata iterator for %s", path)
-            try:
-                reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
-                while True:
-                    try:
-                        chunk = reader.get_chunk(chunk_size)  # type: ignore
-                    except StopIteration:
-                        break
-                    except Exception as e:
-                        # pandas iterator may raise for some .dta versions; fallback to pyreadstat
-                        LOG.debug("pandas iterator get_chunk error: %s", e)
-                        raise
-                    for rec in chunk.to_dict(orient="records"):
-                        yield _normalize_row_keys(rec)
-                return
-            except Exception:
+            if not skip_pandas:
+                LOG.debug("Attempting pandas read_stata iterator for %s", path)
+                try:
+                    reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
+                    while True:
+                        try:
+                            chunk = reader.get_chunk(chunk_size)  # type: ignore
+                        except StopIteration:
+                            break
+                        except Exception as e:
+                            # pandas iterator may raise for some .dta versions; fallback to pyreadstat
+                            LOG.debug("pandas iterator get_chunk error: %s", e)
+                            raise
+                        for rec in chunk.to_dict(orient="records"):
+                            yield _normalize_row_keys(rec)
+                    return
+                except Exception:
+                    LOG.debug(
+                        "pandas iterator approach failed for %s; trying pyreadstat fallback", path
+                    )
+            else:
                 LOG.debug(
-                    "pandas iterator approach failed for %s; trying pyreadstat fallback", path
+                    "Skipping pandas iterator for %s (Stata release=%s not fully supported)",
+                    path,
+                    release_numeric,
                 )
 
             # Fallback: pyreadstat if available - use row_limit and row_offset for chunked reads
@@ -340,7 +404,7 @@ class USPTOExtractor:
             LOG.warning(
                 "Falling back to reading entire .dta file into memory for %s (last resort)", path
             )
-            df_full = pd.read_stata(path)
+            df_full = pd.read_stata(path, convert_categoricals=False)
             # Normalize column names (lowercase, trim) to help mapping downstream
             df_full.columns = [str(c).strip() for c in df_full.columns]
             for i in range(0, len(df_full), chunk_size):
