@@ -1,0 +1,363 @@
+# sbir-etl/src/extractors/uspto_extractor.py
+"""
+USPTOExtractor - chunked and streaming extractor for USPTO datasets.
+
+Goals implemented:
+- Task 3.1: Create USPTOExtractor class in `src/extractors/uspto_extractor.py`.
+- Task 3.2: Implement Stata (.dta) file reading with chunked iteration.
+- Task 3.3: Add memory-efficient streaming for large files with fallbacks.
+
+Behavior summary:
+- The extractor locates supported files under a given path (by extension).
+- For each supported file it provides:
+    * `stream_rows(file_path, chunk_size)` generator yielding dictionaries (row-wise),
+      reading in chunks appropriate for file type.
+    * `stream_assignments(file_path, chunk_size)` generator yielding
+      `PatentAssignment` instances (when model available), or raw dicts on error.
+- Robust against Stata format variations by attempting a sequence:
+    1) pandas iterator (`read_stata(..., iterator=True)` and `.get_chunk()`),
+    2) pyreadstat row_limit (if available),
+    3) full pandas read with a warning (last resort).
+- CSVs are read via pandas `read_csv` with `chunksize`.
+- Parquet is handled using pyarrow if available (stream by row-groups) otherwise pandas read with chunking fallback.
+- Includes graceful error handling: logs errors, yields error records as metadata, and continues where possible.
+
+Notes:
+- This file assumes the project has `pandas` installed. If pyreadstat or pyarrow
+  are available those are preferred for certain formats.
+- The mapping from raw row -> PatentAssignment is heuristic: it looks for
+  common field names and attempts to populate the Pydantic model. Missing fields
+  are left None; converters are applied via the model validators.
+
+Example:
+    ex = USPTOExtractor(Path("data/raw/uspto"))
+    for row in ex.stream_rows(ex.input_dir / "assignment.dta", chunk_size=10000):
+        process(row)
+    # Or get model instances:
+    for assignment in ex.stream_assignments(ex.input_dir/"assignment.dta", chunk_size=10000):
+        # assignment is PatentAssignment or dict on error
+        handle(assignment)
+"""
+
+from __future__ import annotations
+
+import logging
+import math
+from pathlib import Path
+from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
+
+LOG = logging.getLogger(__name__)
+
+# Optional imports - fallbacks are handled at runtime
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - environment may not have pandas
+    pd = None  # type: ignore
+
+try:
+    import pyreadstat  # type: ignore
+except Exception:
+    pyreadstat = None  # type: ignore
+
+try:
+    import pyarrow as pa  # type: no cover
+    import pyarrow.parquet as pq  # type: no cover
+except Exception:
+    pa = None
+    pq = None
+
+# Import the PatentAssignment model if available; otherwise use a type alias to dict
+try:
+    from src.models.uspto_models import PatentAssignment  # type: ignore
+except Exception:  # pragma: no cover - allow this module to exist even if models missing
+    PatentAssignment = None  # type: ignore
+
+
+SUPPORTED_EXTENSIONS = [".dta", ".csv", ".parquet"]
+
+
+class USPTOExtractor:
+    """
+    Extractor for USPTO dataset files with chunked iteration and streaming.
+
+    Parameters
+    ----------
+    input_dir:
+        Directory where USPTO files are stored. Can contain multiple .dta/.csv/.parquet.
+    file_globs:
+        Optional list of filename patterns to include (defaults to all supported extensions).
+    """
+
+    def __init__(self, input_dir: Union[str, Path], file_globs: Optional[Iterable[str]] = None):
+        self.input_dir = Path(input_dir)
+        if not self.input_dir.exists():
+            raise FileNotFoundError(f"Input directory does not exist: {self.input_dir}")
+        self.file_globs = list(file_globs) if file_globs else []
+        LOG.debug("Initialized USPTOExtractor on %s", self.input_dir)
+
+    def discover_files(self) -> List[Path]:
+        """
+        Discover files under the input directory matching supported extensions
+        and optional globs.
+        """
+        files: List[Path] = []
+        if self.file_globs:
+            for pattern in self.file_globs:
+                files.extend(sorted(self.input_dir.glob(pattern)))
+        else:
+            for ext in SUPPORTED_EXTENSIONS:
+                files.extend(sorted(self.input_dir.rglob(f"*{ext}")))
+        LOG.info("Discovered %d USPTO files under %s", len(files), self.input_dir)
+        return files
+
+    # ----------------------------
+    # High-level streaming methods
+    # ----------------------------
+    def stream_rows(
+        self, file_path: Union[str, Path], chunk_size: int = 10000
+    ) -> Generator[Dict, None, None]:
+        """
+        Stream raw rows from the file as dictionaries in chunks.
+
+        Yields
+        ------
+        dict
+            A mapping of column -> value for each row in the dataset.
+        """
+        path = Path(file_path)
+        ext = path.suffix.lower()
+        if ext == ".csv":
+            yield from self._stream_csv(path, chunk_size)
+        elif ext == ".dta":
+            yield from self._stream_dta(path, chunk_size)
+        elif ext == ".parquet":
+            yield from self._stream_parquet(path, chunk_size)
+        else:
+            raise ValueError(f"Unsupported file extension for USPTO extractor: {ext}")
+
+    def stream_assignments(
+        self, file_path: Union[str, Path], chunk_size: int = 10000
+    ) -> Generator[Union["PatentAssignment", Dict], None, None]:
+        """
+        Stream assignments as PatentAssignment model instances when possible.
+        If the model import is unavailable or construction fails for a row,
+        yields the raw dict (with an '_error' key describing the issue).
+        """
+        for row in self.stream_rows(file_path, chunk_size=chunk_size):
+            if PatentAssignment is not None:
+                try:
+                    # Map relevant fields heuristically: allow model to validate/coerce
+                    # Attempt to construct PatentAssignment from the raw row dict
+                    pa = PatentAssignment(
+                        rf_id=row.get("rf_id") or row.get("record_id") or row.get("id"),
+                        file_id=row.get("file_id"),
+                        document=dict(
+                            grant_number=row.get("grant_doc_num") or row.get("grant_number"),
+                            application_number=row.get("application_number"),
+                            publication_number=row.get("publication_number"),
+                            filing_date=row.get("filing_date"),
+                            publication_date=row.get("publication_date"),
+                            grant_date=row.get("grant_date"),
+                            title=row.get("title"),
+                            abstract=row.get("abstract"),
+                        ),
+                        conveyance=dict(
+                            rf_id=row.get("conveyance_rf_id"),
+                            conveyance_type=row.get("conveyance_type"),
+                            description=row.get("conveyance_text"),
+                            recorded_date=row.get("recorded_date"),
+                        ),
+                        assignee=dict(
+                            rf_id=row.get("assignee_rf_id"),
+                            name=row.get("assignee_name"),
+                            street=row.get("assignee_street"),
+                            city=row.get("assignee_city"),
+                            state=row.get("assignee_state"),
+                            postal_code=row.get("assignee_postal"),
+                            country=row.get("assignee_country"),
+                            uei=row.get("assignee_uei"),
+                            cage=row.get("assignee_cage"),
+                            duns=row.get("assignee_duns"),
+                        ),
+                        assignor=dict(
+                            rf_id=row.get("assignor_rf_id"),
+                            name=row.get("assignor_name"),
+                            execution_date=row.get("execution_date"),
+                            acknowledgment_date=row.get("acknowledgment_date"),
+                        ),
+                        execution_date=row.get("execution_date"),
+                        recorded_date=row.get("recorded_date"),
+                        normalized_assignee_name=row.get("assignee_name"),
+                        normalized_assignor_name=row.get("assignor_name"),
+                        metadata={"_source_row": row},
+                    )
+                    yield pa
+                except Exception as e:
+                    LOG.debug("Failed to construct PatentAssignment for row: %s", e)
+                    # attach error info and yield raw row for later inspection
+                    row_with_err = dict(row)
+                    row_with_err["_error"] = str(e)
+                    yield row_with_err
+            else:
+                yield row
+
+    # ----------------------------
+    # File format-specific readers
+    # ----------------------------
+    def _stream_csv(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+        if pd is None:
+            raise RuntimeError("pandas is required to read CSV files for USPTO extraction")
+        LOG.debug("Streaming CSV %s with chunk_size=%d", path, chunk_size)
+        try:
+            for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True):
+                for rec in chunk.to_dict(orient="records"):
+                    yield rec
+        except Exception:
+            LOG.exception("CSV streaming failed for %s", path)
+            raise
+
+    def _stream_dta(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+        """
+        Stream rows from a .dta (Stata) file in chunks.
+
+        Strategy:
+        - Try pandas iterator (read_stata iterator + get_chunk)
+        - If not supported or fails, try pyreadstat with row_limit
+        - As a last resort, read full file with pandas (only for smaller files)
+        """
+        if pd is None:
+            raise RuntimeError("pandas is required to read .dta files for USPTO extraction")
+
+        try:
+            # Try pandas iterator approach
+            LOG.debug("Attempting pandas read_stata iterator for %s", path)
+            try:
+                reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
+                while True:
+                    try:
+                        chunk = reader.get_chunk(chunk_size)  # type: ignore
+                    except StopIteration:
+                        break
+                    except Exception as e:
+                        # pandas iterator may raise for some .dta versions; fallthrough to fallback
+                        LOG.debug("pandas iterator get_chunk error: %s", e)
+                        raise
+                    for rec in chunk.to_dict(orient="records"):
+                        yield rec
+                return
+            except Exception:
+                LOG.debug(
+                    "pandas iterator approach failed for %s; trying pyreadstat fallback", path
+                )
+
+            # Fallback: pyreadstat if available
+            if pyreadstat is not None:
+                LOG.debug("Using pyreadstat.read_dta row_limit for %s", path)
+                offset = 0
+                while True:
+                    try:
+                        df, meta = pyreadstat.read_dta(
+                            str(path), row_limit=chunk_size, row_offset=offset
+                        )
+                    except Exception as e:
+                        LOG.debug("pyreadstat read failed at offset %s: %s", offset, e)
+                        raise
+                    if df is None or df.shape[0] == 0:
+                        break
+                    for rec in df.to_dict(orient="records"):
+                        yield rec
+                    offset += df.shape[0]
+                return
+
+            # Last resort: read entire file (may be large)
+            LOG.warning("Reading entire .dta file into memory for %s (last resort)", path)
+            df_full = pd.read_stata(path)
+            for i in range(0, len(df_full), chunk_size):
+                chunk = df_full.iloc[i : i + chunk_size]
+                for rec in chunk.to_dict(orient="records"):
+                    yield rec
+            return
+
+        except Exception as e:
+            LOG.exception("Failed streaming .dta file %s: %s", path, e)
+            raise
+
+    def _stream_parquet(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+        """
+        Stream parquet files preferentially with pyarrow row groups; fallback to pandas.
+        """
+        if pq is not None and pa is not None:
+            try:
+                LOG.debug("Streaming parquet via pyarrow for %s", path)
+                pf = pq.ParquetFile(path)
+                # iterate row groups and then batch within row group to chunk_size
+                for rg_index in range(pf.num_row_groups):
+                    table = pf.read_row_group(rg_index)
+                    df = table.to_pandas()
+                    for i in range(0, len(df), chunk_size):
+                        chunk = df.iloc[i : i + chunk_size]
+                        for rec in chunk.to_dict(orient="records"):
+                            yield rec
+                return
+            except Exception:
+                LOG.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
+        # pandas fallback
+        if pd is None:
+            raise RuntimeError("pandas is required to read parquet files (fallback)")
+        try:
+            df = pd.read_parquet(path)
+            for i in range(0, len(df), chunk_size):
+                chunk = df.iloc[i : i + chunk_size]
+                for rec in chunk.to_dict(orient="records"):
+                    yield rec
+        except Exception:
+            LOG.exception("Failed streaming parquet %s", path)
+            raise
+
+    # ----------------------------
+    # Helper / utility methods
+    # ----------------------------
+    def read_first_n(self, file_path: Union[str, Path], n: int = 10) -> List[Dict]:
+        """Read and return the first n rows (useful for quick inspection)."""
+        it = self.stream_rows(file_path, chunk_size=n)
+        out = []
+        for _ in range(n):
+            try:
+                out.append(next(it))
+            except StopIteration:
+                break
+        return out
+
+    def count_rows_estimate(self, file_path: Union[str, Path]) -> Optional[int]:
+        """
+        Return an approximate total row count for a file, if available cheaply.
+        - CSV: None (would require scanning file)
+        - parquet: use pyarrow metadata if available
+        - dta: pyreadstat meta may provide row count; otherwise None
+        """
+        path = Path(file_path)
+        ext = path.suffix.lower()
+        try:
+            if ext == ".parquet" and pq is not None:
+                pf = pq.ParquetFile(path)
+                return sum(pf.metadata.row_group(i).num_rows for i in range(pf.num_row_groups))
+            if ext == ".dta" and pyreadstat is not None:
+                try:
+                    meta = pyreadstat.read_dta_metadata(str(path))
+                    # attempt to extract row count from meta if available
+                    row_count = getattr(meta, "number_of_rows", None) or getattr(meta, "rows", None)
+                    return int(row_count) if row_count is not None else None
+                except Exception:
+                    return None
+        except Exception:
+            return None
+        return None
+
+    def supported_files_summary(self) -> Dict[str, int]:
+        """Return a summary count of supported files found in the input directory."""
+        files = self.discover_files()
+        by_ext: Dict[str, int] = {}
+        for f in files:
+            by_ext.setdefault(f.suffix.lower(), 0)
+            by_ext[f.suffix.lower()] += 1
+        return by_ext

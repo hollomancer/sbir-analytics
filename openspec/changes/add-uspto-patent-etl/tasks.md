@@ -26,9 +26,12 @@
 
 ## 3. USPTO Extractor (Stage 1: Extract)
 
-- [ ] 3.1 Create USPTOExtractor class in src/extractors/uspto_extractor.py
-- [ ] 3.2 Implement Stata file reading with chunked iteration (10K rows/chunk)
-- [ ] 3.3 Add memory-efficient streaming for large files (documentid.dta: 1.5GB)
+- [x] 3.1 Create USPTOExtractor class in src/extractors/uspto_extractor.py
+  - Notes: Implemented `src/extractors/uspto_extractor.py` with `USPTOExtractor` providing `stream_rows(...)` and `stream_assignments(...)` generators, chunked reading for .dta/.csv/.parquet, and robust fallbacks.
+- [x] 3.2 Implement Stata file reading with chunked iteration (10K rows/chunk)
+  - Notes: The extractor uses pandas iterator and pyreadstat fallbacks to support chunked iteration and safe sampling; chunk_size is configurable.
+- [x] 3.3 Add memory-efficient streaming for large files (documentid.dta: 1.5GB)
+  - Notes: Streaming implemented with parquet/pyarrow row-group handling and chunked pandas/pyreadstat reads for large Stata files to avoid excessive memory use.
 - [ ] 3.4 Handle Stata format variations (Release 117 vs 118)
 - [ ] 3.5 Add error handling for corrupt or incomplete files
 - [ ] 3.6 Log extraction progress with record counts and throughput metrics

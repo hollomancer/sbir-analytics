@@ -138,7 +138,23 @@ class VendorResolver:
         # Basic normalization: uppercase, trim, collapse whitespace, strip punctuation-ish chars
         n = " ".join(name.strip().split())
         n = n.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
-        return n.lower()
+        n = n.lower()
+        # Normalize common business suffix variants so "corp" vs "corporation" etc. compare closely.
+        replacements = {
+            "incorporated": "inc",
+            "inc": "inc",
+            "corporation": "corp",
+            "corp": "corp",
+            "company": "co",
+            "co": "co",
+            "limited": "ltd",
+            "ltd": "ltd",
+            "llc": "llc",
+            "llp": "llp",
+        }
+        tokens = n.split()
+        normalized_tokens = [replacements.get(tok, tok) for tok in tokens]
+        return " ".join(normalized_tokens)
 
     def _load_records(self, records: Iterable[VendorRecord]) -> None:
         """Populate indices from the provided VendorRecord iterable."""
