@@ -21,7 +21,7 @@ Notes
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -39,6 +39,10 @@ except Exception:  # pragma: no cover - defensive import
 
 import pickle
 import logging
+
+# Define optional placeholders so static analysis doesn't flag undefined names before lazy import
+extract_features = None  # type: ignore
+PatentFeatureVector = None  # type: ignore
 
 # Feature helpers are optional and may already have been imported above.
 # Attempt a local import to ensure names exist when the features module is
@@ -207,6 +211,9 @@ class PatentCETClassifier:
         assignee_col: Optional[str] = None,
         cet_label_col: str = "cet_labels",
         pipelines_factory: Optional[Any] = None,
+        use_feature_extraction: bool = False,
+        keywords_map: Optional[Dict[str, List[str]]] = None,
+        feature_matrix_builder: Optional[Any] = None,
     ) -> None:
         """
         Train per-CET binary pipelines using a labeled DataFrame.
@@ -232,10 +239,21 @@ class PatentCETClassifier:
         # Use PatentFeatureExtractor to derive training texts and feature vectors.
         # The pipelines consume text; the extractor normalizes titles and adds simple
         # assignee/keyword signals to the text so pipelines receive consistent inputs.
-        extractor = PatentFeatureExtractor(keywords_map=None)
+        extractor = PatentFeatureExtractor(keywords_map=keywords_map)
         texts, feature_vectors = extractor.features_for_dataframe(
             df, title_col=title_col, assignee_col=assignee_col
         )
+        # Optionally build a numeric feature matrix for sklearn-style pipelines
+        X_matrix = None
+        feature_names = None
+        if feature_matrix_builder is not None:
+            try:
+                X_matrix = feature_matrix_builder.fit_transform(feature_vectors)
+                if hasattr(feature_matrix_builder, "get_feature_names"):
+                    feature_names = feature_matrix_builder.get_feature_names()
+            except Exception:
+                X_matrix = None
+                feature_names = None
 
         # Convert labels column to list of sets
         labels_series = df[cet_label_col].apply(lambda v: set(v) if v else set())
@@ -286,6 +304,10 @@ class PatentCETClassifier:
 
         self.is_trained = True
         self.training_date = datetime.utcnow().isoformat()
+        # Store feature metadata if available
+        if feature_names:
+            self.config = self.config or {}
+            self.config["feature_names"] = list(feature_names)
 
     # -----------------------
     # Classification

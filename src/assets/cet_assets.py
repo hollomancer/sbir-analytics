@@ -780,8 +780,10 @@ def cet_patent_classifications() -> Output:
     # Prefer PatentFeatureExtractor for normalized title strings if available
     try:
         from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
+        from src.ml.features.patent_features import get_keywords_map  # type: ignore
 
-        extractor = PatentFeatureExtractor()
+        kw_map = get_keywords_map()
+        extractor = PatentFeatureExtractor(keywords_map=kw_map)
         if hasattr(extractor, "transform"):
             feature_dicts = extractor.transform(patents)  # type: ignore
             for p, fv in zip(patents, feature_dicts):
@@ -948,6 +950,7 @@ def train_cet_patent_classifier() -> Output:
     try:
         from src.ml.train.patent_training import train_patent_classifier
         from src.ml.models.dummy_pipeline import DummyPipeline
+        from src.ml.features.patent_features import get_keywords_map
     except Exception:
         checks = {"ok": False, "reason": "training_helper_missing", "model_path": str(model_path)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1015,6 +1018,7 @@ def train_cet_patent_classifier() -> Output:
             assignee_col="assignee" if "assignee" in df.columns else None,
             cet_label_col="cet_labels",
             use_feature_extraction=True,
+            keywords_map=get_keywords_map(),
         )
         checks = {
             "ok": True,
