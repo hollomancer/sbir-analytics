@@ -12,14 +12,14 @@ on:
           - dry-run
           - live
       NEO4J_USER:
-        description: 'Optional NEO4J user to use for live mode (overrides repository secret if provided)'
+        description: "Optional NEO4J user to use for live mode (overrides repository secret if provided)"
         required: false
-        default: ''
+        default: ""
         type: string
       NEO4J_PASSWORD:
-        description: 'Optional NEO4J password to use for live mode (overrides repository secret if provided)'
+        description: "Optional NEO4J password to use for live mode (overrides repository secret if provided)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 jobs:
@@ -174,60 +174,9 @@ jobs:
             echo "docker-compose not detected; skipping exec sanity check"
           fi
 
-      - name: CET minimal asset checks
-        run: |
-          set -eux
-          echo "Running minimal CET loader checks against Neo4j"
+      # CET minimal asset checks consolidated into neo4j-cet-smoke workflow
 
-          # Execute a short Python snippet in the runtime image to upsert a CETArea,
-          # attach Award enrichment, and create an Award->CETArea relationship.
-          docker run --rm --network sbir-network \
-            -e NEO4J_URI="bolt://neo4j:7687" \
-            -e NEO4J_USERNAME="${NEO4J_USER:-neo4j}" \
-            -e NEO4J_PASSWORD="${NEO4J_PASSWORD:-password}" \
-            sbir-etl:smoke python - <<'PY'
-import os
-from src.loaders.neo4j_client import Neo4jClient, Neo4jConfig
-from src.loaders.cet_loader import CETLoader, CETLoaderConfig
-
-uri = os.environ.get("NEO4J_URI", "bolt://neo4j:7687")
-user = os.environ.get("NEO4J_USERNAME", "neo4j")
-pwd = os.environ.get("NEO4J_PASSWORD", "password")
-
-client = Neo4jClient(Neo4jConfig(uri=uri, username=user, password=pwd))
-loader = CETLoader(client)
-
-# Ensure constraints/indexes
-loader.create_constraints()
-loader.create_indexes()
-
-# Upsert a minimal CETArea
-areas = [{"cet_id": "artificial_intelligence", "name": "Artificial Intelligence", "taxonomy_version": "TEST-2025Q1"}]
-loader.load_cet_areas(areas)
-
-# Upsert minimal Award enrichment
-award_enrich = [{"award_id": "smoke_award_001", "cet_primary_id": "artificial_intelligence", "cet_primary_score": 90.0, "cet_taxonomy_version": "TEST-2025Q1"}]
-loader.upsert_award_cet_enrichment(award_enrich)
-
-# Create Award -> CETArea relationship
-relationship_rows = [{
-    "award_id": "smoke_award_001",
-    "primary_cet": "artificial_intelligence",
-    "primary_score": 90.0,
-    "classified_at": "2025-01-01T00:00:00Z",
-    "taxonomy_version": "TEST-2025Q1",
-}]
-loader.create_award_cet_relationships(relationship_rows)
-
-print("CET smoke checks complete")
-client.close()
-PY
-
-          echo "Listing any CET check artifacts directory if present"
-          mkdir -p data/loaded/neo4j || true
-          ls -la data/loaded/neo4j || true
-
-    # Always attempt to tear down compose resources (but do not remove named volumes by default)
+      # Always attempt to tear down compose resources (but do not remove named volumes by default)
       - name: Tear down compose (always)
         if: ${{ always() }}
         run: |
