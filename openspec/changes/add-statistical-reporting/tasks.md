@@ -1,19 +1,19 @@
 # Implementation Tasks
 
 ## 1. Data Models for Reporting
-- [ ] 1.1 Add `StatisticalReport` model to `src/models/quality.py`
-- [ ] 1.2 Add `ModuleReport` model (base class for module-specific reports)
-- [ ] 1.3 Add `InsightRecommendation` model for automated insights
-- [ ] 1.4 Add `DataHygieneMetrics` model (clean/dirty splits, quality scores)
-- [ ] 1.5 Add `ChangesSummary` model (before/after comparisons)
+- [x] 1.1 Add `StatisticalReport` model to `src/models/quality.py`
+- [x] 1.2 Add `ModuleReport` model (base class for module-specific reports)
+- [x] 1.3 Add `InsightRecommendation` model for automated insights
+- [x] 1.4 Add `DataHygieneMetrics` model (clean/dirty splits, quality scores)
+- [x] 1.5 Add `ChangesSummary` model (before/after comparisons)
 
 ## 2. Statistical Reporter Utility
-- [ ] 2.1 Create `src/utils/statistical_reporter.py`
-- [ ] 2.2 Implement `StatisticalReporter` class with report generation methods
-- [ ] 2.3 Add HTML report generation (reusing Plotly infrastructure)
-- [ ] 2.4 Add JSON report generation (machine-readable)
-- [ ] 2.5 Add Markdown summary generation (PR-friendly)
-- [ ] 2.6 Add unified report aggregation across modules
+- [x] 2.1 Create `src/utils/statistical_reporter.py`
+- [x] 2.2 Implement `StatisticalReporter` class with report generation methods
+- [x] 2.3 Add HTML report generation (reusing Plotly infrastructure)
+- [x] 2.4 Add JSON report generation (machine-readable)
+- [x] 2.5 Add Markdown summary generation (PR-friendly)
+- [x] 2.6 Add unified report aggregation across modules
 
 ## 3. Module-Specific Report Generators
 - [ ] 3.1 SBIR Enrichment Reporter:
