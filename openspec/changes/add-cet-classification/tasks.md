@@ -42,13 +42,13 @@
 
 ## 5. Evidence Extraction
 
-- [ ] 5.1 Create EvidenceExtractor in src/ml/features/evidence_extractor.py
-- [ ] 5.2 Implement spaCy-based sentence segmentation
-- [ ] 5.3 Add CET keyword matching within sentences
-- [ ] 5.4 Implement 50-word excerpt truncation
-- [ ] 5.5 Add source location tracking (abstract, keywords, solicitation)
-- [ ] 5.6 Generate rationale tags (e.g., "Contains: machine learning, neural networks")
-- [ ] 5.7 Add evidence ranking (select top 3 most relevant sentences)
+- [x] 5.1 Create EvidenceExtractor in src/ml/features/evidence_extractor.py
+- [x] 5.2 Implement spaCy-based sentence segmentation
+- [x] 5.3 Add CET keyword matching within sentences
+- [x] 5.4 Implement 50-word excerpt truncation
+- [x] 5.5 Add source location tracking (abstract, keywords, solicitation)
+- [x] 5.6 Generate rationale tags (e.g., "Contains: machine learning, neural networks")
+- [x] 5.7 Add evidence ranking (select top 3 most relevant sentences)
 
 ## 6. Training Data & Model Training
 
