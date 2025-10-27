@@ -18,13 +18,15 @@ from dagster import (
 
 from ..quality import USPTODataQualityValidator, USPTOValidationConfig
 
-DEFAULT_FAIL_DIR = Path(os.environ.get("SBIR_ETL__USPTO__VALIDATION_FAIL_DIR", "data/validated/fail"))
+DEFAULT_FAIL_DIR = Path(
+    os.environ.get("SBIR_ETL__USPTO__VALIDATION_FAIL_DIR", "data/validated/fail")
+)
 DEFAULT_REPORT_DIR = Path(
     os.environ.get("SBIR_ETL__USPTO__VALIDATION_REPORT_DIR", "reports/uspto-validation")
 )
 
 
-def _build_validator_config(context: AssetExecutionContext) -> USPTOValidationConfig:
+def _build_validator_config(context: "AssetExecutionContext") -> USPTOValidationConfig:
     cfg = getattr(context, "op_config", {}) or {}
 
     return USPTOValidationConfig(
@@ -54,7 +56,7 @@ def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict
     },
 )
 def validated_uspto_assignments(
-    context: AssetExecutionContext,
+    context: "AssetExecutionContext",
     assignment_files: List[str],
     assignee_files: List[str],
     assignor_files: List[str],
@@ -72,7 +74,9 @@ def validated_uspto_assignments(
     }
 
     validator = USPTODataQualityValidator(_build_validator_config(context))
-    write_report = getattr(context, "op_config", {}).get("write_report", True) if context.op_config else True
+    write_report = (
+        getattr(context, "op_config", {}).get("write_report", True) if context.op_config else True
+    )
 
     try:
         report = validator.run(files_by_table, write_report=write_report)
@@ -114,7 +118,7 @@ def validated_uspto_assignments(
     additional_ins={"assignment_files": AssetIn("raw_uspto_assignments")},
 )
 def uspto_rf_id_asset_check(
-    context: AssetExecutionContext,
+    context: "AssetExecutionContext",
     validation_report: Dict[str, Any],
     assignment_files: List[str],
 ) -> AssetCheckResult:
@@ -173,7 +177,7 @@ def uspto_rf_id_asset_check(
     description="Validate required field completeness across USPTO tables",
 )
 def uspto_completeness_asset_check(
-    context: AssetExecutionContext,
+    context: "AssetExecutionContext",
     validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})
@@ -220,7 +224,7 @@ def uspto_completeness_asset_check(
     description="Ensure referential integrity across USPTO tables",
 )
 def uspto_referential_asset_check(
-    context: AssetExecutionContext,
+    context: "AssetExecutionContext",
     validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})

@@ -1,0 +1,46 @@
+from dagster import asset
+import pandas as pd
+from src.models.ma_models import MAEvent
+from datetime import date
+
+
+@asset(deps=["sbir_awards", "uspto_patent_assignments"])
+def company_mergers_and_acquisitions(
+    sbir_awards: pd.DataFrame, uspto_patent_assignments: pd.DataFrame
+) -> list[MAEvent]:
+    """Detects potential mergers and acquisitions based on patent assignment data."""
+
+    # 1.3: Join SBIR companies with patent assignor data
+    # This is a simplified join based on company name. A more robust implementation
+    # would use fuzzy matching or a dedicated company identifier.
+    merged_data = pd.merge(
+        sbir_awards,
+        uspto_patent_assignments,
+        left_on="company_name",
+        right_on="assignor_name",
+        how="inner",
+    )
+
+    # 1.4: Detect changes in patent assignees over time
+    # Group by the original company and check for different assignees.
+    potential_ma_events = []
+    for company_name, group in merged_data.groupby("company_name"):
+        unique_assignees = group["assignee_name"].unique()
+        if len(unique_assignees) > 1:
+            # This is a simplified logic. A real implementation would need to
+            # analyze the timeline of assignments to identify a clear change
+            # in ownership from one company to another.
+            for assignee in unique_assignees:
+                if assignee != company_name:
+                    # 1.5: Create M&A candidate events
+                    potential_ma_events.append(
+                        MAEvent(
+                            acquiring_company_name=assignee,
+                            acquired_company_name=company_name,
+                            acquisition_date=date.today(),  # Placeholder date
+                            source="uspto_patent_assignments",
+                            confidence_score=0.7,  # Placeholder score
+                        )
+                    )
+
+    return potential_ma_events
