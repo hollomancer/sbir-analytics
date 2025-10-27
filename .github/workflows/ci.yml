@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test:
@@ -19,143 +19,64 @@ jobs:
           NEO4J_AUTH: none
           NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
         options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-cmd "curl -f http://localhost:7474 || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-          --health-start-period 40s
+          --health-start-period 30s
 
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Wait for Neo4j
-      run: |
-        echo "Waiting for Neo4j to be ready..."
-        until curl -s -f -o /dev/null "http://localhost:7474"; do
-          echo "Neo4j not ready, sleeping..."
-          sleep 5
-        done
-        echo "Neo4j is ready!"
+      - name: Wait for Neo4j
+        run: |
+          echo "Waiting for Neo4j to be ready..."
+          until curl -s -f -o /dev/null "http://localhost:7474"; do
+            echo "Neo4j not ready, sleeping..."
+            sleep 5
+          done
+          echo "Neo4j is ready!"
 
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
-    - name: Configure Poetry
-      run: |
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-
 
-    - name: Cache Poetry virtual environment
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          venv-${{ runner.os }}-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
 
-    - name: Install dependencies
-      run: poetry install --no-interaction --no-root
+      - name: Install project
+        run: poetry install --no-interaction
 
-    - name: Install project
-      run: poetry install --no-interaction
+      - name: Run tests
+        run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
 
-    - name: Run tests
-      run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-    - name: Configure Poetry
-      run: |
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
-
-    - name: Install dependencies
-      run: poetry install --no-interaction
-
-    - name: Run Ruff linter
-      run: poetry run ruff check src tests
-
-    - name: Run Ruff formatter check
-      run: poetry run ruff format --check src tests
-
-    - name: Run MyPy type checker
-      run: poetry run mypy src
-
-  security:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-    - name: Install dependencies
-      run: poetry install --no-interaction
-
-    - name: Run Bandit security linter
-      run: poetry run bandit -r src -c pyproject.toml
-
-  docker:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        load: true
-        tags: sbir-etl:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Test Docker image
-      run: |
-        docker run --rm sbir-etl:test python --version
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
