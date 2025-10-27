@@ -24,6 +24,7 @@ psutil = "*"
 memory_profiler = "*"
 scikit-learn = "^1.4.0"
 spacy = "^3.7.0"
+numpy = "<2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

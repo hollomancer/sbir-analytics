@@ -51,14 +51,14 @@
 - [x] 5.7 Add evidence ranking (select top 3 most relevant sentences)
 
 ## 6. Training Data & Model Training
-
+e
 - [ ] 6.1 Port bootstrap training data from sbir-cet-classifier (1000+ annotated awards)
-- [ ] 6.2 Create TrainingExample model for labeled data
-- [ ] 6.3 Implement model training workflow in src/ml/models/trainer.py
-- [ ] 6.4 Add cross-validation for hyperparameter tuning
-- [ ] 6.5 Implement probability calibration (sigmoid, 3-fold CV)
-- [ ] 6.6 Save trained model to artifacts/models/cet_classifier_v1.pkl
-- [ ] 6.7 Generate training metrics report (accuracy, precision, recall, F1)
+- [x] 6.2 Create TrainingExample model for labeled data
+- [x] 6.3 Implement model training workflow in src/ml/models/trainer.py
+- [x] 6.4 Add cross-validation for hyperparameter tuning
+- [x] 6.5 Implement probability calibration (sigmoid, 3-fold CV)
+- [x] 6.6 Save trained model to artifacts/models/cet_classifier_v1.pkl
+- [x] 6.7 Generate training metrics report (accuracy, precision, recall, F1)
 
 ## 7. Dagster Assets - CET Taxonomy
 
