@@ -312,4 +312,4 @@ data/                     # Local data storage (gitignored)
 
 ## License
 
-[License information]
+This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Conrad Hollomon.

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "SBIR ETL Pipeline for Neo4j"
 authors = ["Conrad Hollomon <conrad.hollomon@pm.me>"]
 readme = "README.md"
+license = "MIT"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
