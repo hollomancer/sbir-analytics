@@ -880,6 +880,142 @@ def cet_patent_classifications() -> Output:
 
 
 @asset(
+    name="train_cet_patent_classifier",
+    key_prefix=["ml"],
+    description=(
+        "Train and persist a Patent CET classifier artifact at "
+        "`artifacts/models/patent_classifier_v1.pkl`. Emits a companion checks JSON "
+        "with training metadata. If training data or dependencies are missing, "
+        "writes a minimal checks file and returns the intended model path."
+    ),
+)
+def train_cet_patent_classifier() -> Output:
+    """
+    Dagster asset that trains the PatentCETClassifier from a labeled dataset.
+
+    Behavior (import-safe):
+    - Expects a labeled training dataset at `data/processed/cet_patent_training.parquet`
+      with columns: `title`, `cet_labels` (iterable[str] or comma-delimited), and optional `assignee`.
+    - When training data or pandas is missing, writes a checks JSON with ok=False and
+      returns the model path without creating the artifact.
+    """
+    import json
+    from pathlib import Path
+
+    model_path = Path("artifacts/models/patent_classifier_v1.pkl")
+    checks_path = model_path.with_suffix(".checks.json")
+    train_data_parquet = Path("data/processed/cet_patent_training.parquet")
+
+    try:
+        import pandas as pd  # type: ignore
+    except Exception:
+        # Missing pandas; write checks and exit
+        checks = {"ok": False, "reason": "pandas_missing", "model_path": str(model_path)}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return Output(
+            value=str(model_path), metadata={"model_path": str(model_path), "trained": False}
+        )
+
+    # Attempt to import training helper and dummy pipeline for simple factory
+    try:
+        from src.ml.train.patent_training import train_patent_classifier
+        from src.ml.models.dummy_pipeline import DummyPipeline
+    except Exception:
+        checks = {"ok": False, "reason": "training_helper_missing", "model_path": str(model_path)}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return Output(
+            value=str(model_path), metadata={"model_path": str(model_path), "trained": False}
+        )
+
+    if not train_data_parquet.exists():
+        checks = {
+            "ok": False,
+            "reason": "training_data_missing",
+            "expected_path": str(train_data_parquet),
+            "model_path": str(model_path),
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return Output(
+            value=str(model_path), metadata={"model_path": str(model_path), "trained": False}
+        )
+
+    # Load training data
+    try:
+        df = pd.read_parquet(train_data_parquet)
+    except Exception:
+        # Try NDJSON fallback
+        ndjson_path = train_data_parquet.with_suffix(".ndjson")
+        records = []
+        if ndjson_path.exists():
+            with open(ndjson_path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        records.append(json.loads(line))
+        df = pd.DataFrame(records)
+
+    if df is None or len(df) == 0:
+        checks = {
+            "ok": False,
+            "reason": "empty_training_data",
+            "model_path": str(model_path),
+            "rows": 0,
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return Output(
+            value=str(model_path), metadata={"model_path": str(model_path), "trained": False}
+        )
+
+    # Provide a simple pipelines factory using DummyPipeline with CET id as keyword cue
+    def _factory(cet_id: str):
+        # Heuristic: derive a token from CET id for keyword; this keeps CI deterministic
+        kw = cet_id.replace("_", " ")
+        return DummyPipeline(cet_id=cet_id, keywords=[kw], keyword_boost=1.0)
+
+    # Train and persist
+    try:
+        meta = train_patent_classifier(
+            df=df,
+            output_model_path=model_path,
+            pipelines_factory=_factory,
+            title_col="title",
+            assignee_col="assignee" if "assignee" in df.columns else None,
+            cet_label_col="cet_labels",
+            use_feature_extraction=True,
+        )
+        checks = {
+            "ok": True,
+            "model_path": str(model_path),
+            "trained_on_rows": meta.get("trained_on_rows", 0),
+        }
+    except Exception as e:
+        checks = {
+            "ok": False,
+            "reason": "training_failed",
+            "error": str(e),
+            "model_path": str(model_path),
+        }
+
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(checks_path, "w", encoding="utf-8") as fh:
+        json.dump(checks, fh, indent=2)
+
+    metadata = {
+        "model_path": str(model_path),
+        "checks_path": str(checks_path),
+        "trained": checks.get("ok", False),
+    }
+    return Output(value=str(model_path), metadata=metadata)
+
+
+@asset(
     name="cet_company_profiles",
     key_prefix=["ml"],
     description=(

@@ -58,6 +58,11 @@ except Exception:
     # Optional feature module not available; keep extract_features / PatentFeatureVector as None
     pass
 
+try:
+    from src.ml.features.vectorizers import create_feature_matrix_builder
+except Exception:  # pragma: no cover - optional import
+    create_feature_matrix_builder = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -258,14 +263,24 @@ class PatentCETClassifier:
         for cet, pipeline in list(self.pipelines.items()):
             # Build binary label vector
             y = [1 if cet in s else 0 for s in labels_series]
+            # Prefer numeric matrix if available, else fall back to text
+            train_X = X_matrix if "X_matrix" in locals() and X_matrix is not None else texts
             try:
-                # Some pipelines expect numpy arrays; provide list for generality
-                pipeline.fit(texts, y)
+                pipeline.fit(train_X, y)
             except Exception:
-                # In case pipeline has different signature, try fit(X, y) in other ways
-                try:
-                    pipeline.fit(texts, y)
-                except Exception:
+                # Fallback: try the alternate representation
+                alt_X = (
+                    texts
+                    if train_X is not texts
+                    else (X_matrix if "X_matrix" in locals() else None)
+                )
+                if alt_X is not None:
+                    try:
+                        pipeline.fit(alt_X, y)
+                    except Exception:
+                        logger.exception("Failed to fit pipeline for CET %s", cet)
+                        raise
+                else:
                     logger.exception("Failed to fit pipeline for CET %s", cet)
                     raise
 
