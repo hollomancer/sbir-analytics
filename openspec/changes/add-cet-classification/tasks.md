@@ -254,7 +254,7 @@ Notes (section 8 implementation):
 - [x] 12.4 Create Company node CET enrichment properties — Implemented via asset `src/assets/cet_neo4j_loading_assets.py::neo4j_company_cet_enrichment` and `src/loaders/cet_loader.py::CETLoader.upsert_company_cet_enrichment`
 - [x] 12.5 Create Award node CET enrichment properties — Implemented via asset `src/assets/cet_neo4j_loading_assets.py::neo4j_award_cet_enrichment` and `src/loaders/cet_loader.py::CETLoader.upsert_award_cet_enrichment`
 - [x] 12.6 Add batching + idempotent merges — Implemented via `src/loaders/neo4j_client.py::Neo4jClient.batch_upsert_nodes` used by `CETLoader`
-- [ ] 12.7 Unit tests (mocked Neo4j)
+- [x] 12.7 Unit tests (mocked Neo4j)
 
 ## 13. Neo4j CET Graph Model - Award Relationships
 
