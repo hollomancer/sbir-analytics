@@ -44,6 +44,39 @@ data_quality:
     sam_gov_success_rate: 0.85 # 85% of companies should enrich successfully
     usaspending_match_rate: 0.70 # 70% of awards should match USAspending data
 
+enrichment:
+  performance:
+    # Processing chunk size (records to process in memory at once)
+    # Adjust based on available RAM and data characteristics
+    # Higher = faster but more memory; Lower = slower but memory-efficient
+    chunk_size: 25000  # Default: 10000-50000 depending on hardware
+
+    # Memory threshold before triggering spill-to-disk (MB)
+    # System will reduce chunk size or spill to disk if exceeded
+    memory_threshold_mb: 2048  # Default: 2048 (2 GB)
+
+    # Enrichment quality gate threshold
+    # Asset fails if match_rate falls below this percentage
+    match_rate_threshold: 0.70  # Default: 0.70 (70%)
+
+    # Processing timeout per chunk (seconds)
+    # Fails chunk if processing takes longer than this
+    timeout_seconds: 300  # Default: 300 (5 minutes)
+
+    # Retry backoff strategy for failed operations
+    # Options: "fixed", "linear", "exponential"
+    retry_backoff: exponential
+
+    # Fuzzy matching confidence thresholds
+    # Affects match quality and speed tradeoff
+    high_confidence_threshold: 90  # Min score for high-confidence match
+    low_confidence_threshold: 75   # Min score for low-confidence match
+
+    # Enable/disable features
+    enable_fuzzy_matching: true    # Enable fuzzy name matching
+    enable_memory_monitoring: true # Track memory usage
+    enable_progress_tracking: true # Track per-chunk progress
+
 extraction:
   sbir:
     # SBIR CSV configuration
