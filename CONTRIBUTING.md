@@ -114,7 +114,7 @@ Then create a pull request on the repository.
   ```bash
   ruff check .
   ```
-  
+
   Key rules:
   - Follow PEP 8 style guide
   - Use type hints for all functions
@@ -127,7 +127,7 @@ Then create a pull request on the repository.
   ```bash
   mypy src/
   ```
-  
+
   Requirements:
   - All functions must have type hints
   - No `Any` types without justification
@@ -148,14 +148,14 @@ Then create a pull request on the repository.
   ```python
   def process_data(data: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
       """Process and validate SBIR award data.
-      
+
       Args:
           data: Raw SBIR award DataFrame
           threshold: Minimum completeness threshold (default: 0.95)
-          
+
       Returns:
           Validated DataFrame with quality checks applied
-          
+
       Raises:
           ValueError: If data is empty or threshold is invalid
       """
@@ -353,7 +353,7 @@ sbir-etl/
 ## Questions or Issues?
 
 - Open an issue on GitHub
-- Reach out to the maintainers
+- Reach out to @hollomancer
 - Check existing documentation and issues
 
 Thank you for contributing! 🎉

@@ -120,10 +120,14 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# lint/type-check caches
 .mypy_cache/
+.ruff_cache/
 .dmypy.json
 dmypy.json
+
+# Local scratch space
+.tmp/
 
 # Pyre type checker
 .pyre/
@@ -133,6 +137,9 @@ data/
 logs/
 *.db
 *.duckdb
+metrics/sbir_performance_report.json
+reports/company_search_analysis.md
+reports/uspto-structure/
 
 # IDE
 .vscode/
