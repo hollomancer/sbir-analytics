@@ -1,61 +1,65 @@
-name: Secret Scan
+name: Static Analysis
 
-# Scan repository for potential secrets on push and pull requests.
-# Uses pre-commit (detect-secrets hook) and a conservative local grep guard to catch accidental commits of env-style secrets.
-# The workflow runs on PRs and pushes to main/develop branches and may be scheduled nightly.
-#
-# Notes for maintainers:
-# - Ensure `.pre-commit-config.yaml` is present and configured (detect-secrets baseline support recommended).
-# - If you adopt an explicit secret baseline, commit `.secrets.baseline` after auditing accepted findings.
-# - This workflow is intentionally strict: it will fail CI on new secret findings so they can be remediated.
 on:
   push:
-    branches: ["main", "develop"]
+    branches: [ main, develop ]
   pull_request:
-    branches: ["main", "develop"]
-  schedule:
-    - cron: '0 4 * * *' # daily at 04:00 UTC (adjust as needed)
+    branches: [ main, develop ]
 
 jobs:
+  lint-and-scan:
+    name: Lint and Scan
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: Configure Poetry
+      run: |
+        poetry config virtualenvs.create true
+        poetry config virtualenvs.in-project true
+    - name: Install dependencies
+      run: poetry install --no-interaction
+    - name: Run Ruff linter
+      run: poetry run ruff check src tests
+    - name: Run Ruff formatter check
+      run: poetry run ruff format --check src tests
+    - name: Run MyPy type checker
+      run: poetry run mypy src
+    - name: Run Bandit security linter
+      run: |
+        poetry add --group dev bandit
+        poetry run bandit -r src -c pyproject.toml
+
   secret-scan:
-    name: Secret scan (pre-commit / detect-secrets)
+    name: Secret Scan
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-
-      - name: Ensure system tooling (apt caches may vary)
-        run: |
-          set -eux
-          # Make best-effort attempt to install git-secrets if available on apt; do not fail if it's not present.
-          sudo apt-get update -y || true
-          sudo apt-get install -y git curl jq || true
-          # Try to install git-secrets (may not be available on all runners); tolerate failure.
-          sudo apt-get install -y git-secrets || true
-
       - name: Install pre-commit and detect-secrets
         run: |
-          set -eux
           python -m pip install --upgrade pip
           pip install pre-commit detect-secrets
-
       - name: Run pre-commit hooks (detect-secrets + other configured hooks)
         id: precommit
         run: |
           set -eux
-          # Ensure pre-commit is configured; run on all files to enforce checks in CI
           if [ -f .pre-commit-config.yaml ]; then
             pre-commit run --all-files || exit_code=$? && true
-            # If pre-commit returned non-zero, print guidance and fail
             if [ "${exit_code:-0}" != "0" ]; then
               echo "pre-commit checks failed (possible secrets detected). See output above for details."
               exit "${exit_code}"
@@ -69,12 +73,9 @@ jobs:
               exit 2
             fi
           fi
-
       - name: Fallback grep scan for common patterns
-        # An additional conservative scan for environment-like secrets to reduce risk of false negatives.
         run: |
           set -eux
-          # Patterns to scan for; expand as needed.
           PATTERNS=(
             "NEO4J_PASSWORD"
             "NEO4J_AUTH"
@@ -83,13 +84,11 @@ jobs:
             "AWS_SECRET_ACCESS_KEY"
             "AKIA[0-9A-Z]{16}"
             "PRIVATE_KEY"
-            "-----BEGIN PRIVATE KEY-----"  # pragma: allowlist secret
+            "-----BEGIN PRIVATE KEY-----"
           )
           FOUND=0
           for p in "${PATTERNS[@]}"; do
-            # Use grep with Perl regex when available for AKIA pattern; fall back to basic grep for others.
             if echo "$p" | grep -q "AKIA"; then
-              # Look for AKIA-style keys (AWS)
               if grep -RInP "$p" --exclude-dir=.git --exclude-dir=.venv --exclude=*.png --exclude=*.jpg . || true; then
                 FOUND=1
               fi
@@ -103,7 +102,6 @@ jobs:
             echo "One or more high-risk secret patterns were detected in the repository. Please review the scan output above."
             exit 3
           fi
-
       - name: Upload scan artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -113,8 +111,3 @@ jobs:
             detect-secrets-output.json
             .secrets.baseline
           if-no-files-found: ignore
-
-      - name: Success message
-        if: success()
-        run: |
-          echo "Secret scan completed: no new secrets detected."
