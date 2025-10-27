@@ -110,16 +110,16 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
 ---
 
 ## Cross-provider considerations (applies to all)
-1. **Respect Upstream Terms**  
+1. **Respect Upstream Terms**
    - Many search providers have explicit prohibitions on scraping or caching. Use official APIs when available and respect headers like `Retry-After` and `robots.txt` when proxies are used.
-2. **Conservative Defaults for Initial Integration**  
+2. **Conservative Defaults for Initial Integration**
    - Use a conservative default throttle (1 request/sec or lower) for unknown providers; increase only after verifying provider quotas and costs.
-3. **Caching & Legal Compliance**  
+3. **Caching & Legal Compliance**
    - If you cache provider results, include TTLs aligned to provider allowances and legal requirements. For sensitive data (PII), encrypt stored results and minimize retention.
-4. **Instrumentation & Adaptive Backoff**  
+4. **Instrumentation & Adaptive Backoff**
    - Implement backoff strategies (exponential backoff with jitter) and honor `429` / `Retry-After`.
    - Instrument request counts, latencies, and 429 rates per provider.
-5. **Self-host vs Hosted Trade-off**  
+5. **Self-host vs Hosted Trade-off**
    - Self-hosted (SearXNG / Perplexica) provides control and auditability but requires operational overhead.
    - Hosted providers reduce operational burden but add cost and external dependencies.
 

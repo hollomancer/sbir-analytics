@@ -1,6 +1,6 @@
 # Enrichment Performance Configuration Guide
 
-**Last Updated:** January 2024  
+**Last Updated:** January 2024
 **Audience:** DevOps, System Administrators, Performance Engineers
 
 ---
@@ -15,12 +15,12 @@ The enrichment pipeline provides configurable performance tuning parameters to o
 
 ### `chunk_size`
 
-**Type:** Integer  
-**Default:** 25000  
-**Range:** 1000 - 100000  
+**Type:** Integer
+**Default:** 25000
+**Range:** 1000 - 100000
 **Unit:** Records per chunk
 
-**Description:**  
+**Description:**
 Number of records to process in memory at once during enrichment. Larger chunks are faster but consume more memory.
 
 **Effect:**
@@ -61,11 +61,11 @@ enrichment:
 
 ### `memory_threshold_mb`
 
-**Type:** Integer  
-**Default:** 2048  
+**Type:** Integer
+**Default:** 2048
 **Unit:** Megabytes (MB)
 
-**Description:**  
+**Description:**
 Memory threshold at which the enrichment process triggers memory conservation measures (reduce chunk size, spill to disk, or fail gracefully).
 
 **Effect:**
@@ -106,11 +106,11 @@ Set to 70-80% of available system memory. For example:
 
 ### `match_rate_threshold`
 
-**Type:** Float (0.0 - 1.0)  
-**Default:** 0.70  
+**Type:** Float (0.0 - 1.0)
+**Default:** 0.70
 **Unit:** Fraction (0.70 = 70%)
 
-**Description:**  
+**Description:**
 Quality gate threshold. If the enrichment match rate falls below this percentage, the enrichment asset fails and blocks downstream processing.
 
 **Effect:**
@@ -151,11 +151,11 @@ enrichment:
 
 ### `timeout_seconds`
 
-**Type:** Integer  
-**Default:** 300  
+**Type:** Integer
+**Default:** 300
 **Unit:** Seconds
 
-**Description:**  
+**Description:**
 Maximum time allowed to process a single chunk. If processing exceeds this time, the chunk fails and triggers retry logic.
 
 **Effect:**
@@ -196,11 +196,11 @@ enrichment:
 
 ### `retry_backoff`
 
-**Type:** String  
-**Default:** exponential  
+**Type:** String
+**Default:** exponential
 **Valid Values:** "fixed", "linear", "exponential"
 
-**Description:**  
+**Description:**
 Retry backoff strategy when a chunk fails to process.
 
 **Strategies:**
@@ -243,12 +243,12 @@ enrichment:
 
 ### `high_confidence_threshold`
 
-**Type:** Integer  
-**Default:** 90  
-**Range:** 0 - 100  
+**Type:** Integer
+**Default:** 90
+**Range:** 0 - 100
 **Unit:** Similarity score percentage
 
-**Description:**  
+**Description:**
 Minimum fuzzy matching score to consider a match as "high confidence" and accept it.
 
 **Effect:**
@@ -289,12 +289,12 @@ enrichment:
 
 ### `low_confidence_threshold`
 
-**Type:** Integer  
-**Default:** 75  
-**Range:** 0 - 100  
+**Type:** Integer
+**Default:** 75
+**Range:** 0 - 100
 **Unit:** Similarity score percentage
 
-**Description:**  
+**Description:**
 Minimum fuzzy matching score to report as a possible match (candidate). Scores below this are not considered matches.
 
 **Effect:**
@@ -335,11 +335,11 @@ enrichment:
 
 ### `enable_fuzzy_matching`
 
-**Type:** Boolean  
-**Default:** true  
+**Type:** Boolean
+**Default:** true
 **Valid Values:** true, false
 
-**Description:**  
+**Description:**
 Enable or disable fuzzy name matching. When disabled, only exact UEI/DUNS matches are used.
 
 **Effect:**
@@ -379,11 +379,11 @@ enrichment:
 
 ### `enable_memory_monitoring`
 
-**Type:** Boolean  
-**Default:** true  
+**Type:** Boolean
+**Default:** true
 **Valid Values:** true, false
 
-**Description:**  
+**Description:**
 Enable or disable memory usage tracking and monitoring.
 
 **Effect:**
@@ -416,11 +416,11 @@ enrichment:
 
 ### `enable_progress_tracking`
 
-**Type:** Boolean  
-**Default:** true  
+**Type:** Boolean
+**Default:** true
 **Valid Values:** true, false
 
-**Description:**  
+**Description:**
 Enable or disable per-chunk progress reporting and tracking.
 
 **Effect:**

@@ -83,7 +83,7 @@ This report documents the data quality baseline for USPTO patent assignment data
 #### Referential Integrity (Preliminary)
 
 - **RF_ID Distribution**: Unique identifiers for each transaction
-- **Expected Foreign Key References**: 
+- **Expected Foreign Key References**:
   - documentid.rf_id (foreign key)
   - assignee.rf_id (foreign key)
   - assignor.rf_id (foreign key)
@@ -119,7 +119,7 @@ This report documents the data quality baseline for USPTO patent assignment data
    - Observations: 30% NULL rate in sample
    - Impact: Directly affects SBIR company linkage capability
    - Root Cause: Pre-grant assignments, incomplete USPTO processing
-   - Recommendation: 
+   - Recommendation:
      - Flag records with NULL grant_doc_num for manual review
      - Use pgpub_doc_num as fallback (requires reformatting)
      - Expected linkage rate: 70% vs. 100% if all had patent numbers
@@ -148,7 +148,7 @@ This report documents the data quality baseline for USPTO patent assignment data
 
 - **Sample Size**: 100 unique titles (100% unique)
 - **Length Range**: 15-380 characters
-- **Common Patterns**: 
+- **Common Patterns**:
   - "METHOD AND APPARATUS FOR..." (procedural patents)
   - "SYSTEM FOR..." (software/system patents)
   - "DEVICE FOR..." (hardware patents)
@@ -188,7 +188,7 @@ This report documents the data quality baseline for USPTO patent assignment data
 
 1. **Company Name Normalization Required** (High Impact)
    - Sample Observations: 93 unique names in 100 records
-   - Examples: 
+   - Examples:
      - "IBM CORPORATION", "INTERNATIONAL BUSINESS MACHINES", "IBM"
      - "AT&T INC.", "AMERICAN TELEPHONE & TELEGRAPH", "ATT"
    - Issue: Legal name variations, abbreviations, special characters
@@ -260,7 +260,7 @@ This report documents the data quality baseline for USPTO patent assignment data
 #### Inventor/Originator Name Analysis
 
 - **Sample Names**: 97 unique names in 100 records
-- **Name Formats**: 
+- **Name Formats**:
   - Individual inventors: "JOHN SMITH", "JANE DOE"
   - Corporate entities: "ACME CORP", "RESEARCH INC."
   - Multiple inventors: One row per assignor (handled correctly)
@@ -294,7 +294,7 @@ This report documents the data quality baseline for USPTO patent assignment data
 #### Data Quality Analysis
 
 1. **Conveyance Type Classification** (Excellent)
-   - Sample Distribution: 
+   - Sample Distribution:
      - "ASSIGNMENT": ~80% (primary type)
      - "LICENSE": ~10%
      - "SECURITY INTEREST": ~5%

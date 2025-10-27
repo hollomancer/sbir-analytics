@@ -1,7 +1,7 @@
 # SBIR-USAspending Enrichment Pipeline: Performance Benchmarks
 
-**Document Version:** 1.0  
-**Last Updated:** January 2024  
+**Document Version:** 1.0
+**Last Updated:** January 2024
 **Audience:** DevOps, Performance Engineers, System Operators
 
 ---
@@ -215,22 +215,22 @@ enrichment:
     # Processing chunk size (records to process in memory at once)
     chunk_size: 25000
     # Default: 10000-50000 depending on hardware
-    
+
     # Memory threshold before triggering spill-to-disk (MB)
     memory_threshold_mb: 2048
     # Default: 2048 (2 GB) - adjust for your hardware
-    
+
     # Enrichment quality gate threshold
     match_rate_threshold: 0.70
     # Default: 0.70 - fails enrichment if match rate below this
-    
+
     # Processing timeout (seconds)
     timeout_seconds: 300
     # Default: 300 - per-chunk processing timeout
-    
+
     # Retry backoff strategy
     retry_backoff: exponential  # or: linear, fixed
-    
+
     # Fuzzy matching thresholds
     high_confidence_threshold: 90
     low_confidence_threshold: 75
@@ -568,7 +568,7 @@ Common causes:
    ```bash
    # Verify baseline exists
    ls -la reports/benchmarks/baseline.json
-   
+
    # Check recent performance
    python scripts/detect_performance_regression.py
    ```

@@ -215,4 +215,3 @@ The pipeline orchestration system SHALL support validation of enrichment pipelin
 - **THEN** the system SHALL emit performance and quality metrics to monitoring infrastructure
 - **AND** alerts SHALL be configured for quality or performance regressions
 - **AND** operators SHALL have visibility into pipeline health and performance
-

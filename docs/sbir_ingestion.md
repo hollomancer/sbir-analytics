@@ -84,7 +84,7 @@ The SBIR ingestion pipeline processes award data from the official SBIR.gov data
 
 | Field | Type | Required | Description | Example |
 |-------|------|----------|-------------|---------|
-| UEI | string | No | Unique Entity Identifier (12 chars) | "A1B2C3D4E5F6" |
+| UEI | string | No | Unique Entity Identifier (12 chars) | "A1B2C3D4E5F6" | <!-- pragma: allowlist secret -->
 | Duns | string | No | DUNS number (9 digits) | "123456789" |
 
 ### Business Classifications (3 fields)

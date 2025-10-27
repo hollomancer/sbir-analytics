@@ -42,10 +42,10 @@ def test_good_scenario_passes_quality_gate(enrichment_scenarios):
     for scenario in enrichment_scenarios["good_scenarios"]["scenarios"]:
         sbir = scenario["sbir_company"]
         usaspending = scenario["usaspending_recipient"]
-        
+
         # Run enrichment
         result = enrich_single_company(sbir, usaspending)
-        
+
         # Verify high confidence match
         assert result["confidence"] >= scenario["expected_confidence"]
 
@@ -54,10 +54,10 @@ def test_bad_scenario_fails_quality_gate(enrichment_scenarios):
     for scenario in enrichment_scenarios["bad_scenarios"]["scenarios"]:
         sbir = scenario["sbir_company"]
         usaspending = scenario["usaspending_recipient"]
-        
+
         # Run enrichment
         result = enrich_single_company(sbir, usaspending)
-        
+
         # Should not match or low confidence
         assert result["match_method"] is None or result["confidence"] < 75
 ```
@@ -306,16 +306,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           pip install -e .
-      
+
       - name: Run Performance Regression Detection
         id: regression
         run: |
@@ -324,7 +324,7 @@ jobs:
             --output-json /tmp/regression.json \
             --output-github-comment /tmp/comment.md \
             --fail-on-regression || true
-      
+
       - name: Comment on PR with Results
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -340,7 +340,7 @@ jobs:
                 body: comment
               });
             }
-      
+
       - name: Fail if regression detected
         run: |
           if grep -q '"regression_detected": true' /tmp/regression.json; then
@@ -418,12 +418,12 @@ reporter = PerformanceReporter(
 # 5. Compare metrics
 if baseline:
     from src.utils.performance_reporting import PerformanceMetrics
-    
+
     baseline_metrics = PerformanceMetrics.from_benchmark(baseline)
     current_metrics = PerformanceMetrics.from_benchmark(benchmark)
-    
+
     comparison = reporter.compare_metrics(baseline_metrics, current_metrics)
-    
+
     # Generate comparison report
     report = reporter.format_comparison_markdown(comparison)
     print(report)
@@ -529,10 +529,10 @@ Adjust thresholds based on your hardware and data characteristics.
 
 1. **Integrate fixtures into existing smoke tests**
    - Update `tests/e2e/test_dagster_enrichment_pipeline.py`
-   
+
 2. **Set up CI/CD workflow** (Task 4.5)
    - Create GitHub Actions with regression detection
-   
+
 3. **Create performance documentation** (Task 4.4)
    - Document baseline expectations
    - Create runbooks for operators

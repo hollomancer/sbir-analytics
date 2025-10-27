@@ -1,6 +1,6 @@
 # Realignment Summary: validate-enrichment-pipeline-performance
 
-**Date:** 2025-01-16  
+**Date:** 2025-01-16
 **Change:** Realigned proposal.md, tasks.md, and specification documents to reflect actual build state
 
 ## Rationale for Realignment
@@ -240,16 +240,16 @@ This prevents starting downstream work that depends on Phase 1 blocking tasks.
 
 ## Questions Answered
 
-**Q: Why are tasks 2.3 and 3.3 marked complete if CLI-only?**  
+**Q: Why are tasks 2.3 and 3.3 marked complete if CLI-only?**
 A: They achieve the stated outcome (progress tracking, timing collection). The gap is Dagster integration (separate tasks). Marking them complete acknowledges foundation work; marking separately enables tracking what remains.
 
-**Q: Why did task count increase from ~22 to 30?**  
+**Q: Why did task count increase from ~22 to 30?**
 A: Original count was vague and conflated prerequisites with deliverables. Realignment split each area into discrete, trackable tasks. More tasks = better visibility, not more work overall.
 
-**Q: Is this a scope reduction?**  
+**Q: Is this a scope reduction?**
 A: No, it's a scope clarification. The same amount of work exists; realignment documents it more accurately and phases it better. Phase 1+2 is required; Phase 3+4 is operational hardening.
 
-**Q: When can we deploy to production?**  
+**Q: When can we deploy to production?**
 A: After completing Phase 1 (foundation), Phase 2 (validation), and task 5.5 (deployment checklist). Estimated timeline: 3-4 weeks at normal sprint velocity.
 
 ---

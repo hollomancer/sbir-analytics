@@ -33,7 +33,9 @@ jobs:
     - name: Run MyPy type checker
       run: poetry run mypy src
     - name: Run Bandit security linter
-      run: poetry run bandit -r src -c pyproject.toml
+      run: |
+        poetry add --group dev bandit
+        poetry run bandit -r src -c pyproject.toml
 
   secret-scan:
     name: Secret Scan

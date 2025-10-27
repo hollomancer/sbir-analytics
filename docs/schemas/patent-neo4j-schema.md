@@ -25,24 +25,24 @@ Represents a patented invention, identified by USPTO patent numbers.
   grant_doc_num: string,           # "10123456" (PRIMARY - links to SBIR)
   appno_doc_num: string,           # "2016-123456"
   pgpub_doc_num: string,           # "10,123,456"
-  
+
   # Patent Metadata
   title: string,                   # Full patent title
   lang: string,                    # "ENGLISH", language code
-  
+
   # Filing & Grant Timeline
   appno_date: datetime,            # Application filing date (1790+)
   pgpub_date: datetime,            # Publication/grant date
-  
+
   # Attribution
   num_inventors: integer,          # Number of patent assignors
   num_assignees: integer,          # Number of current/final assignees
-  
+
   # Source & Lineage
   source_table: string,            # "documentid" (audit trail)
   loaded_date: datetime,           # When patent was loaded into graph
   extracted_from_rf_id: string,    # Foreign key to USPTO reel/frame
-  
+
   # Optional SBIR Integration
   sbir_funded: boolean,            # true if funded by SBIR award
   sbir_award_phase: string,        # "Phase I" / "Phase II" / "Phase III"
@@ -56,20 +56,20 @@ Represents a patented invention, identified by USPTO patent numbers.
 
 **Indexes:**
 ```cypher
-CREATE INDEX idx_patent_grant_doc_num 
+CREATE INDEX idx_patent_grant_doc_num
   FOR (p:Patent) ON (p.grant_doc_num);
 
-CREATE INDEX idx_patent_appno_doc_num 
+CREATE INDEX idx_patent_appno_doc_num
   FOR (p:Patent) ON (p.appno_doc_num);
 
-CREATE INDEX idx_patent_title 
+CREATE INDEX idx_patent_title
   FOR (p:Patent) ON (p.title);
 
-CREATE INDEX idx_patent_appno_date 
+CREATE INDEX idx_patent_appno_date
   FOR (p:Patent) ON (p.appno_date);
 
-CREATE FULLTEXT INDEX idx_patent_title_fulltext 
-  ON (p:Patent) 
+CREATE FULLTEXT INDEX idx_patent_title_fulltext
+  ON (p:Patent)
   FOR (p.title);
 ```
 
@@ -85,30 +85,30 @@ Represents a single assignment/transfer transaction. Links Patent to its partici
   rf_id: integer,                  # Reel/Frame ID (1-to-1 with assignment.dta)
   reel_no: integer,                # USPTO reel number
   frame_no: integer,               # Position within reel
-  
+
   # Transaction Details
   convey_type: string,             # "ASSIGNMENT", "LICENSE", "SECURITY_INTEREST", ...
   employer_assign: boolean,        # true if employer-initiated
-  
+
   # Correspondence Information
   correspondent_name: string,      # Law firm or handler
   correspondent_address: string,   # Address line 1
   correspondent_city: string,      # Parsed city
   correspondent_state: string,     # Parsed state
-  
+
   # Timeline
   exec_date: datetime,             # When assignment was executed (from assignor.exec_dt)
   recorded_date: datetime,         # Inferred: when USPTO recorded (from rf_id)
-  
+
   # Metadata
   num_patents: integer,            # Number of patents in this assignment
   num_assignees: integer,          # Number of recipients
   num_assignors: integer,          # Number of originators
-  
+
   # Source & Lineage
   source_table: string,            # "assignment" (audit trail)
   loaded_date: datetime,           # When record loaded into graph
-  
+
   # Classification
   assignment_chain_depth: integer, # How many assignments this patent has undergone
 })
@@ -121,13 +121,13 @@ Represents a single assignment/transfer transaction. Links Patent to its partici
 
 **Indexes:**
 ```cypher
-CREATE INDEX idx_assignment_rf_id 
+CREATE INDEX idx_assignment_rf_id
   FOR (a:PatentAssignment) ON (a.rf_id);
 
-CREATE INDEX idx_assignment_exec_date 
+CREATE INDEX idx_assignment_exec_date
   FOR (a:PatentAssignment) ON (a.exec_date);
 
-CREATE INDEX idx_assignment_convey_type 
+CREATE INDEX idx_assignment_convey_type
   FOR (a:PatentAssignment) ON (a.convey_type);
 ```
 
@@ -143,32 +143,32 @@ Represents any party involved in patent assignments (assignees, assignors). Can 
   entity_id: string,               # UUID or hash of (name + address)
   name: string,                    # Company/individual name
   normalized_name: string,         # Uppercase, special chars removed
-  
+
   # Address Information
   address: string,                 # Full address
   city: string,
   state: string,
   postcode: string,
   country: string,
-  
+
   # Entity Classification
   entity_type: string,             # "ASSIGNEE" or "ASSIGNOR"
   entity_category: string,         # "COMPANY", "INDIVIDUAL", "UNIVERSITY", "GOVERNMENT"
-  
+
   # Metrics
   num_assignments_as_assignee: integer,   # Acquisition count
   num_assignments_as_assignor: integer,   # Origination count
   num_patents_owned: integer,             # Current portfolio
-  
+
   # SBIR Integration
   is_sbir_company: boolean,        # true if matches SBIR Award recipient
   sbir_uei: string,                # SAM.gov UEI if available
   sbir_company_id: string,         # Foreign key to sbir_company in SBIR database
-  
+
   # Source & Lineage
   source_tables: [string],         # ["assignee"] or ["assignor"] or both
   loaded_date: datetime,
-  
+
   # Metadata
   first_seen_date: datetime,       # Earliest assignment as this entity
   last_seen_date: datetime,        # Most recent assignment
@@ -183,20 +183,20 @@ Represents any party involved in patent assignments (assignees, assignors). Can 
 
 **Indexes:**
 ```cypher
-CREATE INDEX idx_entity_name 
+CREATE INDEX idx_entity_name
   FOR (e:PatentEntity) ON (e.name);
 
-CREATE INDEX idx_entity_normalized_name 
+CREATE INDEX idx_entity_normalized_name
   FOR (e:PatentEntity) ON (e.normalized_name);
 
-CREATE INDEX idx_entity_type 
+CREATE INDEX idx_entity_type
   FOR (e:PatentEntity) ON (e.entity_type);
 
-CREATE INDEX idx_entity_sbir_company 
+CREATE INDEX idx_entity_sbir_company
   FOR (e:PatentEntity) ON (e.is_sbir_company);
 
-CREATE FULLTEXT INDEX idx_entity_name_fulltext 
-  ON (e:PatentEntity) 
+CREATE FULLTEXT INDEX idx_entity_name_fulltext
+  ON (e:PatentEntity)
   FOR (e.name);
 ```
 
@@ -213,11 +213,11 @@ Links a Patent to a PatentAssignment transaction.
   # Timeline
   exec_date: datetime,             # When patent was part of this assignment
   recorded_date: datetime,         # When USPTO recorded
-  
+
   # Context
   position_in_batch: integer,      # If multiple patents in one assignment
   total_in_batch: integer,         # Total count in batch
-  
+
   # Metadata
   source_rf_id: integer,           # Reference to assignment.rf_id
 })
@@ -225,7 +225,7 @@ Links a Patent to a PatentAssignment transaction.
 
 **Cardinality**: One Patent can have MULTIPLE ASSIGNED_VIA relationships (assignment chain)
 
-**Usage Pattern**: 
+**Usage Pattern**:
 ```cypher
 // Find all assignments for a patent
 MATCH (p:Patent {grant_doc_num: "10123456"})-[r:ASSIGNED_VIA]->(a:PatentAssignment)
@@ -243,10 +243,10 @@ Links a PatentAssignment to the recipient PatentEntity (assignee).
 (assignment:PatentAssignment)-[r:ASSIGNED_TO]->(recipient:PatentEntity {
   # Timeline
   effective_date: datetime,        # When recipient acquired rights
-  
+
   # Rights Details
   convey_type: string,             # Inherited from assignment.convey_type
-  
+
   # Metadata
   assignment_role: string,         # "PRIMARY_ASSIGNEE", "CO_ASSIGNEE", etc.
   source_ee_name: string,          # Original assignee name (audit)
@@ -273,10 +273,10 @@ Links a PatentAssignment to the originator PatentEntity (assignor/inventor).
 (assignment:PatentAssignment)-[r:ASSIGNED_FROM]->(originator:PatentEntity {
   # Timeline
   exec_date: datetime,             # When originator signed
-  
+
   # Role
   originator_role: string,         # "INVENTOR", "EMPLOYER", "PRIOR_OWNER", etc.
-  
+
   # Metadata
   source_or_name: string,          # Original assignor name (audit)
 })
@@ -307,11 +307,11 @@ Links a Patent to an SBIR Award (integration with SBIR pipeline).
   award_id: string,
   award_year: integer,
   phase: string,                   # "Phase I", "Phase II"
-  
+
   # Linkage Confidence
   linkage_method: string,          # "exact_grant_num", "fuzzy_match", "manual"
   confidence_score: float,         # 0.0-1.0
-  
+
   # Timeline
   linked_date: datetime,           # When link was created
 })
@@ -340,10 +340,10 @@ Direct relationship from Company to Patent (current ownership).
   # Ownership Context
   acquisition_date: datetime,      # When company acquired rights
   acquisition_method: string,      # "SBIR_FUNDED", "ASSIGNMENT", "MERGER", etc.
-  
+
   # Rights Type
   ownership_type: string,          # "FULL", "PARTIAL", "LICENSED"
-  
+
   # Metadata
   confidence: float,               # 0.0-1.0 based on entity resolution
   source_entity_id: string,        # PatentEntity that was matched
@@ -372,10 +372,10 @@ Links consecutive PatentAssignments in an ownership chain.
 (earlier:PatentAssignment)-[r:CHAIN_OF]->(later:PatentAssignment {
   # Timeline
   time_between: integer,           # Days between assignments
-  
+
   # Chain Context
   chain_position: integer,         # Position in chain (0 = original)
-  
+
   # Parties
   common_party: string,            # Name of entity appearing in both
 })
@@ -678,23 +678,23 @@ ORDER BY assignment_date DESC
 
 ```cypher
 # Uniqueness Constraints
-CREATE CONSTRAINT unique_patent_grant_doc_num 
+CREATE CONSTRAINT unique_patent_grant_doc_num
   ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
 
-CREATE CONSTRAINT unique_assignment_rf_id 
+CREATE CONSTRAINT unique_assignment_rf_id
   ON (a:PatentAssignment) ASSERT a.rf_id IS UNIQUE;
 
-CREATE CONSTRAINT unique_entity_id 
+CREATE CONSTRAINT unique_entity_id
   ON (e:PatentEntity) ASSERT e.entity_id IS UNIQUE;
 
 # Node Property Constraints (Neo4j 5.0+)
-CREATE CONSTRAINT patent_title_required 
+CREATE CONSTRAINT patent_title_required
   ON (p:Patent) ASSERT p.title IS NOT NULL;
 
-CREATE CONSTRAINT assignment_convey_type_required 
+CREATE CONSTRAINT assignment_convey_type_required
   ON (a:PatentAssignment) ASSERT a.convey_type IS NOT NULL;
 
-CREATE CONSTRAINT entity_name_required 
+CREATE CONSTRAINT entity_name_required
   ON (e:PatentEntity) ASSERT e.name IS NOT NULL;
 ```
 

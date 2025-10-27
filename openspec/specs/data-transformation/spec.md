@@ -186,4 +186,3 @@ The system SHALL link USPTO patents to SBIR companies using multi-stage matching
 - **THEN** the system calculates linkage rate = (linked_patents / total_patents)
 - **AND** reports linkage rate by confidence bucket (<0.70, 0.70-0.85, ≥0.85)
 - **AND** logs companies with no linked patents for review
-

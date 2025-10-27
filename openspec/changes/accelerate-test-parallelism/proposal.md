@@ -1,20 +1,15 @@
 ## Why
-- Container-based CI currently runs the entire Python test suite serially, blocking feedback on Neo4j/Docker fixes and slowing developer iteration.
-- The project now has mature performance monitoring, alerting, and regression detection infrastructure (`src/utils/performance_*.py`, CI workflows with benchmark tracking).
-- Test suite is IO-bound (mocked Dagster assets, pandas operations, Neo4j integration tests) and would benefit significantly from worker parallelism.
-- Parallelizing pytest can recover 2–4 minutes per run and surface flakiness earlier, enabling faster validation of the new performance-gated pipeline.
+- Container-based CI currently runs the entire Python test suite serially, so even lightweight unit tests wait behind heavier Dagster integration tests.
+- Most tests are IO-bound (mocked Dagster assets, pandas operations) and would benefit from worker parallelism, but the project has never evaluated xdist or split-test strategies.
+- Slower feedback is blocking recent Neo4j/Docker fixes; parallelizing pytest could recover minutes per run and highlight flakiness earlier.
 
 ## What Changes
-- **Audit & isolation:** Identify and document test fixtures, global state, and external service dependencies (Neo4j, temp directories, shared singletons) that require isolation fixes for safe concurrent execution.
-- **Tooling upgrade:** Add `pytest-xdist` and helpers (`pytest-randomly` optional) to Poetry dependencies and Docker build exports; ensure coverage config supports parallel workers (`.coverage.*` files + `coverage combine`).
-- **Configuration:** Update `pyproject.toml` and Makefile to expose a `PYTEST_WORKERS` toggle (default `auto` in CI, opt-in locally); document override mechanisms.
-- **Fixture hardening:** Refactor temp directories, test data copies, and Dagster contexts to avoid shared mutable state; ensure Neo4j test container health checks and retry logic support concurrent client sessions.
-- **CI integration:** Update `.github/workflows/container-ci.yml` to pass parallelism flag to pytest; capture before/after timings; monitor for flakiness and document rollback procedure.
-- **Documentation:** Add `docs/testing.md` guidance for running tests in parallel, troubleshooting, and overriding worker counts; update README with expected speed improvements.
+- Benchmark the existing test matrix locally and in GitHub Actions to establish the current runtime envelope (per target, per workflow step).
+- Prototype parallel execution using `pytest-xdist` (e.g., `-n auto` with loadscope) and document required isolation fixes (temp dirs, coverage config, shared fixtures).
+- Update project config (pyproject options, Docker image dependencies, Make/CI helpers) to support opt-in parallel runs locally and enable it by default in GitHub Actions once stable.
+- Add guidance/tests to ensure Dagster asset execution and external services (Neo4j) remain healthy under concurrent test runs; gate merges on the faster pipeline.
 
 ## Impact
-- Affects: GitHub Actions workflows (`container-ci.yml`), `pyproject.toml`, Makefile, test fixtures, Docker image dependencies.
-- Breaking: None (parallelism is opt-in by default locally; enabled in CI after validation).
-- Requires coordination: Data/infra engineers must confirm Neo4j test containers tolerate multiple concurrent client sessions.
-- No external API or schema changes; effort limited to CI/test infrastructure.
-- Synergizes with existing performance-regression-check pipeline: faster feedback loop validates performance gates more reliably.
+- Affects GitHub Actions workflow files, Docker image dependencies, `pyproject.toml`, Makefile helpers, and test fixtures that assume serial order.
+- Requires coordination with data/infra engineers so Neo4j containers can tolerate multiple concurrent client sessions.
+- No external API or schema changes; effort is limited to build/test infrastructure.

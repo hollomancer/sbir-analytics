@@ -65,4 +65,3 @@ The project SHALL provide scripts to create, retain, and restore Neo4j backups w
 - **WHEN** `make neo4j-restore BACKUP=backups/neo4j/2024-05-01.dump` runs
 - **THEN** the script SHALL stop the Neo4j container, verify the dump exists, restore it via `neo4j-admin load`, and restart the service
 - **AND** prompt for confirmation unless `FORCE=1` is set to prevent accidental data loss
-

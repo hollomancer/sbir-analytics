@@ -438,4 +438,3 @@ SBIR_MAX_WORKERS=4                       # Parallel workers
 6. **Design** interface contracts
 7. **Implement** integration module
 8. **Validate** with full SBIR dataset
-

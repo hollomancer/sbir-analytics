@@ -263,4 +263,3 @@ The system SHALL support incremental loading of monthly USPTO updates without du
 - **THEN** the system removes old (Company)-[:OWNS]->(Patent) relationships
 - **AND** creates new OWNS relationships reflecting current ownership
 - **AND** preserves historical assignment chain via PatentAssignment nodes
-

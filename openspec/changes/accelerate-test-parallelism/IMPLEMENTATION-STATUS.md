@@ -1,6 +1,6 @@
 # Implementation Status: Accelerate Test Parallelism
 
-**Last Updated:** 2024-10-26  
+**Last Updated:** 2024-10-26
 **Status:** Proposal approved, ready for implementation (Phase 1: Audit & Baseline)
 
 ---
@@ -53,7 +53,7 @@ These components validate that the repository is ready for parallelism (strong o
 3. Document findings in `docs/test-isolation-audit.md`
 4. Add `pytest-xdist` to dependencies (non-breaking)
 
-**Estimated Effort:** 4–6 hours  
+**Estimated Effort:** 4–6 hours
 **Success Criteria:**
 - Baseline timing documented (e.g., serial: 10 min, CI container: 12 min)
 - Audit report identifies 3–5 potential isolation issues
@@ -71,7 +71,7 @@ These components validate that the repository is ready for parallelism (strong o
 4. Add isolation smoke tests
 5. Run first parallel CI tests and monitor for flakiness
 
-**Estimated Effort:** 8–12 hours  
+**Estimated Effort:** 8–12 hours
 **Success Criteria:**
 - All 29 tests pass with `pytest -n auto --dist=loadscope` locally
 - Neo4j container health checks confirm concurrent session support
@@ -90,7 +90,7 @@ These components validate that the repository is ready for parallelism (strong o
 4. Update README, CHANGELOG, and codeowners
 5. Monitor first 10 CI runs for stability
 
-**Estimated Effort:** 4–6 hours  
+**Estimated Effort:** 4–6 hours
 **Success Criteria:**
 - CI runs in parallel by default; timing is 2–4x faster than baseline
 - Documentation is clear and discoverable

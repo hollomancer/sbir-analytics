@@ -83,6 +83,21 @@ enrichment:
     memory_delta_warning_mb: 500.0 # WARNING if memory delta > 500MB
     memory_pressure_warn_percent: 80.0    # WARNING if memory > 80% available
     memory_pressure_critical_percent: 95.0 # CRITICAL if memory > 95% available
+  sam_gov:
+    # SAM.gov API configuration
+    base_url: "https://api.sam.gov/entity-information/v3"
+    api_key_env_var: "SAM_GOV_API_KEY"  # pragma: allowlist secret
+    rate_limit_per_minute: 60
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 1
+
+  usaspending_api:
+    # USAspending API configuration (for additional enrichment)
+    base_url: "https://api.usaspending.gov/api/v2"
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 2
 
 extraction:
   sbir:
@@ -119,14 +134,6 @@ extraction:
     normalize_entity_names: true
     detect_conveyances: true
 
-    # Neo4j loading configuration
-    neo4j_output_dir: "data/loaded/uspto"
-    load_success_threshold: 0.99 # 99% success rate required
-    create_indexes: true
-    create_constraints: true
-    batch_operations: true
-    batch_size: 1000
-
 validation:
   # Schema validation settings
   strict_schema: true
@@ -135,23 +142,6 @@ validation:
   # Quality check settings
   sample_size_for_checks: 1000 # Sample size for expensive checks
   max_error_percentage: 0.05 # 5% error rate allowed
-
-enrichment:
-  sam_gov:
-    # SAM.gov API configuration
-    base_url: "https://api.sam.gov/entity-information/v3"
-    api_key_env_var: "SAM_GOV_API_KEY"
-    rate_limit_per_minute: 60
-    timeout_seconds: 30
-    retry_attempts: 3
-    retry_backoff_seconds: 1
-
-  usaspending_api:
-    # USAspending API configuration (for additional enrichment)
-    base_url: "https://api.usaspending.gov/api/v2"
-    timeout_seconds: 30
-    retry_attempts: 3
-    retry_backoff_seconds: 2
 
 transformation:
   # Business logic configuration
@@ -180,15 +170,16 @@ loading:
     # Neo4j connection configuration
     uri_env_var: "NEO4J_URI"
     user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD"
+    password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
+    output_dir: "data/loaded/uspto"
+    load_success_threshold: 0.99 # 99% success rate required
+    create_indexes: true
+    create_constraints: true
+    batch_operations: true
 
     # Batch loading configuration
     batch_size: 1000
     parallel_threads: 4
-
-    # Constraints and indexes
-    create_constraints: true
-    create_indexes: true
 
     # Transaction settings
     transaction_timeout_seconds: 300

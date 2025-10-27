@@ -1,6 +1,6 @@
 # Design Patterns Gap Analysis
 
-**Generated:** 2025-10-25  
+**Generated:** 2025-10-25
 **Status:** add-initial-architecture is 91.3% complete (95/104 tasks)
 
 This document maps the remaining design patterns from `openspec/project.md` that are not yet implemented in the current codebase. These patterns would enhance the production-readiness of the SBIR ETL pipeline.
@@ -92,7 +92,7 @@ def enrich_naics_hierarchical(
     config: EnrichmentConfig
 ) -> EnrichmentResult:
     """9-step enrichment workflow:
-    
+
     1. Original SBIR data (confidence: 0.95)
     2. USAspending API (confidence: 0.90)
     3. SAM.gov API (confidence: 0.85)
@@ -132,7 +132,7 @@ def enrich_naics_hierarchical(
 data_quality:
   sbir_awards:
     # ... existing config ...
-    
+
   enriched_awards:
     threshold_profiles:
       high_confidence:  # For enriched records with confidence ≥ 0.80
@@ -268,7 +268,7 @@ class EnrichmentResult:
     confidence: float
     evidence: List[MatchEvidence]
     timestamp: datetime
-    
+
     def aggregate_confidence(self) -> float:
         """Calculate weighted average confidence from evidence."""
         if not self.evidence:
@@ -348,15 +348,15 @@ class ErrorMetrics:
 
 class MetricsCollector:
     # ... existing implementation ...
-    
+
     def track_enrichment(self, result: EnrichmentResult):
         """Track enrichment-specific metrics."""
         # Implementation needed
-    
+
     def categorize_error(self, error: Exception, category: str, severity: str):
         """Categorize errors for analysis."""
         # Implementation needed
-    
+
     def generate_dashboard_data(self, run_id: str) -> Dict[str, Any]:
         """Generate data for CLI dashboard."""
         # Implementation needed

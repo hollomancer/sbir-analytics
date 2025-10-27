@@ -75,5 +75,3 @@ code
 
 Archive:
 - Status: This change ("add-containerized-runtime") is archived and considered complete. Task 5.4 (publish/tag guidance) was removed from the implementation checklist and its content consolidated into the repository documentation (`docs/deployment/containerization.md` and `config/docker.yaml`). No further implementation work remains under this change.
-
-
