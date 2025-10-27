@@ -1,108 +1,148 @@
-sbir-etl/openspec/changes/validate-enrichment-pipeline-performance/specs/pipeline-orchestration/spec.md
 ## ADDED Requirements
 
-### Requirement: End-to-End Pipeline Testing
-The pipeline orchestration system SHALL support comprehensive end-to-end testing of enrichment workflows from data ingestion through final output validation.
+### Requirement: Asset-Level Performance Tracking in Pipeline Orchestration
+The pipeline orchestration system SHALL track and report performance metrics for each enrichment asset.
 
-#### Scenario: Automated pipeline execution
-- **WHEN** pipeline testing is initiated
-- **THEN** the system SHALL execute all enrichment assets in dependency order
-- **AND** each asset SHALL complete successfully
-- **AND** data SHALL flow correctly between pipeline stages
+#### Scenario: Per-asset execution metrics
+- **WHEN** enrichment assets execute
+- **THEN** the system SHALL record execution time and memory usage for each asset
+- **AND** metrics SHALL be stored in Dagster asset metadata
+- **AND** metrics SHALL be aggregated for pipeline-level analysis
 
-#### Scenario: Pipeline validation checks
-- **WHEN** the enrichment pipeline completes
-- **THEN** the system SHALL validate that all required outputs are generated
-- **AND** data quality checks SHALL pass
-- **AND** pipeline metrics SHALL be within acceptable ranges
+#### Scenario: Performance metadata visibility
+- **WHEN** enrichment pipeline runs complete
+- **THEN** operators SHALL view performance metrics in Dagster UI
+- **AND** run details SHALL include timing and memory for each asset
+- **AND** performance trends SHALL be visible across historical runs
 
-#### Scenario: Failure scenario testing
-- **WHEN** testing pipeline resilience
-- **THEN** the system SHALL simulate and handle common failure scenarios
-- **AND** error recovery mechanisms SHALL be validated
-- **AND** pipeline state SHALL be maintained correctly during failures
+#### Scenario: Performance alert generation
+- **WHEN** asset execution exceeds performance thresholds
+- **THEN** the system SHALL generate alerts or warnings
+- **AND** alerts SHALL be visible in Dagster logs and UI
+- **AND** alert severity SHALL reflect threshold breach magnitude
 
-### Requirement: Performance Monitoring in Pipeline Orchestration
-The pipeline orchestration system SHALL integrate performance monitoring throughout the enrichment pipeline execution.
+### Requirement: Pipeline Quality Validation and Asset Checks
+The pipeline orchestration system SHALL enforce quality validation as part of enrichment asset execution.
 
-#### Scenario: Asset-level performance tracking
-- **WHEN** pipeline assets execute
-- **THEN** the system SHALL track execution time for each asset
-- **AND** memory usage SHALL be monitored during asset execution
-- **AND** performance metrics SHALL be associated with asset runs
-
-#### Scenario: Pipeline-level performance aggregation
-- **WHEN** the complete pipeline executes
-- **THEN** the system SHALL aggregate performance metrics across all assets
-- **AND** total pipeline execution time SHALL be calculated
-- **AND** resource usage SHALL be summarized for the entire pipeline
-
-#### Scenario: Performance alerting
-- **WHEN** performance thresholds are exceeded
-- **THEN** the system SHALL generate alerts for performance issues
-- **AND** alerts SHALL include detailed performance metrics
-- **AND** performance trends SHALL be tracked over time
-
-### Requirement: Large Dataset Pipeline Handling
-The pipeline orchestration system SHALL support processing of large datasets including chunked processing and progress tracking for enrichment operations.
-
-#### Scenario: Chunked data processing
-- **WHEN** processing datasets larger than memory capacity
-- **THEN** the system SHALL divide data into manageable chunks
-- **AND** each chunk SHALL be processed independently
-- **AND** results SHALL be combined correctly
-
-#### Scenario: Progress tracking for long operations
-- **WHEN** enrichment operations run for extended periods
-- **THEN** the system SHALL provide progress indicators
-- **AND** processing status SHALL be updated regularly
-- **AND** users SHALL be able to monitor long-running operations
-
-#### Scenario: Resumable pipeline execution
-- **WHEN** pipeline execution is interrupted
-- **THEN** the system SHALL support resuming from the last successful point
-- **AND** partial results SHALL be preserved
-- **AND** duplicate processing SHALL be avoided
-
-### Requirement: Automated Quality Validation in Pipelines
-The pipeline orchestration system SHALL include automated quality validation and reporting as part of the enrichment workflow.
-
-#### Scenario: Quality gate enforcement
+#### Scenario: Asset check execution
 - **WHEN** enrichment assets complete
-- **THEN** the system SHALL enforce quality gates based on configured thresholds
-- **AND** assets SHALL fail if quality requirements are not met
-- **AND** quality metrics SHALL be reported in pipeline metadata
+- **THEN** Dagster asset checks SHALL validate quality metrics
+- **AND** checks SHALL enforce configured thresholds (e.g., match_rate >= 0.70)
+- **AND** checks SHALL fail appropriately when thresholds not met
 
-#### Scenario: Automated quality reporting
-- **WHEN** pipeline execution completes
-- **THEN** the system SHALL generate comprehensive quality reports
-- **AND** reports SHALL include match rates, confidence scores, and success metrics
-- **AND** quality trends SHALL be tracked across pipeline runs
+#### Scenario: Downstream asset blocking
+- **WHEN** an enrichment asset quality check fails
+- **THEN** downstream assets depending on that asset SHALL be blocked from execution
+- **AND** blocking behavior SHALL be visible in Dagster UI (assets skipped with reason)
+- **AND** pipeline operator SHALL be notified of blocking action
 
-#### Scenario: Quality-based pipeline decisions
-- **WHEN** quality metrics fall below thresholds
-- **THEN** the system SHALL make automated decisions about pipeline continuation
-- **AND** downstream assets SHALL be conditionally executed based on quality
-- **AND** quality issues SHALL be escalated appropriately
+#### Scenario: Quality metric reporting
+- **WHEN** enrichment assets complete
+- **THEN** quality metrics SHALL be included in asset metadata
+- **AND** metrics SHALL include match rates, confidence distributions, and identifier-type breakdowns
+- **AND** quality reports SHALL be accessible for trending and analysis
 
-### Requirement: Performance Benchmarking Integration
-The pipeline orchestration system SHALL integrate performance benchmarking and regression detection into the enrichment workflow.
+### Requirement: Large Dataset Processing in Pipeline
+The pipeline orchestration system SHALL support enrichment operations on large datasets through chunked and streaming processing.
 
-#### Scenario: Automated benchmarking
+#### Scenario: Chunked asset processing
+- **WHEN** processing datasets larger than available memory
+- **THEN** enrichment assets SHALL divide data into configurable chunks
+- **AND** chunks SHALL be processed independently and correctly combined
+- **AND** chunk size configuration SHALL be sourced from config/base.yaml
+
+#### Scenario: Progress tracking during asset execution
+- **WHEN** enrichment assets execute for extended periods
+- **THEN** the system SHALL track and report progress (records processed, estimated time remaining)
+- **AND** progress information SHALL be available in Dagster UI or logs
+- **AND** operators SHALL monitor long-running enrichment jobs
+
+#### Scenario: Memory pressure handling
+- **WHEN** memory usage approaches system thresholds
+- **THEN** the system SHALL reduce chunk sizes or use alternative processing strategies
+- **AND** asset execution SHALL continue without failure
+- **AND** degradation behavior SHALL be logged and monitored
+
+### Requirement: End-to-End Enrichment Pipeline Testing
+The pipeline orchestration system SHALL support comprehensive end-to-end testing of complete enrichment workflows.
+
+#### Scenario: Automated pipeline smoke tests
+- **WHEN** enrichment pipeline tests are triggered
+- **THEN** tests SHALL materialize all enrichment assets in dependency order
+- **AND** data SHALL flow correctly between pipeline stages
+- **AND** all assets SHALL complete successfully with valid output
+
+#### Scenario: Test data scenarios
+- **WHEN** smoke tests execute
+- **THEN** tests SHALL use known-good and edge-case test fixtures
+- **AND** tests SHALL validate handling of good scenarios (high-confidence matches)
+- **AND** tests SHALL validate handling of edge cases (unmatched records, low-confidence)
+
+#### Scenario: Pipeline failure recovery
+- **WHEN** enrichment assets fail during pipeline execution
+- **THEN** error context and logs SHALL be captured and accessible
+- **AND** partial results SHALL NOT corrupt final output state
+- **AND** pipeline SHALL be recoverable for retry or resume operations
+
+### Requirement: Automated Benchmarking and Regression Detection
+The pipeline orchestration system SHALL integrate benchmarking and regression detection into enrichment workflows.
+
+#### Scenario: Benchmark collection and storage
 - **WHEN** enrichment pipelines execute
 - **THEN** the system SHALL automatically collect performance benchmarks
-- **AND** benchmarks SHALL be stored for historical comparison
-- **AND** benchmark data SHALL be versioned with pipeline changes
+- **AND** benchmarks SHALL include execution time, memory usage, records processed per second
+- **AND** benchmarks SHALL be stored with timestamps and dataset size metadata
 
-#### Scenario: Regression detection
-- **WHEN** pipeline performance changes significantly
-- **THEN** the system SHALL detect performance regressions
-- **AND** alerts SHALL be generated for performance degradation
-- **AND** regression analysis SHALL identify root causes
+#### Scenario: Regression detection and alerting
+- **WHEN** benchmark results show performance changes
+- **THEN** the system SHALL compare current metrics to historical baseline
+- **AND** significant regressions (time +10% or memory +20%) SHALL be flagged
+- **AND** alerts SHALL include delta metrics and percent change for analysis
 
-#### Scenario: Performance optimization guidance
-- **WHEN** performance issues are detected
-- **THEN** the system SHALL provide optimization recommendations
-- **AND** performance bottlenecks SHALL be identified
-- **AND** optimization suggestions SHALL be prioritized by impact
-```
+#### Scenario: Trend analysis and reporting
+- **WHEN** historical benchmark data is available
+- **THEN** the system SHALL support queries for performance trending
+- **AND** performance trajectories SHALL be analyzable across time windows
+- **AND** reports SHALL identify improving vs. degrading performance patterns
+
+### Requirement: Pipeline Configuration for Performance Tuning
+The pipeline orchestration system SHALL provide configuration options for performance optimization and tuning.
+
+#### Scenario: Configurable performance parameters
+- **WHEN** enrichment pipeline executes
+- **THEN** the system SHALL load performance configuration from config/base.yaml
+- **AND** configuration SHALL include: chunk_size, memory_threshold_mb, match_rate_threshold, timeout_seconds
+- **AND** configuration parameters SHALL be applied during asset execution
+
+#### Scenario: Runtime parameter override
+- **WHEN** pipeline execution is initiated
+- **THEN** operators MAY override configuration parameters via environment or CLI
+- **AND** overrides SHALL be logged for auditability
+- **AND** configuration precedence SHALL be: CLI override > environment > config file > defaults
+
+#### Scenario: Tuning guidance and documentation
+- **WHEN** operators need to tune pipeline performance
+- **THEN** documentation SHALL provide guidance for each configuration parameter
+- **AND** tuning recommendations SHALL be based on dataset size and available resources
+- **AND** examples SHALL show typical tuning scenarios (memory-constrained vs. performance-optimized)
+
+### Requirement: Production Deployment Readiness
+The pipeline orchestration system SHALL support validation of enrichment pipelines for production deployment.
+
+#### Scenario: Pre-deployment validation checks
+- **WHEN** production deployment is planned
+- **THEN** the system SHALL provide a validation checklist of requirements
+- **AND** checklist items SHALL include: smoke tests pass, quality gates meet thresholds, performance baseline established
+- **AND** deployment SHALL be blocked until all critical checklist items are satisfied
+
+#### Scenario: Deployment validation reporting
+- **WHEN** pre-deployment validation is executed
+- **THEN** the system SHALL generate a validation report
+- **AND** report SHALL document: test results, quality metrics, performance baselines, any issues identified
+- **AND** report SHALL be reviewable by operations team before production deployment
+
+#### Scenario: Production monitoring setup
+- **WHEN** enrichment pipeline is deployed to production
+- **THEN** the system SHALL emit performance and quality metrics to monitoring infrastructure
+- **AND** alerts SHALL be configured for quality or performance regressions
+- **AND** operators SHALL have visibility into pipeline health and performance
