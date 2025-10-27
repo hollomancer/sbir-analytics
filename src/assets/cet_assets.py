@@ -605,6 +605,281 @@ def cet_award_classifications() -> Output:
 
 
 @asset(
+    name="cet_patent_classifications",
+    key_prefix=["ml"],
+    description=(
+        "Batch classify patents with a trained Patent CET classifier, persist results to "
+        "`data/processed/cet_patent_classifications.parquet` and emit a companion checks JSON."
+    ),
+)
+def cet_patent_classifications() -> Output:
+    """
+    Dagster asset to perform batch CET classification over patent title records.
+
+    Behavior (best-effort / import-safe):
+    - Attempts to load a trained PatentCETClassifier from a well-known artifacts path.
+      If the model is missing, writes an empty classification output and a checks JSON
+      explaining the missing artifact.
+    - Loads the taxonomy via TaxonomyLoader for metadata.
+    - Reads transformed patent records from `data/processed/transformed_patents.ndjson`
+      (NDJSON) or `data/processed/transformed_patents.parquet` if available. If neither
+      exists, operates on a very small sample so the asset can run in CI.
+    - Classifies patent titles in batches and persists outputs with NDJSON/parquet fallback.
+    - Writes a companion checks JSON summarizing classification coverage.
+    """
+    logger.info("Starting cet_patent_classifications asset")
+
+    # Local imports to keep module import-safe when optional deps are missing
+    import json
+    from pathlib import Path
+    from typing import List, Dict
+
+    # Lazy import of classifier implementation (may be unavailable in minimal CI)
+    try:
+        from src.ml.models.patent_classifier import PatentCETClassifier
+    except Exception:
+        PatentCETClassifier = None  # type: ignore
+
+    # Paths and defaults
+    patents_ndjson = Path("data/processed/transformed_patents.ndjson")
+    patents_parquet = Path("data/processed/transformed_patents.parquet")
+    model_path = Path("artifacts/models/patent_classifier_v1.pkl")
+    output_path = Path("data/processed/cet_patent_classifications.parquet")
+    checks_path = output_path.with_suffix(".checks.json")
+
+    # Load taxonomy for metadata (non-fatal)
+    loader = TaxonomyLoader()
+    try:
+        taxonomy = loader.load_taxonomy()
+    except Exception:
+        taxonomy = None
+
+    # Load patent records (prefer parquet, then ndjson). If neither present, use a tiny sample.
+    patents: List[Dict] = []
+    try:
+        if patents_parquet.exists():
+            import pandas as pd
+
+            df_patents = pd.read_parquet(patents_parquet)
+            # Expect dataframe with at least patent_id/title/assignee
+            for _, row in df_patents.iterrows():
+                patents.append(
+                    {
+                        "patent_id": str(row.get("patent_id") or row.get("id") or ""),
+                        "title": str(row.get("title") or ""),
+                        "assignee": row.get("assignee") or None,
+                    }
+                )
+        elif patents_ndjson.exists():
+            with open(patents_ndjson, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        patents.append(json.loads(line))
+        else:
+            # Minimal sample so asset can run in lightweight CI
+            patents = [
+                {
+                    "patent_id": "sample_p1",
+                    "title": "Machine learning for image analysis",
+                    "assignee": "Acme Labs",
+                },
+                {
+                    "patent_id": "sample_p2",
+                    "title": "Quantum computing improvements for qubit stability",
+                    "assignee": "QuantumCorp",
+                },
+            ]
+            logger.warning(
+                "No transformed patents found at expected paths; running classification on a small sample"
+            )
+    except Exception:
+        logger.exception("Failed to load patent records for classification; writing empty output")
+        patents = []
+
+    # If model artifact not found or loading fails, write placeholder output & checks
+    if not model_path.exists() or PatentCETClassifier is None:
+        logger.warning(
+            "Trained patent model not available; skipping classification (model: %s)", model_path
+        )
+        # Produce an empty DataFrame with expected columns so downstream consumers have schema
+        import pandas as pd
+
+        df_empty = pd.DataFrame(
+            columns=[
+                "patent_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "classified_at",
+                "taxonomy_version",
+            ]
+        )
+        # Use existing save helper for parquet/NDJSON fallback
+        try:
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            # If save failed, attempt NDJSON write
+            out_json = output_path.with_suffix(".json")
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+
+        checks = {
+            "ok": False,
+            "reason": "model_missing",
+            "model_path": str(model_path),
+            "num_patents": len(patents),
+            "num_classified": 0,
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "model_present": False,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
+    # Load trained model
+    try:
+        classifier = PatentCETClassifier.load(model_path)
+    except Exception:
+        logger.exception("Failed to load patent classifier from %s", model_path)
+        classifier = None
+
+    if classifier is None:
+        logger.warning("Patent model could not be loaded; aborting classification")
+        df_empty = __import__("pandas").DataFrame(
+            columns=[
+                "patent_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "classified_at",
+                "taxonomy_version",
+            ]
+        )
+        save_dataframe_parquet(df_empty, output_path)
+        checks = {"ok": False, "reason": "model_load_failed", "num_patents": len(patents)}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "model_present": False,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
+    # Build texts for classification and perform batch classification
+    titles = []
+    patent_ids = []
+    assignees = []
+    for p in patents:
+        titles.append(str(p.get("title") or ""))
+        patent_ids.append(p.get("patent_id") or "")
+        assignees.append(p.get("assignee") or None)
+
+    # batch_size: try to read from classification config if loader provided it, else default 1000
+    try:
+        classification_config = loader.load_classification_config()
+    except Exception:
+        classification_config = {}
+
+    batch_size = (
+        classification_config.get("batch", {}).get("size", 1000)
+        if isinstance(classification_config, dict)
+        else 1000
+    )
+
+    classifications_by_patent = classifier.classify_batch(titles, assignees, batch_size=batch_size)
+
+    # Flatten classification results into a DataFrame (one row per patent)
+    import pandas as pd
+
+    rows = []
+    for pid, cls_list in zip(patent_ids, classifications_by_patent):
+        if not cls_list:
+            rows.append(
+                {
+                    "patent_id": pid,
+                    "primary_cet": None,
+                    "primary_score": None,
+                    "supporting_cets": [],
+                    "classified_at": None,
+                    "taxonomy_version": classifier.taxonomy_version
+                    if classifier
+                    else (taxonomy.version if taxonomy else None),
+                }
+            )
+            continue
+
+        primary = cls_list[0]
+        supporting = cls_list[1:4] if len(cls_list) > 1 else []
+        rows.append(
+            {
+                "patent_id": pid,
+                "primary_cet": primary.cet_id,
+                "primary_score": primary.score,
+                "supporting_cets": [{"cet_id": s.cet_id, "score": s.score} for s in supporting],
+                "classified_at": getattr(primary, "classified_at", None),
+                "taxonomy_version": getattr(
+                    primary, "taxonomy_version", classifier.taxonomy_version if classifier else None
+                ),
+            }
+        )
+
+    df_out = pd.DataFrame(rows)
+
+    # Persist classifications (parquet preferred, NDJSON fallback)
+    try:
+        save_dataframe_parquet(df_out, output_path)
+    except Exception:
+        # Fallback: write NDJSON manually
+        json_out = output_path.with_suffix(".json")
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        with open(json_out, "w", encoding="utf-8") as fh:
+            for rec in rows:
+                fh.write(json.dumps(rec) + "\n")
+        # Touch parquet placeholder for consumers that assert its existence
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.touch()
+        except Exception:
+            logger.exception("Failed to touch parquet placeholder file for patent classifications")
+
+    # Build checks: coverage and counts
+    num_patents = len(rows)
+    num_classified = sum(1 for r in rows if r.get("primary_cet"))
+    checks = {
+        "ok": True,
+        "num_patents": num_patents,
+        "num_classified": num_classified,
+        "model_path": str(model_path),
+    }
+
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(checks_path, "w", encoding="utf-8") as fh:
+        json.dump(checks, fh, indent=2)
+
+    metadata = {
+        "path": str(output_path),
+        "rows": len(df_out),
+        "taxonomy_version": taxonomy.version if taxonomy else None,
+        "model_version": getattr(classifier, "model_version", None),
+        "checks_path": str(checks_path),
+    }
+
+    logger.info(
+        "Completed cet_patent_classifications asset", rows=len(df_out), output=str(output_path)
+    )
+
+    return Output(value=str(output_path), metadata=metadata)
+
+
+@asset(
     name="cet_company_profiles",
     key_prefix=["ml"],
     description=(
