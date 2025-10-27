@@ -1,5 +1,8 @@
 """Dagster assets for SBIR-USAspending enrichment pipeline."""
 
+from pathlib import Path
+from typing import Any
+
 import pandas as pd
 from dagster import (
     AssetCheckResult,
@@ -11,8 +14,10 @@ from dagster import (
     asset,
     asset_check,
 )
+from loguru import logger
 
 from ..config.loader import get_config
+from ..enrichers.chunked_enrichment import ChunkedEnricher
 from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
 from ..utils.performance_monitor import performance_monitor
 
@@ -29,6 +34,9 @@ def enriched_sbir_awards(
 ) -> Output[pd.DataFrame]:
     """
     Enrich validated SBIR awards with USAspending recipient data.
+
+    Supports both standard and chunked processing based on dataset size
+    and configured memory thresholds.
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -47,21 +55,39 @@ def enriched_sbir_awards(
         },
     )
 
-    # Perform enrichment with performance monitoring
-    with performance_monitor.monitor_block("enrichment_core"):
-        enriched_df = enrich_sbir_with_usaspending(
-            sbir_df=validated_sbir_awards,
-            recipient_df=usaspending_recipient_lookup,
-            sbir_company_col="Company",
-            sbir_uei_col="UEI",
-            sbir_duns_col="Duns",
-            recipient_name_col="recipient_name",
-            recipient_uei_col="recipient_uei",
-            recipient_duns_col="recipient_duns",
-            high_threshold=90,
-            low_threshold=75,
-            return_candidates=True,
+    # Determine if chunked processing is needed
+    use_chunked = _should_use_chunked_processing(
+        validated_sbir_awards,
+        usaspending_recipient_lookup,
+        config,
+    )
+
+    if use_chunked:
+        context.log.info("Using chunked enrichment processing")
+        enriched_df, enrichment_metrics = _enrich_chunked(
+            validated_sbir_awards,
+            usaspending_recipient_lookup,
+            config,
+            context,
         )
+    else:
+        context.log.info("Using standard enrichment processing")
+        # Perform enrichment with performance monitoring
+        with performance_monitor.monitor_block("enrichment_core"):
+            enriched_df = enrich_sbir_with_usaspending(
+                sbir_df=validated_sbir_awards,
+                recipient_df=usaspending_recipient_lookup,
+                sbir_company_col="Company",
+                sbir_uei_col="UEI",
+                sbir_duns_col="Duns",
+                recipient_name_col="recipient_name",
+                recipient_uei_col="recipient_uei",
+                recipient_duns_col="recipient_duns",
+                high_threshold=90,
+                low_threshold=75,
+                return_candidates=True,
+            )
+        enrichment_metrics = {}
 
     # Calculate enrichment statistics
     total_awards = len(enriched_df)
@@ -83,14 +109,19 @@ def enriched_sbir_awards(
     )
 
     # Get performance metrics
-    perf_summary = performance_monitor.get_metrics_summary()
-    enrichment_perf = perf_summary.get("enrichment_core", {})
-
-    # Extract performance data
-    duration = enrichment_perf.get("total_duration", 0.0)
-    avg_memory_delta = enrichment_perf.get("avg_memory_delta_mb", 0.0)
-    max_peak_memory = enrichment_perf.get("max_peak_memory_mb", 0.0)
-    records_per_second = (total_awards / duration) if duration > 0 else 0
+    if not enrichment_metrics:
+        perf_summary = performance_monitor.get_metrics_summary()
+        enrichment_perf = perf_summary.get("enrichment_core", {})
+        duration = enrichment_perf.get("total_duration", 0.0)
+        avg_memory_delta = enrichment_perf.get("avg_memory_delta_mb", 0.0)
+        max_peak_memory = enrichment_perf.get("max_peak_memory_mb", 0.0)
+        records_per_second = (total_awards / duration) if duration > 0 else 0
+    else:
+        # Use metrics from chunked processing
+        duration = enrichment_metrics.get("total_duration_seconds", 0.0)
+        avg_memory_delta = enrichment_metrics.get("avg_memory_delta_mb", 0.0)
+        max_peak_memory = enrichment_metrics.get("peak_memory_mb", 0.0)
+        records_per_second = enrichment_metrics.get("records_per_second", 0.0)
 
     # Create metadata
     metadata = {
@@ -108,9 +139,81 @@ def enriched_sbir_awards(
         "performance_records_per_second": round(records_per_second, 2),
         "performance_peak_memory_mb": round(max_peak_memory, 2),
         "performance_avg_memory_delta_mb": round(avg_memory_delta, 2),
+        # Processing metadata
+        "processing_mode": "chunked" if use_chunked else "standard",
+        "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
     }
 
     return Output(value=enriched_df, metadata=metadata)
+
+
+def _should_use_chunked_processing(
+    sbir_df: pd.DataFrame,
+    recipient_df: pd.DataFrame,
+    config: Any,
+) -> bool:
+    """Determine if chunked processing should be used.
+
+    Args:
+        sbir_df: SBIR DataFrame
+        recipient_df: Recipient DataFrame
+        config: Configuration object
+
+    Returns:
+        True if chunked processing should be used
+    """
+    # Use chunked processing if:
+    # 1. SBIR dataset is large (> 10K records)
+    # 2. Total dataset size exceeds threshold
+    total_sbir = len(sbir_df)
+    total_recipients = len(recipient_df)
+
+    # Estimate memory needed (rough heuristic)
+    estimated_memory_mb = (total_sbir * 1.0 + total_recipients * 1.0) / 1024
+    threshold_mb = config.enrichment.performance.memory_threshold_mb
+
+    return total_sbir > 10000 or estimated_memory_mb > (threshold_mb * 0.8)
+
+
+def _enrich_chunked(
+    sbir_df: pd.DataFrame,
+    recipient_df: pd.DataFrame,
+    config: Any,
+    context: AssetExecutionContext,
+) -> tuple[pd.DataFrame, dict]:
+    """Perform enrichment using chunked processing.
+
+    Args:
+        sbir_df: SBIR DataFrame
+        recipient_df: Recipient DataFrame
+        config: Configuration object
+        context: Dagster execution context
+
+    Returns:
+        Tuple of (enriched DataFrame, metrics dict)
+    """
+    try:
+        enricher = ChunkedEnricher(
+            sbir_df=sbir_df,
+            recipient_df=recipient_df,
+            checkpoint_dir=Path("reports/checkpoints"),
+            enable_progress_tracking=config.enrichment.performance.enable_progress_tracking,
+        )
+
+        enriched_df, metrics = enricher.process_to_dataframe()
+
+        context.log.info(
+            f"Chunked enrichment complete: {metrics['total_records']} records, "
+            f"{metrics['overall_match_rate']:.1%} match rate, "
+            f"{metrics['total_duration_seconds']:.2f}s",
+            extra=metrics,
+        )
+
+        return enriched_df, metrics
+
+    except Exception as e:
+        logger.error(f"Chunked enrichment failed: {e}")
+        raise
 
 
 @asset(
