@@ -18,6 +18,12 @@ from .uspto_assets import (
     uspto_documentids_parsing_check,
     uspto_conveyances_parsing_check,
 )
+from .uspto_validation_assets import (
+    validated_uspto_assignments,
+    uspto_rf_id_asset_check,
+    uspto_completeness_asset_check,
+    uspto_referential_asset_check,
+)
 
 __all__ = [
     "raw_sbir_data",
@@ -37,4 +43,8 @@ __all__ = [
     "uspto_assignors_parsing_check",
     "uspto_documentids_parsing_check",
     "uspto_conveyances_parsing_check",
+    "validated_uspto_assignments",
+    "uspto_rf_id_asset_check",
+    "uspto_completeness_asset_check",
+    "uspto_referential_asset_check",
 ]

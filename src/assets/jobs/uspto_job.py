@@ -30,10 +30,8 @@ from dagster import build_assets_job, AssetSelection
 # The assets module also defines an asset_check `uspto_rf_id_asset_check` which
 # will be attached to `validated_uspto_assignments` when the repository is loaded.
 try:
-    from src.assets.uspto_assets import (
-        raw_uspto_assignments,
-        validated_uspto_assignments,
-    )
+    from src.assets.uspto_assets import raw_uspto_assignments
+    from src.assets.uspto_validation_assets import validated_uspto_assignments
 except Exception:  # pragma: no cover - defensive import for repository load-time
     # If assets cannot be imported (e.g., dependencies missing at import time),
     # set placeholders so the module still defines `uspto_validation_job` symbol.
