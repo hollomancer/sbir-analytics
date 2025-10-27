@@ -2,6 +2,14 @@
 
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into Neo4j graph database.
 
+### Why This Project?
+
+The federal government provides a vast amount of data on innovation and government funding. However, this data is spread across multiple sources and formats, making it difficult to analyze. This project provides a unified and enriched view of the SBIR ecosystem by:
+
+*   **Connecting disparate data sources:** Integrating SBIR awards, USAspending contracts, and USPTO patent data.
+*   **Building a knowledge graph:** Structuring the data in a Neo4j graph database to reveal complex relationships.
+*   **Enabling powerful analysis:** Allowing for queries that trace funding, track technology transitions, and analyze patent ownership chains.
+
 ## Overview
 
 This project implements a five-stage ETL pipeline that processes SBIR award data from multiple government sources and loads it into a Neo4j graph database for analysis and visualization.
@@ -13,6 +21,15 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 3. **Enrich**: Augment data with fuzzy matching and external enrichment
 4. **Transform**: Business logic and graph-ready entity preparation
 5. **Load**: Write to Neo4j with idempotent operations and relationship chains
+
+```
++-----------+      +------------+      +----------+      +-------------+      +--------+
+|  Extract  |----->|  Validate  |----->|  Enrich  |----->|  Transform  |----->|  Load  |
++-----------+      +------------+      +----------+      +-------------+      +--------+
+    |                  |                   |                   |                  |
+ (Python/           (Pydantic)         (DuckDB/            (Python/           (Neo4j/
+  Pandas)                             Fuzzy-matching)      Pandas)            Cypher)
+```
 
 ## Features
 
@@ -30,6 +47,66 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 - **Chunked Processing**: Memory-adaptive enrichment with spill-to-disk for large datasets
 - **Configurable Thresholds**: Duration warnings, memory limits, and quality gates
 
+#### Enrichment Performance
+
+The enrichment stage includes resilience features for large datasets:
+
+- **Chunked Processing**: Process recipients in batches (default 10k)
+- **Memory Monitoring**: Track memory usage via `psutil`
+- **Adaptive Chunk Sizing**: Reduce chunk size under memory pressure
+- **Spill-to-Disk**: Write chunks to Parquet when memory critical
+- **Checkpointing**: Resume from last successful chunk on failure
+- **Progress Tracking**: Expose completion percentage and ETA
+
+#### Quality Gates
+
+Configurable thresholds enforce data quality:
+
+```yaml
+# config/base.yaml
+enrichment:
+  match_rate_threshold: 0.70      # Min 70% match rate
+
+validation:
+  pass_rate_threshold: 0.95       # Min 95% pass rate
+
+loading:
+  load_success_threshold: 0.99    # Min 99% load success
+```
+
+**Asset Checks:**
+- `enrichment_quality_regression_check` — Compare to baseline
+- `patent_load_success_rate` — Verify Neo4j load success
+- `assignment_load_success_rate` — Verify relationship creation
+
+#### Monitoring & Alerts
+
+Performance alerts are generated automatically:
+
+**Alert Types:**
+- `DURATION_WARNING` — Enrichment took >5 min
+- `MEMORY_WARNING` — Memory increase >500 MB
+- `QUALITY_REGRESSION` — Match rate dropped >5%
+- `LOAD_FAILURE` — Neo4j load success <99%
+
+**Alert Artifacts:**
+```json
+{
+  "timestamp": "2024-10-26T12:00:00",
+  "alert_type": "DURATION_WARNING",
+  "severity": "WARNING",
+  "message": "Enrichment took 380s (threshold: 300s)",
+  "metadata": {
+    "duration_seconds": 380,
+    "threshold_seconds": 300,
+    "records_processed": 533000
+  }
+}
+```
+
+Alerts saved to `reports/alerts/<timestamp>.json` and attached to Dagster asset metadata.
+
+
 ### Observability
 - **Alerts**: JSON artifacts with severity levels (INFO, WARNING, FAILURE)
 - **Dashboards**: Plotly-based quality dashboards (HTML + JSON fallback)
@@ -42,10 +119,41 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 - **Python**: 3.11 or 3.12
 - **Poetry**: For dependency management
-- **Docker**: For containerized development (optional but recommended)
+- **Docker**: For containerized development
 - **Neo4j**: 5.x (provided via Docker Compose)
 
-### Local Development (Poetry)
+### Container Development (Recommended)
+
+The project provides Docker Compose for a consistent development and testing environment.
+
+1. **Set up environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env: set NEO4J_USER, NEO4J_PASSWORD
+   ```
+
+2. **Build and start services:**
+   ```bash
+   make docker-build
+   make docker-up-dev
+   ```
+
+3. **Run the pipeline:**
+   Open your browser to [http://localhost:3000](http://localhost:3000) and materialize the assets to run the pipeline.
+
+4. **Run tests in container:**
+   ```bash
+   make docker-test
+   ```
+
+5. **View logs:**
+   ```bash
+   make docker-logs SERVICE=dagster-webserver
+   ```
+
+See `docs/deployment/containerization.md` for full details.
+
+### Local Development (Alternative)
 
 1. **Clone and install dependencies:**
    ```bash
@@ -63,42 +171,13 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 3. **Start Dagster UI:**
    ```bash
    poetry run dagster dev
-   # Open http://localhost:3000
+   # Open http://localhost:3000 and materialize the assets.
    ```
 
 4. **Run tests:**
    ```bash
    pytest -v --cov=src --cov-report=html
    ```
-
-### Container Development (Recommended)
-
-The project provides Docker Compose for consistent dev/test environments:
-
-1. **Set up environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env: set NEO4J_USER, NEO4J_PASSWORD
-   ```
-
-2. **Build and start services:**
-   ```bash
-   make docker-build
-   make docker-up-dev
-   # Dagster UI: http://localhost:3000
-   ```
-
-3. **Run tests in container:**
-   ```bash
-   make docker-test
-   ```
-
-4. **View logs:**
-   ```bash
-   make docker-logs SERVICE=dagster-webserver
-   ```
-
-See `docs/deployment/containerization.md` for full details.
 
 ## Data Sources
 
@@ -340,66 +419,6 @@ GitHub Actions workflows:
 - Sets GitHub Check status (success/failure)
 - Uploads artifacts (regression JSON, HTML report)
 
-## Performance & Quality
-
-### Enrichment Performance
-
-The enrichment stage includes resilience features for large datasets:
-
-- **Chunked Processing**: Process recipients in batches (default 10k)
-- **Memory Monitoring**: Track memory usage via `psutil`
-- **Adaptive Chunk Sizing**: Reduce chunk size under memory pressure
-- **Spill-to-Disk**: Write chunks to Parquet when memory critical
-- **Checkpointing**: Resume from last successful chunk on failure
-- **Progress Tracking**: Expose completion percentage and ETA
-
-### Quality Gates
-
-Configurable thresholds enforce data quality:
-
-```yaml
-# config/base.yaml
-enrichment:
-  match_rate_threshold: 0.70      # Min 70% match rate
-  
-validation:
-  pass_rate_threshold: 0.95       # Min 95% pass rate
-  
-loading:
-  load_success_threshold: 0.99    # Min 99% load success
-```
-
-**Asset Checks:**
-- `enrichment_quality_regression_check` — Compare to baseline
-- `patent_load_success_rate` — Verify Neo4j load success
-- `assignment_load_success_rate` — Verify relationship creation
-
-### Monitoring & Alerts
-
-Performance alerts are generated automatically:
-
-**Alert Types:**
-- `DURATION_WARNING` — Enrichment took >5 min
-- `MEMORY_WARNING` — Memory increase >500 MB
-- `QUALITY_REGRESSION` — Match rate dropped >5%
-- `LOAD_FAILURE` — Neo4j load success <99%
-
-**Alert Artifacts:**
-```json
-{
-  "timestamp": "2024-10-26T12:00:00",
-  "alert_type": "DURATION_WARNING",
-  "severity": "WARNING",
-  "message": "Enrichment took 380s (threshold: 300s)",
-  "metadata": {
-    "duration_seconds": 380,
-    "threshold_seconds": 300,
-    "records_processed": 533000
-  }
-}
-```
-
-Alerts saved to `reports/alerts/<timestamp>.json` and attached to Dagster asset metadata.
 
 ## Documentation
 
