@@ -96,11 +96,11 @@
 
 ## 8. Dagster Assets - Transformation
 
-- [ ] 8.1 Create transformed_patent_assignments asset
-- [ ] 8.2 Create transformed_patents asset
-- [ ] 8.3 Create transformed_patent_entities asset (assignees + assignors)
-- [ ] 8.4 Add asset checks for transformation success rate (≥98%)
-- [ ] 8.5 Add asset checks for company linkage coverage (target: ≥60% of SBIR companies)
+- [x] 8.1 Create transformed_patent_assignments asset
+- [x] 8.2 Create transformed_patents asset
+- [x] 8.3 Create transformed_patent_entities asset (assignees + assignors)
+- [x] 8.4 Add asset checks for transformation success rate (≥98%)
+- [x] 8.5 Add asset checks for company linkage coverage (target: ≥60% of SBIR companies)
 
 ## 9. Neo4j Graph Loader (Stage 5: Load)
 

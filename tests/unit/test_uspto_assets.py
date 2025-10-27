@@ -2,6 +2,8 @@
 import copy
 
 import pytest
+
+pytest.importorskip("dagster")
 from dagster import build_asset_context
 
 # Attempt to import the asset checks under test; skip if module missing.
@@ -127,4 +129,3 @@ def test_uspto_referential_asset_check_fail():
     result = uspto_referential_asset_check(ctx, copy.deepcopy(report))
     assert hasattr(result, "passed")
     assert result.passed is False
-`
