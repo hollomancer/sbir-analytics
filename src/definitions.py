@@ -18,6 +18,7 @@ from .assets import (
     uspto_validation_assets,
     uspto_transformation_assets,
 )
+from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
 
 # Load all assets and checks from modules
 all_assets = load_assets_from_modules(
@@ -61,6 +62,6 @@ daily_schedule = ScheduleDefinition(
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
-    jobs=[sbir_ingestion_job, etl_job],
+    jobs=[sbir_ingestion_job, etl_job, cet_full_pipeline_job],
     schedules=[daily_schedule],
 )
