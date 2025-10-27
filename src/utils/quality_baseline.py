@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -31,11 +31,11 @@ class QualityBaseline:
     total_records: int
     exact_matches: int
     fuzzy_matches: int
-    run_id: Optional[str] = None
-    processing_mode: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    run_id: str | None = None
+    processing_mode: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert baseline to dict for JSON serialization."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -50,7 +50,7 @@ class QualityBaseline:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "QualityBaseline":
+    def from_dict(cls, data: dict[str, Any]) -> "QualityBaseline":
         """Create QualityBaseline from dict."""
         data = data.copy()
         data["timestamp"] = datetime.fromisoformat(data["timestamp"])
@@ -66,7 +66,7 @@ class BaselineComparison:
     match_rate_delta_percent: float
     matched_records_delta: int
     regression_severity: str = "PASS"  # PASS, WARNING, FAILURE
-    regression_messages: List[str] = field(default_factory=list)
+    regression_messages: list[str] = field(default_factory=list)
     exceeded_threshold: bool = False
     threshold_percent: float = 5.0
 
@@ -82,7 +82,7 @@ class BaselineComparison:
             return 0.0
         return (self.current.match_rate - self.baseline.match_rate) / self.baseline.match_rate * 100
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert comparison to dict."""
         return {
             "baseline": self.baseline.to_dict(),
@@ -136,7 +136,7 @@ class BaselineComparison:
 class QualityBaselineManager:
     """Manages storage and comparison of quality baselines."""
 
-    def __init__(self, baseline_dir: Optional[Path] = None):
+    def __init__(self, baseline_dir: Path | None = None):
         """Initialize baseline manager.
 
         Args:
@@ -167,7 +167,7 @@ class QualityBaselineManager:
 
         return self.baseline_file
 
-    def load_baseline(self) -> Optional[QualityBaseline]:
+    def load_baseline(self) -> QualityBaseline | None:
         """Load current baseline.
 
         Returns:
@@ -191,9 +191,9 @@ class QualityBaselineManager:
         total_records: int,
         exact_matches: int,
         fuzzy_matches: int,
-        run_id: Optional[str] = None,
-        processing_mode: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        run_id: str | None = None,
+        processing_mode: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> QualityBaseline:
         """Create baseline from enrichment metrics.
 
@@ -227,7 +227,7 @@ class QualityBaselineManager:
     def compare_to_baseline(
         self,
         current: QualityBaseline,
-        baseline: Optional[QualityBaseline] = None,
+        baseline: QualityBaseline | None = None,
         regression_threshold_percent: float = 5.0,
     ) -> BaselineComparison:
         """Compare current baseline to historical baseline.
@@ -304,7 +304,7 @@ class QualityBaselineManager:
 
         return comparison
 
-    def get_history(self, limit: Optional[int] = None) -> List[QualityBaseline]:
+    def get_history(self, limit: int | None = None) -> list[QualityBaseline]:
         """Load historical baselines.
 
         Args:
@@ -334,7 +334,7 @@ class QualityBaselineManager:
 
         return baselines
 
-    def calculate_trend(self, num_recent: int = 10) -> Dict[str, Any]:
+    def calculate_trend(self, num_recent: int = 10) -> dict[str, Any]:
         """Calculate trend across recent baselines.
 
         Args:

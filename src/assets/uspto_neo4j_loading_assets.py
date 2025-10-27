@@ -23,6 +23,7 @@ Asset Checks:
 
 from __future__ import annotations
 
+
 import json
 import os
 import time
@@ -35,9 +36,6 @@ from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
-    AssetIn,
-    DependencyDefinition,
-    MetadataValue,
     asset,
     asset_check,
 )
@@ -88,7 +86,7 @@ class Neo4jLoadMetrics:
     success_rate: float
 
 
-def _get_neo4j_client() -> Optional[Neo4jClient]:
+def _get_neo4j_client() -> Neo4jClient | None:
     """Create and return a Neo4j client, or None if unavailable."""
     if Neo4jClient is None or Neo4jConfig is None:
         logger.warning("Neo4jClient unavailable; skipping Neo4j operations")
@@ -142,16 +140,16 @@ def _load_transformed_file(file_path: Path) -> List[Dict[str, Any]]:
 
 def _convert_dates_to_iso(obj: Any) -> Any:
     """Recursively convert date/datetime objects to ISO format strings."""
-    if isinstance(obj, (date, datetime)):
+    if isinstance(obj, date | datetime):
         return obj.isoformat()
     elif isinstance(obj, dict):
         return {k: _convert_dates_to_iso(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return [_convert_dates_to_iso(item) for item in obj]
     return obj
 
 
-def _serialize_metrics(metrics: Optional[LoadMetrics]) -> Dict[str, Any]:
+def _serialize_metrics(metrics: LoadMetrics | None) -> Dict[str, Any]:
     """Serialize LoadMetrics to dict for output."""
     if metrics is None:
         return {

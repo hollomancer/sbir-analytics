@@ -1,17 +1,14 @@
 import csv
 from pathlib import Path
-from datetime import date
-
-import pytest
 
 from src.quality.uspto_validators import (
-    validate_rf_id_uniqueness_from_iterator,
-    validate_rf_id_uniqueness,
+    USPTODataQualityValidator,
+    USPTOValidationConfig,
     ValidatorResult,
     iter_rows_from_path,
     validate_referential_integrity,
-    USPTODataQualityValidator,
-    USPTOValidationConfig,
+    validate_rf_id_uniqueness,
+    validate_rf_id_uniqueness_from_iterator,
 )
 
 

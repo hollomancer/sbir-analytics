@@ -221,7 +221,7 @@ class TestPerformanceMonitoring:
         @monitor.monitor_memory
         def memory_test():
             # Create some data to use memory
-            data = [i for i in range(10000)]
+            data = list(range(10000))
             return sum(data)
 
         result = memory_test()

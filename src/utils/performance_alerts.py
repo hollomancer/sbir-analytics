@@ -15,11 +15,11 @@ Features:
 """
 
 import json
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -43,12 +43,12 @@ class Alert:
     threshold_value: float
     actual_value: float
     metric_name: str
-    delta_percent: Optional[float] = None
-    run_id: Optional[str] = None
-    asset_name: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    delta_percent: float | None = None
+    run_id: str | None = None
+    asset_name: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert alert to dict for JSON serialization."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -79,7 +79,7 @@ class Alert:
 *Timestamp: {self.timestamp.isoformat()}*
 """
 
-    def to_log_dict(self) -> Dict[str, Any]:
+    def to_log_dict(self) -> dict[str, Any]:
         """Format alert for structured logging."""
         return {
             "alert_severity": self.severity.value,
@@ -128,9 +128,7 @@ class AlertThresholds:
             if hasattr(perf_config, "memory_delta_warning_mb"):
                 thresholds.MEMORY_DELTA_WARNING_MB = perf_config.memory_delta_warning_mb
             if hasattr(perf_config, "match_rate_threshold"):
-                thresholds.MATCH_RATE_FAILURE_THRESHOLD = (
-                    perf_config.match_rate_threshold
-                )
+                thresholds.MATCH_RATE_FAILURE_THRESHOLD = perf_config.match_rate_threshold
 
         return thresholds
 
@@ -140,9 +138,9 @@ class AlertCollector:
 
     def __init__(
         self,
-        asset_name: Optional[str] = None,
-        run_id: Optional[str] = None,
-        config: Optional[Any] = None,
+        asset_name: str | None = None,
+        run_id: str | None = None,
+        config: Any | None = None,
     ):
         """Initialize alert collector.
 
@@ -153,19 +151,15 @@ class AlertCollector:
         """
         self.asset_name = asset_name
         self.run_id = run_id
-        self.alerts: List[Alert] = []
-        self.thresholds = (
-            AlertThresholds.from_config(config)
-            if config
-            else AlertThresholds()
-        )
+        self.alerts: list[Alert] = []
+        self.thresholds = AlertThresholds.from_config(config) if config else AlertThresholds()
 
     def check_duration_per_record(
         self,
         total_duration_seconds: float,
         total_records: int,
         metric_name: str = "enrichment_duration",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if duration per record exceeds warning threshold.
 
         Args:
@@ -209,7 +203,7 @@ class AlertCollector:
         self,
         avg_memory_delta_mb: float,
         metric_name: str = "enrichment_memory",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if memory delta exceeds warning threshold.
 
         Args:
@@ -244,7 +238,7 @@ class AlertCollector:
         self,
         match_rate: float,
         metric_name: str = "enrichment_match_rate",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if match rate falls below failure threshold.
 
         Args:
@@ -279,7 +273,7 @@ class AlertCollector:
         self,
         memory_percent_available: float,
         action_type: str = "check",  # "check", "warn", or "critical"
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check memory pressure level.
 
         Args:
@@ -289,7 +283,10 @@ class AlertCollector:
         Returns:
             Alert if memory pressure high, None otherwise
         """
-        if action_type == "critical" and memory_percent_available < self.thresholds.MEMORY_PRESSURE_CRITICAL_PERCENT:
+        if (
+            action_type == "critical"
+            and memory_percent_available < self.thresholds.MEMORY_PRESSURE_CRITICAL_PERCENT
+        ):
             alert = Alert(
                 timestamp=datetime.now(),
                 severity=AlertSeverity.FAILURE,
@@ -299,14 +296,19 @@ class AlertCollector:
                 metric_name="memory_pressure",
                 threshold_value=self.thresholds.MEMORY_PRESSURE_CRITICAL_PERCENT,
                 actual_value=memory_percent_available,
-                delta_percent=(memory_percent_available - self.thresholds.MEMORY_PRESSURE_CRITICAL_PERCENT),
+                delta_percent=(
+                    memory_percent_available - self.thresholds.MEMORY_PRESSURE_CRITICAL_PERCENT
+                ),
                 run_id=self.run_id,
                 asset_name=self.asset_name,
             )
             self.alerts.append(alert)
             return alert
 
-        if action_type in ("warn", "check") and memory_percent_available < self.thresholds.MEMORY_PRESSURE_WARN_PERCENT:
+        if (
+            action_type in ("warn", "check")
+            and memory_percent_available < self.thresholds.MEMORY_PRESSURE_WARN_PERCENT
+        ):
             alert = Alert(
                 timestamp=datetime.now(),
                 severity=AlertSeverity.WARNING,
@@ -316,7 +318,9 @@ class AlertCollector:
                 metric_name="memory_pressure",
                 threshold_value=self.thresholds.MEMORY_PRESSURE_WARN_PERCENT,
                 actual_value=memory_percent_available,
-                delta_percent=(memory_percent_available - self.thresholds.MEMORY_PRESSURE_WARN_PERCENT),
+                delta_percent=(
+                    memory_percent_available - self.thresholds.MEMORY_PRESSURE_WARN_PERCENT
+                ),
                 run_id=self.run_id,
                 asset_name=self.asset_name,
             )
@@ -325,7 +329,7 @@ class AlertCollector:
 
         return None
 
-    def get_alerts(self, severity: Optional[AlertSeverity] = None) -> List[Alert]:
+    def get_alerts(self, severity: AlertSeverity | None = None) -> list[Alert]:
         """Get all alerts or filter by severity.
 
         Args:
@@ -347,7 +351,7 @@ class AlertCollector:
         """Check if any WARNING severity alerts exist."""
         return any(a.severity == AlertSeverity.WARNING for a in self.alerts)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert all alerts to dict."""
         return {
             "alert_count": len(self.alerts),

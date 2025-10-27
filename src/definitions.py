@@ -12,11 +12,11 @@ from dagster import (
 from . import assets
 from .assets import (
     sbir_ingestion,
-    usaspending_ingestion,
     sbir_usaspending_enrichment,
+    usaspending_ingestion,
     uspto_assets,
-    uspto_validation_assets,
     uspto_transformation_assets,
+    uspto_validation_assets,
 )
 
 # Load all assets and checks from modules

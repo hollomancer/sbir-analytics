@@ -77,7 +77,9 @@ def test_uspto_rf_id_asset_check_fail():
         "details": {"duplicate_samples": [("r1", 2)]},
     }
 
-    result = uspto_rf_id_asset_check(ctx, copy.deepcopy(report), ["/data/raw/uspto/assignment1.csv"])
+    result = uspto_rf_id_asset_check(
+        ctx, copy.deepcopy(report), ["/data/raw/uspto/assignment1.csv"]
+    )
 
     assert hasattr(result, "passed")
     assert result.passed is False

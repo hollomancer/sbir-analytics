@@ -27,7 +27,6 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Sequence
-from typing import Optional
 
 import pandas as pd
 
@@ -39,7 +38,7 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
     ) from e
 
 
-def _coerce_int(value: object) -> Optional[int]:
+def _coerce_int(value: object) -> int | None:
     """Best-effort conversion to int without propagating errors."""
     try:
         return int(value)  # type: ignore[arg-type]

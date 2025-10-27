@@ -7,10 +7,7 @@ Tests cover:
 - Edge cases and error scenarios
 """
 
-from datetime import date
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -34,7 +31,7 @@ PatentDocument = pytest.importorskip(
 ).PatentDocument
 
 
-def create_sample_csv_file(tmp_path: Path, filename: str, rows: List[Dict]) -> Path:
+def create_sample_csv_file(tmp_path: Path, filename: str, rows: list[dict]) -> Path:
     """Helper to create a sample CSV file for testing."""
     import csv
 

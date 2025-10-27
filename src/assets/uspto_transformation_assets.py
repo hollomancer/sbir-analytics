@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+
 import json
 import os
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from dagster import (
     AssetCheckResult,
@@ -38,7 +40,9 @@ except Exception:
     PatentAssignment = None  # type: ignore
 
 
-DEFAULT_TRANSFORMED_DIR = Path(os.environ.get("SBIR_ETL__USPTO__TRANSFORM_DIR", "data/transformed/uspto"))
+DEFAULT_TRANSFORMED_DIR = Path(
+    os.environ.get("SBIR_ETL__USPTO__TRANSFORM_DIR", "data/transformed/uspto")
+)
 TRANSFORM_SUCCESS_THRESHOLD = float(
     os.environ.get("SBIR_ETL__USPTO__TRANSFORM_SUCCESS_THRESHOLD", "0.98")
 )
@@ -54,7 +58,7 @@ def _ensure_dir(path: Path) -> Path:
     return path
 
 
-def _load_sbir_index(index_path: Optional[str]) -> Dict[str, str]:
+def _load_sbir_index(index_path: str | None) -> Dict[str, str]:
     if not index_path:
         return {}
     idx_file = Path(index_path)
@@ -85,18 +89,20 @@ def _iter_small_sample(store: List[Any], new_item: Any, limit: int) -> None:
         store.append(new_item)
 
 
-def _coerce_str(val: Any) -> Optional[str]:
+def _coerce_str(val: Any) -> str | None:
     if val in (None, ""):
         return None
     return str(val)
 
 
-def _combine_address(*parts: Optional[str]) -> Optional[str]:
-    parts_clean = [p for p in (part.strip() if isinstance(part, str) else part for part in parts) if p]
+def _combine_address(*parts: str | None) -> str | None:
+    parts_clean = [
+        p for p in (part.strip() if isinstance(part, str) else part for part in parts) if p
+    ]
     return ", ".join(parts_clean) if parts_clean else None
 
 
-def _normalize_country(country: Optional[str]) -> Optional[str]:
+def _normalize_country(country: str | None) -> str | None:
     if not country:
         return None
     c = str(country).strip().upper()
@@ -108,7 +114,7 @@ def _normalize_country(country: Optional[str]) -> Optional[str]:
 @dataclass
 class JoinedRow:
     data: Dict[str, Any]
-    rf_id: Optional[str]
+    rf_id: str | None
 
 
 class USPTOAssignmentJoiner:
@@ -136,10 +142,10 @@ class USPTOAssignmentJoiner:
     @staticmethod
     def _merge_rows(
         assignment: Dict[str, Any],
-        assignee: Optional[Dict[str, Any]],
-        assignor: Optional[Dict[str, Any]],
-        document: Optional[Dict[str, Any]],
-        conveyance: Optional[Dict[str, Any]],
+        assignee: Dict[str, Any] | None,
+        assignor: Dict[str, Any] | None,
+        document: Dict[str, Any] | None,
+        conveyance: Dict[str, Any] | None,
     ) -> Dict[str, Any]:
         merged: Dict[str, Any] = {}
 
@@ -165,7 +171,11 @@ class USPTOAssignmentJoiner:
         if document:
             set_if("document_rf_id", document.get("rf_id"))
             set_if("grant_doc_num", document.get("grant_doc_num"), document.get("grant_doc_number"))
-            set_if("application_number", document.get("appno_doc_num"), document.get("appno_doc_number"))
+            set_if(
+                "application_number",
+                document.get("appno_doc_num"),
+                document.get("appno_doc_number"),
+            )
             set_if("publication_number", document.get("pgpub_doc_num"))
             set_if("filing_date", document.get("appno_date"))
             set_if("publication_date", document.get("pgpub_date"))
@@ -237,7 +247,7 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
-def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> Tuple[Path, Path]:
+def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)
@@ -245,7 +255,7 @@ def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> Tuple[
     return base_dir / f"{prefix}_{timestamp}.jsonl", base_dir
 
 
-def _load_assignments_file(path: Optional[str]) -> Iterable[Dict[str, Any]]:
+def _load_assignments_file(path: str | None) -> Iterable[Dict[str, Any]]:
     if not path:
         return []
     src = Path(path)
@@ -311,9 +321,10 @@ def transformed_patent_assignments(
     transformer = PatentAssignmentTransformer(sbir_company_grant_index=sbir_index)
 
     failure_written = False
-    with output_path.open("w", encoding="utf-8") as out_fh, failure_path.open(
-        "w", encoding="utf-8"
-    ) as fail_fh:
+    with (
+        output_path.open("w", encoding="utf-8") as out_fh,
+        failure_path.open("w", encoding="utf-8") as fail_fh,
+    ):
         for joined in joiner.iter_joined_records(
             assignment_files, assignee_files, assignor_files, documentid_files, conveyance_files
         ):
@@ -455,7 +466,7 @@ def transformed_patent_entities(
 
     entities: Dict[str, Dict[str, Any]] = {}
 
-    def upsert(entity: Dict[str, Any], entity_type: str, rf_id: Optional[str]) -> None:
+    def upsert(entity: Dict[str, Any], entity_type: str, rf_id: str | None) -> None:
         if not entity:
             return
         name = entity.get("name")
@@ -477,7 +488,9 @@ def transformed_patent_entities(
         if rf_id:
             bucket["rf_ids"].add(rf_id)
         if entity.get("metadata", {}).get("linked_sbir_company"):
-            bucket["linked_companies"].add(entity["metadata"]["linked_sbir_company"].get("company_id"))
+            bucket["linked_companies"].add(
+                entity["metadata"]["linked_sbir_company"].get("company_id")
+            )
 
     for record in _load_assignments_file(src_path):
         rf_id = record.get("rf_id")

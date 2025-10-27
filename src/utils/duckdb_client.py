@@ -421,9 +421,7 @@ class DuckDBClient:
                         else:
                             # Append subsequent chunks
                             conn.register("temp_chunk", chunk)
-                            conn.execute(
-                                f"INSERT INTO {table_identifier} SELECT * FROM temp_chunk"
-                            )  # nosec B608
+                            conn.execute(f"INSERT INTO {table_identifier} SELECT * FROM temp_chunk")  # nosec B608
 
                         total_rows += len(chunk)
                         logger.info("Imported chunk", rows=len(chunk), total_rows=total_rows)

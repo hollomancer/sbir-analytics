@@ -99,8 +99,8 @@ class DataQualityConfig(BaseModel):
             # Coerce strings like "0.85" or numeric types to float
             try:
                 num = float(value)
-            except (TypeError, ValueError):
-                raise ValueError(f"{key} must be a number (0.0-1.0), got {value!r}")
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"{key} must be a number (0.0-1.0), got {value!r}") from e
             if not (0.0 <= num <= 1.0):
                 raise ValueError(f"{key} must be between 0.0 and 1.0, got {num}")
             out[key] = num
@@ -185,8 +185,8 @@ class ValidationConfig(BaseModel):
         """Coerce and validate error percentage to be between 0 and 1."""
         try:
             num = float(v)
-        except (TypeError, ValueError):
-            raise ValueError(f"max_error_percentage must be numeric, got {v!r}")
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"max_error_percentage must be numeric, got {v!r}") from e
         if not (0.0 <= num <= 1.0):
             raise ValueError(f"max_error_percentage must be between 0.0 and 1.0, got {num}")
         return num

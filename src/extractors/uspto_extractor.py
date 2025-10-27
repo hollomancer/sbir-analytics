@@ -42,10 +42,9 @@ Example:
 from __future__ import annotations
 
 import logging
-import math
 import time
+from collections.abc import Generator, Iterable
 from pathlib import Path
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 LOG = logging.getLogger(__name__)
 
@@ -61,8 +60,8 @@ except Exception:
     pyreadstat = None  # type: ignore
 
 try:
-    import pyarrow as pa  # type: no cover
-    import pyarrow.parquet as pq  # type: no cover
+    import pyarrow as pa  # type: ignore
+    import pyarrow.parquet as pq  # type: ignore
 except Exception:
     pa = None
     pq = None
@@ -91,8 +90,8 @@ class USPTOExtractor:
 
     def __init__(
         self,
-        input_dir: Union[str, Path],
-        file_globs: Optional[Iterable[str]] = None,
+        input_dir: str | Path,
+        file_globs: Iterable[str] | None = None,
         *,
         continue_on_error: bool = True,
         log_every: int = 50000,
@@ -105,12 +104,12 @@ class USPTOExtractor:
         self.log_every = max(0, int(log_every))
         LOG.debug("Initialized USPTOExtractor on %s", self.input_dir)
 
-    def discover_files(self) -> List[Path]:
+    def discover_files(self) -> list[Path]:
         """
         Discover files under the input directory matching supported extensions
         and optional globs.
         """
-        files: List[Path] = []
+        files: list[Path] = []
         if self.file_globs:
             for pattern in self.file_globs:
                 files.extend(sorted(self.input_dir.glob(pattern)))
@@ -124,8 +123,8 @@ class USPTOExtractor:
     # High-level streaming methods
     # ----------------------------
     def stream_rows(
-        self, file_path: Union[str, Path], chunk_size: int = 10000
-    ) -> Generator[Dict, None, None]:
+        self, file_path: str | Path, chunk_size: int = 10000
+    ) -> Generator[dict, None, None]:
         """
         Stream raw rows from the file as dictionaries in chunks.
 
@@ -167,7 +166,7 @@ class USPTOExtractor:
 
     def _stream_rows_for_extension(
         self, path: Path, chunk_size: int
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         ext = path.suffix.lower()
         if ext == ".csv":
             yield from self._stream_csv(path, chunk_size)
@@ -179,15 +178,15 @@ class USPTOExtractor:
             raise ValueError(f"Unsupported file extension for USPTO extractor: {ext}")
 
     def stream_assignments(
-        self, file_path: Union[str, Path], chunk_size: int = 10000
-    ) -> Generator[Union["PatentAssignment", Dict], None, None]:
+        self, file_path: str | Path, chunk_size: int = 10000
+    ) -> Generator[PatentAssignment | dict, None, None]:
         """
         Stream assignments as PatentAssignment model instances when possible.
         If the model import is unavailable or construction fails for a row,
         yields the raw dict (with an '_error' key describing the issue).
         """
 
-        def _filter_none(d: Dict) -> Dict:
+        def _filter_none(d: dict) -> dict:
             """Remove keys with None values to allow Pydantic defaults to be used."""
             return {k: v for k, v in d.items() if v is not None}
 
@@ -201,46 +200,46 @@ class USPTOExtractor:
                         rf_id=row.get("rf_id") or row.get("record_id") or row.get("id"),
                         file_id=row.get("file_id"),
                         document=_filter_none(
-                            dict(
-                                grant_number=row.get("grant_doc_num") or row.get("grant_number"),
-                                application_number=row.get("application_number"),
-                                publication_number=row.get("publication_number"),
-                                filing_date=row.get("filing_date"),
-                                publication_date=row.get("publication_date"),
-                                grant_date=row.get("grant_date"),
-                                title=row.get("title"),
-                                abstract=row.get("abstract"),
-                            )
+                            {
+                                "grant_number": row.get("grant_doc_num") or row.get("grant_number"),
+                                "application_number": row.get("application_number"),
+                                "publication_number": row.get("publication_number"),
+                                "filing_date": row.get("filing_date"),
+                                "publication_date": row.get("publication_date"),
+                                "grant_date": row.get("grant_date"),
+                                "title": row.get("title"),
+                                "abstract": row.get("abstract"),
+                            }
                         ),
                         conveyance=_filter_none(
-                            dict(
-                                rf_id=row.get("conveyance_rf_id"),
-                                conveyance_type=row.get("conveyance_type"),
-                                description=row.get("conveyance_text"),
-                                recorded_date=row.get("recorded_date"),
-                            )
+                            {
+                                "rf_id": row.get("conveyance_rf_id"),
+                                "conveyance_type": row.get("conveyance_type"),
+                                "description": row.get("conveyance_text"),
+                                "recorded_date": row.get("recorded_date"),
+                            }
                         ),
                         assignee=_filter_none(
-                            dict(
-                                rf_id=row.get("assignee_rf_id"),
-                                name=row.get("assignee_name"),
-                                street=row.get("assignee_street"),
-                                city=row.get("assignee_city"),
-                                state=row.get("assignee_state"),
-                                postal_code=row.get("assignee_postal"),
-                                country=row.get("assignee_country"),
-                                uei=row.get("assignee_uei"),
-                                cage=row.get("assignee_cage"),
-                                duns=row.get("assignee_duns"),
-                            )
+                            {
+                                "rf_id": row.get("assignee_rf_id"),
+                                "name": row.get("assignee_name"),
+                                "street": row.get("assignee_street"),
+                                "city": row.get("assignee_city"),
+                                "state": row.get("assignee_state"),
+                                "postal_code": row.get("assignee_postal"),
+                                "country": row.get("assignee_country"),
+                                "uei": row.get("assignee_uei"),
+                                "cage": row.get("assignee_cage"),
+                                "duns": row.get("assignee_duns"),
+                            }
                         ),
                         assignor=_filter_none(
-                            dict(
-                                rf_id=row.get("assignor_rf_id"),
-                                name=row.get("assignor_name"),
-                                execution_date=row.get("execution_date"),
-                                acknowledgment_date=row.get("acknowledgment_date"),
-                            )
+                            {
+                                "rf_id": row.get("assignor_rf_id"),
+                                "name": row.get("assignor_name"),
+                                "execution_date": row.get("execution_date"),
+                                "acknowledgment_date": row.get("acknowledgment_date"),
+                            }
                         ),
                         execution_date=row.get("execution_date"),
                         recorded_date=row.get("recorded_date"),
@@ -261,19 +260,18 @@ class USPTOExtractor:
     # ----------------------------
     # File format-specific readers
     # ----------------------------
-    def _stream_csv(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+    def _stream_csv(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
         if pd is None:
             raise RuntimeError("pandas is required to read CSV files for USPTO extraction")
         LOG.debug("Streaming CSV %s with chunk_size=%d", path, chunk_size)
         try:
             for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True):
-                for rec in chunk.to_dict(orient="records"):
-                    yield rec
+                yield from chunk.to_dict(orient="records")
         except Exception:
             LOG.exception("CSV streaming failed for %s", path)
             raise
 
-    def _stream_dta(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+    def _stream_dta(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
         """
         Stream rows from a .dta (Stata) file in chunks.
 
@@ -287,7 +285,7 @@ class USPTOExtractor:
         if pd is None:
             raise RuntimeError("pandas is required to read .dta files for USPTO extraction")
 
-        def _normalize_row_keys(row: Dict) -> Dict:
+        def _normalize_row_keys(row: dict) -> dict:
             """
             Normalize keys from various release variations to canonical keys used by the pipeline.
             This mapping is intentionally conservative and can be extended as we see real variants.
@@ -326,7 +324,7 @@ class USPTOExtractor:
                     normalized[k] = v
             return normalized
 
-        def _detect_stata_release_with_pyreadstat(p) -> Optional[str]:
+        def _detect_stata_release_with_pyreadstat(p) -> str | None:
             """Attempt to discover Stata file format/version via pyreadstat metadata, if available."""
             if pyreadstat is None:
                 return None
@@ -353,7 +351,7 @@ class USPTOExtractor:
             except Exception:
                 release_hint = None
 
-            release_numeric: Optional[int] = None
+            release_numeric: int | None = None
             if release_hint:
                 try:
                     release_numeric = int(release_hint)
@@ -466,7 +464,7 @@ class USPTOExtractor:
             LOG.exception("Failed streaming .dta file %s: %s", path, e)
             raise
 
-    def _stream_parquet(self, path: Path, chunk_size: int) -> Generator[Dict, None, None]:
+    def _stream_parquet(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
         """
         Stream parquet files preferentially with pyarrow row groups; fallback to pandas.
         """
@@ -501,7 +499,7 @@ class USPTOExtractor:
     # ----------------------------
     # Helper / utility methods
     # ----------------------------
-    def read_first_n(self, file_path: Union[str, Path], n: int = 10) -> List[Dict]:
+    def read_first_n(self, file_path: str | Path, n: int = 10) -> list[dict]:
         """Read and return the first n rows (useful for quick inspection)."""
         it = self.stream_rows(file_path, chunk_size=n)
         out = []
@@ -512,7 +510,7 @@ class USPTOExtractor:
                 break
         return out
 
-    def count_rows_estimate(self, file_path: Union[str, Path]) -> Optional[int]:
+    def count_rows_estimate(self, file_path: str | Path) -> int | None:
         """
         Return an approximate total row count for a file, if available cheaply.
         - CSV: None (would require scanning file)
@@ -537,7 +535,7 @@ class USPTOExtractor:
             return None
         return None
 
-    def _detect_stata_release(self, file_path: Union[str, Path]) -> Optional[int]:
+    def _detect_stata_release(self, file_path: str | Path) -> int | None:
         """
         Best-effort detection of Stata release version for .dta files.
 
@@ -582,10 +580,10 @@ class USPTOExtractor:
             return None
         return None
 
-    def supported_files_summary(self) -> Dict[str, int]:
+    def supported_files_summary(self) -> dict[str, int]:
         """Return a summary count of supported files found in the input directory (with logging)."""
         files = self.discover_files()
-        by_ext: Dict[str, int] = {}
+        by_ext: dict[str, int] = {}
         for f in files:
             by_ext.setdefault(f.suffix.lower(), 0)
             by_ext[f.suffix.lower()] += 1

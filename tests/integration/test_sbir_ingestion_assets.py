@@ -91,7 +91,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
             # If not JSON, at least ensure a non-empty string was provided
             assert len(cols) > 0
     else:
-        assert isinstance(cols, (list, tuple))
+        assert isinstance(cols, list | tuple)
 
     # Act: run validation asset using the raw DataFrame
     validated_ctx = build_asset_context()

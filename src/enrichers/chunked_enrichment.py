@@ -14,10 +14,11 @@ Features:
 """
 
 import json
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -36,9 +37,9 @@ class ChunkProgress:
     chunks_processed: int = 0
     records_processed: int = 0
     start_time: datetime = field(default_factory=datetime.now)
-    last_checkpoint: Optional[datetime] = None
-    errors: List[str] = field(default_factory=list)
-    checkpoint_dir: Optional[Path] = None
+    last_checkpoint: datetime | None = None
+    errors: list[str] = field(default_factory=list)
+    checkpoint_dir: Path | None = None
 
     @property
     def total_chunks(self) -> int:
@@ -66,7 +67,7 @@ class ChunkProgress:
         remaining = self.total_records - self.records_processed
         return remaining / rate if rate > 0 else 0.0
 
-    def save_checkpoint(self, metadata: Dict[str, Any]) -> Optional[Path]:
+    def save_checkpoint(self, metadata: dict[str, Any]) -> Path | None:
         """Save progress checkpoint to file.
 
         Args:
@@ -115,7 +116,7 @@ class ChunkedEnricher:
         self,
         sbir_df: pd.DataFrame,
         recipient_df: pd.DataFrame,
-        checkpoint_dir: Optional[Path] = None,
+        checkpoint_dir: Path | None = None,
         enable_progress_tracking: bool = True,
     ):
         """Initialize chunked enricher.
@@ -168,7 +169,7 @@ class ChunkedEnricher:
 
     def enrich_chunk(
         self, chunk: pd.DataFrame, chunk_num: int
-    ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """Enrich a single chunk of data.
 
         Args:
@@ -246,7 +247,7 @@ class ChunkedEnricher:
             )
             raise
 
-    def process_all_chunks(self) -> Generator[Tuple[pd.DataFrame, Dict[str, Any]], None, None]:
+    def process_all_chunks(self) -> Generator[tuple[pd.DataFrame, dict[str, Any]], None, None]:
         """Process all chunks with progress tracking and retry logic.
 
         Yields:
@@ -283,7 +284,7 @@ class ChunkedEnricher:
 
                 raise
 
-    def process_to_dataframe(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    def process_to_dataframe(self) -> tuple[pd.DataFrame, dict[str, Any]]:
         """Process all chunks and return combined DataFrame.
 
         Returns:
@@ -358,7 +359,7 @@ class ChunkedEnricher:
         for enriched_chunk, _ in self.process_all_chunks():
             yield enriched_chunk
 
-    def get_progress_metadata(self) -> Dict[str, Any]:
+    def get_progress_metadata(self) -> dict[str, Any]:
         """Get current progress metadata for Dagster asset visibility.
 
         Returns:
@@ -385,7 +386,7 @@ class ChunkedEnricher:
             "final_chunk_size": self.current_chunk_size,
         }
 
-    def load_last_checkpoint(self) -> Optional[Dict[str, Any]]:
+    def load_last_checkpoint(self) -> dict[str, Any] | None:
         """Load the most recent checkpoint for recovery.
 
         Returns:
@@ -408,7 +409,7 @@ class ChunkedEnricher:
             logger.error(f"Failed to load checkpoint {last_checkpoint}: {e}")
             return None
 
-    def resume_from_checkpoint(self, checkpoint_data: Dict[str, Any]) -> int:
+    def resume_from_checkpoint(self, checkpoint_data: dict[str, Any]) -> int:
         """Resume processing from a saved checkpoint.
 
         Updates progress state from checkpoint.
@@ -448,7 +449,7 @@ class ChunkedEnricher:
 
     def enrich_with_retry(
         self, chunk: pd.DataFrame, chunk_num: int, max_retries: int = 3
-    ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
         """Enrich a chunk with exponential backoff retry logic.
 
         Args:
@@ -487,7 +488,7 @@ class ChunkedEnricher:
     @staticmethod
     def estimate_memory_usage(
         sbir_records: int, recipient_records: int, chunk_size: int
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Estimate memory usage for chunked enrichment.
 
         Args:
@@ -515,7 +516,7 @@ class ChunkedEnricher:
 
 def create_dynamic_outputs_enrichment(
     sbir_df: pd.DataFrame, recipient_df: pd.DataFrame
-) -> Generator[Tuple[int, pd.DataFrame], None, None]:
+) -> Generator[tuple[int, pd.DataFrame], None, None]:
     """Create dynamic outputs for Dagster multi-asset pattern.
 
     This function enables Dagster's dynamic output pattern for
@@ -528,8 +529,7 @@ def create_dynamic_outputs_enrichment(
     Yields:
         Tuple of (chunk_id, enriched_chunk_df)
     """
-    config = get_config()
-    chunk_size = config.enrichment.performance.chunk_size
+    get_config()
 
     enricher = ChunkedEnricher(
         sbir_df=sbir_df,
@@ -538,13 +538,12 @@ def create_dynamic_outputs_enrichment(
         enable_progress_tracking=True,
     )
 
-    for chunk_num, enriched_chunk in enumerate(enricher.process_streaming()):
-        yield chunk_num, enriched_chunk
+    yield from enumerate(enricher.process_streaming())
 
 
 def combine_enriched_chunks(
-    chunks: List[pd.DataFrame],
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    chunks: list[pd.DataFrame],
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Combine multiple enriched chunks into final dataset.
 
     Args:

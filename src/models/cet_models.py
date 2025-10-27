@@ -10,7 +10,6 @@ These models represent:
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,10 +35,10 @@ class CETArea(BaseModel):
     )
     name: str = Field(..., description="Human-readable name (e.g., 'Artificial Intelligence')")
     definition: str = Field(..., description="Official NSTC definition of the technology area")
-    keywords: List[str] = Field(
+    keywords: list[str] = Field(
         default_factory=list, description="Keywords associated with this CET area"
     )
-    parent_cet_id: Optional[str] = Field(
+    parent_cet_id: str | None = Field(
         None, description="Parent CET ID for hierarchical relationships"
     )
     taxonomy_version: str = Field(..., description="Taxonomy version (e.g., 'NSTC-2025Q1')")
@@ -105,13 +104,13 @@ class CETClassification(BaseModel):
         ..., description="Classification level (High/Medium/Low)"
     )
     primary: bool = Field(..., description="Whether this is the primary CET area (highest score)")
-    evidence: List[EvidenceStatement] = Field(
+    evidence: list[EvidenceStatement] = Field(
         default_factory=list, description="Supporting evidence (up to 3 statements)"
     )
 
     @field_validator("evidence")
     @classmethod
-    def validate_evidence_count(cls, v: List[EvidenceStatement]) -> List[EvidenceStatement]:
+    def validate_evidence_count(cls, v: list[EvidenceStatement]) -> list[EvidenceStatement]:
         """Limit evidence to top 3 most relevant statements."""
         if len(v) > 3:
             raise ValueError("Maximum 3 evidence statements allowed per classification")
@@ -154,7 +153,7 @@ class CETAssessment(BaseModel):
     )
     entity_type: str = Field(..., description="Type of entity ('award', 'company', 'patent')")
     primary_cet: CETClassification = Field(..., description="Primary CET area (highest confidence)")
-    supporting_cets: List[CETClassification] = Field(
+    supporting_cets: list[CETClassification] = Field(
         default_factory=list, description="Supporting CET areas (up to 3)"
     )
     classified_at: datetime = Field(
@@ -174,7 +173,7 @@ class CETAssessment(BaseModel):
 
     @field_validator("supporting_cets")
     @classmethod
-    def validate_supporting_count(cls, v: List[CETClassification]) -> List[CETClassification]:
+    def validate_supporting_count(cls, v: list[CETClassification]) -> list[CETClassification]:
         """Limit supporting CETs to 3."""
         if len(v) > 3:
             raise ValueError("Maximum 3 supporting CET areas allowed")
@@ -182,7 +181,7 @@ class CETAssessment(BaseModel):
 
     @field_validator("supporting_cets")
     @classmethod
-    def validate_all_supporting(cls, v: List[CETClassification]) -> List[CETClassification]:
+    def validate_all_supporting(cls, v: list[CETClassification]) -> list[CETClassification]:
         """Ensure all supporting CETs have primary=False."""
         for cet in v:
             if cet.primary:
@@ -216,16 +215,16 @@ class CompanyCETProfile(BaseModel):
         le=1.0,
         description="Concentration in dominant CET (0-1, higher = more specialized)",
     )
-    dominant_phase: Optional[str] = Field(
+    dominant_phase: str | None = Field(
         None, description="Most common award phase in this CET (I, II, III)"
     )
-    first_award_date: Optional[datetime] = Field(
+    first_award_date: datetime | None = Field(
         None, description="Date of first award in this CET area"
     )
-    last_award_date: Optional[datetime] = Field(
+    last_award_date: datetime | None = Field(
         None, description="Date of most recent award in this CET area"
     )
-    cet_areas: List[str] = Field(
+    cet_areas: list[str] = Field(
         default_factory=list, description="All CET areas the company has worked in"
     )
 

@@ -4,8 +4,7 @@ Unit tests for TransitionScorer - transition likelihood scoring algorithm.
 Tests all individual scoring methods and composite score computation.
 """
 
-from datetime import date, timedelta
-from typing import Dict
+from datetime import date
 
 import pytest
 
@@ -14,7 +13,7 @@ from src.transition.detection.scoring import TransitionScorer
 
 
 @pytest.fixture
-def default_config() -> Dict:
+def default_config() -> dict:
     """Default configuration for TransitionScorer tests."""
     return {
         "base_score": 0.15,
@@ -74,9 +73,7 @@ class TestAgencyScoring:
 
     def test_same_agency_bonus(self, scorer):
         """Same agency should provide maximum agency bonus."""
-        signal = scorer.score_agency_continuity(
-            award_agency="DOD", contract_agency="DOD"
-        )
+        signal = scorer.score_agency_continuity(award_agency="DOD", contract_agency="DOD")
 
         assert signal.same_agency is True
         # same_agency_bonus (0.25) * weight (0.25) = 0.0625
@@ -112,17 +109,13 @@ class TestAgencyScoring:
 
     def test_case_insensitive_matching(self, scorer):
         """Agency matching should be case-insensitive."""
-        signal = scorer.score_agency_continuity(
-            award_agency="dod", contract_agency="DOD"
-        )
+        signal = scorer.score_agency_continuity(award_agency="dod", contract_agency="DOD")
 
         assert signal.same_agency is True
 
     def test_missing_agency_data(self, scorer):
         """Missing agency data should return zero score."""
-        signal = scorer.score_agency_continuity(
-            award_agency=None, contract_agency="DOD"
-        )
+        signal = scorer.score_agency_continuity(award_agency=None, contract_agency="DOD")
 
         assert signal.same_agency is False
         assert signal.agency_score == 0.0
@@ -364,9 +357,7 @@ class TestCompositeScoring:
             "competition_type": CompetitionType.LIMITED,
         }
 
-        signals, final_score, confidence = scorer.score_and_classify(
-            award_data, contract_data
-        )
+        signals, final_score, confidence = scorer.score_and_classify(award_data, contract_data)
 
         # Verify signals computed
         assert signals.agency is not None

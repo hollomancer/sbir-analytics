@@ -20,15 +20,16 @@ multi-GB USPTO data files into memory.
 
 from __future__ import annotations
 
-import json
 import csv
+import json
 import logging
-from datetime import datetime
 from collections import defaultdict
+from collections.abc import Generator, Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Any
 
 LOG = logging.getLogger(__name__)
 
@@ -56,26 +57,25 @@ class ValidatorResult:
     """
 
     success: bool
-    summary: Dict[str, Any]
-    details: Dict[str, Any]
+    summary: dict[str, Any]
+    details: dict[str, Any]
 
 
 def _iter_rows_from_csv(
     path: Path, chunk_size: int = 10000
-) -> Generator[Dict[str, Any], None, None]:
+) -> Generator[dict[str, Any], None, None]:
     """
     Stream rows from a CSV using the built-in csv module for minimal dependency.
     Yields dictionaries (header->value). This is robust and memory-light.
     """
     with path.open("r", newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
-        for row in reader:
-            yield row
+        yield from reader
 
 
 def _iter_rows_from_parquet(
     path: Path, chunk_size: int = 10000
-) -> Generator[Dict[str, Any], None, None]:
+) -> Generator[dict[str, Any], None, None]:
     """
     Stream parquet rows using pyarrow if available. Falls back to pandas if pyarrow
     not present (and pandas is available) — note this may load the whole table into memory.
@@ -103,7 +103,7 @@ def _iter_rows_from_parquet(
 
 def _iter_rows_from_dta(
     path: Path, chunk_size: int = 10000
-) -> Generator[Dict[str, Any], None, None]:
+) -> Generator[dict[str, Any], None, None]:
     """
     Stream .dta (Stata) rows. Prefer pyreadstat's row_limit capability if available,
     otherwise fall back to pandas (may be memory heavy).
@@ -148,8 +148,8 @@ def _iter_rows_from_dta(
 
 
 def iter_rows_from_path(
-    path: Union[str, Path], chunk_size: int = 10000
-) -> Generator[Dict[str, Any], None, None]:
+    path: str | Path, chunk_size: int = 10000
+) -> Generator[dict[str, Any], None, None]:
     """
     High-level wrapper that yields rows from a file path. Chooses a reader based
     on file extension.
@@ -168,18 +168,16 @@ def iter_rows_from_path(
         raise ValueError(f"Unsupported extension for USPTO validator: {ext}")
 
 
-def _ensure_path_list(
-    path_or_paths: Union[str, Path, Iterable[Union[str, Path]]]
-) -> List[Path]:
+def _ensure_path_list(path_or_paths: str | Path | Iterable[str | Path]) -> list[Path]:
     """Normalize a single path or an iterable of paths into a list of ``Path`` objects."""
 
-    if isinstance(path_or_paths, (str, Path)):
+    if isinstance(path_or_paths, str | Path):
         return [Path(path_or_paths)]
 
     if isinstance(path_or_paths, Iterable):
-        paths: List[Path] = []
+        paths: list[Path] = []
         for item in path_or_paths:
-            if isinstance(item, (str, Path)):
+            if isinstance(item, str | Path):
                 paths.append(Path(item))
             else:
                 raise TypeError(f"Unsupported path entry type: {type(item)!r}")
@@ -191,8 +189,8 @@ def _ensure_path_list(
 
 
 def validate_rf_id_uniqueness_from_iterator(
-    rows: Iterable[Dict[str, Any]],
-    rf_id_field_names: Optional[Iterable[str]] = None,
+    rows: Iterable[dict[str, Any]],
+    rf_id_field_names: Iterable[str] | None = None,
     sample_limit: int = 20,
 ) -> ValidatorResult:
     """
@@ -222,12 +220,12 @@ def validate_rf_id_uniqueness_from_iterator(
         ]
     )
 
-    seen: Dict[str, int] = {}  # rf_id -> count
+    seen: dict[str, int] = {}  # rf_id -> count
     missing_rf_id = 0
     total = 0
 
     # store a few examples of duplicate rows keyed by rf_id
-    duplicate_examples: Dict[str, int] = defaultdict(int)
+    duplicate_examples: dict[str, int] = defaultdict(int)
 
     for row in rows:
         total += 1
@@ -275,9 +273,9 @@ def validate_rf_id_uniqueness_from_iterator(
 
 
 def validate_rf_id_uniqueness(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     chunk_size: int = 10000,
-    rf_id_field_names: Optional[Iterable[str]] = None,
+    rf_id_field_names: Iterable[str] | None = None,
     sample_limit: int = 20,
 ) -> ValidatorResult:
     """
@@ -314,7 +312,7 @@ def validate_rf_id_uniqueness(
 
 
 # Small convenience CLI-like entrypoint for interactive runs
-def main_validate_rf_id_uniqueness(file_path: Union[str, Path]) -> Tuple[bool, Dict[str, Any]]:
+def main_validate_rf_id_uniqueness(file_path: str | Path) -> tuple[bool, dict[str, Any]]:
     """
     Run rf_id uniqueness validator and print a concise summary.
     Returns (success, summary_dict)
@@ -328,8 +326,8 @@ def main_validate_rf_id_uniqueness(file_path: Union[str, Path]) -> Tuple[bool, D
 
 
 def validate_referential_integrity(
-    child_file_path: Union[str, Path],
-    parent_file_path: Union[str, Path, Iterable[Union[str, Path]]],
+    child_file_path: str | Path,
+    parent_file_path: str | Path | Iterable[str | Path],
     child_fk_field: str = "rf_id",
     parent_pk_field: str = "rf_id",
     chunk_size: int = 10000,
@@ -423,8 +421,8 @@ def validate_referential_integrity(
 
 
 def validate_field_completeness(
-    file_path: Union[str, Path],
-    required_fields: List[str],
+    file_path: str | Path,
+    required_fields: list[str],
     chunk_size: int = 10000,
     completeness_threshold: float = 0.95,
 ) -> ValidatorResult:
@@ -497,8 +495,8 @@ def validate_field_completeness(
 
 
 def validate_date_fields(
-    file_path: Union[str, Path],
-    date_fields: List[str],
+    file_path: str | Path,
+    date_fields: list[str],
     min_year: int = 1790,
     max_year: int = 2100,
     chunk_size: int = 10000,
@@ -535,7 +533,7 @@ def validate_date_fields(
         }
         total_rows = 0
 
-        def parse_date(val: Any) -> Optional[datetime]:
+        def parse_date(val: Any) -> datetime | None:
             """Try to parse date from various formats."""
             if val is None:
                 return None
@@ -657,8 +655,8 @@ def validate_date_fields(
 
 
 def validate_duplicate_records(
-    file_path: Union[str, Path],
-    key_fields: List[str],
+    file_path: str | Path,
+    key_fields: list[str],
     chunk_size: int = 10000,
     sample_limit: int = 20,
 ) -> ValidatorResult:
@@ -677,7 +675,7 @@ def validate_duplicate_records(
     ValidatorResult with duplicate detection metrics
     """
     try:
-        seen_keys: Dict[str, int] = {}
+        seen_keys: dict[str, int] = {}
         duplicate_samples = []
         total_rows = 0
         missing_key_count = 0
@@ -742,7 +740,7 @@ def validate_duplicate_records(
         )
 
 
-def _default_required_fields() -> Dict[str, List[str]]:
+def _default_required_fields() -> dict[str, list[str]]:
     return {
         "assignments": ["rf_id", "record_dt", "cname"],
         "assignees": ["rf_id", "ee_name"],
@@ -751,7 +749,7 @@ def _default_required_fields() -> Dict[str, List[str]]:
     }
 
 
-def _default_date_fields() -> Dict[str, List[str]]:
+def _default_date_fields() -> dict[str, list[str]]:
     return {
         "assignments": ["record_dt", "last_update_dt"],
         "assignors": ["exec_dt", "ack_dt"],
@@ -759,7 +757,7 @@ def _default_date_fields() -> Dict[str, List[str]]:
     }
 
 
-def _default_duplicate_key_fields() -> Dict[str, List[str]]:
+def _default_duplicate_key_fields() -> dict[str, list[str]]:
     return {
         "assignments": ["rf_id"],
         "assignees": ["rf_id", "ee_name"],
@@ -780,12 +778,14 @@ class USPTOValidationConfig:
     max_year: int = 2100
     fail_output_dir: Path = Path("data/validated/fail")
     report_output_dir: Path = Path("reports/uspto-validation")
-    required_fields: Dict[str, List[str]] = field(default_factory=_default_required_fields)
-    date_fields: Dict[str, List[str]] = field(default_factory=_default_date_fields)
-    duplicate_key_fields: Dict[str, List[str]] = field(default_factory=_default_duplicate_key_fields)
+    required_fields: dict[str, list[str]] = field(default_factory=_default_required_fields)
+    date_fields: dict[str, list[str]] = field(default_factory=_default_date_fields)
+    duplicate_key_fields: dict[str, list[str]] = field(
+        default_factory=_default_duplicate_key_fields
+    )
 
 
-def _validator_result_to_dict(result: ValidatorResult) -> Dict[str, Any]:
+def _validator_result_to_dict(result: ValidatorResult) -> dict[str, Any]:
     """Convert ``ValidatorResult`` into a JSON-serializable dict copy."""
 
     return {
@@ -804,13 +804,13 @@ class USPTODataQualityValidator:
     structured validation report.
     """
 
-    def __init__(self, config: Optional[USPTOValidationConfig] = None) -> None:
+    def __init__(self, config: USPTOValidationConfig | None = None) -> None:
         self.config = config or USPTOValidationConfig()
         self.config.fail_output_dir.mkdir(parents=True, exist_ok=True)
         self.config.report_output_dir.mkdir(parents=True, exist_ok=True)
-        self._failure_samples: List[Dict[str, Any]] = []
+        self._failure_samples: list[dict[str, Any]] = []
 
-    def _write_failure_sample(self, label: str, sample: List[Dict[str, Any]]) -> Optional[str]:
+    def _write_failure_sample(self, label: str, sample: list[dict[str, Any]]) -> str | None:
         if not sample:
             return None
 
@@ -828,21 +828,21 @@ class USPTODataQualityValidator:
         self._failure_samples.append(record)
         return str(path)
 
-    def _check_required_fields(self, table: str) -> List[str]:
+    def _check_required_fields(self, table: str) -> list[str]:
         return self.config.required_fields.get(table, [])
 
-    def _check_date_fields(self, table: str) -> List[str]:
+    def _check_date_fields(self, table: str) -> list[str]:
         return self.config.date_fields.get(table, [])
 
-    def _check_duplicate_fields(self, table: str) -> List[str]:
+    def _check_duplicate_fields(self, table: str) -> list[str]:
         return self.config.duplicate_key_fields.get(table, [])
 
-    def _run_assignment_checks(self, files: List[Union[str, Path]]) -> Dict[str, Dict[str, Any]]:
-        results: Dict[str, Dict[str, Any]] = {}
+    def _run_assignment_checks(self, files: list[str | Path]) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
 
         for file_path in files:
             file_str = str(file_path)
-            checks: Dict[str, Dict[str, Any]] = {}
+            checks: dict[str, dict[str, Any]] = {}
 
             rf_result = validate_rf_id_uniqueness(
                 file_path,
@@ -909,10 +909,10 @@ class USPTODataQualityValidator:
     def _run_child_table_checks(
         self,
         table: str,
-        files: List[Union[str, Path]],
-        parent_files: List[Union[str, Path]],
-    ) -> Dict[str, Dict[str, Any]]:
-        results: Dict[str, Dict[str, Any]] = {}
+        files: list[str | Path],
+        parent_files: list[str | Path],
+    ) -> dict[str, dict[str, Any]]:
+        results: dict[str, dict[str, Any]] = {}
         if not files:
             return results
 
@@ -920,7 +920,7 @@ class USPTODataQualityValidator:
 
         for file_path in files:
             file_str = str(file_path)
-            checks: Dict[str, Dict[str, Any]] = {}
+            checks: dict[str, dict[str, Any]] = {}
 
             if parent_refs:
                 ref_result = validate_referential_integrity(
@@ -999,7 +999,9 @@ class USPTODataQualityValidator:
 
         return results
 
-    def _summarize_tables(self, table_results: Dict[str, Dict[str, Dict[str, Any]]]) -> Dict[str, Any]:
+    def _summarize_tables(
+        self, table_results: dict[str, dict[str, dict[str, Any]]]
+    ) -> dict[str, Any]:
         summary = {}
         total_checks = 0
         passed_checks = 0
@@ -1035,9 +1037,9 @@ class USPTODataQualityValidator:
 
     def run(
         self,
-        files_by_table: Dict[str, List[Union[str, Path]]],
+        files_by_table: dict[str, list[str | Path]],
         write_report: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute all validators and return a structured report."""
 
         self._failure_samples = []
@@ -1079,7 +1081,7 @@ class USPTODataQualityValidator:
 
         return report
 
-    def _write_report(self, report: Dict[str, Any]) -> Optional[str]:
+    def _write_report(self, report: dict[str, Any]) -> str | None:
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
         report_path = self.config.report_output_dir / f"uspto_validation_{timestamp}.json"
         try:

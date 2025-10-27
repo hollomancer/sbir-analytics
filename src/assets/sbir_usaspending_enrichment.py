@@ -8,7 +8,6 @@ from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
-    AssetIn,
     MetadataValue,
     Output,
     asset,

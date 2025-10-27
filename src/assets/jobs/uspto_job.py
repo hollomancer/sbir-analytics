@@ -21,7 +21,7 @@ Notes:
     Dagster run config or environment variables consumed by the assets.
 """
 
-from dagster import build_assets_job, AssetSelection
+from dagster import AssetSelection, build_assets_job
 
 # Import the USPTO asset definitions. These are expected to be defined in the
 # package `src.assets.uspto_assets` as `raw_uspto_assignments` and

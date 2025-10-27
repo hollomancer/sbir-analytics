@@ -318,9 +318,7 @@ class SbirDuckDBExtractor:
             if start_year is not None:
                 if end_year is None:
                     end_year = start_year
-                base_query = (
-                    f'SELECT * FROM {table_identifier} WHERE "Award Year" BETWEEN {start_year} AND {end_year}'  # nosec B608
-                )
+                base_query = f'SELECT * FROM {table_identifier} WHERE "Award Year" BETWEEN {start_year} AND {end_year}'  # nosec B608
             else:
                 base_query = f"SELECT * FROM {table_identifier}"  # nosec B608
 
@@ -408,7 +406,7 @@ class SbirDuckDBExtractor:
         logger.info(f"Extracting records for phases: {phases}")
 
         # Build SQL IN clause
-        phase_list = ", ".join(f"'{phase}'" for phase in phases)
+        ", ".join(f"'{phase}'" for phase in phases)
 
         table_identifier = self._table_identifier
         phase_literals = ", ".join(self.duckdb_client.escape_literal(p) for p in phases)

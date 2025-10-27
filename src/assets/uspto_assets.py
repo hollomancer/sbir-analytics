@@ -26,16 +26,14 @@ Notes:
   reasonable default `data/raw/uspto` is used.
 """
 
-import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from dagster import (
-    AssetExecutionContext,
-    AssetIn,
     AssetCheckResult,
     AssetCheckSeverity,
+    AssetExecutionContext,
+    AssetIn,
     MetadataValue,
     asset,
     asset_check,
@@ -76,7 +74,7 @@ def _get_input_dir(context: AssetExecutionContext) -> Path:
     return Path(os.environ.get("SBIR_ETL__USPTO__RAW_DIR", DEFAULT_USPTO_RAW_DIR))
 
 
-def _discover_table_files(input_dir: Path, table_hint: str) -> List[str]:
+def _discover_table_files(input_dir: Path, table_hint: str) -> list[str]:
     """
     Discover files under `input_dir` that likely correspond to `table_hint`, matching
     supported extensions. This uses a loose filename containment heuristic:
@@ -87,7 +85,7 @@ def _discover_table_files(input_dir: Path, table_hint: str) -> List[str]:
         return []
 
     p = Path(input_dir)
-    found: List[str] = []
+    found: list[str] = []
     lh = table_hint.lower()
 
     for ext in _SUPPORTED_EXTS:
@@ -99,7 +97,7 @@ def _discover_table_files(input_dir: Path, table_hint: str) -> List[str]:
     return found
 
 
-def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 10000) -> Dict:
+def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 10000) -> dict:
     """
     Attempt to parse a small sample from a file using the USPTOExtractor when available.
     Returns a summary dict:
@@ -111,7 +109,7 @@ def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 100
       }
     If the extractor is unavailable, returns a descriptive summary with success=False.
     """
-    summary: Dict = {"success": False, "sampled_rows": 0, "sample_preview": [], "error": None}
+    summary: dict = {"success": False, "sampled_rows": 0, "sample_preview": [], "error": None}
 
     if USPTOExtractor is None:
         summary["error"] = "USPTOExtractor unavailable (missing dependencies)"
@@ -151,7 +149,7 @@ def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 100
     description="Discover raw USPTO assignment files",
     group_name="uspto",
 )
-def raw_uspto_assignments(context: AssetExecutionContext) -> List[str]:
+def raw_uspto_assignments(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignment files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignment")
@@ -163,7 +161,7 @@ def raw_uspto_assignments(context: AssetExecutionContext) -> List[str]:
     description="Discover raw USPTO assignee files",
     group_name="uspto",
 )
-def raw_uspto_assignees(context: AssetExecutionContext) -> List[str]:
+def raw_uspto_assignees(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignee files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignee")
@@ -175,7 +173,7 @@ def raw_uspto_assignees(context: AssetExecutionContext) -> List[str]:
     description="Discover raw USPTO assignor files",
     group_name="uspto",
 )
-def raw_uspto_assignors(context: AssetExecutionContext) -> List[str]:
+def raw_uspto_assignors(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignor files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignor")
@@ -187,7 +185,7 @@ def raw_uspto_assignors(context: AssetExecutionContext) -> List[str]:
     description="Discover raw USPTO documentid files",
     group_name="uspto",
 )
-def raw_uspto_documentids(context: AssetExecutionContext) -> List[str]:
+def raw_uspto_documentids(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering documentid files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "documentid")
@@ -199,7 +197,7 @@ def raw_uspto_documentids(context: AssetExecutionContext) -> List[str]:
     description="Discover raw USPTO conveyance files",
     group_name="uspto",
 )
-def raw_uspto_conveyances(context: AssetExecutionContext) -> List[str]:
+def raw_uspto_conveyances(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering conveyance files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "conveyance")
@@ -216,12 +214,12 @@ def raw_uspto_conveyances(context: AssetExecutionContext) -> List[str]:
     ins={"raw_files": AssetIn("raw_uspto_assignments")},
 )
 def parsed_uspto_assignments(
-    context: AssetExecutionContext, raw_files: List[str]
-) -> Dict[str, dict]:
+    context: AssetExecutionContext, raw_files: list[str]
+) -> dict[str, dict]:
     """
     For each discovered raw assignment file, parse a small sample and return per-file summaries.
     """
-    results: Dict[str, dict] = {}
+    results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignment files to parse")
         return results
@@ -242,8 +240,8 @@ def parsed_uspto_assignments(
     group_name="uspto",
     ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )
-def parsed_uspto_assignees(context: AssetExecutionContext, raw_files: List[str]) -> Dict[str, dict]:
-    results: Dict[str, dict] = {}
+def parsed_uspto_assignees(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+    results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignee files to parse")
         return results
@@ -264,8 +262,8 @@ def parsed_uspto_assignees(context: AssetExecutionContext, raw_files: List[str])
     group_name="uspto",
     ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )
-def parsed_uspto_assignors(context: AssetExecutionContext, raw_files: List[str]) -> Dict[str, dict]:
-    results: Dict[str, dict] = {}
+def parsed_uspto_assignors(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+    results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignor files to parse")
         return results
@@ -287,9 +285,9 @@ def parsed_uspto_assignors(context: AssetExecutionContext, raw_files: List[str])
     ins={"raw_files": AssetIn("raw_uspto_documentids")},
 )
 def parsed_uspto_documentids(
-    context: AssetExecutionContext, raw_files: List[str]
-) -> Dict[str, dict]:
-    results: Dict[str, dict] = {}
+    context: AssetExecutionContext, raw_files: list[str]
+) -> dict[str, dict]:
+    results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No documentid files to parse")
         return results
@@ -311,9 +309,9 @@ def parsed_uspto_documentids(
     ins={"raw_files": AssetIn("raw_uspto_conveyances")},
 )
 def parsed_uspto_conveyances(
-    context: AssetExecutionContext, raw_files: List[str]
-) -> Dict[str, dict]:
-    results: Dict[str, dict] = {}
+    context: AssetExecutionContext, raw_files: list[str]
+) -> dict[str, dict]:
+    results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No conveyance files to parse")
         return results
@@ -342,7 +340,7 @@ def _make_parsing_check(
     """
 
     def _check(
-        context: AssetExecutionContext, parsed: Dict[str, dict], raw_files: List[str]
+        context: AssetExecutionContext, parsed: dict[str, dict], raw_files: list[str]
     ) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []

@@ -19,7 +19,6 @@ Notes:
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import pandas as pd
 
@@ -57,7 +56,7 @@ def normalize_recipient_name(name: str | None) -> str:
 def enrich_sbir_with_usaspending(
     sbir_df: pd.DataFrame,
     recipient_df: pd.DataFrame,
-    transaction_df: Optional[pd.DataFrame] = None,
+    transaction_df: pd.DataFrame | None = None,
     *,
     sbir_company_col: str = "Company",
     sbir_uei_col: str = "UEI",
@@ -133,15 +132,12 @@ def enrich_sbir_with_usaspending(
 
     # Match each SBIR award
     for idx, row in sbir.iterrows():
-        matched = False
-
         # Try UEI exact match
         uei = str(row.get(sbir_uei_col, "")).strip().upper()
         if uei and uei in recipient_by_uei:
             sbir.at[idx, "_usaspending_recipient_idx"] = recipient_by_uei[uei]
             sbir.at[idx, "_usaspending_match_score"] = 100
             sbir.at[idx, "_usaspending_match_method"] = "uei-exact"
-            matched = True
             continue
 
         # Try DUNS exact match
@@ -150,7 +146,6 @@ def enrich_sbir_with_usaspending(
             sbir.at[idx, "_usaspending_recipient_idx"] = recipient_by_duns[duns]
             sbir.at[idx, "_usaspending_match_score"] = 100
             sbir.at[idx, "_usaspending_match_method"] = "duns-exact"
-            matched = True
             continue
 
         # Fuzzy name matching
@@ -165,7 +160,7 @@ def enrich_sbir_with_usaspending(
                 )
 
                 candidates = []
-                for choice, score, key in results:
+                for _choice, score, key in results:
                     if score >= low_threshold:
                         candidates.append(
                             {
@@ -184,7 +179,6 @@ def enrich_sbir_with_usaspending(
                         sbir.at[idx, "_usaspending_recipient_idx"] = best["idx"]
                         sbir.at[idx, "_usaspending_match_score"] = best["score"]
                         sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-auto"
-                        matched = True
                     elif best["score"] >= low_threshold:
                         sbir.at[idx, "_usaspending_match_score"] = best["score"]
                         sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-candidate"
