@@ -40,7 +40,116 @@ except Exception:  # pragma: no cover - defensive import
 import pickle
 import logging
 
+# Feature helpers are optional and may already have been imported above.
+# Attempt a local import to ensure names exist when the features module is
+# available, but do not raise if it's missing in minimal CI environments.
+try:
+    from src.ml.features.patent_features import (
+        extract_features as _extract_features,
+        PatentFeatureVector as _PatentFeatureVector,
+    )  # type: ignore
+
+    # Populate module-level names only if not already present or None
+    if "extract_features" not in globals() or extract_features is None:  # type: ignore
+        extract_features = _extract_features  # type: ignore
+    if "PatentFeatureVector" not in globals() or PatentFeatureVector is None:  # type: ignore
+        PatentFeatureVector = _PatentFeatureVector  # type: ignore
+except Exception:
+    # Optional feature module not available; keep extract_features / PatentFeatureVector as None
+    pass
+
 logger = logging.getLogger(__name__)
+
+
+class PatentFeatureExtractor:
+    """
+    Small helper to extract lightweight features/texts from patent DataFrame rows.
+
+    Usage:
+        extractor = PatentFeatureExtractor(keywords_map=..., stopwords=...)
+        texts, feature_vectors = extractor.features_for_dataframe(df, title_col="title")
+    """
+
+    def __init__(self, keywords_map=None, stopwords=None):
+        self.keywords_map = keywords_map
+        self.stopwords = stopwords
+
+    def features_for_dataframe(
+        self, df, title_col: str = "title", assignee_col: Optional[str] = None
+    ):
+        """
+        Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
+          - texts: List[str] suitable to pass to classifier pipelines (combined normalized title + assignee hint)
+          - feature_vectors: List[PatentFeatureVector] with extracted structured features
+
+        This method imports pandas locally and raises a RuntimeError if pandas is unavailable.
+        """
+        # Local import to remain import-safe at module import time
+        try:
+            import pandas as _pd  # type: ignore
+        except Exception:
+            raise RuntimeError(
+                "pandas is required for PatentFeatureExtractor.features_for_dataframe"
+            )
+
+        texts: List[str] = []
+        feature_vectors: List[PatentFeatureVector] = []
+
+        # iterate deterministic order
+        for _, row in df.iterrows():
+            # pandas.Series has .get; handle mapping-like fallback if needed
+            try:
+                title = row.get(title_col) if hasattr(row, "get") else row[title_col]
+            except Exception:
+                title = None
+
+            assignee = None
+            if assignee_col:
+                try:
+                    assignee = row.get(assignee_col) if hasattr(row, "get") else row[assignee_col]
+                except Exception:
+                    assignee = None
+
+            # Build a minimal record dictionary for feature extraction
+            rec = {}
+            if title is not None:
+                rec["title"] = title
+            if assignee is not None:
+                rec["assignee"] = assignee
+            # Propagate other common metadata if present
+            for meta_key in ("ipc", "cpc", "abstract", "application_year"):
+                if meta_key in row and row.get(meta_key) is not None:
+                    rec[meta_key] = row.get(meta_key)
+
+            # Use the optional extract_features function when available. If the
+            # features module is not present (e.g., in minimal CI), fall back to a
+            # tiny in-memory feature-like object containing just the normalized title
+            # and a basic assignee hint so downstream code can still build training
+            # texts.
+            if extract_features is None:
+                normalized_title = str(rec.get("title", "")).lower()
+                assignee_hint = rec.get("assignee") or ""
+
+                class _SimpleFV:
+                    def __init__(self, normalized_title: str, assignee_type: str):
+                        self.normalized_title = normalized_title
+                        self.assignee_type = assignee_type
+
+                pfv = _SimpleFV(normalized_title, assignee_hint)
+                feature_vectors.append(pfv)
+            else:
+                pfv = extract_features(
+                    rec, keywords_map=self.keywords_map, stopwords=self.stopwords
+                )
+                feature_vectors.append(pfv)
+
+            # Build pipeline text: normalized title + assignee type (gives lightweight signal)
+            parts = [pfv.normalized_title or ""]
+            if pfv.assignee_type:
+                parts.append(pfv.assignee_type)
+            texts.append(" ".join([p for p in parts if p]))
+
+        return texts, feature_vectors
 
 
 @dataclass
@@ -115,8 +224,14 @@ class PatentCETClassifier:
         if cet_label_col not in df.columns or title_col not in df.columns:
             raise ValueError("DataFrame must contain title and cet label columns")
 
-        # Build text corpus
-        texts = df[title_col].fillna("").astype(str).tolist()
+        # Use PatentFeatureExtractor to derive training texts and feature vectors.
+        # The pipelines consume text; the extractor normalizes titles and adds simple
+        # assignee/keyword signals to the text so pipelines receive consistent inputs.
+        extractor = PatentFeatureExtractor(keywords_map=None)
+        texts, feature_vectors = extractor.features_for_dataframe(
+            df, title_col=title_col, assignee_col=assignee_col
+        )
+
         # Convert labels column to list of sets
         labels_series = df[cet_label_col].apply(lambda v: set(v) if v else set())
 
