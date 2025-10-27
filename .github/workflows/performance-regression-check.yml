@@ -3,24 +3,24 @@ name: Performance Regression Check
 on:
   pull_request:
     paths:
-      - 'src/enrichers/**'
-      - 'src/assets/**'
-      - 'src/utils/performance_monitor.py'
-      - 'src/extractors/**'
-      - 'scripts/benchmark_enrichment.py'
-      - 'scripts/detect_performance_regression.py'
-      - 'config/base.yaml'
+      - "src/enrichers/**"
+      - "src/assets/**"
+      - "src/utils/performance_monitor.py"
+      - "src/extractors/**"
+      - "scripts/benchmark_enrichment.py"
+      - "scripts/detect_performance_regression.py"
+      - "config/base.yaml"
   push:
     branches:
       - main
     paths:
-      - 'src/enrichers/**'
-      - 'src/assets/**'
-      - 'src/utils/performance_monitor.py'
-      - 'src/extractors/**'
-      - 'scripts/benchmark_enrichment.py'
-      - 'scripts/detect_performance_regression.py'
-      - 'config/base.yaml'
+      - "src/enrichers/**"
+      - "src/assets/**"
+      - "src/utils/performance_monitor.py"
+      - "src/extractors/**"
+      - "scripts/benchmark_enrichment.py"
+      - "scripts/detect_performance_regression.py"
+      - "config/base.yaml"
 
 jobs:
   performance-regression:
@@ -36,8 +36,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -107,6 +107,61 @@ jobs:
             /tmp/report.html
           retention-days: 30
 
+      - name: Parse regression results
+        id: parse_results
+        if: always()
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            SEVERITY=$(jq -r '.severity // "UNKNOWN"' /tmp/regression.json)
+            DURATION_DELTA=$(jq -r '.duration_delta_percent // 0' /tmp/regression.json)
+            MEMORY_DELTA=$(jq -r '.memory_delta_percent // 0' /tmp/regression.json)
+            MATCH_RATE=$(jq -r '.match_rate // 0' /tmp/regression.json)
+            echo "severity=$SEVERITY" >> $GITHUB_OUTPUT
+            echo "duration_delta=$DURATION_DELTA" >> $GITHUB_OUTPUT
+            echo "memory_delta=$MEMORY_DELTA" >> $GITHUB_OUTPUT
+            echo "match_rate=$MATCH_RATE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set check status - Success
+        if: steps.regression.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Performance Check',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: '✓ Performance Check Passed',
+                summary: 'No performance regressions detected',
+                text: 'All performance metrics are within acceptable thresholds'
+              }
+            });
+
+      - name: Set check status - Failure
+        if: steps.regression.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Performance Check',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: 'failure',
+              output: {
+                title: '❌ Performance Check Failed',
+                summary: 'Performance regression detected',
+                text: 'Review the PR comment and artifacts for detailed regression analysis'
+              }
+            });
+
       - name: Comment on PR with Results
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
@@ -122,6 +177,19 @@ jobs:
               comment_body = fs.readFileSync('/tmp/pr_comment.md', 'utf8');
             } else {
               comment_body = '## ⚠️ Performance Check\n\nNo report generated. Please check the workflow logs.';
+            }
+
+            // Add alert summary if regression detected
+            if (fs.existsSync('/tmp/regression.json')) {
+              const results = JSON.parse(fs.readFileSync('/tmp/regression.json', 'utf8'));
+              if (results.severity === 'FAILURE' || results.severity === 'WARNING') {
+                comment_body += '\n\n## 🚨 Performance Alerts\n\n';
+                if (results.issues && results.issues.length > 0) {
+                  results.issues.forEach(issue => {
+                    comment_body += `- **${issue.alert_type}:** ${issue.message}\n`;
+                  });
+                }
+              }
             }
 
             // Add link to artifacts
@@ -143,7 +211,11 @@ jobs:
             SEVERITY=$(jq -r '.severity' /tmp/regression.json)
             if [ "$SEVERITY" = "FAILURE" ]; then
               echo "❌ Performance regression FAILURE detected"
+              echo ""
+              echo "## Alert Summary"
               jq '.issues' /tmp/regression.json
+              echo ""
+              echo "Regression thresholds exceeded. Please review and address before merging."
               exit 1
             fi
           fi
