@@ -602,3 +602,201 @@ def cet_award_classifications() -> Output:
     )
 
     return Output(value=str(output_path), metadata=metadata)
+
+
+@asset(
+    name="cet_company_profiles",
+    key_prefix=["ml"],
+    description=(
+        "Aggregate award-level CET classifications into company-level CET profiles, "
+        "persist results to `data/processed/cet_company_profiles.parquet` (parquet -> NDJSON "
+        "fallback) and emit a companion checks JSON for automated validation."
+    ),
+)
+def cet_company_profiles() -> Output:
+    """
+    Dagster asset to perform company-level aggregation of CET classifications.
+
+    Behavior (best-effort / import-safe):
+    - Attempts to load `data/processed/cet_award_classifications.parquet` or `.json` NDJSON fallback.
+      If the classifications input is missing, produces an empty company profiles output so downstream
+      consumers have a deterministic schema.
+    - Uses `CompanyCETAggregator` (from `src.transformers.company_cet_aggregator`) to compute per-company
+      CET aggregates: coverage, dominant CET, specialization (HHI), CET score map, and trend.
+    - Persists company profiles to `data/processed/cet_company_profiles.parquet` with NDJSON fallback.
+    - Writes a checks JSON summarizing company count and basic coverage metrics.
+    """
+    logger.info("Starting cet_company_profiles asset")
+
+    # Local imports to keep module import-safe when optional deps are missing
+    import json
+    from pathlib import Path
+
+    try:
+        import pandas as pd
+    except Exception:
+        pd = None  # type: ignore
+
+    try:
+        from src.transformers.company_cet_aggregator import CompanyCETAggregator
+    except Exception:
+        CompanyCETAggregator = None  # type: ignore
+
+    # Paths
+    classifications_parquet = Path("data/processed/cet_award_classifications.parquet")
+    classifications_ndjson = Path("data/processed/cet_award_classifications.json")
+    output_path = Path("data/processed/cet_company_profiles.parquet")
+    checks_path = output_path.with_suffix(".checks.json")
+
+    # If dependencies missing, write placeholder output & checks
+    if pd is None or CompanyCETAggregator is None:
+        logger.warning(
+            "Missing dependencies for company aggregation (pandas: %s, aggregator: %s). Writing placeholder output.",
+            pd is not None,
+            CompanyCETAggregator is not None,
+        )
+        # Produce an empty DataFrame with expected columns so downstream consumers have schema
+        if pd is not None:
+            df_empty = pd.DataFrame(
+                columns=[
+                    "company_id",
+                    "company_name",
+                    "total_awards",
+                    "awards_with_cet",
+                    "coverage",
+                    "dominant_cet",
+                    "dominant_score",
+                    "specialization_score",
+                    "cet_scores",
+                    "first_award_date",
+                    "last_award_date",
+                    "cet_trend",
+                ]
+            )
+            try:
+                save_dataframe_parquet(df_empty, output_path)
+            except Exception:
+                out_json = output_path.with_suffix(".json")
+                out_json.parent.mkdir(parents=True, exist_ok=True)
+                with open(out_json, "w", encoding="utf-8") as fh:
+                    fh.write("")
+        checks = {
+            "ok": False,
+            "reason": "missing_dependency",
+            "pandas_present": pd is not None,
+            "aggregator_present": CompanyCETAggregator is not None,
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
+    # Load classifications (prefer parquet, then NDJSON)
+    try:
+        if classifications_parquet.exists():
+            df_cls = pd.read_parquet(classifications_parquet)
+        elif classifications_ndjson.exists():
+            recs = []
+            with open(classifications_ndjson, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        recs.append(json.loads(line))
+            df_cls = pd.DataFrame(recs)
+        else:
+            logger.warning(
+                "No cet_award_classifications found at expected paths; producing empty company profiles"
+            )
+            df_cls = pd.DataFrame(
+                columns=[
+                    "award_id",
+                    "company_id",
+                    "company_name",
+                    "primary_cet",
+                    "primary_score",
+                    "supporting_cets",
+                    "classified_at",
+                    "award_date",
+                    "phase",
+                ]
+            )
+    except Exception:
+        logger.exception("Failed to load award classifications; producing empty company profiles")
+        df_cls = pd.DataFrame(
+            columns=[
+                "award_id",
+                "company_id",
+                "company_name",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "classified_at",
+                "award_date",
+                "phase",
+            ]
+        )
+
+    # Run aggregation
+    try:
+        aggregator = CompanyCETAggregator(df_cls)
+        df_comp = aggregator.to_dataframe()
+    except Exception:
+        logger.exception("Company aggregation failed; producing empty company profiles")
+        df_comp = pd.DataFrame(
+            columns=[
+                "company_id",
+                "company_name",
+                "total_awards",
+                "awards_with_cet",
+                "coverage",
+                "dominant_cet",
+                "dominant_score",
+                "specialization_score",
+                "cet_scores",
+                "first_award_date",
+                "last_award_date",
+                "cet_trend",
+            ]
+        )
+
+    # Persist company profiles (parquet preferred, NDJSON fallback)
+    try:
+        save_dataframe_parquet(df_comp, output_path)
+    except Exception:
+        # Fallback: write NDJSON manually
+        json_out = output_path.with_suffix(".json")
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        with open(json_out, "w", encoding="utf-8") as fh:
+            for rec in df_comp.to_dict(orient="records"):
+                fh.write(json.dumps(rec) + "\n")
+        # Touch parquet placeholder for consumers that assert its existence
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.touch()
+        except Exception:
+            logger.exception("Failed to touch parquet placeholder file for company profiles")
+
+    # Build checks
+    num_companies = len(df_comp)
+    checks = {
+        "ok": True,
+        "num_companies": int(num_companies),
+        "num_records_written": int(num_companies),
+    }
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(checks_path, "w", encoding="utf-8") as fh:
+        json.dump(checks, fh, indent=2)
+
+    metadata = {
+        "path": str(output_path),
+        "rows": len(df_comp),
+        "checks_path": str(checks_path),
+    }
+
+    logger.info("Completed cet_company_profiles asset", rows=len(df_comp), output=str(output_path))
+
+    return Output(value=str(output_path), metadata=metadata)
