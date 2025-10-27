@@ -1,6 +1,60 @@
 # CET Patent Classifier — Training and Feature Flow
 
-This document describes the lightweight CET patent classifier components, feature extraction, training flow, evaluation, and Dagster assets.
+This document describes the lightweight CET patent classifier components, feature extraction, training flow, evaluation, and Dagster assets. It also documents the award-level ApplicabilityModel architecture and its key hyperparameters used by the award classification asset.
+
+## Award ApplicabilityModel (Awards)
+
+The award classifier is a multi-label text classification pipeline that predicts applicability to CET areas from award text (title, abstract, keywords). It is implemented in `src/ml/models/cet_classifier.py` as `ApplicabilityModel` and configured via `config/cet/classification.yaml`. Core architecture:
+
+- One-vs-rest binary pipeline per CET area
+- Keyword-aware TF-IDF vectorizer with boosting for CET keywords
+- Optional chi-squared feature selection (SelectKBest)
+- Logistic Regression classifier (wrapped with probability calibration)
+- Calibrated probabilities used to compute scores and thresholds
+- Batch inference for throughput and memory efficiency
+
+Key hyperparameters (classification.yaml):
+- tfidf
+  - max_features: int (e.g., 5000)
+  - ngram_range: [min_n, max_n] (e.g., [1, 2])
+  - min_df: int or float (e.g., 2)
+  - max_df: float (e.g., 0.95)
+  - keyword_boost_factor: float (e.g., 2.0)
+  - sublinear_tf: bool
+  - use_idf: bool
+  - smooth_idf: bool
+  - norm: "l2" | "l1" | None
+- logistic_regression
+  - C: float (regularization strength, e.g., 1.0)
+  - max_iter: int (e.g., 1000)
+  - solver: "lbfgs" | "liblinear" | ...
+  - class_weight: "balanced" | None
+  - random_state: int
+  - n_jobs: int (parallelism where supported)
+- feature_selection
+  - enabled: bool
+  - k_best: int (e.g., 3000)
+- calibration
+  - method: "sigmoid" | "isotonic"
+  - cv: int (folds, e.g., 3)
+- confidence_thresholds
+  - high: float (e.g., 70.0)
+  - medium: float (e.g., 40.0)
+  - low: float (e.g., 0.0)
+- batch
+  - size: int (e.g., 1000)
+- model_version: string (e.g., "vtest" or "v1.0.0")
+
+Operational notes:
+- Taxonomy version is propagated from `TaxonomyLoader` and stored with outputs.
+- Evidence extraction (if enabled) decorates predictions with rationale/excerpts; not required for model scoring.
+- Scores are derived from calibrated probabilities and can be mapped to High/Medium/Low via `confidence_thresholds`.
+- Batch size trades off memory footprint and throughput during `classify_batch()`.
+
+Outputs (from `cet_award_classifications`):
+- `award_id`, `primary_cet`, `primary_score`
+- `supporting_cets`: list of {cet_id, score}
+- `classified_at`, `taxonomy_version`, optional `evidence`
 
 The goals for this stack:
 - Keep imports safe in lean environments (no heavy NLP libs at import time).

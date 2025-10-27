@@ -122,9 +122,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cet-pipeline-artifacts
+          retention-days: 14
           path: |
             data/processed/cet_*.parquet
             data/processed/cet_*.json
+            data/processed/cet_*.*      # include any future fallback extensions
             data/processed/*.checks.json
             data/loaded/neo4j/*.checks.json
           if-no-files-found: warn

@@ -291,14 +291,14 @@ Notes (section 8 implementation):
 - [x] 18.1 Unit tests for taxonomy asset and loader (`tests/unit/ml/test_taxonomy_asset.py`)
 - [x] 18.2 Unit tests for EvidenceExtractor and CET models
 - [x] 18.3 Unit tests for TaxonomyLoader (YAML parsing, validation)
-- [x] 18.4 Unit tests for CompanyCETAggregator (aggregation logic)
+- [ ] 18.4 Unit tests for CompanyCETAggregator (aggregation logic)
 - [ ] 18.5 Integration tests for classifier & trainer (larger dataset)
-- [ ] 18.6 Add pytest markers for slow/e2e tests
-- [ ] 18.7 Add Neo4j smoke tests (CI job)
+- [x] 18.6 Add pytest markers for slow/e2e tests
+- [x] 18.7 Add Neo4j smoke tests (CI job)
 
 ## 19. Integration Testing
 
-- [ ] 19.1 CI job to run a sample pipeline end-to-end on a small dataset
+- [x] 19.1 CI job to run a sample pipeline end-to-end on a small dataset
 - [ ] 19.2 Add artifact retention policy for CI sample datasets
 
 ## 20. End-to-End Testing
