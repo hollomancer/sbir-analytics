@@ -58,10 +58,25 @@ daily_schedule = ScheduleDefinition(
     description="Daily SBIR ETL pipeline execution",
 )
 
+# Define a small asset job to run the CET drift detection asset
+cet_drift_job = define_asset_job(
+    name="cet_drift_job",
+    selection=AssetSelection.keys("cet_drift_detection"),
+    description="Run CET drift detection asset",
+)
+
+# Schedule drift detection daily (6:00 UTC)
+cet_drift_schedule = ScheduleDefinition(
+    job=cet_drift_job,
+    cron_schedule="0 6 * * *",  # Run at 06:00 UTC daily
+    name="daily_cet_drift_detection",
+    description="Daily CET drift detection and alerting",
+)
+
 # Create the definitions object
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
-    jobs=[sbir_ingestion_job, etl_job, cet_full_pipeline_job],
-    schedules=[daily_schedule],
+    jobs=[sbir_ingestion_job, etl_job, cet_full_pipeline_job, cet_drift_job],
+    schedules=[daily_schedule, cet_drift_schedule],
 )
