@@ -271,9 +271,9 @@ Notes (section 8 implementation):
 
 ## 15. CET Portfolio Analytics
 
-- [ ] 15.1 Implement CET coverage dashboards
-- [ ] 15.2 Implement CET specialization metrics
-- [ ] 15.3 Add alerts for coverage regressions
+- [x] 15.1 Implement CET coverage dashboards
+- [x] 15.2 Implement CET specialization metrics
+- [x] 15.3 Add alerts for coverage regressions
 
 ## 16. CET Portfolio Analytics - Continued
 
@@ -309,7 +309,7 @@ Notes (section 8 implementation):
 ## 21. Documentation
 
 - [x] 21.1 Document CET taxonomy structure in config/cet/README.md
-- [ ] 21.2 Document ML model architecture and hyperparameters in docs/ml/cet_classifier.md
+- [x] 21.2 Document ML model architecture and hyperparameters in docs/ml/cet_classifier.md
 
 ## 22. Performance Optimization (if needed)
 

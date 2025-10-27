@@ -1289,6 +1289,156 @@ def cet_award_training_dataset() -> Output:
 
 
 @asset(
+    name="cet_analytics",
+    key_prefix=["ml"],
+    description="Compute CET analytics (coverage and specialization) and emit alerts.",
+)
+def cet_analytics() -> Output:
+    """
+    Compute portfolio-level CET analytics:
+      - Award coverage rate: fraction of awards with a primary CET
+      - Company specialization: average specialization_score across companies
+
+    Emit alerts using AlertCollector when coverage falls below configured threshold.
+    Write a checks JSON under reports/alerts/.
+    """
+    import json
+    from pathlib import Path
+    from datetime import datetime
+
+    try:
+        import pandas as pd  # type: ignore
+    except Exception:
+        pd = None  # type: ignore
+
+    # Lazy import to avoid heavy imports at module import time
+    try:
+        from src.utils.performance_alerts import AlertCollector  # type: ignore
+    except Exception:
+        AlertCollector = None  # type: ignore
+
+    processed_dir = Path("data/processed")
+    alerts_dir = Path("reports/alerts")
+    alerts_dir.mkdir(parents=True, exist_ok=True)
+
+    # Inputs
+    company_parquet = processed_dir / "cet_company_profiles.parquet"
+    company_json = processed_dir / "cet_company_profiles.json"
+    awards_parquet = processed_dir / "cet_award_classifications.parquet"
+    awards_json = processed_dir / "cet_award_classifications.json"
+
+    # Read helpers (parquet preferred, NDJSON fallback)
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
+        if pd is None:
+            return None
+        if parquet_path.exists():
+            try:
+                df = pd.read_parquet(parquet_path)
+                if expected_cols:
+                    cols = [c for c in expected_cols if c in df.columns]
+                    if cols:
+                        df = df[cols]
+                return df
+            except Exception:
+                pass
+        if json_path.exists():
+            try:
+                rows = []
+                with json_path.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        rows.append(json.loads(line))
+                if not rows:
+                    return pd.DataFrame()
+                df = pd.DataFrame(rows)
+                if expected_cols:
+                    cols = [c for c in expected_cols if c in df.columns]
+                    if cols:
+                        df = df[cols]
+                return df
+            except Exception:
+                return pd.DataFrame()
+        return pd.DataFrame()
+
+    # Load inputs
+    df_companies = _read_df(
+        company_parquet,
+        company_json,
+        expected_cols=[
+            "company_id",
+            "coverage",
+            "specialization_score",
+            "taxonomy_version",
+        ],
+    )
+    df_awards = _read_df(
+        awards_parquet,
+        awards_json,
+        expected_cols=["award_id", "primary_cet", "primary_score", "taxonomy_version"],
+    )
+
+    # Compute metrics (robust to empty frames)
+    coverage_rate = 0.0
+    num_awards = 0
+    num_classified = 0
+    if df_awards is not None and not df_awards.empty:
+        num_awards = len(df_awards)
+        num_classified = (
+            int(df_awards["primary_cet"].notna().sum()) if "primary_cet" in df_awards.columns else 0
+        )
+        coverage_rate = float(num_classified / max(1, num_awards))
+
+    specialization_avg = None
+    if (
+        df_companies is not None
+        and not df_companies.empty
+        and "specialization_score" in df_companies.columns
+    ):
+        specialization_avg = float(df_companies["specialization_score"].dropna().mean())
+
+    # Alerts
+    alerts = {}
+    if AlertCollector is not None:
+        collector = AlertCollector(asset_name="cet_analytics")
+        # Check coverage_rate against configured match rate threshold
+        collector.check_match_rate(coverage_rate, metric_name="cet_award_coverage_rate")
+        alerts = collector.to_dict()
+        # Persist alerts JSON
+        with (alerts_dir / "cet_analytics.alerts.json").open("w", encoding="utf-8") as fh:
+            json.dump(alerts, fh, indent=2)
+
+    # Checks payload
+    checks = {
+        "ok": True,
+        "generated_at": datetime.utcnow().isoformat(),
+        "award_coverage_rate": coverage_rate,
+        "num_awards": num_awards,
+        "num_classified": num_classified,
+        "company_specialization_avg": specialization_avg,
+        "alerts": alerts,
+    }
+    checks_path = alerts_dir / "cet_analytics.checks.json"
+    try:
+        with checks_path.open("w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+    except Exception:
+        # best-effort
+        pass
+
+    metadata = {
+        "coverage_rate": coverage_rate,
+        "num_awards": num_awards,
+        "num_classified": num_classified,
+        "company_specialization_avg": specialization_avg,
+        "checks_path": str(checks_path),
+        "alerts_path": str(alerts_dir / "cet_analytics.alerts.json"),
+    }
+    return Output(value=metadata, metadata=metadata)
+
+
+@asset(
     name="cet_company_profiles",
     key_prefix=["ml"],
     description=(
