@@ -316,6 +316,119 @@ class CETLoader:
         )
         return metrics
 
+    # -------------------------------------------------------------------------
+    # Award -> CETArea relationships
+    # -------------------------------------------------------------------------
+
+    def create_award_cet_relationships(
+        self,
+        classifications: Iterable[Dict[str, Any]],
+        *,
+        rel_type: str = "APPLICABLE_TO",
+        metrics: Optional[LoadMetrics] = None,
+    ) -> LoadMetrics:
+        """Create Award -> CETArea relationships with MERGE semantics.
+
+        Relationship schema:
+            (a:Award)-[:APPLICABLE_TO {
+                score: FLOAT,
+                primary: BOOLEAN,
+                role: STRING,    # 'PRIMARY' or 'SUPPORTING'
+                rationale: STRING,  # optional single rationale tag
+                classified_at: STRING,  # ISO timestamp
+                taxonomy_version: STRING
+            }]->(c:CETArea)
+
+        Input rows typically come from cet_award_classifications with fields:
+            - award_id (str)
+            - primary_cet (str) and primary_score (float)
+            - supporting_cets (list of {cet_id: str, score: float, classification?: str})
+            - classified_at (str)
+            - taxonomy_version (str)
+            - evidence (list of {rationale: str, excerpt: str, source: str}) [optional]
+        """
+        if metrics is None:
+            metrics = LoadMetrics()
+
+        relationships: List[tuple[str, str, Any, str, str, Any, str, Dict[str, Any] | None]] = []
+
+        for row in classifications:
+            aid = _as_str(row.get("award_id"))
+            if not aid:
+                logger.warning("Skipping Award->CET mapping with missing award_id: {}", row)
+                metrics.errors += 1
+                continue
+
+            classified_at = _as_str(row.get("classified_at")) or None
+            taxonomy_version = _as_str(row.get("taxonomy_version")) or None
+
+            # optional rationale from evidence (first rationale tag if present)
+            rationale = None
+            ev = row.get("evidence")
+            if isinstance(ev, list) and ev:
+                try:
+                    rationale = _as_str((ev[0] or {}).get("rationale")) or None
+                except Exception:
+                    rationale = None
+
+            # Primary
+            primary_id = _as_str(row.get("primary_cet"))
+            if primary_id:
+                props = {
+                    "score": float(row.get("primary_score"))
+                    if row.get("primary_score") is not None
+                    else None,
+                    "primary": True,
+                    "role": "PRIMARY",
+                    "rationale": rationale,
+                    "classified_at": classified_at,
+                    "taxonomy_version": taxonomy_version,
+                }
+                # remove None values to avoid overwriting with nulls
+                props = {k: v for k, v in props.items() if v is not None}
+                relationships.append(
+                    ("Award", "award_id", aid, "CETArea", "cet_id", primary_id, rel_type, props)
+                )
+
+            # Supporting
+            supp = row.get("supporting_cets")
+            if isinstance(supp, list):
+                for s in supp:
+                    try:
+                        cid = _as_str((s or {}).get("cet_id"))
+                        if not cid:
+                            continue
+                        score_val = s.get("score")
+                        props = {
+                            "score": float(score_val) if score_val is not None else None,
+                            "primary": False,
+                            "role": "SUPPORTING",
+                            "rationale": rationale,
+                            "classified_at": classified_at,
+                            "taxonomy_version": taxonomy_version,
+                        }
+                        props = {k: v for k, v in props.items() if v is not None}
+                        relationships.append(
+                            ("Award", "award_id", aid, "CETArea", "cet_id", cid, rel_type, props)
+                        )
+                    except Exception:
+                        continue
+
+        if not relationships:
+            logger.info("No Award -> CETArea relationships to create")
+            return metrics
+
+        logger.info(
+            "Creating {} Award -> CETArea relationships (type={})",
+            len(relationships),
+            rel_type,
+        )
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_create_relationships(
+            relationships=relationships, metrics=metrics
+        )
+        return metrics
+
 
 # -------------------------------------------------------------------------
 # Helpers

@@ -258,10 +258,10 @@ Notes (section 8 implementation):
 
 ## 13. Neo4j CET Graph Model - Award Relationships
 
-- [ ] 13.1 Create Award -> CETArea relationship schema
-- [ ] 13.2 Add relationship properties (score, primary/supporting, rationale)
-- [ ] 13.3 Ensure idempotent MERGE semantics
-- [ ] 13.4 Unit tests (mocked Neo4j)
+- [x] 13.1 Create Award -> CETArea relationship schema
+- [x] 13.2 Add relationship properties (score, primary/supporting, rationale)
+- [x] 13.3 Ensure idempotent MERGE semantics
+- [x] 13.4 Unit tests (mocked Neo4j)
 
 ## 14. Neo4j CET Graph Model - Company Relationships
 

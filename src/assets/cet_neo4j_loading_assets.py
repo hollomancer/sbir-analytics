@@ -517,3 +517,100 @@ def neo4j_company_cet_enrichment(
         except Exception:
             pass
         return {"status": "failed", "reason": str(exc)}
+
+
+@asset(
+    name="neo4j_award_cet_relationships",
+    description="Create Award -> CETArea relationships from award classifications.",
+    group_name="neo4j_cet",
+    ins={
+        "cet_award_classifications": AssetIn(),
+        "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
+    },
+    config_schema={
+        "classifications_parquet": {"type": str, "default": str(DEFAULT_AWARD_CLASS_PARQUET)},
+        "classifications_json": {"type": str, "default": str(DEFAULT_AWARD_CLASS_JSON)},
+        "rel_type": {"type": str, "default": "APPLICABLE_TO"},
+        "batch_size": {"type": int, "default": 1000},
+    },
+)
+def neo4j_award_cet_relationships(
+    context: AssetExecutionContext,
+    cet_award_classifications,
+    neo4j_cetarea_nodes,
+) -> Dict[str, Any]:
+    """
+    Create Award -> CETArea relationships with MERGE semantics from cet_award_classifications.
+
+    Relationship schema:
+      (a:Award)-[:APPLICABLE_TO {
+          score: FLOAT,
+          primary: BOOLEAN,
+          role: 'PRIMARY' | 'SUPPORTING',
+          rationale: STRING,
+          classified_at: STRING,
+          taxonomy_version: STRING
+      }]->(c:CETArea)
+    """
+    if CETLoader is None or CETLoaderConfig is None:
+        context.log.warning("CETLoader unavailable; skipping Award->CET relationships")
+        return {"status": "skipped", "reason": "loader_unavailable"}
+
+    client = _get_neo4j_client()
+    if client is None:
+        return {"status": "skipped", "reason": "neo4j_unavailable"}
+
+    classifications_parquet = Path(
+        context.op_config.get("classifications_parquet") or str(DEFAULT_AWARD_CLASS_PARQUET)
+    )
+    classifications_json = Path(
+        context.op_config.get("classifications_json") or str(DEFAULT_AWARD_CLASS_JSON)
+    )
+    rel_type = str(context.op_config.get("rel_type") or "APPLICABLE_TO").strip() or "APPLICABLE_TO"
+    batch_size = int(context.op_config.get("batch_size", 1000))
+
+    # Read award classifications including evidence for rationale extraction
+    expected_cols = (
+        "award_id",
+        "primary_cet",
+        "primary_score",
+        "supporting_cets",
+        "classified_at",
+        "taxonomy_version",
+        "evidence",
+    )
+    rows = _read_parquet_or_ndjson(
+        classifications_parquet, classifications_json, expected_columns=expected_cols
+    )
+
+    context.log.info(f"Read {len(rows)} award classification rows for relationship creation")
+
+    try:
+        loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
+        metrics = loader.create_award_cet_relationships(rows, rel_type=rel_type)
+        result = {
+            "status": "success",
+            "relationships_type": rel_type,
+            "input_rows": len(rows),
+            "metrics": _serialize_metrics(metrics),
+        }
+
+        out_path = DEFAULT_OUTPUT_DIR / "neo4j_award_cet_relationships.checks.json"
+        try:
+            with out_path.open("w", encoding="utf-8") as fh:
+                json.dump(result, fh, indent=2)
+        except Exception:
+            pass
+
+        try:
+            client.close()
+        except Exception:
+            pass
+        return result
+    except Exception as exc:
+        context.log.exception(f"Award->CET relationships failed: {exc}")
+        try:
+            client.close()
+        except Exception:
+            pass
+        return {"status": "failed", "reason": str(exc)}
