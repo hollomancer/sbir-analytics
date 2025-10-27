@@ -31,14 +31,14 @@
 
 ## 4. ML Classification Module - Core Model
 
-- [ ] 4.1 Port ApplicabilityModel from sbir-cet-classifier to src/ml/models/cet_classifier.py
-- [ ] 4.2 Port CETAwareTfidfVectorizer with keyword boosting
-- [ ] 4.3 Implement TF-IDF pipeline (vectorizer → feature selection → classifier → calibration)
-- [ ] 4.4 Add balanced class weights for handling imbalanced CET categories
-- [ ] 4.5 Implement multi-threshold scoring (High: ≥70, Medium: 40-69, Low: <40)
-- [ ] 4.6 Add batch classification method for efficient processing
-- [ ] 4.7 Save/load trained model (pickle or joblib)
-- [ ] 4.8 Add model metadata (version, training date, taxonomy version)
+- [x] 4.1 Port ApplicabilityModel from sbir-cet-classifier to src/ml/models/cet_classifier.py
+- [x] 4.2 Port CETAwareTfidfVectorizer with keyword boosting
+- [x] 4.3 Implement TF-IDF pipeline (vectorizer → feature selection → classifier → calibration)
+- [x] 4.4 Add balanced class weights for handling imbalanced CET categories
+- [x] 4.5 Implement multi-threshold scoring (High: ≥70, Medium: 40-69, Low: <40)
+- [x] 4.6 Add batch classification method for efficient processing
+- [x] 4.7 Save/load trained model (pickle or joblib)
+- [x] 4.8 Add model metadata (version, training date, taxonomy version)
 
 ## 5. Evidence Extraction
 
