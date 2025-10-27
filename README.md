@@ -8,266 +8,44 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ### Pipeline Stages
 
-1. **Extract**: Download and parse raw data from sources (SBIR.gov CSV, USAspending PostgreSQL dump)
+1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patents)
 2. **Validate**: Schema validation and data quality checks
-3. **Enrich**: Augment data with external APIs (SAM.gov, USAspending)
+3. **Enrich**: Augment data with fuzzy matching and external enrichment
 4. **Transform**: Business logic and graph-ready entity preparation
-5. **Load**: Write to Neo4j with relationships and constraints
+5. **Load**: Write to Neo4j with idempotent operations and relationship chains
 
-## Architecture
+## Features
 
-- **Orchestration**: Dagster asset-based pipeline
-- **Data Processing**: DuckDB for efficient querying of CSV and PostgreSQL dump data
-- **Configuration**: Pydantic-validated YAML configuration with environment overrides
-- **Logging**: Structured logging with loguru (JSON for production, pretty for development)
-- **Quality Gates**: Configurable data quality checks at each pipeline stage
+### Core Capabilities
+- **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
+- **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
+- **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
+- **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
+- **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
 
-## SBIR Data Ingestion
+### Performance & Quality
+- **Performance Monitoring**: Automatic timing, memory tracking, and alert generation
+- **Quality Baselines**: Historical baseline tracking with regression detection
+- **CI Regression Pipeline**: Automated performance benchmarking in pull requests
+- **Chunked Processing**: Memory-adaptive enrichment with spill-to-disk for large datasets
+- **Configurable Thresholds**: Duration warnings, memory limits, and quality gates
 
-### Data Source
-
-The pipeline processes SBIR (Small Business Innovation Research) and STTR (Small Business Technology Transfer) award data from the official SBIR.gov database. The primary data source is a comprehensive CSV export containing historical award information from 1983 to present.
-
-**Data Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
-- **Format**: CSV with 42 columns
-- **Record Count**: ~533,000 awards (as of 2024)
-- **Update Frequency**: Monthly exports available
-- **Coverage**: All federal agencies participating in SBIR/STTR programs
-
-### CSV Structure
-
-The SBIR awards CSV contains the following data categories:
-
-| Category | Fields | Description |
-|----------|--------|-------------|
-| **Company Info** | 7 fields | Company name, address, website, employee count |
-| **Award Details** | 7 fields | Title, abstract, agency, phase, program, topic code |
-| **Financial** | 2 fields | Award amount, award year |
-| **Timeline** | 5 fields | Award date, end date, solicitation dates |
-| **Tracking** | 4 fields | Agency tracking number, contract, solicitation info |
-| **Identifiers** | 2 fields | UEI (Unique Entity ID), DUNS number |
-| **Classifications** | 3 fields | HUBZone, disadvantaged, woman-owned status |
-| **Contacts** | 8 fields | Primary contact and PI information |
-| **Research Institution** | 3 fields | RI name, POC details (STTR only) |
-
-### Usage Instructions
-
-1. **Download Data**:
-   ```bash
-   # Download from SBIR.gov (manual process)
-   # Place in data/raw/sbir/awards_data.csv
-   ```
-
-2. **Configure Pipeline**:
-   ```yaml
-   # config/base.yaml
-   sbir:
-     csv_path: "data/raw/sbir/awards_data.csv"
-     duckdb:
-       database_path: ":memory:"
-       table_name: "sbir_awards"
-   ```
-
-3. **Run Ingestion**:
-   ```bash
-   # Start Dagster UI
-   poetry run dagster dev
-
-   # Materialize SBIR assets in order:
-   # 1. raw_sbir_awards
-   # 2. validated_sbir_awards
-   # 3. sbir_validation_report
-   ```
-
-4. **Monitor Quality**:
-   - Check validation pass rate (target: ≥95%)
-   - Review quality report for issues
-   - Monitor asset check results
-
-## USAspending Data Evaluation
-
-The pipeline uses USAspending data for SBIR award enrichment and technology transition detection. Due to the dataset size (~51GB compressed), evaluation is performed directly from removable media without copying to local storage.
-
-### Removable Media Workflow
-
-1. **Mount Drive**:
-   ```bash
-   # Insert "X10 Pro" drive - automatically mounts at /Volumes/X10 Pro
-   ls /Volumes/X10\ Pro/usaspending-db-subset_20251006.zip
-   ```
-
-2. **Profile Dataset**:
-   ```bash
-   # Generate profiling report
-   python scripts/profile_usaspending_dump.py --output reports/usaspending_subset_profile.json
-
-   # Check profiling stats
-   python scripts/get_usaspending_stats.py --check-available
-   ```
-
-3. **Assess Coverage**:
-   ```bash
-   # Evaluate enrichment potential
-   python scripts/assess_usaspending_coverage.py --output reports/usaspending_coverage_assessment.json
-   ```
-
-### Key Findings
-
-- **Data Source**: PostgreSQL dump subset with transaction, award, and recipient tables
-- **Coverage Target**: ≥70% match rate between SBIR awards and USAspending transactions
-- **Enrichment Fields**: UEI/DUNS matching, NAICS codes, place of performance, agency details
-- **Transition Detection**: Competition data, award history, obligated amounts
-
-### Documentation
-
-- **Evaluation Guide**: `docs/data/usaspending-evaluation.md`
-- **Profiling Report**: `reports/usaspending_subset_profile.md`
-- **Coverage Assessment**: `reports/usaspending_coverage_assessment.json`
-
-## USPTO Patent Assignment Data Pipeline
-
-The pipeline includes a comprehensive USPTO patent assignment ETL stage that extracts, transforms, and loads patent assignment data into the Neo4j graph for technology ownership and transition analysis.
-
-### Data Source
-
-The pipeline processes patent assignment data from the USPTO Patent Assignment Dataset, which contains historical records of all patent transfers, assignments, licenses, and other conveyances since 1790.
-
-**Data Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)
-- **Format**: CSV, Stata (.dta), Parquet
-- **Record Count**: Millions of assignment transactions (continuously growing)
-- **Update Frequency**: Monthly exports available
-- **Coverage**: All U.S. patents (utility, design, plant, reissue)
-
-### Pipeline Architecture
-
-The USPTO patent ETL consists of five stages:
-
-1. **Extract** (`USPTOExtractor`): Stream large patent assignment files in chunks
-   - Supports CSV, Stata (.dta), and Parquet formats
-   - Memory-efficient streaming for files >1GB
-   - Handles data quality issues gracefully
-
-2. **Transform** (`PatentTransformer`): Normalize and enrich assignment data
-   - Entity name normalization (fuzzy matching, 0.85 similarity threshold)
-   - Conveyance type detection (assignment, license, merger, security interest)
-   - Geographic standardization (state codes, country codes)
-   - Date parsing and conversion to ISO 8601 format
-
-3. **Validate**: Check data quality against configurable thresholds
-   - Pass rate: ≥99% of records pass validation
-   - Completeness: ≥95% for critical fields
-   - Uniqueness: ≥98% of patent grant numbers unique
-
-4. **Load** (`PatentLoader`): Write to Neo4j with idempotent MERGE operations
-   - Creates Patent, PatentAssignment, and PatentEntity nodes
-   - Establishes relationships: ASSIGNED_VIA, ASSIGNED_FROM, ASSIGNED_TO, CHAIN_OF
-   - Creates indexes and constraints for query performance
-   - Generates metrics and JSON reports for observability
-
-5. **Integrate**: Link patents to SBIR awards and companies
-   - GENERATED_FROM relationships (Patent → Award)
-   - OWNS relationships (Company → Patent)
-   - Technology chain analysis (assignor → assignee)
-
-### Usage Instructions
-
-1. **Download USPTO Data**:
-   ```bash
-   # Download from USPTO Patent Assignment Dataset
-   # Place in data/raw/uspto/patent_assignments.csv
-   # See data/raw/uspto/README.md for download instructions
-   ```
-
-2. **Configure Pipeline**:
-   ```yaml
-   # config/base.yaml
-   extraction:
-     uspto:
-       csv_path: "data/raw/uspto/patent_assignments.csv"
-       batch_size: 5000
-       
-   loading:
-     neo4j:
-       load_success_threshold: 0.99  # 99% success rate required
-   ```
-
-3. **Run Extraction & Transformation**:
-   ```bash
-   # Extract and transform USPTO data
-   poetry run python -m src.assets.uspto_extraction_assets
-   poetry run python -m src.assets.uspto_transformation_assets
-   ```
-
-4. **Load into Neo4j**:
-   ```bash
-   # Start Dagster UI
-   poetry run dagster dev
-   
-   # Materialize patent loading assets in order:
-   # 1. neo4j_patents
-   # 2. neo4j_patent_assignments
-   # 3. neo4j_patent_entities
-   # 4. neo4j_patent_relationships
-   ```
-
-5. **Verify Data Quality**:
-   - Check asset execution results in Dagster UI
-   - Review asset checks: `patent_load_success_rate`, `assignment_load_success_rate`
-   - Query Neo4j to validate relationships and counts
-
-### Neo4j Graph Model
-
-**Node Types:**
-- `Patent` — Identified by grant_doc_num, represents patented inventions
-- `PatentAssignment` — Identified by rf_id, represents transfer transactions
-- `PatentEntity` — Represents assignees and assignors (normalized names)
-
-**Relationship Types:**
-- `ASSIGNED_VIA` — Patent → PatentAssignment (patent has assignment)
-- `ASSIGNED_FROM` — PatentAssignment → PatentEntity (from assignor)
-- `ASSIGNED_TO` — PatentAssignment → PatentEntity (to assignee)
-- `CHAIN_OF` — PatentAssignment → PatentAssignment (assignment sequence)
-- `OWNS` — Company → Patent (current ownership via normalized name matching)
-- `GENERATED_FROM` — Patent → Award (SBIR-funded patents)
-
-### Query Examples
-
-```cypher
-# Find all patents owned by a company
-MATCH (c:Company {name: "Acme Inc"})-[r:OWNS]->(p:Patent)
-RETURN p.grant_doc_num, p.title, p.publication_date
-
-# Trace patent ownership chain
-MATCH (pa:PatentAssignment)-[:CHAIN_OF*]->(pb:PatentAssignment)
-WHERE pa.recorded_date < pb.recorded_date
-RETURN pa.recorded_date, pa.assignee_name, pb.assignee_name
-
-# Find SBIR-funded patents and their assignments
-MATCH (a:Award)-[:GENERATED_FROM]->(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
-WHERE a.company_name = "Acme Inc"
-RETURN p.title, pa.assignee_name, pa.recorded_date
-```
-
-### Documentation
-
-- **Data Dictionary**: `docs/data-dictionaries/uspto_patent_data_dictionary.md` — Field descriptions, data types, quality notes
-- **Neo4j Schema**: `docs/schemas/patent-neo4j-schema.md` — Node/relationship types, constraints, query patterns
-- **Raw Data README**: `data/raw/uspto/README.md` — Download instructions, file formats, troubleshooting
-- **Implementation**: See `src/extractors/uspto_extractor.py`, `src/transformers/patent_transformer.py`, `src/loaders/patent_loader.py`
+### Observability
+- **Alerts**: JSON artifacts with severity levels (INFO, WARNING, FAILURE)
+- **Dashboards**: Plotly-based quality dashboards (HTML + JSON fallback)
+- **Metrics**: Asset-level performance metrics (duration, records/sec, memory usage)
+- **Regression Detection**: Automated comparison against baseline with PR comments
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- Poetry (for dependency management)
-- Docker and Docker Compose (for local development)
+- **Python**: 3.11 or 3.12
+- **Poetry**: For dependency management
+- **Docker**: For containerized development (optional but recommended)
+- **Neo4j**: 5.x (provided via Docker Compose)
 
-### Recommended workflows
-
-This project supports two primary development workflows: a local Python-based workflow (Poetry + local services) and a containerized workflow (Docker Compose). Use the containerized workflow for consistent dev/test environments and for CI parity; use the local Python workflow when iterating on quick code changes without rebuilding images.
-
-### Local (Poetry) Setup
+### Local Development (Poetry)
 
 1. **Clone and install dependencies:**
    ```bash
@@ -276,87 +54,105 @@ This project supports two primary development workflows: a local Python-based wo
    poetry install
    ```
 
-2. **Set up data sources:**
-   - Download SBIR CSV from SBIR.gov
-   - Obtain USAspending PostgreSQL dump
-   - Place files in `data/raw/` directory
-
-3. **Configure environment:**
-   ```bash
-   cp config/dev.yaml config/local.yaml
-   # Edit local.yaml with your settings
-   ```
-
-4. **Start local services (if using Docker for services):**
-   ```bash
-   docker-compose up -d
-   ```
-
-5. **Run the pipeline (Dagster dev):**
-   ```bash
-   poetry run dagster dev
-   ```
-
-### Container quick-start (recommended)
-
-The repository provides Compose overlays and Makefile helpers to run the project inside containers for development and CI. See `docs/deployment/containerization.md` for full details.
-
-1. Copy the environment template and set local test credentials (do not commit `.env`):
+2. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env and set NEO4J_USER / NEO4J_PASSWORD (local dev values)
+   # Edit .env with Neo4j credentials and data paths
    ```
 
-2. Build the runtime image (multi-stage Dockerfile):
+3. **Start Dagster UI:**
+   ```bash
+   poetry run dagster dev
+   # Open http://localhost:3000
+   ```
+
+4. **Run tests:**
+   ```bash
+   pytest -v --cov=src --cov-report=html
+   ```
+
+### Container Development (Recommended)
+
+The project provides Docker Compose for consistent dev/test environments:
+
+1. **Set up environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env: set NEO4J_USER, NEO4J_PASSWORD
+   ```
+
+2. **Build and start services:**
    ```bash
    make docker-build
-   # or use the CI-friendly build script:
-   ./scripts/ci/build_container.sh
-   ```
-
-3. Start the development stack (bind-mounts for live-editing):
-   ```bash
    make docker-up-dev
-   # OR
-   docker compose --env-file .env --profile dev -f docker-compose.yml -f docker/docker-compose.dev.yml up --build
+   # Dagster UI: http://localhost:3000
    ```
 
-4. Run an ad-hoc ETL command inside the image:
-   ```bash
-   docker compose -f docker-compose.yml -f docker/docker-compose.dev.yml run --rm etl-runner -- python -m src.scripts.run_some_job --arg value
-   ```
-
-5. Run containerized tests (ephemeral Neo4j + pytest inside the built image):
+3. **Run tests in container:**
    ```bash
    make docker-test
-   # OR
-   docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build
    ```
 
-6. Tail logs or exec into a running service:
+4. **View logs:**
    ```bash
    make docker-logs SERVICE=dagster-webserver
-   make docker-exec SERVICE=dagster-webserver CMD="sh"
-   # Dagster UI should be available at http://localhost:3000 by default
    ```
 
-### Configuration and docs
+See `docs/deployment/containerization.md` for full details.
 
-- Use `config/docker.yaml` for non-sensitive container defaults. Do not store secrets in config files.
-- The entrypoint scripts load `.env` and `/run/secrets/*` and will wait for Neo4j and Dagster web to be healthy before starting services.
-- For full operational details, healthcheck semantics, and troubleshooting steps, see:
-  `docs/deployment/containerization.md`
+## Data Sources
 
+### SBIR Awards
+- **Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
+- **Format**: CSV with 42 columns
+- **Records**: ~533,000 awards (1983–present)
+- **Update**: Monthly exports available
+
+### USAspending
+- **Source**: PostgreSQL database dump
+- **Size**: 51GB compressed
+- **Purpose**: Award enrichment, transaction tracking, technology transition detection
+- **Coverage**: Federal contract and grant transactions
+
+### USPTO Patents
+- **Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/patent-assignment-data)
+- **Format**: CSV, Stata (.dta), Parquet
+- **Purpose**: Patent ownership chains, SBIR-funded patent tracking
 
 ## Configuration
 
 Configuration uses a three-layer system:
 
-- `config/base.yaml`: Default settings (version controlled)
-- `config/dev.yaml`: Development overrides
-- `config/prod.yaml`: Production settings
+```
+config/
+├── base.yaml          # Defaults (version controlled)
+├── dev.yaml           # Development overrides
+└── prod.yaml          # Production settings
+```
 
-Environment variables override YAML values using `SBIR_ETL__SECTION__KEY=value` pattern.
+Environment variables override YAML using `SBIR_ETL__SECTION__KEY=value`:
+
+```bash
+export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
+export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
+```
+
+### Performance Configuration
+
+Key thresholds in `config/base.yaml`:
+
+```yaml
+performance:
+  duration_warning_seconds: 300           # Alert if enrichment >5min
+  memory_delta_warning_mb: 500            # Alert if memory increase >500MB
+  memory_pressure_warn_percent: 75        # Adaptive chunk resize
+  memory_pressure_critical_percent: 90    # Spill to disk
+  regression_threshold_percent: 5.0       # Fail CI if >5% regression
+
+enrichment:
+  match_rate_threshold: 0.70              # Min 70% match rate
+  chunk_size: 10000                       # Records per chunk
+```
 
 ## Development
 
@@ -372,23 +168,12 @@ poetry run ruff check src tests
 # Type check
 poetry run mypy src
 
-# Security check
+# Security scan
 poetry run bandit -r src
 
-# Run tests
-poetry run pytest
+# Run all checks
+black src tests && ruff check src tests && mypy src
 ```
-
-### Continuous Integration
-
-The project uses GitHub Actions for CI/CD with the following checks:
-
-- **Test**: Runs pytest with coverage on Python 3.11 and 3.12
-- **Lint**: Code formatting, linting, and type checking
-- **Security**: Bandit security vulnerability scanning
-- **Docker**: Build verification
-
-CI runs on pushes to `main`/`develop` branches and pull requests.
 
 ### Testing
 
@@ -399,47 +184,237 @@ poetry run pytest
 # Run with coverage
 poetry run pytest --cov=src --cov-report=html
 
-# Run specific test file
-poetry run pytest tests/unit/test_config.py
+# Run specific test
+poetry run pytest tests/unit/test_config.py -v
+
+# Container tests
+make docker-test
 ```
+
+**Test Suite:**
+- 29 tests across unit, integration, and E2E
+- Coverage target: ≥80% (CI enforced)
+- Serial execution: ~8-12 minutes in CI
+
+### Performance Monitoring
+
+The pipeline includes comprehensive performance instrumentation:
+
+**Built-in Monitoring:**
+- `src/utils/performance_monitor.py` — Decorators and context managers
+- `src/utils/performance_alerts.py` — Alert collection and severity tracking
+- `src/utils/quality_baseline.py` — Baseline storage and comparison
+- `src/utils/quality_dashboard.py` — Plotly-based dashboards
+
+**Usage in Assets:**
+```python
+from src.utils.performance_monitor import monitor_performance
+from src.utils.performance_alerts import AlertCollector
+
+@monitor_performance
+def my_asset(context):
+    alert_collector = AlertCollector()
+    # ... processing logic ...
+    alert_collector.add_alert("duration", duration_seconds, severity="WARNING")
+    alert_collector.save_alerts("reports/alerts/")
+```
+
+**CI Performance Pipeline:**
+- Workflow: `.github/workflows/performance-regression-check.yml`
+- Runs on PRs affecting enrichment/assets
+- Compares current run to cached baseline
+- Posts PR comments with regression analysis
+- Fails CI on FAILURE severity regressions
 
 ## Project Structure
 
 ```
-src/
-├── extractors/           # Stage 1: Data extraction
-├── validators/           # Stage 2: Schema and quality validation
-├── enrichers/            # Stage 3: External API enrichment
-├── transformers/         # Stage 4: Business logic
-├── loaders/              # Stage 5: Neo4j loading
-├── assets/               # Dagster asset definitions
-├── config/               # Configuration management
-├── models/               # Pydantic data models
-└── utils/                # Shared utilities
-
-config/                   # Configuration files
-├── base.yaml
-├── dev.yaml
-└── prod.yaml
-
-tests/                    # Test suite
-├── unit/
-├── integration/
-└── e2e/
-
-data/                     # Local data storage (gitignored)
-├── raw/
-├── validated/
-├── enriched/
-└── transformed/
+sbir-etl/
+├── src/
+│   ├── extractors/              # Stage 1: Data extraction
+│   ├── validators/              # Stage 2: Schema validation
+│   ├── enrichers/               # Stage 3: External enrichment
+│   │   └── chunked_enrichment.py  # Memory-adaptive processing
+│   ├── transformers/            # Stage 4: Business logic
+│   ├── loaders/                 # Stage 5: Neo4j loading
+│   ├── assets/                  # Dagster asset definitions
+│   │   ├── sbir_ingestion.py
+│   │   ├── sbir_usaspending_enrichment.py  # w/ metrics
+│   │   └── uspto_*.py
+│   ├── config/                  # Configuration management
+│   ├── models/                  # Pydantic data models
+│   └── utils/
+│       ├── performance_monitor.py      # Timing/memory tracking
+│       ├── performance_alerts.py       # Alert collection
+│       ├── quality_baseline.py         # Baseline management
+│       └── quality_dashboard.py        # Plotly dashboards
+│
+├── config/                      # YAML configuration
+│   ├── base.yaml                # Defaults + thresholds
+│   ├── dev.yaml                 # Development overrides
+│   └── prod.yaml                # Production settings
+│
+├── tests/                       # Test suite (29 tests)
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+│
+├── scripts/
+│   ├── benchmark_enrichment.py           # Baseline creation
+│   └── detect_performance_regression.py  # CI regression check
+│
+├── docs/
+│   ├── data/                    # Data dictionaries
+│   ├── deployment/              # Container guides
+│   └── schemas/                 # Neo4j schema docs
+│
+├── reports/                     # Generated artifacts (gitignored)
+│   ├── benchmarks/baseline.json     # Cached baseline
+│   ├── alerts/                      # Performance alerts
+│   └── dashboards/                  # Quality dashboards
+│
+├── .github/workflows/
+│   ├── ci.yml                       # Standard CI
+│   ├── container-ci.yml             # Docker test runner
+│   ├── neo4j-smoke.yml              # Integration tests
+│   ├── performance-regression-check.yml  # Benchmark pipeline
+│   └── secret-scan.yml
+│
+└── openspec/                    # Specifications (see openspec/AGENTS.md)
+    ├── specs/                   # Current capabilities
+    └── changes/                 # Proposed changes
 ```
+
+## Neo4j Graph Model
+
+**Node Types:**
+- `Award` — SBIR/STTR awards with company, agency, phase, amount
+- `Company` — Awardee companies with contact info, location
+- `Patent` — USPTO patents linked to SBIR-funded research
+- `PatentAssignment` — Patent transfer transactions
+- `PatentEntity` — Assignees and assignors (normalized names)
+
+**Relationship Types:**
+- `RECEIVED` — Company → Award
+- `GENERATED_FROM` — Patent → Award (SBIR-funded patents)
+- `OWNS` — Company → Patent (current ownership)
+- `ASSIGNED_VIA` — Patent → PatentAssignment
+- `ASSIGNED_FROM` — PatentAssignment → PatentEntity
+- `ASSIGNED_TO` — PatentAssignment → PatentEntity
+- `CHAIN_OF` — PatentAssignment → PatentAssignment (ownership history)
+
+**Query Examples:**
+
+```cypher
+# Find all awards for a company
+MATCH (c:Company {name: "Acme Inc"})-[:RECEIVED]->(a:Award)
+RETURN a.title, a.amount, a.phase
+
+# Trace patent ownership chain
+MATCH path = (p:Patent)-[:ASSIGNED_VIA*]->(pa:PatentAssignment)
+WHERE p.grant_doc_num = "7123456"
+RETURN path
+
+# Find SBIR-funded patents with assignments
+MATCH (a:Award)<-[:GENERATED_FROM]-(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
+WHERE a.company_name = "Acme Inc"
+RETURN p.title, pa.assignee_name, pa.recorded_date
+```
+
+## Continuous Integration
+
+GitHub Actions workflows:
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | Push to main/develop, PRs | Standard CI (lint, test, security) |
+| `container-ci.yml` | Push to main/develop, PRs | Docker build + test (serial, ~8-12 min) |
+| `neo4j-smoke.yml` | Push to main/develop, PRs | Neo4j integration tests |
+| `performance-regression-check.yml` | PRs (enrichment changes) | Benchmark + regression detection |
+| `secret-scan.yml` | Push to main/develop, PRs | Secret leak detection |
+
+**Performance Regression CI:**
+- Runs on enrichment/asset changes
+- Compares to cached baseline (`reports/benchmarks/baseline.json`)
+- Posts PR comment with duration/memory/match_rate deltas
+- Sets GitHub Check status (success/failure)
+- Uploads artifacts (regression JSON, HTML report)
+
+## Performance & Quality
+
+### Enrichment Performance
+
+The enrichment stage includes resilience features for large datasets:
+
+- **Chunked Processing**: Process recipients in batches (default 10k)
+- **Memory Monitoring**: Track memory usage via `psutil`
+- **Adaptive Chunk Sizing**: Reduce chunk size under memory pressure
+- **Spill-to-Disk**: Write chunks to Parquet when memory critical
+- **Checkpointing**: Resume from last successful chunk on failure
+- **Progress Tracking**: Expose completion percentage and ETA
+
+### Quality Gates
+
+Configurable thresholds enforce data quality:
+
+```yaml
+# config/base.yaml
+enrichment:
+  match_rate_threshold: 0.70      # Min 70% match rate
+  
+validation:
+  pass_rate_threshold: 0.95       # Min 95% pass rate
+  
+loading:
+  load_success_threshold: 0.99    # Min 99% load success
+```
+
+**Asset Checks:**
+- `enrichment_quality_regression_check` — Compare to baseline
+- `patent_load_success_rate` — Verify Neo4j load success
+- `assignment_load_success_rate` — Verify relationship creation
+
+### Monitoring & Alerts
+
+Performance alerts are generated automatically:
+
+**Alert Types:**
+- `DURATION_WARNING` — Enrichment took >5 min
+- `MEMORY_WARNING` — Memory increase >500 MB
+- `QUALITY_REGRESSION` — Match rate dropped >5%
+- `LOAD_FAILURE` — Neo4j load success <99%
+
+**Alert Artifacts:**
+```json
+{
+  "timestamp": "2024-10-26T12:00:00",
+  "alert_type": "DURATION_WARNING",
+  "severity": "WARNING",
+  "message": "Enrichment took 380s (threshold: 300s)",
+  "metadata": {
+    "duration_seconds": 380,
+    "threshold_seconds": 300,
+    "records_processed": 533000
+  }
+}
+```
+
+Alerts saved to `reports/alerts/<timestamp>.json` and attached to Dagster asset metadata.
+
+## Documentation
+
+- **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
+- **Deployment**: `docs/deployment/containerization.md`
+- **Schemas**: `docs/schemas/patent-neo4j-schema.md`
+- **OpenSpec**: `openspec/AGENTS.md` (change proposal workflow)
 
 ## Contributing
 
-1. Follow the established code quality standards
-2. Write tests for new functionality
+1. Follow code quality standards (black, ruff, mypy, bandit)
+2. Write tests for new functionality (≥80% coverage)
 3. Update documentation as needed
-4. Ensure pipeline stages maintain clear boundaries
+4. Use OpenSpec for architectural changes (see `openspec/AGENTS.md`)
+5. Ensure performance regression checks pass in CI
 
 ## License
 
