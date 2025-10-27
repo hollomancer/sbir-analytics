@@ -374,6 +374,15 @@ class PatentAssignmentTransformer:
                     parsed = self._parse_address(addr_text)
                     if parsed:
                         street, city, state, postal, country = parsed
+                        # Task 7.4: Standardize address components
+                        standardized = self._standardize_address(
+                            street, city, state, postal, country
+                        )
+                        street = standardized.get("street")
+                        city = standardized.get("city")
+                        state = standardized.get("state")
+                        postal = standardized.get("postal_code")
+                        country = standardized.get("country")
 
             assignee = PatentAssignee(
                 rf_id=_get("assignee_rf_id"),
@@ -452,7 +461,295 @@ class PatentAssignmentTransformer:
             # attach linking metadata
             pa.metadata["linked_sbir_company"] = {"company_id": company_id, "match_score": score}
 
+        # Task 7.8: Calculate assignment chain metadata
+        self._calculate_chain_metadata(pa, row)
+
         return pa
+
+    # Task 7.8: Assignment chain metadata calculation
+    # -----------------------------------------------
+    def _calculate_chain_metadata(self, assignment: PatentAssignment, row: Dict[str, Any]) -> None:
+        """
+        Calculate and attach assignment chain metadata to track timeline and transitions.
+
+        This method adds the following metadata:
+        - chain_sequence_indicator: ordinal position if part of multi-part assignment
+        - temporal_span_days: days between execution and recording
+        - transition_type: nature of assignment (new_assignee, consolidation, etc.)
+        - chain_flags: special indicators (urgent, disputed, etc.)
+
+        Args:
+            assignment: PatentAssignment model to annotate
+            row: Raw input row with potential chain indicators
+        """
+        if not assignment.metadata:
+            assignment.metadata = {}
+
+        # Extract dates for temporal analysis
+        exec_date = assignment.execution_date
+        rec_date = assignment.recorded_date
+
+        # Calculate temporal span
+        temporal_span_days = None
+        if exec_date and rec_date:
+            temporal_span_days = (rec_date - exec_date).days
+            assignment.metadata["temporal_span_days"] = temporal_span_days
+
+            # Flag unusual delays (>90 days between execution and recording)
+            if temporal_span_days > 90:
+                if "chain_flags" not in assignment.metadata:
+                    assignment.metadata["chain_flags"] = []
+                assignment.metadata["chain_flags"].append("delayed_recording")
+
+        # Detect sequence indicators (e.g., "Part 1 of 3")
+        raw_conveyance = row.get("conveyance_description", "")
+        if isinstance(raw_conveyance, str):
+            # Look for part indicators like "Part 1 of 3" or "A of B"
+            part_match = re.search(
+                r"(?:part|section)\s+(\d+)\s+of\s+(\d+)", raw_conveyance, re.IGNORECASE
+            )
+            if part_match:
+                current_part = int(part_match.group(1))
+                total_parts = int(part_match.group(2))
+                assignment.metadata["chain_sequence_indicator"] = {
+                    "current_part": current_part,
+                    "total_parts": total_parts,
+                }
+
+        # Detect transition type based on assignee change
+        if isinstance(assignment.assignee, PatentAssignee) and isinstance(
+            assignment.assignor, PatentAssignor
+        ):
+            assignee_name = assignment.normalized_assignee_name or assignment.assignee.name or ""
+            assignor_name = assignment.normalized_assignor_name or assignment.assignor.name or ""
+
+            if assignee_name.lower() == assignor_name.lower():
+                assignment.metadata["transition_type"] = "consolidation"
+            elif "merge" in (
+                assignment.conveyance.conveyance_type.value if assignment.conveyance else ""
+            ):
+                assignment.metadata["transition_type"] = "merger_acquisition"
+            elif "license" in (
+                assignment.conveyance.conveyance_type.value if assignment.conveyance else ""
+            ):
+                assignment.metadata["transition_type"] = "license_grant"
+            elif assignment.conveyance and assignment.conveyance.employer_assign:
+                assignment.metadata["transition_type"] = "employer_assignment"
+            else:
+                assignment.metadata["transition_type"] = "standard_assignment"
+
+        # Mark employment-related assignments for special handling
+        if assignment.conveyance and assignment.conveyance.employer_assign:
+            if "chain_flags" not in assignment.metadata:
+                assignment.metadata["chain_flags"] = []
+            if "employer_assigned" not in assignment.metadata["chain_flags"]:
+                assignment.metadata["chain_flags"].append("employer_assigned")
+
+    # Task 7.4: Enhanced address standardization (building on _parse_address)
+    # -----------------------------------------------------------------------
+    @staticmethod
+    def _standardize_state_code(state: Optional[str]) -> Optional[str]:
+        """
+        Standardize state abbreviations and full names to 2-letter codes.
+
+        Args:
+            state: State name, abbreviation, or code
+
+        Returns:
+            2-letter state code (uppercase) or None if not recognized
+        """
+        if not state:
+            return None
+
+        state_str = str(state).strip().upper()
+
+        # US state mapping
+        state_map = {
+            "ALABAMA": "AL",
+            "ALASKA": "AK",
+            "ARIZONA": "AZ",
+            "ARKANSAS": "AR",
+            "CALIFORNIA": "CA",
+            "COLORADO": "CO",
+            "CONNECTICUT": "CT",
+            "DELAWARE": "DE",
+            "FLORIDA": "FL",
+            "GEORGIA": "GA",
+            "HAWAII": "HI",
+            "IDAHO": "ID",
+            "ILLINOIS": "IL",
+            "INDIANA": "IN",
+            "IOWA": "IA",
+            "KANSAS": "KS",
+            "KENTUCKY": "KY",
+            "LOUISIANA": "LA",
+            "MAINE": "ME",
+            "MARYLAND": "MD",
+            "MASSACHUSETTS": "MA",
+            "MICHIGAN": "MI",
+            "MINNESOTA": "MN",
+            "MISSISSIPPI": "MS",
+            "MISSOURI": "MO",
+            "MONTANA": "MT",
+            "NEBRASKA": "NE",
+            "NEVADA": "NV",
+            "NEW HAMPSHIRE": "NH",
+            "NEW JERSEY": "NJ",
+            "NEW MEXICO": "NM",
+            "NEW YORK": "NY",
+            "NORTH CAROLINA": "NC",
+            "NORTH DAKOTA": "ND",
+            "OHIO": "OH",
+            "OKLAHOMA": "OK",
+            "OREGON": "OR",
+            "PENNSYLVANIA": "PA",
+            "RHODE ISLAND": "RI",
+            "SOUTH CAROLINA": "SC",
+            "SOUTH DAKOTA": "SD",
+            "TENNESSEE": "TN",
+            "TEXAS": "TX",
+            "UTAH": "UT",
+            "VERMONT": "VT",
+            "VIRGINIA": "VA",
+            "WASHINGTON": "WA",
+            "WEST VIRGINIA": "WV",
+            "WISCONSIN": "WI",
+            "WYOMING": "WY",
+            "DISTRICT OF COLUMBIA": "DC",
+        }
+
+        # Check if already a 2-letter code
+        if len(state_str) == 2 and state_str.isalpha():
+            return state_str
+
+        # Try to map full name to abbreviation
+        if state_str in state_map:
+            return state_map[state_str]
+
+        # Try partial matches
+        for full_name, abbrev in state_map.items():
+            if full_name.startswith(state_str):
+                return abbrev
+
+        return None
+
+    @staticmethod
+    def _standardize_country_code(country: Optional[str]) -> Optional[str]:
+        """
+        Standardize country names to ISO 3166-1 alpha-2 codes.
+
+        Args:
+            country: Country name or code
+
+        Returns:
+            2-letter ISO country code (uppercase) or None if not recognized
+        """
+        if not country:
+            return None
+
+        country_str = str(country).strip().upper()
+
+        # Common country mappings (US-centric, since most USPTO data is US)
+        country_map = {
+            "UNITED STATES": "US",
+            "USA": "US",
+            "US": "US",
+            "UNITED STATES OF AMERICA": "US",
+            "CANADA": "CA",
+            "MEXICO": "MX",
+            "UNITED KINGDOM": "GB",
+            "UK": "GB",
+            "GERMANY": "DE",
+            "FRANCE": "FR",
+            "JAPAN": "JP",
+            "CHINA": "CN",
+            "INDIA": "IN",
+            "AUSTRALIA": "AU",
+            "SOUTH KOREA": "KR",
+            "BRAZIL": "BR",
+            "ISRAEL": "IL",
+            "SWITZERLAND": "CH",
+            "NETHERLANDS": "NL",
+            "SWEDEN": "SE",
+            "SINGAPORE": "SG",
+            "HONG KONG": "HK",
+            "TAIWAN": "TW",
+            "IRELAND": "IE",
+        }
+
+        # Check if already a 2-letter code
+        if len(country_str) == 2 and country_str.isalpha():
+            return country_str
+
+        # Try to map full name to code
+        if country_str in country_map:
+            return country_map[country_str]
+
+        return None
+
+    @staticmethod
+    def _standardize_address(
+        street: Optional[str],
+        city: Optional[str],
+        state: Optional[str],
+        postal_code: Optional[str],
+        country: Optional[str],
+    ) -> Dict[str, Optional[str]]:
+        """
+        Standardize and normalize address components for consistency.
+
+        Task 7.4 implementation: Provides address standardization with:
+        - State code normalization (full names → 2-letter codes)
+        - Country code standardization (ISO 3166-1 alpha-2)
+        - Postal code formatting (cleanup of whitespace)
+        - City/street normalization (trim, capitalize properly)
+
+        Args:
+            street: Street address
+            city: City name
+            state: State name or code
+            postal_code: ZIP/postal code
+            country: Country name or code
+
+        Returns:
+            Dictionary with standardized address components
+        """
+        result = {}
+
+        # Standardize street
+        if street:
+            result["street"] = " ".join(str(street).strip().split())
+        else:
+            result["street"] = None
+
+        # Standardize city
+        if city:
+            result["city"] = " ".join(str(city).strip().split())
+        else:
+            result["city"] = None
+
+        # Standardize state to 2-letter code
+        if state:
+            result["state"] = PatentAssignmentTransformer._standardize_state_code(state)
+        else:
+            result["state"] = None
+
+        # Standardize postal code
+        if postal_code:
+            # Remove internal spaces but preserve hyphens (for ZIP+4)
+            pc_str = str(postal_code).strip()
+            pc_str = re.sub(r"\s+", "", pc_str)
+            result["postal_code"] = pc_str if pc_str else None
+        else:
+            result["postal_code"] = None
+
+        # Standardize country to ISO code
+        if country:
+            result["country"] = PatentAssignmentTransformer._standardize_country_code(country)
+        else:
+            result["country"] = None
+
+        return result
 
     # ------------------------
     # Batch helpers

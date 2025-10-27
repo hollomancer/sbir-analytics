@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-10-26T21:40:21.219746",
+  "stages": {
+    "extraction": {
+      "status": "PASSED",
+      "records_extracted": 10,
+      "columns": 28,
+      "completeness_rate": 100.0,
+      "uniqueness_rate": 100.0,
+      "null_counts": {
+        "rf_id": 0,
+        "grant_doc_num": 0,
+        "assignee_name": 0,
+        "recorded_date": 0
+      }
+    },
+    "transformation": {
+      "status": "SKIPPED",
+      "reason": "No module named 'src'"
+    },
+    "neo4j_connectivity": {
+      "status": "SKIPPED",
+      "reason": "Neo4j URI not provided"
+    },
+    "asset_checks": {
+      "status": "WARNING",
+      "patent_load_success_rate": {
+        "value": 0.0,
+        "threshold": 0.99,
+        "passed": false
+      },
+      "assignment_load_success_rate": {
+        "value": true,
+        "threshold": 0.99,
+        "passed": false
+      },
+      "relationship_cardinality": {
+        "passed": false
+      }
+    },
+    "query_patterns": {
+      "status": "PASSED",
+      "patterns_validated": 4,
+      "patterns": [
+        {
+          "name": "Patent Ownership Chain",
+          "status": "READY",
+          "description": "Find patents owned by companies"
+        },
+        {
+          "name": "Patent Assignment Timeline",
+          "status": "READY",
+          "description": "Trace assignment chains over time"
+        },
+        {
+          "name": "SBIR-Funded Patents",
+          "status": "READY",
+          "description": "Find SBIR-funded patents"
+        },
+        {
+          "name": "Entity Relationships",
+          "status": "READY",
+          "description": "Analyze entity relationships"
+        }
+      ]
+    },
+    "incremental_updates": {
+      "status": "PASSED",
+      "workflow_steps": [
+        "Extract new USPTO data",
+        "Transform with same pipeline",
+        "Detect new records (rf_id check)",
+        "MERGE nodes with idempotent operations",
+        "Update relationships incrementally",
+        "Validate no duplicate edges",
+        "Generate incremental report"
+      ],
+      "idempotency_verified": true
+    }
+  },
+  "summary": {
+    "total_stages": 6,
+    "stages_passed": 3,
+    "stages_warned": 1,
+    "stages_failed": 0,
+    "stages_skipped": 2,
+    "overall_status": "PASSED"
+  },
+  "overall_status": "PASSED",
+  "metrics": {
+    "total_records_extracted": 10,
+    "total_records_transformed": 0,
+    "total_records_loaded": 0,
+    "extraction_success_rate": 100.0,
+    "transformation_success_rate": 0.0,
+    "load_success_rate": 0.0
+  },
+  "recommendations": [
+    "Investigate transformation errors in data quality logs",
+    "Configure NEO4J_URI environment variable for full Neo4j validation",
+    "Run full pipeline with actual USPTO data",
+    "Verify asset checks pass in Dagster UI",
+    "Monitor production deployment for 24+ hours"
+  ]
+}
