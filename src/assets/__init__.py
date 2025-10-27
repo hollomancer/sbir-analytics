@@ -51,6 +51,9 @@ __all__: List[str] = [
     "patent_load_success_rate",
     "assignment_load_success_rate",
     "patent_relationship_cardinality",
+    "uspto_ai_extract_to_duckdb",
+    "uspto_ai_deduplicate",
+    "uspto_ai_human_sample_extraction",
 ]
 
 # Map exported symbol -> (module_path, attribute_name).
@@ -138,6 +141,19 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
     "patent_relationship_cardinality": (
         "src.assets.uspto_neo4j_loading_assets",
         "patent_relationship_cardinality",
+    ),
+    # uspto_ai_extraction_assets
+    "uspto_ai_extract_to_duckdb": (
+        "src.assets.uspto_ai_extraction_assets",
+        "uspto_ai_extract_to_duckdb",
+    ),
+    "uspto_ai_deduplicate": (
+        "src.assets.uspto_ai_extraction_assets",
+        "uspto_ai_deduplicate",
+    ),
+    "uspto_ai_human_sample_extraction": (
+        "src.assets.uspto_ai_extraction_assets",
+        "uspto_ai_human_sample_extraction",
     ),
 }
 

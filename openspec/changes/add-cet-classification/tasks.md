@@ -241,10 +241,10 @@ Notes (section 8 implementation):
 
 ## 11. USPTO AI Dataset Integration
 
-- [ ] 11.1 Add loader for USPTO AI dataset (streaming + chunking)
-- [ ] 11.2 Add deduplication & incremental checkpointing
-- [ ] 11.3 Add sampling pipeline for human evaluation
-- [ ] 11.4 Add patent-specific extractor logic
+- [x] 11.1 Add loader for USPTO AI dataset (streaming + chunking) — Implemented via `src/extractors/uspto_ai_extractor.py` and asset `src/assets/uspto_ai_extraction_assets.py::uspto_ai_extract_to_duckdb`
+- [x] 11.2 Add deduplication & incremental checkpointing — Implemented via extractor resume checkpoints (`data/cache/uspto_ai_checkpoints`) and asset `src/assets/uspto_ai_extraction_assets.py::uspto_ai_deduplicate`
+- [x] 11.3 Add sampling pipeline for human evaluation — Implemented via asset `src/assets/uspto_ai_extraction_assets.py::uspto_ai_human_sample_extraction`
+- [x] 11.4 Add patent-specific extractor logic — Implemented grant id normalization and score coercion in `src/extractors/uspto_ai_extractor.py` (canonical `grant_doc_num`, numeric score fields)
 
 ## 12. Neo4j CET Graph Model - Nodes
 
