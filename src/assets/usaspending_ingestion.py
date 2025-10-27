@@ -1,4 +1,3 @@
-sbir - etl / src / assets / usaspending_ingestion.py
 """Dagster assets for USAspending data ingestion pipeline."""
 
 import json

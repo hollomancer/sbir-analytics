@@ -45,12 +45,18 @@
 
 ## 4. Dagster Assets - Extraction
 
-- [ ] 4.1 Create raw_uspto_assignments asset
-- [ ] 4.2 Create raw_uspto_assignees asset
-- [ ] 4.3 Create raw_uspto_assignors asset
-- [ ] 4.4 Create raw_uspto_documentids asset
-- [ ] 4.5 Create raw_uspto_conveyances asset
-- [ ] 4.6 Add asset checks for file existence and basic parsing validation
+- [x] 4.1 Create raw_uspto_assignments asset
+  - Notes: Implemented in `src/assets/uspto_assets.py` with file discovery from configurable input directory.
+- [x] 4.2 Create raw_uspto_assignees asset
+  - Notes: Implemented in `src/assets/uspto_assets.py` with file discovery from configurable input directory.
+- [x] 4.3 Create raw_uspto_assignors asset
+  - Notes: Implemented in `src/assets/uspto_assets.py` with file discovery from configurable input directory.
+- [x] 4.4 Create raw_uspto_documentids asset
+  - Notes: Implemented in `src/assets/uspto_assets.py` with file discovery from configurable input directory.
+- [x] 4.5 Create raw_uspto_conveyances asset
+  - Notes: Implemented in `src/assets/uspto_assets.py` with file discovery from configurable input directory.
+- [x] 4.6 Add asset checks for file existence and basic parsing validation
+  - Notes: Implemented 5 parsing assets (`parsed_uspto_<table>`) and 5 corresponding asset checks (`uspto_<table>_parsing_check`) that validate each discovered file can be parsed. Checks use USPTOExtractor to sample 8-12 rows per file and report parsing success/failure with detailed error metadata. All assets and checks exported via `src/assets/__init__.py` and loaded in `src/definitions.py`. Dagster successfully loads 10 USPTO assets and 5 asset checks.
 
 ## 5. Data Validation (Stage 2: Validate)
 
