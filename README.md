@@ -124,6 +124,137 @@ The pipeline uses USAspending data for SBIR award enrichment and technology tran
 - **Profiling Report**: `reports/usaspending_subset_profile.md`
 - **Coverage Assessment**: `reports/usaspending_coverage_assessment.json`
 
+## USPTO Patent Assignment Data Pipeline
+
+The pipeline includes a comprehensive USPTO patent assignment ETL stage that extracts, transforms, and loads patent assignment data into the Neo4j graph for technology ownership and transition analysis.
+
+### Data Source
+
+The pipeline processes patent assignment data from the USPTO Patent Assignment Dataset, which contains historical records of all patent transfers, assignments, licenses, and other conveyances since 1790.
+
+**Data Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)
+- **Format**: CSV, Stata (.dta), Parquet
+- **Record Count**: Millions of assignment transactions (continuously growing)
+- **Update Frequency**: Monthly exports available
+- **Coverage**: All U.S. patents (utility, design, plant, reissue)
+
+### Pipeline Architecture
+
+The USPTO patent ETL consists of five stages:
+
+1. **Extract** (`USPTOExtractor`): Stream large patent assignment files in chunks
+   - Supports CSV, Stata (.dta), and Parquet formats
+   - Memory-efficient streaming for files >1GB
+   - Handles data quality issues gracefully
+
+2. **Transform** (`PatentTransformer`): Normalize and enrich assignment data
+   - Entity name normalization (fuzzy matching, 0.85 similarity threshold)
+   - Conveyance type detection (assignment, license, merger, security interest)
+   - Geographic standardization (state codes, country codes)
+   - Date parsing and conversion to ISO 8601 format
+
+3. **Validate**: Check data quality against configurable thresholds
+   - Pass rate: ≥99% of records pass validation
+   - Completeness: ≥95% for critical fields
+   - Uniqueness: ≥98% of patent grant numbers unique
+
+4. **Load** (`PatentLoader`): Write to Neo4j with idempotent MERGE operations
+   - Creates Patent, PatentAssignment, and PatentEntity nodes
+   - Establishes relationships: ASSIGNED_VIA, ASSIGNED_FROM, ASSIGNED_TO, CHAIN_OF
+   - Creates indexes and constraints for query performance
+   - Generates metrics and JSON reports for observability
+
+5. **Integrate**: Link patents to SBIR awards and companies
+   - GENERATED_FROM relationships (Patent → Award)
+   - OWNS relationships (Company → Patent)
+   - Technology chain analysis (assignor → assignee)
+
+### Usage Instructions
+
+1. **Download USPTO Data**:
+   ```bash
+   # Download from USPTO Patent Assignment Dataset
+   # Place in data/raw/uspto/patent_assignments.csv
+   # See data/raw/uspto/README.md for download instructions
+   ```
+
+2. **Configure Pipeline**:
+   ```yaml
+   # config/base.yaml
+   extraction:
+     uspto:
+       csv_path: "data/raw/uspto/patent_assignments.csv"
+       batch_size: 5000
+       
+   loading:
+     neo4j:
+       load_success_threshold: 0.99  # 99% success rate required
+   ```
+
+3. **Run Extraction & Transformation**:
+   ```bash
+   # Extract and transform USPTO data
+   poetry run python -m src.assets.uspto_extraction_assets
+   poetry run python -m src.assets.uspto_transformation_assets
+   ```
+
+4. **Load into Neo4j**:
+   ```bash
+   # Start Dagster UI
+   poetry run dagster dev
+   
+   # Materialize patent loading assets in order:
+   # 1. neo4j_patents
+   # 2. neo4j_patent_assignments
+   # 3. neo4j_patent_entities
+   # 4. neo4j_patent_relationships
+   ```
+
+5. **Verify Data Quality**:
+   - Check asset execution results in Dagster UI
+   - Review asset checks: `patent_load_success_rate`, `assignment_load_success_rate`
+   - Query Neo4j to validate relationships and counts
+
+### Neo4j Graph Model
+
+**Node Types:**
+- `Patent` — Identified by grant_doc_num, represents patented inventions
+- `PatentAssignment` — Identified by rf_id, represents transfer transactions
+- `PatentEntity` — Represents assignees and assignors (normalized names)
+
+**Relationship Types:**
+- `ASSIGNED_VIA` — Patent → PatentAssignment (patent has assignment)
+- `ASSIGNED_FROM` — PatentAssignment → PatentEntity (from assignor)
+- `ASSIGNED_TO` — PatentAssignment → PatentEntity (to assignee)
+- `CHAIN_OF` — PatentAssignment → PatentAssignment (assignment sequence)
+- `OWNS` — Company → Patent (current ownership via normalized name matching)
+- `GENERATED_FROM` — Patent → Award (SBIR-funded patents)
+
+### Query Examples
+
+```cypher
+# Find all patents owned by a company
+MATCH (c:Company {name: "Acme Inc"})-[r:OWNS]->(p:Patent)
+RETURN p.grant_doc_num, p.title, p.publication_date
+
+# Trace patent ownership chain
+MATCH (pa:PatentAssignment)-[:CHAIN_OF*]->(pb:PatentAssignment)
+WHERE pa.recorded_date < pb.recorded_date
+RETURN pa.recorded_date, pa.assignee_name, pb.assignee_name
+
+# Find SBIR-funded patents and their assignments
+MATCH (a:Award)-[:GENERATED_FROM]->(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
+WHERE a.company_name = "Acme Inc"
+RETURN p.title, pa.assignee_name, pa.recorded_date
+```
+
+### Documentation
+
+- **Data Dictionary**: `docs/data-dictionaries/uspto_patent_data_dictionary.md` — Field descriptions, data types, quality notes
+- **Neo4j Schema**: `docs/schemas/patent-neo4j-schema.md` — Node/relationship types, constraints, query patterns
+- **Raw Data README**: `data/raw/uspto/README.md` — Download instructions, file formats, troubleshooting
+- **Implementation**: See `src/extractors/uspto_extractor.py`, `src/transformers/patent_transformer.py`, `src/loaders/patent_loader.py`
+
 ## Quick Start
 
 ### Prerequisites

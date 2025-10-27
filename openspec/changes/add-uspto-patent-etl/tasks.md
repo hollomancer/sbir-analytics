@@ -159,11 +159,11 @@
 
 ## 12. Configuration & Documentation
 
-- [ ] 12.1 Add USPTO configuration to config/base.yaml (file paths, chunk size, quality thresholds)
-- [ ] 12.2 Document Neo4j graph schema in docs/schemas/patent-assignment-graph.md
-- [ ] 12.3 Create data dictionary for USPTO fields
-- [ ] 12.4 Add README for data/raw/uspto/ explaining data source and structure
-- [ ] 12.5 Update main README with USPTO pipeline documentation
+- [x] 12.1 Add USPTO configuration to config/base.yaml (file paths, chunk size, quality thresholds)
+- [x] 12.2 Document Neo4j graph schema in docs/schemas/patent-assignment-graph.md
+- [x] 12.3 Create data dictionary for USPTO fields
+- [x] 12.4 Add README for data/raw/uspto/ explaining data source and structure
+- [x] 12.5 Update main README with USPTO pipeline documentation
 
 ## 13. Deployment & Validation
 
