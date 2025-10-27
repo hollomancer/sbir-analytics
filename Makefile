@@ -74,6 +74,19 @@ docker-up-dev: env-check
 	@echo "Waiting up to $(STARTUP_TIMEOUT)s for services to become healthy..."
 	@$(DOCKER_COMPOSE) --env-file .env ps
 
+# ---------------------------------------------------------------------------
+# CET pipeline helper (run the full CET job on the dev stack)
+# ---------------------------------------------------------------------------
+# Usage:
+#   make cet-pipeline-dev
+# This will ensure the dev compose stack is up and then execute the CET full
+# pipeline job inside the `app` service container. Adjust the app service name
+# or command as needed for your local development setup.
+.PHONY: cet-pipeline-dev
+cet-pipeline-dev: env-check docker-up-dev
+	@echo "Running CET full pipeline job on development stack (cet_full_pipeline_job)"
+	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) run --rm app sh -c "poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job"
+
 docker-up-prod: env-check
 	@echo "Starting production-like compose stack (no dev overlays)"
 	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) up -d --build
