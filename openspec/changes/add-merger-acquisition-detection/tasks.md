@@ -1,0 +1,13 @@
+## 1. Implementation
+- [ ] 1.1 Define the data model for M&A events in `src/models/ma_models.py`.
+- [ ] 1.2 Create a new Dagster asset `company_mergers_and_acquisitions` in `src/assets/ma_detection.py`.
+- [ ] 1.3 Implement logic to join SBIR companies with patent assignor data.
+- [ ] 1.4 Implement logic to detect changes in patent assignees over time.
+- [ ] 1.5 Create M&A candidate events when a change is detected.
+- [ ] 1.6 Add enrichment capabilities using SEC EDGAR API.
+- [ ] 1.7 Add enrichment capabilities using GDELT.
+- [ ] 1.8 Add enrichment capabilities using OpenCorporates API.
+- [ ] 1.9 Add enrichment capabilities using Wikidata.
+- [ ] 1.10 Store the enriched M&A events.
+- [ ] 1.11 Write unit tests for the new asset.
+- [ ] 1.12 Write integration tests for the M&A detection pipeline.

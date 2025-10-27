@@ -13,14 +13,26 @@ from .uspto_validators import (
     ValidatorResult,
     validate_rf_id_uniqueness,
     validate_rf_id_uniqueness_from_iterator,
+    validate_referential_integrity,
+    validate_field_completeness,
+    validate_date_fields,
+    validate_duplicate_records,
     iter_rows_from_path,
     main_validate_rf_id_uniqueness,
+    USPTOValidationConfig,
+    USPTODataQualityValidator,
 )
 
 __all__ = [
     "ValidatorResult",
     "validate_rf_id_uniqueness",
     "validate_rf_id_uniqueness_from_iterator",
+    "validate_referential_integrity",
+    "validate_field_completeness",
+    "validate_date_fields",
+    "validate_duplicate_records",
     "iter_rows_from_path",
     "main_validate_rf_id_uniqueness",
+    "USPTOValidationConfig",
+    "USPTODataQualityValidator",
 ]

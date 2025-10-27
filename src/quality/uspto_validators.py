@@ -2,27 +2,31 @@
 """
 USPTO data quality validators.
 
-This module provides basic validators for USPTO extract files. The
-primary implemented validator is:
+This module provides streaming-friendly validators plus a coordinator
+(`USPTODataQualityValidator`) that runs the required checks for the
+USPTO patent assignment pipeline:
 
-- validate_rf_id_uniqueness: Check rf_id uniqueness within a file or a
-  stream of rows. Returns a summary dict with counts and a small sample
-  of duplicate rf_id values.
+- `validate_rf_id_uniqueness`: rf_id uniqueness per file/iterator
+- `validate_referential_integrity`: ensure child rf_id values exist in parent table
+- `validate_field_completeness`: completeness threshold enforcement
+- `validate_date_fields`: date parsing and range validation
+- `validate_duplicate_records`: composite key duplicate detection
+- `USPTODataQualityValidator`: orchestrates the above validators across
+  all USPTO tables and emits structured reports + failure samples.
 
-Notes:
-- The implementation is intentionally conservative and uses streaming
-  reads where possible to avoid loading entire large files into memory.
-- This is a validator skeleton: additional validators (referential
-  integrity, completeness, date range checks, etc.) can be added in the
-  same style.
+The implementation favors chunked iteration to avoid loading entire
+multi-GB USPTO data files into memory.
 """
 
 from __future__ import annotations
 
+import json
 import csv
 import logging
+from datetime import datetime
 from collections import defaultdict
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
@@ -164,6 +168,28 @@ def iter_rows_from_path(
         raise ValueError(f"Unsupported extension for USPTO validator: {ext}")
 
 
+def _ensure_path_list(
+    path_or_paths: Union[str, Path, Iterable[Union[str, Path]]]
+) -> List[Path]:
+    """Normalize a single path or an iterable of paths into a list of ``Path`` objects."""
+
+    if isinstance(path_or_paths, (str, Path)):
+        return [Path(path_or_paths)]
+
+    if isinstance(path_or_paths, Iterable):
+        paths: List[Path] = []
+        for item in path_or_paths:
+            if isinstance(item, (str, Path)):
+                paths.append(Path(item))
+            else:
+                raise TypeError(f"Unsupported path entry type: {type(item)!r}")
+        if not paths:
+            raise ValueError("At least one parent path must be provided for validation")
+        return paths
+
+    raise TypeError(f"Unsupported parent path type: {type(path_or_paths)!r}")
+
+
 def validate_rf_id_uniqueness_from_iterator(
     rows: Iterable[Dict[str, Any]],
     rf_id_field_names: Optional[Iterable[str]] = None,
@@ -303,7 +329,7 @@ def main_validate_rf_id_uniqueness(file_path: Union[str, Path]) -> Tuple[bool, D
 
 def validate_referential_integrity(
     child_file_path: Union[str, Path],
-    parent_file_path: Union[str, Path],
+    parent_file_path: Union[str, Path, Iterable[Union[str, Path]]],
     child_fk_field: str = "rf_id",
     parent_pk_field: str = "rf_id",
     chunk_size: int = 10000,
@@ -317,7 +343,8 @@ def validate_referential_integrity(
     Parameters
     ----------
     child_file_path: path to child table file
-    parent_file_path: path to parent table file (should contain primary keys)
+    parent_file_path: path (or iterable of paths) to parent table file(s)
+        that contain the primary key column
     child_fk_field: foreign key field name in child table
     parent_pk_field: primary key field name in parent table
     chunk_size: chunk size for streaming
@@ -330,13 +357,19 @@ def validate_referential_integrity(
       - summary: total_child_rows, total_parent_keys, orphaned_count, orphaned_sample
     """
     try:
+        parent_paths = _ensure_path_list(parent_file_path)
+
         # First pass: collect all parent keys
-        LOG.info("Loading parent keys from %s", parent_file_path)
+        LOG.info(
+            "Loading parent keys from %s",
+            ", ".join(str(p) for p in parent_paths),
+        )
         parent_keys = set()
-        for row in iter_rows_from_path(parent_file_path, chunk_size=chunk_size):
-            pk_val = row.get(parent_pk_field)
-            if pk_val is not None and str(pk_val).strip():
-                parent_keys.add(str(pk_val).strip())
+        for parent_path in parent_paths:
+            for row in iter_rows_from_path(parent_path, chunk_size=chunk_size):
+                pk_val = row.get(parent_pk_field)
+                if pk_val is not None and str(pk_val).strip():
+                    parent_keys.add(str(pk_val).strip())
 
         # Second pass: check child FKs
         LOG.info("Validating child foreign keys from %s", child_file_path)
@@ -364,6 +397,7 @@ def validate_referential_integrity(
         summary = {
             "total_child_rows": total_child_rows,
             "total_parent_keys": len(parent_keys),
+            "parent_files_count": len(parent_paths),
             "orphaned_records": orphaned_count,
             "missing_fk_count": missing_fk_count,
             "referential_integrity_rate": (
@@ -708,6 +742,355 @@ def validate_duplicate_records(
         )
 
 
+def _default_required_fields() -> Dict[str, List[str]]:
+    return {
+        "assignments": ["rf_id", "record_dt", "cname"],
+        "assignees": ["rf_id", "ee_name"],
+        "assignors": ["rf_id", "or_name"],
+        "documentids": ["rf_id", "grant_doc_num"],
+    }
+
+
+def _default_date_fields() -> Dict[str, List[str]]:
+    return {
+        "assignments": ["record_dt", "last_update_dt"],
+        "assignors": ["exec_dt", "ack_dt"],
+        "documentids": ["appno_date", "grant_date", "pgpub_date"],
+    }
+
+
+def _default_duplicate_key_fields() -> Dict[str, List[str]]:
+    return {
+        "assignments": ["rf_id"],
+        "assignees": ["rf_id", "ee_name"],
+        "assignors": ["rf_id", "or_name"],
+        "documentids": ["rf_id", "grant_doc_num", "appno_doc_num"],
+        "conveyances": ["rf_id", "convey_ty"],
+    }
+
+
+@dataclass
+class USPTOValidationConfig:
+    """Configuration for the ``USPTODataQualityValidator`` orchestrator."""
+
+    chunk_size: int = 10000
+    sample_limit: int = 20
+    completeness_threshold: float = 0.95
+    min_year: int = 1790
+    max_year: int = 2100
+    fail_output_dir: Path = Path("data/validated/fail")
+    report_output_dir: Path = Path("reports/uspto-validation")
+    required_fields: Dict[str, List[str]] = field(default_factory=_default_required_fields)
+    date_fields: Dict[str, List[str]] = field(default_factory=_default_date_fields)
+    duplicate_key_fields: Dict[str, List[str]] = field(default_factory=_default_duplicate_key_fields)
+
+
+def _validator_result_to_dict(result: ValidatorResult) -> Dict[str, Any]:
+    """Convert ``ValidatorResult`` into a JSON-serializable dict copy."""
+
+    return {
+        "success": result.success,
+        "summary": dict(result.summary),
+        "details": deepcopy(result.details),
+    }
+
+
+class USPTODataQualityValidator:
+    """
+    Run the suite of USPTO data quality validators and aggregate results.
+
+    The validator accepts a mapping of table name → list of file paths and executes the
+    appropriate validators for each table, writing failure samples to disk and producing a
+    structured validation report.
+    """
+
+    def __init__(self, config: Optional[USPTOValidationConfig] = None) -> None:
+        self.config = config or USPTOValidationConfig()
+        self.config.fail_output_dir.mkdir(parents=True, exist_ok=True)
+        self.config.report_output_dir.mkdir(parents=True, exist_ok=True)
+        self._failure_samples: List[Dict[str, Any]] = []
+
+    def _write_failure_sample(self, label: str, sample: List[Dict[str, Any]]) -> Optional[str]:
+        if not sample:
+            return None
+
+        safe_label = label.replace("/", "_").replace(" ", "_")
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        path = self.config.fail_output_dir / f"{safe_label}_{timestamp}.json"
+        try:
+            with path.open("w", encoding="utf-8") as fh:
+                json.dump(sample, fh, ensure_ascii=False, indent=2, default=str)
+        except Exception as exc:  # pragma: no cover - IO guard
+            LOG.exception("Failed to write failure sample %s: %s", path, exc)
+            return None
+
+        record = {"label": label, "path": str(path), "sample_size": len(sample)}
+        self._failure_samples.append(record)
+        return str(path)
+
+    def _check_required_fields(self, table: str) -> List[str]:
+        return self.config.required_fields.get(table, [])
+
+    def _check_date_fields(self, table: str) -> List[str]:
+        return self.config.date_fields.get(table, [])
+
+    def _check_duplicate_fields(self, table: str) -> List[str]:
+        return self.config.duplicate_key_fields.get(table, [])
+
+    def _run_assignment_checks(self, files: List[Union[str, Path]]) -> Dict[str, Dict[str, Any]]:
+        results: Dict[str, Dict[str, Any]] = {}
+
+        for file_path in files:
+            file_str = str(file_path)
+            checks: Dict[str, Dict[str, Any]] = {}
+
+            rf_result = validate_rf_id_uniqueness(
+                file_path,
+                chunk_size=self.config.chunk_size,
+                sample_limit=self.config.sample_limit,
+            )
+            checks["rf_id_uniqueness"] = _validator_result_to_dict(rf_result)
+
+            required_fields = self._check_required_fields("assignments")
+            if required_fields:
+                completeness_result = validate_field_completeness(
+                    file_path,
+                    required_fields=required_fields,
+                    chunk_size=self.config.chunk_size,
+                    completeness_threshold=self.config.completeness_threshold,
+                )
+                checks["field_completeness"] = _validator_result_to_dict(completeness_result)
+
+            duplicate_fields = self._check_duplicate_fields("assignments")
+            if duplicate_fields:
+                duplicates_result = validate_duplicate_records(
+                    file_path,
+                    key_fields=duplicate_fields,
+                    chunk_size=self.config.chunk_size,
+                    sample_limit=self.config.sample_limit,
+                )
+                duplicates_dict = _validator_result_to_dict(duplicates_result)
+                sample_path = self._write_failure_sample(
+                    f"assignments_duplicates_{Path(file_str).stem}",
+                    [
+                        sample.get("row_sample", {})
+                        for sample in duplicates_result.details.get("duplicate_samples", [])
+                        if isinstance(sample, dict)
+                    ],
+                )
+                if sample_path:
+                    duplicates_dict.setdefault("details", {})["failed_sample_path"] = sample_path
+                checks["duplicate_records"] = duplicates_dict
+
+            date_fields = self._check_date_fields("assignments")
+            if date_fields:
+                date_result = validate_date_fields(
+                    file_path,
+                    date_fields=date_fields,
+                    min_year=self.config.min_year,
+                    max_year=self.config.max_year,
+                    chunk_size=self.config.chunk_size,
+                    sample_limit=self.config.sample_limit,
+                )
+                date_dict = _validator_result_to_dict(date_result)
+                sample_path = self._write_failure_sample(
+                    f"assignments_invalid_dates_{Path(file_str).stem}",
+                    date_result.details.get("invalid_samples", []),
+                )
+                if sample_path:
+                    date_dict.setdefault("details", {})["failed_sample_path"] = sample_path
+                checks["date_fields"] = date_dict
+
+            checks_success = all(check.get("success", False) for check in checks.values())
+            results[file_str] = {"checks": checks, "overall_success": checks_success}
+
+        return results
+
+    def _run_child_table_checks(
+        self,
+        table: str,
+        files: List[Union[str, Path]],
+        parent_files: List[Union[str, Path]],
+    ) -> Dict[str, Dict[str, Any]]:
+        results: Dict[str, Dict[str, Any]] = {}
+        if not files:
+            return results
+
+        parent_refs = parent_files or []
+
+        for file_path in files:
+            file_str = str(file_path)
+            checks: Dict[str, Dict[str, Any]] = {}
+
+            if parent_refs:
+                ref_result = validate_referential_integrity(
+                    file_path,
+                    parent_refs,
+                    child_fk_field="rf_id",
+                    parent_pk_field="rf_id",
+                    chunk_size=self.config.chunk_size,
+                    sample_limit=self.config.sample_limit,
+                )
+                ref_dict = _validator_result_to_dict(ref_result)
+                sample_path = self._write_failure_sample(
+                    f"{table}_orphans_{Path(file_str).stem}",
+                    [
+                        rec.get("row", {})
+                        for rec in ref_result.details.get("orphaned_sample", [])
+                        if isinstance(rec, dict)
+                    ],
+                )
+                if sample_path:
+                    ref_dict.setdefault("details", {})["failed_sample_path"] = sample_path
+                checks["referential_integrity"] = ref_dict
+
+            required_fields = self._check_required_fields(table)
+            if required_fields:
+                completeness_result = validate_field_completeness(
+                    file_path,
+                    required_fields=required_fields,
+                    chunk_size=self.config.chunk_size,
+                    completeness_threshold=self.config.completeness_threshold,
+                )
+                checks["field_completeness"] = _validator_result_to_dict(completeness_result)
+
+            duplicate_fields = self._check_duplicate_fields(table)
+            if duplicate_fields:
+                duplicates_result = validate_duplicate_records(
+                    file_path,
+                    key_fields=duplicate_fields,
+                    chunk_size=self.config.chunk_size,
+                    sample_limit=self.config.sample_limit,
+                )
+                duplicates_dict = _validator_result_to_dict(duplicates_result)
+                sample_path = self._write_failure_sample(
+                    f"{table}_duplicates_{Path(file_str).stem}",
+                    [
+                        sample.get("row_sample", {})
+                        for sample in duplicates_result.details.get("duplicate_samples", [])
+                        if isinstance(sample, dict)
+                    ],
+                )
+                if sample_path:
+                    duplicates_dict.setdefault("details", {})["failed_sample_path"] = sample_path
+                checks["duplicate_records"] = duplicates_dict
+
+            date_fields = self._check_date_fields(table)
+            if date_fields:
+                date_result = validate_date_fields(
+                    file_path,
+                    date_fields=date_fields,
+                    min_year=self.config.min_year,
+                    max_year=self.config.max_year,
+                    chunk_size=self.config.chunk_size,
+                    sample_limit=self.config.sample_limit,
+                )
+                date_dict = _validator_result_to_dict(date_result)
+                sample_path = self._write_failure_sample(
+                    f"{table}_invalid_dates_{Path(file_str).stem}",
+                    date_result.details.get("invalid_samples", []),
+                )
+                if sample_path:
+                    date_dict.setdefault("details", {})["failed_sample_path"] = sample_path
+                checks["date_fields"] = date_dict
+
+            checks_success = all(check.get("success", False) for check in checks.values())
+            results[file_str] = {"checks": checks, "overall_success": checks_success}
+
+        return results
+
+    def _summarize_tables(self, table_results: Dict[str, Dict[str, Dict[str, Any]]]) -> Dict[str, Any]:
+        summary = {}
+        total_checks = 0
+        passed_checks = 0
+
+        for table, results in table_results.items():
+            if not results:
+                summary[table] = {"files": 0, "files_passing": 0, "pass_rate": None}
+                continue
+
+            file_successes = [res.get("overall_success", False) for res in results.values()]
+            summary[table] = {
+                "files": len(results),
+                "files_passing": sum(1 for success in file_successes if success),
+                "pass_rate": (
+                    sum(1 for success in file_successes if success) / max(len(file_successes), 1)
+                ),
+            }
+
+            for res in results.values():
+                for check in res.get("checks", {}).values():
+                    total_checks += 1
+                    if check.get("success"):
+                        passed_checks += 1
+
+        overall_pass_rate = passed_checks / max(total_checks, 1) if total_checks else 1.0
+
+        return {
+            "table_breakdown": summary,
+            "total_checks": total_checks,
+            "passed_checks": passed_checks,
+            "overall_pass_rate": overall_pass_rate,
+        }
+
+    def run(
+        self,
+        files_by_table: Dict[str, List[Union[str, Path]]],
+        write_report: bool = True,
+    ) -> Dict[str, Any]:
+        """Execute all validators and return a structured report."""
+
+        self._failure_samples = []
+        assignments = files_by_table.get("assignments", []) or []
+        assignees = files_by_table.get("assignees", []) or []
+        assignors = files_by_table.get("assignors", []) or []
+        documentids = files_by_table.get("documentids", []) or []
+        conveyances = files_by_table.get("conveyances", []) or []
+
+        table_results = {
+            "assignments": self._run_assignment_checks(assignments),
+            "assignees": self._run_child_table_checks("assignees", assignees, assignments),
+            "assignors": self._run_child_table_checks("assignors", assignors, assignments),
+            "documentids": self._run_child_table_checks("documentids", documentids, assignments),
+            "conveyances": self._run_child_table_checks("conveyances", conveyances, assignments),
+        }
+
+        summary = self._summarize_tables(table_results)
+
+        per_file_success = [
+            res.get("overall_success", False)
+            for table_dict in table_results.values()
+            for res in table_dict.values()
+        ]
+        overall_success = all(per_file_success) if per_file_success else True
+
+        report = {
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "tables": table_results,
+            "summary": summary,
+            "overall_success": overall_success,
+            "failure_samples": self._failure_samples,
+        }
+
+        if write_report:
+            report_path = self._write_report(report)
+            if report_path:
+                report["report_path"] = report_path
+
+        return report
+
+    def _write_report(self, report: Dict[str, Any]) -> Optional[str]:
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        report_path = self.config.report_output_dir / f"uspto_validation_{timestamp}.json"
+        try:
+            with report_path.open("w", encoding="utf-8") as fh:
+                json.dump(report, fh, ensure_ascii=False, indent=2, default=str)
+        except Exception as exc:  # pragma: no cover - IO guard
+            LOG.exception("Failed to write validation report %s: %s", report_path, exc)
+            return None
+        return str(report_path)
+
+
 # Expose module API
 __all__ = [
     "ValidatorResult",
@@ -719,4 +1102,6 @@ __all__ = [
     "validate_duplicate_records",
     "iter_rows_from_path",
     "main_validate_rf_id_uniqueness",
+    "USPTOValidationConfig",
+    "USPTODataQualityValidator",
 ]
