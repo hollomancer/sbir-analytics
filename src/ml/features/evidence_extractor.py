@@ -23,10 +23,9 @@ from src.models.cet_models import CETArea, EvidenceStatement
 try:
     import spacy
     from spacy.language import Language
-
-    SPACY_AVAILABLE = True
 except ImportError:
-    SPACY_AVAILABLE = False
+    spacy = None
+    Language = None
     logger.warning("spaCy not available; evidence extraction will be limited")
 
 
@@ -71,9 +70,16 @@ class EvidenceExtractor:
         )
 
         # Initialize spaCy
-        self.nlp: Language | None = None
-        if SPACY_AVAILABLE:
-            self._initialize_spacy(evidence_config.get("spacy", {}))
+        self.nlp: "Language | None" = None
+        # Initialize spaCy at runtime if the spacy module is present. Tests may patch the
+        # module-level `spacy` variable to simulate availability, so evaluate at init time.
+        if spacy is not None:
+            try:
+                self._initialize_spacy(evidence_config.get("spacy", {}))
+            except Exception:
+                # If initialization fails for any reason, keep nlp as None and fall back
+                # to the simple extractor.
+                self.nlp = None
 
         logger.info(
             f"Initialized EvidenceExtractor: {len(self.cet_keywords)} CET areas, "
@@ -118,8 +124,8 @@ class EvidenceExtractor:
         Returns:
             List of EvidenceStatement objects (up to max_statements)
         """
-        if not SPACY_AVAILABLE or self.nlp is None:
-            logger.warning("spaCy not available; using simple extraction")
+        if spacy is None or self.nlp is None:
+            logger.debug("spaCy not available or model not loaded; using simple extraction")
             return self._simple_extraction(cet_id, document_parts)
 
         # Get CET keywords
@@ -357,6 +363,6 @@ class EvidenceExtractor:
             "excerpt_max_words": self.excerpt_max_words,
             "min_keyword_matches": self.min_keyword_matches,
             "source_priority": self.source_priority,
-            "spacy_available": SPACY_AVAILABLE,
+            "spacy_available": spacy is not None,
             "spacy_model_loaded": self.nlp is not None,
         }
