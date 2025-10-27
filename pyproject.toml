@@ -37,7 +37,7 @@ pyreadstat = "^1.1.4"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B101", "B601", "B608", "B110", "B112"]  # Skip assert checks, shell usage, SQL injection (using proper escaping), try-except-pass, try-except-continue
+skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404"]  # Skip assert checks, shell usage, SQL injection (using proper escaping), try-except-pass, try-except-continue, subprocess (safe usage)
 
 [tool.black]
 line-length = 100

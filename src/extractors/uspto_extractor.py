@@ -60,8 +60,8 @@ except Exception:
     pyreadstat = None  # type: ignore
 
 try:
-    import pyarrow as pa  # type: no cover
-    import pyarrow.parquet as pq  # type: no cover
+    import pyarrow as pa  # type: ignore
+    import pyarrow.parquet as pq  # type: ignore
 except Exception:
     pa = None
     pq = None

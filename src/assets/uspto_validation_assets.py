@@ -1,10 +1,8 @@
 """Dagster assets for USPTO patent assignment data validation."""
 
-from __future__ import annotations
-
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 from dagster import (
     AssetCheckResult,
@@ -40,7 +38,7 @@ def _build_validator_config(context: AssetExecutionContext) -> USPTOValidationCo
     )
 
 
-def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict[str, Any]]:
+def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict[str, Any]]:
     return (report or {}).get("tables", {}).get(table, {}) or {}
 
 
@@ -57,12 +55,12 @@ def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict
 )
 def validated_uspto_assignments(
     context: AssetExecutionContext,
-    assignment_files: list[str],
-    assignee_files: list[str],
-    assignor_files: list[str],
-    documentid_files: list[str],
-    conveyance_files: list[str],
-) -> dict[str, Any]:
+    assignment_files: List[str],
+    assignee_files: List[str],
+    assignor_files: List[str],
+    documentid_files: List[str],
+    conveyance_files: List[str],
+) -> Dict[str, Any]:
     """Run the USPTO data quality validator across all discovered tables."""
 
     files_by_table = {
@@ -119,8 +117,8 @@ def validated_uspto_assignments(
 )
 def uspto_rf_id_asset_check(
     context: AssetExecutionContext,
-    validation_report: dict[str, Any],
-    assignment_files: list[str],
+    validation_report: Dict[str, Any],
+    assignment_files: List[str],
 ) -> AssetCheckResult:
     assignments = _extract_table_results(validation_report, "assignments")
 
@@ -135,7 +133,7 @@ def uspto_rf_id_asset_check(
             },
         )
 
-    failed_files: list[dict[str, Any]] = []
+    failed_files: List[Dict[str, Any]] = []
     duplicate_total = 0
 
     for file_path, result in assignments.items():
@@ -178,10 +176,10 @@ def uspto_rf_id_asset_check(
 )
 def uspto_completeness_asset_check(
     context: AssetExecutionContext,
-    validation_report: dict[str, Any],
+    validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})
-    failures: list[dict[str, Any]] = []
+    failures: List[Dict[str, Any]] = []
 
     for table, results in tables.items():
         for file_path, result in (results or {}).items():
@@ -225,10 +223,10 @@ def uspto_completeness_asset_check(
 )
 def uspto_referential_asset_check(
     context: AssetExecutionContext,
-    validation_report: dict[str, Any],
+    validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})
-    failures: list[dict[str, Any]] = []
+    failures: List[Dict[str, Any]] = []
 
     for table, results in tables.items():
         if table == "assignments":
