@@ -277,8 +277,8 @@ Notes (section 8 implementation):
 
 ## 16. CET Portfolio Analytics - Continued
 
-- [ ] 16.1 Scale aggregation for large datasets (sharding)
-- [ ] 16.2 Performance baselining
+- [x] 16.1 Scale aggregation for large datasets (sharding)
+- [x] 16.2 Performance baselining
 
 ## 17. Evaluation & Validation
 
@@ -299,7 +299,7 @@ Notes (section 8 implementation):
 ## 19. Integration Testing
 
 - [x] 19.1 CI job to run a sample pipeline end-to-end on a small dataset
-- [ ] 19.2 Add artifact retention policy for CI sample datasets
+- [x] 19.2 Add artifact retention policy for CI sample datasets
 
 ## 20. End-to-End Testing
 

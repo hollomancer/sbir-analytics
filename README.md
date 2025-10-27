@@ -54,6 +54,16 @@ A dedicated CI workflow runs a tiny-fixture CET pipeline to catch regressions en
 
 This spins up a Neo4j service, builds minimal CET configs and sample awards, and executes the cet_full_pipeline_job, uploading resulting artifacts (processed outputs and Neo4j checks).
 
+Performance baseline initialization
+
+To enable automated regression detection against a baseline, initialize the CET performance baseline from existing processed artifacts. The initializer computes baseline coverage and specialization thresholds and writes them to `reports/benchmarks/baseline.json`. Run the initializer locally or in CI (after producing the processed artifacts) with:
+
+    python scripts/init_cet_baseline.py \
+      --awards-parquet data/processed/cet_award_classifications.parquet \
+      --companies-path data/processed/cet_company_profiles.parquet
+
+Once the baseline is created, the performance/regression job will compare current runs to the saved baseline and surface alerts when thresholds are exceeded. The baseline file is retained by CI artifacts and can be updated with the `--force` or `--set-thresholds` flags as needed.
+
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into Neo4j graph database.
 
 ### Why This Project?
