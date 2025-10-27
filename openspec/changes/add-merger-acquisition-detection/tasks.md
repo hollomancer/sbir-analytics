@@ -9,5 +9,8 @@
 - [ ] 1.8 Add enrichment capabilities using OpenCorporates API.
 - [ ] 1.9 Add enrichment capabilities using Wikidata.
 - [ ] 1.10 Store the enriched M&A events.
+- [x] 1.10.1 Store the unenriched M&A candidate events.
 - [x] 1.11 Write unit tests for the new asset.
 - [ ] 1.12 Write integration tests for the M&A detection pipeline.
+- [ ] 1.13 Write unit tests for the enrichment capabilities.
+- [ ] 1.14 Write integration tests for the enrichment pipeline.
