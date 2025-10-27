@@ -1,7 +1,8 @@
 # runtime-environment Specification
 
 ## Purpose
-TBD - created by archiving change add-containerized-runtime. Update Purpose after archive.
+Ensure we have a portable runtime environment that can be easily deployed on various platforms and environments.
+
 ## Requirements
 ### Requirement: Multi-Stage SBIR ETL Image Build
 The project SHALL provide a deterministic multi-stage Docker build that separates dependency resolution from the runtime image and enforces non-root execution.
