@@ -233,12 +233,14 @@ class PatentCETClassifier:
         Classify a batch of patent titles. Optionally provide a parallel `assignees`
         list. Returns a list (len==n_inputs) of lists of `PatentClassification` objects.
         """
-        self._ensure_model_ready()
         n = len(titles)
         if assignees is None:
             assignees = [None] * n
         if len(assignees) != n:
             raise ValueError("titles and assignees must have the same length")
+        # If no pipelines configured, return empty lists per input
+        if not self.pipelines:
+            return [[] for _ in range(n)]
 
         # Build combined texts
         texts = [self._text_from_record(t, a) for t, a in zip(titles, assignees)]

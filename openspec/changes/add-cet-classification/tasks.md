@@ -200,7 +200,7 @@ Backlog / Ongoing Optimization & Deployment (as needed)
 - [x] 8.8 Add asset checks for evidence coverage (computed and emitted; target: ≥80%)
 - [x] 8.9 Output classifications to `data/processed/cet_award_classifications.parquet` (or NDJSON fallback)
 - [x] 8.10 Log classification metrics (throughput, latency, confidence distribution)
-  
+
 Notes (section 8 implementation):
 - Implemented `cet_award_classifications` asset in `src/assets/cet_assets.py`.
   - Loads taxonomy via `TaxonomyLoader` and classification config.
@@ -336,9 +336,3 @@ Change log (Sprint 1 taxonomy work)
 - Notes:
   - The taxonomy asset writes a companion checks JSON (human-readable) that CI evaluates; PRs with taxonomy issues receive a comment and the job fails to provide immediate feedback.
   - The implementation is import-safe when optional dependencies (dagster, pyarrow, duckdb) are not present; unit tests use NDJSON fallback so CI can run in lightweight runners.
-  - If you'd like I can:
-    - Add a regression unit test to assert the checks CLI fails on intentionally invalid taxonomy,
-    - Add a path-filtered workflow to run taxonomy-only checks when `config/cet/**` changes,
-    - Proceed immediately with Sprint 2 (start by scaffolding EvidenceExtractor and unit tests).
-
-If you'd like me to open the first Sprint 2 PR now (branch: `feat/cet-classification/sprint-2`) I will scaffold `src/ml/features/evidence_extractor.py` and `tests/unit/ml/test_evidence_extractor.py`, push the branch, and create a draft PR for review.

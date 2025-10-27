@@ -100,7 +100,7 @@ class CETClassification(BaseModel):
     """
 
     cet_id: str = Field(..., description="CET area identifier")
-    cet_name: str = Field(..., description="Human-readable CET area name")
+    cet_name: Optional[str] = Field(None, description="Human-readable CET area name")
     score: float = Field(..., ge=0.0, le=100.0, description="Confidence score (0-100)")
     classification: ClassificationLevel = Field(
         ..., description="Classification level (High/Medium/Low)"
@@ -109,8 +109,10 @@ class CETClassification(BaseModel):
     evidence: List[EvidenceStatement] = Field(
         default_factory=list, description="Supporting evidence (up to 3 statements)"
     )
-    classified_at: str = Field(..., description="ISO 8601 timestamp of classification")
-    taxonomy_version: str = Field(..., description="Taxonomy version (e.g., 'NSTC-2025Q1')")
+    classified_at: Optional[str] = Field(None, description="ISO 8601 timestamp of classification")
+    taxonomy_version: Optional[str] = Field(
+        None, description="Taxonomy version (e.g., 'NSTC-2025Q1')"
+    )
 
     @field_validator("evidence")
     @classmethod
