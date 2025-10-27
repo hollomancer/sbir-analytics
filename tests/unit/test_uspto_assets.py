@@ -1,75 +1,130 @@
 # sbir-etl/tests/unit/test_uspto_assets.py
-import pytest
+import copy
 
-# Attempt to import the asset check under test; skip if module missing.
-uspto_assets = pytest.importorskip("src.assets.uspto_assets", reason="uspto assets module missing")
-uspto_rf_id_asset_check = getattr(uspto_assets, "uspto_rf_id_asset_check", None)
+import pytest
+from dagster import build_asset_context
+
+# Attempt to import the asset checks under test; skip if module missing.
+uspto_validation_assets = pytest.importorskip(
+    "src.assets.uspto_validation_assets", reason="uspto validation assets module missing"
+)
+
+uspto_rf_id_asset_check = getattr(uspto_validation_assets, "uspto_rf_id_asset_check", None)
+uspto_completeness_asset_check = getattr(
+    uspto_validation_assets, "uspto_completeness_asset_check", None
+)
+uspto_referential_asset_check = getattr(
+    uspto_validation_assets, "uspto_referential_asset_check", None
+)
+
 if uspto_rf_id_asset_check is None:
     pytest.skip("uspto_rf_id_asset_check not found", allow_module_level=True)
 
-# Import Dagster testing utilities
-from dagster import build_asset_context
+
+def _base_validation_report() -> dict:
+    report = {
+        "tables": {
+            "assignments": {
+                "/data/raw/uspto/assignment1.csv": {
+                    "overall_success": True,
+                    "checks": {
+                        "rf_id_uniqueness": {
+                            "success": True,
+                            "summary": {"duplicate_rf_id_values": 0},
+                            "details": {},
+                        },
+                        "field_completeness": {
+                            "success": True,
+                            "summary": {"overall_completeness": 1.0},
+                            "details": {"failed_fields": []},
+                        },
+                    },
+                }
+            },
+            "assignees": {},
+            "assignors": {},
+            "documentids": {},
+            "conveyances": {},
+        },
+        "summary": {"total_checks": 2, "passed_checks": 2, "overall_pass_rate": 1.0},
+        "overall_success": True,
+        "report_path": "/tmp/report.json",
+        "failure_samples": [],
+    }
+    return report
 
 
 def test_uspto_rf_id_asset_check_pass():
-    """
-    When all validated_uspto_assignments report success=True, the asset check should pass.
-    """
     ctx = build_asset_context()
+    report = _base_validation_report()
+    assignment_files = ["/data/raw/uspto/assignment1.csv"]
 
-    # Simulate results from validated_uspto_assignments: one file, success True
-    validated_results = {
-        "/data/raw/uspto/assignment1.csv": {
-            "success": True,
-            "summary": {"total_rows": 10, "duplicate_rf_id_values": 0},
-            "details": {},
-        }
-    }
-    raw_files = ["/data/raw/uspto/assignment1.csv"]
+    result = uspto_rf_id_asset_check(ctx, copy.deepcopy(report), assignment_files)
 
-    result = uspto_rf_id_asset_check(ctx, validated_results, raw_files)
-
-    # The Dagster AssetCheckResult has attribute 'passed' and 'severity'; assert pass semantics.
-    assert hasattr(result, "passed"), "Asset check result missing 'passed' attribute"
-    assert result.passed is True, f"Expected passed True for success case, got: {result.passed}"
+    assert hasattr(result, "passed")
+    assert result.passed is True
 
 
 def test_uspto_rf_id_asset_check_fail():
-    """
-    When any validated_uspto_assignments reports success=False (i.e., duplicates/errors),
-    the asset check should fail (passed == False).
-    """
     ctx = build_asset_context()
-
-    validated_results = {
-        "/data/raw/uspto/assignment1.csv": {
-            "success": False,
-            "summary": {"total_rows": 100, "duplicate_rf_id_values": 5},
-            "details": {"duplicate_samples": [("r1", 2)]},
-        },
-        "/data/raw/uspto/assignment2.csv": {
-            "success": True,
-            "summary": {"total_rows": 20, "duplicate_rf_id_values": 0},
-            "details": {},
-        },
+    report = _base_validation_report()
+    assignments = report["tables"]["assignments"]
+    assignments["/data/raw/uspto/assignment1.csv"]["checks"]["rf_id_uniqueness"] = {
+        "success": False,
+        "summary": {"duplicate_rf_id_values": 3},
+        "details": {"duplicate_samples": [("r1", 2)]},
     }
-    raw_files = ["/data/raw/uspto/assignment1.csv", "/data/raw/uspto/assignment2.csv"]
 
-    result = uspto_rf_id_asset_check(ctx, validated_results, raw_files)
+    result = uspto_rf_id_asset_check(ctx, copy.deepcopy(report), ["/data/raw/uspto/assignment1.csv"])
 
-    assert hasattr(result, "passed"), "Asset check result missing 'passed' attribute"
-    assert result.passed is False, "Expected asset check to fail when duplicates are present"
+    assert hasattr(result, "passed")
+    assert result.passed is False
 
-    # Confirm metadata communicates duplicate count if available
-    metadata = getattr(result, "metadata", None)
-    if metadata:
-        # Some Dagster versions represent metadata in dict-like objects
-        dup_count = (
-            metadata.get("total_duplicate_values_found") if isinstance(metadata, dict) else None
-        )
-        # Accept either presence or not; if present ensure it's >= 1
-        if dup_count is not None:
-            # Handle Dagster MetadataValue objects that have a .value attribute
-            actual_value = getattr(dup_count, "value", dup_count)
-            assert int(actual_value) >= 1
+
+def test_uspto_completeness_asset_check_fail():
+    if uspto_completeness_asset_check is None:
+        pytest.skip("uspto_completeness_asset_check not found")
+
+    ctx = build_asset_context()
+    report = _base_validation_report()
+    report["tables"]["assignees"] = {
+        "/data/raw/uspto/assignee1.csv": {
+            "overall_success": False,
+            "checks": {
+                "field_completeness": {
+                    "success": False,
+                    "summary": {"overall_completeness": 0.5},
+                    "details": {"failed_fields": ["ee_name"]},
+                }
+            },
+        }
+    }
+
+    result = uspto_completeness_asset_check(ctx, copy.deepcopy(report))
+    assert hasattr(result, "passed")
+    assert result.passed is False
+
+
+def test_uspto_referential_asset_check_fail():
+    if uspto_referential_asset_check is None:
+        pytest.skip("uspto_referential_asset_check not found")
+
+    ctx = build_asset_context()
+    report = _base_validation_report()
+    report["tables"]["assignees"] = {
+        "/data/raw/uspto/assignee1.csv": {
+            "overall_success": False,
+            "checks": {
+                "referential_integrity": {
+                    "success": False,
+                    "summary": {"orphaned_records": 2},
+                    "details": {"failed_sample_path": "/tmp/fail.json"},
+                }
+            },
+        }
+    }
+
+    result = uspto_referential_asset_check(ctx, copy.deepcopy(report))
+    assert hasattr(result, "passed")
+    assert result.passed is False
 `

@@ -9,6 +9,9 @@ from src.quality.uspto_validators import (
     validate_rf_id_uniqueness,
     ValidatorResult,
     iter_rows_from_path,
+    validate_referential_integrity,
+    USPTODataQualityValidator,
+    USPTOValidationConfig,
 )
 
 
@@ -103,3 +106,84 @@ def test_iter_rows_from_path_csv_and_parquet_and_dta_availability(tmp_path: Path
     assert len(yielded) == len(rows)
     assert yielded[0]["rf_id"] == "X1"
     assert yielded[1]["rf_id"] == "X2"
+
+
+def test_validate_referential_integrity_handles_multiple_parents(tmp_path: Path):
+    parent1 = tmp_path / "parent1.csv"
+    parent2 = tmp_path / "parent2.csv"
+    child = tmp_path / "child.csv"
+
+    headers = ["rf_id", "record_dt", "cname"]
+    _write_csv(parent1, headers, [{"rf_id": "R1", "record_dt": "2020-01-01", "cname": "A"}])
+    _write_csv(parent2, headers, [{"rf_id": "R2", "record_dt": "2020-01-02", "cname": "B"}])
+
+    child_headers = ["rf_id", "ee_name"]
+    _write_csv(
+        child,
+        child_headers,
+        [
+            {"rf_id": "R1", "ee_name": "Company"},
+            {"rf_id": "R3", "ee_name": "Ghost"},
+        ],
+    )
+
+    result = validate_referential_integrity(child, [parent1, parent2])
+    assert result.summary["parent_files_count"] == 2
+    assert result.summary["orphaned_records"] == 1
+    assert result.success is False
+
+
+def test_uspto_data_quality_validator_generates_report(tmp_path: Path):
+    assignment_file = tmp_path / "assignment.csv"
+    assignee_file = tmp_path / "assignee.csv"
+
+    assignment_headers = ["rf_id", "record_dt", "cname"]
+    _write_csv(
+        assignment_file,
+        assignment_headers,
+        [
+            {"rf_id": "R1", "record_dt": "2020-01-01", "cname": "Firm"},
+            {"rf_id": "R2", "record_dt": "2020-02-01", "cname": "Firm"},
+        ],
+    )
+
+    assignee_headers = ["rf_id", "ee_name"]
+    _write_csv(
+        assignee_file,
+        assignee_headers,
+        [
+            {"rf_id": "R1", "ee_name": "Company"},
+            {"rf_id": "R3", "ee_name": "Ghost"},
+        ],
+    )
+
+    config = USPTOValidationConfig(
+        chunk_size=10,
+        sample_limit=5,
+        completeness_threshold=0.5,
+        fail_output_dir=tmp_path / "fail",
+        report_output_dir=tmp_path / "reports",
+    )
+    validator = USPTODataQualityValidator(config)
+
+    report = validator.run(
+        {
+            "assignments": [assignment_file],
+            "assignees": [assignee_file],
+            "assignors": [],
+            "documentids": [],
+            "conveyances": [],
+        }
+    )
+
+    assignee_checks = report["tables"]["assignees"][str(assignee_file)]["checks"]
+    assert assignee_checks["referential_integrity"]["success"] is False
+    assert report["summary"]["total_checks"] >= 3
+    assert report["overall_success"] is False
+
+    failure_samples = report.get("failure_samples", [])
+    assert failure_samples, "Expected failure samples to be recorded"
+
+    report_path = report.get("report_path")
+    if report_path:
+        assert Path(report_path).exists()
