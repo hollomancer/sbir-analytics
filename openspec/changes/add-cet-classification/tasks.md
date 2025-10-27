@@ -265,9 +265,9 @@ Notes (section 8 implementation):
 
 ## 14. Neo4j CET Graph Model - Company Relationships
 
-- [ ] 14.1 Create Company -> CETArea relationship schema
-- [ ] 14.2 Add aggregation methods
-- [ ] 14.3 Unit tests (mocked Neo4j)
+- [x] 14.1 Create Company -> CETArea relationship schema
+- [x] 14.2 Add aggregation methods
+- [x] 14.3 Unit tests (mocked Neo4j)
 
 ## 15. CET Portfolio Analytics
 

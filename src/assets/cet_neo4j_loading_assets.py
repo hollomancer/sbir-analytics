@@ -614,3 +614,121 @@ def neo4j_award_cet_relationships(
         except Exception:
             pass
         return {"status": "failed", "reason": str(exc)}
+
+
+@asset(
+    name="neo4j_company_cet_relationships",
+    description="Create Company -> CETArea relationships from company CET profiles or enrichment.",
+    group_name="neo4j_cet",
+    ins={
+        "cet_company_profiles": AssetIn(),
+        "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
+    },
+    config_schema={
+        "profiles_parquet": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_PARQUET)},
+        "profiles_json": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_JSON)},
+        "key_property": {
+            "type": str,
+            "default": "uei",
+            "description": "Company key to match on in Neo4j (e.g., 'uei' or 'company_id').",
+        },
+        "rel_type": {"type": str, "default": "SPECIALIZES_IN"},
+        "batch_size": {"type": int, "default": 1000},
+    },
+)
+def neo4j_company_cet_relationships(
+    context: AssetExecutionContext,
+    cet_company_profiles,
+    neo4j_cetarea_nodes,
+) -> Dict[str, Any]:
+    """
+    Create Company -> CETArea relationships with MERGE semantics from company CET profiles.
+
+    Relationship schema:
+      (c:Company)-[:SPECIALIZES_IN {
+          score: FLOAT,
+          specialization_score: FLOAT,
+          primary: BOOLEAN,
+          role: 'DOMINANT',
+          taxonomy_version: STRING
+      }]->(a:CETArea)
+    """
+    if CETLoader is None or CETLoaderConfig is None:
+        context.log.warning("CETLoader unavailable; skipping Company->CET relationships")
+        return {"status": "skipped", "reason": "loader_unavailable"}
+
+    client = _get_neo4j_client()
+    if client is None:
+        return {"status": "skipped", "reason": "neo4j_unavailable"}
+
+    profiles_parquet = Path(
+        context.op_config.get("profiles_parquet") or str(DEFAULT_COMPANY_PROFILES_PARQUET)
+    )
+    profiles_json = Path(
+        context.op_config.get("profiles_json") or str(DEFAULT_COMPANY_PROFILES_JSON)
+    )
+    key_property = str(context.op_config.get("key_property") or "uei").strip() or "uei"
+    rel_type = (
+        str(context.op_config.get("rel_type") or "SPECIALIZES_IN").strip() or "SPECIALIZES_IN"
+    )
+    batch_size = int(context.op_config.get("batch_size", 1000))
+
+    # Read profiles with dynamic key column
+    expected_cols = (
+        key_property,
+        "company_id",
+        "dominant_cet",
+        "dominant_score",
+        "specialization_score",
+        "taxonomy_version",
+        "cet_dominant_id",
+        "cet_dominant_score",
+        "cet_specialization_score",
+        "cet_taxonomy_version",
+    )
+    rows = _read_parquet_or_ndjson(profiles_parquet, profiles_json, expected_columns=expected_cols)
+
+    # If configured key_property not populated, fallback to 'company_id'
+    have_key = any((r.get(key_property) for r in rows))
+    if not have_key:
+        context.log.warning(
+            f"No values found for key_property '{key_property}', falling back to 'company_id'"
+        )
+        key_property = "company_id"
+
+    context.log.info(
+        f"Read {len(rows)} company CET profile rows for relationship creation (key={key_property})"
+    )
+
+    try:
+        loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
+        metrics = loader.create_company_cet_relationships(
+            rows, rel_type=rel_type, key_property=key_property
+        )
+        result = {
+            "status": "success",
+            "relationships_type": rel_type,
+            "input_rows": len(rows),
+            "key_property": key_property,
+            "metrics": _serialize_metrics(metrics),
+        }
+
+        out_path = DEFAULT_OUTPUT_DIR / "neo4j_company_cet_relationships.checks.json"
+        try:
+            with out_path.open("w", encoding="utf-8") as fh:
+                json.dump(result, fh, indent=2)
+        except Exception:
+            pass
+
+        try:
+            client.close()
+        except Exception:
+            pass
+        return result
+    except Exception as exc:
+        context.log.exception(f"Company->CET relationships failed: {exc}")
+        try:
+            client.close()
+        except Exception:
+            pass
+        return {"status": "failed", "reason": str(exc)}

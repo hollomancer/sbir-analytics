@@ -429,6 +429,98 @@ class CETLoader:
         )
         return metrics
 
+    # -------------------------------------------------------------------------
+    # Company -> CETArea relationships
+    # -------------------------------------------------------------------------
+
+    def create_company_cet_relationships(
+        self,
+        profiles: Iterable[Dict[str, Any]],
+        *,
+        rel_type: str = "SPECIALIZES_IN",
+        key_property: str = "uei",
+        metrics: Optional[LoadMetrics] = None,
+    ) -> LoadMetrics:
+        """Create Company -> CETArea relationships with MERGE semantics.
+
+        Relationship schema:
+            (c:Company)-[:SPECIALIZES_IN {{
+                score: FLOAT,
+                specialization_score: FLOAT,
+                primary: BOOLEAN,      # True for dominant CET
+                role: STRING,          # 'DOMINANT'
+                taxonomy_version: STRING
+            }}]->(a:CETArea)
+
+        Input rows typically come from cet_company_profiles or company CET enrichment with fields:
+            - key_property (e.g., 'uei' or 'company_id')
+            - dominant_cet or cet_dominant_id
+            - dominant_score or cet_dominant_score
+            - specialization_score or cet_specialization_score
+            - taxonomy_version or cet_taxonomy_version
+        """
+        if metrics is None:
+            metrics = LoadMetrics()
+
+        relationships: List[tuple[str, str, Any, str, str, Any, str, Dict[str, Any] | None]] = []
+
+        for row in profiles:
+            key_val = _as_str(row.get(key_property))
+            if not key_val:
+                logger.warning(
+                    "Skipping Company->CET mapping missing key {}: {}", key_property, row
+                )
+                metrics.errors += 1
+                continue
+
+            cet_id = _as_str(row.get("dominant_cet") or row.get("cet_dominant_id"))
+            if not cet_id:
+                logger.warning("Skipping Company->CET mapping missing dominant CET: {}", row)
+                metrics.errors += 1
+                continue
+
+            score_val = row.get("dominant_score")
+            if score_val is None:
+                score_val = row.get("cet_dominant_score")
+
+            spec_val = row.get("specialization_score")
+            if spec_val is None:
+                spec_val = row.get("cet_specialization_score")
+
+            taxonomy_version = (
+                _as_str(row.get("taxonomy_version") or row.get("cet_taxonomy_version")) or None
+            )
+
+            props = {
+                "score": float(score_val) if score_val is not None else None,
+                "specialization_score": float(spec_val) if spec_val is not None else None,
+                "primary": True,
+                "role": "DOMINANT",
+                "taxonomy_version": taxonomy_version,
+            }
+            # remove None values to avoid overwriting with nulls
+            props = {k: v for k, v in props.items() if v is not None}
+
+            relationships.append(
+                ("Company", key_property, key_val, "CETArea", "cet_id", cet_id, rel_type, props)
+            )
+
+        if not relationships:
+            logger.info("No Company -> CETArea relationships to create")
+            return metrics
+
+        logger.info(
+            "Creating {} Company -> CETArea relationships (type={}, key={})",
+            len(relationships),
+            rel_type,
+            key_property,
+        )
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_create_relationships(
+            relationships=relationships, metrics=metrics
+        )
+        return metrics
+
 
 # -------------------------------------------------------------------------
 # Helpers
