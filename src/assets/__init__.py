@@ -54,6 +54,9 @@ __all__: List[str] = [
     "uspto_ai_extract_to_duckdb",
     "uspto_ai_deduplicate",
     "uspto_ai_human_sample_extraction",
+    "neo4j_cetarea_nodes",
+    "neo4j_award_cet_enrichment",
+    "neo4j_company_cet_enrichment",
 ]
 
 # Map exported symbol -> (module_path, attribute_name).
@@ -154,6 +157,19 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
     "uspto_ai_human_sample_extraction": (
         "src.assets.uspto_ai_extraction_assets",
         "uspto_ai_human_sample_extraction",
+    ),
+    # cet_neo4j_loading_assets
+    "neo4j_cetarea_nodes": (
+        "src.assets.cet_neo4j_loading_assets",
+        "neo4j_cetarea_nodes",
+    ),
+    "neo4j_award_cet_enrichment": (
+        "src.assets.cet_neo4j_loading_assets",
+        "neo4j_award_cet_enrichment",
+    ),
+    "neo4j_company_cet_enrichment": (
+        "src.assets.cet_neo4j_loading_assets",
+        "neo4j_company_cet_enrichment",
     ),
 }
 

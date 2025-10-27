@@ -1,0 +1,344 @@
+"""CET Loader for Neo4j Graph Operations
+
+Implements Section 12 (Neo4j CET Graph Model - Nodes):
+
+12.1 Create CETArea node schema
+12.2 Add uniqueness constraints for CETArea
+12.3 Add CETArea properties (id, name, keywords, taxonomy_version)
+12.4 Create Company node CET enrichment properties
+12.5 Create Award node CET enrichment properties
+12.6 Add batching + idempotent merges
+
+This module provides CETLoader with helpers to:
+- Create constraints and indexes for CETArea
+- Upsert CETArea nodes (idempotent MERGE via Neo4jClient)
+- Upsert Company and Award enrichment properties related to CET classifications
+
+Notes:
+- Relies on Neo4jClient for batching and transaction mgmt
+- Properties are carefully whitelisted to avoid accidental large payloads
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, Iterable, List, Optional
+
+from loguru import logger
+
+from .neo4j_client import LoadMetrics, Neo4jClient
+
+
+@dataclass
+class CETLoaderConfig:
+    """Configuration for CET loading operations."""
+
+    batch_size: int = 1000
+    create_indexes: bool = True
+    create_constraints: bool = True
+
+
+class CETLoader:
+    """Loads CET taxonomy and enrichment properties into Neo4j.
+
+    Responsibilities:
+      - Define CETArea schema (constraints + indexes)
+      - Idempotently upsert CETArea nodes
+      - Add CET enrichment properties to Company and Award nodes
+
+    Attributes:
+        client: Neo4jClient for graph operations
+        config: CETLoaderConfig with batch size and feature flags
+    """
+
+    def __init__(self, client: Neo4jClient, config: Optional[CETLoaderConfig] = None) -> None:
+        self.client = client
+        self.config = config or CETLoaderConfig()
+        logger.info(
+            "CETLoader initialized with batch_size={}, create_indexes={}, create_constraints={}",
+            self.config.batch_size,
+            self.config.create_indexes,
+            self.config.create_constraints,
+        )
+
+    # -------------------------------------------------------------------------
+    # Schema management
+    # -------------------------------------------------------------------------
+
+    def create_constraints(self) -> None:
+        """Create uniqueness constraints for CETArea and ensure existence of key entity constraints."""
+        statements = [
+            # CETArea uniqueness on cet_id
+            "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
+            "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
+            # Optional: ensure Award and Company constraints exist for enrichment keys
+            "CREATE CONSTRAINT award_award_id IF NOT EXISTS "
+            "FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
+            "CREATE CONSTRAINT company_uei IF NOT EXISTS "
+            "FOR (c:Company) REQUIRE c.uei IS UNIQUE",
+        ]
+
+        with self.client.session() as session:
+            for stmt in statements:
+                try:
+                    session.run(stmt)
+                    logger.info("Created/verified constraint: {}", stmt)
+                except Exception as exc:
+                    logger.warning("Constraint may already exist or failed: {}", exc)
+
+    def create_indexes(self) -> None:
+        """Create indexes for frequently queried CETArea properties."""
+        statements = [
+            "CREATE INDEX cetarea_name_idx IF NOT EXISTS FOR (c:CETArea) ON (c.name)",
+            "CREATE INDEX cetarea_taxonomy_version_idx IF NOT EXISTS "
+            "FOR (c:CETArea) ON (c.taxonomy_version)",
+        ]
+
+        with self.client.session() as session:
+            for stmt in statements:
+                try:
+                    session.run(stmt)
+                    logger.info("Created/verified index: {}", stmt)
+                except Exception as exc:
+                    logger.warning("Index may already exist or failed: {}", exc)
+
+    # -------------------------------------------------------------------------
+    # CETArea upsert
+    # -------------------------------------------------------------------------
+
+    def load_cet_areas(
+        self, areas: Iterable[Dict[str, Any]], metrics: Optional[LoadMetrics] = None
+    ) -> LoadMetrics:
+        """Upsert CETArea nodes.
+
+        Each area dict may include:
+          - cet_id (required)
+          - name (required)
+          - definition (optional)
+          - keywords (list[str]) - optional
+          - taxonomy_version (required)
+
+        Args:
+            areas: iterable of CET area dictionaries
+            metrics: optional LoadMetrics to accumulate results
+
+        Returns:
+            LoadMetrics
+        """
+        metrics = metrics or LoadMetrics()
+
+        area_nodes: List[Dict[str, Any]] = []
+        for raw in areas:
+            cet_id = _as_str(raw.get("cet_id"))
+            name = _as_str(raw.get("name"))
+            taxonomy_version = _as_str(raw.get("taxonomy_version"))
+
+            if not cet_id or not name or not taxonomy_version:
+                logger.warning(
+                    "Skipping CETArea missing required fields (cet_id, name, taxonomy_version): {}",
+                    raw,
+                )
+                metrics.errors += 1
+                continue
+
+            node: Dict[str, Any] = {
+                "cet_id": cet_id,
+                "name": name,
+                "taxonomy_version": taxonomy_version,
+            }
+
+            # Optional definition
+            if raw.get("definition"):
+                node["definition"] = _as_str(raw.get("definition"))
+
+            # Optional keywords (normalize to lowercase unique list)
+            kw = raw.get("keywords")
+            if isinstance(kw, (list, tuple)):
+                node["keywords"] = _normalize_keywords(kw)
+
+            area_nodes.append(node)
+
+        if not area_nodes:
+            logger.info("No CETArea nodes to upsert")
+            return metrics
+
+        # Upsert in batches using Neo4jClient
+        logger.info("Upserting {} CETArea nodes", len(area_nodes))
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_upsert_nodes(
+            label="CETArea", key_property="cet_id", nodes=area_nodes, metrics=metrics
+        )
+        return metrics
+
+    # -------------------------------------------------------------------------
+    # Company enrichment properties
+    # -------------------------------------------------------------------------
+
+    def upsert_company_cet_enrichment(
+        self,
+        enrichments: Iterable[Dict[str, Any]],
+        *,
+        key_property: str = "uei",
+        metrics: Optional[LoadMetrics] = None,
+    ) -> LoadMetrics:
+        """Upsert CET enrichment properties onto Company nodes.
+
+        Each enrichment dict must include the key property (default 'uei').
+        Allowed enrichment properties:
+          - cet_dominant_id: str
+          - cet_dominant_score: float (0..100)
+          - cet_specialization_score: float (0..1)
+          - cet_areas: list[str]
+          - cet_taxonomy_version: str
+          - cet_profile_updated_at: ISO timestamp (auto-filled if missing)
+
+        Args:
+            enrichments: iterable of mappings with key_property and enrichment fields
+            key_property: Company key to MERGE on (default 'uei'); can be 'company_id' if that's your key
+            metrics: optional LoadMetrics
+
+        Returns:
+            LoadMetrics with counts of updated nodes
+        """
+        metrics = metrics or LoadMetrics()
+        nodes: List[Dict[str, Any]] = []
+
+        for raw in enrichments:
+            key_val = _as_str(raw.get(key_property))
+            if not key_val:
+                logger.warning("Skipping Company enrichment missing key {}: {}", key_property, raw)
+                metrics.errors += 1
+                continue
+
+            node: Dict[str, Any] = {key_property: key_val}
+
+            # Whitelisted fields
+            if "cet_dominant_id" in raw and raw["cet_dominant_id"] is not None:
+                node["cet_dominant_id"] = _as_str(raw["cet_dominant_id"])
+            if "cet_dominant_score" in raw and raw["cet_dominant_score"] is not None:
+                node["cet_dominant_score"] = float(raw["cet_dominant_score"])
+            if "cet_specialization_score" in raw and raw["cet_specialization_score"] is not None:
+                node["cet_specialization_score"] = float(raw["cet_specialization_score"])
+            if "cet_taxonomy_version" in raw and raw["cet_taxonomy_version"] is not None:
+                node["cet_taxonomy_version"] = _as_str(raw["cet_taxonomy_version"])
+            if "cet_areas" in raw and isinstance(raw["cet_areas"], (list, tuple)):
+                node["cet_areas"] = sorted({_as_str(v) for v in raw["cet_areas"] if _as_str(v)})
+
+            # Updated timestamp (iso)
+            node["cet_profile_updated_at"] = (
+                _as_str(raw.get("cet_profile_updated_at")) or datetime.utcnow().isoformat()
+            )
+
+            nodes.append(node)
+
+        if not nodes:
+            logger.info("No Company CET enrichments to upsert")
+            return metrics
+
+        logger.info("Upserting {} Company CET enrichment nodes (key={})", len(nodes), key_property)
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_upsert_nodes(
+            label="Company", key_property=key_property, nodes=nodes, metrics=metrics
+        )
+        return metrics
+
+    # -------------------------------------------------------------------------
+    # Award enrichment properties
+    # -------------------------------------------------------------------------
+
+    def upsert_award_cet_enrichment(
+        self,
+        enrichments: Iterable[Dict[str, Any]],
+        *,
+        key_property: str = "award_id",
+        metrics: Optional[LoadMetrics] = None,
+    ) -> LoadMetrics:
+        """Upsert CET enrichment properties onto Award nodes.
+
+        Each enrichment dict must include key_property (default 'award_id').
+        Allowed enrichment properties:
+          - cet_primary_id: str
+          - cet_primary_score: float (0..100)
+          - cet_supporting_ids: list[str]
+          - cet_taxonomy_version: str
+          - cet_classified_at: ISO timestamp
+          - cet_model_version: str
+
+        Args:
+            enrichments: iterable of mappings with key_property and enrichment fields
+            key_property: Award key to MERGE on (default 'award_id')
+            metrics: optional LoadMetrics
+
+        Returns:
+            LoadMetrics with counts of updated nodes
+        """
+        metrics = metrics or LoadMetrics()
+        nodes: List[Dict[str, Any]] = []
+
+        for raw in enrichments:
+            key_val = _as_str(raw.get(key_property))
+            if not key_val:
+                logger.warning("Skipping Award enrichment missing key {}: {}", key_property, raw)
+                metrics.errors += 1
+                continue
+
+            node: Dict[str, Any] = {key_property: key_val}
+
+            if "cet_primary_id" in raw and raw["cet_primary_id"] is not None:
+                node["cet_primary_id"] = _as_str(raw["cet_primary_id"])
+            if "cet_primary_score" in raw and raw["cet_primary_score"] is not None:
+                node["cet_primary_score"] = float(raw["cet_primary_score"])
+            if "cet_supporting_ids" in raw and isinstance(raw["cet_supporting_ids"], (list, tuple)):
+                node["cet_supporting_ids"] = sorted(
+                    {_as_str(v) for v in raw["cet_supporting_ids"] if _as_str(v)}
+                )
+            if "cet_taxonomy_version" in raw and raw["cet_taxonomy_version"] is not None:
+                node["cet_taxonomy_version"] = _as_str(raw["cet_taxonomy_version"])
+            if "cet_model_version" in raw and raw["cet_model_version"] is not None:
+                node["cet_model_version"] = _as_str(raw["cet_model_version"])
+
+            # classification timestamp (iso) if provided, else now
+            node["cet_classified_at"] = (
+                _as_str(raw.get("cet_classified_at")) or datetime.utcnow().isoformat()
+            )
+
+            nodes.append(node)
+
+        if not nodes:
+            logger.info("No Award CET enrichments to upsert")
+            return metrics
+
+        logger.info("Upserting {} Award CET enrichment nodes (key={})", len(nodes), key_property)
+        self.client.config.batch_size = self.config.batch_size
+        metrics = self.client.batch_upsert_nodes(
+            label="Award", key_property=key_property, nodes=nodes, metrics=metrics
+        )
+        return metrics
+
+
+# -------------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------------
+
+
+def _as_str(v: Any) -> str:
+    if v is None:
+        return ""
+    s = str(v).strip()
+    return s
+
+
+def _normalize_keywords(words: Iterable[Any]) -> List[str]:
+    seen: set[str] = set()
+    out: List[str] = []
+    for w in words:
+        s = _as_str(w).lower()
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+    return out
+
+
+__all__ = ["CETLoaderConfig", "CETLoader"]
