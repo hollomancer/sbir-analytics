@@ -139,3 +139,46 @@ The checks JSON artifact is available in the workflow run for inspection.`;
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  # Lightweight job to run only ML unit tests (faster feedback for ML changes)
+  ml-unit-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.changed_files, 'src/ml') || contains(github.event.pull_request.changed_files, 'tests/unit/ml')
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run ML unit tests
+        run: poetry run pytest tests/unit/ml -q
