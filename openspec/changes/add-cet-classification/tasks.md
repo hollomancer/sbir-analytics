@@ -2,6 +2,126 @@
 
 **Note**: Unit tests for CET Pydantic models (CETArea, CETClassification, EvidenceStatement, CETAssessment, CompanyCETProfile) have been created in `tests/unit/ml/test_cet_models.py` with comprehensive validation coverage.
 
+## Sprint Plan & Prioritization
+
+The remaining work has been grouped into prioritized sprints to unblock downstream pieces (assets, classification, Neo4j integration) while keeping iterations small and testable. Each sprint includes estimated effort (hours), suggested owners, and the tasks (by number) from this file it intends to complete or unblock.
+
+Sprint 0 — Setup & Infrastructure (COMPLETED)
+- Goal: Ensure dependencies, project layout, and configuration plumbing are in place.
+- Primary tasks: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6
+- Deliverables: `src/ml/` module scaffold, `config/cet/` directory, pytest fixtures.
+- Estimate: 24 hours
+- Owner: @conradhollomon (Platform/ML setup)
+- Rationale: Small, high-impact setup that allows parallel development.
+- Completed: All Sprint 0 tasks have been implemented and validated locally; corresponding checklist items in this document are checked.
+
+Sprint 1 — Taxonomy, Config, and Dagster Asset Baseline (In Progress)
+- Goal: Load and validate CET taxonomy, create Dagster asset skeletons, and persist taxonomy to processed storage.
+- Primary tasks: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 7.1, 7.2, 7.3, 7.4, 7.5, 21.1
+- Deliverables:
+  - `src/ml/config/taxonomy_loader.py` (TaxonomyLoader with Pydantic validation)
+  - `src/assets/cet_assets.py` with `cet_taxonomy` asset
+  - `data/processed/cet_taxonomy.parquet` output in CI/dev runs
+  - Documentation in `config/cet/README.md`
+- Estimate: 80 hours
+- Owner: Data Engineer (owner: @data-engineer), Co-owner: @conradhollomon
+- Rationale: Taxonomy is a dependency for model metadata, Neo4j loaders, and assets; implement and test early.
+
+Sprint 1 — Checklist (current run tasks)
+- [x] 2.1 Port `config/taxonomy.yaml` from sbir-cet-classifier (21 CET categories) (owner: ml-engineer)
+- [x] 2.2 Port `config/classification.yaml` from sbir-cet-classifier (ML hyperparameters) (owner: ml-engineer)
+- [x] 2.3 Create configuration loader in `src/ml/config/taxonomy_loader.py` (owner: ml-engineer)
+- [x] 2.4 Add CET configuration schema validation (Pydantic models) (owner: ml-engineer)
+- [x] 2.5 Add taxonomy versioning support (NSTC-2025Q1, etc.) (owner: ml-engineer)
+- [x] 2.6 Document CET taxonomy structure in `config/cet/README.md` (owner: ml-engineer)
+- [x] 7.1 Create `cet_taxonomy` asset in `src/assets/cet_assets.py` (owner: data-engineer)
+- [x] 7.2 Load taxonomy from `config/cet/taxonomy.yaml` (owner: data-engineer)
+- [x] 7.3 Validate taxonomy schema (required fields, unique IDs) (owner: ml-engineer)
+- [x] 7.4 Add asset checks for taxonomy completeness (owner: data-engineer)
+- [x] 7.5 Output taxonomy to `data/processed/cet_taxonomy.parquet` (owner: data-engineer)
+- [x] 21.1 Document CET taxonomy structure in `config/cet/README.md` (owner: ml-engineer)
+
+Notes:
+- Sprint 0 items are marked completed above and their original checklist entries remain checked in the main task list.
+- Sprint 1 taxonomy work has been completed for the loader, Dagster asset creation, README, and automated completeness checks. Unit tests for the taxonomy asset were executed locally and passed (2 tests). Implementation details completed in this run:
+  - `src/ml/config/taxonomy_loader.py`: added completeness/quality checks and a helper to produce lightweight metrics for asset checks.
+  - `src/assets/cet_assets.py`: implemented the `cet_taxonomy` asset, added structured asset metadata, wrote a companion checks JSON, and made the asset resilient in test environments by providing small Dagster stubs and a parquet -> JSON fallback when a parquet engine is missing.
+  - `src/models/__init__.py` and `src/assets/__init__.py`: switched to lazy import patterns to avoid import-time failures when optional heavy dependencies (dagster, neo4j, duckdb, pyarrow) are not present during test collection.
+- Remaining Sprint 1 items (CI job that runs taxonomy asset tests in CI and formal Dagster asset registration in the repository manifest) are tracked as follow-up tasks and will be implemented in the next commit.
+
+Sprint 2 — Evidence Extraction + Models Core (3 weeks, ~120h)
+- Goal: Implement the EvidenceExtractor and the core CET classifier pipeline (TF-IDF vectorizer, classifier, calibration) with batch scoring capability.
+- Primary tasks: 4.1–4.8, 5.1–5.7, 6.2, 6.3, 6.5, 6.6, 18.1, 18.2
+- Deliverables:
+  - `src/ml/features/evidence_extractor.py` (spaCy sentence segmentation, keyword matching, excerpting)
+  - `src/ml/models/cet_classifier.py` (TF-IDF pipeline, save/load, metadata)
+  - Training workflow `src/ml/models/trainer.py` (skeleton for training / calibration)
+  - Unit tests for classifier and extractor (basic coverage)
+- Estimate: 120 hours
+- Owner: ML Engineer (owner: @ml-engineer), Co-owner: @conradhollomon
+- Rationale: Provides core functionality for classifying awards and extracting evidence; enables offline evaluation.
+
+Sprint 3 — Batch Classification Assets & Persistence (2 weeks, ~80h)
+- Goal: Create Dagster assets to run batch classification of awards, extract evidence, and persist results for downstream aggregation and Neo4j ingestion.
+- Primary tasks: 8.1–8.10, 6.4, 6.7, 18.1 (tests)
+- Deliverables:
+  - `cet_award_classifications` asset in `src/assets/cet_assets.py`
+  - Batch classification implementation (1000 awards/batch), evidence extraction per award
+  - Output: `data/processed/cet_award_classifications.parquet`
+  - Asset checks: classification success rate, high confidence rate, evidence coverage
+- Estimate: 80 hours
+- Owner: Data Engineer (owner: @data-engineer), ML co-owner for model loading
+
+Sprint 4 — Company Aggregation & Neo4j Model (3 weeks, ~120h)
+- Goal: Aggregate award-level CETs to company profiles and implement Neo4j loaders for CET nodes & relationships.
+- Primary tasks: 9.1–9.7, 12.1–12.7, 13.1–13.6, 14.1–14.5, 18.7, 18.8
+- Deliverables:
+  - `src/transformers/company_cet_aggregator.py`
+  - `src/loaders/cet_loader.py` for CETArea nodes and Neo4j assets for relationships
+  - Neo4j assets: `neo4j_cet_areas`, `neo4j_award_cet_relationships`, `neo4j_company_cet_relationships`
+  - Unit tests for aggregation and Neo4j loader logic (mocks for Neo4j)
+- Estimate: 120 hours
+- Owner: Data Engineer + Graph Engineer (owner: @graph-engineer), Co-owner: @conradhollomon
+- Rationale: Critical for analytics and portfolio queries; needs careful batching and idempotent writes.
+
+Sprint 5 — Patent Integration & USPTO (2 weeks, ~80h)
+- Goal: Add patent classification, integrate USPTO AI dataset loader, and add validation hooks.
+- Primary tasks: 10.1–10.6, 11.1–11.8, 15.1–15.5
+- Deliverables:
+  - `src/ml/models/patent_classifier.py`
+  - `src/ml/data/uspto_ai_loader.py` with chunked streaming and SQLite cache
+  - Assets for patent CET classifications and Neo4j patent relationships
+- Estimate: 80 hours
+- Owner: ML Engineer + Data Engineer (owner: @ml-engineer), Co-owner: @data-engineer
+
+Sprint 6 — Evaluation, Validation, Tests, and Docs (2–3 weeks, ~120h)
+- Goal: Implement evaluation tooling, human sampling integration, performance baselining, and finish unit/integration tests and documentation.
+- Primary tasks: 17.1–17.7, 18.3–18.8, 19.1–19.7, 20.1–20.6, 21.2–21.7
+- Deliverables:
+  - `src/ml/evaluation/cet_evaluator.py` and evaluation reports (charts + metrics)
+  - Integration tests for pipeline (sample dataset)
+  - E2E pipeline validation on dev
+  - Complete docs: ML architecture, evidence extraction, Neo4j schema, deployment checklist
+- Estimate: 120 hours
+- Owner: @conradhollomon (Lead), with cross-functional reviewers (Data, ML, QA)
+
+Backlog / Ongoing Optimization & Deployment (as needed)
+- Performance tuning, CI/CD integration, production rollout checklist, monitoring and alerts (22.*, 23.*, 24.*).
+- These items will be scheduled after Sprint 6 based on evaluation results and stakeholder review.
+
+How I applied prioritization
+1. Make taxonomy and assets high priority (Sprint 1) because they unblock most other work (model metadata, asset wiring, Neo4j).
+2. Implement core model & evidence extraction next (Sprint 2) to enable classification and evaluation.
+3. Sequence Neo4j / company aggregation after we can reliably produce award-level classifications.
+4. Group evaluation, integration testing, and documentation as a focused sprint to finalize delivery.
+
+Next steps I will take (if you confirm)
+- Implement remaining Sprint 1 tasks (asset checks, CI wiring for parquet artifact, automated asset checks).
+- Continue with Sprint 2 implementation (EvidenceExtractor and CETClassifier core).
+- Update this document to check off Sprint 1 sub-tasks as they complete and open PRs for review.
+
+If you want different owners, different estimates (story-points instead of hours), or a different sprint cadence (1 week sprints vs 2 week sprints), tell me and I will update this plan accordingly.
+
 ## 1. Project Setup & Dependencies
 
 - [x] 1.1 Add scikit-learn>=1.4.0 to pyproject.toml dependencies
