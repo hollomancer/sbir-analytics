@@ -1,0 +1,158 @@
+name: Performance Regression Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/enrichers/**'
+      - 'src/assets/**'
+      - 'src/utils/performance_monitor.py'
+      - 'src/extractors/**'
+      - 'scripts/benchmark_enrichment.py'
+      - 'scripts/detect_performance_regression.py'
+      - 'config/base.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/enrichers/**'
+      - 'src/assets/**'
+      - 'src/utils/performance_monitor.py'
+      - 'src/extractors/**'
+      - 'scripts/benchmark_enrichment.py'
+      - 'scripts/detect_performance_regression.py'
+      - 'config/base.yaml'
+
+jobs:
+  performance-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Cache baseline benchmark
+        uses: actions/cache@v3
+        with:
+          path: reports/benchmarks/baseline.json
+          key: benchmark-baseline-main
+          restore-keys: |
+            benchmark-baseline-
+
+      - name: Check if baseline exists
+        id: baseline_check
+        run: |
+          if [ -f "reports/benchmarks/baseline.json" ]; then
+            echo "baseline_exists=true" >> $GITHUB_OUTPUT
+            echo "✓ Baseline found"
+          else
+            echo "baseline_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠ No baseline found - this is first run or cache miss"
+          fi
+
+      - name: Run Performance Regression Detection
+        id: regression
+        continue-on-error: true
+        run: |
+          mkdir -p reports/benchmarks
+          python scripts/detect_performance_regression.py \
+            --sample-size 500 \
+            --output-json /tmp/regression.json \
+            --output-markdown /tmp/report.md \
+            --output-html /tmp/report.html \
+            --output-github-comment /tmp/pr_comment.md \
+            --fail-on-regression
+
+      - name: Generate summary for first run
+        if: steps.baseline_check.outputs.baseline_exists == 'false'
+        run: |
+          echo "## 📊 Performance Benchmark - Baseline Established" >> /tmp/pr_comment.md
+          echo "" >> /tmp/pr_comment.md
+          echo "This is the first performance run. Baseline has been established." >> /tmp/pr_comment.md
+          echo "" >> /tmp/pr_comment.md
+          if [ -f "/tmp/regression.json" ]; then
+            echo "**Current Metrics:**" >> /tmp/pr_comment.md
+            echo "" >> /tmp/pr_comment.md
+            jq '.current_metrics | to_entries | .[] | "- **\(.key):** \(.value)"' /tmp/regression.json >> /tmp/pr_comment.md
+          fi
+
+      - name: Create baseline if needed
+        if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
+        run: |
+          python scripts/benchmark_enrichment.py \
+            --sample-size 500 \
+            --save-as-baseline
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: |
+            /tmp/regression.json
+            /tmp/report.md
+            /tmp/report.html
+          retention-days: 30
+
+      - name: Comment on PR with Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            let comment_body = '';
+
+            // Try to read generated comment
+            if (fs.existsSync('/tmp/pr_comment.md')) {
+              comment_body = fs.readFileSync('/tmp/pr_comment.md', 'utf8');
+            } else {
+              comment_body = '## ⚠️ Performance Check\n\nNo report generated. Please check the workflow logs.';
+            }
+
+            // Add link to artifacts
+            comment_body += '\n\n---\n\n';
+            comment_body += '**📎 Artifacts:** [View Performance Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n';
+
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment_body
+            });
+
+      - name: Fail if FAILURE severity detected
+        if: steps.regression.outcome == 'failure'
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            SEVERITY=$(jq -r '.severity' /tmp/regression.json)
+            if [ "$SEVERITY" = "FAILURE" ]; then
+              echo "❌ Performance regression FAILURE detected"
+              jq '.issues' /tmp/regression.json
+              exit 1
+            fi
+          fi
+
+      - name: Print regression report
+        if: always()
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            echo "## Regression Detection Summary"
+            echo ""
+            jq '.' /tmp/regression.json
+          fi
