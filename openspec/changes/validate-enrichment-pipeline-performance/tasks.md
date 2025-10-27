@@ -73,15 +73,17 @@
     - ✅ Historical trend analysis across multiple runs
     - ✅ Integration with benchmark (4.1) and Dagster asset metadata (2.4)
 
-- [ ] 2.6 Aggregate pipeline-level metrics and surface threshold-based alerts (Dagster metadata or external store)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 2.4 (metrics collection) and 2.5 (reporting)
-  - **Priority:** MEDIUM
-  - **Details:** Implement alert rules in Dagster asset or Sensor: memory delta > 500MB → WARNING; enrichment time > 5s per record → WARNING; match rate < 70% → FAILURE (surfaces as asset check failure)
+- [x] 2.6 Aggregate pipeline-level metrics and surface threshold-based alerts (Dagster metadata or external store)
+  - **Status:** COMPLETE
+  - **Evidence:** Pipeline-level alert system implemented in `src/utils/performance_alerts.py` with 400+ lines; integrated into `enriched_sbir_awards` asset with threshold checking
+  - **Details:** AlertCollector class with check_duration_per_record(), check_memory_delta(), check_match_rate(), check_memory_pressure() methods. Alerts emitted in Dagster metadata and logged. Thresholds configurable via AlertThresholds class and config/base.yaml.
   - **Acceptance Criteria:**
-    - Alerts generated when thresholds exceeded
-    - Alerts visible in Dagster UI and/or logs
-    - Threshold values configurable in config/base.yaml
+    - ✅ AlertCollector generates alerts when thresholds exceeded (duration > 5s/record, memory delta > 500MB, match rate < 70%)
+    - ✅ Alerts visible in Dagster UI asset metadata (alert_count, alert_failures, alert_warnings, alerts JSON)
+    - ✅ Alerts logged with structured context
+    - ✅ Alert thresholds configurable in config/base.yaml (duration_warning_seconds, memory_delta_warning_mb, match_rate_threshold, memory_pressure thresholds)
+    - ✅ Alerts saved to reports/alerts/ for record-keeping
+    - ✅ Multiple alert severity levels (INFO, WARNING, FAILURE)
 
 ## 3. Full Dataset Testing Infrastructure
 
@@ -123,15 +125,17 @@
     - ✅ HTML report generated with tables, charts, metrics (EnrichmentQualityValidator.generate_html_report)
     - ✅ Runnable via CLI with --enriched-file, --output, --json-output arguments
 
-- [ ] 3.5 Add data quality checks for enriched outputs at scale (enforce thresholds, detect regressions)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 3.4 (quality script exists) and 4.2 (baseline storage)
-  - **Priority:** HIGH
-  - **Details:** Add quality gate logic to enrichment asset: compare current match_rate vs. historical baseline; fail asset if regression > 5%. Store baseline after each successful run.
+- [x] 3.5 Add data quality checks for enriched outputs at scale (enforce thresholds, detect regressions)
+  - **Status:** COMPLETE
+  - **Evidence:** Quality baseline management system implemented in `src/utils/quality_baseline.py` with 370+ lines; asset-level regression check implemented as `enrichment_quality_regression_check` in `sbir_usaspending_enrichment.py`
+  - **Details:** QualityBaselineManager stores/loads baselines with historical tracking. BaselineComparison detects regressions with configurable thresholds. Baseline saved after each enrichment in enriched_sbir_awards asset. Regression check compares current metrics to baseline and fails asset if match_rate regression exceeds threshold (default 5pp).
   - **Acceptance Criteria:**
-    - Baseline stored after successful enrichment
-    - Current run compared vs. baseline
-    - Asset fails/warns on regression > 5%
+    - ✅ QualityBaseline created and saved after each successful enrichment run
+    - ✅ Baseline comparison computes match_rate delta and regression severity
+    - ✅ Asset check fails (ERROR severity) if regression > 5pp
+    - ✅ Baseline files stored in reports/baselines/ with history tracking
+    - ✅ Regression threshold configurable in config/base.yaml (data_quality.enrichment.regression_threshold_percent)
+    - ✅ Asset check metadata includes baseline vs current comparison with delta analysis
 
 - [ ] 3.6 Surface progress/resume metadata in Dagster asset metadata for operator visibility
   - **Status:** NOT STARTED
@@ -241,16 +245,17 @@
     - ✅ Change workflow documented
     - ✅ Tuning recommendations for each parameter
 
-- [ ] 5.3 Implement graceful degradation for memory-constrained environments (fallback chunk sizes, spill-to-disk)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 3.2 (chunking framework)
-  - **Priority:** MEDIUM
-  - **Details:** Add logic to enrichment asset to detect memory pressure: if memory usage > 80% available → reduce chunk size by half; if > 95% → spill to disk (parquet temp files in /tmp or configured location)
+- [x] 5.3 Implement graceful degradation for memory-constrained environments (fallback chunk sizes, spill-to-disk)
+  - **Status:** COMPLETE
+  - **Evidence:** Memory pressure monitoring and adaptive chunk sizing implemented in `src/enrichers/chunked_enrichment.py`; includes spill-to-disk capability with parquet compression
+  - **Details:** Added _check_memory_pressure() method detects 3 levels (ok/warning/critical based on 20%/5% available memory). _reduce_chunk_size() reduces by half with minimum 100 records. _spill_chunk_to_disk() stores chunks to parquet with snappy compression. process_all_chunks() integrates pressure checks before/after enrichment. process_to_dataframe() loads and combines spilled chunks, cleans up spill directory.
   - **Acceptance Criteria:**
-    - Memory pressure detected correctly
-    - Chunk sizes reduced when needed
-    - Spill-to-disk works without data loss
-    - No performance degradation on well-provisioned systems
+    - ✅ Memory pressure detected correctly (via psutil.virtual_memory() with graceful fallback)
+    - ✅ Chunk size reduced by half when warning pressure detected; fails gracefully if cannot reduce further
+    - ✅ Chunks spilled to reports/spill/ as parquet files when critical pressure detected
+    - ✅ Spilled chunks loaded and combined correctly with no data loss
+    - ✅ Summary metrics track memory_pressure_warnings, chunk_size_reductions, chunks_spilled
+    - ✅ No performance impact on well-provisioned systems (memory monitoring only active if enable_memory_monitoring=true in config)
 
 - [ ] 5.4 Add comprehensive error handling and recovery for pipeline failures (resume points, retries, notifications)
   - **Status:** NOT STARTED

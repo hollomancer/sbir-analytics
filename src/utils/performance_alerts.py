@@ -416,6 +416,3 @@ class AlertCollector:
 
         logger.info(f"Alerts saved to {output_path}")
         return output_path
-```
-
-Now let me integrate the alerts into the enrichment asset:
