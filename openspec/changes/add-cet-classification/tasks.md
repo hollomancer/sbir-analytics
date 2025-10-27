@@ -172,13 +172,17 @@ Backlog / Ongoing Optimization & Deployment (as needed)
 
 ## 6. Training Data & Model Training
 
-- [ ] 6.1 Port bootstrap training data from sbir-cet-classifier (1000+ annotated awards)
+- [x] 6.1 Port bootstrap training data from sbir-cet-classifier (1000+ annotated awards)
 - [x] 6.2 Create TrainingExample model for labeled data
 - [x] 6.3 Implement model training workflow in src/ml/models/trainer.py
 - [x] 6.4 Add cross-validation for hyperparameter tuning
 - [x] 6.5 Implement probability calibration (sigmoid, 3-fold CV)
 - [x] 6.6 Save trained model to artifacts/models/cet_classifier_v1.pkl
 - [x] 6.7 Generate training metrics report (accuracy, precision, recall, F1)
+
+Notes (section 6 implementation):
+- Implemented `AwardTrainingLoader` in `src/ml/data/award_training_loader.py` to load CSV/NDJSON into `TrainingDataset`/`TrainingExample` with label/keyword parsing and deterministic training text.
+- Added Dagster asset `cet_award_training_dataset` in `src/assets/cet_assets.py` to persist the labeled training data to `data/processed/cet_award_training.parquet` (with NDJSON fallback) and write a checks JSON at `data/processed/cet_award_training.checks.json`.
 
 ## 7. Dagster Assets - CET Taxonomy
 

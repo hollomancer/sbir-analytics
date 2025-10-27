@@ -1045,6 +1045,249 @@ def train_cet_patent_classifier() -> Output:
     return Output(value=str(model_path), metadata=metadata)
 
 
+# New asset: cet_award_training_dataset
+@asset(
+    name="cet_award_training_dataset",
+    key_prefix=["ml"],
+    description=(
+        "Load labeled CET award training dataset from CSV or NDJSON, validate and persist to "
+        "`data/processed/cet_award_training.parquet` and emit a companion checks JSON. "
+        "Import-safe with NDJSON fallback when parquet engine or pandas is unavailable."
+    ),
+)
+def cet_award_training_dataset() -> Output:
+    import json
+    from pathlib import Path
+
+    output_path = Path("data/processed/cet_award_training.parquet")
+    checks_path = output_path.with_suffix(".checks.json")
+
+    # Candidate input paths (prefer processed)
+    candidate_inputs = [
+        Path("data/processed/cet_award_training.ndjson"),
+        Path("data/processed/cet_award_training.jsonl"),
+        Path("data/processed/cet_award_training.csv"),
+        Path("data/raw/cet_award_training.ndjson"),
+        Path("data/raw/cet_award_training.jsonl"),
+        Path("data/raw/cet_award_training.csv"),
+    ]
+    input_path = next((p for p in candidate_inputs if p.exists()), None)
+
+    # Load taxonomy for metadata
+    loader = TaxonomyLoader()
+    try:
+        taxonomy = loader.load_taxonomy()
+        taxonomy_version = taxonomy.version
+    except Exception:
+        taxonomy = None
+        taxonomy_version = None
+
+    # If no input, write empty output and checks
+    if input_path is None:
+        try:
+            import pandas as pd  # type: ignore
+
+            df_empty = pd.DataFrame(
+                columns=[
+                    "example_id",
+                    "text",
+                    "title",
+                    "keywords",
+                    "keywords_joined",
+                    "solicitation",
+                    "labels",
+                    "labels_joined",
+                    "source",
+                    "annotated_by",
+                    "annotated_at",
+                    "notes",
+                    "taxonomy_version",
+                ]
+            )
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            # Ensure a placeholder parquet file exists and write empty NDJSON
+            out_json = output_path.with_suffix(".ndjson")
+            out_json.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.touch()
+            except Exception:
+                pass
+
+        checks = {
+            "ok": False,
+            "reason": "training_data_missing",
+            "expected_paths": [str(p) for p in candidate_inputs],
+            "rows": 0,
+            "taxonomy_version": taxonomy_version,
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "checks_path": str(checks_path),
+            "input_path": None,
+            "taxonomy_version": taxonomy_version,
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
+    # Load dataset using the training loader
+    try:
+        from src.ml.data.award_training_loader import (
+            AwardTrainingLoader,
+            save_dataset_ndjson,
+        )
+
+        atl = AwardTrainingLoader(taxonomy_version=taxonomy_version or "unknown")
+        # Dispatch based on extension
+        if input_path.suffix.lower() in (".ndjson", ".jsonl"):
+            dataset = atl.load_ndjson(input_path)
+        elif input_path.suffix.lower() == ".csv":
+            dataset = atl.load_csv(input_path)
+        else:
+            # Try CSV then NDJSON as fallback
+            try:
+                dataset = atl.load_csv(input_path)
+            except Exception:
+                dataset = atl.load_ndjson(input_path)
+        stats = atl.last_stats.as_dict() if getattr(atl, "last_stats", None) else {}
+    except Exception as e:
+        # Failed to load training dataset; write checks and empty output
+        try:
+            import pandas as pd  # type: ignore
+
+            df_empty = pd.DataFrame(
+                columns=[
+                    "example_id",
+                    "text",
+                    "title",
+                    "keywords",
+                    "keywords_joined",
+                    "solicitation",
+                    "labels",
+                    "labels_joined",
+                    "source",
+                    "annotated_by",
+                    "annotated_at",
+                    "notes",
+                    "taxonomy_version",
+                ]
+            )
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            out_json = output_path.with_suffix(".ndjson")
+            out_json.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.touch()
+            except Exception:
+                pass
+
+        checks = {
+            "ok": False,
+            "reason": "load_failed",
+            "error": str(e),
+            "input_path": str(input_path),
+            "taxonomy_version": taxonomy_version,
+        }
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "checks_path": str(checks_path),
+            "input_path": str(input_path),
+            "taxonomy_version": taxonomy_version,
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
+    # Persist dataset to parquet (preferred) with NDJSON fallback
+    try:
+        import pandas as pd  # type: ignore
+
+        rows = []
+        for ex in dataset.examples:
+            rows.append(
+                {
+                    "example_id": ex.example_id,
+                    "text": ex.text,
+                    "title": ex.title,
+                    "keywords": ex.keywords,
+                    "keywords_joined": (ex.keywords or ""),
+                    "solicitation": ex.solicitation,
+                    "labels": ex.labels,
+                    "labels_joined": ", ".join(ex.labels or []),
+                    "source": ex.source,
+                    "annotated_by": ex.annotated_by,
+                    "annotated_at": ex.annotated_at.isoformat() if ex.annotated_at else None,
+                    "notes": ex.notes,
+                    "taxonomy_version": dataset.taxonomy_version,
+                }
+            )
+        df = pd.DataFrame(rows)
+        save_dataframe_parquet(df, output_path)
+    except Exception:
+        # Fallback to NDJSON using helper
+        try:
+            out_json = output_path.with_suffix(".ndjson")
+            save_dataset_ndjson(dataset, out_json)
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.touch()
+            except Exception:
+                pass
+        except Exception:
+            # As a last resort, write minimal NDJSON manually
+            out_json = output_path.with_suffix(".ndjson")
+            out_json.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_json, "w", encoding="utf-8") as fh:
+                for ex in dataset.examples:
+                    fh.write(
+                        json.dumps(
+                            {
+                                "example_id": ex.example_id,
+                                "text": ex.text,
+                                "labels": ex.labels,
+                            }
+                        )
+                        + "\n"
+                    )
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.touch()
+            except Exception:
+                pass
+
+    # Build checks JSON
+    checks = {
+        "ok": True,
+        "rows": len(dataset.examples),
+        "input_path": str(input_path),
+        "taxonomy_version": dataset.taxonomy_version,
+        "stats": stats if isinstance(stats, dict) else {},
+    }
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(checks_path, "w", encoding="utf-8") as fh:
+        json.dump(checks, fh, indent=2)
+
+    metadata = {
+        "path": str(output_path),
+        "rows": len(dataset.examples),
+        "checks_path": str(checks_path),
+        "input_path": str(input_path),
+        "taxonomy_version": dataset.taxonomy_version,
+    }
+    return Output(value=str(output_path), metadata=metadata)
+
+
 @asset(
     name="cet_company_profiles",
     key_prefix=["ml"],
