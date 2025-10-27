@@ -1,0 +1,317 @@
+{
+  "good_scenarios": {
+    "description": "Test cases with high-confidence matches that should pass quality gates",
+    "scenarios": [
+      {
+        "id": "good_exact_match_uei",
+        "name": "Exact Match via UEI",
+        "sbir_company": {
+          "Company": "Acme Tech Solutions Inc",
+          "UEI": "N5Z3JQIP98Q1",
+          "Duns": "123456789",
+          "Award Amount": 500000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "ACME TECH SOLUTIONS INC",
+          "recipient_uei": "N5Z3JQIP98Q1",
+          "recipient_duns": "123456789"
+        },
+        "expected_match_method": "exact_uei",
+        "expected_confidence": 100,
+        "description": "Perfect UEI match - highest confidence scenario"
+      },
+      {
+        "id": "good_exact_match_duns",
+        "name": "Exact Match via DUNS",
+        "sbir_company": {
+          "Company": "HealthAI Partners LLC",
+          "UEI": "",
+          "Duns": "987654321",
+          "Award Amount": 750000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "HEALTHAI PARTNERS LLC",
+          "recipient_uei": "",
+          "recipient_duns": "987654321"
+        },
+        "expected_match_method": "exact_duns",
+        "expected_confidence": 100,
+        "description": "Perfect DUNS match - high confidence fallback"
+      },
+      {
+        "id": "good_fuzzy_match_high",
+        "name": "High-Confidence Fuzzy Match",
+        "sbir_company": {
+          "Company": "Quantum Computing Inc",
+          "UEI": "ABC123DEF456",
+          "Duns": "",
+          "Award Amount": 1000000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "QUANTUM COMPUTING INCORPORATED",
+          "recipient_uei": "ABC123DEF456",
+          "recipient_duns": ""
+        },
+        "expected_match_method": "fuzzy_name",
+        "expected_confidence": 95,
+        "description": "High fuzzy score (95+) - company name variations are normalized"
+      },
+      {
+        "id": "good_multiple_identifiers",
+        "name": "Multiple Valid Identifiers",
+        "sbir_company": {
+          "Company": "BioTech Innovations Corp",
+          "UEI": "XYZ789UVW012",
+          "Duns": "555555555",
+          "Award Amount": 250000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "BIOTECH INNOVATIONS CORPORATION",
+          "recipient_uei": "XYZ789UVW012",
+          "recipient_duns": "555555555"
+        },
+        "expected_match_method": "exact_uei",
+        "expected_confidence": 100,
+        "description": "Multiple matching identifiers - highest confidence preserved"
+      },
+      {
+        "id": "good_small_company",
+        "name": "Small Company Match",
+        "sbir_company": {
+          "Company": "StartUp AI Solutions",
+          "UEI": "STU123VWX456",
+          "Duns": "111111111",
+          "Award Amount": 150000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "STARTUP AI SOLUTIONS",
+          "recipient_uei": "STU123VWX456",
+          "recipient_duns": "111111111"
+        },
+        "expected_match_method": "exact_uei",
+        "expected_confidence": 100,
+        "description": "Small company with valid identifiers - quality not size-dependent"
+      }
+    ]
+  },
+  "bad_scenarios": {
+    "description": "Test cases with no/poor matches that should trigger quality gate warnings",
+    "scenarios": [
+      {
+        "id": "bad_no_identifiers",
+        "name": "No Valid Identifiers",
+        "sbir_company": {
+          "Company": "Unknown Company XYZ",
+          "UEI": "",
+          "Duns": "",
+          "Award Amount": 100000
+        },
+        "usaspending_recipient": null,
+        "expected_match_method": null,
+        "expected_confidence": 0,
+        "description": "Company with no UEI or DUNS - unmatchable scenario"
+      },
+      {
+        "id": "bad_identifier_mismatch",
+        "name": "Identifier Mismatch",
+        "sbir_company": {
+          "Company": "Tech Corp A",
+          "UEI": "AAA111BBB222",
+          "Duns": "222222222",
+          "Award Amount": 500000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "TECH CORP A",
+          "recipient_uei": "ZZZ999CCC888",
+          "recipient_duns": "999999999"
+        },
+        "expected_match_method": null,
+        "expected_confidence": 0,
+        "description": "Same company name but different identifiers - no match due to identifier mismatch"
+      },
+      {
+        "id": "bad_completely_different_company",
+        "name": "Completely Different Company",
+        "sbir_company": {
+          "Company": "Aerospace Solutions LLC",
+          "UEI": "AAA000BBB111",
+          "Duns": "333333333",
+          "Award Amount": 600000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "DEFENSE CONTRACTORS INC",
+          "recipient_uei": "CCC222DDD333",
+          "recipient_duns": "444444444"
+        },
+        "expected_match_method": null,
+        "expected_confidence": 0,
+        "description": "Completely different company - should not match"
+      },
+      {
+        "id": "bad_low_fuzzy_match",
+        "name": "Low-Confidence Fuzzy Match",
+        "sbir_company": {
+          "Company": "Medical Tech Solutions",
+          "UEI": "MED123TECH456",
+          "Duns": "",
+          "Award Amount": 300000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "TECHNOLOGY MEDICAL RESEARCH INSTITUTE",
+          "recipient_uei": "MED123TECH456",
+          "recipient_duns": ""
+        },
+        "expected_match_method": "fuzzy_name",
+        "expected_confidence": 65,
+        "description": "Low fuzzy score (65) - name too different despite identifier match"
+      },
+      {
+        "id": "bad_missing_usaspending_data",
+        "name": "Missing USAspending Record",
+        "sbir_company": {
+          "Company": "Rare Company LLC",
+          "UEI": "RARE001LLC222",
+          "Duns": "666666666",
+          "Award Amount": 250000
+        },
+        "usaspending_recipient": null,
+        "expected_match_method": null,
+        "expected_confidence": 0,
+        "description": "Company not in USAspending database - unmatchable"
+      },
+      {
+        "id": "bad_invalid_identifiers",
+        "name": "Invalid/Malformed Identifiers",
+        "sbir_company": {
+          "Company": "Invalid ID Corp",
+          "UEI": "NOT_A_VALID_UEI",
+          "Duns": "NOT_A_NUMBER",
+          "Award Amount": 100000
+        },
+        "usaspending_recipient": null,
+        "expected_match_method": null,
+        "expected_confidence": 0,
+        "description": "Malformed identifiers - cannot match"
+      }
+    ]
+  },
+  "edge_cases": {
+    "description": "Edge cases and boundary conditions for enrichment testing",
+    "scenarios": [
+      {
+        "id": "edge_duplicate_awards_same_company",
+        "name": "Duplicate Awards from Same Company",
+        "sbir_company": [
+          {
+            "Company": "Tech Innovators Inc",
+            "UEI": "TECH001INN001",
+            "Duns": "777777777",
+            "Award Amount": 100000,
+            "Award Year": 2020
+          },
+          {
+            "Company": "Tech Innovators Inc",
+            "UEI": "TECH001INN001",
+            "Duns": "777777777",
+            "Award Amount": 150000,
+            "Award Year": 2021
+          }
+        ],
+        "expected_behavior": "Both records should match same recipient",
+        "description": "Multiple awards from same company - test deduplication logic"
+      },
+      {
+        "id": "edge_company_name_changes",
+        "name": "Company Name Changes Over Time",
+        "sbir_company": [
+          {
+            "Company": "StartUp Systems LLC",
+            "UEI": "START001LLC999",
+            "Duns": "888888888",
+            "Award Amount": 200000,
+            "Award Year": 2019
+          },
+          {
+            "Company": "StartUp Systems Inc",
+            "UEI": "START001LLC999",
+            "Duns": "888888888",
+            "Award Amount": 250000,
+            "Award Year": 2021
+          }
+        ],
+        "expected_behavior": "Same identifier → same recipient despite name variation",
+        "description": "Company name variations with consistent identifiers"
+      },
+      {
+        "id": "edge_min_max_award_amounts",
+        "name": "Edge Award Amounts",
+        "sbir_company": [
+          {
+            "Company": "Minimal Award Corp",
+            "UEI": "MIN001AWARD001",
+            "Duns": "999999990",
+            "Award Amount": 100,
+            "description": "Minimum award amount"
+          },
+          {
+            "Company": "Maximum Award Corp",
+            "UEI": "MAX001AWARD001",
+            "Duns": "999999991",
+            "Award Amount": 1000000000,
+            "description": "Maximum award amount"
+          }
+        ],
+        "expected_behavior": "Match quality independent of award amount",
+        "description": "Test with extreme award amounts"
+      },
+      {
+        "id": "edge_special_characters_in_names",
+        "name": "Special Characters in Company Names",
+        "sbir_company": {
+          "Company": "Tech & Innovation (USA) Inc.",
+          "UEI": "SPEC001CHAR001",
+          "Duns": "101010101",
+          "Award Amount": 400000
+        },
+        "usaspending_recipient": {
+          "recipient_name": "TECH AND INNOVATION USA INC",
+          "recipient_uei": "SPEC001CHAR001",
+          "recipient_duns": "101010101"
+        },
+        "expected_behavior": "Special characters normalized before fuzzy matching",
+        "description": "Test special character and punctuation handling"
+      }
+    ]
+  },
+  "quality_gate_thresholds": {
+    "match_rate_threshold": 0.70,
+    "description": "Default quality gate threshold from config/base.yaml",
+    "scenarios_meeting_threshold": [
+      "good_exact_match_uei",
+      "good_exact_match_duns",
+      "good_fuzzy_match_high",
+      "good_multiple_identifiers",
+      "good_small_company"
+    ],
+    "scenarios_failing_threshold": [
+      "bad_no_identifiers",
+      "bad_identifier_mismatch",
+      "bad_completely_different_company",
+      "bad_low_fuzzy_match",
+      "bad_missing_usaspending_data",
+      "bad_invalid_identifiers"
+    ]
+  },
+  "metadata": {
+    "version": "1.0",
+    "created_date": "2024-01-15",
+    "purpose": "Provides comprehensive test scenarios for enrichment pipeline validation",
+    "usage": "Load scenarios to validate enrichment asset quality checks and smoke tests",
+    "notes": [
+      "Good scenarios should consistently pass quality gates",
+      "Bad scenarios should fail or produce low confidence matches",
+      "Edge cases test boundary conditions and robustness",
+      "All scenarios use realistic SBIR/USAspending data patterns"
+    ]
+  }
+}

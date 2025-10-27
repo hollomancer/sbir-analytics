@@ -23,14 +23,15 @@
     - ✅ Data flows correctly between stages (validated through column and record preservation)
     - ✅ Output validates against quality thresholds (asset checks verified)
 
-- [ ] 1.4 Create/maintain fixtures with known good/bad enrichment scenarios (feed smoke tests + quality gates)
-  - **Status:** NOT STARTED
-  - **Blocker:** None (independent task)
-  - **Priority:** MEDIUM
-  - **Details:** Organize test fixtures in `tests/fixtures/enrichment_scenarios.json` with known good cases (high confidence matches) and bad cases (no matches, low confidence) to feed into smoke tests and quality gate validation
+- [x] 1.4 Create/maintain fixtures with known good/bad enrichment scenarios (feed smoke tests + quality gates)
+  - **Status:** COMPLETE
+  - **Evidence:** Comprehensive JSON fixture file created in `tests/fixtures/enrichment_scenarios.json` with 15 test scenarios organized into three categories: 5 good scenarios, 6 bad scenarios, 4 edge cases
+  - **Details:** Good scenarios include exact UEI match, exact DUNS match, high fuzzy match, multiple identifiers, small company. Bad scenarios include no identifiers, identifier mismatch, completely different company, low fuzzy match, missing USAspending data, invalid identifiers. Edge cases cover duplicate awards, company name changes, extreme award amounts, special characters.
   - **Acceptance Criteria:**
-    - Good scenario fixtures pass quality gates
-    - Bad scenario fixtures trigger expected failures
+    - ✅ Good scenario fixtures pass quality gates (5 scenarios with 100% or 95%+ confidence)
+    - ✅ Bad scenario fixtures trigger expected failures (6 scenarios with null or low confidence)
+    - ✅ Edge cases cover boundary conditions and robustness
+    - ✅ All scenarios use realistic SBIR/USAspending data patterns
 
 ## 2. Performance Instrumentation
 
@@ -60,15 +61,17 @@
     - ✅ Metrics visible in Dagster UI run details
     - ✅ No performance overhead (monitoring uses context managers, < 5% overhead)
 
-- [ ] 2.5 Create performance reporting utilities for benchmark results (persist + visualize summaries)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 2.4 (metrics must flow through Dagster)
-  - **Priority:** HIGH
-  - **Details:** Create `src/utils/performance_reporting.py` to generate markdown reports from metrics, compare vs. historical baselines, and optionally emit HTML summaries. Integrate with benchmark script (4.1).
+- [x] 2.5 Create performance reporting utilities for benchmark results (persist + visualize summaries)
+  - **Status:** COMPLETE
+  - **Evidence:** Production-grade performance reporting module created in `src/utils/performance_reporting.py` with 752 lines covering full reporting lifecycle
+  - **Details:** Includes PerformanceMetrics dataclass, MetricComparison for regression analysis, PerformanceReporter with Markdown/HTML generation, historical trend analysis. Supports loading metrics from benchmarks and Dagster asset metadata. Configurable thresholds for performance warnings/alerts.
   - **Acceptance Criteria:**
-    - Markdown report generated showing timing and memory stats
-    - Benchmark comparison against baseline (if baseline exists)
-    - HTML report available (optional: Plotly/similar)
+    - ✅ Markdown reports generated showing timing, memory, throughput, match rate stats
+    - ✅ Benchmark comparison against baseline with delta analysis (time %, memory %, match rate pp)
+    - ✅ HTML reports available with professional styling and metric cards
+    - ✅ Regression severity assessment (PASS/WARNING/FAILURE)
+    - ✅ Historical trend analysis across multiple runs
+    - ✅ Integration with benchmark (4.1) and Dagster asset metadata (2.4)
 
 - [ ] 2.6 Aggregate pipeline-level metrics and surface threshold-based alerts (Dagster metadata or external store)
   - **Status:** NOT STARTED
@@ -149,15 +152,19 @@
     - ✅ Baseline comparison with regression detection (time +10%→warn, +25%→fail; memory +20%→warn, +50%→fail)
     - ✅ Results persisted to reports/benchmarks/benchmark_<timestamp>.json (with --save-as-baseline for baseline.json)
 
-- [ ] 4.2 Implement automated performance regression detection (compare benchmarks vs historical runs)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 4.1 (benchmark script exists)
-  - **Priority:** MEDIUM
-  - **Details:** Enhance benchmark script to load historical baseline and flag regressions: time increase > 10% or memory increase > 20% → WARNING; time increase > 25% or memory increase > 50% → FAILURE
+- [x] 4.2 Implement automated performance regression detection (compare benchmarks vs historical runs)
+  - **Status:** COMPLETE
+  - **Evidence:** CI-ready regression detection script created in `scripts/detect_performance_regression.py` with 445 lines providing automated performance validation
+  - **Details:** Script runs enrichment benchmark, compares against historical baseline, generates detailed regression reports in multiple formats (JSON, Markdown, HTML, GitHub PR comment). Integrates with PerformanceReporter (2.5) for metric analysis. Supports configurable thresholds and exit codes for CI/CD integration.
   - **Acceptance Criteria:**
-    - Historical baseline loaded from file
-    - Regressions detected and reported
-    - Regression report includes delta and percent change
+    - ✅ Historical baseline loaded from file
+    - ✅ Regressions detected and reported with severity (PASS/WARNING/FAILURE)
+    - ✅ Regression report includes delta and percent change for time/memory/match rate
+    - ✅ Machine-readable JSON output for CI systems
+    - ✅ Human-readable Markdown and HTML reports
+    - ✅ GitHub PR comment format for inline feedback
+    - ✅ Configurable thresholds: time warning 10%, failure 25%; memory warning 20%, failure 50%
+    - ✅ Exit codes for CI pipeline integration (--fail-on-regression flag)
 
 - [ ] 4.3 Add enrichment quality metrics dashboard/reporting (match rates, confidence distribution)
   - **Status:** NOT STARTED
@@ -267,7 +274,7 @@
 
 ## Summary
 
-**Completion Status:** 9/30 tasks complete = 30%
+**Completion Status:** 12/30 tasks complete = 40%
 
 **Phase 1 (Foundation) COMPLETE:**
 - ✅ 2.4 Wire performance metrics into Dagster assets
