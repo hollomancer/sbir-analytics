@@ -220,20 +220,20 @@ Notes (section 8 implementation):
 
 ## 9. Company CET Aggregation
 
-- [ ] 9.1 Create CompanyCETAggregator in src/transformers/company_cet_aggregator.py
-- [ ] 9.2 Aggregate CET scores from all awards per company
-- [ ] 9.3 Calculate dominant CET area (highest average score)
-- [ ] 9.4 Calculate CET specialization score (concentration in top CET)
-- [ ] 9.5 Track CET evolution over time (Phase I → Phase II → Phase III)
-- [ ] 9.6 Create cet_company_profiles asset (depends on cet_award_classifications)
-- [ ] 9.7 Output company profiles to data/processed/cet_company_profiles.parquet
+- [x] 9.1 Create CompanyCETAggregator in src/transformers/company_cet_aggregator.py
+- [x] 9.2 Aggregate CET scores from all awards per company
+- [x] 9.3 Calculate dominant CET area (highest average score)
+- [x] 9.4 Calculate CET specialization score (concentration in top CET)
+- [x] 9.5 Track CET evolution over time (Phase I → Phase II → Phase III)
+- [x] 9.6 Create cet_company_profiles asset (depends on cet_award_classifications)
+- [x] 9.7 Output company profiles to data/processed/cet_company_profiles.parquet
 
 ## 10. Patent CET Classification
 
-- [ ] 10.1 Create PatentCETClassifier in src/ml/models/patent_classifier.py
-- [ ] 10.2 Classify patents based on title + assignee entity type
-- [ ] 10.3 Add patent-specific feature engineering (patent title structure)
-- [ ] 10.4 Create cet_patent_classifications asset (depends on transformed_patents)
+- [x] 10.1 Create PatentCETClassifier in src/ml/models/patent_classifier.py
+- [x] 10.2 Classify patents based on title + assignee entity type
+- [x] 10.3 Add patent-specific feature engineering (patent title structure)
+- [x] 10.4 Create cet_patent_classifications asset (depends on transformed_patents)
 
 ## 11. USPTO AI Dataset Integration
 

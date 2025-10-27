@@ -143,7 +143,7 @@ The checks JSON artifact is available in the workflow run for inspection.`;
   # Lightweight job to run only ML unit tests (faster feedback for ML changes)
   ml-unit-tests:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.changed_files, 'src/ml') || contains(github.event.pull_request.changed_files, 'tests/unit/ml')
+
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -180,5 +180,7 @@ The checks JSON artifact is available in the workflow run for inspection.`;
       - name: Install project
         run: poetry install --no-interaction
 
+      - name: Verify pandas installed
+        run: poetry run python -c "import pandas, sys; print('pandas', pandas.__version__)"
       - name: Run ML unit tests
         run: poetry run pytest tests/unit/ml -q

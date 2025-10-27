@@ -441,6 +441,77 @@ def extract_features(
     return pfv
 
 
+# Simple keyword map loader helpers
+
+
+def load_keywords_map(path: Optional[object] = None) -> Mapping[str, Sequence[str]]:
+    """
+    Load a CET patent keywords map from YAML.
+
+    Behavior:
+    - If path is None, attempts to read 'config/cet/patent_keywords.yaml'.
+    - Accepts either a flat mapping {group: [phrases]} or a nested mapping under 'cet_keywords'.
+    - Returns an empty dict on any error (file missing, yaml missing).
+    """
+    try:
+        # Local imports for import-safety
+        from pathlib import Path  # type: ignore
+        import yaml  # type: ignore
+    except Exception:
+        return {}
+
+    # Resolve path
+    if path is None:
+        candidate = Path("config/cet/patent_keywords.yaml")
+    else:
+        candidate = Path(path) if not isinstance(path, Path) else path
+
+    if not candidate.exists():
+        return {}
+
+    try:
+        data = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
+        if not isinstance(data, dict):
+            return {}
+        # Allow both nested and flat schemas
+        if "cet_keywords" in data and isinstance(data["cet_keywords"], dict):
+            kw_map = data["cet_keywords"]
+        else:
+            kw_map = data
+        # Coerce to mapping[str, list[str]]
+        out: Dict[str, List[str]] = {}
+        for k, v in kw_map.items():
+            if not k:
+                continue
+            if isinstance(v, str):
+                out[str(k)] = [v]
+            elif isinstance(v, (list, tuple)):
+                out[str(k)] = [str(x) for x in v if x]
+            else:
+                # Fallback to string
+                out[str(k)] = [str(v)]
+        return out
+    except Exception:
+        return {}
+
+
+def get_keywords_map(
+    preferred: Optional[Mapping[str, Sequence[str]]] = None,
+) -> Mapping[str, Sequence[str]]:
+    """
+    Return a keywords_map to use for feature extraction:
+    - If 'preferred' is provided and non-empty, return it.
+    - Else, try to load from config via load_keywords_map().
+    - Else, fall back to DEFAULT_KEYWORDS_MAP defined in this module.
+    """
+    if preferred:
+        return preferred
+    loaded = load_keywords_map()
+    if loaded:
+        return loaded
+    return DEFAULT_KEYWORDS_MAP  # type: ignore
+
+
 # Expose useful names
 __all__ = [
     "normalize_title",
@@ -453,4 +524,6 @@ __all__ = [
     "extract_features",
     "DEFAULT_KEYWORDS_MAP",
     "DEFAULT_STOPWORDS",
+    "load_keywords_map",
+    "get_keywords_map",
 ]

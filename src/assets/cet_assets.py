@@ -777,10 +777,36 @@ def cet_patent_classifications() -> Output:
     titles = []
     patent_ids = []
     assignees = []
-    for p in patents:
-        titles.append(str(p.get("title") or ""))
-        patent_ids.append(p.get("patent_id") or "")
-        assignees.append(p.get("assignee") or None)
+    # Prefer PatentFeatureExtractor for normalized title strings if available
+    try:
+        from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
+
+        extractor = PatentFeatureExtractor()
+        if hasattr(extractor, "transform"):
+            feature_dicts = extractor.transform(patents)  # type: ignore
+            for p, fv in zip(patents, feature_dicts):
+                norm_title = (
+                    fv.get("normalized_title")
+                    if isinstance(fv, dict)
+                    else getattr(fv, "normalized_title", p.get("title"))
+                )
+                titles.append(str(norm_title or ""))
+                patent_ids.append(p.get("patent_id") or "")
+                # Avoid double-adding assignee when text already normalized
+                assignees.append(None)
+        else:
+            # Fallback to simple normalization when only DF-based extractor is available
+            from src.ml.features.patent_features import normalize_title  # type: ignore
+
+            for p in patents:
+                titles.append(normalize_title(p.get("title")))
+                patent_ids.append(p.get("patent_id") or "")
+                assignees.append(None)
+    except Exception:
+        for p in patents:
+            titles.append(str(p.get("title") or ""))
+            patent_ids.append(p.get("patent_id") or "")
+            assignees.append(p.get("assignee") or None)
 
     # batch_size: try to read from classification config if loader provided it, else default 1000
     try:
