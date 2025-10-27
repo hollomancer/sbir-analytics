@@ -6,7 +6,7 @@ A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Busi
 
 The federal government provides a vast amount of data on innovation and government funding. However, this data is spread across multiple sources and formats, making it difficult to analyze. This project provides a unified and enriched view of the SBIR ecosystem by:
 
-*   **Connecting disparate data sources:** Integrating SBIR awards, USAspending contracts, and USPTO patent data.
+*   **Connecting disparate data sources:** Integrating SBIR awards, USAspending contracts, USPTO patents, and other publicly available data.
 *   **Building a knowledge graph:** Structuring the data in a Neo4j graph database to reveal complex relationships.
 *   **Enabling powerful analysis:** Allowing for queries that trace funding, track technology transitions, and analyze patent ownership chains.
 
@@ -16,7 +16,7 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ### Pipeline Stages
 
-1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patents)
+1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patent DTAs)
 2. **Validate**: Schema validation and data quality checks
 3. **Enrich**: Augment data with fuzzy matching and external enrichment
 4. **Transform**: Business logic and graph-ready entity preparation
@@ -33,30 +33,11 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ## Features
 
-### Core Capabilities
 - **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
 - **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
 - **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
 - **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
 - **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
-
-### Performance & Quality
-- **Performance Monitoring**: Automatic timing, memory tracking, and alert generation
-- **Quality Baselines**: Historical baseline tracking with regression detection
-- **CI Regression Pipeline**: Automated performance benchmarking in pull requests
-- **Chunked Processing**: Memory-adaptive enrichment with spill-to-disk for large datasets
-- **Configurable Thresholds**: Duration warnings, memory limits, and quality gates
-
-#### Enrichment Performance
-
-The enrichment stage includes resilience features for large datasets:
-
-- **Chunked Processing**: Process recipients in batches (default 10k)
-- **Memory Monitoring**: Track memory usage via `psutil`
-- **Adaptive Chunk Sizing**: Reduce chunk size under memory pressure
-- **Spill-to-Disk**: Write chunks to Parquet when memory critical
-- **Checkpointing**: Resume from last successful chunk on failure
-- **Progress Tracking**: Expose completion percentage and ETA
 
 #### Quality Gates
 
@@ -78,40 +59,6 @@ loading:
 - `enrichment_quality_regression_check` — Compare to baseline
 - `patent_load_success_rate` — Verify Neo4j load success
 - `assignment_load_success_rate` — Verify relationship creation
-
-#### Monitoring & Alerts
-
-Performance alerts are generated automatically:
-
-**Alert Types:**
-- `DURATION_WARNING` — Enrichment took >5 min
-- `MEMORY_WARNING` — Memory increase >500 MB
-- `QUALITY_REGRESSION` — Match rate dropped >5%
-- `LOAD_FAILURE` — Neo4j load success <99%
-
-**Alert Artifacts:**
-```json
-{
-  "timestamp": "2024-10-26T12:00:00",
-  "alert_type": "DURATION_WARNING",
-  "severity": "WARNING",
-  "message": "Enrichment took 380s (threshold: 300s)",
-  "metadata": {
-    "duration_seconds": 380,
-    "threshold_seconds": 300,
-    "records_processed": 533000
-  }
-}
-```
-
-Alerts saved to `reports/alerts/<timestamp>.json` and attached to Dagster asset metadata.
-
-
-### Observability
-- **Alerts**: JSON artifacts with severity levels (INFO, WARNING, FAILURE)
-- **Dashboards**: Plotly-based quality dashboards (HTML + JSON fallback)
-- **Metrics**: Asset-level performance metrics (duration, records/sec, memory usage)
-- **Regression Detection**: Automated comparison against baseline with PR comments
 
 ## Quick Start
 
@@ -179,7 +126,7 @@ See `docs/deployment/containerization.md` for full details.
    pytest -v --cov=src --cov-report=html
    ```
 
-## Data Sources
+## Bulk Data Sources
 
 ### SBIR Awards
 - **Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
@@ -216,45 +163,7 @@ export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
 export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
 ```
 
-### Performance Configuration
-
-Key thresholds in `config/base.yaml`:
-
-```yaml
-performance:
-  duration_warning_seconds: 300           # Alert if enrichment >5min
-  memory_delta_warning_mb: 500            # Alert if memory increase >500MB
-  memory_pressure_warn_percent: 75        # Adaptive chunk resize
-  memory_pressure_critical_percent: 90    # Spill to disk
-  regression_threshold_percent: 5.0       # Fail CI if >5% regression
-
-enrichment:
-  match_rate_threshold: 0.70              # Min 70% match rate
-  chunk_size: 10000                       # Records per chunk
-```
-
-## Development
-
-### Code Quality
-
-```bash
-# Format code
-poetry run black src tests
-
-# Lint code
-poetry run ruff check src tests
-
-# Type check
-poetry run mypy src
-
-# Security scan
-poetry run bandit -r src
-
-# Run all checks
-black src tests && ruff check src tests && mypy src
-```
-
-### Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -274,36 +183,6 @@ make docker-test
 - 29 tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
-
-### Performance Monitoring
-
-The pipeline includes comprehensive performance instrumentation:
-
-**Built-in Monitoring:**
-- `src/utils/performance_monitor.py` — Decorators and context managers
-- `src/utils/performance_alerts.py` — Alert collection and severity tracking
-- `src/utils/quality_baseline.py` — Baseline storage and comparison
-- `src/utils/quality_dashboard.py` — Plotly-based dashboards
-
-**Usage in Assets:**
-```python
-from src.utils.performance_monitor import monitor_performance
-from src.utils.performance_alerts import AlertCollector
-
-@monitor_performance
-def my_asset(context):
-    alert_collector = AlertCollector()
-    # ... processing logic ...
-    alert_collector.add_alert("duration", duration_seconds, severity="WARNING")
-    alert_collector.save_alerts("reports/alerts/")
-```
-
-**CI Performance Pipeline:**
-- Workflow: `.github/workflows/performance-regression-check.yml`
-- Runs on PRs affecting enrichment/assets
-- Compares current run to cached baseline
-- Posts PR comments with regression analysis
-- Fails CI on FAILURE severity regressions
 
 ## Project Structure
 
