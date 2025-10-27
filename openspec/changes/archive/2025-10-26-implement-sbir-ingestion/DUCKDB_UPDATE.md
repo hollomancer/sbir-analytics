@@ -1,6 +1,6 @@
 # DuckDB Integration Update
 
-**Date**: 2025-10-25  
+**Date**: 2025-10-25
 **Status**: ✅ Proposal updated and validated
 
 ## What Changed
@@ -33,7 +33,7 @@ df_filtered = df[df['Award Year'] >= 2020]  # Still loads all 42 columns
 duckdb_client.import_csv("awards_data.csv", "sbir_awards")  # ~2 seconds
 df = duckdb_client.execute_query_df("""
     SELECT Company, "Award Title", Agency, Phase, "Award Amount"
-    FROM sbir_awards 
+    FROM sbir_awards
     WHERE "Award Year" >= 2020
 """)  # Only 5 columns loaded, filtered at source, <1GB RAM
 ```
@@ -88,20 +88,20 @@ class SbirDuckDBExtractor:
     def __init__(self, config: SbirDuckDBConfig):
         self.duckdb_client = DuckDBClient(config.duckdb_path)
         self.table_name = config.table_name
-        
+
     def import_csv(self) -> bool:
         """Import CSV to DuckDB table."""
         return self.duckdb_client.import_csv(
             csv_path=config.csv_path,
             table_name=self.table_name
         )
-    
+
     def extract_all(self) -> pd.DataFrame:
         """Extract all records."""
         return self.duckdb_client.execute_query_df(
             f"SELECT * FROM {self.table_name}"
         )
-    
+
     def extract_by_year(self, start_year, end_year) -> pd.DataFrame:
         """Extract records filtered by year."""
         return self.duckdb_client.execute_query_df(f"""
@@ -115,8 +115,8 @@ class SbirDuckDBExtractor:
 def analyze_duplicates(self) -> pd.DataFrame:
     """Find Contract IDs with multiple records."""
     return self.duckdb_client.execute_query_df(f"""
-        SELECT 
-            Contract, 
+        SELECT
+            Contract,
             Company,
             COUNT(*) as record_count,
             STRING_AGG(Phase, ', ') as phases
@@ -137,7 +137,7 @@ def analyze_duplicates(self) -> pd.DataFrame:
 DuckDB makes USAspending joins trivial:
 ```sql
 -- Enrich SBIR with NAICS codes from USAspending
-SELECT 
+SELECT
     s.*,
     u.naics_code,
     u.vendor_name
@@ -159,7 +159,7 @@ WHERE "Proposal Award Date" > (
 Fast aggregations for dashboards:
 ```sql
 -- Awards by agency and phase
-SELECT 
+SELECT
     Agency,
     Phase,
     COUNT(*) as award_count,

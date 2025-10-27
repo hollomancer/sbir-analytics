@@ -255,7 +255,7 @@ Generated: 2025-10-26T10:09:00.382182 UTC
 - Unique values: 6
 - Type suggestion: uei
 - Top values: {"A1B2C3D4E5F6": 1, "Z9Y8X7W6V5U4": 1, "NWUEI0000000": 1, "TSUEI1234567": 1, "GREENUEI0000": 1}
-- Examples: 'A1B2C3D4E5F6', 'Z9Y8X7W6V5U4', 'NWUEI0000000', 'TSUEI1234567', 'GREENUEI0000'
+- Examples: 'A1B2C3D4E5F6', 'Z9Y8X7W6V5U4', 'NWUEI0000000', 'TSUEI1234567', 'GREENUEI0000' <!-- pragma: allowlist secret -->
 
 ### `Duns`
 

@@ -1,6 +1,6 @@
 # SBIR Data Ingestion - Implementation Status
 
-**Date**: 2025-10-25  
+**Date**: 2025-10-25
 **Status**: ✅ Core implementation complete, awaiting Python environment for testing
 
 ---
@@ -98,12 +98,12 @@ Three assets created:
    - Extracts CSV via DuckDB
    - Returns pandas DataFrame with all records
    - Metadata: record count, import duration, year range, phase distribution
-   
+
 2. **validated_sbir_awards**:
    - Validates raw data using `validate_sbir_awards()`
    - Filters to passing records only
    - Metadata: pass rate, passed/failed counts, validation status
-   
+
 3. **sbir_validation_report**:
    - Generates comprehensive quality report
    - Writes to `data/validated/sbir_validation_report.json`

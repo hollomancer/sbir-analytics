@@ -84,7 +84,7 @@ This change implements the first production-ready data ingestion pipeline, trans
 **Traditional pandas approach**:
 ```python
 # Load entire CSV into memory (~2GB RAM)
-df = pd.read_csv("awards_data.csv")  
+df = pd.read_csv("awards_data.csv")
 df_filtered = df[df['Award Year'] >= 2020]  # Still loads all columns
 ```
 
@@ -121,8 +121,8 @@ df = duckdb_client.execute_query_df("""
 4. **Enrichment Ready**: Sets foundation for USAspending joins
    ```sql
    -- Future enrichment join
-   SELECT s.*, u.naics_code 
-   FROM sbir_awards s 
+   SELECT s.*, u.naics_code
+   FROM sbir_awards s
    LEFT JOIN usaspending u ON s.UEI = u.uei
    ```
 
@@ -142,10 +142,10 @@ df = duckdb_client.execute_query_df("""
 ### Risks & Mitigations
 - **Risk**: CSV format changes from SBIR.gov
   - **Mitigation**: Schema validation will fail fast with clear error messages
-  
+
 - **Risk**: Memory usage with 533K records
   - **Mitigation**: Chunked processing with configurable batch size
-  
+
 - **Risk**: Data quality issues in source CSV
   - **Mitigation**: Configurable validation thresholds, detailed quality reports
 
@@ -174,12 +174,12 @@ df = duckdb_client.execute_query_df("""
 1. **Award Year Filtering**: ✅ Ingest all historical data (1983-2025), allow filtering in transformation stage
    - Provides complete historical context for analysis
    - Filtering can be applied downstream based on use case
-   
+
 2. **Missing UEI/DUNS**: ✅ Allow null UEI/DUNS, flag for manual enrichment
    - Older awards may not have UEI (introduced in 2022)
    - DUNS is optional for many awards
    - Enrichment stage will attempt to fill these gaps
-   
+
 3. **Deduplication**: Preserve duplicates in extraction, deduplicate in transformation
    - **Analysis findings** (from 533K records):
      - 151,773 unique Contract IDs
@@ -194,7 +194,7 @@ df = duckdb_client.execute_query_df("""
      - Transformation stage can create Award → Company relationships
      - Neo4j can model Phase I → Phase II progression as separate Award nodes
    - **Implementation**: Each record becomes a separate Award node in Neo4j with relationships showing phase progression
-   
+
 4. **Validation Threshold**: ✅ Configurable in YAML, default ≥95% pass rate
    - Configuration location: `config/base.yaml` → `data_quality.sbir_awards.pass_rate_threshold`
    - Allows different thresholds for dev/prod environments

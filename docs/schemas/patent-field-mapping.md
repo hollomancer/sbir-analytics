@@ -1,7 +1,7 @@
 # USPTO Patent Data Field Mapping to Neo4j Graph Schema
 
-**Purpose**: Maps each field from USPTO Stata files to Neo4j node properties and relationships  
-**Date**: 2025-10-26  
+**Purpose**: Maps each field from USPTO Stata files to Neo4j node properties and relationships
+**Date**: 2025-10-26
 **Status**: Reference Guide for ETL Implementation
 
 ---
@@ -220,7 +220,7 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 
 ### ASSIGNED_VIA Relationship
 
-**From**: `:Patent` node  
+**From**: `:Patent` node
 **To**: `:PatentAssignment` node
 
 | Source Property | Target Property | Transform |
@@ -242,7 +242,7 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 
 ### ASSIGNED_TO Relationship
 
-**From**: `:PatentAssignment` node  
+**From**: `:PatentAssignment` node
 **To**: `:PatentEntity {entity_type: "ASSIGNEE"}` node
 
 | Source Field | Target Property | Transform |
@@ -264,7 +264,7 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 
 ### ASSIGNED_FROM Relationship
 
-**From**: `:PatentAssignment` node  
+**From**: `:PatentAssignment` node
 **To**: `:PatentEntity {entity_type: "ASSIGNOR"}` node
 
 | Source Field | Target Property | Transform |
@@ -286,7 +286,7 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 
 ### FUNDED_BY Relationship
 
-**From**: `:Patent` node  
+**From**: `:Patent` node
 **To**: `:Award` node (existing SBIR node)
 
 | Source Field | Target Property | Transform |
@@ -308,7 +308,7 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 
 ### OWNS Relationship
 
-**From**: `:Company` node (existing SBIR node)  
+**From**: `:Company` node (existing SBIR node)
 **To**: `:Patent` node
 
 | Source | Target | Transform |
@@ -338,7 +338,7 @@ Apply to: `cname`, `ee_name`, `or_name`, correspondent fields
 def normalize_name(name: str) -> str:
     """
     Normalize entity names for matching.
-    
+
     Steps:
     1. Uppercase
     2. Remove trailing punctuation (,.;:)
@@ -348,17 +348,17 @@ def normalize_name(name: str) -> str:
     """
     if not name:
         return ""
-    
+
     # Step 1-4
     name = name.strip().upper()
     name = re.sub(r'\s+', ' ', name)
-    
+
     # Step 5: Remove special chars except &, -, /
     name = re.sub(r'[^\w\s&\-/]', '', name)
-    
+
     # Remove trailing punctuation
     name = name.rstrip('.,;:')
-    
+
     return name.strip()
 ```
 
@@ -372,7 +372,7 @@ Apply to: `appno_date`, `pgpub_date`, `exec_dt`, `ack_dt`
 def parse_date(date_val) -> Optional[datetime]:
     """
     Parse date from various formats.
-    
+
     Handles:
     - datetime64[ns] (pandas)
     - ISO 8601 strings
@@ -380,24 +380,24 @@ def parse_date(date_val) -> Optional[datetime]:
     """
     if pd.isna(date_val):
         return None
-    
+
     if isinstance(date_val, pd.Timestamp):
         return date_val.to_pydatetime()
-    
+
     if isinstance(date_val, str):
         # Try ISO 8601 first
         try:
             return datetime.fromisoformat(date_val)
         except ValueError:
             pass
-        
+
         # Try common formats
         for fmt in ['%m/%d/%Y', '%Y-%m-%d', '%Y/%m/%d']:
             try:
                 return datetime.strptime(date_val, fmt)
             except ValueError:
                 pass
-    
+
     return None
 ```
 
@@ -411,7 +411,7 @@ Apply to: Correspondent address (caddress_1-4), Assignee address (ee_address_1-2
 def parse_address(line1: str, line2: str, line3: str = "", line4: str = "") -> dict:
     """
     Parse multi-line address into components.
-    
+
     Returns:
     {
         'full_address': concatenated lines,
@@ -424,12 +424,12 @@ def parse_address(line1: str, line2: str, line3: str = "", line4: str = "") -> d
     """
     # For US addresses, line2 typically: "CITY, STATE ZIP"
     # For international: may vary
-    
+
     full = " ".join(filter(None, [line1, line2, line3, line4]))
-    
+
     # Simple parsing (could use libpostal for better results)
     city, state, postcode = "", "", ""
-    
+
     if line2:
         # Try to parse "CITY, STATE ZIP"
         parts = line2.split(',')
@@ -439,9 +439,9 @@ def parse_address(line1: str, line2: str, line3: str = "", line4: str = "") -> d
             state_parts = state_zip.split()
             state = state_parts[0] if state_parts else ""
             postcode = state_parts[1] if len(state_parts) > 1 else ""
-    
+
     country = line4.strip() if line4 else "US"
-    
+
     return {
         'full_address': full,
         'street': line1.strip(),
@@ -468,23 +468,23 @@ def compute_entity_id(
 ) -> str:
     """
     Compute deduplication key for PatentEntity.
-    
+
     Combines normalized name with geographic key to handle:
     - Company name variations
     - Multiple offices of same company
     - International entities
     """
     normalized = normalize_name(name)
-    
+
     # Geographic key
     geo_key = f"{country}|{state}|{postcode}".upper()
-    
+
     # Composite key
     composite = f"{normalized}|{geo_key}"
-    
+
     # Hash for consistent ID
     entity_id = hashlib.md5(composite.encode()).hexdigest()
-    
+
     return entity_id
 ```
 
@@ -509,10 +509,10 @@ CONVEYANCE_TYPES = {
 def classify_conveyance(convey_ty: str) -> str:
     """Ensure convey_ty is valid enumeration."""
     convey_ty_upper = convey_ty.strip().upper()
-    
+
     if convey_ty_upper in CONVEYANCE_TYPES:
         return convey_ty_upper
-    
+
     # Default to ASSIGNMENT if unknown
     return "ASSIGNMENT"
 ```
@@ -527,21 +527,21 @@ def classify_conveyance(convey_ty: str) -> str:
 def validate_patent(patent: dict) -> List[str]:
     """Validate Patent node before insert."""
     errors = []
-    
+
     # Required fields
     if not patent.get('title'):
         errors.append("title is required")
-    
+
     # Grant doc number should be ~70% present
     if patent.get('grant_doc_num') is None:
         errors.append("grant_doc_num is NULL (acceptable, ~30% of records)")
-    
+
     # Date validation
     if patent.get('appno_date'):
         app_date = parse_date(patent['appno_date'])
         if app_date and (app_date.year < 1790 or app_date.year > datetime.now().year):
             errors.append(f"appno_date out of range: {app_date}")
-    
+
     return errors
 ```
 
@@ -551,20 +551,20 @@ def validate_patent(patent: dict) -> List[str]:
 def validate_assignment(assignment: dict) -> List[str]:
     """Validate PatentAssignment node before insert."""
     errors = []
-    
+
     # Required fields
     if not assignment.get('rf_id'):
         errors.append("rf_id is required (primary key)")
-    
+
     if not assignment.get('convey_type'):
         errors.append("convey_type is required")
     elif assignment['convey_type'] not in CONVEYANCE_TYPES:
         errors.append(f"convey_type '{assignment['convey_type']}' not in enum")
-    
+
     # Employer flag must be 0 or 1
     if assignment.get('employer_assigned') not in [0, 1]:
         errors.append("employer_assigned must be 0 or 1")
-    
+
     return errors
 ```
 
@@ -574,19 +574,19 @@ def validate_assignment(assignment: dict) -> List[str]:
 def validate_entity(entity: dict) -> List[str]:
     """Validate PatentEntity node before insert."""
     errors = []
-    
+
     # Required fields
     if not entity.get('name'):
         errors.append("name is required")
-    
+
     if not entity.get('entity_type'):
         errors.append("entity_type is required")
     elif entity['entity_type'] not in ["ASSIGNEE", "ASSIGNOR"]:
         errors.append(f"entity_type must be ASSIGNEE or ASSIGNOR, got {entity['entity_type']}")
-    
+
     if not entity.get('entity_id'):
         errors.append("entity_id is required (dedup key)")
-    
+
     return errors
 ```
 

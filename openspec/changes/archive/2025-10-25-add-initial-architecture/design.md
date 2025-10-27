@@ -45,7 +45,7 @@ This is a greenfield project drawing patterns from three production SBIR systems
 
 **Decision**: Adopt five distinct pipeline stages: Extract → Validate → Enrich → Transform → Load
 
-**Why**: 
+**Why**:
 - Clear separation of concerns
 - Quality gates between stages prevent bad data propagation
 - Easy to debug (inspect intermediate outputs)
@@ -193,7 +193,7 @@ data_quality:
 - **SBIR data**: Bulk CSV export from SBIR.gov → DuckDB or pandas
 - **USAspending data**: Compressed PostgreSQL dump → DuckDB import/query
 
-**Usage**: 
+**Usage**:
 - Import/decompress Postgres dump into DuckDB on first run (one-time setup)
 - Query SBIR CSV files via DuckDB for efficient filtering
 - Join USAspending and SBIR data using SQL queries

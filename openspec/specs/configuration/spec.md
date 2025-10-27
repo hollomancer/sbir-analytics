@@ -70,4 +70,3 @@ The system SHALL cache the loaded configuration to avoid repeated file I/O durin
 - **THEN** the configuration SHALL be loaded only once
 - **AND** subsequent calls SHALL return the cached instance
 - **AND** the cache SHALL be scoped to a single process/run
-

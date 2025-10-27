@@ -48,7 +48,7 @@ neo4j:
   bolt_port: 7687
   # Authentication: prefer environment variables; do NOT commit secrets here
   user: "neo4j"
-  password: "change_me"      # local placeholder; replace in .env for local dev or via CI secrets
+  password: "change_me"      # pragma: allowlist secret # local placeholder; replace in .env for local dev or via CI secrets
   # Memory sizing recommendations for local dev vs CI
   memory:
     pagecache_size: "256M"

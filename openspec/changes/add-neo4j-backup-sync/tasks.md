@@ -2,9 +2,9 @@
 
 Summary: Initial status — Not started. All tasks below are in Planned / Draft state and are currently unstarted. This change will be implemented in focused phases (upload scripts, verify/restore, CI workflow, IAM & security, and documentation). Owners should update the checklist below as each task moves from planned → in-progress → done.
 
-Change: add-neo4j-backup-sync  
-Status: Planned / Draft  
-Owners: infra-team, data-platform, devops, security  
+Change: add-neo4j-backup-sync
+Status: Planned / Draft
+Owners: infra-team, data-platform, devops, security
 Reviewers: DBAs, platform, security
 
 Goal

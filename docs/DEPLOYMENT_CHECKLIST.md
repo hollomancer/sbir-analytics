@@ -1,7 +1,7 @@
 # SBIR-USAspending Enrichment Pipeline: Production Deployment Checklist
 
-**Version:** 1.0  
-**Last Updated:** January 2024  
+**Version:** 1.0
+**Last Updated:** January 2024
 **Audience:** DevOps, Release Managers, System Operators
 
 ---
@@ -559,12 +559,12 @@ This checklist ensures the enrichment pipeline is production-ready before deploy
 
 ## Deployment Summary
 
-**Deployment Date:** ____________________  
-**Deployed Version:** ____________________  
-**Deployed By:** ____________________  
-**Duration:** ____________________  
-**Issues Encountered:** ____________________  
-**Resolution:** ____________________  
+**Deployment Date:** ____________________
+**Deployed Version:** ____________________
+**Deployed By:** ____________________
+**Duration:** ____________________
+**Issues Encountered:** ____________________
+**Resolution:** ____________________
 **Post-Deployment Status:** ✅ Successful / ⚠️ Partial / ❌ Rollback
 
 **Notes:**
@@ -601,9 +601,9 @@ tail -f logs/sbir-etl.log
 
 ### Contact Information
 
-**On-Call Engineer:** ____________________  
-**Backup On-Call:** ____________________  
-**Operations Lead:** ____________________  
+**On-Call Engineer:** ____________________
+**Backup On-Call:** ____________________
+**Operations Lead:** ____________________
 **Escalation Contact:** ____________________
 
 ### Related Documentation
@@ -615,6 +615,6 @@ tail -f logs/sbir-etl.log
 
 ---
 
-**Last Updated:** January 2024  
-**Next Review:** [Date + 6 months]  
+**Last Updated:** January 2024
+**Next Review:** [Date + 6 months]
 **Owner:** [Your Name/Team]

@@ -30,7 +30,7 @@ jobs:
           cp .env.example .env
           # Replace placeholders with repository secrets (ensure secrets exist)
           if [ -n "${{ secrets.NEO4J_PASSWORD }}" ]; then
-            sed -i "s|NEO4J_PASSWORD=change_me|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|g" .env || true
+            sed -i "s|NEO4J_PASSWORD=change_me|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|g" .env || true  # pragma: allowlist secret
           fi
           if [ -n "${{ secrets.NEO4J_USER }}" ]; then
             sed -i "s|NEO4J_USER=neo4j|NEO4J_USER=${{ secrets.NEO4J_USER }}|g" .env || true

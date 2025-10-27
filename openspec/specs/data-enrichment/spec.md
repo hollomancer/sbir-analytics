@@ -183,4 +183,3 @@ The system SHALL validate complete enrichment pipelines end-to-end from data ing
 - **THEN** the system SHALL provide detailed error context and logs
 - **AND** partial results SHALL NOT corrupt final output
 - **AND** pipeline state SHALL be recoverable for retry/resume
-

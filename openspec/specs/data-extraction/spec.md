@@ -331,4 +331,3 @@ The system SHALL validate extracted USPTO data for schema compliance, referentia
 - **THEN** the system calculates the percentage of non-null values
 - **AND** validation passes if completeness is ≥95% for required fields
 - **AND** a detailed completeness report is generated for all fields
-

@@ -86,4 +86,3 @@ The system SHALL track and report coverage metrics for key data fields.
 - **THEN** coverage metrics SHALL be calculated for each required field (e.g., award_id_coverage: 0.98)
 - **AND** the coverage metrics SHALL be included in the quality report
 - **AND** the metrics SHALL be logged for monitoring
-

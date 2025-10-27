@@ -96,4 +96,3 @@ The container stack SHALL mount consistent volumes for data inputs/outputs, logs
 - **WHEN** running in the `dev` profile
 - **THEN** host directories `./data`, `./logs`, `./metrics`, and `./config` are mounted into `/app/...`
 - **AND** artifacts generated inside containers are immediately available on the host for debugging or commits
-

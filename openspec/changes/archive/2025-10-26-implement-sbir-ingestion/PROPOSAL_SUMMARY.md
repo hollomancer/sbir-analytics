@@ -1,8 +1,8 @@
 # SBIR Data Ingestion Proposal - Summary
 
-**Change ID**: `implement-sbir-ingestion`  
-**Status**: ✅ Validated and ready for approval  
-**Estimated Effort**: 2-3 days  
+**Change ID**: `implement-sbir-ingestion`
+**Status**: ✅ Validated and ready for approval
+**Estimated Effort**: 2-3 days
 **Created**: 2025-10-25
 
 ---

@@ -4,8 +4,8 @@
 
 This document describes the fields in the USPTO Patent Assignment data used by the SBIR ETL pipeline. The patent assignment data is sourced from the USPTO Patent Assignment Dataset and contains records of patent transfers, assignments, licenses, and other conveyances.
 
-**Data Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)  
-**Update Frequency**: Monthly  
+**Data Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)
+**Update Frequency**: Monthly
 **Format**: CSV, Stata (.dta), Parquet
 
 ---

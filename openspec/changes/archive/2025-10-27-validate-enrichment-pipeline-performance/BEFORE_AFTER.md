@@ -84,8 +84,8 @@ This document shows the key differences between the original documents and the r
 ### BEFORE Example (Task 2.3)
 ```
 - [x] 2.3 Implement time tracking for file processing operations
-  - Notes: Profiling script (`scripts/profile_usaspending_dump.py`) 
-    now instruments table sampling with `performance_monitor.monitor_block` 
+  - Notes: Profiling script (`scripts/profile_usaspending_dump.py`)
+    now instruments table sampling with `performance_monitor.monitor_block`
     and writes timing metrics to per-OID progress files.
 ```
 
@@ -99,11 +99,11 @@ This document shows the key differences between the original documents and the r
 ```
 - [x] 2.3 Implement time tracking for file processing operations
   - **Status:** COMPLETE (CLI-only)
-  - **Evidence:** `scripts/profile_usaspending_dump.py` instruments 
+  - **Evidence:** `scripts/profile_usaspending_dump.py` instruments
     operations with `monitor_block()` and `time_block()` context managers
-  - **Details:** Per-OID progress files written to `reports/progress/<oid>.json` 
+  - **Details:** Per-OID progress files written to `reports/progress/<oid>.json`
     with timing metrics; supports chunked scanning and resumable processing
-  - **Note:** CLI-only implementation; Dagster asset integration is 
+  - **Note:** CLI-only implementation; Dagster asset integration is
     separate task (2.4)
 ```
 
@@ -115,7 +115,7 @@ This document shows the key differences between the original documents and the r
 
 ### BEFORE Example (Task 1.2)
 ```
-- [ ] 1.2 Add Dagster asset validation checks for enrichment quality metrics 
+- [ ] 1.2 Add Dagster asset validation checks for enrichment quality metrics
       (block downstream on match-rate thresholds)
 ```
 
@@ -132,8 +132,8 @@ This document shows the key differences between the original documents and the r
   - **Status:** NOT STARTED
   - **Blocker:** None (can start immediately)
   - **Priority:** HIGH
-  - **Details:** Requires adding `@asset_check` decorators to 
-    `enriched_sbir_awards` asset to enforce match-rate >= 70% threshold 
+  - **Details:** Requires adding `@asset_check` decorators to
+    `enriched_sbir_awards` asset to enforce match-rate >= 70% threshold
     and block downstream assets on failure.
   - **Acceptance Criteria:**
     - Asset check validates match_rate >= 0.70
@@ -221,7 +221,7 @@ BEFORE:
 ```
 #### Scenario: Resource usage reporting
 - **WHEN** enrichment completes
-- **THEN** the system SHALL report CPU usage, I/O operations, 
+- **THEN** the system SHALL report CPU usage, I/O operations,
   and disk space consumption
 - **AND** resource usage SHALL be correlated with dataset size
 - **AND** reports SHALL be available for optimization decisions
@@ -231,7 +231,7 @@ AFTER:
 ```
 #### Scenario: Performance metric reporting
 - **WHEN** enrichment operations complete
-- **THEN** the system SHALL generate performance reports with 
+- **THEN** the system SHALL generate performance reports with
   timing breakdown by operation phase
 - **AND** reports SHALL include peak memory usage and memory delta
 - **AND** reports SHALL be exportable in JSON and Markdown formats
@@ -294,9 +294,9 @@ AFTER:
 ```
 #### Scenario: Downstream asset blocking
 - **WHEN** an enrichment asset quality check fails
-- **THEN** downstream assets depending on that asset SHALL be blocked 
+- **THEN** downstream assets depending on that asset SHALL be blocked
   from execution
-- **AND** blocking behavior SHALL be visible in Dagster UI (assets 
+- **AND** blocking behavior SHALL be visible in Dagster UI (assets
   skipped with reason)
 - **AND** pipeline operator SHALL be notified of blocking action
 ```
@@ -327,7 +327,7 @@ AFTER:
 
 **What the documents said:** "Performance monitoring implemented. Tests created. CLI profiling works. Just needs validation and reporting."
 
-**Reality:** 
+**Reality:**
 - Performance monitoring utilities exist but NOT integrated into Dagster
 - Tests exist but NOT end-to-end pipeline tests
 - CLI profiling works but output NOT visible to production operations
@@ -371,17 +371,17 @@ AFTER:
 
 ## Questions & Answers
 
-**Q: Does this reduce scope?**  
+**Q: Does this reduce scope?**
 A: No. It clarifies and phases scope. Same work, better-organized and sequenced.
 
-**Q: Why are some tasks marked complete but still blocking others?**  
+**Q: Why are some tasks marked complete but still blocking others?**
 A: Foundation tasks (2.1-2.3) are complete but CLI-only. Integration tasks (2.4+) build on them and are separate. Marking foundation complete acknowledges that work; marking integration separate tracks what remains.
 
-**Q: Why 30 tasks instead of 22?**  
+**Q: Why 30 tasks instead of 22?**
 A: Original count conflated prerequisites with deliverables and grouped vaguely. 30 is better granularity, not more total work.
 
-**Q: Can Phase 2 start before Phase 1 finishes?**  
+**Q: Can Phase 2 start before Phase 1 finishes?**
 A: Partially — task 1.3 (smoke tests) and 1.4 (fixtures) are independent. But 3.1-3.2 (chunking) must wait for 2.4 (metrics). Chart in tasks.md shows blocker dependencies.
 
-**Q: When is "done"?**  
+**Q: When is "done"?**
 A: After Phase 1 + Phase 2 + task 5.5. Estimated 4-6 weeks at normal velocity. Phase 4 (nice-to-have) can start after Phase 3 or be deferred.
