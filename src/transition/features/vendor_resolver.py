@@ -33,9 +33,9 @@ print(match)
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from typing import Dict, Iterable, List, Optional, Tuple
 
 # Try to use rapidfuzz if installed for higher-quality fuzzy matching.
 try:
@@ -61,11 +61,11 @@ class VendorRecord:
     - metadata: Arbitrary metadata dictionary (optional)
     """
 
-    uei: Optional[str]
-    cage: Optional[str]
-    duns: Optional[str]
+    uei: str | None
+    cage: str | None
+    duns: str | None
     name: str
-    metadata: Dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -79,10 +79,10 @@ class VendorMatch:
     - note: optional human-readable note
     """
 
-    record: Optional[VendorRecord]
+    record: VendorRecord | None
     method: str
     score: float
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class VendorResolver:
@@ -114,20 +114,20 @@ class VendorResolver:
         self.fuzzy_secondary_threshold = float(fuzzy_secondary_threshold)
 
         # Indices
-        self._uei_index: Dict[str, VendorRecord] = {}
-        self._cage_index: Dict[str, VendorRecord] = {}
-        self._duns_index: Dict[str, VendorRecord] = {}
+        self._uei_index: dict[str, VendorRecord] = {}
+        self._cage_index: dict[str, VendorRecord] = {}
+        self._duns_index: dict[str, VendorRecord] = {}
         # Name index: normalized lowercase name -> list of records (to support duplicates)
-        self._name_index: Dict[str, List[VendorRecord]] = {}
+        self._name_index: dict[str, list[VendorRecord]] = {}
 
         # Cache resolved queries for speed (simple in-memory)
-        self._cache: Dict[Tuple[str, str], VendorMatch] = {}
+        self._cache: dict[tuple[str, str], VendorMatch] = {}
 
         # Load records into indices
         self._load_records(records)
 
     @classmethod
-    def from_records(cls, records: Iterable[VendorRecord], **kwargs) -> "VendorResolver":
+    def from_records(cls, records: Iterable[VendorRecord], **kwargs) -> VendorResolver:
         """Convenience constructor."""
         return cls(records, **kwargs)
 
@@ -268,7 +268,7 @@ class VendorResolver:
 
         # Fuzzy search: compute best candidate across known names
         best_score = 0.0
-        best_record: Optional[VendorRecord] = None
+        best_record: VendorRecord | None = None
         # Iterate through indexed names and compute fuzzy score
         for indexed_name, recs in self._name_index.items():
             s = self._fuzzy_score(norm, indexed_name)
@@ -297,7 +297,7 @@ class VendorResolver:
         self._cache[cache_key] = result
         return result
 
-    def _choose_preferred_record(self, recs: List[VendorRecord]) -> VendorRecord:
+    def _choose_preferred_record(self, recs: list[VendorRecord]) -> VendorRecord:
         """
         Choose a preferred record from a list. Heuristic:
         - Prefer records with UEI
@@ -322,10 +322,10 @@ class VendorResolver:
     def resolve(
         self,
         *,
-        uei: Optional[str] = None,
-        cage: Optional[str] = None,
-        duns: Optional[str] = None,
-        name: Optional[str] = None,
+        uei: str | None = None,
+        cage: str | None = None,
+        duns: str | None = None,
+        name: str | None = None,
         prefer_identifiers: bool = True,
     ) -> VendorMatch:
         """
@@ -407,7 +407,7 @@ class VendorResolver:
         """Clear the match result cache."""
         self._cache.clear()
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         """Return basic stats about the resolver indices."""
         return {
             "records_by_uei": len(self._uei_index),
@@ -420,7 +420,7 @@ class VendorResolver:
 
 # Module-level convenience factory
 def build_resolver_from_iterable(
-    iterable: Iterable[Dict[str, object]], fuzzy_threshold: float = 0.9
+    iterable: Iterable[dict[str, object]], fuzzy_threshold: float = 0.9
 ) -> VendorResolver:
     """
     Build a VendorResolver from an iterable of mapping-like records.

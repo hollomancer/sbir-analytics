@@ -24,8 +24,9 @@ import contextlib
 import functools
 import json
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 # psutil is optional; when available we record memory usage
 try:
@@ -43,7 +44,7 @@ class PerformanceMonitor:
     def __init__(self) -> None:
         """Initialize performance monitor."""
         # metrics: name -> list of measurement dicts
-        self.metrics: Dict[str, list[Dict[str, Any]]] = {}
+        self.metrics: dict[str, list[dict[str, Any]]] = {}
         self._process = psutil.Process() if _PSUTIL_AVAILABLE else None
 
     # -----------------------
@@ -199,26 +200,26 @@ class PerformanceMonitor:
             except Exception:
                 return 0.0
 
-    def _record(self, name: str, data: Dict[str, Any]) -> None:
+    def _record(self, name: str, data: dict[str, Any]) -> None:
         """Record a metric entry for a named operation."""
         bucket = self.metrics.setdefault(name, [])
         # enrich with timestamp
         data.setdefault("timestamp", time.time())
         bucket.append(data)
 
-    def get_latest_metric(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_latest_metric(self, name: str) -> dict[str, Any] | None:
         """Return the most recent metric entry for a given name, or None."""
         bucket = self.metrics.get(name)
         if not bucket:
             return None
         return bucket[-1]
 
-    def get_metrics_summary(self) -> Dict[str, Dict[str, Any]]:
+    def get_metrics_summary(self) -> dict[str, dict[str, Any]]:
         """Return a summarized view of collected metrics.
 
         Summary includes count, total/avg/max duration, memory stats where available.
         """
-        summary: Dict[str, Dict[str, Any]] = {}
+        summary: dict[str, dict[str, Any]] = {}
         for name, entries in self.metrics.items():
             durations = [e.get("duration", 0.0) for e in entries if "duration" in e]
             memory_deltas = [
@@ -248,7 +249,7 @@ class PerformanceMonitor:
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self.metrics, f, indent=2, default=str)
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """Return a comprehensive performance report with summary and overall stats."""
         summary = self.get_metrics_summary()
         total_operations = sum(s.get("count", 0) for s in summary.values())

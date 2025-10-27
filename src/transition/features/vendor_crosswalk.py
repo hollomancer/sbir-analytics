@@ -27,11 +27,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Union
 from uuid import uuid4
 
 LOG = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 
-def _normalize_identifier(val: Optional[str]) -> Optional[str]:
+def _normalize_identifier(val: str | None) -> str | None:
     if val is None:
         return None
     s = str(val).strip()
@@ -71,7 +71,7 @@ def _normalize_identifier(val: Optional[str]) -> Optional[str]:
     return s.upper()
 
 
-def _normalize_name(name: Optional[str]) -> Optional[str]:
+def _normalize_name(name: str | None) -> str | None:
     if name is None:
         return None
     s = " ".join(str(name).strip().split())
@@ -93,7 +93,7 @@ def _fuzzy_score(a: str, b: str) -> float:
         return 0.0
 
 
-def _iso_date(val: Optional[Union[str, date, datetime]]) -> Optional[str]:
+def _iso_date(val: str | date | datetime | None) -> str | None:
     if val is None:
         return None
     if isinstance(val, datetime):
@@ -123,9 +123,9 @@ def _iso_date(val: Optional[Union[str, date, datetime]]) -> Optional[str]:
 @dataclass
 class AliasRecord:
     name: str
-    start_date: Optional[str] = None  # ISO date
-    end_date: Optional[str] = None  # ISO date
-    note: Optional[str] = None
+    start_date: str | None = None  # ISO date
+    end_date: str | None = None  # ISO date
+    note: str | None = None
 
 
 @dataclass
@@ -134,14 +134,14 @@ class CrosswalkRecord:
 
     canonical_id: str
     canonical_name: str
-    uei: Optional[str] = None
-    cage: Optional[str] = None
-    duns: Optional[str] = None
-    aliases: List[AliasRecord] = field(default_factory=list)
+    uei: str | None = None
+    cage: str | None = None
+    duns: str | None = None
+    aliases: list[AliasRecord] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    metadata: Dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         d = asdict(self)
         return d
 
@@ -172,13 +172,13 @@ class VendorCrosswalk:
     maintains inverted indices on UEI/CAGE/DUNS and normalized names for fast lookup.
     """
 
-    def __init__(self, records: Optional[Iterable[CrosswalkRecord]] = None):
-        self.records: Dict[str, CrosswalkRecord] = {}
+    def __init__(self, records: Iterable[CrosswalkRecord] | None = None):
+        self.records: dict[str, CrosswalkRecord] = {}
         # indices
-        self._uei_index: Dict[str, str] = {}
-        self._cage_index: Dict[str, str] = {}
-        self._duns_index: Dict[str, str] = {}
-        self._name_index: Dict[str, List[str]] = {}  # normalized name -> list of canonical_id
+        self._uei_index: dict[str, str] = {}
+        self._cage_index: dict[str, str] = {}
+        self._duns_index: dict[str, str] = {}
+        self._name_index: dict[str, list[str]] = {}  # normalized name -> list of canonical_id
         if records:
             for r in records:
                 self.add_or_merge(r)
@@ -284,21 +284,21 @@ class VendorCrosswalk:
     # ---------------------------
     # Lookup methods
     # ---------------------------
-    def find_by_uei(self, uei: str) -> Optional[CrosswalkRecord]:
+    def find_by_uei(self, uei: str) -> CrosswalkRecord | None:
         key = _normalize_identifier(uei)
         if not key:
             return None
         cid = self._uei_index.get(key)
         return self.records.get(cid) if cid else None
 
-    def find_by_cage(self, cage: str) -> Optional[CrosswalkRecord]:
+    def find_by_cage(self, cage: str) -> CrosswalkRecord | None:
         key = _normalize_identifier(cage)
         if not key:
             return None
         cid = self._cage_index.get(key)
         return self.records.get(cid) if cid else None
 
-    def find_by_duns(self, duns: str) -> Optional[CrosswalkRecord]:
+    def find_by_duns(self, duns: str) -> CrosswalkRecord | None:
         key = _normalize_identifier(duns)
         if not key:
             return None
@@ -307,7 +307,7 @@ class VendorCrosswalk:
 
     def find_by_name(
         self, name: str, fuzzy_threshold: float = 0.9
-    ) -> Optional[Tuple[CrosswalkRecord, float]]:
+    ) -> tuple[CrosswalkRecord, float] | None:
         """
         Find best matching canonical record by name. Returns (record, score) or None.
         """
@@ -332,12 +332,12 @@ class VendorCrosswalk:
 
     def find_by_any(
         self,
-        uei: Optional[str] = None,
-        cage: Optional[str] = None,
-        duns: Optional[str] = None,
-        name: Optional[str] = None,
+        uei: str | None = None,
+        cage: str | None = None,
+        duns: str | None = None,
+        name: str | None = None,
         fuzzy_threshold: float = 0.9,
-    ) -> Optional[Tuple[CrosswalkRecord, str, float]]:
+    ) -> tuple[CrosswalkRecord, str, float] | None:
         """
         Attempt to find a record using available identifiers, returning (record, method, score).
         """
@@ -367,9 +367,9 @@ class VendorCrosswalk:
         self,
         canonical_id: str,
         alias_name: str,
-        start_date: Optional[Union[date, str]] = None,
-        end_date: Optional[Union[date, str]] = None,
-        note: Optional[str] = None,
+        start_date: date | str | None = None,
+        end_date: date | str | None = None,
+        note: str | None = None,
     ) -> bool:
         """Add an alias to the canonical record and update name index."""
         if canonical_id not in self.records:
@@ -395,9 +395,9 @@ class VendorCrosswalk:
         self,
         acquirer_id: str,
         acquired_id: str,
-        date_of_acquisition: Optional[Union[date, str]] = None,
+        date_of_acquisition: date | str | None = None,
         merge: bool = True,
-        note: Optional[str] = None,
+        note: str | None = None,
     ) -> bool:
         """
         Handle company acquisition/name-change events.
@@ -440,14 +440,14 @@ class VendorCrosswalk:
     # ---------------------------
     # Persistence helpers
     # ---------------------------
-    def to_list_of_dicts(self) -> List[Dict]:
+    def to_list_of_dicts(self) -> list[dict]:
         out = []
-        for cid, rec in self.records.items():
+        for _cid, rec in self.records.items():
             d = rec.as_dict()
             out.append(d)
         return out
 
-    def save_parquet(self, path: Union[str, Path]) -> None:
+    def save_parquet(self, path: str | Path) -> None:
         """
         Save crosswalk to Parquet (one row per canonical record). Requires pandas.
         """
@@ -460,7 +460,7 @@ class VendorCrosswalk:
         df.to_parquet(path, index=False)
         LOG.info("VendorCrosswalk saved to parquet: %s", path)
 
-    def save_jsonl(self, path: Union[str, Path]) -> None:
+    def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
@@ -468,11 +468,11 @@ class VendorCrosswalk:
                 fh.write(json.dumps(rec, default=str) + "\n")
         LOG.info("VendorCrosswalk saved to jsonl: %s", path)
 
-    def load_jsonl(self, path: Union[str, Path]) -> None:
+    def load_jsonl(self, path: str | Path) -> None:
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(str(path))
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             for line in fh:
                 if not line.strip():
                     continue
@@ -518,7 +518,7 @@ class VendorCrosswalk:
         conn = duckdb.connect(db_path)
         try:
             df = conn.execute(f"select * from {table_name}").fetchdf()
-        except Exception as e:
+        except Exception:
             conn.close()
             raise
         conn.close()
@@ -550,10 +550,10 @@ class VendorCrosswalk:
     # ---------------------------
     # Utilities
     # ---------------------------
-    def list_records(self) -> List[CrosswalkRecord]:
+    def list_records(self) -> list[CrosswalkRecord]:
         return list(self.records.values())
 
-    def stats(self) -> Dict[str, int]:
+    def stats(self) -> dict[str, int]:
         return {
             "count": len(self.records),
             "uei_index": len(self._uei_index),

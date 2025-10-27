@@ -107,7 +107,7 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
 
     # For Acme row(s), expect either a deterministic or fuzzy match with non-null score
     acme_row = acme_rows.iloc[0]
-    match_score = acme_row.get("_match_score")
+    acme_row.get("_match_score")
     match_method = acme_row.get("_match_method")
     # match_score may be pandas NA; ensure it's present and meaningful
     assert match_method is not None

@@ -15,16 +15,13 @@ Features:
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
-import pandas as pd
 from loguru import logger
 
 try:
     import plotly.graph_objects as go
-    import plotly.express as px
     from plotly.subplots import make_subplots
 
     PLOTLY_AVAILABLE = True
@@ -43,16 +40,16 @@ class DashboardMetrics:
     exact_matches: int
     fuzzy_matches: int
     unmatched_records: int
-    fuzzy_scores: Optional[List[float]] = None
-    match_methods: Optional[Dict[str, int]] = None
-    by_phase: Optional[Dict[str, float]] = None
-    by_company_size: Optional[Dict[str, float]] = None
+    fuzzy_scores: list[float] | None = None
+    match_methods: dict[str, int] | None = None
+    by_phase: dict[str, float] | None = None
+    by_company_size: dict[str, float] | None = None
 
 
 class QualityDashboard:
     """Generates quality metrics dashboards."""
 
-    def __init__(self, output_dir: Optional[Path] = None):
+    def __init__(self, output_dir: Path | None = None):
         """Initialize dashboard generator.
 
         Args:
@@ -65,8 +62,8 @@ class QualityDashboard:
             logger.warning("Plotly not available; dashboards will be generated as JSON only")
 
     def load_metrics_history(
-        self, history_file: Path, limit: Optional[int] = None
-    ) -> List[DashboardMetrics]:
+        self, history_file: Path, limit: int | None = None
+    ) -> list[DashboardMetrics]:
         """Load historical metrics from file.
 
         Args:
@@ -115,7 +112,7 @@ class QualityDashboard:
         return metrics_list
 
     def generate_trend_dashboard(
-        self, metrics_history: List[DashboardMetrics], title: str = "Enrichment Quality Trends"
+        self, metrics_history: list[DashboardMetrics], title: str = "Enrichment Quality Trends"
     ) -> Path:
         """Generate dashboard showing quality trends over time.
 
@@ -167,7 +164,7 @@ class QualityDashboard:
                 y=match_rates,
                 mode="lines+markers",
                 name="Match Rate %",
-                line=dict(color="green", width=2),
+                line={"color": "green", "width": 2},
             ),
             row=1,
             col=1,
@@ -183,7 +180,7 @@ class QualityDashboard:
                 y=total_records_list,
                 mode="lines+markers",
                 name="Total Records",
-                line=dict(color="blue", width=2),
+                line={"color": "blue", "width": 2},
             ),
             row=1,
             col=2,
@@ -194,7 +191,7 @@ class QualityDashboard:
                 y=matched_records_list,
                 mode="lines+markers",
                 name="Matched Records",
-                line=dict(color="green", width=2),
+                line={"color": "green", "width": 2},
             ),
             row=1,
             col=2,
@@ -221,7 +218,7 @@ class QualityDashboard:
                 y=unmatched_records_list,
                 mode="lines+markers",
                 name="Unmatched Records",
-                line=dict(color="red", width=2),
+                line={"color": "red", "width": 2},
             ),
             row=2,
             col=2,
@@ -359,16 +356,16 @@ class QualityDashboard:
 
         fig.add_trace(
             go.Table(
-                header=dict(
-                    values=list(table_data.keys()),
-                    fill_color="paleturquoise",
-                    align="left",
-                ),
-                cells=dict(
-                    values=[table_data[k] for k in table_data.keys()],
-                    fill_color="lavender",
-                    align="left",
-                ),
+                header={
+                    "values": list(table_data.keys()),
+                    "fill_color": "paleturquoise",
+                    "align": "left",
+                },
+                cells={
+                    "values": [table_data[k] for k in table_data.keys()],
+                    "fill_color": "lavender",
+                    "align": "left",
+                },
             ),
             row=2,
             col=2,
@@ -444,7 +441,7 @@ class QualityDashboard:
         return output_file
 
     def _generate_json_dashboard(
-        self, metrics_list: List[DashboardMetrics], output_file: Path
+        self, metrics_list: list[DashboardMetrics], output_file: Path
     ) -> Path:
         """Generate JSON-based dashboard (fallback when Plotly unavailable).
 
@@ -477,7 +474,7 @@ class QualityDashboard:
         logger.info(f"Generated JSON dashboard: {output_file}")
         return output_file
 
-    def generate_summary_report(self, metrics_history: List[DashboardMetrics]) -> Tuple[str, Path]:
+    def generate_summary_report(self, metrics_history: list[DashboardMetrics]) -> tuple[str, Path]:
         """Generate Markdown summary report of quality metrics.
 
         Args:

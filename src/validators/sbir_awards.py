@@ -527,7 +527,7 @@ def validate_sbir_awards(df: pd.DataFrame, pass_rate_threshold: float = 0.95) ->
     warnings = [i for i in all_issues if i.severity == QualitySeverity.WARNING]
 
     # Calculate pass/fail
-    failed_rows = len(set(issue.row_index for issue in errors))
+    failed_rows = len({issue.row_index for issue in errors})
     passed_rows = len(df) - failed_rows
     pass_rate = passed_rows / len(df) if len(df) > 0 else 1.0  # Empty DataFrame passes
 

@@ -46,7 +46,9 @@ class TestConfigurationEnvironments:
     def test_load_dev_environment(self, config_dir):
         """Test loading development environment configuration."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         assert isinstance(config, PipelineConfig)
         # Dev environment should have specific settings
@@ -56,7 +58,9 @@ class TestConfigurationEnvironments:
     def test_load_prod_environment(self, config_dir):
         """Test loading production environment configuration."""
         reload_config()
-        config = get_config(environment="prod", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="prod", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         assert isinstance(config, PipelineConfig)
         # Prod environment should have specific settings
@@ -129,10 +133,14 @@ class TestConfigurationEnvironments:
         reload_config()
 
         # First call
-        config1 = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config1 = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Second call should return cached version
-        config2 = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config2 = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Should be the same object (cached)
         assert config1 is config2
@@ -140,11 +148,15 @@ class TestConfigurationEnvironments:
     def test_reload_config_clears_cache(self, config_dir):
         """Test that reload_config clears the cache."""
         reload_config()
-        config1 = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config1 = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Reload should clear cache
         reload_config()
-        config2 = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config2 = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Should be different objects (cache cleared)
         assert config1 is not config2
@@ -152,7 +164,9 @@ class TestConfigurationEnvironments:
     def test_all_required_sections_present(self, config_dir):
         """Test that all required configuration sections are present."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Verify all main sections exist
         assert config.pipeline is not None
@@ -167,7 +181,9 @@ class TestConfigurationEnvironments:
     def test_data_quality_thresholds(self, config_dir):
         """Test data quality threshold configurations."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Verify data quality thresholds are properly typed
         assert isinstance(config.data_quality.completeness, dict)
@@ -181,7 +197,9 @@ class TestConfigurationEnvironments:
     def test_enrichment_configuration(self, config_dir):
         """Test enrichment service configurations."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Verify enrichment configs
         assert config.enrichment.sam_gov is not None
@@ -192,7 +210,9 @@ class TestConfigurationEnvironments:
     def test_neo4j_configuration(self, config_dir):
         """Test Neo4j connection configuration."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Verify Neo4j config
         assert config.neo4j.uri.startswith("bolt://")
@@ -205,7 +225,9 @@ class TestConfigurationEnvironments:
     def test_logging_configuration(self, config_dir):
         """Test logging configuration."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Verify logging config
         assert isinstance(config.logging.console_enabled, bool)
@@ -221,7 +243,9 @@ class TestConfigurationValidation:
         """Test that invalid environment falls back to base config."""
         reload_config()
         # Should not raise error, just use base config
-        config = get_config(environment="nonexistent", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="nonexistent", config_dir=config_dir, apply_env_overrides_flag=False
+        )
         assert isinstance(config, PipelineConfig)
 
     def test_missing_config_dir_raises_error(self):
@@ -234,7 +258,9 @@ class TestConfigurationValidation:
     def test_config_validation_strict(self, config_dir):
         """Test that configuration validation is strict."""
         reload_config()
-        config = get_config(environment="dev", config_dir=config_dir, apply_env_overrides_flag=False)
+        config = get_config(
+            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
+        )
 
         # Config should be validated by Pydantic
         assert isinstance(config, PipelineConfig)

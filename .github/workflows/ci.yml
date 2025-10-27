@@ -19,11 +19,11 @@ jobs:
           NEO4J_AUTH: none
           NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
         options: >-
-          --health-cmd "curl -f http://localhost:7474 || exit 1"
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-          --health-start-period 30s
+          --health-start-period 40s
 
     strategy:
       matrix:
@@ -135,9 +135,7 @@ jobs:
       run: poetry install --no-interaction
 
     - name: Run Bandit security linter
-      run: |
-        poetry add --group dev bandit
-        poetry run bandit -r src -c pyproject.toml
+      run: poetry run bandit -r src -c pyproject.toml
 
   docker:
     runs-on: ubuntu-latest
@@ -153,6 +151,7 @@ jobs:
       with:
         context: .
         push: false
+        load: true
         tags: sbir-etl:test
         cache-from: type=gha
         cache-to: type=gha,mode=max

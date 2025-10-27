@@ -6,7 +6,6 @@ data flows correctly between stages.
 """
 
 import pandas as pd
-import pytest
 from dagster import (
     DagsterEventType,
     build_asset_context,
@@ -16,7 +15,6 @@ from dagster._core.definitions.asset_selection import AssetSelection
 
 from src.assets.sbir_ingestion import raw_sbir_awards, validated_sbir_awards
 from src.assets.sbir_usaspending_enrichment import enriched_sbir_awards
-from src.assets.usaspending_ingestion import usaspending_recipient_lookup
 from src.definitions import defs
 
 
@@ -182,7 +180,6 @@ class TestEnrichmentPipelineSmokeTests:
 
         # Run enrichment
         enriched_result = enriched_sbir_awards(context, validated_df, usaspending_df)
-        enriched_df = enriched_result.value
 
         # Verify metadata includes quality metrics
         metadata = enriched_result.metadata

@@ -18,11 +18,10 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
-from ..models.uspto_models import PatentAssignment, PatentAssignee, PatentAssignor
 from .neo4j_client import LoadMetrics, Neo4jClient
 
 
@@ -47,7 +46,7 @@ class PatentLoader:
         config: PatentLoaderConfig with batch size and feature flags
     """
 
-    def __init__(self, client: Neo4jClient, config: Optional[PatentLoaderConfig] = None) -> None:
+    def __init__(self, client: Neo4jClient, config: PatentLoaderConfig | None = None) -> None:
         """Initialize PatentLoader.
 
         Args:
@@ -108,7 +107,7 @@ class PatentLoader:
                     logger.warning(f"Index may already exist: {e}")
 
     def load_patents(
-        self, patents: List[Dict[str, Any]], metrics: Optional[LoadMetrics] = None
+        self, patents: list[dict[str, Any]], metrics: LoadMetrics | None = None
     ) -> LoadMetrics:
         """Load Patent nodes into Neo4j.
 
@@ -191,8 +190,8 @@ class PatentLoader:
 
     def load_patent_assignments(
         self,
-        assignments: List[Dict[str, Any]],
-        metrics: Optional[LoadMetrics] = None,
+        assignments: list[dict[str, Any]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Load PatentAssignment nodes into Neo4j.
 
@@ -273,9 +272,9 @@ class PatentLoader:
 
     def load_patent_entities(
         self,
-        entities: List[Dict[str, Any]],
+        entities: list[dict[str, Any]],
         entity_type: str,
-        metrics: Optional[LoadMetrics] = None,
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Load PatentEntity nodes (assignees and assignors) into Neo4j.
 
@@ -364,8 +363,8 @@ class PatentLoader:
 
     def create_assigned_via_relationships(
         self,
-        assignments: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        assignments: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create ASSIGNED_VIA relationships between Patents and PatentAssignments.
 
@@ -434,8 +433,8 @@ class PatentLoader:
 
     def create_assigned_from_relationships(
         self,
-        assignments: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        assignments: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create ASSIGNED_FROM relationships (PatentAssignment → PatentEntity).
 
@@ -510,8 +509,8 @@ class PatentLoader:
 
     def create_assigned_to_relationships(
         self,
-        assignments: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        assignments: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create ASSIGNED_TO relationships (PatentAssignment → PatentEntity).
 
@@ -584,8 +583,8 @@ class PatentLoader:
 
     def create_generated_from_relationships(
         self,
-        patent_awards: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        patent_awards: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create GENERATED_FROM relationships (Patent → Award).
 
@@ -648,8 +647,8 @@ class PatentLoader:
 
     def create_owns_relationships(
         self,
-        company_patents: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        company_patents: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create OWNS relationships (Company → Patent).
 
@@ -712,8 +711,8 @@ class PatentLoader:
 
     def create_chain_of_relationships(
         self,
-        assignment_chains: List[Dict[str, str]],
-        metrics: Optional[LoadMetrics] = None,
+        assignment_chains: list[dict[str, str]],
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create CHAIN_OF relationships between sequential assignments.
 

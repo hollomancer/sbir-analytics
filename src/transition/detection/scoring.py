@@ -15,8 +15,8 @@ to produce a composite likelihood score (0.0-1.0) and confidence classification.
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import Any, Dict, Optional
+from datetime import date
+from typing import Any
 
 from loguru import logger
 
@@ -67,7 +67,7 @@ class TransitionScorer:
         ```
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize scorer with configuration.
 
@@ -106,10 +106,10 @@ class TransitionScorer:
 
     def score_agency_continuity(
         self,
-        award_agency: Optional[str],
-        contract_agency: Optional[str],
-        award_department: Optional[str] = None,
-        contract_department: Optional[str] = None,
+        award_agency: str | None,
+        contract_agency: str | None,
+        award_department: str | None = None,
+        contract_department: str | None = None,
     ) -> AgencySignal:
         """
         Score agency continuity between SBIR award and federal contract.
@@ -162,8 +162,8 @@ class TransitionScorer:
 
     def score_timing_proximity(
         self,
-        award_completion_date: Optional[date],
-        contract_start_date: Optional[date],
+        award_completion_date: date | None,
+        contract_start_date: date | None,
     ) -> TimingSignal:
         """
         Score timing proximity between award completion and contract start.
@@ -228,9 +228,7 @@ class TransitionScorer:
             timing_score=min(score, 1.0),
         )
 
-    def score_competition_type(
-        self, competition_type: Optional[CompetitionType]
-    ) -> CompetitionSignal:
+    def score_competition_type(self, competition_type: CompetitionType | None) -> CompetitionSignal:
         """
         Score competition type as indicator of targeted procurement.
 
@@ -270,7 +268,7 @@ class TransitionScorer:
         self,
         patent_count: int = 0,
         patents_pre_contract: int = 0,
-        patent_topic_similarity: Optional[float] = None,
+        patent_topic_similarity: float | None = None,
     ) -> PatentSignal:
         """
         Score patent-based commercialization signals.
@@ -318,8 +316,8 @@ class TransitionScorer:
 
     def score_cet_alignment(
         self,
-        award_cet: Optional[str],
-        contract_cet: Optional[str],
+        award_cet: str | None,
+        contract_cet: str | None,
     ) -> CETSignal:
         """
         Score CET (Critical & Emerging Technology) area alignment.
@@ -359,7 +357,7 @@ class TransitionScorer:
             cet_alignment_score=min(score, 1.0),
         )
 
-    def score_text_similarity(self, similarity_score: Optional[float]) -> float:
+    def score_text_similarity(self, similarity_score: float | None) -> float:
         """
         Score optional text similarity between award and contract descriptions.
 
@@ -439,10 +437,10 @@ class TransitionScorer:
 
     def score_transition(
         self,
-        award_data: Dict[str, Any],
-        contract_data: Dict[str, Any],
-        patent_data: Optional[Dict[str, Any]] = None,
-        cet_data: Optional[Dict[str, Any]] = None,
+        award_data: dict[str, Any],
+        contract_data: dict[str, Any],
+        patent_data: dict[str, Any] | None = None,
+        cet_data: dict[str, Any] | None = None,
     ) -> TransitionSignals:
         """
         Convenience method to score all signals from input data dictionaries.
@@ -505,10 +503,10 @@ class TransitionScorer:
 
     def score_and_classify(
         self,
-        award_data: Dict[str, Any],
-        contract_data: Dict[str, Any],
-        patent_data: Optional[Dict[str, Any]] = None,
-        cet_data: Optional[Dict[str, Any]] = None,
+        award_data: dict[str, Any],
+        contract_data: dict[str, Any],
+        patent_data: dict[str, Any] | None = None,
+        cet_data: dict[str, Any] | None = None,
     ) -> tuple[TransitionSignals, float, ConfidenceLevel]:
         """
         End-to-end scoring: compute signals, final score, and confidence.

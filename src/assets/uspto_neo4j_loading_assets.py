@@ -29,15 +29,12 @@ import time
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
-    AssetIn,
-    DependencyDefinition,
-    MetadataValue,
     asset,
     asset_check,
 )
@@ -79,16 +76,16 @@ class Neo4jLoadMetrics:
     """Metrics for Neo4j loading operation."""
 
     phase: str
-    nodes_created: Dict[str, int]
-    nodes_updated: Dict[str, int]
-    relationships_created: Dict[str, int]
+    nodes_created: dict[str, int]
+    nodes_updated: dict[str, int]
+    relationships_created: dict[str, int]
     errors: int
     duration_seconds: float
     records_processed: int
     success_rate: float
 
 
-def _get_neo4j_client() -> Optional[Neo4jClient]:
+def _get_neo4j_client() -> Neo4jClient | None:
     """Create and return a Neo4j client, or None if unavailable."""
     if Neo4jClient is None or Neo4jConfig is None:
         logger.warning("Neo4jClient unavailable; skipping Neo4j operations")
@@ -115,7 +112,7 @@ def _ensure_output_dir() -> Path:
     return DEFAULT_NEO4J_OUTPUT_DIR
 
 
-def _load_transformed_file(file_path: Path) -> List[Dict[str, Any]]:
+def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
     """Load JSONL file of transformed records."""
     records = []
     if not file_path.exists():
@@ -142,16 +139,16 @@ def _load_transformed_file(file_path: Path) -> List[Dict[str, Any]]:
 
 def _convert_dates_to_iso(obj: Any) -> Any:
     """Recursively convert date/datetime objects to ISO format strings."""
-    if isinstance(obj, (date, datetime)):
+    if isinstance(obj, date | datetime):
         return obj.isoformat()
     elif isinstance(obj, dict):
         return {k: _convert_dates_to_iso(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return [_convert_dates_to_iso(item) for item in obj]
     return obj
 
 
-def _serialize_metrics(metrics: Optional[LoadMetrics]) -> Dict[str, Any]:
+def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
     """Serialize LoadMetrics to dict for output."""
     if metrics is None:
         return {
@@ -183,7 +180,7 @@ def _serialize_metrics(metrics: Optional[LoadMetrics]) -> Dict[str, Any]:
         "create_constraints": {"type": "bool", "default": True},
     },
 )
-def neo4j_patents(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patents(context: AssetExecutionContext) -> dict[str, Any]:
     """Phase 1 Step 2: Load Patent nodes into Neo4j.
 
     Reads transformed patent documents and creates Patent nodes with:
@@ -284,7 +281,7 @@ def neo4j_patents(context: AssetExecutionContext) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patent_assignments"],
 )
-def neo4j_patent_assignments(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patent_assignments(context: AssetExecutionContext) -> dict[str, Any]:
     """Phase 1 Step 1: Load PatentAssignment nodes into Neo4j.
 
     Reads transformed patent assignments and creates PatentAssignment nodes with:
@@ -380,7 +377,7 @@ def neo4j_patent_assignments(context: AssetExecutionContext) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["neo4j_patients", "neo4j_patent_assignments", "transformed_patent_entities"],
 )
-def neo4j_patent_entities(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patent_entities(context: AssetExecutionContext) -> dict[str, Any]:
     """Phase 2 & 3: Load PatentEntity nodes and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
@@ -485,10 +482,10 @@ def neo4j_patent_entities(context: AssetExecutionContext) -> Dict[str, Any]:
 )
 def neo4j_patent_relationships(
     context: AssetExecutionContext,
-    neo4j_patents: Dict[str, Any],
-    neo4j_patent_assignments: Dict[str, Any],
-    neo4j_patent_entities: Dict[str, Any],
-) -> Dict[str, Any]:
+    neo4j_patents: dict[str, Any],
+    neo4j_patent_assignments: dict[str, Any],
+    neo4j_patent_entities: dict[str, Any],
+) -> dict[str, Any]:
     """Phase 1 Step 3 & Phase 4: Create all relationships.
 
     Creates relationships:
@@ -633,7 +630,7 @@ def neo4j_patent_relationships(
     description="Verify patent load success rate meets minimum threshold",
 )
 def patent_load_success_rate(
-    context: AssetExecutionContext, neo4j_patents: Dict[str, Any]
+    context: AssetExecutionContext, neo4j_patents: dict[str, Any]
 ) -> AssetCheckResult:
     """Check that patent loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patents.get("success_rate", 0.0)
@@ -666,7 +663,7 @@ def patent_load_success_rate(
     description="Verify assignment load success rate meets minimum threshold",
 )
 def assignment_load_success_rate(
-    context: AssetExecutionContext, neo4j_patent_assignments: Dict[str, Any]
+    context: AssetExecutionContext, neo4j_patent_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     """Check that assignment loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patent_assignments.get("success_rate", 0.0)
@@ -699,7 +696,7 @@ def assignment_load_success_rate(
     description="Sanity check relationship cardinality",
 )
 def patent_relationship_cardinality(
-    context: AssetExecutionContext, neo4j_patent_relationships: Dict[str, Any]
+    context: AssetExecutionContext, neo4j_patent_relationships: dict[str, Any]
 ) -> AssetCheckResult:
     """Sanity check that reasonable numbers of each relationship type exist."""
     assigned_via = neo4j_patent_relationships.get("assigned_via_count", 0)

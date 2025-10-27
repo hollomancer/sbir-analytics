@@ -9,11 +9,9 @@ Tests cover:
 """
 
 from datetime import date
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 
 # Import the modules under test; skip if dependencies unavailable
 pytest.importorskip("neo4j", reason="neo4j driver missing")
@@ -337,7 +335,7 @@ class TestPatentEntityNodeLoading:
             }
         ]
 
-        result = loader.load_patent_entities(entities, entity_type="ASSIGNOR")
+        loader.load_patent_entities(entities, entity_type="ASSIGNOR")
 
         call_args = mock_client.batch_upsert_nodes.call_args
         nodes = call_args[1]["nodes"]
@@ -585,7 +583,7 @@ class TestMetricsAccumulation:
 
     def test_metrics_accumulation_across_operations(self):
         """Test metrics are properly accumulated."""
-        mock_client = MagicMock(spec=Neo4jClient)
+        MagicMock(spec=Neo4jClient)
 
         # First operation
         metrics1 = LoadMetrics()

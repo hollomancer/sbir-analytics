@@ -1,6 +1,6 @@
 import pytest
 
-from src.transition.features.vendor_resolver import VendorResolver, VendorRecord, VendorMatch
+from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 @pytest.fixture

@@ -1,10 +1,6 @@
-import json
-import os
 from pathlib import Path
-from typing import Dict
 
 import pytest
-
 
 # Import the modules under test; if they are not available skip the tests gracefully.
 pytest.importorskip("pandas")
@@ -21,7 +17,7 @@ PatentDocument = getattr(models_module, "PatentDocument", None)
 PatentAssignee = getattr(models_module, "PatentAssignee", None)
 
 
-def write_csv(tmp_path: Path, filename: str, rows: Dict):
+def write_csv(tmp_path: Path, filename: str, rows: dict):
     """
     Helper to write a small CSV to tmp_path with provided rows (list of dicts).
     Returns Path to file.

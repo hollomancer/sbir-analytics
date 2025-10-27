@@ -6,7 +6,6 @@ Provides reusable test fixtures for CET models, configuration, and sample data.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 import pytest
 import yaml
@@ -117,7 +116,7 @@ def sample_company_cet_profile() -> CompanyCETProfile:
 
 
 @pytest.fixture
-def sample_award_data() -> Dict:
+def sample_award_data() -> dict:
     """Sample SBIR award data for classification testing."""
     return {
         "award_id": "award_001",
@@ -136,7 +135,7 @@ def sample_award_data() -> Dict:
 
 
 @pytest.fixture
-def sample_award_data_batch() -> List[Dict]:
+def sample_award_data_batch() -> list[dict]:
     """Sample batch of SBIR awards for batch classification testing."""
     return [
         {
@@ -241,7 +240,7 @@ def mock_trained_model_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_training_data() -> List[Dict]:
+def sample_training_data() -> list[dict]:
     """Sample training data for model training tests."""
     return [
         {
@@ -273,7 +272,7 @@ def sample_training_data() -> List[Dict]:
 
 
 @pytest.fixture
-def cet_classification_thresholds() -> Dict[str, float]:
+def cet_classification_thresholds() -> dict[str, float]:
     """Standard CET classification thresholds."""
     return {
         "high": 70.0,
@@ -283,7 +282,7 @@ def cet_classification_thresholds() -> Dict[str, float]:
 
 
 @pytest.fixture
-def all_cet_ids() -> List[str]:
+def all_cet_ids() -> list[str]:
     """List of all 21 CET area IDs."""
     return [
         "advanced_computing",

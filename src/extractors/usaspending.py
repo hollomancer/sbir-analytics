@@ -7,7 +7,6 @@ Supports both direct DuckDB postgres_scanner access and pg_restore streaming for
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import duckdb
 import pandas as pd
@@ -83,8 +82,8 @@ class DuckDBUSAspendingExtractor:
             if not dump_file.exists():
                 raise FileNotFoundError(f"PostgreSQL dump file not found: {dump_file}")
 
-            conn = self.connect()
-            base_table_identifier = self._escape_identifier(table_name)
+            self.connect()
+            self._escape_identifier(table_name)
 
             try:
                 # Handle different dump formats
@@ -230,12 +229,11 @@ class DuckDBUSAspendingExtractor:
                             logger.error(f"Failed to create table {table_name_for_file}: {e}")
 
                 # Create a union view for transaction_normalized if multiple tables
+                base_table_identifier = self._escape_identifier(table_name)
                 txn_tables = [f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5420]
                 if txn_tables:
                     first_table_identifier = self._escape_identifier(txn_tables[0])
-                    union_query = (
-                        f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"
-                    )  # nosec B608
+                    union_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"  # nosec B608
                     conn.execute(union_query)
                     logger.info(f"Created view {table_name} from {txn_tables[0]}")
 

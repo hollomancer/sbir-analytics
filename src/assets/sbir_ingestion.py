@@ -19,8 +19,8 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..extractors.sbir import SbirDuckDBExtractor
-from ..validators.sbir_awards import validate_sbir_awards
 from ..utils.performance_monitor import performance_monitor
+from ..validators.sbir_awards import validate_sbir_awards
 
 
 @asset(
@@ -193,9 +193,9 @@ def validated_sbir_awards(
     )
 
     # Filter to passing records (no ERROR issues)
-    error_rows = set(
+    error_rows = {
         issue.row_index for issue in quality_report.issues if issue.severity.value == "ERROR"
-    )
+    }
 
     validated_df = raw_sbir_awards[~raw_sbir_awards.index.isin(error_rows)].copy()
 

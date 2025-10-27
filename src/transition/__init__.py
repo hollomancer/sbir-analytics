@@ -17,9 +17,9 @@ Design goals:
 from __future__ import annotations
 
 import dataclasses
-import json
+import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Package version: bumped manually when making releases for the transition module.
 __version__ = "0.1.0"
@@ -32,7 +32,7 @@ DEFAULT_CONFIG_PATH = os.environ.get(
 # Default values for the transition detection subsystem. These are intentionally
 # conservative; operational teams should override them in `config/transition/*.yaml`
 # or via environment variables in production.
-DEFAULTS: Dict[str, Any] = {
+DEFAULTS: dict[str, Any] = {
     "fuzzy_threshold": 0.90,  # vendor name fuzzy match threshold (0.0-1.0)
     "fuzzy_secondary_threshold": 0.80,  # lower-confidence threshold
     "batch_size_contracts": 100000,  # chunk size when scanning large contract datasets
@@ -78,19 +78,19 @@ class Config:
     fuzzy_secondary_threshold: float = DEFAULTS["fuzzy_secondary_threshold"]
     batch_size_contracts: int = DEFAULTS["batch_size_contracts"]
     detection_timing_window_months: int = DEFAULTS["detection_timing_window_months"]
-    scoring: Dict[str, Any] = dataclasses.field(default_factory=lambda: dict(DEFAULTS["scoring"]))
-    vendor_matching: Dict[str, Any] = dataclasses.field(
+    scoring: dict[str, Any] = dataclasses.field(default_factory=lambda: dict(DEFAULTS["scoring"]))
+    vendor_matching: dict[str, Any] = dataclasses.field(
         default_factory=lambda: dict(DEFAULTS["vendor_matching"])
     )
-    metrics: Dict[str, Any] = dataclasses.field(default_factory=lambda: dict(DEFAULTS["metrics"]))
-    extra: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    metrics: dict[str, Any] = dataclasses.field(default_factory=lambda: dict(DEFAULTS["metrics"]))
+    extra: dict[str, Any] = dataclasses.field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = dataclasses.asdict(self)
         return d
 
 
-def _load_yaml(path: str) -> Optional[Dict[str, Any]]:
+def _load_yaml(path: str) -> dict[str, Any] | None:
     """
     Minimal YAML loader that attempts to use a YAML library if available.
 
@@ -102,13 +102,13 @@ def _load_yaml(path: str) -> Optional[Dict[str, Any]]:
         return None
 
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
     except Exception:
         return None
 
 
-def _apply_overrides_from_env(cfg: Dict[str, Any]) -> Dict[str, Any]:
+def _apply_overrides_from_env(cfg: dict[str, Any]) -> dict[str, Any]:
     """
     Apply environment variable overrides for a few common keys. This is lightweight
     and only supports simple scalar overrides. Consumers can extend this logic.
@@ -130,7 +130,7 @@ def _apply_overrides_from_env(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return cfg
 
 
-def load_config(path: Optional[str] = None) -> Config:
+def load_config(path: str | None = None) -> Config:
     """
     Load transition detection configuration.
 
@@ -142,7 +142,7 @@ def load_config(path: Optional[str] = None) -> Config:
     Returns a Config dataclass instance.
     """
     cfg_path = path or DEFAULT_CONFIG_PATH
-    loaded: Dict[str, Any] = {}
+    loaded: dict[str, Any] = {}
 
     # Attempt to load YAML if available
     yaml_data = _load_yaml(cfg_path)

@@ -85,9 +85,7 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     conveyance_path = _write_csv(
         tmp_path,
         "conveyance.csv",
-        [
-            {"rf_id": "RF1", "convey_ty": "assignment", "employer_assign": True}
-        ],
+        [{"rf_id": "RF1", "convey_ty": "assignment", "employer_assign": True}],
     )
 
     assignment_ctx = build_asset_context(

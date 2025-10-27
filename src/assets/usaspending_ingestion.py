@@ -11,7 +11,6 @@ from dagster import (
     Output,
     asset,
 )
-from loguru import logger
 
 from ..config.loader import get_config
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
@@ -31,7 +30,6 @@ def usaspending_recipient_lookup(context: AssetExecutionContext) -> Output[pd.Da
     """
     # Get configuration
     config = get_config()
-    usaspending_config = config.extraction.usaspending
 
     # Use removable media path
     dump_path = Path("/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip")

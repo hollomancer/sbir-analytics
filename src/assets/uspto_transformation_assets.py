@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import os
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 from dagster import (
     AssetCheckResult,
@@ -38,7 +39,9 @@ except Exception:
     PatentAssignment = None  # type: ignore
 
 
-DEFAULT_TRANSFORMED_DIR = Path(os.environ.get("SBIR_ETL__USPTO__TRANSFORM_DIR", "data/transformed/uspto"))
+DEFAULT_TRANSFORMED_DIR = Path(
+    os.environ.get("SBIR_ETL__USPTO__TRANSFORM_DIR", "data/transformed/uspto")
+)
 TRANSFORM_SUCCESS_THRESHOLD = float(
     os.environ.get("SBIR_ETL__USPTO__TRANSFORM_SUCCESS_THRESHOLD", "0.98")
 )
@@ -54,7 +57,7 @@ def _ensure_dir(path: Path) -> Path:
     return path
 
 
-def _load_sbir_index(index_path: Optional[str]) -> Dict[str, str]:
+def _load_sbir_index(index_path: str | None) -> dict[str, str]:
     if not index_path:
         return {}
     idx_file = Path(index_path)
@@ -70,7 +73,7 @@ def _load_sbir_index(index_path: Optional[str]) -> Dict[str, str]:
     return {}
 
 
-def _serialize_assignment(model: Any) -> Dict[str, Any]:
+def _serialize_assignment(model: Any) -> dict[str, Any]:
     if model is None:
         return {}
     if hasattr(model, "model_dump"):
@@ -80,23 +83,25 @@ def _serialize_assignment(model: Any) -> Dict[str, Any]:
     return dict(model.__dict__)
 
 
-def _iter_small_sample(store: List[Any], new_item: Any, limit: int) -> None:
+def _iter_small_sample(store: list[Any], new_item: Any, limit: int) -> None:
     if len(store) < limit:
         store.append(new_item)
 
 
-def _coerce_str(val: Any) -> Optional[str]:
+def _coerce_str(val: Any) -> str | None:
     if val in (None, ""):
         return None
     return str(val)
 
 
-def _combine_address(*parts: Optional[str]) -> Optional[str]:
-    parts_clean = [p for p in (part.strip() if isinstance(part, str) else part for part in parts) if p]
+def _combine_address(*parts: str | None) -> str | None:
+    parts_clean = [
+        p for p in (part.strip() if isinstance(part, str) else part for part in parts) if p
+    ]
     return ", ".join(parts_clean) if parts_clean else None
 
 
-def _normalize_country(country: Optional[str]) -> Optional[str]:
+def _normalize_country(country: str | None) -> str | None:
     if not country:
         return None
     c = str(country).strip().upper()
@@ -107,8 +112,8 @@ def _normalize_country(country: Optional[str]) -> Optional[str]:
 
 @dataclass
 class JoinedRow:
-    data: Dict[str, Any]
-    rf_id: Optional[str]
+    data: dict[str, Any]
+    rf_id: str | None
 
 
 class USPTOAssignmentJoiner:
@@ -118,8 +123,8 @@ class USPTOAssignmentJoiner:
         self.extractor = extractor
         self.chunk_size = chunk_size
 
-    def _lookup(self, files: Iterable[str]) -> Dict[str, List[Dict[str, Any]]]:
-        table: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    def _lookup(self, files: Iterable[str]) -> dict[str, list[dict[str, Any]]]:
+        table: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for file_path in files or []:
             path = Path(file_path)
             if not path.exists():
@@ -135,13 +140,13 @@ class USPTOAssignmentJoiner:
 
     @staticmethod
     def _merge_rows(
-        assignment: Dict[str, Any],
-        assignee: Optional[Dict[str, Any]],
-        assignor: Optional[Dict[str, Any]],
-        document: Optional[Dict[str, Any]],
-        conveyance: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        merged: Dict[str, Any] = {}
+        assignment: dict[str, Any],
+        assignee: dict[str, Any] | None,
+        assignor: dict[str, Any] | None,
+        document: dict[str, Any] | None,
+        conveyance: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        merged: dict[str, Any] = {}
 
         def set_if(key: str, *values: Any) -> None:
             for value in values:
@@ -165,7 +170,11 @@ class USPTOAssignmentJoiner:
         if document:
             set_if("document_rf_id", document.get("rf_id"))
             set_if("grant_doc_num", document.get("grant_doc_num"), document.get("grant_doc_number"))
-            set_if("application_number", document.get("appno_doc_num"), document.get("appno_doc_number"))
+            set_if(
+                "application_number",
+                document.get("appno_doc_num"),
+                document.get("appno_doc_number"),
+            )
             set_if("publication_number", document.get("pgpub_doc_num"))
             set_if("filing_date", document.get("appno_date"))
             set_if("publication_date", document.get("pgpub_date"))
@@ -237,7 +246,7 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
-def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> Tuple[Path, Path]:
+def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)
@@ -245,7 +254,7 @@ def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> Tuple[
     return base_dir / f"{prefix}_{timestamp}.jsonl", base_dir
 
 
-def _load_assignments_file(path: Optional[str]) -> Iterable[Dict[str, Any]]:
+def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
     if not path:
         return []
     src = Path(path)
@@ -275,13 +284,13 @@ def _load_assignments_file(path: Optional[str]) -> Iterable[Dict[str, Any]]:
 )
 def transformed_patent_assignments(
     context: AssetExecutionContext,
-    assignment_files: List[str],
-    assignee_files: List[str],
-    assignor_files: List[str],
-    documentid_files: List[str],
-    conveyance_files: List[str],
-    validation_report: Dict[str, Any],
-) -> Dict[str, Any]:
+    assignment_files: list[str],
+    assignee_files: list[str],
+    assignor_files: list[str],
+    documentid_files: list[str],
+    conveyance_files: list[str],
+    validation_report: dict[str, Any],
+) -> dict[str, Any]:
     if USPTOExtractor is None or PatentAssignmentTransformer is None:
         msg = "USPTOExtractor or PatentAssignmentTransformer unavailable"
         context.log.warning(msg)
@@ -304,16 +313,17 @@ def transformed_patent_assignments(
         "error_count": 0,
         "linked_count": 0,
     }
-    samples: List[Dict[str, Any]] = []
+    samples: list[dict[str, Any]] = []
 
     extractor = USPTOExtractor(Path(assignment_files[0]).parent)
     joiner = USPTOAssignmentJoiner(extractor, chunk_size=chunk_size)
     transformer = PatentAssignmentTransformer(sbir_company_grant_index=sbir_index)
 
     failure_written = False
-    with output_path.open("w", encoding="utf-8") as out_fh, failure_path.open(
-        "w", encoding="utf-8"
-    ) as fail_fh:
+    with (
+        output_path.open("w", encoding="utf-8") as out_fh,
+        failure_path.open("w", encoding="utf-8") as fail_fh,
+    ):
         for joined in joiner.iter_joined_records(
             assignment_files, assignee_files, assignor_files, documentid_files, conveyance_files
         ):
@@ -373,15 +383,15 @@ def transformed_patent_assignments(
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patents(
-    context: AssetExecutionContext, transformed_assignments: Dict[str, Any]
-) -> Dict[str, Any]:
+    context: AssetExecutionContext, transformed_assignments: dict[str, Any]
+) -> dict[str, Any]:
     output_path, base_dir = _resolve_output_paths(context, "patents")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
         context.log.warning("No transformed assignments output available for patent aggregation")
         return {"error": "missing_assignments", "patent_count": 0}
 
-    patents: Dict[str, Dict[str, Any]] = {}
+    patents: dict[str, dict[str, Any]] = {}
     linked = 0
     for record in _load_assignments_file(src_path):
         document = record.get("document") or {}
@@ -445,17 +455,17 @@ def transformed_patents(
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patent_entities(
-    context: AssetExecutionContext, transformed_assignments: Dict[str, Any]
-) -> Dict[str, Any]:
+    context: AssetExecutionContext, transformed_assignments: dict[str, Any]
+) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
         context.log.warning("No transformed assignments output available for entity aggregation")
         return {"error": "missing_assignments", "entity_count": 0}
 
-    entities: Dict[str, Dict[str, Any]] = {}
+    entities: dict[str, dict[str, Any]] = {}
 
-    def upsert(entity: Dict[str, Any], entity_type: str, rf_id: Optional[str]) -> None:
+    def upsert(entity: dict[str, Any], entity_type: str, rf_id: str | None) -> None:
         if not entity:
             return
         name = entity.get("name")
@@ -477,7 +487,9 @@ def transformed_patent_entities(
         if rf_id:
             bucket["rf_ids"].add(rf_id)
         if entity.get("metadata", {}).get("linked_sbir_company"):
-            bucket["linked_companies"].add(entity["metadata"]["linked_sbir_company"].get("company_id"))
+            bucket["linked_companies"].add(
+                entity["metadata"]["linked_sbir_company"].get("company_id")
+            )
 
     for record in _load_assignments_file(src_path):
         rf_id = record.get("rf_id")
@@ -505,7 +517,7 @@ def transformed_patent_entities(
     description="Verify transformation success rate meets threshold",
 )
 def uspto_transformation_success_check(
-    context: AssetExecutionContext, transformed_patent_assignments: Dict[str, Any]
+    context: AssetExecutionContext, transformed_patent_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     success_rate = transformed_patent_assignments.get("success_rate", 0.0)
     passed = success_rate >= TRANSFORM_SUCCESS_THRESHOLD
@@ -532,7 +544,7 @@ def uspto_transformation_success_check(
     description="Ensure SBIR company linkage coverage meets target",
 )
 def uspto_company_linkage_check(
-    context: AssetExecutionContext, transformed_patent_assignments: Dict[str, Any]
+    context: AssetExecutionContext, transformed_patent_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET

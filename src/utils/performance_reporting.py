@@ -12,10 +12,10 @@ Features:
 """
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -28,15 +28,15 @@ class PerformanceMetrics:
     records_per_second: float
     peak_memory_mb: float
     avg_memory_delta_mb: float
-    match_rate: Optional[float] = None
-    matched_records: Optional[int] = None
-    total_records: Optional[int] = None
-    exact_matches: Optional[int] = None
-    fuzzy_matches: Optional[int] = None
-    timestamp: Optional[str] = None
+    match_rate: float | None = None
+    matched_records: int | None = None
+    total_records: int | None = None
+    exact_matches: int | None = None
+    fuzzy_matches: int | None = None
+    timestamp: str | None = None
 
     @classmethod
-    def from_benchmark(cls, benchmark_data: Dict[str, Any]) -> "PerformanceMetrics":
+    def from_benchmark(cls, benchmark_data: dict[str, Any]) -> "PerformanceMetrics":
         """Create PerformanceMetrics from benchmark JSON data.
 
         Args:
@@ -62,7 +62,7 @@ class PerformanceMetrics:
         )
 
     @classmethod
-    def from_asset_metadata(cls, metadata: Dict[str, Any]) -> "PerformanceMetrics":
+    def from_asset_metadata(cls, metadata: dict[str, Any]) -> "PerformanceMetrics":
         """Create PerformanceMetrics from Dagster asset metadata.
 
         Args:
@@ -91,9 +91,9 @@ class MetricComparison:
     current_metrics: PerformanceMetrics
     time_delta_percent: float
     memory_delta_percent: float
-    match_rate_delta_percent: Optional[float] = None
+    match_rate_delta_percent: float | None = None
     regression_severity: str = "PASS"  # PASS, WARNING, FAILURE
-    regression_messages: List[str] = None
+    regression_messages: list[str] = None
 
     def __post_init__(self):
         if self.regression_messages is None:
@@ -297,7 +297,7 @@ class PerformanceReporter:
 
         return "\n".join(lines)
 
-    def format_benchmark_markdown(self, benchmark_data: Dict[str, Any]) -> str:
+    def format_benchmark_markdown(self, benchmark_data: dict[str, Any]) -> str:
         """Format benchmark results as Markdown report.
 
         Args:
@@ -358,8 +358,8 @@ class PerformanceReporter:
 
     def generate_html_report(
         self,
-        benchmark_data: Dict[str, Any],
-        comparison: Optional[MetricComparison] = None,
+        benchmark_data: dict[str, Any],
+        comparison: MetricComparison | None = None,
         title: str = "Performance Report",
     ) -> str:
         """Generate HTML report from benchmark data and optional comparison.
@@ -380,7 +380,7 @@ class PerformanceReporter:
         status = "PASS"
         status_color = "green"
         if regressions:
-            analysis = regressions.get("analysis", {})
+            regressions.get("analysis", {})
             if regressions.get("failures"):
                 status = "FAILURE"
                 status_color = "red"
@@ -615,7 +615,7 @@ class PerformanceReporter:
         return html
 
     @staticmethod
-    def _html_regression_section(regressions: Dict[str, Any]) -> str:
+    def _html_regression_section(regressions: dict[str, Any]) -> str:
         """Generate HTML regression analysis section."""
         analysis = regressions.get("analysis", {})
         html = "<table><tr><th>Delta</th><th>Value</th></tr>"
@@ -628,8 +628,8 @@ class PerformanceReporter:
 
     def save_markdown_report(
         self,
-        benchmark_data: Dict[str, Any],
-        output_path: Optional[Path] = None,
+        benchmark_data: dict[str, Any],
+        output_path: Path | None = None,
     ) -> Path:
         """Save benchmark as Markdown report.
 
@@ -657,8 +657,8 @@ class PerformanceReporter:
 
     def save_html_report(
         self,
-        benchmark_data: Dict[str, Any],
-        output_path: Optional[Path] = None,
+        benchmark_data: dict[str, Any],
+        output_path: Path | None = None,
         title: str = "Performance Report",
     ) -> Path:
         """Save benchmark as HTML report.
@@ -687,7 +687,7 @@ class PerformanceReporter:
         return output_path
 
 
-def load_historical_metrics(metrics_dir: Path) -> List[Tuple[Path, PerformanceMetrics]]:
+def load_historical_metrics(metrics_dir: Path) -> list[tuple[Path, PerformanceMetrics]]:
     """Load all historical benchmark metrics from a directory.
 
     Args:
@@ -711,8 +711,8 @@ def load_historical_metrics(metrics_dir: Path) -> List[Tuple[Path, PerformanceMe
 
 
 def analyze_performance_trend(
-    metrics_list: List[Tuple[Path, PerformanceMetrics]],
-) -> Dict[str, Any]:
+    metrics_list: list[tuple[Path, PerformanceMetrics]],
+) -> dict[str, Any]:
     """Analyze performance trend across multiple benchmark runs.
 
     Args:

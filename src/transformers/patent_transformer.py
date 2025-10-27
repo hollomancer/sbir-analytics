@@ -25,17 +25,12 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import date
 from difflib import SequenceMatcher
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
 )
 
 # Try to use rapidfuzz for fuzzy matching; fallback to difflib
@@ -49,12 +44,12 @@ except Exception:
 # Import Pydantic models from uspto_models
 try:
     from src.models.uspto_models import (
-        PatentAssignment,
-        PatentDocument,
+        ConveyanceType,
         PatentAssignee,
+        PatentAssignment,
         PatentAssignor,
         PatentConveyance,
-        ConveyanceType,
+        PatentDocument,
     )
 except Exception:
     # If models are not importable, define simple placeholders to avoid hard failure.
@@ -100,8 +95,8 @@ class PatentAssignmentTransformer:
 
     def __init__(
         self,
-        sbir_company_grant_index: Optional[Dict[str, str]] = None,
-        options: Optional[PatentTransformOptions] = None,
+        sbir_company_grant_index: dict[str, str] | None = None,
+        options: PatentTransformOptions | None = None,
     ) -> None:
         self.sbir_index = sbir_company_grant_index or {}
         self.options = options or PatentTransformOptions()
@@ -115,7 +110,7 @@ class PatentAssignmentTransformer:
     # Normalization helpers
     # ------------------------
     @staticmethod
-    def _normalize_identifier(val: Optional[Any]) -> Optional[str]:
+    def _normalize_identifier(val: Any | None) -> str | None:
         if val is None:
             return None
         s = str(val).strip()
@@ -126,7 +121,7 @@ class PatentAssignmentTransformer:
         return s.upper()
 
     @staticmethod
-    def _normalize_name(name: Optional[Any]) -> Optional[str]:
+    def _normalize_name(name: Any | None) -> str | None:
         if name is None:
             return None
         s = " ".join(str(name).strip().split())
@@ -135,8 +130,8 @@ class PatentAssignmentTransformer:
 
     @staticmethod
     def _parse_address(
-        text: Optional[Any],
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
+        text: Any | None,
+    ) -> tuple[str | None, str | None, str | None, str | None, str | None]:
         """
         Heuristic address parser for assignee/assignor free-text address fields.
 
@@ -205,7 +200,7 @@ class PatentAssignmentTransformer:
         return _clean(street), _clean(city), _clean(state), _clean(postal), _clean(country)
 
     @staticmethod
-    def _parse_date(value: Optional[Any]) -> Optional[date]:
+    def _parse_date(value: Any | None) -> date | None:
         # Delegate to models' parsing where possible; keep simple ISO acceptance here
         if value is None or value == "":
             return None
@@ -230,9 +225,7 @@ class PatentAssignmentTransformer:
     # ------------------------
     # Conveyance parsing
     # ------------------------
-    def _infer_conveyance_type(
-        self, text: Optional[str]
-    ) -> Tuple[Optional[ConveyanceType], Optional[bool]]:
+    def _infer_conveyance_type(self, text: str | None) -> tuple[ConveyanceType | None, bool | None]:
         """
         Heuristically infer the conveyance type and whether it's an employer-assignment.
         Returns (ConveyanceType, employer_assign_flag)
@@ -281,7 +274,7 @@ class PatentAssignmentTransformer:
         except Exception:
             return 0.0
 
-    def _match_grant_to_sbir(self, grant: Optional[str]) -> Optional[Tuple[str, float]]:
+    def _match_grant_to_sbir(self, grant: str | None) -> tuple[str, float] | None:
         """
         Try to match a normalized grant_doc_num to the SBIR company index.
         Returns (company_id, score) or None.
@@ -316,7 +309,7 @@ class PatentAssignmentTransformer:
     # ------------------------
     # Row -> Model mapping
     # ------------------------
-    def transform_row(self, row: Dict[str, Any]) -> Union[PatentAssignment, Dict[str, Any]]:
+    def transform_row(self, row: dict[str, Any]) -> PatentAssignment | dict[str, Any]:
         """
         Transform a single raw row dict into a PatentAssignment Pydantic model.
         On validation or mapping error, returns a dict with `_error` key describing the issue.
@@ -468,7 +461,7 @@ class PatentAssignmentTransformer:
 
     # Task 7.8: Assignment chain metadata calculation
     # -----------------------------------------------
-    def _calculate_chain_metadata(self, assignment: PatentAssignment, row: Dict[str, Any]) -> None:
+    def _calculate_chain_metadata(self, assignment: PatentAssignment, row: dict[str, Any]) -> None:
         """
         Calculate and attach assignment chain metadata to track timeline and transitions.
 
@@ -548,7 +541,7 @@ class PatentAssignmentTransformer:
     # Task 7.4: Enhanced address standardization (building on _parse_address)
     # -----------------------------------------------------------------------
     @staticmethod
-    def _standardize_state_code(state: Optional[str]) -> Optional[str]:
+    def _standardize_state_code(state: str | None) -> str | None:
         """
         Standardize state abbreviations and full names to 2-letter codes.
 
@@ -634,7 +627,7 @@ class PatentAssignmentTransformer:
         return None
 
     @staticmethod
-    def _standardize_country_code(country: Optional[str]) -> Optional[str]:
+    def _standardize_country_code(country: str | None) -> str | None:
         """
         Standardize country names to ISO 3166-1 alpha-2 codes.
 
@@ -689,12 +682,12 @@ class PatentAssignmentTransformer:
 
     @staticmethod
     def _standardize_address(
-        street: Optional[str],
-        city: Optional[str],
-        state: Optional[str],
-        postal_code: Optional[str],
-        country: Optional[str],
-    ) -> Dict[str, Optional[str]]:
+        street: str | None,
+        city: str | None,
+        state: str | None,
+        postal_code: str | None,
+        country: str | None,
+    ) -> dict[str, str | None]:
         """
         Standardize and normalize address components for consistency.
 
@@ -755,8 +748,8 @@ class PatentAssignmentTransformer:
     # Batch helpers
     # ------------------------
     def transform_chunk(
-        self, rows: Iterable[Dict[str, Any]]
-    ) -> Iterator[Union[PatentAssignment, Dict[str, Any]]]:
+        self, rows: Iterable[dict[str, Any]]
+    ) -> Iterator[PatentAssignment | dict[str, Any]]:
         """
         Transform an iterable of raw rows into PatentAssignment models in a streaming fashion.
         """

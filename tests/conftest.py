@@ -14,12 +14,11 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
 
-def _find_repo_root(start: Optional[Path] = None) -> Path:
+def _find_repo_root(start: Path | None = None) -> Path:
     """
     Walk upwards from `start` (defaults to this file's parent) until a likely
     repository root is found. Heuristics:
