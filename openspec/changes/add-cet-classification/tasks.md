@@ -6,10 +6,10 @@
 
 - [x] 1.1 Add scikit-learn>=1.4.0 to pyproject.toml dependencies
 - [x] 1.2 Add spacy>=3.7.0 to pyproject.toml dependencies
-- [ ] 1.3 Install spaCy English model: python -m spacy download en_core_web_sm
+- [x] 1.3 Install spaCy English model: python -m spacy download en_core_web_sm
 - [x] 1.4 Create src/ml/ module structure (models/, features/, evaluation/)
 - [x] 1.5 Create config/cet/ directory for CET configuration files
-- [ ] 1.6 Add pytest fixtures for CET classification tests
+- [x] 1.6 Add pytest fixtures for CET classification tests
 
 ## 2. Configuration Files
 
