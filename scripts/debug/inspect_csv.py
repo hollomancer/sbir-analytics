@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/tmp/inspect_csv.py
+sbir-etl/scripts/debug/inspect_csv.py
 
 Small CLI helper to inspect CSV rows safely using Python's csv.reader.
 
@@ -12,7 +12,7 @@ Purpose:
 - Try multiple quotechar values to see which one yields consistent parsing.
 
 Usage:
-    python sbir-etl/tmp/inspect_csv.py --path tests/fixtures/sbir_sample.csv
+    python sbir-etl/scripts/debug/inspect_csv.py --path tests/fixtures/sbir_sample.csv
 
 Key options:
     --delimiter          CSV delimiter (default: ,)
@@ -24,7 +24,7 @@ Key options:
     --limit-problems     Show up to N problematic rows in detail (default: 10)
 
 Example:
-    python sbir-etl/tmp/inspect_csv.py --path tests/fixtures/sbir_sample.csv \
+    python sbir-etl/scripts/debug/inspect_csv.py --path tests/fixtures/sbir_sample.csv \
       --delimiter ',' --quotechars '"' "'" --expected-columns 42 --show-raw
 
 This script is intentionally lightweight and does not depend on third-party packages.

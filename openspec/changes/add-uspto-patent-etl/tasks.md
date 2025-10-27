@@ -60,20 +60,20 @@
 
 ## 5. Data Validation (Stage 2: Validate)
 
-- [ ] 5.1 Create USPTO data quality validator in src/quality/uspto_validators.py
-- [ ] 5.2 Validate rf_id uniqueness in assignment table (primary key)
-- [ ] 5.3 Validate rf_id referential integrity across tables (foreign keys)
-- [ ] 5.4 Check completeness of required fields (rf_id, dates, document numbers)
-- [ ] 5.5 Validate date formats and ranges (1790-present)
-- [ ] 5.6 Check for duplicate records within each table
-- [ ] 5.7 Generate validation report with pass/fail rates
+- [x] 5.1 Create USPTO data quality validator in src/quality/uspto_validators.py
+- [x] 5.2 Validate rf_id uniqueness in assignment table (primary key)
+- [x] 5.3 Validate rf_id referential integrity across tables (foreign keys)
+- [x] 5.4 Check completeness of required fields (rf_id, dates, document numbers)
+- [x] 5.5 Validate date formats and ranges (1790-present)
+- [x] 5.6 Check for duplicate records within each table
+- [x] 5.7 Generate validation report with pass/fail rates
 
 ## 6. Dagster Assets - Validation
 
-- [ ] 6.1 Create validated_uspto_assignments asset
-- [ ] 6.2 Add asset checks for data quality thresholds (≥95% completeness)
-- [ ] 6.3 Add asset checks for referential integrity
-- [ ] 6.4 Output failed records to data/validated/fail/ for inspection
+- [x] 6.1 Create validated_uspto_assignments asset
+- [x] 6.2 Add asset checks for data quality thresholds (≥95% completeness)
+- [x] 6.3 Add asset checks for referential integrity
+- [x] 6.4 Output failed records to data/validated/fail/ for inspection
 
 ## 7. Patent Assignment Transformer (Stage 4: Transform)
 

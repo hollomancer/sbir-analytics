@@ -8,7 +8,7 @@ pandas.read_csv to verify parseability. It prints shapes, column names and
 the first few rows for quick inspection.
 
 Usage:
-    python sbir-etl/tmp_check_duckdb.py
+    python sbir-etl/scripts/debug/tmp_check_duckdb.py
 """
 
 from pathlib import Path
