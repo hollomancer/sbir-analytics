@@ -24,6 +24,13 @@ from .uspto_validation_assets import (
     uspto_completeness_asset_check,
     uspto_referential_asset_check,
 )
+from .uspto_transformation_assets import (
+    transformed_patent_assignments,
+    transformed_patents,
+    transformed_patent_entities,
+    uspto_transformation_success_check,
+    uspto_company_linkage_check,
+)
 
 __all__ = [
     "raw_sbir_data",
@@ -47,4 +54,9 @@ __all__ = [
     "uspto_rf_id_asset_check",
     "uspto_completeness_asset_check",
     "uspto_referential_asset_check",
+    "transformed_patent_assignments",
+    "transformed_patents",
+    "transformed_patent_entities",
+    "uspto_transformation_success_check",
+    "uspto_company_linkage_check",
 ]
