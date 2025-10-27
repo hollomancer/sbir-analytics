@@ -1,0 +1,130 @@
+name: CET Pipeline CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  cet-pipeline:
+    name: Run CET full pipeline with tiny fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/password
+        options: >-
+          --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # Neo4j connection for CET assets
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: password
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "poetry"
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: Configure Poetry (no virtualenv in CI)
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-ansi
+
+      - name: Prepare tiny fixtures and CET configs
+        run: |
+          set -eux
+          # Minimal CET taxonomy/config to satisfy assets
+          mkdir -p config/cet
+          cat > config/cet/taxonomy.yaml << 'YAML'
+          version: "TEST-2025Q1"
+          last_updated: "2025-01-01"
+          cet_areas:
+            - cet_id: artificial_intelligence
+              name: Artificial Intelligence
+              definition: AI and ML technologies
+              keywords: ["machine learning", "neural network"]
+              parent_cet_id: null
+            - cet_id: quantum_information_science
+              name: Quantum Information Science
+              definition: Quantum computing and algorithms
+              keywords: ["quantum", "qubit", "entanglement"]
+              parent_cet_id: null
+          YAML
+
+          cat > config/cet/classification.yaml << 'YAML'
+          model_version: vtest
+          created_date: "2025-01-01"
+          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
+          batch: {size: 256}
+          evidence: {max_statements: 2, excerpt_max_words: 40}
+          YAML
+
+          # Minimal enriched awards so the award classifier has input rows
+          mkdir -p data/processed
+          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          {"award_id":"award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
+          {"award_id":"award_002","title":"Quantum sensor","abstract":"Research on qubit coherence and entanglement for sensors.","keywords":["quantum","qubit"]}
+          NDJSON
+
+      - name: Wait for Neo4j service health
+        run: |
+          set -eux
+          # Additional wait to ensure service is reachable over TCP
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends netcat-openbsd
+          timeout 120s bash -c 'until nc -z localhost 7687; do echo "Waiting for Neo4j on 7687..."; sleep 5; done'
+          echo "Neo4j is reachable."
+
+      - name: Execute CET full pipeline job
+        env:
+          # Allow assets to write outputs to default directories
+          SBIR_ETL__CET__NEO4J_OUTPUT_DIR: data/loaded/neo4j
+        run: |
+          set -eux
+          # Synchronous job execution against definitions.py
+          poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+
+      - name: List produced artifacts
+        if: always()
+        run: |
+          set -eux
+          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
+
+      - name: Upload CET artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cet-pipeline-artifacts
+          path: |
+            data/processed/cet_*.parquet
+            data/processed/cet_*.json
+            data/processed/*.checks.json
+            data/loaded/neo4j/*.checks.json
+          if-no-files-found: warn
