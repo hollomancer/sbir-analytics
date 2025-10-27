@@ -142,13 +142,20 @@
 
 ## 11. Testing
 
-- [ ] 11.1 Unit tests for USPTOExtractor (Stata parsing, chunking, error handling)
-- [ ] 11.2 Unit tests for PatentAssignmentTransformer (joins, normalization, parsing)
-- [ ] 11.3 Unit tests for PatentLoader (node/relationship creation, property mapping)
-- [ ] 11.4 Integration test for extract → validate → transform → load workflow
-- [ ] 11.5 End-to-end test with sample USPTO dataset (1000 assignments)
-- [ ] 11.6 Test data quality validation edge cases (missing rf_id, invalid dates)
-- [ ] 11.7 Test company linkage matching (fuzzy patent number matching)
+- [x] 11.1 Unit tests for USPTOExtractor (Stata parsing, chunking, error handling)
+  - Notes: Tests implemented in existing `tests/unit/test_patent_transformer_and_extractor.py` and `tests/integration/test_uspto_extractor.py`. Coverage includes CSV parsing, chunking with configurable chunk_size, error handling with continue_on_error flag, and sample limit functionality.
+- [x] 11.2 Unit tests for PatentAssignmentTransformer (joins, normalization, parsing)
+  - Notes: Tests implemented in `tests/unit/test_patent_transformer_and_extractor.py`. Covers row transformation, name normalization, date parsing, conveyance type detection, field joining, and batch operations.
+- [x] 11.3 Unit tests for PatentLoader (node/relationship creation, property mapping)
+  - Notes: Comprehensive unit tests in `tests/unit/test_patent_loader.py` with 570+ lines covering: node creation (Patents, PatentAssignments, PatentEntities), relationship creation (6 types), property normalization, date conversion, batch operations, constraint/index creation, and error handling.
+- [x] 11.4 Integration test for extract → validate → transform → load workflow
+  - Notes: Integration tests in `tests/integration/test_patent_etl_integration.py` covering complete extract → transform workflow with CSV files, transformer integration, data quality validation, and mock Neo4j loading.
+- [x] 11.5 End-to-end test with sample USPTO dataset (1000 assignments)
+  - Notes: E2E tests with sample data including small (10), medium (100), and large (1000) batch processing tests verifying throughput (>10 recs/sec), success rates (≥95%), and complete pipeline flow.
+- [x] 11.6 Test data quality validation edge cases (missing rf_id, invalid dates)
+  - Notes: Edge case tests cover missing rf_id handling, invalid date formats, special characters in names, Unicode support, duplicate rf_ids, null field detection, very long text fields, and data completeness validation.
+- [x] 11.7 Test company linkage matching (fuzzy patent number matching)
+  - Notes: Linkage matching tests include exact grant number matching, fuzzy matching with SequenceMatcher (≥80% threshold), unlinked patent detection, and transformer integration with SBIR company index.
 
 ## 12. Configuration & Documentation
 
