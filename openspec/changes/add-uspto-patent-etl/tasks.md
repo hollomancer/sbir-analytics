@@ -104,25 +104,41 @@
 
 ## 9. Neo4j Graph Loader (Stage 5: Load)
 
-- [ ] 9.1 Create PatentLoader in src/loaders/patent_loader.py
-- [ ] 9.2 Implement Patent node creation (grant_doc_num, title, dates, language)
-- [ ] 9.3 Implement PatentAssignment node creation (rf_id, dates, type, correspondent)
-- [ ] 9.4 Implement PatentEntity node creation (assignees and assignors)
-- [ ] 9.5 Create ASSIGNED_FROM relationship (Patent ← PatentEntity via PatentAssignment)
-- [ ] 9.6 Create ASSIGNED_TO relationship (Patent → PatentEntity via PatentAssignment)
-- [ ] 9.7 Create GENERATED_FROM relationship (Patent → Award for SBIR-linked patents)
-- [ ] 9.8 Create OWNS relationship (Company → Patent for current ownership)
-- [ ] 9.9 Add temporal properties to relationships (effective_date, recorded_date)
-- [ ] 9.10 Create indexes on grant_doc_num, rf_id, entity names
+- [x] 9.1 Create PatentLoader in src/loaders/patent_loader.py
+  - Notes: Implemented `src/loaders/patent_loader.py` with `PatentLoader` class providing `load_patents()`, `load_patent_assignments()`, and `load_patent_entities()` methods. Includes batch upsert operations via Neo4jClient.
+- [x] 9.2 Implement Patent node creation (grant_doc_num, title, dates, language)
+  - Notes: `load_patents()` method creates Patent nodes with grant_doc_num as unique key, title, application/publication/grant dates (converted to ISO format), language, and abstract.
+- [x] 9.3 Implement PatentAssignment node creation (rf_id, dates, type, correspondent)
+  - Notes: `load_patent_assignments()` method creates PatentAssignment nodes with rf_id as unique key, execution/recorded dates, conveyance type, employer_assign flag, and assignee/assignor names.
+- [x] 9.4 Implement PatentEntity node creation (assignees and assignors)
+  - Notes: `load_patent_entities()` method creates PatentEntity nodes (label="PatentEntity") with entity_id as unique key, entity_type ("ASSIGNEE"/"ASSIGNOR"), name, normalized_name, address fields, and identifiers (UEI, CAGE, DUNS).
+- [x] 9.5 Create ASSIGNED_FROM relationship (Patent ← PatentEntity via PatentAssignment)
+  - Notes: `create_assigned_from_relationships()` method creates ASSIGNED_FROM relationships from PatentAssignment to PatentEntity (assignor), includes execution_date as relationship property.
+- [x] 9.6 Create ASSIGNED_TO relationship (Patent → PatentEntity via PatentAssignment)
+  - Notes: `create_assigned_to_relationships()` method creates ASSIGNED_TO relationships from PatentAssignment to PatentEntity (assignee), includes recorded_date as relationship property.
+- [x] 9.7 Create GENERATED_FROM relationship (Patent → Award for SBIR-linked patents)
+  - Notes: `create_generated_from_relationships()` method creates GENERATED_FROM relationships from Patent to Award nodes via grant_doc_num matching.
+- [x] 9.8 Create OWNS relationship (Company → Patent for current ownership)
+  - Notes: `create_owns_relationships()` method creates OWNS relationships from Company (via UEI) to Patent (via grant_doc_num) for current patent ownership.
+- [x] 9.9 Add temporal properties to relationships (effective_date, recorded_date)
+  - Notes: Temporal properties (execution_date, recorded_date) are added to relationship tuples as properties dict in create_assigned_from_relationships and create_assigned_to_relationships methods.
+- [x] 9.10 Create indexes on grant_doc_num, rf_id, entity names
+  - Notes: `create_indexes()` method creates 6 indexes (Tier 1: grant_doc_num, rf_id, normalized_name; Tier 2: appno_date, exec_date, entity_type) and `create_constraints()` creates 3 unique constraints on primary keys.
 
 ## 10. Dagster Assets - Loading
 
-- [ ] 10.1 Create neo4j_patents asset
-- [ ] 10.2 Create neo4j_patent_assignments asset
-- [ ] 10.3 Create neo4j_patent_entities asset
-- [ ] 10.4 Create neo4j_patent_relationships asset
-- [ ] 10.5 Add asset checks for load success rate (≥99%)
-- [ ] 10.6 Add asset checks for relationship counts (sanity checks)
+- [x] 10.1 Create neo4j_patents asset
+  - Notes: Implemented `neo4j_patents` asset in `src/assets/uspto_neo4j_loading_assets.py`. Creates Patent nodes from transformed patents with optional index/constraint creation. Includes success_rate and duration metrics.
+- [x] 10.2 Create neo4j_patent_assignments asset
+  - Notes: Implemented `neo4j_patent_assignments` asset. Loads PatentAssignment nodes from transformed assignments with support for configurable batch sizes.
+- [x] 10.3 Create neo4j_patent_entities asset
+  - Notes: Implemented `neo4j_patent_entities` asset. Loads both ASSIGNEE and ASSIGNOR entity types from transformed entities with separate counting per type.
+- [x] 10.4 Create neo4j_patent_relationships asset
+  - Notes: Implemented `neo4j_patent_relationships` asset. Creates ASSIGNED_VIA, ASSIGNED_FROM, and ASSIGNED_TO relationships. Orchestrates Phase 1 Step 3 and Phase 4 of loading strategy.
+- [x] 10.5 Add asset checks for load success rate (≥99%)
+  - Notes: Implemented 3 asset checks: `patent_load_success_rate`, `assignment_load_success_rate`, and `patent_relationship_cardinality`. All check against LOAD_SUCCESS_THRESHOLD (≥99%) with detailed metadata.
+- [x] 10.6 Add asset checks for relationship counts (sanity checks)
+  - Notes: `patent_relationship_cardinality` check validates ASSIGNED_VIA, ASSIGNED_FROM, ASSIGNED_TO counts are logically consistent (assigned_from/to ≤ assigned_via).
 
 ## 11. Testing
 

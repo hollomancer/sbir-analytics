@@ -31,6 +31,15 @@ from .uspto_transformation_assets import (
     uspto_transformation_success_check,
     uspto_company_linkage_check,
 )
+from .uspto_neo4j_loading_assets import (
+    neo4j_patents,
+    neo4j_patent_assignments,
+    neo4j_patent_entities,
+    neo4j_patent_relationships,
+    patent_load_success_rate,
+    assignment_load_success_rate,
+    patent_relationship_cardinality,
+)
 
 __all__ = [
     "raw_sbir_data",
@@ -59,4 +68,11 @@ __all__ = [
     "transformed_patent_entities",
     "uspto_transformation_success_check",
     "uspto_company_linkage_check",
+    "neo4j_patents",
+    "neo4j_patent_assignments",
+    "neo4j_patent_entities",
+    "neo4j_patent_relationships",
+    "patent_load_success_rate",
+    "assignment_load_success_rate",
+    "patent_relationship_cardinality",
 ]
