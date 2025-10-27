@@ -16,7 +16,7 @@ Based on the NSTC Critical and Emerging Technologies taxonomy (21 categories).
 import pickle
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -149,7 +149,7 @@ class ApplicabilityModel:
         self.is_trained = False
 
         # Model metadata
-        self.training_date: str | None = None
+        self.training_date: Optional[str] = None
         self.model_version = config.get("model_version", "v1.0.0")
 
         logger.info(
@@ -380,7 +380,7 @@ class ApplicabilityModel:
     def classify_batch(
         self,
         texts: List[str],
-        batch_size: int | None = None,
+        batch_size: Optional[int] = None,
     ) -> List[List[CETClassification]]:
         """
         Classify multiple documents efficiently.
