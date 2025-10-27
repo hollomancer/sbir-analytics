@@ -71,7 +71,63 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run taxonomy completeness checks
-        run: poetry run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json --fail-on-issues
+        run: |
+          echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
+          # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
+          poetry run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json || true
+
+      - name: Evaluate taxonomy checks and post PR comment if failures
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = 'data/processed/cet_taxonomy_checks.json';
+            if (!fs.existsSync(path)) {
+              console.log(`Checks file not found at ${path}; skipping taxonomy evaluation.`);
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const completeness = data.completeness || {};
+            const missing_required = completeness.missing_required_fields === true;
+            let missing_keywords = completeness.areas_missing_keywords_count;
+            if (missing_keywords === undefined || missing_keywords === null) {
+              missing_keywords = (completeness.areas_missing_keywords || []).length || 0;
+            }
+            const total = completeness.total_areas || data.cet_count || 0;
+            const issues = missing_required || (missing_keywords > 0) || (total != 21);
+
+            if (!issues) {
+              console.log('CET taxonomy checks passed.');
+              return;
+            }
+
+            const pr = context.issue.number;
+            const summary = { missing_required, missing_keywords, total };
+            const body = `CET taxonomy checks failed.
+
+Summary:
+\`\`\`json
+${JSON.stringify(summary, null, 2)}
+\`\`\`
+
+Please review \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update the taxonomy as appropriate.
+
+The checks JSON artifact is available in the workflow run for inspection.`;
+
+            if (pr) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body
+              });
+            } else {
+              console.log('No PR context; cannot post comment.');
+            }
+
+            // Fail the job to ensure taxonomy issues block the CI run (same-run behavior)
+            throw new Error('CET taxonomy checks failed — see PR comment or pipeline artifact for details.');
 
       - name: Run tests
         run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing

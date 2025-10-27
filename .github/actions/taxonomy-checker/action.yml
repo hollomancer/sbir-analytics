@@ -1,0 +1,150 @@
+name: "taxonomy-checker"
+description: "Download taxonomy checks artifact and post a PR comment if completeness checks failed."
+inputs:
+  artifact-name:
+    description: "Name of the artifact that contains the checks JSON (uploaded by CI)."
+    required: true
+    default: "cet-taxonomy-checks"
+  checks-path:
+    description: "Relative path inside the artifact to the checks JSON file (basename allowed)."
+    required: true
+    default: "cet_taxonomy_checks.json"
+  github-token:
+    description: "GitHub token with permission to post comments on PRs. Typically set to `\${{ secrets.GITHUB_TOKEN }}`."
+    required: true
+    default: ${{ github.token }}
+  fail-on-issues:
+    description: "Whether to consider checks issues as failing (and therefore post a failing comment)."
+    required: false
+    default: "true"
+  comment-title:
+    description: "Title text to include at top of the PR comment when checks fail."
+    required: false
+    default: "CET Taxonomy Completeness Checks — Issues Detected"
+outputs:
+  failed:
+    description: "Boolean flag set to 'true' when checks indicate blocking issues."
+runs:
+  using: "composite"
+  steps:
+    - name: "Create artifact directory"
+      run: |
+        mkdir -p ./taxonomy_checks_artifact
+
+    - name: "Download checks artifact"
+      id: download
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ./taxonomy_checks_artifact
+      continue-on-error: true
+
+    - name: "Locate checks JSON"
+      id: locate
+      run: |
+        set -euo pipefail
+        ART_DIR=./taxonomy_checks_artifact
+        BASENAME="${{ inputs.checks-path }}"
+        # If checks-path contains directories, use it; otherwise search for basename
+        if [ -f "${ART_DIR}/${BASENAME}" ]; then
+          CHECKS_FILE="${ART_DIR}/${BASENAME}"
+        else
+          # try to find matching file by name
+          FOUND=$(find "${ART_DIR}" -type f -name "${BASENAME}" -print -quit || true)
+          if [ -n "$FOUND" ]; then
+            CHECKS_FILE="$FOUND"
+          else
+            # also attempt common suffix variants
+            FOUND_JSON=$(find "${ART_DIR}" -type f -name "*${BASENAME}*" -print -quit || true)
+            if [ -n "$FOUND_JSON" ]; then
+              CHECKS_FILE="$FOUND_JSON"
+            else
+              echo "No checks JSON found in artifact directory: ${ART_DIR}"
+              echo "CHECKS_FILE="
+              echo "failed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+        fi
+        echo "Found checks file: $CHECKS_FILE"
+        echo "CHECKS_FILE=$CHECKS_FILE" >> $GITHUB_OUTPUT
+
+    - name: "Evaluate checks"
+      id: evaluate
+      env:
+        CHECKS_FILE: ${{ steps.locate.outputs.CHECKS_FILE }}
+        FAIL_ON_ISSUES: ${{ inputs.fail-on-issues }}
+      run: |
+        set -euo pipefail
+        if [ -z "${CHECKS_FILE:-}" ]; then
+          echo "No checks file to evaluate."
+          echo "failed=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Ensure jq is available
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "jq not available; attempting to install jq..."
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update -y && sudo apt-get install -y jq
+          fi
+        fi
+
+        # Read common fields (use defaults when keys missing)
+        MISSING_REQUIRED=$(jq -r '.completeness.missing_required_fields // false' "$CHECKS_FILE" 2>/dev/null || echo false)
+        # areas_missing_keywords_count may be number or missing; fall back to length of areas_missing_keywords
+        AREAS_MISSING_KEYWORDS_COUNT=$(jq -r 'if .completeness.areas_missing_keywords_count != null then .completeness.areas_missing_keywords_count elif .completeness.areas_missing_keywords != null then (.completeness.areas_missing_keywords | length) else 0 end' "$CHECKS_FILE" 2>/dev/null || echo 0)
+        AREAS_MISSING_DEFINITION_COUNT=$(jq -r '.completeness.areas_missing_definition_count // 0' "$CHECKS_FILE" 2>/dev/null || echo 0)
+        TOTAL_AREAS=$(jq -r '.completeness.total_areas // .cet_count // 0' "$CHECKS_FILE" 2>/dev/null || echo 0)
+
+        echo "Parsed completeness: missing_required=${MISSING_REQUIRED}, missing_keywords=${AREAS_MISSING_KEYWORDS_COUNT}, missing_definition=${AREAS_MISSING_DEFINITION_COUNT}, total=${TOTAL_AREAS}"
+
+        # Decide whether issues are present
+        ISSUES=false
+        if [ "$MISSING_REQUIRED" = "true" ] || [ "$AREAS_MISSING_KEYWORDS_COUNT" -gt 0 ] || [ "$TOTAL_AREAS" -ne 21 ]; then
+          ISSUES=true
+        fi
+
+        # Output a small summary for later steps
+        SUMMARY=$(jq -c '{missing_required: .completeness.missing_required_fields, areas_missing_keywords_count: (.completeness.areas_missing_keywords_count // (.completeness.areas_missing_keywords // [] | length)), areas_missing_definition_count: (.completeness.areas_missing_definition_count // 0), total_areas: (.completeness.total_areas // .cet_count // 0)}' "$CHECKS_FILE" 2>/dev/null || echo '{}')
+        echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+
+        if [ "$ISSUES" = "true" ]; then
+          echo "found_issues=true" >> $GITHUB_OUTPUT
+          if [ "${FAIL_ON_ISSUES}" = "true" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "found_issues=false" >> $GITHUB_OUTPUT
+          echo "failed=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: "Post PR comment when checks failed"
+      if: ${{ steps.evaluate.outputs.failed == 'true' }}
+      uses: actions/github-script@v6
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          // Try to determine PR number from context (works in PR workflows)
+          const pr = context.issue.number || (context.payload.pull_request && context.payload.pull_request.number);
+          const summaryRaw = `Checks summary: ${{ steps.evaluate.outputs.summary }}`;
+          const title = `**${{ inputs.comment-title }}**`;
+          const body = `\n${title}\n\nThe CET taxonomy completeness checks reported issues that require attention. Summary:\n\n\`\`\`json\n${{ steps.evaluate.outputs.summary }}\n\`\`\`\n\nPlease review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.\n\nArtifacts: the checks JSON has been uploaded by the CI job for inspection.`;
+          if (!pr) {
+            core.warning('No PR number found in context; skipping PR comment.');
+            return;
+          }
+          // Create a comment on the PR
+          github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr,
+            body: body
+          });
+
+    - name: "Set composite output 'failed'"
+      run: |
+        echo "failed=${{ steps.evaluate.outputs.failed }}" >> $GITHUB_OUTPUT

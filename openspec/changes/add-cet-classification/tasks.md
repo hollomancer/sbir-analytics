@@ -40,6 +40,7 @@ Sprint 1 — Checklist (current run tasks)
 - [x] 7.4 Add asset checks for taxonomy completeness (owner: data-engineer)
 - [x] 7.5 Output taxonomy to `data/processed/cet_taxonomy.parquet` (owner: data-engineer)
 - [x] 21.1 Document CET taxonomy structure in `config/cet/README.md` (owner: ml-engineer)
+- [x] CI: Run taxonomy completeness checks and upload artifact (`.github/workflows/ci.yml` updated) (est: 1h, owner: infra)
 
 Notes:
 - Sprint 0 items are marked completed above and their original checklist entries remain checked in the main task list.
