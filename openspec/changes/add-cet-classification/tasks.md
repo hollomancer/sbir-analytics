@@ -248,12 +248,12 @@ Notes (section 8 implementation):
 
 ## 12. Neo4j CET Graph Model - Nodes
 
-- [ ] 12.1 Create CETArea node schema
-- [ ] 12.2 Add uniqueness constraints for CETArea
-- [ ] 12.3 Add CETArea properties (id, name, keywords, taxonomy_version)
-- [ ] 12.4 Create Company node CET enrichment properties
-- [ ] 12.5 Create Award node CET enrichment properties
-- [ ] 12.6 Add batching + idempotent merges
+- [x] 12.1 Create CETArea node schema — Implemented via `src/loaders/cet_loader.py` (CETArea schema) and asset `src/assets/cet_neo4j_loading_assets.py::neo4j_cetarea_nodes`
+- [x] 12.2 Add uniqueness constraints for CETArea — Implemented in `src/loaders/cet_loader.py::CETLoader.create_constraints` (unique on `CETArea.cet_id`)
+- [x] 12.3 Add CETArea properties (id, name, keywords, taxonomy_version) — Implemented in `src/loaders/cet_loader.py::CETLoader.load_cet_areas` (properties set from taxonomy output)
+- [x] 12.4 Create Company node CET enrichment properties — Implemented via asset `src/assets/cet_neo4j_loading_assets.py::neo4j_company_cet_enrichment` and `src/loaders/cet_loader.py::CETLoader.upsert_company_cet_enrichment`
+- [x] 12.5 Create Award node CET enrichment properties — Implemented via asset `src/assets/cet_neo4j_loading_assets.py::neo4j_award_cet_enrichment` and `src/loaders/cet_loader.py::CETLoader.upsert_award_cet_enrichment`
+- [x] 12.6 Add batching + idempotent merges — Implemented via `src/loaders/neo4j_client.py::Neo4jClient.batch_upsert_nodes` used by `CETLoader`
 - [ ] 12.7 Unit tests (mocked Neo4j)
 
 ## 13. Neo4j CET Graph Model - Award Relationships
