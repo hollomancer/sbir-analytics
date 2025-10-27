@@ -1,5 +1,7 @@
 """Dagster assets for USPTO patent assignment data validation."""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 from typing import Any, Dict, List
@@ -24,7 +26,7 @@ DEFAULT_REPORT_DIR = Path(
 )
 
 
-def _build_validator_config(context: AssetExecutionContext) -> USPTOValidationConfig:
+def _build_validator_config(context) -> USPTOValidationConfig:
     cfg = getattr(context, "op_config", {}) or {}
 
     return USPTOValidationConfig(
@@ -54,7 +56,7 @@ def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict
     },
 )
 def validated_uspto_assignments(
-    context: AssetExecutionContext,
+    context,
     assignment_files: List[str],
     assignee_files: List[str],
     assignor_files: List[str],
@@ -116,7 +118,7 @@ def validated_uspto_assignments(
     additional_ins={"assignment_files": AssetIn("raw_uspto_assignments")},
 )
 def uspto_rf_id_asset_check(
-    context: AssetExecutionContext,
+    context,
     validation_report: Dict[str, Any],
     assignment_files: List[str],
 ) -> AssetCheckResult:
@@ -175,7 +177,7 @@ def uspto_rf_id_asset_check(
     description="Validate required field completeness across USPTO tables",
 )
 def uspto_completeness_asset_check(
-    context: AssetExecutionContext,
+    context,
     validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})
@@ -222,7 +224,7 @@ def uspto_completeness_asset_check(
     description="Ensure referential integrity across USPTO tables",
 )
 def uspto_referential_asset_check(
-    context: AssetExecutionContext,
+    context,
     validation_report: Dict[str, Any],
 ) -> AssetCheckResult:
     tables = (validation_report or {}).get("tables", {})

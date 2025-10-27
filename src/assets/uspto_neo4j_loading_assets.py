@@ -21,13 +21,16 @@ Asset Checks:
 - patent_relationship_cardinality: Sanity check relationship counts
 """
 
+from __future__ import annotations
+
+
 import json
 import os
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from dagster import (
     AssetCheckResult,

@@ -1,5 +1,8 @@
 """Dagster assets for USPTO patent transformation stage."""
 
+from __future__ import annotations
+
+
 import json
 import os
 from collections import defaultdict
