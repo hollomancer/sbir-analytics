@@ -20,6 +20,7 @@ from loguru import logger
 from ..config.loader import get_config
 from ..extractors.sbir import SbirDuckDBExtractor
 from ..validators.sbir_awards import validate_sbir_awards
+from ..utils.performance_monitor import performance_monitor
 
 
 @asset(
@@ -54,8 +55,9 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         table_name=sbir_config.table_name,
     )
 
-    # Import CSV to DuckDB
-    import_metadata = extractor.import_csv()
+    # Import CSV to DuckDB with performance monitoring
+    with performance_monitor.monitor_block("sbir_import_csv"):
+        import_metadata = extractor.import_csv()
 
     context.log.info("CSV import complete", extra=import_metadata)
 
@@ -71,13 +73,27 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         # In non-Dagster contexts context.log may not accept 'extra' the same way; swallow safely
         logger.info("Column mapping discovered", column_mapping)
 
-    # Extract all records
-    df = extractor.extract_all()
+    # Extract all records with performance monitoring
+    with performance_monitor.monitor_block("sbir_extract_all"):
+        df = extractor.extract_all()
 
     # Get table statistics
     table_stats = extractor.get_table_stats()
 
     context.log.info(f"Extraction complete: {len(df)} records", extra=table_stats)
+
+    # Get performance metrics
+    perf_summary = performance_monitor.get_metrics_summary()
+    import_perf = perf_summary.get("sbir_import_csv", {})
+    extract_perf = perf_summary.get("sbir_extract_all", {})
+
+    # Calculate combined extraction metrics
+    total_import_duration = import_perf.get("total_duration", 0.0)
+    total_extract_duration = extract_perf.get("total_duration", 0.0)
+    total_extraction_duration = total_import_duration + total_extract_duration
+    import_peak_memory = import_perf.get("max_peak_memory_mb", 0.0)
+    extract_peak_memory = extract_perf.get("max_peak_memory_mb", 0.0)
+    total_peak_memory = max(import_peak_memory, extract_peak_memory)
 
     # Create metadata for Dagster UI
     metadata = {
@@ -97,9 +113,52 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         "column_mapping": MetadataValue.json(column_mapping),
         "columns": MetadataValue.json(import_metadata.get("columns", [])),
         "preview": MetadataValue.md(df.head(10).to_markdown()),
+        # Performance metrics
+        "performance_import_duration_seconds": round(total_import_duration, 2),
+        "performance_extract_duration_seconds": round(total_extract_duration, 2),
+        "performance_total_duration_seconds": round(total_extraction_duration, 2),
+        "performance_peak_memory_mb": round(total_peak_memory, 2),
     }
 
     return Output(value=df, metadata=metadata)
+
+
+@asset_check(
+    asset="enriched_sbir_awards", description="All required enrichment fields are populated"
+)
+def enrichment_completeness_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
+    """
+    Validate that enriched output contains required fields and minimal null values.
+
+    Ensures data quality for downstream consumption.
+    """
+    required_fields = [
+        "_usaspending_match_method",
+        "_usaspending_match_score",
+        "usaspending_recipient_name",
+    ]
+
+    # Check all required fields exist
+    missing_fields = [f for f in required_fields if f not in enriched_sbir_awards.columns]
+
+    # Check null rates in key fields
+    null_rates = {}
+    for field in required_fields:
+        if field in enriched_sbir_awards.columns:
+            null_rate = enriched_sbir_awards[field].isna().sum() / len(enriched_sbir_awards)
+            null_rates[field] = null_rate
+
+    # Pass if no missing fields and null rates are reasonable (allowing for unmatched records)
+    passed = len(missing_fields) == 0 and all(rate < 0.95 for rate in null_rates.values())
+
+    return AssetCheckResult(
+        passed=passed,
+        metadata={
+            "missing_fields": missing_fields if missing_fields else "None",
+            "null_rates": {k: f"{v:.1%}" for k, v in null_rates.items()},
+            "total_records": len(enriched_sbir_awards),
+        },
+    )
 
 
 @asset(
