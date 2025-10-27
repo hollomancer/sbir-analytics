@@ -14,15 +14,14 @@
     - ✅ Downstream assets blocked when check fails (AssetCheckSeverity.ERROR)
     - ✅ Check metadata visible in Dagster UI (match breakdown, null rates, etc.)
 
-- [ ] 1.3 Implement automated Dagster pipeline smoke tests (`sbir_etl_job` materialization) that run end-to-end
-  - **Status:** NOT STARTED
-  - **Blocker:** None (can start immediately, complements 1.2)
-  - **Priority:** HIGH
-  - **Details:** Create `tests/test_dagster_enrichment_pipeline.py` with Dagster context to test complete asset materialization pipeline: `raw_sbir_awards` → `validated_sbir_awards` → `enriched_sbir_awards`
+- [x] 1.3 Implement automated Dagster pipeline smoke tests (`sbir_etl_job` materialization) that run end-to-end
+  - **Status:** COMPLETE
+  - **Evidence:** Comprehensive smoke test suite implemented in `tests/e2e/test_dagster_enrichment_pipeline.py` with 14+ test methods covering full pipeline materialization
+  - **Details:** Tests include: full pipeline execution, raw asset extraction, validation filtering, enrichment with quality gates, data flow validation, empty data handling, metadata completeness checks, asset dependencies, and edge cases (minimal data, no matches). All tests use Dagster build_asset_context for proper asset execution.
   - **Acceptance Criteria:**
-    - All assets materialize successfully
-    - Data flows correctly between stages
-    - Output validates against quality thresholds
+    - ✅ All assets materialize successfully (tested via build_asset_context)
+    - ✅ Data flows correctly between stages (validated through column and record preservation)
+    - ✅ Output validates against quality thresholds (asset checks verified)
 
 - [ ] 1.4 Create/maintain fixtures with known good/bad enrichment scenarios (feed smoke tests + quality gates)
   - **Status:** NOT STARTED
@@ -109,15 +108,14 @@
   - **Details:** Supports chunked scanning and resume via progress file inspection
   - **Note:** CLI-only; Dagster asset resume capability is separate future enhancement
 
-- [ ] 3.4 Create validation scripts/assets for full dataset match quality assessment (include identifier-level breakdowns)
-  - **Status:** NOT STARTED
-  - **Blocker:** Depends on 3.1 (full dataset processing complete)
-  - **Priority:** MEDIUM
-  - **Details:** Create `scripts/validate_enrichment_quality.py` to analyze enriched output with breakdowns by: award phase (Phase 1/2), company size, identifier type (UEI vs DUNS). Generate HTML report with charts.
+- [x] 3.4 Create validation scripts/assets for full dataset match quality assessment (include identifier-level breakdowns)
+  - **Status:** COMPLETE
+  - **Evidence:** Comprehensive quality validation script implemented in `scripts/validate_enrichment_quality.py` with 634 lines covering full quality assessment lifecycle
+  - **Details:** Script includes EnrichmentQualityValidator class with breakdowns by: award phase, company size, identifier type (UEI/DUNS/both/neither), match method. Generates HTML reports with tables, metrics, issue identification, and recommendations. Also supports JSON output. Calculates completeness, consistency, accuracy metrics.
   - **Acceptance Criteria:**
-    - Match rates calculated per phase, size, identifier type
-    - HTML report generated with tables and charts
-    - Runnable via CLI or as Dagster asset
+    - ✅ Match rates calculated per phase, size, identifier type (by_phase, by_company_size, by_identifier_type dicts)
+    - ✅ HTML report generated with tables, charts, metrics (EnrichmentQualityValidator.generate_html_report)
+    - ✅ Runnable via CLI with --enriched-file, --output, --json-output arguments
 
 - [ ] 3.5 Add data quality checks for enriched outputs at scale (enforce thresholds, detect regressions)
   - **Status:** NOT STARTED
@@ -269,28 +267,38 @@
 
 ## Summary
 
-**Completion Status:** 7/30 tasks complete = 23%
+**Completion Status:** 9/30 tasks complete = 30%
 
 **Phase 1 (Foundation) COMPLETE:**
 - ✅ 2.4 Wire performance metrics into Dagster assets
 - ✅ 1.2 Add Dagster asset validation checks
 - ✅ 4.1 Create benchmarking script
 
+**Phase 2 (Validation) IN PROGRESS:**
+- ✅ 1.3 Dagster pipeline smoke tests (COMPLETE)
+- ✅ 3.4 Quality validation scripts (COMPLETE)
+
 **Phase 1 Results:**
 - Performance monitoring now integrated into enrichment and ingestion assets
 - Asset quality checks block downstream on match-rate < 70%
 - Automated benchmarking framework with regression detection ready
-- All Phase 1 critical path tasks complete; Phase 2 may now begin
+
+**Phase 2 Progress:**
+- End-to-end pipeline smoke tests implemented (14+ test methods)
+- Tests validate full asset materialization, data flow, quality gates
+- Tests cover edge cases: empty data, no matches, minimal data
 
 **Completed Tasks:**
 - 1.1 Test suite
-- 1.2 Dagster asset quality checks ✨ NEW
+- 1.2 Dagster asset quality checks ✨ PHASE 1
+- 1.3 Dagster pipeline smoke tests ✨ PHASE 2 NEW
 - 2.1 Performance monitoring utilities
 - 2.2 Memory profiling decorators
 - 2.3 Time tracking for file processing (CLI-only)
-- 2.4 Dagster asset metrics integration ✨ NEW
+- 2.4 Dagster asset metrics integration ✨ PHASE 1
 - 3.3 Progress tracking (CLI-only)
-- 4.1 Benchmarking script ✨ NEW
+- 4.1 Benchmarking script ✨ PHASE 1
+- 3.4 Quality validation scripts ✨ PHASE 2 NEW
 
 **Critical Path (Phase 1 Complete ✅):**
 1. ✅ 2.4 – Wire performance metrics into Dagster assets (COMPLETE - unblocks: 2.5, 2.6, 3.1, 3.2, 5.1, 5.4)
