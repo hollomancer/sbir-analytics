@@ -190,16 +190,33 @@ Backlog / Ongoing Optimization & Deployment (as needed)
 
 ## 8. Dagster Assets - Award Classification
 
-- [ ] 8.1 Create cet_award_classifications asset (depends on enriched_sbir_awards, cet_taxonomy)
-- [ ] 8.2 Load trained CET classifier model
-- [ ] 8.3 Batch classify awards (1000 awards/batch for efficiency)
-- [ ] 8.4 Extract evidence for each classification
-- [ ] 8.5 Calculate primary CET area + up to 3 supporting areas
-- [ ] 8.6 Add asset checks for classification success rate (target: ≥95%)
-- [ ] 8.7 Add asset checks for high confidence rate (target: ≥60%)
-- [ ] 8.8 Add asset checks for evidence coverage (target: ≥80%)
-- [ ] 8.9 Output classifications to data/processed/cet_award_classifications.parquet
-- [ ] 8.10 Log classification metrics (throughput, latency, confidence distribution)
+- [x] 8.1 Create `cet_award_classifications` asset (depends on `enriched_sbir_awards`, `cet_taxonomy`)
+- [x] 8.2 Load trained CET classifier model
+- [x] 8.3 Batch classify awards (configurable batch size; default 1000)
+- [x] 8.4 Extract evidence for each classification using `EvidenceExtractor`
+- [x] 8.5 Calculate primary CET area + up to 3 supporting areas
+- [x] 8.6 Add asset checks for classification success rate (computed and emitted; target: ≥95%)
+- [x] 8.7 Add asset checks for high confidence rate (computed and emitted; target: ≥60%)
+- [x] 8.8 Add asset checks for evidence coverage (computed and emitted; target: ≥80%)
+- [x] 8.9 Output classifications to `data/processed/cet_award_classifications.parquet` (or NDJSON fallback)
+- [x] 8.10 Log classification metrics (throughput, latency, confidence distribution)
+  
+Notes (section 8 implementation):
+- Implemented `cet_award_classifications` asset in `src/assets/cet_assets.py`.
+  - Loads taxonomy via `TaxonomyLoader` and classification config.
+  - Attempts to load trained model from `artifacts/models/cet_classifier_v1.pkl`; when missing, writes a schema-compatible placeholder and checks JSON.
+  - Performs batch classification via `ApplicabilityModel.classify_batch`.
+  - Extracts evidence per CET using `EvidenceExtractor` and attaches up to configured number of evidence excerpts.
+  - Persists results to `data/processed/cet_award_classifications.parquet` with the same parquet → NDJSON fallback pattern used by the taxonomy asset.
+  - Writes companion checks JSON at `data/processed/cet_award_classifications.checks.json` summarizing:
+    - num_awards, num_classified, high_conf_count, high_conf_rate, evidence_coverage_rate, model_path.
+  - Emits asset metadata including output path, rows, taxonomy/model version, and checks path.
+- Files added/modified (high-level):
+  - `src/assets/cet_assets.py` — added `cet_award_classifications` asset implementation.
+  - Reused components: `src/ml/models/cet_classifier.py` (ApplicabilityModel) and `src/ml/features/evidence_extractor.py` (EvidenceExtractor).
+- Behavior notes:
+  - The asset is import-safe when optional dependencies are missing: it uses local stubs and JSON fallbacks so CI can run in lightweight runners.
+  - Where the trained model or enriched awards data are not present in the environment, the asset writes a predictable placeholder output and a checks JSON that CI can evaluate and surface to PR authors.
 
 ## 9. Company CET Aggregation
 
