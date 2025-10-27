@@ -1,0 +1,352 @@
+# CET Taxonomy - 21 Critical and Emerging Technologies
+# Based on NSTC (National Science and Technology Council) framework
+# Version: NSTC-2025Q1
+
+version: "NSTC-2025Q1"
+last_updated: "2025-01-15"
+description: "21 Critical and Emerging Technology areas identified by the NSTC as vital to national security and economic competitiveness"
+
+cet_areas:
+  - cet_id: "advanced_computing"
+    name: "Advanced Computing"
+    definition: "High-performance computing, edge computing, and novel computing architectures including neuromorphic and optical computing"
+    keywords:
+      - high performance computing
+      - supercomputing
+      - edge computing
+      - distributed computing
+      - parallel computing
+      - neuromorphic computing
+      - optical computing
+      - quantum computing
+      - exascale computing
+      - gpu computing
+    parent_cet_id: null
+
+  - cet_id: "advanced_engineering_materials"
+    name: "Advanced Engineering Materials"
+    definition: "Novel materials with enhanced properties including composites, metamaterials, and adaptive materials"
+    keywords:
+      - advanced materials
+      - composite materials
+      - metamaterials
+      - smart materials
+      - adaptive materials
+      - nanomaterials
+      - carbon fiber
+      - graphene
+      - material science
+      - structural materials
+    parent_cet_id: null
+
+  - cet_id: "advanced_gas_turbine_engine_technologies"
+    name: "Advanced Gas Turbine Engine Technologies"
+    definition: "Next-generation turbine engines with improved efficiency, performance, and environmental impact"
+    keywords:
+      - gas turbine
+      - jet engine
+      - turbine engine
+      - propulsion
+      - combustion
+      - turbomachinery
+      - engine efficiency
+      - aerospace propulsion
+      - hypersonic propulsion
+    parent_cet_id: null
+
+  - cet_id: "advanced_manufacturing"
+    name: "Advanced Manufacturing"
+    definition: "Innovative manufacturing processes including additive manufacturing, automation, and digital manufacturing"
+    keywords:
+      - additive manufacturing
+      - 3d printing
+      - digital manufacturing
+      - smart manufacturing
+      - manufacturing automation
+      - industrial iot
+      - manufacturing process
+      - fabrication
+      - rapid prototyping
+      - advanced machining
+    parent_cet_id: null
+
+  - cet_id: "advanced_and_networked_sensing_and_signature_management"
+    name: "Advanced and Networked Sensing and Signature Management"
+    definition: "Sophisticated sensor systems, sensor fusion, and technologies for managing electromagnetic and acoustic signatures"
+    keywords:
+      - sensor fusion
+      - multisensor
+      - networked sensors
+      - sensor networks
+      - signature management
+      - radar
+      - lidar
+      - sonar
+      - infrared sensing
+      - acoustic sensing
+      - electromagnetic signature
+      - stealth technology
+    parent_cet_id: null
+
+  - cet_id: "advanced_nuclear_energy_systems"
+    name: "Advanced Nuclear Energy Systems"
+    definition: "Next-generation nuclear reactors, small modular reactors, and fusion energy technologies"
+    keywords:
+      - nuclear energy
+      - nuclear reactor
+      - small modular reactor
+      - smr
+      - fusion energy
+      - nuclear fusion
+      - advanced reactor
+      - molten salt reactor
+      - fast reactor
+      - nuclear power
+    parent_cet_id: null
+
+  - cet_id: "artificial_intelligence"
+    name: "Artificial Intelligence"
+    definition: "Machine learning, deep learning, natural language processing, computer vision, and AI systems"
+    keywords:
+      - artificial intelligence
+      - machine learning
+      - deep learning
+      - neural networks
+      - natural language processing
+      - nlp
+      - computer vision
+      - reinforcement learning
+      - ai
+      - ml
+      - supervised learning
+      - unsupervised learning
+      - transfer learning
+      - generative ai
+    parent_cet_id: null
+
+  - cet_id: "autonomous_systems"
+    name: "Autonomous Systems"
+    definition: "Self-governing systems including autonomous vehicles, drones, and robotic systems"
+    keywords:
+      - autonomous systems
+      - autonomous vehicles
+      - self-driving
+      - unmanned aerial vehicle
+      - uav
+      - drone
+      - autonomous navigation
+      - path planning
+      - autonomous control
+      - swarm robotics
+      - multi-agent systems
+    parent_cet_id: null
+
+  - cet_id: "biotechnologies"
+    name: "Biotechnologies"
+    definition: "Genetic engineering, synthetic biology, biomanufacturing, and biomedical technologies"
+    keywords:
+      - biotechnology
+      - genetic engineering
+      - synthetic biology
+      - crispr
+      - gene editing
+      - biomanufacturing
+      - bioengineering
+      - genome sequencing
+      - protein engineering
+      - metabolic engineering
+      - biomedicine
+    parent_cet_id: null
+
+  - cet_id: "communication_and_networking_technologies"
+    name: "Communication and Networking Technologies"
+    definition: "5G/6G networks, optical communications, satellite communications, and network security"
+    keywords:
+      - 5g
+      - 6g
+      - wireless communications
+      - optical communications
+      - satellite communications
+      - network architecture
+      - software defined networking
+      - network security
+      - mobile networks
+      - telecommunications
+    parent_cet_id: null
+
+  - cet_id: "directed_energy"
+    name: "Directed Energy"
+    definition: "High-energy lasers, high-power microwaves, and particle beam weapons"
+    keywords:
+      - directed energy
+      - high energy laser
+      - laser weapon
+      - high power microwave
+      - hpm
+      - particle beam
+      - electromagnetic pulse
+      - emp
+      - laser systems
+      - beam weapons
+    parent_cet_id: null
+
+  - cet_id: "financial_technologies"
+    name: "Financial Technologies"
+    definition: "Digital currencies, blockchain, distributed ledger technologies, and financial AI"
+    keywords:
+      - fintech
+      - financial technology
+      - blockchain
+      - cryptocurrency
+      - digital currency
+      - distributed ledger
+      - smart contracts
+      - decentralized finance
+      - defi
+      - payment systems
+    parent_cet_id: null
+
+  - cet_id: "human_machine_interfaces"
+    name: "Human-Machine Interfaces"
+    definition: "Brain-computer interfaces, augmented reality, virtual reality, and haptic systems"
+    keywords:
+      - human machine interface
+      - brain computer interface
+      - bci
+      - augmented reality
+      - ar
+      - virtual reality
+      - vr
+      - mixed reality
+      - haptics
+      - haptic feedback
+      - gesture recognition
+      - neural interface
+    parent_cet_id: null
+
+  - cet_id: "hypersonics"
+    name: "Hypersonics"
+    definition: "Vehicles and weapons traveling at speeds greater than Mach 5"
+    keywords:
+      - hypersonic
+      - hypersonic flight
+      - hypersonic weapons
+      - mach 5
+      - supersonic
+      - scramjet
+      - hypersonic vehicle
+      - hypersonic missile
+      - high speed flight
+    parent_cet_id: null
+
+  - cet_id: "integrated_sensing_and_cyber"
+    name: "Integrated Sensing and Cyber"
+    definition: "Integration of cyber operations with sensing technologies for enhanced situational awareness"
+    keywords:
+      - cyber operations
+      - cyber sensing
+      - integrated cyber
+      - cyber situational awareness
+      - cyber physical systems
+      - iot security
+      - cyber intelligence
+      - network sensing
+    parent_cet_id: null
+
+  - cet_id: "quantum_information_science"
+    name: "Quantum Information Science"
+    definition: "Quantum computing, quantum communications, quantum sensing, and quantum cryptography"
+    keywords:
+      - quantum computing
+      - quantum information
+      - quantum communication
+      - quantum cryptography
+      - quantum sensing
+      - quantum entanglement
+      - quantum algorithms
+      - qubits
+      - quantum networks
+      - quantum key distribution
+    parent_cet_id: null
+
+  - cet_id: "renewable_energy_generation_and_storage"
+    name: "Renewable Energy Generation and Storage"
+    definition: "Solar, wind, battery technologies, and energy storage systems"
+    keywords:
+      - renewable energy
+      - solar energy
+      - wind energy
+      - battery technology
+      - energy storage
+      - lithium ion battery
+      - solid state battery
+      - fuel cells
+      - hydrogen energy
+      - grid storage
+      - photovoltaic
+    parent_cet_id: null
+
+  - cet_id: "semiconductors_and_microelectronics"
+    name: "Semiconductors and Microelectronics"
+    definition: "Integrated circuits, chip design, advanced packaging, and semiconductor manufacturing"
+    keywords:
+      - semiconductor
+      - microelectronics
+      - integrated circuit
+      - chip design
+      - asic
+      - fpga
+      - semiconductor manufacturing
+      - chip fabrication
+      - advanced packaging
+      - silicon
+      - transistor
+    parent_cet_id: null
+
+  - cet_id: "space_technologies_and_systems"
+    name: "Space Technologies and Systems"
+    definition: "Satellite systems, space propulsion, space situational awareness, and on-orbit capabilities"
+    keywords:
+      - space technology
+      - satellite
+      - space propulsion
+      - space situational awareness
+      - orbital systems
+      - spacecraft
+      - launch vehicle
+      - space exploration
+      - space systems
+      - on-orbit
+    parent_cet_id: null
+
+  - cet_id: "trusted_ai_and_autonomy"
+    name: "Trusted AI and Autonomy"
+    definition: "Explainable AI, AI safety, robustness, and trustworthy autonomous systems"
+    keywords:
+      - explainable ai
+      - ai safety
+      - ai ethics
+      - trustworthy ai
+      - ai robustness
+      - ai security
+      - responsible ai
+      - ai assurance
+      - ai verification
+      - ai validation
+    parent_cet_id: null
+
+  - cet_id: "integrated_network_systems_of_systems"
+    name: "Integrated Network Systems-of-Systems"
+    definition: "Complex interconnected systems integrating multiple platforms, sensors, and capabilities"
+    keywords:
+      - system of systems
+      - integrated systems
+      - network centric warfare
+      - multi-domain operations
+      - systems integration
+      - joint all-domain
+      - jadc2
+      - c4isr
+      - mission systems
+      - interoperability
+    parent_cet_id: null

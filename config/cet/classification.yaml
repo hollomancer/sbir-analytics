@@ -1,0 +1,109 @@
+# CET Classification Configuration
+# ML model hyperparameters and classification settings
+
+# Model version tracking
+model_version: "v1.0.0"
+created_date: "2025-01-15"
+
+# Confidence thresholds for classification levels
+confidence_thresholds:
+  high: 70.0  # High confidence: score >= 70
+  medium: 40.0  # Medium confidence: 40 <= score < 70
+  low: 0.0  # Low confidence: score < 40
+
+# TF-IDF Vectorization parameters
+tfidf:
+  max_features: 5000  # Maximum number of features
+  min_df: 2  # Minimum document frequency
+  max_df: 0.95  # Maximum document frequency (ignore very common terms)
+  ngram_range: [1, 2]  # Unigrams and bigrams
+  sublinear_tf: true  # Apply sublinear TF scaling (1 + log(tf))
+  use_idf: true  # Enable inverse document frequency weighting
+  smooth_idf: true  # Smooth IDF weights
+  norm: "l2"  # L2 normalization
+
+  # Keyword boosting (increase weight for CET-specific keywords)
+  keyword_boost_factor: 2.0  # Multiply TF-IDF score by this factor for CET keywords
+
+# Logistic Regression parameters
+logistic_regression:
+  penalty: "l2"  # L2 regularization
+  C: 1.0  # Inverse regularization strength
+  solver: "lbfgs"  # Optimization algorithm
+  max_iter: 1000  # Maximum iterations
+  multi_class: "ovr"  # One-vs-Rest for multi-label classification
+  class_weight: "balanced"  # Handle imbalanced CET categories
+  random_state: 42  # For reproducibility
+  n_jobs: -1  # Use all CPU cores
+
+# Probability Calibration
+calibration:
+  method: "sigmoid"  # Sigmoid (Platt scaling) calibration
+  cv: 3  # 3-fold cross-validation
+
+# Feature Selection
+feature_selection:
+  enabled: true
+  method: "chi2"  # Chi-squared feature selection
+  k_best: 3000  # Select top 3000 features
+
+# Evidence Extraction
+evidence:
+  max_statements: 3  # Maximum evidence statements per classification
+  excerpt_max_words: 50  # Maximum words per excerpt
+  min_keyword_matches: 1  # Minimum CET keyword matches to include as evidence
+  source_priority:  # Priority order for selecting evidence sources
+    - "abstract"
+    - "keywords"
+    - "solicitation"
+    - "title"
+
+  # spaCy configuration for sentence segmentation
+  spacy:
+    model: "en_core_web_sm"  # English model
+    disable:  # Disable unnecessary components for performance
+      - "ner"
+      - "parser"
+    enable:
+      - "sentencizer"  # Fast sentence segmentation
+
+# Supporting CET Areas
+supporting:
+  max_supporting_areas: 3  # Maximum supporting CET areas per entity
+  min_score_threshold: 40.0  # Minimum score to include as supporting area
+  min_score_difference: 5.0  # Minimum score difference from primary to include
+
+# Batch Processing
+batch:
+  size: 1000  # Process 1000 awards per batch
+  parallel_workers: -1  # Use all CPU cores (set to specific number if needed)
+
+# Performance Targets (for monitoring)
+performance:
+  target_throughput: 1000  # awards/second
+  target_latency: 1.0  # seconds per award
+
+# Quality Metrics Targets
+quality:
+  min_success_rate: 0.95  # 95% classification success rate
+  min_high_confidence_rate: 0.60  # 60% high confidence classifications
+  min_evidence_coverage: 0.80  # 80% of classifications have evidence
+
+# Analytics (DuckDB usage)
+analytics:
+  use_duckdb: true  # Enable DuckDB for analytics queries
+  duckdb_memory_limit: "4GB"
+  duckdb_threads: -1  # Use all cores
+
+  # Operations that benefit from DuckDB
+  enable_for:
+    - "company_aggregation"
+    - "portfolio_analytics"
+    - "uspto_validation"
+    - "neo4j_preparation"
+
+  # Operations that should stay in pandas
+  disable_for:
+    - "ml_classification"
+    - "evidence_extraction"
+    - "model_training"

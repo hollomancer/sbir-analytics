@@ -1,6 +1,14 @@
 """Data models for the SBIR ETL pipeline."""
 
 from .award import Award, RawAward
+from .cet_models import (
+    CETArea,
+    CETAssessment,
+    CETClassification,
+    ClassificationLevel,
+    CompanyCETProfile,
+    EvidenceStatement,
+)
 from .company import Company, CompanyMatch, RawCompany
 from .patent import Patent, PatentCitation, RawPatent
 from .quality import (
@@ -16,6 +24,13 @@ __all__ = [
     # Awards
     "Award",
     "RawAward",
+    # CET Classification
+    "CETArea",
+    "CETAssessment",
+    "CETClassification",
+    "ClassificationLevel",
+    "CompanyCETProfile",
+    "EvidenceStatement",
     # Companies
     "Company",
     "CompanyMatch",

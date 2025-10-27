@@ -1,31 +1,33 @@
 # Implementation Tasks
 
+**Note**: Unit tests for CET Pydantic models (CETArea, CETClassification, EvidenceStatement, CETAssessment, CompanyCETProfile) have been created in `tests/unit/ml/test_cet_models.py` with comprehensive validation coverage.
+
 ## 1. Project Setup & Dependencies
 
-- [ ] 1.1 Add scikit-learn>=1.4.0 to pyproject.toml dependencies
-- [ ] 1.2 Add spacy>=3.7.0 to pyproject.toml dependencies
+- [x] 1.1 Add scikit-learn>=1.4.0 to pyproject.toml dependencies
+- [x] 1.2 Add spacy>=3.7.0 to pyproject.toml dependencies
 - [ ] 1.3 Install spaCy English model: python -m spacy download en_core_web_sm
-- [ ] 1.4 Create src/ml/ module structure (models/, features/, evaluation/)
-- [ ] 1.5 Create config/cet/ directory for CET configuration files
+- [x] 1.4 Create src/ml/ module structure (models/, features/, evaluation/)
+- [x] 1.5 Create config/cet/ directory for CET configuration files
 - [ ] 1.6 Add pytest fixtures for CET classification tests
 
 ## 2. Configuration Files
 
-- [ ] 2.1 Port config/taxonomy.yaml from sbir-cet-classifier (21 CET categories)
-- [ ] 2.2 Port config/classification.yaml from sbir-cet-classifier (ML hyperparameters)
-- [ ] 2.3 Create configuration loader in src/ml/config/taxonomy_loader.py
-- [ ] 2.4 Add CET configuration schema validation (Pydantic models)
-- [ ] 2.5 Add taxonomy versioning support (NSTC-2025Q1, etc.)
-- [ ] 2.6 Document CET taxonomy structure in config/cet/README.md
+- [x] 2.1 Port config/taxonomy.yaml from sbir-cet-classifier (21 CET categories)
+- [x] 2.2 Port config/classification.yaml from sbir-cet-classifier (ML hyperparameters)
+- [x] 2.3 Create configuration loader in src/ml/config/taxonomy_loader.py
+- [x] 2.4 Add CET configuration schema validation (Pydantic models)
+- [x] 2.5 Add taxonomy versioning support (NSTC-2025Q1, etc.)
+- [x] 2.6 Document CET taxonomy structure in config/cet/README.md
 
 ## 3. Pydantic Data Models
 
-- [ ] 3.1 Create CETArea model in src/models/cet_models.py
-- [ ] 3.2 Create CETClassification model (score, classification, primary/supporting)
-- [ ] 3.3 Create EvidenceStatement model (excerpt, source_location, rationale_tag)
-- [ ] 3.4 Create CETAssessment model (combines classification + evidence)
-- [ ] 3.5 Add CET-specific validation rules (score 0-100, classification in High/Medium/Low)
-- [ ] 3.6 Add type hints for all CET models
+- [x] 3.1 Create CETArea model in src/models/cet_models.py
+- [x] 3.2 Create CETClassification model (score, classification, primary/supporting)
+- [x] 3.3 Create EvidenceStatement model (excerpt, source_location, rationale_tag)
+- [x] 3.4 Create CETAssessment model (combines classification + evidence)
+- [x] 3.5 Add CET-specific validation rules (score 0-100, classification in High/Medium/Low)
+- [x] 3.6 Add type hints for all CET models
 
 ## 4. ML Classification Module - Core Model
 
@@ -168,7 +170,7 @@
 
 - [ ] 18.1 Unit tests for CETClassifier (training, scoring, batch processing)
 - [ ] 18.2 Unit tests for EvidenceExtractor (sentence segmentation, keyword matching)
-- [ ] 18.3 Unit tests for TaxonomyLoader (YAML parsing, validation)
+- [x] 18.3 Unit tests for TaxonomyLoader (YAML parsing, validation)
 - [ ] 18.4 Unit tests for CompanyCETAggregator (aggregation logic)
 - [ ] 18.5 Unit tests for PatentCETClassifier
 - [ ] 18.6 Unit tests for USPTOAILoader (chunked streaming, caching)
@@ -196,7 +198,7 @@
 
 ## 21. Documentation
 
-- [ ] 21.1 Document CET taxonomy structure in config/cet/README.md
+- [x] 21.1 Document CET taxonomy structure in config/cet/README.md
 - [ ] 21.2 Document ML model architecture and hyperparameters in docs/ml/cet_classifier.md
 - [ ] 21.3 Document evidence extraction approach in docs/ml/evidence_extraction.md
 - [ ] 21.4 Document Neo4j CET graph schema in docs/schemas/cet-graph-schema.md
