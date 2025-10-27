@@ -1,5 +1,59 @@
 # SBIR ETL Pipeline
 
+## CET (Critical and Emerging Technologies) Pipeline
+
+This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
+
+### Run the full CET pipeline
+
+You can execute the full CET job via Dagster:
+
+```
+dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+```
+
+Requirements:
+- Neo4j reachable via environment variables:
+  - NEO4J_URI (e.g., bolt://localhost:7687)
+  - NEO4J_USERNAME
+  - NEO4J_PASSWORD
+- Minimal CET configs under config/cet:
+  - taxonomy.yaml
+  - classification.yaml
+
+Alternatively, run from the Dagster UI and select the job “cet_full_pipeline_job”.
+
+### Assets included in the CET pipeline
+
+The job orchestrates these assets in dependency order:
+- cet_taxonomy
+- cet_award_classifications
+- cet_company_profiles
+- neo4j_cetarea_nodes
+- neo4j_award_cet_enrichment
+- neo4j_company_cet_enrichment
+- neo4j_award_cet_relationships
+- neo4j_company_cet_relationships
+
+### Neo4j schema for CET
+
+See the CET graph schema documentation:
+- docs/schemas/cet-neo4j-schema.md
+
+This document covers:
+- CETArea node schema and constraints
+- Award/Company CET enrichment properties
+- Award → CETArea APPLICABLE_TO relationships
+- Company → CETArea SPECIALIZES_IN relationships
+- Idempotent MERGE semantics and re-run safety
+
+### CI
+
+A dedicated CI workflow runs a tiny-fixture CET pipeline to catch regressions end-to-end:
+- .github/workflows/cet-pipeline-ci.yml
+
+This spins up a Neo4j service, builds minimal CET configs and sample awards, and executes the cet_full_pipeline_job, uploading resulting artifacts (processed outputs and Neo4j checks).
+
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into Neo4j graph database.
 
 ### Why This Project?
