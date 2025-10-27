@@ -43,6 +43,7 @@ data_quality:
   enrichment:
     sam_gov_success_rate: 0.85 # 85% of companies should enrich successfully
     usaspending_match_rate: 0.70 # 70% of awards should match USAspending data
+    regression_threshold_percent: 5.0 # Fail asset if match rate declines >5 percentage points
 
 enrichment:
   performance:
@@ -76,6 +77,12 @@ enrichment:
     enable_fuzzy_matching: true    # Enable fuzzy name matching
     enable_memory_monitoring: true # Track memory usage
     enable_progress_tracking: true # Track per-chunk progress
+
+    # Alert thresholds for performance/quality monitoring
+    duration_warning_seconds: 5.0  # WARNING if > 5s per record
+    memory_delta_warning_mb: 500.0 # WARNING if memory delta > 500MB
+    memory_pressure_warn_percent: 80.0    # WARNING if memory > 80% available
+    memory_pressure_critical_percent: 95.0 # CRITICAL if memory > 95% available
 
 extraction:
   sbir:

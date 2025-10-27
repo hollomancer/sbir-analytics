@@ -20,6 +20,8 @@ from ..config.loader import get_config
 from ..enrichers.chunked_enrichment import ChunkedEnricher
 from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
 from ..utils.performance_monitor import performance_monitor
+from ..utils.performance_alerts import AlertCollector, AlertSeverity
+from ..utils.quality_baseline import QualityBaselineManager, QualityBaseline
 
 
 @asset(
@@ -123,6 +125,29 @@ def enriched_sbir_awards(
         max_peak_memory = enrichment_metrics.get("peak_memory_mb", 0.0)
         records_per_second = enrichment_metrics.get("records_per_second", 0.0)
 
+    # Collect and check for performance/quality alerts
+    alerts = AlertCollector(
+        asset_name="enriched_sbir_awards",
+        run_id=context.run.run_id,
+        config=config,
+    )
+
+    # Check performance thresholds
+    alerts.check_duration_per_record(duration, total_awards, metric_name="enrichment_duration")
+    alerts.check_memory_delta(avg_memory_delta, metric_name="enrichment_memory")
+
+    # Check quality thresholds
+    alerts.check_match_rate(match_rate, metric_name="enrichment_match_rate")
+
+    # Log all alerts
+    alerts.log_alerts()
+
+    # Save alerts to file for record-keeping
+    alerts_output_dir = Path("reports/alerts")
+    alerts_output_dir.mkdir(parents=True, exist_ok=True)
+    alerts_file = alerts_output_dir / f"enrichment_alerts_{context.run.run_id}.json"
+    alerts.save_to_file(alerts_file)
+
     # Create metadata
     metadata = {
         "num_records": len(enriched_df),
@@ -142,9 +167,33 @@ def enriched_sbir_awards(
         # Processing metadata
         "processing_mode": "chunked" if use_chunked else "standard",
         "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
-    }
+        # Alert metadata
+            "alert_count": alerts.alerts.__len__(),
+            "alert_failures": len(alerts.get_alerts(AlertSeverity.FAILURE)),
+            "alert_warnings": len(alerts.get_alerts(AlertSeverity.WARNING)),
+            "alerts": MetadataValue.json(alerts.to_dict()),
+        }
 
-    return Output(value=enriched_df, metadata=metadata)
+        # Create and save quality baseline for regression detection
+        baseline_mgr = QualityBaselineManager()
+        current_baseline = baseline_mgr.create_baseline_from_metrics(
+            match_rate=match_rate,
+            matched_records=int(matched_awards),
+            total_records=total_awards,
+            exact_matches=int(exact_matches),
+            fuzzy_matches=int(fuzzy_matches),
+            run_id=context.run.run_id,
+            processing_mode="chunked" if use_chunked else "standard",
+            metadata={
+                "duration_seconds": duration,
+                "peak_memory_mb": max_peak_memory,
+                "records_per_second": records_per_second,
+            },
+        )
+        baseline_mgr.save_baseline(current_baseline)
+
+        return Output(value=enriched_df, metadata=metadata)</parameter>
+    </invoke>
 
 
 def _should_use_chunked_processing(
@@ -388,3 +437,82 @@ def enrichment_completeness_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
             "total_records": len(enriched_sbir_awards),
         },
     )
+
+
+@asset_check(
+    asset="enriched_sbir_awards",
+    description="No quality regression detected compared to historical baseline",
+)
+def enrichment_quality_regression_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
+    """
+    Check for quality regressions compared to historical baseline.
+
+    This check compares the current enrichment match rate against the stored baseline
+    and fails if the match rate has regressed beyond the configured threshold.
+
+    Args:
+        enriched_sbir_awards: Enriched SBIR awards DataFrame
+
+    Returns:
+        AssetCheckResult with pass/fail status and comparison metrics
+    """
+    config = get_config()
+    regression_threshold = config.data_quality.enrichment.get("regression_threshold_percent", 5.0)
+
+    # Calculate current metrics
+    total_awards = len(enriched_sbir_awards)
+    matched_awards = enriched_sbir_awards["_usaspending_match_method"].notna().sum()
+    exact_matches = enriched_sbir_awards["_usaspending_match_method"].str.contains("exact", na=False).sum()
+    fuzzy_matches = enriched_sbir_awards["_usaspending_match_method"].str.contains("fuzzy", na=False).sum()
+    match_rate = matched_awards / total_awards if total_awards > 0 else 0
+
+    # Load baseline and compare
+    baseline_mgr = QualityBaselineManager()
+    current_baseline = baseline_mgr.create_baseline_from_metrics(
+        match_rate=match_rate,
+        matched_records=int(matched_awards),
+        total_records=total_awards,
+        exact_matches=int(exact_matches),
+        fuzzy_matches=int(fuzzy_matches),
+    )
+
+    comparison = baseline_mgr.compare_to_baseline(
+        current=current_baseline,
+        regression_threshold_percent=regression_threshold,
+    )
+
+    # Determine pass/fail
+    passed = not comparison.exceeded_threshold
+
+    # Set severity
+    if passed:
+        severity = AssetCheckSeverity.WARN
+        if comparison.baseline.match_rate == current_baseline.match_rate:
+            description = "✓ First baseline established"
+        elif current_baseline.match_rate > comparison.baseline.match_rate:
+            description = f"✓ Quality improved: {current_baseline.match_rate:.1%} (was {comparison.baseline.match_rate:.1%})"
+        else:
+            description = f"✓ Quality regression within threshold: {current_baseline.match_rate:.1%} (was {comparison.baseline.match_rate:.1%}, threshold: {regression_threshold:.1f}pp)"
+    else:
+        severity = AssetCheckSeverity.ERROR
+        description = f"✗ Quality regression detected: {current_baseline.match_rate:.1%} is below baseline {comparison.baseline.match_rate:.1%} by {abs(comparison.match_rate_delta_percent):.2f}pp (threshold: {regression_threshold:.1f}pp)"
+
+    metadata = {
+        "baseline_match_rate": f"{comparison.baseline.match_rate:.1%}",
+        "current_match_rate": f"{current_baseline.match_rate:.1%}",
+        "delta_percentage_points": f"{comparison.match_rate_delta_percent:+.2f}pp",
+        "regression_severity": comparison.regression_severity,
+        "threshold_percent": f"{regression_threshold:.1f}pp",
+        "exceeded_threshold": comparison.exceeded_threshold,
+        "baseline_run_id": comparison.baseline.run_id or "initial",
+        "baseline_timestamp": comparison.baseline.timestamp.isoformat() if comparison.baseline.timestamp else "unknown",
+    }
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata=metadata,
+    )
+</parameter>
+</invoke>
