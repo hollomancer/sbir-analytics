@@ -280,6 +280,59 @@ transition-mvp-clean:
 	-@rm -f data/processed/contracts_sample.parquet data/processed/contracts_sample.csv data/processed/contracts_sample.checks.json
 	-@rm -f reports/validation/transition_mvp.json
 
+# Transition MVP (gated helpers)
+.PHONY: transition-mvp-run-gated transition-audit-export transition-audit-import
+
+transition-mvp-run-gated:
+	@$(MAKE) transition-mvp-run
+	@python - <<'PY'
+import json, sys
+from pathlib import Path
+summary_path = Path("reports/validation/transition_mvp.json")
+if not summary_path.exists():
+    print(f"Validation summary not found at {summary_path}", file=sys.stderr)
+    sys.exit(2)
+data = json.loads(summary_path.read_text(encoding="utf-8"))
+gates = data.get("gates", {})
+cs = gates.get("contracts_sample", {}) or {}
+vr = gates.get("vendor_resolution", {}) or {}
+failures = []
+if not cs.get("passed", False):
+    failures.append("contracts_sample coverage gate failed")
+if not vr.get("passed", False):
+    failures.append("vendor_resolution rate gate failed")
+if failures:
+    for f in failures:
+        print(f"ERROR: {f}", file=sys.stderr)
+    sys.exit(1)
+print("Validation gates passed.")
+PY
+	@python - <<'PY'
+import json, sys
+from pathlib import Path
+p = Path("data/processed/transitions_evidence.checks.json")
+if not p.exists():
+    print(f"Evidence checks JSON not found at {p}", file=sys.stderr)
+    sys.exit(2)
+data = json.loads(p.read_text(encoding="utf-8"))
+comp = data.get("completeness") or {}
+if not comp.get("complete", False):
+    print(f"ERROR: Evidence completeness gate failed: {comp}", file=sys.stderr)
+    sys.exit(1)
+print("Evidence completeness gate passed.")
+PY
+	@echo "✓ Transition MVP gated run succeeded"
+
+transition-audit-export:
+	@echo "Exporting precision audit sample CSV..."
+	@mkdir -p reports/validation
+	@poetry run python scripts/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
+
+transition-audit-import:
+	@if [ -z "${CSV}" ]; then echo "Provide CSV=path/to/labeled.csv"; exit 2; fi
+	@THRESHOLD=$${THRESHOLD:-0.80}; \
+	poetry run python scripts/transition_precision_audit.py --import-csv "$$CSV" --threshold "$$THRESHOLD"
+
 # ---------------------------
 # Environment / safety checks
 # ---------------------------
@@ -335,4 +388,4 @@ neo4j-check:
 # Convenience aliases
 # ---------------------------
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check transition-mvp-run transition-mvp-clean
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import

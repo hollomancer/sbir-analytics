@@ -109,6 +109,31 @@ jobs:
               print("All gates passed.")
           PY
 
+      - name: Gate on evidence completeness
+        run: |
+          set -euo pipefail
+          EV="data/processed/transitions_evidence.checks.json"
+          if [ ! -f "${EV}" ]; then
+            echo "::error file=${EV}::Evidence checks JSON not found. Ensure transition_evidence_v1 ran."
+            exit 2
+          fi
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          p = Path("data/processed/transitions_evidence.checks.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+          comp = (data.get("completeness") or {})
+          complete = bool(comp.get("complete", False))
+          print("Evidence checks:", json.dumps(comp, indent=2))
+          if not complete:
+              th = comp.get("threshold")
+              ca = comp.get("candidates_above_threshold")
+              er = comp.get("evidence_rows_for_above_threshold")
+              print(f"::error::Evidence completeness gate failed: {er}/{ca} candidates at ≥{th}")
+              sys.exit(1)
+          print("Evidence completeness gate passed.")
+          PY
+
       - name: Upload validation summary
         if: always()
         uses: actions/upload-artifact@v4
