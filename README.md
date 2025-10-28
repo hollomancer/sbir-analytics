@@ -2,6 +2,11 @@
 
 ## CET (Critical and Emerging Technologies) Pipeline
 
+Deployment
+- CET deployment guide (staging/prod runbook): docs/deployment/cet-assets-deployment.md
+- Staging Compose overlay: docker-compose.cet-staging.yml (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
+- General production checklist: docs/DEPLOYMENT_CHECKLIST.md
+
 This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
 
 ### Run the full CET pipeline

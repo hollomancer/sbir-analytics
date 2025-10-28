@@ -1,5 +1,6 @@
 """Dagster definitions for SBIR ETL pipeline."""
 
+import os
 from dagster import (
     AssetSelection,
     Definitions,
@@ -53,7 +54,9 @@ etl_job = define_asset_job(
 # Define a schedule to run the job daily
 daily_schedule = ScheduleDefinition(
     job=etl_job,
-    cron_schedule="0 2 * * *",  # Run at 2 AM daily
+    cron_schedule=os.getenv(
+        "SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB", "0 2 * * *"
+    ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB
     name="daily_sbir_etl",
     description="Daily SBIR ETL pipeline execution",
 )
@@ -65,10 +68,20 @@ cet_drift_job = define_asset_job(
     description="Run CET drift detection asset",
 )
 
-# Schedule drift detection daily (6:00 UTC)
+# Schedule CET full pipeline daily (02:00 UTC by default) and drift detection (06:00 UTC)
+cet_full_pipeline_schedule = ScheduleDefinition(
+    job=cet_full_pipeline_job,
+    cron_schedule=os.getenv(
+        "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"
+    ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB
+    name="daily_cet_full_pipeline",
+    description="Daily CET full pipeline end-to-end execution",
+)
 cet_drift_schedule = ScheduleDefinition(
     job=cet_drift_job,
-    cron_schedule="0 6 * * *",  # Run at 06:00 UTC daily
+    cron_schedule=os.getenv(
+        "SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"
+    ),  # Default 06:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB
     name="daily_cet_drift_detection",
     description="Daily CET drift detection and alerting",
 )
@@ -78,5 +91,5 @@ defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
     jobs=[sbir_ingestion_job, etl_job, cet_full_pipeline_job, cet_drift_job],
-    schedules=[daily_schedule, cet_drift_schedule],
+    schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
 )
