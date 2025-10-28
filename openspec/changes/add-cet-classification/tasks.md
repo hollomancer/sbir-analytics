@@ -282,17 +282,17 @@ Notes (section 8 implementation):
 
 ## 17. Evaluation & Validation
 
-- [ ] 17.1 Human sampling and annotation harness
-- [ ] 17.2 Inter-annotator agreement tracking
-- [ ] 17.3 Model drift detection
+- [x] 17.1 Human sampling and annotation harness
+- [x] 17.2 Inter-annotator agreement tracking
+- [x] 17.3 Model drift detection
 
 ## 18. Unit Testing
 
 - [x] 18.1 Unit tests for taxonomy asset and loader (`tests/unit/ml/test_taxonomy_asset.py`)
 - [x] 18.2 Unit tests for EvidenceExtractor and CET models
 - [x] 18.3 Unit tests for TaxonomyLoader (YAML parsing, validation)
-- [ ] 18.4 Unit tests for CompanyCETAggregator (aggregation logic)
-- [ ] 18.5 Integration tests for classifier & trainer (larger dataset)
+- [x] 18.4 Unit tests for CompanyCETAggregator (aggregation logic)
+- [x] 18.5 Integration tests for classifier & trainer (larger dataset)
 - [x] 18.6 Add pytest markers for slow/e2e tests
 - [x] 18.7 Add Neo4j smoke tests (CI job)
 
@@ -303,8 +303,8 @@ Notes (section 8 implementation):
 
 ## 20. End-to-End Testing
 
-- [ ] 20.1 E2E pipeline on dev stack
-- [ ] 20.2 Load testing for batch classification assets
+- [x] 20.1 E2E pipeline on dev stack
+- [x] 20.2 Load testing for batch classification assets
 
 ## 21. Documentation
 
@@ -313,7 +313,7 @@ Notes (section 8 implementation):
 
 ## 22. Performance Optimization (if needed)
 
-- [ ] 22.1 Baseline TF-IDF & inference throughput
+- [x] 22.1 Baseline TF-IDF & inference throughput
 - [ ] 22.2 Implement batching & mem-optimizations
 
 ## 23. Configuration & Deployment
