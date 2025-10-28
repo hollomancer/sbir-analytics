@@ -55,6 +55,19 @@ jobs:
         run: |
           make transition-mvp-run
 
+      - name: Export precision audit sample (CSV)
+        run: |
+          poetry run python scripts/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
+
+      - name: Upload precision audit sample
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transition-mvp-precision-audit-sample
+          path: reports/validation/vendor_resolution_audit_sample.csv
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Gate on validation summary
         id: gate
         run: |

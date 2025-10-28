@@ -203,6 +203,10 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "src.assets.transition_assets",
         "transition_scores_quality_check",
     ),
+    "transition_evidence_quality_check": (
+        "src.assets.transition_assets",
+        "transition_evidence_quality_check",
+    ),
 }
 
 

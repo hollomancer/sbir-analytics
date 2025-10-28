@@ -697,7 +697,9 @@ def transition_evidence_v1(
             "awarding_agency_code": c.get("awarding_agency_code"),
         }
 
+    threshold = _env_float("SBIR_ETL__TRANSITION__EVIDENCE_SCORE_MIN", 0.60)
     count = 0
+    count_above = 0
     with out_path.open("w", encoding="utf-8") as fh:
         for _, row in transition_scores_v1.iterrows():
             cid = str(row.get("contract_id") or "")
@@ -725,6 +727,8 @@ def transition_evidence_v1(
             }
             fh.write(json.dumps(evidence) + "\n")
             count += 1
+            if float(row.get("score") or 0.0) >= float(threshold):
+                count_above += 1
 
     # Emit a lightweight validation summary for the MVP
     try:
@@ -806,11 +810,22 @@ def transition_evidence_v1(
 
     # Checks JSON for evidence
     checks_path = out_path.with_suffix(".checks.json")
+    num_above = (
+        int((transition_scores_v1["score"] >= float(threshold)).sum())
+        if len(transition_scores_v1)
+        else 0
+    )
     checks = {
-        "ok": True,
+        "ok": bool(count_above == num_above),
         "generated_at": now_utc_iso(),
         "rows": count,
         "source": str(out_path),
+        "completeness": {
+            "threshold": float(threshold),
+            "candidates_above_threshold": int(num_above),
+            "evidence_rows_for_above_threshold": int(count_above),
+            "complete": bool(count_above == num_above),
+        },
     }
     write_json(checks_path, checks)
 
@@ -969,5 +984,64 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
             "invalid_score_count": invalid_scores,
             "empty_signals_count": empty_signals,
             "columns_present": list(transition_scores_v1.columns),
+        },
+    )
+
+
+@asset_check(
+    asset="transition_evidence_v1",
+    description="Evidence completeness for candidates with score ≥ configured threshold",
+)
+def transition_evidence_quality_check(context: AssetExecutionContext) -> AssetCheckResult:
+    """
+    Check evidence completeness by consuming the checks JSON emitted by transition_evidence_v1.
+
+    Passes when all candidates with score >= threshold have an evidence row.
+    """
+    from pathlib import Path as _Path
+    import json as _json
+
+    checks_path = _Path("data/processed/transitions_evidence.checks.json")
+    if not checks_path.exists():
+        desc = "Missing transitions_evidence.checks.json; evidence asset may not have run."
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "missing_checks"},
+        )
+
+    try:
+        payload = _json.loads(checks_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        desc = f"Failed to read evidence checks JSON: {exc}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "read_error"},
+        )
+
+    comp = payload.get("completeness", {}) or {}
+    complete = bool(comp.get("complete", False))
+    threshold = comp.get("threshold")
+    num_above = comp.get("candidates_above_threshold")
+    ev_rows = comp.get("evidence_rows_for_above_threshold")
+
+    return AssetCheckResult(
+        passed=complete,
+        severity=AssetCheckSeverity.ERROR if not complete else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if complete else '✗'} evidence completeness: "
+            f"{ev_rows}/{num_above} candidates at≥{threshold}"
+        ),
+        metadata={
+            "checks_path": str(checks_path),
+            "threshold": threshold,
+            "candidates_above_threshold": num_above,
+            "evidence_rows_for_above_threshold": ev_rows,
+            "complete": complete,
         },
     )
