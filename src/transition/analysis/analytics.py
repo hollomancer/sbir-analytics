@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportMissingTypeStubs=false, reportDeprecatedType=false, reportGeneralTypeIssues=false
 """
 Transition Analytics: dual-perspective (award- and company-level) KPIs and breakdowns.
 

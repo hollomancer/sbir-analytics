@@ -269,7 +269,8 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 12.6 Calculate transition rates by CET area (NEW)
 - [ ] 12.7 Calculate avg time to transition by CET area (NEW)
 - [ ] 12.8 Calculate patent-backed transition rates by CET area (NEW)
-- [ ] 12.9 Create transition_analytics asset
+- [x] 12.9 Create transition_analytics asset
+  - Notes: Implemented Dagster asset `transition_analytics` that computes dual-perspective KPIs (award/company rates, phase effectiveness, by-agency rates, optional avg time-to-transition by agency), writes `data/processed/transition_analytics.json` and `transition_analytics.checks.json`, and accepts `SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD` for the score threshold.
 - [ ] 12.10 Generate executive summary reports
 
 ## 13. Neo4j Graph Model - Transition Nodes
