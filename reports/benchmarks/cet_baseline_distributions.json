@@ -1,0 +1,37 @@
+{
+  "created_at": "2025-10-27T00:00:00Z",
+  "description": "Canonical CET baseline distributions used for drift detection. Contains a label PMF over primary CET assignments and a histogram PMF of primary scores (0-100 in 10-point bins).",
+  "label_pmf": {
+    "artificial_intelligence": 0.45,
+    "quantum_information_science": 0.25,
+    "biotech": 0.15,
+    "other": 0.10,
+    "__none__": 0.05
+  },
+  "score_pmf": {
+    "0-10": 0.02,
+    "10-20": 0.03,
+    "20-30": 0.05,
+    "30-40": 0.10,
+    "40-50": 0.15,
+    "50-60": 0.20,
+    "60-70": 0.18,
+    "70-80": 0.12,
+    "80-90": 0.08,
+    "90-100": 0.07
+  },
+  "source": {
+    "awards_artifact": "data/processed/cet_award_classifications.parquet",
+    "companies_artifact": "data/processed/cet_company_profiles.parquet",
+    "generated_by": "scripts/promote_cet_baseline.py (automatic promotion)",
+    "notes": "This baseline was promoted automatically from the candidate baseline distributions. Review and adjust thresholds as needed based on historical runs."
+  },
+  "thresholds": {
+    "label_js_threshold": 0.10,
+    "score_js_threshold": 0.15
+  },
+  "notes": [
+    "Keep this file under version control so CI and drift detection use a stable baseline.",
+    "If you need to update the baseline, run the promotion workflow or replace this file via the promote script with --force."
+  ]
+}

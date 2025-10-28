@@ -12,14 +12,14 @@ on:
           - dry-run
           - live
       NEO4J_USER:
-        description: 'Optional NEO4J user to use for live mode (overrides repository secret if provided)'
+        description: "Optional NEO4J user to use for live mode (overrides repository secret if provided)"
         required: false
-        default: ''
+        default: ""
         type: string
       NEO4J_PASSWORD:
-        description: 'Optional NEO4J password to use for live mode (overrides repository secret if provided)'
+        description: "Optional NEO4J password to use for live mode (overrides repository secret if provided)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 jobs:
@@ -95,7 +95,8 @@ jobs:
         # In dry-run mode we wait for the container to appear running/healthy via docker inspect to avoid requiring credentials.
         run: |
           set -eux
-          MODE="${{ github.event.inputs.mode || 'dry-run' }}"
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "${MODE}" ]; then MODE="dry-run"; fi
           echo "Health check mode: ${MODE}"
           # Helper: retry loop
           wait_for() {
@@ -173,7 +174,9 @@ jobs:
             echo "docker-compose not detected; skipping exec sanity check"
           fi
 
-    # Always attempt to tear down compose resources (but do not remove named volumes by default)
+      # CET minimal asset checks consolidated into neo4j-cet-smoke workflow
+
+      # Always attempt to tear down compose resources (but do not remove named volumes by default)
       - name: Tear down compose (always)
         if: ${{ always() }}
         run: |

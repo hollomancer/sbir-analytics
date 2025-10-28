@@ -185,7 +185,7 @@ check_http() {
 # Main wait loop
 start_time="$(_now)"
 deadline=$(( start_time + TIMEOUT ))
-log "Waiting for ${PROTO^^} service at ${HOST}:${PORT} (timeout=${TIMEOUT}s, interval=${INTERVAL}s)..."
+log "Waiting for $PROTO service at ${HOST}:${PORT} (timeout=${TIMEOUT}s, interval=${INTERVAL}s)..."
 
 while [ "$(_now)" -le "$deadline" ]; do
   if [ "$PROTO" = "tcp" ]; then

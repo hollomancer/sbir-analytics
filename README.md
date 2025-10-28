@@ -1,12 +1,81 @@
 # SBIR ETL Pipeline
 
+## CET (Critical and Emerging Technologies) Pipeline
+
+Deployment
+- CET deployment guide (staging/prod runbook): docs/deployment/cet-assets-deployment.md
+- Staging Compose overlay: docker-compose.cet-staging.yml (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
+- General production checklist: docs/DEPLOYMENT_CHECKLIST.md
+
+This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
+
+### Run the full CET pipeline
+
+You can execute the full CET job via Dagster:
+
+```
+dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+```
+
+Requirements:
+- Neo4j reachable via environment variables:
+  - NEO4J_URI (e.g., bolt://localhost:7687)
+  - NEO4J_USERNAME
+  - NEO4J_PASSWORD
+- Minimal CET configs under config/cet:
+  - taxonomy.yaml
+  - classification.yaml
+
+Alternatively, run from the Dagster UI and select the job “cet_full_pipeline_job”.
+
+### Assets included in the CET pipeline
+
+The job orchestrates these assets in dependency order:
+- cet_taxonomy
+- cet_award_classifications
+- cet_company_profiles
+- neo4j_cetarea_nodes
+- neo4j_award_cet_enrichment
+- neo4j_company_cet_enrichment
+- neo4j_award_cet_relationships
+- neo4j_company_cet_relationships
+
+### Neo4j schema for CET
+
+See the CET graph schema documentation:
+- docs/schemas/cet-neo4j-schema.md
+
+This document covers:
+- CETArea node schema and constraints
+- Award/Company CET enrichment properties
+- Award → CETArea APPLICABLE_TO relationships
+- Company → CETArea SPECIALIZES_IN relationships
+- Idempotent MERGE semantics and re-run safety
+
+### CI
+
+A dedicated CI workflow runs a tiny-fixture CET pipeline to catch regressions end-to-end:
+- .github/workflows/cet-pipeline-ci.yml
+
+This spins up a Neo4j service, builds minimal CET configs and sample awards, and executes the cet_full_pipeline_job, uploading resulting artifacts (processed outputs and Neo4j checks).
+
+Performance baseline initialization
+
+To enable automated regression detection against a baseline, initialize the CET performance baseline from existing processed artifacts. The initializer computes baseline coverage and specialization thresholds and writes them to `reports/benchmarks/baseline.json`. Run the initializer locally or in CI (after producing the processed artifacts) with:
+
+    python scripts/init_cet_baseline.py \
+      --awards-parquet data/processed/cet_award_classifications.parquet \
+      --companies-path data/processed/cet_company_profiles.parquet
+
+Once the baseline is created, the performance/regression job will compare current runs to the saved baseline and surface alerts when thresholds are exceeded. The baseline file is retained by CI artifacts and can be updated with the `--force` or `--set-thresholds` flags as needed.
+
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into Neo4j graph database.
 
 ### Why This Project?
 
 The federal government provides a vast amount of data on innovation and government funding. However, this data is spread across multiple sources and formats, making it difficult to analyze. This project provides a unified and enriched view of the SBIR ecosystem by:
 
-*   **Connecting disparate data sources:** Integrating SBIR awards, USAspending contracts, and USPTO patent data.
+*   **Connecting disparate data sources:** Integrating SBIR awards, USAspending contracts, USPTO patents, and other publicly available data.
 *   **Building a knowledge graph:** Structuring the data in a Neo4j graph database to reveal complex relationships.
 *   **Enabling powerful analysis:** Allowing for queries that trace funding, track technology transitions, and analyze patent ownership chains.
 
@@ -16,7 +85,7 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ### Pipeline Stages
 
-1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patents)
+1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patent DTAs)
 2. **Validate**: Schema validation and data quality checks
 3. **Enrich**: Augment data with fuzzy matching and external enrichment
 4. **Transform**: Business logic and graph-ready entity preparation
@@ -33,30 +102,11 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ## Features
 
-### Core Capabilities
 - **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
 - **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
 - **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
 - **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
 - **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
-
-### Performance & Quality
-- **Performance Monitoring**: Automatic timing, memory tracking, and alert generation
-- **Quality Baselines**: Historical baseline tracking with regression detection
-- **CI Regression Pipeline**: Automated performance benchmarking in pull requests
-- **Chunked Processing**: Memory-adaptive enrichment with spill-to-disk for large datasets
-- **Configurable Thresholds**: Duration warnings, memory limits, and quality gates
-
-#### Enrichment Performance
-
-The enrichment stage includes resilience features for large datasets:
-
-- **Chunked Processing**: Process recipients in batches (default 10k)
-- **Memory Monitoring**: Track memory usage via `psutil`
-- **Adaptive Chunk Sizing**: Reduce chunk size under memory pressure
-- **Spill-to-Disk**: Write chunks to Parquet when memory critical
-- **Checkpointing**: Resume from last successful chunk on failure
-- **Progress Tracking**: Expose completion percentage and ETA
 
 #### Quality Gates
 
@@ -78,40 +128,6 @@ loading:
 - `enrichment_quality_regression_check` — Compare to baseline
 - `patent_load_success_rate` — Verify Neo4j load success
 - `assignment_load_success_rate` — Verify relationship creation
-
-#### Monitoring & Alerts
-
-Performance alerts are generated automatically:
-
-**Alert Types:**
-- `DURATION_WARNING` — Enrichment took >5 min
-- `MEMORY_WARNING` — Memory increase >500 MB
-- `QUALITY_REGRESSION` — Match rate dropped >5%
-- `LOAD_FAILURE` — Neo4j load success <99%
-
-**Alert Artifacts:**
-```json
-{
-  "timestamp": "2024-10-26T12:00:00",
-  "alert_type": "DURATION_WARNING",
-  "severity": "WARNING",
-  "message": "Enrichment took 380s (threshold: 300s)",
-  "metadata": {
-    "duration_seconds": 380,
-    "threshold_seconds": 300,
-    "records_processed": 533000
-  }
-}
-```
-
-Alerts saved to `reports/alerts/<timestamp>.json` and attached to Dagster asset metadata.
-
-
-### Observability
-- **Alerts**: JSON artifacts with severity levels (INFO, WARNING, FAILURE)
-- **Dashboards**: Plotly-based quality dashboards (HTML + JSON fallback)
-- **Metrics**: Asset-level performance metrics (duration, records/sec, memory usage)
-- **Regression Detection**: Automated comparison against baseline with PR comments
 
 ## Quick Start
 
@@ -179,7 +195,7 @@ See `docs/deployment/containerization.md` for full details.
    pytest -v --cov=src --cov-report=html
    ```
 
-## Data Sources
+## Bulk Data Sources
 
 ### SBIR Awards
 - **Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
@@ -216,45 +232,7 @@ export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
 export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
 ```
 
-### Performance Configuration
-
-Key thresholds in `config/base.yaml`:
-
-```yaml
-performance:
-  duration_warning_seconds: 300           # Alert if enrichment >5min
-  memory_delta_warning_mb: 500            # Alert if memory increase >500MB
-  memory_pressure_warn_percent: 75        # Adaptive chunk resize
-  memory_pressure_critical_percent: 90    # Spill to disk
-  regression_threshold_percent: 5.0       # Fail CI if >5% regression
-
-enrichment:
-  match_rate_threshold: 0.70              # Min 70% match rate
-  chunk_size: 10000                       # Records per chunk
-```
-
-## Development
-
-### Code Quality
-
-```bash
-# Format code
-poetry run black src tests
-
-# Lint code
-poetry run ruff check src tests
-
-# Type check
-poetry run mypy src
-
-# Security scan
-poetry run bandit -r src
-
-# Run all checks
-black src tests && ruff check src tests && mypy src
-```
-
-### Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -274,36 +252,6 @@ make docker-test
 - 29 tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
-
-### Performance Monitoring
-
-The pipeline includes comprehensive performance instrumentation:
-
-**Built-in Monitoring:**
-- `src/utils/performance_monitor.py` — Decorators and context managers
-- `src/utils/performance_alerts.py` — Alert collection and severity tracking
-- `src/utils/quality_baseline.py` — Baseline storage and comparison
-- `src/utils/quality_dashboard.py` — Plotly-based dashboards
-
-**Usage in Assets:**
-```python
-from src.utils.performance_monitor import monitor_performance
-from src.utils.performance_alerts import AlertCollector
-
-@monitor_performance
-def my_asset(context):
-    alert_collector = AlertCollector()
-    # ... processing logic ...
-    alert_collector.add_alert("duration", duration_seconds, severity="WARNING")
-    alert_collector.save_alerts("reports/alerts/")
-```
-
-**CI Performance Pipeline:**
-- Workflow: `.github/workflows/performance-regression-check.yml`
-- Runs on PRs affecting enrichment/assets
-- Compares current run to cached baseline
-- Posts PR comments with regression analysis
-- Fails CI on FAILURE severity regressions
 
 ## Project Structure
 

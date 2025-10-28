@@ -154,7 +154,7 @@ This checklist ensures the enrichment pipeline is production-ready before deploy
   - Configuration requirements: ✅ Present
   - Known limitations: ✅ Present
   - Support contacts: ✅ Present
-  - Required: All sections complete
+  - Required: All sections complete; include link to CET deployment guide: docs/deployment/cet-assets-deployment.md
 
 ---
 

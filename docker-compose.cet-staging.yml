@@ -1,0 +1,190 @@
+# CET Staging Docker Compose
+# - Standalone staging stack for CET pipeline validation
+# - Uses bind mounts for data/artifacts/reports/logs/config
+# - Reads secrets and overrides from a .env file (not committed)
+#
+# Usage:
+#   cp .env.example.staging .env
+#   # set NEO4J_USER/NEO4J_PASSWORD and optional CET_MODEL_PATH in .env
+#   docker compose -f docker-compose.cet-staging.yml build
+#   docker compose -f docker-compose.cet-staging.yml up -d
+#   # Open Dagster UI: http://localhost:3000
+#
+# Notes:
+# - ENVIRONMENT is set to "staging"
+# - Relies on depends_on.condition: service_healthy (Docker Compose v2+ required)
+# - CET model artifact can be provided via CET_MODEL_PATH in .env (recommended)
+# - For managed/prod Neo4j, set NEO4J_URI in .env and comment out the neo4j service
+
+services:
+  neo4j:
+    image: neo4j:5.20.0
+    container_name: cet-staging-neo4j
+    environment:
+      # Prefer explicit NEO4J_AUTH if set, otherwise construct from user/password.
+      - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      # Staging resource hints (tune as needed)
+      - NEO4J_dbms_memory_heap_max__size=1G
+      - NEO4J_dbms_memory_pagecache_size=512M
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/import:/var/lib/neo4j/import
+    networks:
+      - sbir-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
+    container_name: cet-staging-dagster-web
+    env_file:
+      - ./.env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-staging}
+      SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
+      # Internal compose Neo4j (override with NEO4J_URI in .env for managed/prod)
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      # CET model artifact override (optional; recommended to set via .env)
+      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
+      # Run production webserver (not `dagster dev`)
+      ENV_DAGSTER_CMD: ${ENV_DAGSTER_CMD:-dagster-webserver -h 0.0.0.0 -p 3000}
+      HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
+      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
+    volumes:
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./config:/app/config
+    ports:
+      - "${DAGSTER_PORT:-3000}:3000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS --max-time 3 http://localhost:${HEALTHCHECK_PORT:-3000}${HEALTHCHECK_PATH:-/server_info} || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - sbir-network
+    restart: unless-stopped
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
+    container_name: cet-staging-dagster-daemon
+    env_file:
+      - ./.env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-staging}
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
+    volumes:
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./config:/app/config
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      dagster-webserver:
+        condition: service_healthy
+    command: ["dagster-daemon"]
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q 'dagster-daemon' || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - sbir-network
+    restart: unless-stopped
+
+  etl-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
+    container_name: cet-staging-etl-runner
+    profiles:
+      - tools
+    env_file:
+      - ./.env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-staging}
+      SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
+      SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
+    volumes:
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./config:/app/config
+      - ./:/app:ro
+    command:
+      [
+        "etl-runner",
+        "--",
+        "sh",
+        "-c",
+        "echo 'etl-runner ready; run with: docker compose -f docker-compose.cet-staging.yml run --rm etl-runner -- dagster job execute -f src/definitions.py -j cet_full_pipeline_job' && sleep infinity",
+      ]
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - sbir-network
+    restart: "no"
+
+networks:
+  sbir-network:
+    name: sbir-network
+    external: true
+
+# Tips:
+# - To point at managed/staging Neo4j instead of the local container, set:
+#     NEO4J_URI=bolt://<host>:<port>
+#   in .env and comment out the neo4j service above.
+# - Ensure CET model artifact exists on host at ./artifacts/models/cet_classifier_v1.pkl
+#   or set CET_MODEL_PATH in .env to its mounted path in the container.

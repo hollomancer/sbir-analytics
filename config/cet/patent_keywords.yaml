@@ -1,0 +1,157 @@
+# Patent CET keyword map (placeholder)
+#
+# Purpose:
+#   This YAML provides a curated set of lightweight keyword groups for patent
+#   feature extraction. It is intended to be loaded at runtime and supplied to
+#   the patent feature extractor (keywords_map argument) and/or vectorizers.
+#
+# Usage (example in Python):
+#   import yaml
+#   from pathlib import Path
+#   from src.ml.features.patent_features import extract_features
+#
+#   cfg = yaml.safe_load(Path("config/cet/patent_keywords.yaml").read_text())
+#   keywords_map = cfg.get("cet_keywords", {})
+#
+#   # Per-record:
+#   features = extract_features(record, keywords_map=keywords_map)
+#
+# Notes:
+# - Keys MUST match CET taxonomy IDs wherever possible (e.g., "artificial_intelligence").
+# - Phrases should be lowercased and concise; the feature extractor normalizes text to lowercase.
+# - This file is a starting point; expand and tune per CET area as needed.
+#
+# Schema:
+#   schema_version: int
+#   cet_keywords:
+#     <cet_id>:
+#       - "keyword or short phrase"
+#       - ...
+#
+# Change management:
+# - Keep changes small and test new keywords against a sample of patent titles.
+# - Record significant updates in docs/ml/cet_classifier.md.
+#
+schema_version: 1
+description: |
+  Lightweight keyword map for CET patent feature extraction. This is a starter
+  set to bootstrap feature engineering; refine as your datasets and evaluation
+  needs mature.
+
+# CET keyword groups
+cet_keywords:
+  artificial_intelligence:
+    - "machine learning"
+    - "deep learning"
+    - "neural network"
+    - "reinforcement learning"
+    - "computer vision"
+    - "natural language processing"
+    - "nlp"
+    - "transformer model"
+    - "large language model"
+    - "llm"
+    - "convolutional network"
+    - "cnn"
+    - "graph neural network"
+    - "gnn"
+
+  quantum_information_science:
+    - "quantum"
+    - "qubit"
+    - "quantum computing"
+    - "quantum information"
+    - "quantum error correction"
+    - "quantum entanglement"
+    - "superconducting qubit"
+    - "ion trap"
+    - "quantum annealing"
+    - "quantum sensor"
+
+  semiconductor_and_microelectronics:
+    - "semiconductor"
+    - "microelectronics"
+    - "integrated circuit"
+    - "ic design"
+    - "cmos"
+    - "mosfet"
+    - "finfet"
+    - "photolithography"
+    - "wafer"
+    - "silicon carbide"
+    - "gan"
+    - "eda tools"
+
+  advanced_energy_and_batteries:
+    - "battery"
+    - "lithium ion"
+    - "solid state battery"
+    - "anode"
+    - "cathode"
+    - "electrolyte"
+    - "state of charge"
+    - "battery management system"
+    - "bms"
+    - "energy storage"
+
+  biotechnology_and_biomanufacturing:
+    - "protein engineering"
+    - "enzyme"
+    - "antibody"
+    - "microbial ferment"
+    - "synthetic biology"
+    - "crispr"
+    - "bioreactor"
+    - "cell culture"
+    - "bioprocess"
+    - "biomanufacturing"
+
+  advanced_materials_and_manufacturing:
+    - "additive manufacturing"
+    - "3d printing"
+    - "composite material"
+    - "graphene"
+    - "nanomaterial"
+    - "metamaterial"
+    - "lightweight alloy"
+    - "powder bed fusion"
+    - "directed energy deposition"
+
+  advanced_communications:
+    - "5g"
+    - "6g"
+    - "millimeter wave"
+    - "mmwave"
+    - "massive mimo"
+    - "beamforming"
+    - "low latency"
+    - "edge computing"
+    - "software defined radio"
+    - "sdr"
+
+  autonomy_and_robots:
+    - "autonomous navigation"
+    - "slam"
+    - "path planning"
+    - "sensor fusion"
+    - "uav"
+    - "robot manipulator"
+    - "autonomous vehicle"
+    - "agv"
+    - "drone swarming"
+
+  cybersecurity_and_resilience:
+    - "intrusion detection"
+    - "zero trust"
+    - "homomorphic encryption"
+    - "post quantum crypto"
+    - "malware detection"
+    - "secure enclave"
+    - "trusted execution environment"
+    - "tee"
+
+# Implementation notes:
+# - The initial code defaults to a tiny built-in map. To enable this curated map,
+#   load it at runtime and pass it into the feature extractor/vectorizers.
+# - Keep phrases short; long phrases reduce recall unless consistently present.
+# - Avoid overly generic terms that cause false positives across multiple CETs.

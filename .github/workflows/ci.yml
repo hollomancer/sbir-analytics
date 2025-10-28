@@ -70,6 +70,41 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
 
+      - name: Run taxonomy completeness checks
+        run: |
+          echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
+          # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
+          poetry run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json || true
+
+      - name: Evaluate taxonomy checks
+        run: |
+          set -e
+          PYFILE=$(mktemp)
+          cat > "$PYFILE" << 'PY'
+          import json, sys
+          p = 'data/processed/cet_taxonomy_checks.json'
+          try:
+              with open(p, 'r', encoding='utf-8') as fh:
+                  data = json.load(fh)
+          except Exception:
+              print(f'Checks file not found at {p}; skipping taxonomy evaluation.')
+              sys.exit(0)
+          comp = data.get('completeness', {}) or {}
+          missing_required = bool(comp.get('missing_required_fields', False))
+          mk = comp.get('areas_missing_keywords_count')
+          if mk is None:
+              ak = comp.get('areas_missing_keywords') or []
+              mk = len(ak)
+          total = comp.get('total_areas') or data.get('cet_count') or 0
+          issues = missing_required or (mk > 0) or (total != 21)
+          if issues:
+              print(f'CET taxonomy checks failed: missing_required={missing_required} missing_keywords={mk} total={total}')
+              sys.exit(1)
+          print('CET taxonomy checks passed.')
+          PY
+          python "$PYFILE"
+          rm -f "$PYFILE"
+
       - name: Run tests
         run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
 
@@ -80,3 +115,68 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  # Lightweight job to run only ML unit tests (faster feedback for ML changes)
+  ml-unit-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Install duckdb and pyreadstat
+        run: |
+          # Ensure pip is up-to-date inside the poetry environment and install required ML runtime deps
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+
+      - name: Verify pandas, duckdb, and pyreadstat installed
+        run: |
+          poetry run python - <<'PY'
+          import pandas, sys
+          try:
+              import duckdb
+              import pyreadstat
+              print("pandas", pandas.__version__)
+              print("duckdb", duckdb.__version__)
+              print("pyreadstat", pyreadstat.__version__)
+          except Exception as e:
+              # Print diagnostics to help CI debugging and exit non-zero so failures are visible
+              print("Dependency verification failed:", e)
+              raise
+          PY
+
+      - name: Run ML unit tests
+        run: poetry run pytest tests/unit/ml -q

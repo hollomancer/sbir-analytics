@@ -139,14 +139,14 @@ wait_for_neo4j() {
 # Wait for the dagster webserver to expose /server_info (HTTP) if desired.
 wait_for_dagster_web() {
   WEB_HOST="${DAGSTER_HOST:-127.0.0.1}"
-  WEB_PORT="${DAGSTER_PORT:-3000}"
-  PATH="${DAGSTER_HEALTH_PATH:-/server_info}"
+  WEB_PORT="${HEALTHCHECK_PORT:-${DAGSTER_PORT:-3000}}"
+  HEALTH_PATH="${HEALTHCHECK_PATH:-${DAGSTER_HEALTH_PATH:-/server_info}}"
   TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
   WAIT_SCRIPT="/app/scripts/docker/wait-for-service.sh"
 
   if [ -x "$WAIT_SCRIPT" ]; then
-    log "Waiting for Dagster webserver at ${WEB_HOST}:${WEB_PORT}${PATH} (timeout=${TIMEOUT}s)..."
-    "$WAIT_SCRIPT" --host "${WEB_HOST}" --port "${WEB_PORT}" --proto http --path "${PATH}" --timeout "${TIMEOUT}" --interval 5 || {
+    log "Waiting for Dagster webserver at ${WEB_HOST}:${WEB_PORT}${HEALTH_PATH} (timeout=${TIMEOUT}s)..."
+    "$WAIT_SCRIPT" --host "${WEB_HOST}" --port "${WEB_PORT}" --proto http --path "${HEALTH_PATH}" --timeout "${TIMEOUT}" --interval 5 || {
       log "Dagster webserver did not become healthy within ${TIMEOUT}s"
       return 1
     }
@@ -163,7 +163,7 @@ wait_for_dagster_web() {
   start=$(date +%s)
   deadline=$((start + TIMEOUT))
   while [ "$(date +%s)" -le "$deadline" ]; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "http://${WEB_HOST}:${WEB_PORT}${PATH}" || echo 000)
+    code=$(curl -s -o /dev/null -w '%{http_code}' "http://${WEB_HOST}:${WEB_PORT}${HEALTH_PATH}" || echo 000)
     case "$code" in
       2*|3*)
         log "Dagster webserver responded with HTTP ${code}"
@@ -235,12 +235,19 @@ main() {
         exit 1
       fi
 
-      # If ENVIRONMENT=dev we prefer `dagster dev` which provides auto-reload
-      if [ "${ENVIRONMENT:-dev}" = "dev" ]; then
-        CMD="dagster dev -h 0.0.0.0 -p 3000"
+      # Honor explicit command overrides before falling back to defaults
+      if [ -n "${ENV_DAGSTER_CMD-}" ]; then
+        CMD="${ENV_DAGSTER_CMD}"
+      elif [ -n "${DAGSTER_CMD-}" ]; then
+        CMD="${DAGSTER_CMD}"
       else
-        # Production-like run (the exact production invocation may differ)
-        CMD="dagster api -h 0.0.0.0 -p 3000"
+        # If ENVIRONMENT=dev we prefer `dagster dev` which provides auto-reload
+        if [ "${ENVIRONMENT:-dev}" = "dev" ]; then
+          CMD="dagster dev -h 0.0.0.0 -p 3000"
+        else
+          # Production-like run (prefer dagster-webserver over legacy 'dagster api')
+          CMD="dagster-webserver -h 0.0.0.0 -p 3000"
+        fi
       fi
 
       log "Exec: ${EXEC_PREFIX} ${CMD}"
