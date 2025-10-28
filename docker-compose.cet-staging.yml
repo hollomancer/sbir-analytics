@@ -1,4 +1,4 @@
-sbir-etl/docker-compose.cet-staging.yml
+version: "3.9"
 # CET Staging Docker Compose
 # - Standalone staging stack for CET pipeline validation
 # - Uses bind mounts for data/artifacts/reports/logs/config
@@ -181,8 +181,7 @@ services:
 networks:
   sbir-network:
     name: sbir-network
-    driver: bridge
-
+    external: true
 # Tips:
 # - To point at managed/staging Neo4j instead of the local container, set:
 #     NEO4J_URI=bolt://<host>:<port>

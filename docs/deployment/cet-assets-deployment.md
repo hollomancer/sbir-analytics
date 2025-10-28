@@ -1,5 +1,48 @@
 # CET Assets Deployment Guide (Staging and Production)
 
+Staging validation runbook
+1) Bring up staging
+- Copy `.env.example.staging` to `.env` and set `NEO4J_USER`/`NEO4J_PASSWORD` (and optional `CET_MODEL_PATH`)
+- Start the stack: `docker compose -f docker-compose.cet-staging.yml up -d`
+- Open Dagster UI: http://localhost:3000
+
+2) Materialize assets in order
+- `cet_taxonomy`
+- `cet_award_classifications`
+- `cet_company_profiles`
+- `neo4j_cetarea_nodes`
+- `neo4j_award_cet_enrichment`
+- `neo4j_company_cet_enrichment`
+- `neo4j_award_cet_relationships`
+- `neo4j_company_cet_relationships`
+- Optional: `cet_analytics`, `cet_human_sampling`, `cet_drift_detection`
+
+3) Verify file checks and alerts
+- `data/processed/cet_taxonomy.checks.json`
+- `data/processed/cet_award_classifications.checks.json`
+- `data/processed/cet_company_profiles.checks.json`
+- `data/loaded/neo4j/*checks.json`
+- `reports/alerts/cet_analytics.alerts.json` (if `cet_analytics` ran)
+- `reports/alerts/cet_drift_alerts.json` (if `cet_drift_detection` ran)
+
+4) Spot-check Neo4j
+- Run the Cypher queries in the Validation and Health Checks section
+- Confirm `CETArea` count > 0, Award → CET relationships present, and Company specialization edges
+
+5) Enable/confirm schedules (optional in staging)
+- Ensure `dagster-daemon` is healthy
+- Default crons (UTC): `0 2 * * *` (CET full pipeline), `0 6 * * *` (CET drift)
+- Override via env:
+  - `SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB`
+  - `SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB`
+  - `SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB`
+
+6) Exit criteria for staging
+- High-confidence rate and evidence coverage meet targets noted in classification checks
+- No ERROR-level alerts in `reports/alerts`
+- Neo4j loaders succeed without constraint violations
+- Drift report present with no blocking alerts
+
 This guide explains how to deploy and operate the CET (Critical & Emerging Technologies) assets in staging and production for the SBIR ETL pipeline. It covers environment setup, secrets, model artifacts, run configs, Docker Compose, job execution, and validation steps.
 
 Contents
