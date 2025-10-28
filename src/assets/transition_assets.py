@@ -79,11 +79,42 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
     except Exception:
         # Fallback to NDJSON in the same directory with .ndjson suffix
         ndjson_path = path.with_suffix(".ndjson")
+
+        # Convert values to JSON-serializable, handling NaN/NaT/NumPy scalars and nested containers
+        def _to_jsonable(x):
+            try:
+                if pd.isna(x):
+                    return None
+            except Exception:
+                pass
+            # pandas Timestamps
+            if hasattr(x, "isoformat"):
+                try:
+                    return x.isoformat()
+                except Exception:
+                    pass
+            # NumPy scalars
+            try:
+                import numpy as _np  # type: ignore
+
+                if isinstance(x, _np.generic):
+                    try:
+                        return x.item()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # Containers
+            if isinstance(x, dict):
+                return {str(k): _to_jsonable(v) for k, v in x.items()}
+            if isinstance(x, (list, tuple, set)):
+                return [_to_jsonable(v) for v in list(x)]
+            return x
+
         with ndjson_path.open("w", encoding="utf-8") as fh:
             for _, row in df.iterrows():
-                fh.write(
-                    json.dumps({k: (v if pd.notna(v) else None) for k, v in row.items()}) + "\n"
-                )
+                record = {k: _to_jsonable(v) for k, v in row.items()}
+                fh.write(json.dumps(record) + "\n")
         logger.warning("Parquet save failed; wrote NDJSON fallback", path=str(ndjson_path))
 
 
