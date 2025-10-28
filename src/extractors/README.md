@@ -35,14 +35,21 @@ Based on observed structure of file `5530.dat.gz`:
 | 0 | transaction_id | Unique transaction ID |
 | 1 | generated_unique_award_id | Award identifier |
 | 2 | action_date | Format: YYYYMMDD |
-| 3 | **type** | **Contract type (A/B = contracts)** |
+| 3 | **type** | **'A'=Contract/Assistance, 'B'=IDV/Coop Agreement** |
 | 4 | action_type | New, Revision, Continuation, etc. |
 | 9 | recipient_name | Vendor name |
-| 10 | recipient_unique_id | UEI (12 chars) or DUNS (9 digits) |
+| 10 | recipient_unique_id | Legacy UEI (12 chars) or DUNS (9 digits) |
 | 12 | awarding_agency_name | Agency |
 | 14 | awarding_sub_tier_agency_name | Sub-agency |
+| 17 | business_categories | Array (e.g., {higher_education,...}) |
 | 28 | piid | Procurement Instrument ID |
 | 29 | federal_action_obligation | **Amount (can be negative)** |
+| 63 | recipient_state_code | State abbreviation (NY, CA, etc.) |
+| 64 | recipient_state_name | State full name |
+| 70 | period_of_performance_current_end_date | End date (YYYYMMDD) |
+| 71 | period_of_performance_start_date | Start date (YYYYMMDD) |
+| 96 | **recipient_uei** | **Preferred 12-char UEI format** |
+| 97 | parent_uei | Parent organization UEI |
 
 ## Negative Obligation Amounts
 
