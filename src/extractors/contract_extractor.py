@@ -26,6 +26,11 @@ from src.models.transition_models import FederalContract, CompetitionType
 # USAspending transaction_normalized column mapping
 # Based on actual .dat.gz file structure observed from subset database
 # File 5530.dat.gz contains the transaction_normalized table
+#
+# IMPORTANT: The transaction_normalized table contains BOTH procurement contracts
+# and assistance/grants. Type codes 'A' and 'B' include both categories.
+# Procurement-specific fields (CAGE, extent_competed) may not be present in
+# all records, especially assistance/grant transactions.
 USASPENDING_COLUMNS = {
     # Core identifiers
     "transaction_id": 0,
@@ -39,7 +44,7 @@ USASPENDING_COLUMNS = {
     "award_description": 7,
     "modification_number": 8,
     "recipient_name": 9,  # Vendor name
-    "recipient_unique_id": 10,  # UEI or DUNS (older records)
+    "recipient_unique_id": 10,  # UEI or DUNS (older records) - legacy format
     # Agency info
     "awarding_agency_code": 11,
     "awarding_agency_name": 12,
@@ -47,6 +52,8 @@ USASPENDING_COLUMNS = {
     "awarding_sub_tier_agency_name": 14,
     "awarding_toptier_agency_code": 15,
     "awarding_toptier_agency_name": 16,
+    # Business categories
+    "business_categories": 17,  # Array of categories (e.g., {higher_education,...})
     # Identifiers
     "piid": 28,  # Procurement Instrument ID
     "federal_action_obligation": 29,  # Contract amount
@@ -55,11 +62,20 @@ USASPENDING_COLUMNS = {
     "funding_agency_name": 32,
     "funding_sub_tier_agency_code": 33,
     "funding_sub_tier_agency_name": 34,
-    # Note: Need to find correct indices for:
-    # - CAGE code (not yet located)
-    # - Competition type (extent_competed)
-    # - Period of performance dates
-    # These may be in higher column indices (60+)
+    # Location
+    "recipient_state_code": 63,  # State abbreviation (e.g., 'NY', 'CA')
+    "recipient_state_name": 64,  # State full name
+    # Performance period
+    "period_of_performance_current_end_date": 70,  # Format: YYYYMMDD
+    "period_of_performance_start_date": 71,  # Format: YYYYMMDD
+    # Additional identifiers
+    "recipient_uei": 96,  # UEI in 12-character format (newer, preferred)
+    "parent_uei": 97,  # Parent organization UEI
+    # Note: Procurement-specific fields not found in assistance records:
+    # - CAGE code: Not present in grant/assistance transactions
+    # - Competition type (extent_competed): Procurement contracts only
+    # These fields exist only for true procurement contracts, not in the
+    # mixed transaction_normalized table structure we're seeing.
 }
 
 
@@ -220,9 +236,12 @@ class ContractExtractor:
                     return None
 
             action_date = parse_date(get_col(2))
-            # TODO: Find correct column indices for start/end dates
-            start_date = action_date  # Use action date as placeholder
-            end_date = None
+            start_date = parse_date(get_col(71))  # period_of_performance_start_date
+            end_date = parse_date(get_col(70))  # period_of_performance_current_end_date
+
+            # Fallback to action_date if start_date missing
+            if not start_date:
+                start_date = action_date
 
             # Parse amount
             obligation_str = get_col(29, "0")  # Column 29 is federal_action_obligation
@@ -231,9 +250,23 @@ class ContractExtractor:
             except (ValueError, TypeError):
                 obligation_amount = 0.0
 
-            # Get vendor identifiers from column 10 (recipient_unique_id)
-            # This contains UEI for newer records, DUNS for older records
-            recipient_id = get_col(10)
+            # Get vendor identifiers
+            # Priority: column 96 (12-char UEI) > column 10 (legacy UEI/DUNS)
+            uei_primary = get_col(96)  # Preferred 12-character UEI format
+            recipient_id_legacy = get_col(10)  # Legacy format (UEI or DUNS)
+            parent_uei = get_col(97)  # Parent organization UEI
+
+            # Determine best UEI/DUNS values
+            vendor_uei = None
+            vendor_duns = None
+
+            if uei_primary and len(uei_primary) == 12:
+                vendor_uei = uei_primary
+            elif recipient_id_legacy:
+                if len(recipient_id_legacy) == 12:
+                    vendor_uei = recipient_id_legacy
+                elif len(recipient_id_legacy) == 9 and recipient_id_legacy.isdigit():
+                    vendor_duns = recipient_id_legacy
 
             # Create FederalContract
             contract = FederalContract(
@@ -241,13 +274,9 @@ class ContractExtractor:
                 agency=get_col(12),  # awarding_agency_name
                 sub_agency=get_col(14),  # awarding_sub_tier_agency_name
                 vendor_name=get_col(9),  # recipient_name
-                vendor_uei=recipient_id
-                if recipient_id and len(recipient_id) == 12
-                else None,  # UEI is 12 chars
-                vendor_cage=None,  # TODO: find CAGE column
-                vendor_duns=recipient_id
-                if recipient_id and len(recipient_id) == 9
-                else None,  # DUNS is 9 digits
+                vendor_uei=vendor_uei,
+                vendor_cage=None,  # Not available in transaction_normalized
+                vendor_duns=vendor_duns,
                 start_date=start_date,
                 end_date=end_date,
                 obligation_amount=obligation_amount,
@@ -260,6 +289,9 @@ class ContractExtractor:
                     "modification_number": get_col(8),
                     "action_date": action_date.isoformat() if action_date else None,
                     "funding_agency": get_col(32),
+                    "parent_uei": parent_uei,
+                    "recipient_state": get_col(63),  # State code
+                    "business_categories": get_col(17),  # Business type categories
                 },
             )
 

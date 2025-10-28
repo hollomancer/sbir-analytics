@@ -131,12 +131,35 @@ Parquet file with columns:
 
 ## Known Limitations
 
-1. **CAGE codes**: Column not yet identified in dump structure
-2. **Competition type**: Column not yet identified
-3. **Period of performance dates**: Using action_date as proxy for start_date
-4. **Modification chains**: Not linking modifications to base contracts
+### 1. **Mixed Transaction Types**
+The `transaction_normalized` table contains **BOTH** procurement contracts AND assistance/grants, even though they share the same type codes ('A', 'B'). This means:
+- Type 'A' = Both procurement contracts AND assistance agreements
+- Type 'B' = Both IDV contracts AND cooperative agreements
 
-These will be addressed in future iterations.
+**Impact**: Procurement-specific fields (CAGE code, extent_competed) are **NOT present** in assistance records. The data structure varies depending on whether it's a true procurement contract or an assistance transaction.
+
+### 2. **CAGE codes**
+Not available in the `transaction_normalized` table. CAGE codes exist in procurement-specific tables but are not included in this mixed transaction table.
+
+**Workaround**: Using UEI (column 96) as primary vendor identifier, which is more universal.
+
+### 3. **Competition type (extent_competed)**
+Not available in `transaction_normalized` for assistance records. Competition type is procurement-specific and only exists for true procurement contracts.
+
+**Workaround**: Defaulting to `CompetitionType.OTHER` for all records. Future work could join with procurement-specific tables to get this field.
+
+### 4. **Modification chains**
+Not linking modifications to base contracts. Each transaction is treated independently.
+
+**Future Work**: Could aggregate by PIID to calculate net contract values across all modifications.
+
+### 5. **Data Quality**
+Some records have:
+- PII masking (individual recipients)
+- Missing or null fields
+- Inconsistent vendor identifier formats
+
+**Mitigation**: Robust parsing with fallbacks and validation.
 
 ## Related Files
 
