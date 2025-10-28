@@ -163,6 +163,16 @@ endif
 	docker push $$TARGET
 
 # ---------------------------
+# Benchmarks
+# ---------------------------
+
+.PHONY: benchmark-transition-detection
+
+benchmark-transition-detection:
+	@echo "Running transition detection benchmark..."
+	@poetry run python scripts/benchmark_transition_detection.py --save-as-baseline
+
+# ---------------------------
 # Environment / safety checks
 # ---------------------------
 
