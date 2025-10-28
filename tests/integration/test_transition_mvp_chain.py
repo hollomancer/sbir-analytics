@@ -166,3 +166,134 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert str(ev_path.resolve()).startswith(str(cwd))
     assert str(vendor_map_art.resolve()).startswith(str(cwd))
     assert str(trans_art.resolve()).startswith(str(cwd))
+
+
+def test_transition_mvp_golden(tmp_path, monkeypatch):
+    """
+    Compare tiny-sample outputs to golden NDJSON fixtures (order-insensitive, normalized).
+    """
+    # Isolate IO
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
+
+    from src.assets.transition_assets import (  # noqa: WPS433
+        AssetExecutionContext,
+        transition_evidence_v1,
+        transition_scores_v1,
+        vendor_resolution,
+    )
+
+    # Tiny fixtures (same as the shimmed chain test)
+    contracts_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "C1",
+                "piid": "PIID-001",
+                "fain": None,
+                "vendor_uei": "UEI123",
+                "vendor_duns": None,
+                "vendor_name": "UEI Vendor Inc",
+                "action_date": "2023-01-01",
+                "obligated_amount": 100000,
+                "awarding_agency_code": "9700",
+            },
+            {
+                "contract_id": "C2",
+                "piid": "PIID-002",
+                "fain": None,
+                "vendor_uei": None,
+                "vendor_duns": None,
+                "vendor_name": "Acme Corporation",
+                "action_date": "2023-02-01",
+                "obligated_amount": 50000,
+                "awarding_agency_code": "9700",
+            },
+        ]
+    )
+    awards_df = pd.DataFrame(
+        [
+            {"award_id": "A1", "Company": "UEI Vendor Inc", "UEI": "UEI123", "Duns": None},
+            {"award_id": "A2", "Company": "Acme Corp", "UEI": None, "Duns": None},
+        ]
+    )
+    ctx = AssetExecutionContext()
+
+    # Run chain
+    vr_df, _ = _unwrap_output(vendor_resolution(ctx, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(transition_scores_v1(ctx, vr_df, contracts_df, awards_df))
+    ev_path_str, _ = _unwrap_output(transition_evidence_v1(ctx, scores_df, contracts_df))
+    ev_path = Path(ev_path_str)
+
+    # Normalize transitions (actual)
+    def _normalize_transitions(df: pd.DataFrame):
+        rows = []
+        for _, r in df.iterrows():
+            rows.append(
+                {
+                    "award_id": r.get("award_id"),
+                    "contract_id": r.get("contract_id"),
+                    "score": round(float(r.get("score")), 2),
+                    "method": r.get("method"),
+                    "signals": list(r.get("signals") or [r.get("method")]),
+                    "computed_at": "1970-01-01T00:00:00Z",
+                }
+            )
+        rows.sort(key=lambda x: (x["award_id"], x["contract_id"], x["method"]))
+        return rows
+
+    actual_transitions = _normalize_transitions(scores_df)
+
+    # Load and normalize golden transitions
+    golden_dir = Path(__file__).parent.parent / "data" / "transition"
+    golden_transitions_path = golden_dir / "golden_transitions.ndjson"
+    golden_transitions = []
+    for line in golden_transitions_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        obj = json.loads(line)
+        obj["score"] = round(float(obj["score"]), 2)
+        golden_transitions.append(obj)
+    golden_transitions.sort(key=lambda x: (x["award_id"], x["contract_id"], x["method"]))
+
+    assert actual_transitions == golden_transitions
+
+    # Normalize evidence by stripping dynamic/large fields
+    def _strip_evidence(obj: dict) -> dict:
+        d = dict(obj)
+        d.pop("contract_snapshot", None)
+        d["generated_at"] = "1970-01-01T00:00:00Z"
+        return d
+
+    actual_evidence = []
+    for line in ev_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        actual_evidence.append(_strip_evidence(json.loads(line)))
+    actual_evidence.sort(key=lambda x: (x["award_id"], x["contract_id"], x["method"]))
+
+    golden_evidence_path = golden_dir / "golden_transitions_evidence.ndjson"
+    golden_evidence = []
+    for line in golden_evidence_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        golden_evidence.append(_strip_evidence(json.loads(line)))
+    golden_evidence.sort(key=lambda x: (x["award_id"], x["contract_id"], x["method"]))
+
+    # Compare key fields only to avoid brittle diffs on optional fields
+    def _project_ev(rec):
+        mk = rec.get("matched_keys") or []
+        try:
+            mk = sorted(set(mk))
+        except Exception:
+            mk = list(mk) if isinstance(mk, (list, tuple, set)) else [mk]
+        return {
+            "award_id": rec.get("award_id"),
+            "contract_id": rec.get("contract_id"),
+            "score": round(float(rec.get("score") or 0), 2),
+            "method": rec.get("method"),
+            "matched_keys": mk,
+            "resolver_path": rec.get("resolver_path"),
+            "dates": {"contract_action_date": rec.get("dates", {}).get("contract_action_date")},
+        }
+
+    assert list(map(_project_ev, actual_evidence)) == list(map(_project_ev, golden_evidence))

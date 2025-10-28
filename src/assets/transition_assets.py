@@ -918,3 +918,56 @@ def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetChe
             else {},
         },
     )
+
+
+@asset_check(
+    asset="transition_scores_v1",
+    description="Transition scores quality: schema fields, score bounds [0,1], and non-empty signals",
+)
+def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> AssetCheckResult:
+    required_cols = ["award_id", "contract_id", "score", "method", "signals", "computed_at"]
+    missing = [c for c in required_cols if c not in transition_scores_v1.columns]
+    total = len(transition_scores_v1)
+
+    # Validate score bounds and signals presence
+    invalid_scores = 0
+    empty_signals = 0
+    if total > 0 and "score" in transition_scores_v1.columns:
+        s = pd.to_numeric(transition_scores_v1["score"], errors="coerce")
+        invalid_scores = int(((s < 0) | (s > 1) | (s.isna())).sum())
+
+    if total > 0 and "signals" in transition_scores_v1.columns:
+
+        def _is_empty_signals(v):
+            if v is None:
+                return True
+            if isinstance(v, (list, tuple, set)):
+                return len(v) == 0
+            # Strings or other scalars: consider empty only if len == 0
+            try:
+                return len(v) == 0
+            except Exception:
+                return False
+
+        empty_signals = int(transition_scores_v1["signals"].apply(_is_empty_signals).sum())
+    else:
+        # If signals column is absent, treat as fully empty
+        empty_signals = total
+
+    passed = (len(missing) == 0) and (invalid_scores == 0) and (empty_signals == 0)
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if passed else '✗'} transition_scores_v1 quality: "
+            f"missing={len(missing)}, invalid_scores={invalid_scores}, empty_signals={empty_signals}"
+        ),
+        metadata={
+            "total_rows": total,
+            "missing_columns": missing,
+            "invalid_score_count": invalid_scores,
+            "empty_signals_count": empty_signals,
+            "columns_present": list(transition_scores_v1.columns),
+        },
+    )
