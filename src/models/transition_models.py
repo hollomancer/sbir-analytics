@@ -81,6 +81,11 @@ class PatentSignal(BaseModel):
         le=1.0,
         description="Similarity between patent text/topics and award/contract topic (0-1).",
     )
+    avg_filing_lag_days: Optional[float] = Field(
+        None,
+        ge=0.0,
+        description="Average days between award completion and patent filing for patents considered.",
+    )
     patent_score: float = Field(
         0.0, ge=0.0, le=1.0, description="Normalized contribution coming from patent evidence."
     )

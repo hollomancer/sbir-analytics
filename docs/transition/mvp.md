@@ -19,6 +19,7 @@ Quality gates (reported and enforced via checks/summary):
 - contracts_sample:
   - action_date coverage ≥ 0.90
   - any identifier coverage (UEI or DUNS or PIID or FAIN) ≥ 0.60
+  - sample size between 1k–10k rows (configurable via env)
 - vendor_resolution:
   - resolution_rate ≥ 0.60
 
@@ -99,6 +100,8 @@ You can tweak thresholds and scoring parameters using environment variables:
 - Contracts coverage gates:
   - SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN (default: 0.90)
   - SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN (default: 0.60)
+  - SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN (default: 1000)
+  - SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX (default: 10000)
 
 - Candidate scoring:
   - SBIR_ETL__TRANSITION__LIMIT_PER_AWARD (default: 50)

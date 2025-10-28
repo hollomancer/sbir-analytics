@@ -11,8 +11,9 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 ### Tasks
 - [ ] 25.1 Ingest a contracts SAMPLE
   - [x] Implement/configure a “contracts_sample” extractor reading FPDS/USAspending subset (CSV/Parquet) to `data/processed/contracts_sample.parquet`
-  - [ ] Columns: `piid`, `fain`, `uei`, `duns`, `vendor_name`, `action_date`, `obligated_amount`, `awarding_agency_code`
-  - [ ] Add a checks JSON with record counts, date range, and coverage metrics (uei/duns/piid)
+  - [x] Columns: `piid`, `fain`, `uei`, `duns`, `vendor_name`, `action_date`, `obligated_amount`, `awarding_agency_code`
+  - [x] Add a checks JSON with record counts, date range, and coverage metrics (uei/duns/piid)
+  - Notes: contracts_sample writes data/processed/contracts_sample.checks.json with coverage, date_range, and sample_size fields; gates configurable via SBIR_ETL__TRANSITION__CONTRACTS__* env vars.
   - Acceptance:
     - [ ] Sample size between 1k–10k
     - [ ] ≥ 90% rows have `action_date`, ≥ 60% have at least one of `uei|duns|piid|fain`
@@ -60,7 +61,8 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 25.7 Tests
   - [x] Unit tests: resolver (UEI/DUNS/fuzzy), scorer (signal weights), evidence assembly
   - [x] Integration tests: end-to-end sample pipeline on tiny fixture (<= 200 awards / 200 contracts)
-  - [ ] Add golden files for expected small-run outputs and checks JSON
+  - [x] Add golden files for expected small-run outputs and checks JSON
+  - Notes: Added tests/integration/data/transition/golden_transitions.ndjson and golden_transitions_evidence.ndjson for stable comparison in CI.
   - Acceptance:
     - [ ] ≥ 80% coverage on new modules, integration tests stable on CI
 
@@ -145,9 +147,11 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 5. Federal Contracts Ingestion
 
-- [ ] 5.1 Create ContractExtractor in src/extractors/contract_extractor.py
+- [x] 5.1 Create ContractExtractor in src/extractors/contract_extractor.py
+  - Notes: Implemented streaming extractor for USAspending .dat.gz (PostgreSQL dump), vendor filters (UEI/DUNS/name), Parquet output; CLI wrapper in scripts/extract_federal_contracts.py.
 - [ ] 5.2 Integrate with USAspending.gov CSV data
-- [ ] 5.3 Implement chunked processing (100K contracts/batch) for 14GB+ dataset
+- [x] 5.3 Implement chunked processing (100K contracts/batch) for 14GB+ dataset
+  - Notes: Batch processing via batch_size parameter (default 10k) with periodic flush to control memory.
 - [ ] 5.4 Parse competition type (sole source, limited, full and open)
 - [ ] 5.5 Extract vendor identifiers (UEI, CAGE, DUNS)
 - [ ] 5.6 Handle parent-child contract relationships (IDV, IDIQ, BPA)
@@ -224,14 +228,16 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 9. Patent Signal Extraction
 
-- [ ] 9.1 Create PatentSignalExtractor in src/transition/features/patent_analyzer.py
-- [ ] 9.2 Find patents filed between SBIR completion and contract start
-- [ ] 9.3 Calculate patent-contract timing (filed before contract: true/false)
-- [ ] 9.4 Calculate patent topic similarity using TF-IDF (threshold ≥0.7)
-- [ ] 9.5 Calculate average patent filing lag (days after SBIR completion)
-- [ ] 9.6 Identify patent assignees (detect technology transfer if different from SBIR recipient)
-- [ ] 9.7 Generate patent signal scores
-- [ ] 9.8 Handle awards with no patents gracefully
+- [x] 9.1 Create PatentSignalExtractor in src/transition/features/patent_analyzer.py
+  - Notes: Implemented timing window, topic similarity (TF-IDF cosine), technology transfer detection, composite scoring; unit tests added.
+- [x] 9.2 Find patents filed between SBIR completion and contract start
+- [x] 9.3 Calculate patent-contract timing (filed before contract: true/false)
+- [x] 9.4 Calculate patent topic similarity using TF-IDF (threshold ≥0.7)
+- [x] 9.5 Calculate average patent filing lag (days after SBIR completion)
+  - Notes: avg_filing_lag_days added to PatentSignal model and computed in extractor.
+- [x] 9.6 Identify patent assignees (detect technology transfer if different from SBIR recipient)
+- [x] 9.7 Generate patent signal scores
+- [x] 9.8 Handle awards with no patents gracefully
 
 ## 10. CET Integration
 
@@ -254,7 +260,8 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 12. Dual-Perspective Analytics
 
-- [ ] 12.1 Create TransitionAnalytics in src/transition/analysis/analytics.py
+- [x] 12.1 Create TransitionAnalytics in src/transition/analysis/analytics.py
+  - Notes: Implemented Pandas-based analytics computing award-level and company-level transition rates, Phase I vs Phase II effectiveness, by-agency rates, and optional average time-to-transition by agency when contract dates are available. Module: src/transition/analysis/analytics.py. Provides summarize() for compact JSON metrics.
 - [ ] 12.2 Calculate award-level transition rate (transitioned awards / total awards)
 - [ ] 12.3 Calculate company-level transition rate (companies with transitions / total companies)
 - [ ] 12.4 Calculate Phase I vs Phase II effectiveness
@@ -332,8 +339,8 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
   - Notes: Full test suite in `tests/unit/test_transition_scorer.py` with 32 tests covering all signal types (agency, timing, competition, patent, CET, text similarity), weight configurations, confidence classification, and edge cases. 93% code coverage.
 - [x] 19.3 Unit tests for EvidenceGenerator (bundle completeness, serialization)
   - Notes: Comprehensive tests in `tests/unit/test_evidence_generator.py` covering all evidence types (agency, timing, competition, patent, CET, vendor match, contract details), JSON serialization/deserialization, bundle validation, and edge cases. Tests bundle completeness, score calculations, and error handling.
-- [ ] 19.4 Unit tests for PatentSignalExtractor (timing, similarity, assignees)
-  - Notes: Pending - PatentSignalExtractor not yet implemented (Task 9).
+- [x] 19.4 Unit tests for PatentSignalExtractor (timing, similarity, assignees)
+  - Notes: Implemented in tests/unit/test_patent_signal_extractor.py covering timing window, topic similarity, technology transfer, scoring, and edge cases.
 - [ ] 19.5 Unit tests for CETSignalExtractor (area alignment, scoring)
   - Notes: Pending - CETSignalExtractor not yet implemented (Task 10).
 - [x] 19.6 Unit tests for TransitionDetector (end-to-end detection logic)

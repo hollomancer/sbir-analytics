@@ -264,6 +264,15 @@ def contracts_sample(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         },
         "generated_at": now_utc_iso(),
     }
+    # Sample size thresholds (exposed via env)
+    min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
+    max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
+    checks["sample_size"] = {
+        "value": int(total),
+        "min": int(min_size),
+        "max": int(max_size),
+        "in_range": bool(total >= int(min_size) and total <= int(max_size)) if total > 0 else False,
+    }
     checks_path = contracts_parquet.with_suffix(".checks.json")
     write_json(checks_path, checks)
 
@@ -777,11 +786,38 @@ def transition_evidence_v1(
                 any_id_cov = float(cs.get("coverage", {}).get("any_identifier", 0.0))
                 date_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
                 id_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
+                total_rows = int(cs.get("total_rows", 0))
+                min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
+                max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
+                size_ok = (
+                    (total_rows >= min_size) and (total_rows <= max_size)
+                    if total_rows > 0
+                    else False
+                )
+                enforce_size = _env_bool(
+                    "SBIR_ETL__TRANSITION__CONTRACTS__ENFORCE_SAMPLE_SIZE", False
+                )
+                passed = (
+                    (date_cov >= date_min)
+                    and (any_id_cov >= id_min)
+                    and (size_ok if enforce_size else True)
+                )
                 summary["gates"]["contracts_sample"] = {
-                    "passed": (date_cov >= date_min) and (any_id_cov >= id_min),
+                    "passed": passed,
                     "action_date_coverage": date_cov,
                     "any_identifier_coverage": any_id_cov,
-                    "thresholds": {"action_date": date_min, "any_identifier": id_min},
+                    "sample_size": {
+                        "value": total_rows,
+                        "min": min_size,
+                        "max": max_size,
+                        "in_range": size_ok,
+                    },
+                    "enforce_sample_size": enforce_size,
+                    "thresholds": {
+                        "action_date": date_min,
+                        "any_identifier": id_min,
+                        "sample_size": {"min": min_size, "max": max_size},
+                    },
                 }
         except Exception:
             pass
@@ -866,7 +902,7 @@ except Exception:  # pragma: no cover
 
 @asset_check(
     asset="contracts_sample",
-    description="Contracts sample coverage thresholds: action_date ≥ 0.90, any identifier ≥ 0.60",
+    description="Contracts sample thresholds: action_date ≥ 0.90, any identifier ≥ 0.60, sample size within configured range",
 )
 def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheckResult:
     total = len(contracts_sample)
@@ -885,22 +921,39 @@ def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheck
     )
     min_date_cov = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
     min_ident_cov = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
-    passed = (date_cov >= min_date_cov) and (ident_cov >= min_ident_cov)
+    min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
+    max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
+    size_ok = (total >= min_size) and (total <= max_size)
+    enforce_size = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__ENFORCE_SAMPLE_SIZE", False)
+    passed = (
+        (date_cov >= min_date_cov)
+        and (ident_cov >= min_ident_cov)
+        and (size_ok if enforce_size else True)
+    )
     return AssetCheckResult(
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'✓' if passed else '✗'} contracts_sample coverage: "
+            f"{'✓' if passed else '✗'} contracts_sample quality: "
             f"action_date={date_cov:.2%} (min {min_date_cov:.2%}), "
-            f"any_identifier={ident_cov:.2%} (min {min_ident_cov:.2%})"
+            f"any_identifier={ident_cov:.2%} (min {min_ident_cov:.2%}), "
+            f"sample_size={total} (min {min_size}, max {max_size})"
         ),
         metadata={
             "total_rows": total,
             "action_date_coverage": f"{date_cov:.2%}",
             "any_identifier_coverage": f"{ident_cov:.2%}",
+            "sample_size": {
+                "value": total,
+                "min": min_size,
+                "max": max_size,
+                "in_range": size_ok,
+            },
             "thresholds": {
                 "action_date_min": f"{min_date_cov:.2%}",
                 "any_identifier_min": f"{min_ident_cov:.2%}",
+                "sample_size_min": int(min_size),
+                "sample_size_max": int(max_size),
             },
         },
     )

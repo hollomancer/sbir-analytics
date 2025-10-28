@@ -87,6 +87,7 @@ class PatentSignalExtractor:
                 patent_count=0,
                 patents_pre_contract=0,
                 patent_topic_similarity=None,
+                avg_filing_lag_days=None,
                 patent_score=0.0,
             )
 
@@ -117,6 +118,18 @@ class PatentSignalExtractor:
             vendor_name,
         )
 
+        # Compute average filing lag in days (from award completion to filing)
+        # for patents filed on/after award completion and on/before contract start
+        lag_days = []
+        for p in patents:
+            if (
+                p.filing_date
+                and p.filing_date >= award_completion_date
+                and p.filing_date <= contract_start_date
+            ):
+                lag_days.append((p.filing_date - award_completion_date).days)
+        avg_filing_lag_days = float(sum(lag_days) / len(lag_days)) if lag_days else None
+
         # Calculate composite patent score
         patent_score = self._calculate_patent_score(
             patent_count=len(patents),
@@ -130,6 +143,7 @@ class PatentSignalExtractor:
             patent_count=len(patents),
             patents_pre_contract=patents_pre_contract,
             patent_topic_similarity=topic_similarity,
+            avg_filing_lag_days=avg_filing_lag_days,
             patent_score=patent_score,
         )
 
