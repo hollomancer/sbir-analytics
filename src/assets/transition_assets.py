@@ -170,20 +170,40 @@ def contracts_sample(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         df = pd.DataFrame({c: pd.Series(dtype="object") for c in expected_cols})
         src = "generated_empty"
 
+    # Column aliases -> canonical names (best-effort)
+    alias_map = {
+        "uei": "vendor_uei",
+        "duns": "vendor_duns",
+        "recipient_name": "vendor_name",
+        "federal_action_obligation": "obligated_amount",
+        "awarding_agency": "awarding_agency_name",
+    }
+    for src_col, dst_col in alias_map.items():
+        if src_col in df.columns and dst_col not in df.columns:
+            df[dst_col] = df[src_col]
     # Ensure required columns exist (fill missing)
     for c in expected_cols:
         if c not in df.columns:
             df[c] = pd.Series(dtype="object")
 
     total = len(df)
-    date_cov = float(df["action_date"].notna().mean()) if total > 0 else 0.0
+    date_series = pd.to_datetime(df.get("action_date"), errors="coerce")
+    date_cov = float(date_series.notna().mean()) if total > 0 else 0.0
+    uei_cov = (
+        float(df.get("vendor_uei", pd.Series(dtype=object)).notna().mean()) if total > 0 else 0.0
+    )
+    duns_cov = (
+        float(df.get("vendor_duns", pd.Series(dtype=object)).notna().mean()) if total > 0 else 0.0
+    )
+    piid_cov = float(df.get("piid", pd.Series(dtype=object)).notna().mean()) if total > 0 else 0.0
+    fain_cov = float(df.get("fain", pd.Series(dtype=object)).notna().mean()) if total > 0 else 0.0
     ident_cov = (
         float(
             (
-                (df["vendor_uei"].notna())
-                | (df["vendor_duns"].notna())
-                | (df["piid"].notna())
-                | (df["fain"].notna())
+                df.get("vendor_uei", pd.Series(dtype=object)).notna()
+                | df.get("vendor_duns", pd.Series(dtype=object)).notna()
+                | df.get("piid", pd.Series(dtype=object)).notna()
+                | df.get("fain", pd.Series(dtype=object)).notna()
             ).mean()
         )
         if total > 0
@@ -198,6 +218,18 @@ def contracts_sample(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         "coverage": {
             "action_date": round(date_cov, 4),
             "any_identifier": round(ident_cov, 4),
+            "vendor_uei": round(uei_cov, 4),
+            "vendor_duns": round(duns_cov, 4),
+            "piid": round(piid_cov, 4),
+            "fain": round(fain_cov, 4),
+        },
+        "date_range": {
+            "min": date_series.min().isoformat()
+            if total > 0 and pd.notna(date_series.min())
+            else None,
+            "max": date_series.max().isoformat()
+            if total > 0 and pd.notna(date_series.max())
+            else None,
         },
         "generated_at": now_utc_iso(),
     }
@@ -414,6 +446,8 @@ def transition_scores_v1(
     date_window_years = _env_int("SBIR_ETL__TRANSITION__DATE_WINDOW_YEARS", 5)
     date_boost_max = _env_float("SBIR_ETL__TRANSITION__DATE_BOOST_MAX", 0.1)
     agency_boost_val = _env_float("SBIR_ETL__TRANSITION__AGENCY_BOOST", 0.05)
+    amount_boost_val = _env_float("SBIR_ETL__TRANSITION__AMOUNT_BOOST", 0.03)
+    id_link_boost_val = _env_float("SBIR_ETL__TRANSITION__ID_LINK_BOOST", 0.10)
 
     # Helpers (local to keep module import-safe)
     def _parse_date_any(v: Any):
@@ -512,7 +546,54 @@ def transition_scores_v1(
             if codes_match or names_match:
                 agency_boost = agency_boost_val
 
-            score = min(score_cap, score + date_boost + agency_boost)
+            # Identifier link boosts (PIID/FAIN)
+            def _norm(s):
+                return str(s or "").strip().upper()
+
+            c_piid = _norm(contract_row.get("piid"))
+            c_fain = _norm(contract_row.get("fain"))
+            a_piid = _norm(a_row.get("piid") if a_row is not None else None)
+            a_piid2 = _norm(a_row.get("PIID") if a_row is not None else None)
+            a_fain = _norm(a_row.get("fain") if a_row is not None else None)
+            a_fain2 = _norm(a_row.get("FAIN") if a_row is not None else None)
+            a_contract = _norm(a_row.get("contract") if a_row is not None else None)
+            piid_match = bool(
+                c_piid and (c_piid == a_piid or c_piid == a_piid2 or c_piid == a_contract)
+            )
+            fain_match = bool(c_fain and (c_fain == a_fain or c_fain == a_fain2))
+            id_boost = id_link_boost_val if (piid_match or fain_match) else 0.0
+
+            # Amount sanity boost (contract vs award amount roughly similar)
+            def _to_float(x):
+                try:
+                    return float(str(x).replace(",", ""))
+                except Exception:
+                    return None
+
+            c_amt = _to_float(contract_row.get("obligated_amount"))
+            a_amt = _to_float(
+                a_row.get("Award Amount") if a_row is not None else None
+            ) or _to_float(a_row.get("award_amount") if a_row is not None else None)
+            amount_boost = 0.0
+            if c_amt and a_amt and c_amt > 0 and a_amt > 0:
+                ratio = min(c_amt, a_amt) / max(c_amt, a_amt)
+                if 0.5 <= ratio <= 2.0:
+                    amount_boost = amount_boost_val
+
+            # Final score and signals list
+            score = min(score_cap, score + date_boost + agency_boost + id_boost + amount_boost)
+            signals = [method]
+            if date_boost > 0:
+                signals.append("date_overlap")
+            if agency_boost > 0:
+                signals.append("agency_align")
+            if id_boost > 0:
+                if piid_match:
+                    signals.append("piid_link")
+                if fain_match:
+                    signals.append("fain_link")
+            if amount_boost > 0:
+                signals.append("amount_sanity")
 
             results.append(
                 {
@@ -520,6 +601,7 @@ def transition_scores_v1(
                     "contract_id": contract_id,
                     "score": round(float(score), 4),
                     "method": method,
+                    "signals": signals,
                     "computed_at": now_utc_iso(),
                 }
             )
@@ -588,13 +670,25 @@ def transition_evidence_v1(
     with out_path.open("w", encoding="utf-8") as fh:
         for _, row in transition_scores_v1.iterrows():
             cid = str(row.get("contract_id") or "")
+            cs = contracts_by_id.get(cid, {})
             evidence = {
                 "award_id": row.get("award_id"),
                 "contract_id": cid,
                 "score": row.get("score"),
                 "method": row.get("method"),
-                "matched_keys": [row.get("method")],
-                "contract_snapshot": contracts_by_id.get(cid, {}),
+                "matched_keys": row.get("signals") or [row.get("method")],
+                "resolver_path": row.get("method"),
+                "dates": {
+                    "contract_action_date": cs.get("action_date"),
+                },
+                "amounts": {
+                    "contract_obligated_amount": cs.get("obligated_amount"),
+                },
+                "agencies": {
+                    "awarding_agency_code": cs.get("awarding_agency_code"),
+                    "awarding_agency_name": cs.get("awarding_agency_name"),
+                },
+                "contract_snapshot": cs,
                 "notes": None,
                 "generated_at": now_utc_iso(),
             }
@@ -608,6 +702,7 @@ def transition_evidence_v1(
             "artifacts": {
                 "transitions": "data/processed/transitions.parquet",
                 "evidence": str(out_path),
+                "evidence_checks": str(out_path.with_suffix(".checks.json")),
                 "vendor_resolution_checks": "data/processed/vendor_resolution.checks.json",
                 "contracts_sample_checks": "data/processed/contracts_sample.checks.json",
             },
@@ -678,9 +773,20 @@ def transition_evidence_v1(
         # Non-fatal; evidence should still be returned
         context.log.exception("Failed to write validation summary")
 
+    # Checks JSON for evidence
+    checks_path = out_path.with_suffix(".checks.json")
+    checks = {
+        "ok": True,
+        "generated_at": now_utc_iso(),
+        "rows": count,
+        "source": str(out_path),
+    }
+    write_json(checks_path, checks)
+
     meta = {
         "rows": count,
         "path": str(out_path),
+        "checks_path": str(checks_path),
         "validation_summary_path": "reports/validation/transition_mvp.json",
     }
     context.log.info("Wrote transition_evidence_v1", extra=meta)

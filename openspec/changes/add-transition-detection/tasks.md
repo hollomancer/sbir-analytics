@@ -10,7 +10,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ### Tasks
 - [ ] 25.1 Ingest a contracts SAMPLE
-  - [ ] Implement/configure a “contracts_sample” extractor reading FPDS/USAspending subset (CSV/Parquet) to `data/processed/contracts_sample.parquet`
+  - [x] Implement/configure a “contracts_sample” extractor reading FPDS/USAspending subset (CSV/Parquet) to `data/processed/contracts_sample.parquet`
   - [ ] Columns: `piid`, `fain`, `uei`, `duns`, `vendor_name`, `action_date`, `obligated_amount`, `awarding_agency_code`
   - [ ] Add a checks JSON with record counts, date range, and coverage metrics (uei/duns/piid)
   - Acceptance:
@@ -37,36 +37,36 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 25.4 Evidence Bundle v1
   - [ ] For each transition, emit structured evidence:
         `matched_keys`, `dates`, `amounts`, `agencies`, `resolver_path`, `notes`
-  - [ ] Persist NDJSON to `data/processed/transitions_evidence.ndjson` and reference from score rows
+  - [x] Persist NDJSON to `data/processed/transitions_evidence.ndjson` and reference from score rows
   - Acceptance:
     - [ ] Evidence present for 100% of transitions with `score >= 0.60`
 
 - [ ] 25.5 Dagster assets (MVP chain)
-  - [ ] `contracts_sample` → `vendor_resolution` → `transition_scores_v1` → `transition_evidence_v1`
-  - [ ] Each asset writes checks JSON and asset metadata (counts, durations)
+  - [x] `contracts_sample` → `vendor_resolution` → `transition_scores_v1` → `transition_evidence_v1`
+  - [x] Each asset writes checks JSON and asset metadata (counts, durations)
   - Acceptance:
     - [ ] Materialization completes locally with the sample dataset
     - [ ] Checks JSON present for all assets; no ERROR severity issues
 
 - [ ] 25.6 Validation & Gates (MVP)
-  - [ ] Coverage gates:
+  - [x] Coverage gates:
         `contracts_sample`: action_date ≥ 90%, `vendor_resolution`: mapped ≥ 60%
   - [ ] Quality gate:
         transition precision quick-check via 30-manual-spot review ≥ 80% for `score>=0.80`
-  - [ ] Write validation summary to `reports/validation/transition_mvp.json`
+  - [x] Write validation summary to `reports/validation/transition_mvp.json`
   - Acceptance:
     - [ ] Gates enforced in CI/dev; failing gate blocks downstream assets
 
 - [ ] 25.7 Tests
-  - [ ] Unit tests: resolver (UEI/DUNS/fuzzy), scorer (signal weights), evidence assembly
-  - [ ] Integration tests: end-to-end sample pipeline on tiny fixture (<= 200 awards / 200 contracts)
+  - [x] Unit tests: resolver (UEI/DUNS/fuzzy), scorer (signal weights), evidence assembly
+  - [x] Integration tests: end-to-end sample pipeline on tiny fixture (<= 200 awards / 200 contracts)
   - [ ] Add golden files for expected small-run outputs and checks JSON
   - Acceptance:
     - [ ] ≥ 80% coverage on new modules, integration tests stable on CI
 
 - [ ] 25.8 Docs
-  - [ ] Add `docs/transition/mvp.md`: scope, data requirements, config keys, how-to-run, acceptance metrics
-  - [ ] Update README with the new assets and make-targets
+  - [x] Add `docs/transition/mvp.md`: scope, data requirements, config keys, how-to-run, acceptance metrics
+  - [x] Update README with the new assets and make-targets
   - Acceptance:
     - [ ] Docs allow a new developer to run the MVP in < 30 minutes
 

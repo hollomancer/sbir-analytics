@@ -1,5 +1,11 @@
 # SBIR ETL Pipeline
 
+## Transition Detection MVP
+
+See docs/transition/mvp.md for a quick start:
+- make transition-mvp-run: Run the shimmed MVP pipeline locally (no Dagster required)
+- make transition-mvp-clean: Remove generated MVP artifacts (data/processed/* and reports/validation/transition_mvp.json)
+
 ## CET (Critical and Emerging Technologies) Pipeline
 
 Deployment
