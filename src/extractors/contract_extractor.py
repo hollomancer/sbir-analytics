@@ -24,40 +24,42 @@ from src.models.transition_models import FederalContract, CompetitionType
 
 
 # USAspending transaction_normalized column mapping
-# Based on USAspending data dictionary and observed structure
+# Based on actual .dat.gz file structure observed from subset database
+# File 5530.dat.gz contains the transaction_normalized table
 USASPENDING_COLUMNS = {
     # Core identifiers
     "transaction_id": 0,
     "generated_unique_award_id": 1,
-    "action_date": 2,
-    "fiscal_year": 3,
-    "type": 4,  # 'A'=BPA, 'B'=Purchase Order, 'C'=Delivery Order, 'D'=Definitive Contract
-    "action_type": 5,
+    "action_date": 2,  # Format: YYYYMMDD
+    "type": 3,  # 'A'=Contract, 'B'=IDV Contract, 'C'=Grant, 'D'=Direct Payment
+    "action_type": 4,  # New, Revision, etc.
+    "award_type_code": 5,
     "action_type_description": 6,
     # Award description
     "award_description": 7,
     "modification_number": 8,
     "recipient_name": 9,  # Vendor name
-    # Identifiers
-    "piid": 26,  # Procurement Instrument ID
-    # Vendor identifiers (approximate positions, may vary)
-    "awardee_or_recipient_uei": 48,  # UEI
-    "recipient_duns": 49,  # DUNS (legacy)
-    "cage_code": 50,  # CAGE code
+    "recipient_unique_id": 10,  # UEI or DUNS (older records)
     # Agency info
     "awarding_agency_code": 11,
     "awarding_agency_name": 12,
     "awarding_sub_tier_agency_code": 13,
     "awarding_sub_tier_agency_name": 14,
+    "awarding_toptier_agency_code": 15,
+    "awarding_toptier_agency_name": 16,
+    # Identifiers
+    "piid": 28,  # Procurement Instrument ID
+    "federal_action_obligation": 29,  # Contract amount
+    # Funding agency
     "funding_agency_code": 31,
     "funding_agency_name": 32,
-    # Financial
-    "federal_action_obligation": 27,  # Contract amount
-    # Competition
-    "extent_competed": 79,  # Competition type code
-    # Dates
-    "period_of_performance_start_date": 94,
-    "period_of_performance_current_end_date": 95,
+    "funding_sub_tier_agency_code": 33,
+    "funding_sub_tier_agency_name": 34,
+    # Note: Need to find correct indices for:
+    # - CAGE code (not yet located)
+    # - Competition type (extent_competed)
+    # - Period of performance dates
+    # These may be in higher column indices (60+)
 }
 
 
@@ -130,9 +132,19 @@ class ContractExtractor:
         return filters
 
     def _is_contract_type(self, type_code: str) -> bool:
-        """Check if transaction type is a contract (not grant, loan, etc.)."""
-        # Contract type codes: A, B, C, D, IDV types
-        contract_types = {"A", "B", "C", "D", "02", "03", "04"}
+        """
+        Check if transaction type is a contract (not grant, loan, etc.).
+
+        USAspending award_type codes:
+        - 'A': Contract (procurement)
+        - 'B': Contract (IDV - Indefinite Delivery Vehicle)
+        - 'C': Grant (NOT a contract)
+        - 'D': Direct Payment (NOT a contract)
+        - '02'-'11': Financial assistance (grants, loans, etc. - NOT contracts)
+
+        Only 'A' and 'B' are procurement contracts.
+        """
+        contract_types = {"A", "B"}
         return type_code in contract_types if type_code else False
 
     def _matches_vendor_filter(self, row_data: List[str]) -> bool:
@@ -150,17 +162,17 @@ class ContractExtractor:
             return True
 
         try:
-            # Check UEI
-            if len(row_data) > 48:
-                uei = row_data[48].strip() if row_data[48] else ""
-                if uei and uei in self.vendor_filters["uei"]:
-                    return True
-
-            # Check DUNS
-            if len(row_data) > 49:
-                duns = row_data[49].strip() if row_data[49] else ""
-                if duns and duns in self.vendor_filters["duns"]:
-                    return True
+            # Check UEI/DUNS in column 10 (recipient_unique_id)
+            # This column contains UEI for newer records, DUNS for older records
+            if len(row_data) > 10:
+                unique_id = row_data[10].strip() if row_data[10] else ""
+                if unique_id and unique_id != "\\N":
+                    # Try matching as UEI first
+                    if unique_id in self.vendor_filters["uei"]:
+                        return True
+                    # Try matching as DUNS
+                    if unique_id in self.vendor_filters["duns"]:
+                        return True
 
             # Fallback: check company name (fuzzy matching would be expensive)
             if len(row_data) > 9:
@@ -194,20 +206,9 @@ class ContractExtractor:
                 except (IndexError, AttributeError):
                     return default
 
-            # Parse competition type
-            extent_competed = get_col(79, "")
-            competition_map = {
-                "A": CompetitionType.FULL_AND_OPEN,
-                "B": CompetitionType.LIMITED,
-                "C": CompetitionType.LIMITED,
-                "D": CompetitionType.SOLE_SOURCE,
-                "E": CompetitionType.SOLE_SOURCE,
-                "F": CompetitionType.LIMITED,
-                "G": CompetitionType.LIMITED,
-            }
-            competition_type = competition_map.get(
-                extent_competed[:1] if extent_competed else "", CompetitionType.OTHER
-            )
+            # Parse competition type (TODO: find correct column index)
+            # For now, default to OTHER since we haven't located this field yet
+            competition_type = CompetitionType.OTHER
 
             # Parse dates
             def parse_date(date_str: Optional[str]) -> Optional[date]:
@@ -218,31 +219,39 @@ class ContractExtractor:
                 except (ValueError, TypeError):
                     return None
 
-            start_date = parse_date(get_col(94))
-            end_date = parse_date(get_col(95))
             action_date = parse_date(get_col(2))
+            # TODO: Find correct column indices for start/end dates
+            start_date = action_date  # Use action date as placeholder
+            end_date = None
 
             # Parse amount
-            obligation_str = get_col(27, "0")
+            obligation_str = get_col(29, "0")  # Column 29 is federal_action_obligation
             try:
                 obligation_amount = float(obligation_str) if obligation_str else 0.0
             except (ValueError, TypeError):
                 obligation_amount = 0.0
 
+            # Get vendor identifiers from column 10 (recipient_unique_id)
+            # This contains UEI for newer records, DUNS for older records
+            recipient_id = get_col(10)
+
             # Create FederalContract
             contract = FederalContract(
-                contract_id=get_col(
-                    26, get_col(1, f"unknown_{row_data[0]}")
-                ),  # PIID or generated ID
+                contract_id=get_col(28, get_col(1, f"unknown_{row_data[0]}")),  # PIID (col 28)
                 agency=get_col(12),  # awarding_agency_name
                 sub_agency=get_col(14),  # awarding_sub_tier_agency_name
                 vendor_name=get_col(9),  # recipient_name
-                vendor_uei=get_col(48),  # awardee_or_recipient_uei
-                vendor_cage=get_col(50),  # cage_code
-                vendor_duns=get_col(49),  # recipient_duns
-                start_date=start_date or action_date,  # Use action_date as fallback
+                vendor_uei=recipient_id
+                if recipient_id and len(recipient_id) == 12
+                else None,  # UEI is 12 chars
+                vendor_cage=None,  # TODO: find CAGE column
+                vendor_duns=recipient_id
+                if recipient_id and len(recipient_id) == 9
+                else None,  # DUNS is 9 digits
+                start_date=start_date,
                 end_date=end_date,
                 obligation_amount=obligation_amount,
+                is_deobligation=(obligation_amount < 0),  # Flag negative amounts
                 competition_type=competition_type,
                 description=get_col(7),  # award_description
                 metadata={
@@ -289,9 +298,9 @@ class ContractExtractor:
                 # Split tab-delimited row
                 row_data = line.strip().split("\t")
 
-                # Check if it's a contract type
-                if len(row_data) > 4:
-                    type_code = row_data[4]
+                # Check if it's a contract type (column 4, index 3)
+                if len(row_data) > 3:
+                    type_code = row_data[3]
                     if not self._is_contract_type(type_code):
                         continue
 

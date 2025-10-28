@@ -173,7 +173,16 @@ class VendorMatch(BaseModel):
 
 
 class FederalContract(BaseModel):
-    """Model capturing the contract information relevant for transition detection."""
+    """
+    Model capturing the contract information relevant for transition detection.
+
+    Note on obligation_amount:
+    - Can be negative, representing deobligations (contract reductions/modifications)
+    - Negative values occur in ~0.03% of transactions in USAspending data
+    - Deobligations still indicate ongoing contract relationship with vendor
+    - Use is_deobligation flag to identify and handle appropriately in analysis
+    - Decision: ADR-001 (see docs/decisions/ADR-001-negative-obligations.md)
+    """
 
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
     agency: Optional[str] = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
@@ -187,7 +196,11 @@ class FederalContract(BaseModel):
     start_date: Optional[date] = Field(None, description="Contract start/award effective date.")
     end_date: Optional[date] = Field(None, description="Contract end date (if present).")
     obligation_amount: Optional[float] = Field(
-        None, ge=0.0, description="Contract obligation/award amount."
+        None, description="Contract obligation/award amount. Can be negative for deobligations."
+    )
+    is_deobligation: bool = Field(
+        default=False,
+        description="True if obligation_amount is negative (contract reduction/modification).",
     )
     competition_type: Optional[CompetitionType] = Field(
         None, description="Competition type for the award."
