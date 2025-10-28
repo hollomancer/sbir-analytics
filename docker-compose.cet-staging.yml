@@ -12,7 +12,7 @@
 #
 # Notes:
 # - ENVIRONMENT is set to "staging"
-# - Dagster runs the production webserver and a daemon (no auto-reload)
+# - Relies on depends_on.condition: service_healthy (Docker Compose v2+ required)
 # - CET model artifact can be provided via CET_MODEL_PATH in .env (recommended)
 # - For managed/prod Neo4j, set NEO4J_URI in .env and comment out the neo4j service
 
@@ -80,8 +80,6 @@ services:
       - ./config:/app/config
     ports:
       - "${DAGSTER_PORT:-3000}:3000"
-    # Override entrypoint to use bash explicitly (wait-for-service.sh uses bash syntax)
-    entrypoint: ["bash", "/app/scripts/docker/entrypoint.sh"]
     depends_on:
       neo4j:
         condition: service_healthy
@@ -94,7 +92,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 10s
     networks:
       - sbir-network
     restart: unless-stopped
@@ -127,8 +125,6 @@ services:
         condition: service_healthy
       dagster-webserver:
         condition: service_healthy
-    # Override entrypoint to use bash explicitly
-    entrypoint: ["bash", "/app/scripts/docker/entrypoint.sh"]
     command: ["dagster-daemon"]
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -q 'dagster-daemon' || exit 1"]
@@ -166,8 +162,6 @@ services:
       - ./artifacts:/app/artifacts
       - ./config:/app/config
       - ./:/app:ro
-    # Override entrypoint to use bash explicitly
-    entrypoint: ["bash", "/app/scripts/docker/entrypoint.sh"]
     command:
       [
         "etl-runner",

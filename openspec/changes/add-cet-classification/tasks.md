@@ -326,7 +326,7 @@ Notes (section 8 implementation):
 ## 24. Deployment & Validation
 
 - [x] 24.1 Onboard to staging environment
-- [ ] 24.2 Run validation & human sampling on staging
+- [X] 24.2 Run validation & human sampling on staging
 
 ---
 Change log (Sprint 1 taxonomy work)
