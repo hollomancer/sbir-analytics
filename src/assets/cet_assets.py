@@ -9,6 +9,217 @@ Primary deliverable:
 Helper functions:
 - `taxonomy_to_dataframe` - convert TaxonomyConfig -> pandas.DataFrame
 - `save_dataframe_parquet` - safe parquet saver that creates directories
+"""
+
+# Import-safe shims for Dagster asset checks
+try:
+    from dagster import asset_check, AssetCheckResult, AssetCheckSeverity, AssetExecutionContext  # type: ignore
+except Exception:  # pragma: no cover
+    def asset_check(*args, **kwargs):  # type: ignore
+        def _wrap(fn):
+            return fn
+        return _wrap
+
+    class AssetCheckResult:  # type: ignore
+        def __init__(self, passed: bool, severity=None, description=None, metadata=None):
+            self.passed = passed
+            self.severity = severity
+            self.description = description
+            self.metadata = metadata
+
+    class AssetCheckSeverity:  # type: ignore
+        ERROR = "ERROR"
+        WARN = "WARN"
+
+    class AssetExecutionContext:  # type: ignore
+        class _L:
+            def info(self, *a, **kw):  # noqa: D401
+                print(*a)
+            def warning(self, *a, **kw):
+                print(*a)
+            def error(self, *a, **kw):
+                print(*a)
+        log = _L()
+
+
+@asset_check(
+    asset="cet_taxonomy",
+    description="CET taxonomy completeness and schema validity based on companion checks JSON",
+)
+def cet_taxonomy_completeness_check(context: AssetExecutionContext) -> AssetCheckResult:
+    """
+    Verify CET taxonomy was materialized and validated successfully.
+    Consumes data/processed/cet_taxonomy.checks.json written by the asset.
+    """
+    import json
+    from pathlib import Path
+
+    checks_path = Path("data/processed/cet_taxonomy.checks.json")
+    if not checks_path.exists():
+        desc = "Missing taxonomy checks JSON; taxonomy asset may not have run."
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "missing_checks"},
+        )
+
+    try:
+        with checks_path.open("r", encoding="utf-8") as fh:
+            checks = json.load(fh)
+    except Exception as exc:
+        desc = f"Failed to read taxonomy checks JSON: {exc}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path)},
+        )
+
+    ok = bool(checks.get("ok", False))
+    desc = "CET taxonomy completeness checks passed" if ok else "CET taxonomy completeness checks failed"
+    severity = AssetCheckSeverity.WARN if ok else AssetCheckSeverity.ERROR
+    return AssetCheckResult(
+        passed=ok,
+        severity=severity,
+        description=desc,
+        metadata={"checks_path": str(checks_path), **checks},
+    )
+
+
+@asset_check(
+    asset="cet_award_classifications",
+    description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
+)
+def cet_award_classifications_quality_check(context: AssetExecutionContext) -> AssetCheckResult:
+    """
+    Validate CET award classification quality against targets.
+    Consumes data/processed/cet_award_classifications.checks.json written by the asset.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    checks_path = Path("data/processed/cet_award_classifications.checks.json")
+    if not checks_path.exists():
+        desc = "Missing award classification checks JSON; classification asset may not have run."
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "missing_checks"},
+        )
+
+    try:
+        with checks_path.open("r", encoding="utf-8") as fh:
+            checks = json.load(fh)
+    except Exception as exc:
+        desc = f"Failed to read award classification checks JSON: {exc}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path)},
+        )
+
+    # Targets (defaults align with project guidance; override via env)
+    target_high_conf = float(os.environ.get("SBIR_ETL__CET__CLASSIFICATION__HIGH_CONF_THRESHOLD", "0.60"))
+    target_evidence_cov = float(os.environ.get("SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD", "0.80"))
+
+    high_conf_rate = checks.get("high_conf_rate")
+    evidence_cov_rate = checks.get("evidence_coverage_rate")
+    model_reason = checks.get("reason")
+
+    # If model missing/failed to load, fail loudly
+    if model_reason in {"model_missing", "model_load_failed"}:
+        desc = f"Classification invalid: {model_reason}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), **checks},
+        )
+
+    # If metrics are missing, warn/fail
+    metrics_present = (high_conf_rate is not None) and (evidence_cov_rate is not None)
+    if not metrics_present:
+        desc = "Classification checks JSON missing quality metrics"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), **checks},
+        )
+
+    passed = (high_conf_rate >= target_high_conf) and (evidence_cov_rate >= target_evidence_cov)
+    desc = (
+        "Classification quality meets thresholds"
+        if passed
+        else "Classification quality below thresholds"
+    )
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    metadata = {
+        "checks_path": str(checks_path),
+        "high_conf_rate": high_conf_rate,
+        "evidence_coverage_rate": evidence_cov_rate,
+        "target_high_conf_rate": target_high_conf,
+        "target_evidence_coverage_rate": target_evidence_cov,
+        **{k: v for k, v in checks.items() if k not in {"high_conf_rate", "evidence_coverage_rate"}},
+    }
+    return AssetCheckResult(passed=passed, severity=severity, description=desc, metadata=metadata)
+
+
+@asset_check(
+    asset="cet_company_profiles",
+    description="Company CET profiles successfully generated (basic sanity from checks JSON)",
+)
+def cet_company_profiles_check(context: AssetExecutionContext) -> AssetCheckResult:
+    """
+    Ensure company CET profiles were produced without critical errors.
+    Consumes data/processed/cet_company_profiles.checks.json written by the asset.
+    """
+    import json
+    from pathlib import Path
+
+    checks_path = Path("data/processed/cet_company_profiles.checks.json")
+    if not checks_path.exists():
+        desc = "Missing company profiles checks JSON; aggregation asset may not have run."
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "missing_checks"},
+        )
+
+    try:
+        with checks_path.open("r", encoding="utf-8") as fh:
+            checks = json.load(fh)
+    except Exception as exc:
+        desc = f"Failed to read company profiles checks JSON: {exc}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path)},
+        )
+
+    ok = bool(checks.get("ok", False))
+    desc = "Company profile generation passed" if ok else "Company profile generation failed"
+    severity = AssetCheckSeverity.WARN if ok else AssetCheckSeverity.ERROR
+    return AssetCheckResult(
+        passed=ok,
+        severity=severity,
+        description=desc,
+        metadata={"checks_path": str(checks_path), **checks},
+    )
 
 Notes:
 - This module intentionally keeps asset logic small and testable so it can

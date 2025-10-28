@@ -25,6 +25,7 @@ DOCKERFILE ?= Dockerfile
 COMPOSE_BASE ?= docker-compose.yml
 COMPOSE_DEV ?= docker/docker-compose.dev.yml
 COMPOSE_TEST ?= docker/docker-compose.test.yml
+COMPOSE_CET_STAGING ?= docker-compose.cet-staging.yml
 
 # Compose command (supports 'docker compose' or 'docker-compose' depending on environment)
 DOCKER_COMPOSE ?= docker compose
@@ -43,6 +44,8 @@ help:
 	@printf "  make docker-buildx     Build with buildx (useful for multi-platform)\n"
 	@printf "  make docker-up-dev     Start development compose stack (dev profile, bind mounts)\n"
 	@printf "  make docker-up-prod    Start production-like compose stack (no bind mounts)\n"
+	@printf "  make cet-staging-up    Start CET staging compose stack (staging overlay)\n"
+	@printf "  make cet-staging-down  Stop CET staging stack and remove anonymous volumes\n"
 	@printf "  make docker-down       Stop compose stack and remove anonymous volumes\n"
 	@printf "  make docker-rebuild    Rebuild images and restart dev stack\n"
 	@printf "  make docker-test       Run containerized tests via the test compose profile\n"
@@ -91,6 +94,21 @@ docker-up-prod: env-check
 	@echo "Starting production-like compose stack (no dev overlays)"
 	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) up -d --build
 	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env ps
+
+# ---------------------------
+# CET staging convenience
+# ---------------------------
+
+.PHONY: cet-staging-up cet-staging-down
+
+cet-staging-up: env-check
+	@echo "Starting CET staging compose stack"
+	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_CET_STAGING) up -d --build
+	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_CET_STAGING) ps
+
+cet-staging-down:
+	@echo "Stopping CET staging compose stack"
+	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_CET_STAGING) down --remove-orphans
 
 docker-down:
 	@echo "Stopping compose stack and removing anonymous volumes"
@@ -199,4 +217,4 @@ neo4j-check:
 # Convenience aliases
 # ---------------------------
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check

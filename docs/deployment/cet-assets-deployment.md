@@ -369,12 +369,17 @@ volumes:
 ```
 
 Deployment checklist (quick)
-- [ ] `.env` populated with Neo4j credentials and (optionally) `CET_MODEL_PATH`
+- [ ] Copy `.env.example.staging` to `.env` and set Neo4j credentials (and optional `CET_MODEL_PATH`)
+- [ ] Start staging stack with `docker-compose.cet-staging.yml` (or set `NEO4J_URI` to use external Neo4j)
 - [ ] Volumes present and writable: `data/`, `artifacts/`, `reports/`, `logs/`
 - [ ] `config/cet/taxonomy.yaml` and `config/cet/classification.yaml` present
 - [ ] `artifacts/models/cet_classifier_v1.pkl` available or override path
-- [ ] Stack up; materialize `cet_taxonomy` and then `cet_full_pipeline_job`
+- [ ] Materialize `cet_taxonomy` and then `cet_full_pipeline_job`
 - [ ] Validate checks and run Cypher spot checks
+- [ ] Configure schedule crons via env (optional overrides):
+      `SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB` (default `0 2 * * *`),
+      `SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB` (default `0 2 * * *`),
+      `SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB` (default `0 6 * * *`)
 - [ ] Enable schedules (prod), monitor alerts and drift daily
 
 ---

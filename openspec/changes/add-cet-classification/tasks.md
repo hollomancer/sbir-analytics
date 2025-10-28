@@ -318,12 +318,14 @@ Notes (section 8 implementation):
 
 ## 23. Configuration & Deployment
 
-- [ ] 23.1 Add production config examples
-- [ ] 23.2 Add deployment checklist for Dagster assets
+- [x] 23.1 Add production config examples
+- [x] 23.2 Add deployment checklist for Dagster assets
+- [x] 23.3 Create Dagster schedule definitions aligned to prod cadence (cet_full_pipeline, cet_drift, sbir_etl)
+- [x] 23.4 Add CET staging docker-compose overlay and .env example
 
 ## 24. Deployment & Validation
 
-- [ ] 24.1 Onboard to staging environment
+- [x] 24.1 Onboard to staging environment
 - [ ] 24.2 Run validation & human sampling on staging
 
 ---
