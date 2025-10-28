@@ -70,9 +70,9 @@ docker-buildx:
 
 docker-up-dev: env-check
 	@echo "Starting development compose stack (dev profile)"
-	@$(DOCKER_COMPOSE) --env-file .env --profile dev -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) up -d --build
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env --profile dev -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) up -d --build
 	@echo "Waiting up to $(STARTUP_TIMEOUT)s for services to become healthy..."
-	@$(DOCKER_COMPOSE) --env-file .env ps
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env ps
 
 # ---------------------------------------------------------------------------
 # CET pipeline helper (run the full CET job on the dev stack)
@@ -85,12 +85,12 @@ docker-up-dev: env-check
 .PHONY: cet-pipeline-dev
 cet-pipeline-dev: env-check docker-up-dev
 	@echo "Running CET full pipeline job on development stack (cet_full_pipeline_job)"
-	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) run --rm app sh -c "poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job"
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_DEV) run --rm app sh -c "poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job"
 
 docker-up-prod: env-check
 	@echo "Starting production-like compose stack (no dev overlays)"
-	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) up -d --build
-	@$(DOCKER_COMPOSE) --env-file .env ps
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) up -d --build
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env ps
 
 docker-down:
 	@echo "Stopping compose stack and removing anonymous volumes"
@@ -106,10 +106,10 @@ docker-rebuild: docker-down docker-build docker-up-dev
 docker-test: env-check
 	@echo "Running containerized tests using test compose"
 	@if [ -f "$(COMPOSE_TEST)" ]; then \
-	  $(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) up --abort-on-container-exit --build; \
+	  $(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) up --abort-on-container-exit --build; \
 	  status=$$?; \
 	  echo "Tearing down test containers..."; \
-	  $(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) down --remove-orphans --volumes; \
+	  $(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_TEST) down --remove-orphans --volumes; \
 	  exit $$status; \
 	else \
 	  echo "No test compose overlay found at $(COMPOSE_TEST)"; exit 2; \
@@ -121,12 +121,12 @@ docker-test: env-check
 
 docker-logs:
 	@echo "Tailing logs for service: $(SERVICE)"
-	@$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) logs -f --tail=200 $(SERVICE)
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) logs -f --tail=200 $(SERVICE)
 
 docker-exec:
 	@CMD=${CMD:-sh}; \
 	echo "Executing in service $(SERVICE): $$CMD"; \
-	$(DOCKER_COMPOSE) --env-file .env -f $(COMPOSE_BASE) exec --user root $(SERVICE) sh -c "$$CMD"
+	$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) exec --user root $(SERVICE) sh -c "$$CMD"
 
 # ---------------------------
 # Registry / publish
@@ -163,12 +163,12 @@ env-check:
 
 neo4j-up: env-check
 	@echo "Starting Neo4j (profile neo4j) using docker/neo4j.compose.override.yml"
-	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
 	@echo "Neo4j started (give it a few seconds to become healthy)"
 
 neo4j-down:
 	@echo "Stopping Neo4j (profile neo4j)"
-	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans --volumes
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans --volumes
 
 neo4j-reset: neo4j-down
 	@echo "Resetting Neo4j named volumes (neo4j_data, neo4j_logs, neo4j_import)"
@@ -190,7 +190,7 @@ neo4j-restore:
 
 neo4j-check:
 	@echo "Running Neo4j health check"
-	@$(DOCKER_COMPOSE) --env-file .env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j run --rm neo4j sh -c "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"
+	@$(DOCKER_COMPOSE) --env-file $(CURDIR)/.env -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j run --rm neo4j sh -c "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"
 	@echo "Neo4j health check completed (exit code 0 indicates healthy)"
 
 .PHONY: neo4j-up neo4j-down neo4j-reset neo4j-backup neo4j-restore neo4j-check
