@@ -406,9 +406,58 @@ def transition_scores_v1(
     for vid, grp in awards.groupby("_vendor_id"):
         vendor_to_awards[vid] = list(grp["award_id"].astype(str).dropna().unique())
 
-    # Lightweight score by method, optionally plus small boosts if basic signals present
+    # Lightweight score by method + small boosts from temporal and agency alignment
     METHOD_WEIGHTS = {"uei": 0.9, "duns": 0.8, "name_fuzzy": 0.7}
     score_cap = 1.0
+
+    # Env-tunable boost parameters
+    date_window_years = _env_int("SBIR_ETL__TRANSITION__DATE_WINDOW_YEARS", 5)
+    date_boost_max = _env_float("SBIR_ETL__TRANSITION__DATE_BOOST_MAX", 0.1)
+    agency_boost_val = _env_float("SBIR_ETL__TRANSITION__AGENCY_BOOST", 0.05)
+
+    # Helpers (local to keep module import-safe)
+    def _parse_date_any(v: Any):
+        try:
+            dt = pd.to_datetime(v, errors="coerce", utc=False)
+            # to_datetime may return NaT
+            return None if pd.isna(dt) else dt.to_pydatetime()
+        except Exception:
+            return None
+
+    def _award_date_from_row(r: Optional[pd.Series]):
+        if r is None:
+            return None
+        for key in [
+            "award_date",
+            "Award Date",
+            "start_date",
+            "Start Date",
+            "StartDate",
+            "project_start_date",
+            "award_start_date",
+        ]:
+            if key in r and pd.notna(r.get(key)):
+                d = _parse_date_any(r.get(key))
+                if d:
+                    return d
+        return None
+
+    def _agency_from_award_row(r: Optional[pd.Series]) -> Tuple[Optional[str], Optional[str]]:
+        if r is None:
+            return None, None
+        code = None
+        for key in ["awarding_agency_code", "Agency Code", "agency_code"]:
+            val = str(r.get(key) or "").strip()
+            if val:
+                code = val.upper()
+                break
+        name = None
+        for key in ["Agency", "agency", "awarding_agency_name"]:
+            val = str(r.get(key) or "").strip()
+            if val:
+                name = _norm_name(val)
+                break
+        return code, name
 
     results: List[Dict[str, Any]] = []
     # Build quick lookup for contracts by contract_id
@@ -427,12 +476,49 @@ def transition_scores_v1(
         # Award candidates
         award_ids = vendor_to_awards.get(vid, [])[:limit_per_award]
         for aid in award_ids:
-            score = min(score_cap, base)
+            # Base score
+            score = base
+
+            # Temporal and agency alignment boosts (best-effort; optional fields)
+            contract_row = contracts_by_id.get(contract_id, {})
+            c_date = _parse_date_any(contract_row.get("action_date"))
+            a_row: Optional[pd.Series] = None
+            try:
+                # Filter once; safe even when no rows match
+                matches = awards.loc[awards["award_id"] == aid]
+                if len(matches) > 0:
+                    a_row = matches.iloc[0]
+            except Exception:
+                a_row = None
+
+            a_date = _award_date_from_row(a_row)
+            a_code, a_name = _agency_from_award_row(a_row)
+            c_code = str(contract_row.get("awarding_agency_code") or "").strip().upper()
+            c_name = _norm_name(str(contract_row.get("awarding_agency_name") or ""))
+
+            # Date boost: award date must be on/before contract date and within window
+            date_boost = 0.0
+            if a_date and c_date and c_date >= a_date:
+                delta_years = (c_date - a_date).days / 365.25
+                if 0.0 <= delta_years <= 2.0:
+                    date_boost = min(date_boost_max, 0.08)
+                elif 0.0 < delta_years <= float(date_window_years):
+                    date_boost = min(date_boost_max, 0.04)
+
+            # Agency boost: code or normalized name match
+            agency_boost = 0.0
+            codes_match = bool(c_code and a_code and c_code == a_code)
+            names_match = bool(a_name and c_name and a_name == c_name)
+            if codes_match or names_match:
+                agency_boost = agency_boost_val
+
+            score = min(score_cap, score + date_boost + agency_boost)
+
             results.append(
                 {
                     "award_id": aid,
                     "contract_id": contract_id,
-                    "score": round(score, 4),
+                    "score": round(float(score), 4),
                     "method": method,
                     "computed_at": now_utc_iso(),
                 }
@@ -515,9 +601,183 @@ def transition_evidence_v1(
             fh.write(json.dumps(evidence) + "\n")
             count += 1
 
+    # Emit a lightweight validation summary for the MVP
+    try:
+        summary = {
+            "generated_at": now_utc_iso(),
+            "artifacts": {
+                "transitions": "data/processed/transitions.parquet",
+                "evidence": str(out_path),
+                "vendor_resolution_checks": "data/processed/vendor_resolution.checks.json",
+                "contracts_sample_checks": "data/processed/contracts_sample.checks.json",
+            },
+            "candidates": {
+                "total": int(len(transition_scores_v1)),
+                "distinct_awards": int(transition_scores_v1["award_id"].nunique())
+                if len(transition_scores_v1)
+                else 0,
+                "distinct_contracts": int(transition_scores_v1["contract_id"].nunique())
+                if len(transition_scores_v1)
+                else 0,
+                "by_method": transition_scores_v1["method"].value_counts(dropna=False).to_dict()
+                if len(transition_scores_v1)
+                else {},
+                "score": {
+                    "min": float(transition_scores_v1["score"].min())
+                    if len(transition_scores_v1)
+                    else None,
+                    "max": float(transition_scores_v1["score"].max())
+                    if len(transition_scores_v1)
+                    else None,
+                    "mean": float(transition_scores_v1["score"].mean())
+                    if len(transition_scores_v1)
+                    else None,
+                },
+            },
+            "gates": {},
+        }
+
+        # Best-effort: read checks and evaluate gates
+        try:
+            cs_checks_path = Path("data/processed/contracts_sample.checks.json")
+            if cs_checks_path.exists():
+                with cs_checks_path.open("r", encoding="utf-8") as fh:
+                    cs = json.load(fh)
+                date_cov = float(cs.get("coverage", {}).get("action_date", 0.0))
+                any_id_cov = float(cs.get("coverage", {}).get("any_identifier", 0.0))
+                date_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
+                id_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
+                summary["gates"]["contracts_sample"] = {
+                    "passed": (date_cov >= date_min) and (any_id_cov >= id_min),
+                    "action_date_coverage": date_cov,
+                    "any_identifier_coverage": any_id_cov,
+                    "thresholds": {"action_date": date_min, "any_identifier": id_min},
+                }
+        except Exception:
+            pass
+
+        try:
+            vr_checks_path = Path("data/processed/vendor_resolution.checks.json")
+            if vr_checks_path.exists():
+                with vr_checks_path.open("r", encoding="utf-8") as fh:
+                    vr = json.load(fh)
+                res_rate = float(vr.get("stats", {}).get("resolution_rate", 0.0))
+                min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
+                summary["gates"]["vendor_resolution"] = {
+                    "passed": res_rate >= min_rate,
+                    "resolution_rate": res_rate,
+                    "threshold": min_rate,
+                }
+        except Exception:
+            pass
+
+        validation_path = Path("reports/validation/transition_mvp.json")
+        _ensure_parent_dir(validation_path)
+        write_json(validation_path, summary)
+    except Exception:
+        # Non-fatal; evidence should still be returned
+        context.log.exception("Failed to write validation summary")
+
     meta = {
         "rows": count,
         "path": str(out_path),
+        "validation_summary_path": "reports/validation/transition_mvp.json",
     }
     context.log.info("Wrote transition_evidence_v1", extra=meta)
     return Output(str(out_path), metadata=meta)
+
+
+# -----------------------------
+# Asset checks (import-safe shims)
+# -----------------------------
+try:
+    from dagster import asset_check, AssetCheckResult, AssetCheckSeverity
+except Exception:  # pragma: no cover
+
+    def asset_check(*args, **kwargs):  # type: ignore
+        def _wrap(fn):
+            return fn
+
+        return _wrap
+
+    @dataclass
+    class AssetCheckResult:  # type: ignore
+        passed: bool
+        severity: str = "WARN"
+        description: Optional[str] = None
+        metadata: Optional[Dict[str, Any]] = None
+
+    class AssetCheckSeverity:  # type: ignore
+        ERROR = "ERROR"
+        WARN = "WARN"
+
+
+@asset_check(
+    asset="contracts_sample",
+    description="Contracts sample coverage thresholds: action_date ≥ 0.90, any identifier ≥ 0.60",
+)
+def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheckResult:
+    total = len(contracts_sample)
+    date_cov = float(contracts_sample["action_date"].notna().mean()) if total > 0 else 0.0
+    ident_cov = (
+        float(
+            (
+                (contracts_sample.get("vendor_uei", pd.Series(dtype=object)).notna())
+                | (contracts_sample.get("vendor_duns", pd.Series(dtype=object)).notna())
+                | (contracts_sample.get("piid", pd.Series(dtype=object)).notna())
+                | (contracts_sample.get("fain", pd.Series(dtype=object)).notna())
+            ).mean()
+        )
+        if total > 0
+        else 0.0
+    )
+    min_date_cov = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
+    min_ident_cov = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
+    passed = (date_cov >= min_date_cov) and (ident_cov >= min_ident_cov)
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if passed else '✗'} contracts_sample coverage: "
+            f"action_date={date_cov:.2%} (min {min_date_cov:.2%}), "
+            f"any_identifier={ident_cov:.2%} (min {min_ident_cov:.2%})"
+        ),
+        metadata={
+            "total_rows": total,
+            "action_date_coverage": f"{date_cov:.2%}",
+            "any_identifier_coverage": f"{ident_cov:.2%}",
+            "thresholds": {
+                "action_date_min": f"{min_date_cov:.2%}",
+                "any_identifier_min": f"{min_ident_cov:.2%}",
+            },
+        },
+    )
+
+
+@asset_check(
+    asset="vendor_resolution",
+    description="Vendor resolution rate meets minimum threshold (default 60%)",
+)
+def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetCheckResult:
+    total = len(vendor_resolution)
+    res_rate = (
+        float((vendor_resolution["match_method"] != "unresolved").mean()) if total > 0 else 0.0
+    )
+    min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
+    passed = res_rate >= min_rate
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if passed else '✗'} vendor_resolution: "
+            f"resolution_rate={res_rate:.2%} (min {min_rate:.2%})"
+        ),
+        metadata={
+            "total_contracts": total,
+            "resolution_rate": f"{res_rate:.2%}",
+            "threshold": f"{min_rate:.2%}",
+            "by_method": vendor_resolution["match_method"].value_counts(dropna=False).to_dict()
+            if total > 0
+            else {},
+        },
+    )

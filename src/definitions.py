@@ -37,7 +37,14 @@ all_assets = load_assets_from_modules(
     ]
 )
 all_asset_checks = load_asset_checks_from_modules(
-    [sbir_ingestion, uspto_assets, uspto_validation_assets, uspto_transformation_assets, cet_assets]
+    [
+        sbir_ingestion,
+        uspto_assets,
+        uspto_validation_assets,
+        uspto_transformation_assets,
+        cet_assets,
+        transition_assets,
+    ]
 )
 
 # Define SBIR ingestion job (just the ingestion assets)

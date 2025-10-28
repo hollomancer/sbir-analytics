@@ -49,6 +49,8 @@ help:
 	@printf "  make docker-down       Stop compose stack and remove anonymous volumes\n"
 	@printf "  make docker-rebuild    Rebuild images and restart dev stack\n"
 	@printf "  make docker-test       Run containerized tests via the test compose profile\n"
+	@printf "  make transition-mvp-run  Run Transition Detection MVP locally (shim, pandas)\n"
+	@printf "  make transition-mvp-clean Clean Transition MVP artifacts (data/processed, reports)\n"
 	@printf "  make docker-logs       Tail logs for a service (SERVICE=%s)\n" "$(SERVICE)"
 	@printf "  make docker-exec       Exec into a running container (SERVICE=%s, CMD='sh')\n" "$(SERVICE)"
 	@printf "  make docker-push       Tag and push image to registry (DOCKER_REGISTRY must be set)\n"
@@ -173,6 +175,112 @@ benchmark-transition-detection:
 	@poetry run python scripts/benchmark_transition_detection.py --save-as-baseline
 
 # ---------------------------
+# Transition MVP (local runner)
+# ---------------------------
+
+.PHONY: transition-mvp-run transition-mvp-clean
+
+transition-mvp-run:
+	@echo "Running Transition Detection MVP locally (shimmed)..."
+	@mkdir -p data/processed reports/validation
+	@poetry run python - <<'PY'
+import json
+from pathlib import Path
+import pandas as pd
+from src.assets.transition_assets import (
+    AssetExecutionContext,
+    contracts_sample as a_contracts_sample,
+    vendor_resolution as a_vendor_resolution,
+    transition_scores_v1 as a_transition_scores_v1,
+    transition_evidence_v1 as a_transition_evidence_v1,
+)
+
+# Prepare minimal fixtures if contracts sample is missing
+contracts_path = Path("data/processed/contracts_sample.parquet")
+if not contracts_path.exists():
+    df_contracts_seed = pd.DataFrame(
+        [
+            {
+                "contract_id": "C1",
+                "piid": "PIID-001",
+                "fain": None,
+                "vendor_uei": "UEI123",
+                "vendor_duns": None,
+                "vendor_name": "UEI Vendor Inc",
+                "action_date": "2023-01-01",
+                "obligated_amount": 100000,
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            },
+            {
+                "contract_id": "C2",
+                "piid": "PIID-002",
+                "fain": None,
+                "vendor_uei": None,
+                "vendor_duns": None,
+                "vendor_name": "Acme Corporation",
+                "action_date": "2023-02-01",
+                "obligated_amount": 50000,
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            },
+        ]
+    )
+    try:
+        df_contracts_seed.to_parquet(contracts_path, index=False)
+    except Exception:
+        # Fallback to CSV; contracts_sample asset will read it if parquet isn't available
+        df_contracts_seed.to_csv(contracts_path.with_suffix(".csv"), index=False)
+
+# Run assets in-process (shimmed)
+ctx = AssetExecutionContext()
+contracts_out = a_contracts_sample(ctx)
+contracts_df = getattr(contracts_out, "value", contracts_out)
+
+awards_df = pd.DataFrame(
+    [
+        {
+            "award_id": "A1",
+            "Company": "UEI Vendor Inc",
+            "UEI": "UEI123",
+            "Duns": None,
+            "Agency": "DEPT OF DEFENSE",
+            "award_date": "2022-06-15",
+        },
+        {
+            "award_id": "A2",
+            "Company": "Acme Corp",
+            "UEI": None,
+            "Duns": None,
+            "Agency": "DEPT OF DEFENSE",
+            "award_date": "2022-09-10",
+        },
+    ]
+)
+
+vr_out = a_vendor_resolution(ctx, contracts_df, awards_df)
+vendor_df = getattr(vr_out, "value", vr_out)
+
+sc_out = a_transition_scores_v1(ctx, vendor_df, contracts_df, awards_df)
+scores_df = getattr(sc_out, "value", sc_out)
+
+ev_out = a_transition_evidence_v1(ctx, scores_df, contracts_df)
+evidence_path = getattr(ev_out, "value", ev_out)
+
+print("✓ Transition MVP completed")
+print("  - Evidence:", evidence_path)
+print("  - Validation summary: reports/validation/transition_mvp.json")
+PY
+
+transition-mvp-clean:
+	@echo "Cleaning Transition MVP artifacts..."
+	-@rm -f data/processed/vendor_resolution.parquet data/processed/vendor_resolution.ndjson data/processed/vendor_resolution.checks.json
+	-@rm -f data/processed/transitions.parquet data/processed/transitions.ndjson data/processed/transitions.checks.json
+	-@rm -f data/processed/transitions_evidence.ndjson
+	-@rm -f data/processed/contracts_sample.parquet data/processed/contracts_sample.csv data/processed/contracts_sample.checks.json
+	-@rm -f reports/validation/transition_mvp.json
+
+# ---------------------------
 # Environment / safety checks
 # ---------------------------
 
@@ -227,4 +335,4 @@ neo4j-check:
 # Convenience aliases
 # ---------------------------
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check transition-mvp-run transition-mvp-clean
