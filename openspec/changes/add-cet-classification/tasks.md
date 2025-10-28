@@ -314,7 +314,7 @@ Notes (section 8 implementation):
 ## 22. Performance Optimization (if needed)
 
 - [x] 22.1 Baseline TF-IDF & inference throughput
-- [ ] 22.2 Implement batching & mem-optimizations
+- [x] 22.2 Implement batching & mem-optimizations
 
 ## 23. Configuration & Deployment
 

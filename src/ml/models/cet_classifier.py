@@ -428,24 +428,24 @@ class ApplicabilityModel:
         Returns:
             List of score dictionaries (CET ID -> score)
         """
-        scores_list = []
+        # Initialize scores_list with empty dictionaries for each text
+        scores_list = [{} for _ in texts]
 
-        for text in texts:
-            scores = {}
+        # Get prediction from each CET classifier for all texts at once
+        for cet_id, pipeline in self.pipelines.items():
+            try:
+                # Predict probability of positive class (applicable) for the whole batch
+                probas = pipeline.predict_proba(texts)[:, 1]
+                # Convert to 0-100 scale
+                scores = [float(p * 100) for p in probas]
 
-            # Get prediction from each CET classifier
-            for cet_id, pipeline in self.pipelines.items():
-                try:
-                    # Predict probability of positive class (applicable)
-                    proba = pipeline.predict_proba([text])[0, 1]
-                    # Convert to 0-100 scale
-                    score = float(proba * 100)
-                    scores[cet_id] = score
-                except Exception as e:
-                    logger.warning(f"Classification failed for {cet_id}: {e}")
-                    scores[cet_id] = 0.0
-
-            scores_list.append(scores)
+                # Assign scores to the correct text in scores_list
+                for i, score in enumerate(scores):
+                    scores_list[i][cet_id] = score
+            except Exception as e:
+                logger.warning(f"Classification failed for {cet_id} for the batch: {e}")
+                for i in range(len(texts)):
+                    scores_list[i][cet_id] = 0.0
 
         return scores_list
 
