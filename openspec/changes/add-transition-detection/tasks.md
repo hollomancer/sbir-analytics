@@ -1,5 +1,88 @@
 # Implementation Tasks
 
+## 25. Next Work Package: Transition Linking MVP (2 sprints)
+Goal: Deliver a minimal, testable end-to-end transition detection flow on a small, representative dataset. Focus on award↔contract linkage, scoring, evidence, and validation.
+
+### Scope
+- Data: 2–3 agencies, last 3–5 years of awards/contracts (sampled to <= 10k records each)
+- Signals: UEI/DUNS vendor linkage, PIID/FAIN linkage, date overlap, award amount sanity, agency alignment
+- Outputs: transitions.parquet, transitions.evidence.ndjson, checks JSON, Dagster asset metadata
+
+### Tasks
+- [ ] 25.1 Ingest a contracts SAMPLE
+  - [ ] Implement/configure a “contracts_sample” extractor reading FPDS/USAspending subset (CSV/Parquet) to `data/processed/contracts_sample.parquet`
+  - [ ] Columns: `piid`, `fain`, `uei`, `duns`, `vendor_name`, `action_date`, `obligated_amount`, `awarding_agency_code`
+  - [ ] Add a checks JSON with record counts, date range, and coverage metrics (uei/duns/piid)
+  - Acceptance:
+    - [ ] Sample size between 1k–10k
+    - [ ] ≥ 90% rows have `action_date`, ≥ 60% have at least one of `uei|duns|piid|fain`
+
+- [ ] 25.2 Vendor Resolver (SBIR recipient → contractor)
+  - [ ] Implement resolver pipeline using UEI, DUNS, and fuzzy name+state fallback (RapidFuzz)
+  - [ ] Emit a mapping table: `award_recipient_id → contractor_id` with `match_type` and `confidence`
+  - [ ] Persist to `data/processed/vendor_resolution.parquet` and checks JSON: coverage, precision sample
+  - Acceptance:
+    - [ ] ≥ 70% of SBIR recipients in the sample map to at least one contractor (any match_type)
+    - [ ] Manual review of 50 random mappings shows ≥ 85% precision at `confidence >= 0.8`
+
+- [ ] 25.3 Transition Scoring v1 (rule-based)
+  - [ ] Implement a deterministic scorer that aggregates:
+        UEI/DUNS exact (strong), PIID/FAIN link (strong), date overlap (medium), agency alignment (medium), amount sanity (low)
+  - [ ] Output fields: `award_id`, `contract_id`, `score`, `signals[]`, `computed_at`
+  - [ ] Thresholds in config; default: high>=0.80, med>=0.60
+  - Acceptance:
+    - [ ] Deterministic outputs for the same inputs
+    - [ ] Top-10 transitions per award are stable across runs
+
+- [ ] 25.4 Evidence Bundle v1
+  - [ ] For each transition, emit structured evidence:
+        `matched_keys`, `dates`, `amounts`, `agencies`, `resolver_path`, `notes`
+  - [ ] Persist NDJSON to `data/processed/transitions_evidence.ndjson` and reference from score rows
+  - Acceptance:
+    - [ ] Evidence present for 100% of transitions with `score >= 0.60`
+
+- [ ] 25.5 Dagster assets (MVP chain)
+  - [ ] `contracts_sample` → `vendor_resolution` → `transition_scores_v1` → `transition_evidence_v1`
+  - [ ] Each asset writes checks JSON and asset metadata (counts, durations)
+  - Acceptance:
+    - [ ] Materialization completes locally with the sample dataset
+    - [ ] Checks JSON present for all assets; no ERROR severity issues
+
+- [ ] 25.6 Validation & Gates (MVP)
+  - [ ] Coverage gates:
+        `contracts_sample`: action_date ≥ 90%, `vendor_resolution`: mapped ≥ 60%
+  - [ ] Quality gate:
+        transition precision quick-check via 30-manual-spot review ≥ 80% for `score>=0.80`
+  - [ ] Write validation summary to `reports/validation/transition_mvp.json`
+  - Acceptance:
+    - [ ] Gates enforced in CI/dev; failing gate blocks downstream assets
+
+- [ ] 25.7 Tests
+  - [ ] Unit tests: resolver (UEI/DUNS/fuzzy), scorer (signal weights), evidence assembly
+  - [ ] Integration tests: end-to-end sample pipeline on tiny fixture (<= 200 awards / 200 contracts)
+  - [ ] Add golden files for expected small-run outputs and checks JSON
+  - Acceptance:
+    - [ ] ≥ 80% coverage on new modules, integration tests stable on CI
+
+- [ ] 25.8 Docs
+  - [ ] Add `docs/transition/mvp.md`: scope, data requirements, config keys, how-to-run, acceptance metrics
+  - [ ] Update README with the new assets and make-targets
+  - Acceptance:
+    - [ ] Docs allow a new developer to run the MVP in < 30 minutes
+
+### Deliverables
+- `data/processed/contracts_sample.parquet`
+- `data/processed/vendor_resolution.parquet`
+- `data/processed/transitions.parquet` and `transitions_evidence.ndjson`
+- Checks JSON for all assets; a validation summary report
+- Unit/integration tests passing; coverage ≥ 80% on new code
+- docs/transition/mvp.md updated
+
+### Exit Criteria
+- End-to-end run completes on the agreed sample within < 10 minutes locally
+- Validation gates pass; manual spot-check precision ≥ 80% at `score>=0.80`
+- All new tests passing in CI; docs published
+
 ## 1. Project Setup & Dependencies
 
 - [x] 1.1 Promote rapidfuzz to main dependencies (needed for vendor name matching)

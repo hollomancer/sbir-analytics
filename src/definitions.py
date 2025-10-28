@@ -19,6 +19,7 @@ from .assets import (
     uspto_validation_assets,
     uspto_transformation_assets,
     cet_assets,
+    transition_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
 
@@ -32,6 +33,7 @@ all_assets = load_assets_from_modules(
         uspto_assets,
         uspto_validation_assets,
         uspto_transformation_assets,
+        transition_assets,
     ]
 )
 all_asset_checks = load_asset_checks_from_modules(

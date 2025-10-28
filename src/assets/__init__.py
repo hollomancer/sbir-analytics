@@ -59,6 +59,10 @@ __all__: List[str] = [
     "neo4j_company_cet_enrichment",
     "neo4j_award_cet_relationships",
     "neo4j_company_cet_relationships",
+    "contracts_sample",
+    "vendor_resolution",
+    "transition_scores_v1",
+    "transition_evidence_v1",
 ]
 
 # Map exported symbol -> (module_path, attribute_name).
@@ -181,6 +185,11 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "src.assets.cet_neo4j_loading_assets",
         "neo4j_company_cet_relationships",
     ),
+    # transition_assets
+    "contracts_sample": ("src.assets.transition_assets", "contracts_sample"),
+    "vendor_resolution": ("src.assets.transition_assets", "vendor_resolution"),
+    "transition_scores_v1": ("src.assets.transition_assets", "transition_scores_v1"),
+    "transition_evidence_v1": ("src.assets.transition_assets", "transition_evidence_v1"),
 }
 
 
