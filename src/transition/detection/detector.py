@@ -315,20 +315,10 @@ class TransitionDetector:
                 )
                 continue
 
-            # Build contract data dict for scoring
-            contract_data = {
-                "contract_id": contract.contract_id,
-                "agency": contract.agency,
-                "department": contract.sub_agency,
-                "start_date": contract.start_date,
-                "competition_type": contract.competition_type,
-                "text_similarity_score": None,  # TODO: Implement if text similarity enabled
-            }
-
             # Score transition
             signals, likelihood_score, confidence = self.scorer.score_and_classify(
                 award_data=award,
-                contract_data=contract_data,
+                contract=contract,
                 patent_data=patent_data,
                 cet_data=cet_data,
             )
@@ -337,7 +327,6 @@ class TransitionDetector:
             evidence_bundle = self.evidence_generator.generate_bundle(
                 signals=signals,
                 award_data=award,
-                contract_data=contract_data,
                 vendor_match=vendor_match,
                 contract=contract,
                 patent_data=patent_data,

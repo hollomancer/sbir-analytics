@@ -401,9 +401,8 @@ class EvidenceGenerator:
         self,
         signals: TransitionSignals,
         award_data: Dict[str, Any],
-        contract_data: Dict[str, Any],
+        contract: FederalContract,
         vendor_match: Optional[VendorMatch] = None,
-        contract: Optional[FederalContract] = None,
         patent_data: Optional[Dict[str, Any]] = None,
         cet_data: Optional[Dict[str, Any]] = None,
     ) -> EvidenceBundle:
@@ -413,9 +412,8 @@ class EvidenceGenerator:
         Args:
             signals: Computed TransitionSignals with all signal scores
             award_data: Award information dict
-            contract_data: Contract information dict
+            contract: FederalContract model
             vendor_match: Optional VendorMatch result
-            contract: Optional FederalContract model
             patent_data: Optional patent information
             cet_data: Optional CET alignment data
 
@@ -429,9 +427,9 @@ class EvidenceGenerator:
             agency_evidence = self.generate_agency_evidence(
                 signal=signals.agency,
                 award_agency=award_data.get("agency"),
-                contract_agency=contract_data.get("agency"),
+                contract_agency=contract.agency,
                 award_department=award_data.get("department"),
-                contract_department=contract_data.get("department"),
+                contract_department=contract.sub_agency,
             )
             bundle.add_item(agency_evidence)
 
@@ -440,9 +438,9 @@ class EvidenceGenerator:
             timing_evidence = self.generate_timing_evidence(
                 signal=signals.timing,
                 award_completion_date=award_data.get("completion_date"),
-                contract_start_date=contract_data.get("start_date"),
+                contract_start_date=contract.start_date,
                 award_id=award_data.get("award_id"),
-                contract_id=contract_data.get("contract_id"),
+                contract_id=contract.contract_id,
             )
             bundle.add_item(timing_evidence)
 
@@ -450,7 +448,7 @@ class EvidenceGenerator:
         if signals.competition:
             competition_evidence = self.generate_competition_evidence(
                 signal=signals.competition,
-                contract_id=contract_data.get("contract_id"),
+                contract_id=contract.contract_id,
             )
             bundle.add_item(competition_evidence)
 
@@ -459,7 +457,7 @@ class EvidenceGenerator:
             patent_evidence = self.generate_patent_evidence(
                 signal=signals.patent,
                 vendor_id=vendor_match.vendor_id if vendor_match else None,
-                contract_start_date=contract_data.get("start_date"),
+                contract_start_date=contract.start_date,
             )
             bundle.add_item(patent_evidence)
 
@@ -492,7 +490,7 @@ class EvidenceGenerator:
                 "evidence_items": signal_count,
                 "total_score": total_score,
                 "award_id": award_data.get("award_id"),
-                "contract_id": contract_data.get("contract_id"),
+                "contract_id": contract.contract_id,
             },
         )
 

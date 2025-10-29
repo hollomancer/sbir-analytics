@@ -283,9 +283,9 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert float(row_c1["confidence"]) == 1.0
 
     row_c2 = vendor_res_df.loc[vendor_res_df["contract_id"] == "C2"].iloc[0]
-    assert row_c2["match_method"] == "name_fuzzy"
+    assert row_c2["match_method"] == "name_exact"
     assert str(row_c2["matched_vendor_id"]).startswith("name:")
-    assert float(row_c2["confidence"]) >= 0.7
+    assert float(row_c2["confidence"]) == 1.0
 
     # Side effects: artifacts should be written
     vendor_map_art = _assert_artifact_exists(Path("data/processed/vendor_resolution.parquet"))
@@ -308,9 +308,9 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert abs(float(s1["score"]) - 0.9) < 1e-6
 
     s2 = scores_df.loc[(scores_df["award_id"] == "A2") & (scores_df["contract_id"] == "C2")].iloc[0]
-    assert s2["method"] == "name_fuzzy"
-    # Fuzzy weight is 0.7 in the simple rule-based scorer
-    assert abs(float(s2["score"]) - 0.7) < 1e-6
+    assert s2["method"] == "name_exact"
+    # Exact name weight is 0.85 in the simple rule-based scorer
+    assert abs(float(s2["score"]) - 0.85) < 1e-6
 
     # Side effects: artifacts should be written
     trans_art = _assert_artifact_exists(Path("data/processed/transitions.parquet"))

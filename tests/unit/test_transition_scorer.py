@@ -8,7 +8,7 @@ from datetime import date
 
 import pytest
 
-from src.models.transition_models import CompetitionType, ConfidenceLevel
+from src.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
 from src.transition.detection.scoring import TransitionScorer
 
 
@@ -73,7 +73,9 @@ class TestAgencyScoring:
 
     def test_same_agency_bonus(self, scorer):
         """Same agency should provide maximum agency bonus."""
-        signal = scorer.score_agency_continuity(award_agency="DOD", contract_agency="DOD")
+        award_data = {"agency": "DOD"}
+        contract = FederalContract(agency="DOD")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is True
         # same_agency_bonus (0.25) * weight (0.25) = 0.0625
@@ -81,12 +83,9 @@ class TestAgencyScoring:
 
     def test_different_agency_same_department(self, scorer):
         """Different agency, same department should provide cross-service bonus."""
-        signal = scorer.score_agency_continuity(
-            award_agency="Army",
-            contract_agency="Navy",
-            award_department="DOD",
-            contract_department="DOD",
-        )
+        award_data = {"agency": "Army", "department": "DOD"}
+        contract = FederalContract(agency="Navy", sub_agency="DOD")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
         assert signal.same_department is True
@@ -95,12 +94,9 @@ class TestAgencyScoring:
 
     def test_different_department(self, scorer):
         """Different department should provide minimal bonus."""
-        signal = scorer.score_agency_continuity(
-            award_agency="DOD",
-            contract_agency="NASA",
-            award_department="DOD",
-            contract_department="NASA",
-        )
+        award_data = {"agency": "DOD", "department": "DOD"}
+        contract = FederalContract(agency="NASA", sub_agency="NASA")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
         assert signal.same_department is False
@@ -109,13 +105,17 @@ class TestAgencyScoring:
 
     def test_case_insensitive_matching(self, scorer):
         """Agency matching should be case-insensitive."""
-        signal = scorer.score_agency_continuity(award_agency="dod", contract_agency="DOD")
+        award_data = {"agency": "dod"}
+        contract = FederalContract(agency="DOD")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is True
 
     def test_missing_agency_data(self, scorer):
         """Missing agency data should return zero score."""
-        signal = scorer.score_agency_continuity(award_agency=None, contract_agency="DOD")
+        award_data = {}
+        contract = FederalContract(agency="DOD")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
         assert signal.agency_score == 0.0
@@ -126,10 +126,10 @@ class TestTimingScoring:
 
     def test_immediate_timing(self, scorer):
         """Contract within 0-3 months should get maximum timing score."""
-        award_date = date(2023, 1, 1)
-        contract_date = date(2023, 2, 1)  # 31 days later
+        award_data = {"completion_date": date(2023, 1, 1)}
+        contract = FederalContract(start_date=date(2023, 2, 1))  # 31 days later
 
-        signal = scorer.score_timing_proximity(award_date, contract_date)
+        signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         assert signal.days_between_award_and_contract == 31
         assert signal.months_between_award_and_contract == pytest.approx(1.0, abs=0.1)
@@ -138,10 +138,10 @@ class TestTimingScoring:
 
     def test_medium_timing(self, scorer):
         """Contract within 3-12 months should get reduced score."""
-        award_date = date(2023, 1, 1)
-        contract_date = date(2023, 7, 1)  # ~180 days later
+        award_data = {"completion_date": date(2023, 1, 1)}
+        contract = FederalContract(start_date=date(2023, 7, 1))  # ~180 days later
 
-        signal = scorer.score_timing_proximity(award_date, contract_date)
+        signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         assert 180 <= signal.days_between_award_and_contract <= 182
         # window score (0.75) * weight (0.20) = 0.15
@@ -149,27 +149,29 @@ class TestTimingScoring:
 
     def test_long_timing(self, scorer):
         """Contract within 12-24 months should get low score."""
-        award_date = date(2023, 1, 1)
-        contract_date = date(2024, 1, 1)  # 365 days later
+        award_data = {"completion_date": date(2023, 1, 1)}
+        contract = FederalContract(start_date=date(2024, 1, 1))  # 365 days later
 
-        signal = scorer.score_timing_proximity(award_date, contract_date)
+        signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         # Should be in second window (91-365 days)
         assert signal.timing_score == pytest.approx(0.15, abs=0.001)
 
     def test_contract_before_award(self, scorer):
         """Contract before award completion should return zero score."""
-        award_date = date(2023, 6, 1)
-        contract_date = date(2023, 1, 1)  # Before award
+        award_data = {"completion_date": date(2023, 6, 1)}
+        contract = FederalContract(start_date=date(2023, 1, 1))  # Before award
 
-        signal = scorer.score_timing_proximity(award_date, contract_date)
+        signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         assert signal.days_between_award_and_contract < 0
         assert signal.timing_score == 0.0
 
     def test_missing_dates(self, scorer):
         """Missing date data should return zero score."""
-        signal = scorer.score_timing_proximity(None, date(2023, 1, 1))
+        award_data = {}
+        contract = FederalContract(start_date=date(2023, 1, 1))
+        signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         assert signal.timing_score == 0.0
 
@@ -179,7 +181,8 @@ class TestCompetitionScoring:
 
     def test_sole_source_bonus(self, scorer):
         """Sole source should provide maximum competition bonus."""
-        signal = scorer.score_competition_type(CompetitionType.SOLE_SOURCE)
+        contract = FederalContract(competition_type=CompetitionType.SOLE_SOURCE)
+        signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.SOLE_SOURCE
         # sole_source_bonus (0.20) * weight (0.20) = 0.04
@@ -187,7 +190,8 @@ class TestCompetitionScoring:
 
     def test_limited_competition_bonus(self, scorer):
         """Limited competition should provide medium bonus."""
-        signal = scorer.score_competition_type(CompetitionType.LIMITED)
+        contract = FederalContract(competition_type=CompetitionType.LIMITED)
+        signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.LIMITED
         # limited_competition_bonus (0.10) * weight (0.20) = 0.02
@@ -195,14 +199,16 @@ class TestCompetitionScoring:
 
     def test_full_and_open_no_bonus(self, scorer):
         """Full and open should provide no bonus."""
-        signal = scorer.score_competition_type(CompetitionType.FULL_AND_OPEN)
+        contract = FederalContract(competition_type=CompetitionType.FULL_AND_OPEN)
+        signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.FULL_AND_OPEN
         assert signal.competition_score == 0.0
 
     def test_missing_competition_type(self, scorer):
         """Missing competition type should default to OTHER with zero score."""
-        signal = scorer.score_competition_type(None)
+        contract = FederalContract()
+        signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.OTHER
         assert signal.competition_score == 0.0
@@ -213,7 +219,8 @@ class TestPatentScoring:
 
     def test_has_patents_bonus(self, scorer):
         """Having patents should provide base bonus."""
-        signal = scorer.score_patent_signal(patent_count=3)
+        patent_data = {"patent_count": 3}
+        signal = scorer.score_patent_signal(patent_data=patent_data)
 
         assert signal.patent_count == 3
         # has_patent_bonus (0.05) * weight (0.15) = 0.0075
@@ -221,16 +228,20 @@ class TestPatentScoring:
 
     def test_pre_contract_patents_bonus(self, scorer):
         """Patents filed before contract should provide additional bonus."""
-        signal = scorer.score_patent_signal(patent_count=3, patents_pre_contract=2)
+        patent_data = {"patent_count": 3, "patents_pre_contract": 2}
+        signal = scorer.score_patent_signal(patent_data=patent_data)
 
         # has_patent (0.05) + pre_contract (0.03) = 0.08, times weight (0.15) = 0.012
         assert signal.patent_score == pytest.approx(0.012, abs=0.0001)
 
     def test_patent_topic_match_bonus(self, scorer):
         """High patent topic similarity should provide additional bonus."""
-        signal = scorer.score_patent_signal(
-            patent_count=3, patents_pre_contract=2, patent_topic_similarity=0.8
-        )
+        patent_data = {
+            "patent_count": 3,
+            "patents_pre_contract": 2,
+            "patent_topic_similarity": 0.8,
+        }
+        signal = scorer.score_patent_signal(patent_data=patent_data)
 
         # has_patent (0.05) + pre_contract (0.03) + topic_match (0.02) = 0.10
         # times weight (0.15) = 0.015
@@ -238,16 +249,20 @@ class TestPatentScoring:
 
     def test_low_topic_similarity_no_bonus(self, scorer):
         """Low patent topic similarity should not provide bonus."""
-        signal = scorer.score_patent_signal(
-            patent_count=3, patents_pre_contract=2, patent_topic_similarity=0.5
-        )
+        patent_data = {
+            "patent_count": 3,
+            "patents_pre_contract": 2,
+            "patent_topic_similarity": 0.5,
+        }
+        signal = scorer.score_patent_signal(patent_data=patent_data)
 
         # Should not include topic_match bonus (threshold is 0.7)
         assert signal.patent_score == pytest.approx(0.012, abs=0.0001)
 
     def test_no_patents(self, scorer):
         """No patents should return zero score."""
-        signal = scorer.score_patent_signal(patent_count=0)
+        patent_data = {"patent_count": 0}
+        signal = scorer.score_patent_signal(patent_data=patent_data)
 
         assert signal.patent_count == 0
         assert signal.patent_score == 0.0
@@ -258,9 +273,8 @@ class TestCETScoring:
 
     def test_same_cet_area_bonus(self, scorer):
         """Same CET area should provide alignment bonus."""
-        signal = scorer.score_cet_alignment(
-            award_cet="AI/Machine Learning", contract_cet="AI/Machine Learning"
-        )
+        cet_data = {"award_cet": "AI/Machine Learning", "contract_cet": "AI/Machine Learning"}
+        signal = scorer.score_cet_alignment(cet_data=cet_data)
 
         assert signal.award_cet == "AI/Machine Learning"
         assert signal.contract_cet == "AI/Machine Learning"
@@ -269,23 +283,22 @@ class TestCETScoring:
 
     def test_different_cet_area_no_bonus(self, scorer):
         """Different CET areas should provide no bonus."""
-        signal = scorer.score_cet_alignment(
-            award_cet="AI/Machine Learning", contract_cet="Quantum Computing"
-        )
+        cet_data = {"award_cet": "AI/Machine Learning", "contract_cet": "Quantum Computing"}
+        signal = scorer.score_cet_alignment(cet_data=cet_data)
 
         assert signal.cet_alignment_score == 0.0
 
     def test_case_insensitive_cet_matching(self, scorer):
         """CET matching should be case-insensitive."""
-        signal = scorer.score_cet_alignment(
-            award_cet="ai/machine learning", contract_cet="AI/MACHINE LEARNING"
-        )
+        cet_data = {"award_cet": "ai/machine learning", "contract_cet": "AI/MACHINE LEARNING"}
+        signal = scorer.score_cet_alignment(cet_data=cet_data)
 
         assert signal.cet_alignment_score > 0.0
 
     def test_missing_cet_data(self, scorer):
         """Missing CET data should return zero score."""
-        signal = scorer.score_cet_alignment(award_cet=None, contract_cet="AI/ML")
+        cet_data = {"award_cet": None, "contract_cet": "AI/ML"}
+        signal = scorer.score_cet_alignment(cet_data=cet_data)
 
         assert signal.cet_alignment_score == 0.0
 
@@ -310,11 +323,11 @@ class TestCompositeScoring:
             "completion_date": date(2023, 1, 1),
             "cet": "AI/Machine Learning",
         }
-        contract_data = {
-            "agency": "DOD",
-            "start_date": date(2023, 2, 1),  # 1 month later
-            "competition_type": CompetitionType.SOLE_SOURCE,
-        }
+        contract = FederalContract(
+            agency="DOD",
+            start_date=date(2023, 2, 1),  # 1 month later
+            competition_type=CompetitionType.SOLE_SOURCE,
+        )
         patent_data = {
             "patent_count": 5,
             "patents_pre_contract": 3,
@@ -323,7 +336,7 @@ class TestCompositeScoring:
         cet_data = {"award_cet": "AI/Machine Learning", "contract_cet": "AI/Machine Learning"}
 
         signals, final_score, confidence = scorer.score_and_classify(
-            award_data, contract_data, patent_data, cet_data
+            award_data, contract, patent_data, cet_data
         )
 
         # Should be high score with all strong signals
@@ -351,13 +364,13 @@ class TestCompositeScoring:
             "agency": "DOD",
             "completion_date": date(2023, 1, 1),
         }
-        contract_data = {
-            "agency": "DOD",
-            "start_date": date(2023, 3, 1),  # 2 months later
-            "competition_type": CompetitionType.LIMITED,
-        }
+        contract = FederalContract(
+            agency="DOD",
+            start_date=date(2023, 3, 1),  # 2 months later
+            competition_type=CompetitionType.LIMITED,
+        )
 
-        signals, final_score, confidence = scorer.score_and_classify(award_data, contract_data)
+        signals, final_score, confidence = scorer.score_and_classify(award_data, contract)
 
         # Verify signals computed
         assert signals.agency is not None
@@ -384,7 +397,9 @@ class TestEdgeCases:
         scorer = TransitionScorer(config)
 
         # Score with same agency (would be 5.0 * 1.0 = 5.0 without capping)
-        signal = scorer.score_agency_continuity("DOD", "DOD")
+        award_data = {"agency": "DOD"}
+        contract = FederalContract(agency="DOD")
+        signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         # Should be capped at 1.0
         assert signal.agency_score <= 1.0
@@ -413,9 +428,9 @@ class TestEdgeCases:
         scorer = TransitionScorer(config)
 
         award_data = {"agency": "DOD"}
-        contract_data = {"agency": "DOD"}
+        contract = FederalContract(agency="DOD")
 
-        signals, final_score, _ = scorer.score_and_classify(award_data, contract_data)
+        signals, final_score, _ = scorer.score_and_classify(award_data, contract)
 
         # Agency signal should still be computed but not counted
         assert signals.agency is not None

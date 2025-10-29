@@ -26,6 +26,7 @@ from src.models.transition_models import (
     CompetitionSignal,
     CompetitionType,
     ConfidenceLevel,
+    FederalContract,
     PatentSignal,
     TimingSignal,
     TransitionSignals,
@@ -106,10 +107,8 @@ class TransitionScorer:
 
     def score_agency_continuity(
         self,
-        award_agency: str | None,
-        contract_agency: str | None,
-        award_department: str | None = None,
-        contract_department: str | None = None,
+        award_data: dict[str, Any],
+        contract: FederalContract,
     ) -> AgencySignal:
         """
         Score agency continuity between SBIR award and federal contract.
@@ -118,14 +117,17 @@ class TransitionScorer:
         department provides weaker signal.
 
         Args:
-            award_agency: Agency code for SBIR award (e.g., "DOD", "NASA")
-            contract_agency: Agency code for contract
-            award_department: Optional department (e.g., "DOD" for Air Force)
-            contract_department: Optional department for contract
+            award_data: Award information
+            contract: FederalContract object
 
         Returns:
             AgencySignal with continuity scoring
         """
+        award_agency = award_data.get("agency")
+        contract_agency = contract.agency
+        award_department = award_data.get("department")
+        contract_department = contract.sub_agency
+
         if not award_agency or not contract_agency:
             return AgencySignal(same_agency=False, agency_score=0.0)
 
@@ -162,8 +164,8 @@ class TransitionScorer:
 
     def score_timing_proximity(
         self,
-        award_completion_date: date | None,
-        contract_start_date: date | None,
+        award_data: dict[str, Any],
+        contract: FederalContract,
     ) -> TimingSignal:
         """
         Score timing proximity between award completion and contract start.
@@ -172,12 +174,15 @@ class TransitionScorer:
         configured time windows with decay multipliers.
 
         Args:
-            award_completion_date: Date award was completed (Phase I/II end)
-            contract_start_date: Date contract was awarded/started
+            award_data: Award information
+            contract: FederalContract object
 
         Returns:
             TimingSignal with days/months and timing score
         """
+        award_completion_date = award_data.get("completion_date")
+        contract_start_date = contract.start_date
+
         if not award_completion_date or not contract_start_date:
             return TimingSignal(timing_score=0.0)
 
@@ -228,7 +233,7 @@ class TransitionScorer:
             timing_score=min(score, 1.0),
         )
 
-    def score_competition_type(self, competition_type: CompetitionType | None) -> CompetitionSignal:
+    def score_competition_type(self, contract: FederalContract) -> CompetitionSignal:
         """
         Score competition type as indicator of targeted procurement.
 
@@ -236,11 +241,12 @@ class TransitionScorer:
         targeted, suggesting prior relationship (stronger signal).
 
         Args:
-            competition_type: Type of competition for contract
+            contract: FederalContract object
 
         Returns:
             CompetitionSignal with competition scoring
         """
+        competition_type = contract.competition_type
         if not competition_type:
             return CompetitionSignal(competition_type=CompetitionType.OTHER, competition_score=0.0)
 
@@ -266,9 +272,7 @@ class TransitionScorer:
 
     def score_patent_signal(
         self,
-        patent_count: int = 0,
-        patents_pre_contract: int = 0,
-        patent_topic_similarity: float | None = None,
+        patent_data: dict[str, Any] | None = None,
     ) -> PatentSignal:
         """
         Score patent-based commercialization signals.
@@ -277,13 +281,18 @@ class TransitionScorer:
         Patents filed before contract and high topic similarity provide stronger signals.
 
         Args:
-            patent_count: Total patents linked to vendor/award
-            patents_pre_contract: Patents filed before contract start
-            patent_topic_similarity: TF-IDF or other similarity score (0-1)
+            patent_data: Optional patent information (count, pre_contract_count, similarity)
 
         Returns:
             PatentSignal with patent-based scoring
         """
+        if not patent_data:
+            return PatentSignal(patent_score=0.0)
+
+        patent_count = patent_data.get("patent_count", 0)
+        patents_pre_contract = patent_data.get("patents_pre_contract", 0)
+        patent_topic_similarity = patent_data.get("patent_topic_similarity")
+
         patent_weight = self.patent_config.get("weight", 0.15)
         score = 0.0
 
@@ -316,8 +325,7 @@ class TransitionScorer:
 
     def score_cet_alignment(
         self,
-        award_cet: str | None,
-        contract_cet: str | None,
+        cet_data: dict[str, Any] | None = None,
     ) -> CETSignal:
         """
         Score CET (Critical & Emerging Technology) area alignment.
@@ -325,12 +333,17 @@ class TransitionScorer:
         Same CET area between award and contract suggests technology continuity.
 
         Args:
-            award_cet: CET area identifier for SBIR award
-            contract_cet: Inferred CET area for contract
+            cet_data: Optional CET alignment data
 
         Returns:
             CETSignal with alignment scoring
         """
+        if not cet_data:
+            return CETSignal(cet_alignment_score=0.0)
+
+        award_cet = cet_data.get("award_cet")
+        contract_cet = cet_data.get("contract_cet")
+
         if not award_cet or not contract_cet:
             return CETSignal(
                 award_cet=award_cet, contract_cet=contract_cet, cet_alignment_score=0.0
@@ -357,18 +370,19 @@ class TransitionScorer:
             cet_alignment_score=min(score, 1.0),
         )
 
-    def score_text_similarity(self, similarity_score: float | None) -> float:
+    def score_text_similarity(self, contract: FederalContract) -> float:
         """
         Score optional text similarity between award and contract descriptions.
 
         This is an optional signal that can be enabled/disabled via configuration.
 
         Args:
-            similarity_score: Pre-computed similarity score (0-1) or None
+            contract: FederalContract object
 
         Returns:
             Weighted contribution to final score
         """
+        similarity_score = contract.text_similarity_score
         if similarity_score is None:
             return 0.0
 
@@ -438,7 +452,7 @@ class TransitionScorer:
     def score_transition(
         self,
         award_data: dict[str, Any],
-        contract_data: dict[str, Any],
+        contract: FederalContract,
         patent_data: dict[str, Any] | None = None,
         cet_data: dict[str, Any] | None = None,
     ) -> TransitionSignals:
@@ -447,7 +461,7 @@ class TransitionScorer:
 
         Args:
             award_data: Award information (agency, completion_date, cet, etc.)
-            contract_data: Contract information (agency, start_date, competition_type, etc.)
+            contract: FederalContract object
             patent_data: Optional patent information (count, pre_contract_count, similarity)
             cet_data: Optional CET alignment data
 
@@ -456,41 +470,27 @@ class TransitionScorer:
         """
         # Score agency continuity
         agency_signal = self.score_agency_continuity(
-            award_agency=award_data.get("agency"),
-            contract_agency=contract_data.get("agency"),
-            award_department=award_data.get("department"),
-            contract_department=contract_data.get("department"),
+            award_data=award_data,
+            contract=contract,
         )
 
         # Score timing
         timing_signal = self.score_timing_proximity(
-            award_completion_date=award_data.get("completion_date"),
-            contract_start_date=contract_data.get("start_date"),
+            award_data=award_data,
+            contract=contract,
         )
 
         # Score competition type
-        competition_type = contract_data.get("competition_type")
-        competition_signal = self.score_competition_type(competition_type)
+        competition_signal = self.score_competition_type(contract)
 
         # Score patents
-        patent_signal = None
-        if patent_data:
-            patent_signal = self.score_patent_signal(
-                patent_count=patent_data.get("patent_count", 0),
-                patents_pre_contract=patent_data.get("patents_pre_contract", 0),
-                patent_topic_similarity=patent_data.get("patent_topic_similarity"),
-            )
+        patent_signal = self.score_patent_signal(patent_data)
 
         # Score CET alignment
-        cet_signal = None
-        if cet_data:
-            cet_signal = self.score_cet_alignment(
-                award_cet=cet_data.get("award_cet"),
-                contract_cet=cet_data.get("contract_cet"),
-            )
+        cet_signal = self.score_cet_alignment(cet_data)
 
         # Optional text similarity
-        text_similarity = contract_data.get("text_similarity_score")
+        text_similarity = self.score_text_similarity(contract)
 
         return TransitionSignals(
             agency=agency_signal,
@@ -504,7 +504,7 @@ class TransitionScorer:
     def score_and_classify(
         self,
         award_data: dict[str, Any],
-        contract_data: dict[str, Any],
+        contract: FederalContract,
         patent_data: dict[str, Any] | None = None,
         cet_data: dict[str, Any] | None = None,
     ) -> tuple[TransitionSignals, float, ConfidenceLevel]:
@@ -513,14 +513,14 @@ class TransitionScorer:
 
         Args:
             award_data: Award information
-            contract_data: Contract information
+            contract: FederalContract object
             patent_data: Optional patent information
             cet_data: Optional CET alignment data
 
         Returns:
             Tuple of (signals, final_score, confidence_level)
         """
-        signals = self.score_transition(award_data, contract_data, patent_data, cet_data)
+        signals = self.score_transition(award_data, contract, patent_data, cet_data)
         final_score = self.compute_final_score(signals)
         confidence = self.classify_confidence(final_score)
 

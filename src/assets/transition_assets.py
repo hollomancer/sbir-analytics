@@ -454,109 +454,64 @@ def vendor_resolution(
     out_path = Path("data/processed/vendor_resolution.parquet")
     checks_path = out_path.with_suffix(".checks.json")
 
-    # Build a simple vendor index from SBIR awards
-    # We will form a canonical vendor_id as UEI (preferred), else DUNS, else normalized name
-    def _award_vendor_id(row: pd.Series) -> str:
-        if pd.notna(row.get("UEI")) and str(row["UEI"]).strip():
-            return f"uei:{str(row['UEI']).strip()}"
-        if pd.notna(row.get("Duns")) and str(row["Duns"]).strip():
-            return f"duns:{str(row['Duns']).strip()}"
-        return f"name:{_norm_name(str(row.get('Company', '')))}"
+    # Build resolver from SBIR awards
+    award_vendors = []
+    for _, award in enriched_sbir_awards.iterrows():
+        # Create a unique, stable vendor_id for each award recipient
+        vendor_id = None
+        if pd.notna(award.get("UEI")) and str(award["UEI"]).strip():
+            vendor_id = f"uei:{str(award['UEI']).strip()}"
+        elif pd.notna(award.get("Duns")) and str(award["Duns"]).strip():
+            vendor_id = f"duns:{str(award['Duns']).strip()}"
+        else:
+            vendor_id = f"name:{_norm_name(str(award.get('Company', '')))}"
 
-    awards_min = enriched_sbir_awards.copy()
-    if "award_id" not in awards_min.columns:
-        # create a synthetic award_id if not present
-        awards_min = awards_min.reset_index().rename(columns={"index": "award_id"})
-        awards_min["award_id"] = awards_min["award_id"].apply(lambda x: f"award_{x}")
-
-    awards_min["_vendor_id"] = awards_min.apply(_award_vendor_id, axis=1)
-
-    # Prepare mapping of vendor_id -> award_ids
-    vendor_to_awards: Dict[str, List[str]] = {}
-    for vid, grp in awards_min.groupby("_vendor_id"):
-        vendor_to_awards[vid] = list(grp["award_id"].astype(str).dropna().unique())
-
-    # Resolve each contract vendor to a vendor_id
-    rows: List[Dict[str, Any]] = []
-    total_contracts = len(contracts_sample)
-    resolved = 0
-
-    for _, c in contracts_sample.iterrows():
-        v_uei = str(c.get("vendor_uei") or "").strip()
-        v_duns = str(c.get("vendor_duns") or "").strip()
-        v_name_raw = str(c.get("vendor_name") or "")
-        v_name = _norm_name(v_name_raw)
-
-        # Try UEI
-        if v_uei:
-            vid = f"uei:{v_uei}"
-            if vid in vendor_to_awards:
-                rows.append(
-                    {
-                        "contract_id": c.get("contract_id") or c.get("piid") or "",
-                        "matched_vendor_id": vid,
-                        "match_method": "uei",
-                        "confidence": 1.0,
-                    }
-                )
-                resolved += 1
-                continue
-
-        # Try DUNS
-        if v_duns:
-            vid = f"duns:{v_duns}"
-            if vid in vendor_to_awards:
-                rows.append(
-                    {
-                        "contract_id": c.get("contract_id") or c.get("piid") or "",
-                        "matched_vendor_id": vid,
-                        "match_method": "duns",
-                        "confidence": 1.0,
-                    }
-                )
-                resolved += 1
-                continue
-
-        # Fuzzy name match (only if we have a name)
-        if v_name:
-            # simple nearest neighbor: compute best score over known name-based vendor ids
-            best_vid = None
-            best_score = -1.0
-            for vid in vendor_to_awards.keys():
-                if not vid.startswith("name:"):
-                    continue
-                candidate = vid.split("name:", 1)[1]
-                score = float(fuzz.partial_ratio(v_name, candidate)) / 100.0
-                if score > best_score:
-                    best_score = score
-                    best_vid = vid
-            if best_vid and best_score >= fuzzy_threshold:
-                rows.append(
-                    {
-                        "contract_id": c.get("contract_id") or c.get("piid") or "",
-                        "matched_vendor_id": best_vid,
-                        "match_method": "name_fuzzy",
-                        "confidence": round(best_score, 4),
-                    }
-                )
-                resolved += 1
-                continue
-
-        # No resolution
-        rows.append(
-            {
-                "contract_id": c.get("contract_id") or c.get("piid") or "",
-                "matched_vendor_id": None,
-                "match_method": "unresolved",
-                "confidence": 0.0,
-            }
+        award_vendors.append(
+            VendorRecord(
+                uei=str(award["UEI"]) if pd.notna(award.get("UEI")) else None,
+                duns=str(award["Duns"]) if pd.notna(award.get("Duns")) else None,
+                cage=None,  # No CAGE code in SBIR awards data
+                name=str(award["Company"]),
+                metadata={"vendor_id": vendor_id},
+            )
         )
+    resolver = VendorResolver.from_records(award_vendors, fuzzy_threshold=fuzzy_threshold)
+    context.log.info("Built VendorResolver", extra=resolver.stats())
+
+    # Resolve each contract vendor
+    rows: List[Dict[str, Any]] = []
+    for _, contract in contracts_sample.iterrows():
+        match = resolver.resolve(
+            uei=str(contract.get("vendor_uei") or "").strip(),
+            duns=str(contract.get("vendor_duns") or "").strip(),
+            name=str(contract.get("vendor_name") or "").strip(),
+        )
+        if match.record:
+            rows.append(
+                {
+                    "contract_id": contract.get("contract_id") or contract.get("piid") or "",
+                    "matched_vendor_id": match.record.metadata.get("vendor_id"),
+                    "match_method": match.method,
+                    "confidence": match.score,
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "contract_id": contract.get("contract_id") or contract.get("piid") or "",
+                    "matched_vendor_id": None,
+                    "match_method": "unresolved",
+                    "confidence": 0.0,
+                }
+            )
 
     df_out = pd.DataFrame(rows)
     save_dataframe_parquet(df_out, out_path)
 
     # Checks
-    coverage = float((df_out["match_method"] != "unresolved").mean()) if len(df_out) else 0.0
+    total_contracts = len(df_out)
+    resolved = int((df_out["match_method"] != "unresolved").sum())
+    coverage = float(resolved / total_contracts) if total_contracts > 0 else 0.0
     checks = {
         "ok": True,
         "generated_at": now_utc_iso(),
@@ -623,7 +578,7 @@ def transition_scores_v1(
         vendor_to_awards[vid] = list(grp["award_id"].astype(str).dropna().unique())
 
     # Lightweight score by method + small boosts from temporal and agency alignment
-    METHOD_WEIGHTS = {"uei": 0.9, "duns": 0.8, "name_fuzzy": 0.7}
+    METHOD_WEIGHTS = {"uei": 0.9, "duns": 0.8, "name_exact": 0.85, "name_fuzzy": 0.7}
     score_cap = 1.0
 
     # Env-tunable boost parameters
