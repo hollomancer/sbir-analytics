@@ -71,11 +71,13 @@ USASPENDING_COLUMNS = {
     # Additional identifiers
     "recipient_uei": 96,  # UEI in 12-character format (newer, preferred)
     "parent_uei": 97,  # Parent organization UEI
-    # Note: Procurement-specific fields not found in assistance records:
-    # - CAGE code: Not present in grant/assistance transactions
-    # - Competition type (extent_competed): Procurement contracts only
-    # These fields exist only for true procurement contracts, not in the
-    # mixed transaction_normalized table structure we're seeing.
+    # Procurement-specific fields (may be NULL for assistance/grants)
+    "cage_code": 98,  # CAGE code (procurement contracts only)
+    "extent_competed": 99,  # Competition type: A&A, CDO, NDO, FSS, etc.
+    "contract_award_type": 100,  # Contract type: A, B, C, D (IDV, BPA, etc.)
+    "referenced_idv_agency_iden": 101,  # Parent IDV identifier
+    "referenced_idv_piid": 102,  # Parent IDV PIID
+    # Note: These fields may be NULL (\N) for assistance/grant transactions
 }
 
 
@@ -147,21 +149,81 @@ class ContractExtractor:
 
         return filters
 
-    def _is_contract_type(self, type_code: str) -> bool:
+    def _is_contract_type(self, type_code: str, award_type_code: str = None) -> bool:
         """
         Check if transaction type is a contract (not grant, loan, etc.).
 
-        USAspending award_type codes:
-        - 'A': Contract (procurement)
-        - 'B': Contract (IDV - Indefinite Delivery Vehicle)
-        - 'C': Grant (NOT a contract)
+        USAspending type codes (column 4):
+        - 'A': Award (mixed - could be contract or grant)
+        - 'B': IDV (Indefinite Delivery Vehicle - contract)
+        - 'C': Grant/Assistance (NOT a contract)
         - 'D': Direct Payment (NOT a contract)
-        - '02'-'11': Financial assistance (grants, loans, etc. - NOT contracts)
 
-        Only 'A' and 'B' are procurement contracts.
+        USAspending award_type_code (column 6):
+        - '02', '03', '04', '05': Grants/assistance
+        - 'A', 'B', 'C', 'D': Procurement contracts
+        - 'IDV-A', 'IDV-B', etc.: IDV contracts
+
+        Returns True only for procurement contracts.
         """
-        contract_types = {"A", "B"}
-        return type_code in contract_types if type_code else False
+        if not type_code:
+            return False
+
+        # Type 'B' is always IDV (contract)
+        if type_code == "B":
+            return True
+
+        # Type 'C' and 'D' are grants/assistance
+        if type_code in {"C", "D"}:
+            return False
+
+        # Type 'A' is mixed - check award_type_code
+        if type_code == "A" and award_type_code:
+            # Award type codes starting with digits are grants
+            if award_type_code and award_type_code[0].isdigit():
+                return False
+            # Award type codes that are letters or contain 'IDV' are contracts
+            if award_type_code.startswith(("A", "B", "C", "D", "IDV")):
+                return True
+
+        # Default to False for safety (only include confirmed contracts)
+        return False
+
+    def _parse_competition_type(self, extent_competed: str) -> CompetitionType:
+        """
+        Parse USAspending extent_competed field to CompetitionType enum.
+
+        USAspending extent_competed codes:
+        - 'A&A': Full and open competition after exclusion of sources
+        - 'CDO': Competitive Delivery Order
+        - 'FSS': Full and open competition (Federal Supply Schedule)
+        - 'FULL': Full and open competition
+        - 'NDO': Non-competitive Delivery Order
+        - 'NONE': Not competed
+        - 'Not Available': Unknown
+        - NULL/empty: Unknown
+
+        Returns:
+            CompetitionType enum value
+        """
+        if not extent_competed or extent_competed == "\\N" or extent_competed == "Not Available":
+            return CompetitionType.OTHER
+
+        extent_competed = extent_competed.strip().upper()
+
+        # Full and open competition
+        if extent_competed in {"FULL", "FSS", "A&A", "CDO"}:
+            return CompetitionType.FULL_AND_OPEN
+
+        # No competition (sole source)
+        if extent_competed in {"NONE", "NDO"}:
+            return CompetitionType.SOLE_SOURCE
+
+        # Limited competition patterns
+        if "LIMITED" in extent_competed or "RESTRICTED" in extent_competed:
+            return CompetitionType.LIMITED
+
+        return CompetitionType.OTHER
 
     def _matches_vendor_filter(self, row_data: List[str]) -> bool:
         """
@@ -222,9 +284,9 @@ class ContractExtractor:
                 except (IndexError, AttributeError):
                     return default
 
-            # Parse competition type (TODO: find correct column index)
-            # For now, default to OTHER since we haven't located this field yet
-            competition_type = CompetitionType.OTHER
+            # Parse competition type from extent_competed field
+            extent_competed = get_col(99)  # Column 99: extent_competed
+            competition_type = self._parse_competition_type(extent_competed)
 
             # Parse dates
             def parse_date(date_str: Optional[str]) -> Optional[date]:
@@ -255,6 +317,7 @@ class ContractExtractor:
             uei_primary = get_col(96)  # Preferred 12-character UEI format
             recipient_id_legacy = get_col(10)  # Legacy format (UEI or DUNS)
             parent_uei = get_col(97)  # Parent organization UEI
+            cage_code = get_col(98)  # CAGE code (procurement contracts only)
 
             # Determine best UEI/DUNS values
             vendor_uei = None
@@ -268,6 +331,10 @@ class ContractExtractor:
                 elif len(recipient_id_legacy) == 9 and recipient_id_legacy.isdigit():
                     vendor_duns = recipient_id_legacy
 
+            # Get parent contract/IDV information for handling relationships
+            parent_idv_piid = get_col(102)  # Referenced IDV PIID
+            contract_award_type = get_col(100)  # Contract type (A, B, C, D, IDV-*)
+
             # Create FederalContract
             contract = FederalContract(
                 contract_id=get_col(28, get_col(1, f"unknown_{row_data[0]}")),  # PIID (col 28)
@@ -275,7 +342,7 @@ class ContractExtractor:
                 sub_agency=get_col(14),  # awarding_sub_tier_agency_name
                 vendor_name=get_col(9),  # recipient_name
                 vendor_uei=vendor_uei,
-                vendor_cage=None,  # Not available in transaction_normalized
+                vendor_cage=cage_code,  # CAGE code from column 98
                 vendor_duns=vendor_duns,
                 start_date=start_date,
                 end_date=end_date,
@@ -292,6 +359,9 @@ class ContractExtractor:
                     "parent_uei": parent_uei,
                     "recipient_state": get_col(63),  # State code
                     "business_categories": get_col(17),  # Business type categories
+                    "extent_competed": extent_competed,  # Raw competition field
+                    "contract_award_type": contract_award_type,  # Contract type
+                    "parent_idv_piid": parent_idv_piid,  # Parent IDV for task orders
                 },
             )
 
@@ -330,10 +400,11 @@ class ContractExtractor:
                 # Split tab-delimited row
                 row_data = line.strip().split("\t")
 
-                # Check if it's a contract type (column 4, index 3)
-                if len(row_data) > 3:
-                    type_code = row_data[3]
-                    if not self._is_contract_type(type_code):
+                # Check if it's a contract type (columns 4 and 6)
+                if len(row_data) > 5:
+                    type_code = row_data[3]  # Column 4: type
+                    award_type_code = row_data[5]  # Column 6: award_type_code
+                    if not self._is_contract_type(type_code, award_type_code):
                         continue
 
                     self.stats["contracts_found"] += 1
