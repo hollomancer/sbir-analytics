@@ -79,7 +79,10 @@ def test_parse_contract_child_sets_parent_fields(extractor: ContractExtractor) -
 
     # Stats should record the parent-child relationship
     assert extractor.stats["parent_relationships"] == 1
+    assert extractor.stats["child_relationships"] == 1
     assert extractor.stats["idv_parents"] == 0
+    assert extractor.stats["unique_parent_ids"] == 0
+    assert extractor.stats["unique_idv_parents"] == 0
 
 
 def test_parse_idv_parent_contract_classification(extractor: ContractExtractor) -> None:
@@ -107,3 +110,6 @@ def test_parse_idv_parent_contract_classification(extractor: ContractExtractor) 
     # Stats should record the IDV parent classification without counting a child relationship
     assert extractor.stats["idv_parents"] == 1
     assert extractor.stats["parent_relationships"] == 0
+    assert extractor.stats["child_relationships"] == 0
+    assert extractor.stats["unique_parent_ids"] == 0
+    assert extractor.stats["unique_idv_parents"] == 0

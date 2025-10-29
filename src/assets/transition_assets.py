@@ -212,6 +212,8 @@ def contracts_ingestion(context) -> Output[pd.DataFrame]:
         },
     )
 
+    stats_snapshot: Optional[Dict[str, Any]] = None
+
     if not dump_dir.exists():
         raise FileNotFoundError(f"USAspending dump directory not found: {dump_dir}")
     if not vendor_filter_path.exists():
@@ -233,6 +235,7 @@ def contracts_ingestion(context) -> Output[pd.DataFrame]:
             "Contracts extraction complete",
             extra={"rows_written": extracted_count, "output_path": str(output_path)},
         )
+        stats_snapshot = dict(extractor.stats)
     else:
         context.log.info(
             "Reusing existing contracts dataset", extra={"output_path": str(output_path)}
@@ -282,6 +285,8 @@ def contracts_ingestion(context) -> Output[pd.DataFrame]:
         "checks_path": str(checks_path),
         "coverage": MetadataValue.json(coverage),
     }
+    if stats_snapshot:
+        metadata["extraction_stats"] = MetadataValue.json(stats_snapshot)
 
     context.log.info(
         "contracts_ingestion completed",
@@ -369,15 +374,33 @@ def contracts_sample(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     ident_cov = (
         float(
             (
-                df.get("vendor_uei", pd.Series(dtype=object)).notna()
-                | df.get("vendor_duns", pd.Series(dtype=object)).notna()
-                | df.get("piid", pd.Series(dtype=object)).notna()
-                | df.get("fain", pd.Series(dtype=object)).notna()
+                (df.get("vendor_uei", pd.Series(dtype=object)).notna())
+                | (df.get("vendor_duns", pd.Series(dtype=object)).notna())
+                | (df.get("piid", pd.Series(dtype=object)).notna())
+                | (df.get("fain", pd.Series(dtype=object)).notna())
             ).mean()
         )
         if total > 0
         else 0.0
     )
+
+    child_count = 0
+    idv_parent_count = 0
+    if total > 0:
+        if "parent_contract_id" in df.columns:
+            child_count = int(df["parent_contract_id"].notna().sum())
+        if "contract_award_type" in df.columns:
+            normalized_types = df["contract_award_type"].fillna("").astype(str).str.upper()
+            idv_mask = normalized_types.str.startswith("IDV") | normalized_types.isin(
+                {"BPA", "BOA", "IDIQ"}
+            )
+            idv_parent_count = int(idv_mask.sum())
+    parent_child_stats = {
+        "child_rows": child_count,
+        "child_ratio": round(child_count / total, 4) if total > 0 else 0.0,
+        "idv_parent_rows": idv_parent_count,
+        "idv_parent_ratio": round(idv_parent_count / total, 4) if total > 0 else 0.0,
+    }
 
     checks = {
         "ok": True,
@@ -392,6 +415,7 @@ def contracts_sample(context: AssetExecutionContext) -> Output[pd.DataFrame]:
             "piid": round(piid_cov, 4),
             "fain": round(fain_cov, 4),
         },
+        "parent_child": parent_child_stats,
         "date_range": {
             "min": date_series.min().isoformat()
             if total > 0 and pd.notna(date_series.min())

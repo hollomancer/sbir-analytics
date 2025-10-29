@@ -125,8 +125,13 @@ class ContractExtractor:
             "vendor_matches": 0,
             "records_extracted": 0,
             "parent_relationships": 0,
+            "child_relationships": 0,
             "idv_parents": 0,
+            "unique_parent_ids": 0,
+            "unique_idv_parents": 0,
         }
+        self._parent_ids_seen: Set[str] = set()
+        self._idv_parent_ids_seen: Set[str] = set()
 
     def _load_vendor_filters(self, filter_file: Optional[Path]) -> Dict[str, Set[str]]:
         """Load vendor filter sets from JSON file."""
@@ -342,6 +347,8 @@ class ContractExtractor:
             if parent_idv_piid:
                 relationship_type = "child_of_idv"
                 self.stats["parent_relationships"] += 1
+                self.stats["child_relationships"] += 1
+                self._parent_ids_seen.add(parent_idv_piid)
             elif contract_award_type:
                 award_type_normalized = contract_award_type.strip().upper()
                 if award_type_normalized.startswith("IDV") or award_type_normalized in {
@@ -353,8 +360,9 @@ class ContractExtractor:
                     self.stats["idv_parents"] += 1
 
             # Create FederalContract
+            contract_id_value = get_col(28, get_col(1, f"unknown_{row_data[0]}"))  # PIID (col 28)
             contract = FederalContract(
-                contract_id=get_col(28, get_col(1, f"unknown_{row_data[0]}")),  # PIID (col 28)
+                contract_id=contract_id_value,
                 agency=get_col(12),  # awarding_agency_name
                 sub_agency=get_col(14),  # awarding_sub_tier_agency_name
                 vendor_name=get_col(9),  # recipient_name
@@ -386,6 +394,8 @@ class ContractExtractor:
                     "parent_relationship_type": relationship_type,
                 },
             )
+            if relationship_type == "idv_parent" and contract.contract_id:
+                self._idv_parent_ids_seen.add(contract.contract_id)
 
             return contract
 
@@ -512,6 +522,8 @@ class ContractExtractor:
             logger.warning("No contracts extracted")
 
         # Log statistics
+        self.stats["unique_parent_ids"] = len(self._parent_ids_seen)
+        self.stats["unique_idv_parents"] = len(self._idv_parent_ids_seen)
         logger.info("\n" + "=" * 60)
         logger.info("Extraction Statistics:")
         logger.info("=" * 60)

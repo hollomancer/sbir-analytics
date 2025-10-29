@@ -68,6 +68,139 @@ def _write_detection_config(base_dir: Path) -> Path:
     return config_path
 
 
+def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    from src.assets.transition_assets import (  # type: ignore
+        AssetExecutionContext,
+        contracts_sample,
+    )
+
+    sample_path = Path("data/processed/contracts_sample.parquet")
+    sample_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df = pd.DataFrame(
+        [
+            {
+                "contract_id": "C_CHILD",
+                "piid": "C_CHILD",
+                "parent_contract_id": "IDV-ROOT",
+                "contract_award_type": "DO",
+                "vendor_uei": "UEI123",
+                "vendor_name": "Acme Subsidiary",
+                "action_date": "2023-01-15",
+            },
+            {
+                "contract_id": "IDV-ROOT",
+                "piid": "IDV-ROOT",
+                "parent_contract_id": None,
+                "contract_award_type": "IDV-A",
+                "vendor_uei": "UEI123",
+                "vendor_name": "Acme Parent",
+                "action_date": "2023-01-01",
+            },
+        ]
+    )
+
+    csv_path = sample_path.with_suffix(".csv")
+    df.to_csv(csv_path, index=False)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH", str(sample_path))
+
+    ctx = AssetExecutionContext()
+    result = contracts_sample(ctx)
+    sample_df, metadata = _unwrap_output(result)
+
+    assert isinstance(sample_df, pd.DataFrame)
+    assert "parent_contract_id" in sample_df.columns
+    assert "contract_award_type" in sample_df.columns
+
+    checks_path = Path(metadata["checks_path"])
+    payload = json.loads(checks_path.read_text(encoding="utf-8"))
+
+    parent_child = payload.get("parent_child") or {}
+    assert parent_child.get("child_rows") == 1
+    assert parent_child.get("idv_parent_rows") == 1
+    assert parent_child.get("child_ratio") == pytest.approx(0.5)
+    assert parent_child.get("idv_parent_ratio") == pytest.approx(0.5)
+
+
+def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
+    # Run all outputs into a temp working directory
+    monkeypatch.chdir(tmp_path)
+    # Lower fuzzy threshold to ensure partial matches pass comfortably in all environments
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
+
+    # Import locally so env/working dir changes apply
+    from src.assets.transition_assets import (
+        AssetExecutionContext,
+        vendor_resolution,
+    )
+
+    # Prepare a tiny contracts_sample DataFrame:
+    # - C1 matches UEI exactly
+    # - C2 should match by fuzzy company name
+    contracts_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "C1",
+                "piid": "PIID-001",
+                "fain": None,
+                "vendor_uei": "UEI123",
+                "vendor_duns": None,
+                "vendor_name": "UEI Vendor Inc",
+                "action_date": "2023-01-01",
+                "obligated_amount": 100000,
+                "awarding_agency_code": "9700",
+            },
+            {
+                "contract_id": "C2",
+                "piid": "PIID-002",
+                "fain": None,
+                "vendor_uei": None,
+                "vendor_duns": None,
+                "vendor_name": "Acme Corporation",
+                "action_date": "2023-02-01",
+                "obligated_amount": 50000,
+                "awarding_agency_code": "9700",
+            },
+        ]
+    )
+
+    # Prepare enriched SBIR awards minimal surface:
+    # - A1 carries the same UEI as C1
+    # - A2 derives vendor id from Company name to enable name_fuzzy for C2
+    awards_df = pd.DataFrame(
+        [
+            {"award_id": "A1", "Company": "UEI Vendor Inc", "UEI": "UEI123", "Duns": None},
+            {"award_id": "A2", "Company": "Acme Corp", "UEI": None, "Duns": None},
+        ]
+    )
+
+    ctx = AssetExecutionContext()
+    result = vendor_resolution(ctx, contracts_df, awards_df)
+    resolved_df, _ = _unwrap_output(result)
+
+    # Basic shape expectations
+    assert isinstance(resolved_df, pd.DataFrame)
+    assert {"contract_id", "matched_vendor_id", "match_method", "confidence"}.issubset(
+        set(resolved_df.columns)
+    )
+    # We should have two rows corresponding to C1 and C2
+    assert len(resolved_df) == 2
+
+    # Row for C1 should be UEI exact match
+    row_c1 = resolved_df.loc[resolved_df["contract_id"] == "C1"].iloc[0]
+    assert row_c1["match_method"] == "uei"
+    assert row_c1["matched_vendor_id"] == "uei:UEI123"
+    assert float(row_c1["confidence"]) == 1.0
+
+    # Row for C2 should be fuzzy name match to company-based vendor id
+    row_c2 = resolved_df.loc[resolved_df["contract_id"] == "C2"].iloc[0]
+    assert row_c2["match_method"] == "name_fuzzy"
+    assert str(row_c2["matched_vendor_id"]).startswith("name:")
+    assert float(row_c2["confidence"]) >= 0.7  # per threshold override
+
+
 def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
