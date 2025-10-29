@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 def _unwrap_output(result):
@@ -187,3 +188,69 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     entry = json.loads(lines[0])
     for key in ["award_id", "contract_id", "score", "method", "matched_keys", "contract_snapshot"]:
         assert key in entry
+
+
+def test_transition_detections_persists_metrics(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    from src.assets.transition_assets import (  # type: ignore
+        AssetExecutionContext,
+        transition_detections,
+    )
+
+    scores_df = pd.DataFrame(
+        [
+            {
+                "award_id": "A1",
+                "contract_id": "C1",
+                "score": 0.9,
+                "method": "uei",
+                "computed_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "award_id": "A2",
+                "contract_id": "C2",
+                "score": 0.4,
+                "method": "name_fuzzy",
+                "computed_at": "2024-01-02T00:00:00Z",
+            },
+        ]
+    )
+
+    ctx = AssetExecutionContext()
+    detections_df, metadata = _unwrap_output(transition_detections(ctx, scores_df))
+
+    assert isinstance(detections_df, pd.DataFrame)
+    assert len(detections_df) == 2
+    assert metadata is not None
+    assert metadata.get("high_confidence_candidates") == 1
+    assert pytest.approx(metadata.get("avg_score", 0.0), rel=1e-6) == 0.65
+
+    output_path = Path(metadata.get("output_path", ""))
+    ndjson_fallback = output_path.with_suffix(".ndjson")
+    assert output_path.exists() or ndjson_fallback.exists()
+    by_method = metadata.get("by_method") or {}
+    assert by_method.get("uei") == 1
+    assert by_method.get("name_fuzzy") == 1
+
+
+def test_transition_detections_fills_missing_columns(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+
+    from src.assets.transition_assets import (  # type: ignore
+        AssetExecutionContext,
+        transition_detections,
+    )
+
+    minimal_df = pd.DataFrame([{"award_id": "A1", "contract_id": "C1", "score": 0.75}])
+
+    ctx = AssetExecutionContext()
+    detections_df, metadata = _unwrap_output(transition_detections(ctx, minimal_df))
+
+    assert isinstance(detections_df, pd.DataFrame)
+    for column in ["method", "computed_at"]:
+        assert column in detections_df.columns
+    assert detections_df.loc[0, "method"] is None
+    assert metadata is not None
+    assert metadata.get("rows") == 1
+    assert metadata.get("high_confidence_candidates") == 1
