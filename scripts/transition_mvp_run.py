@@ -224,6 +224,20 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     evidence_path, evidence_meta = _unwrap_output(evidence_out)
 
+    # 6) transition_analytics
+    if verbose:
+        print("[run] Materializing transition_analytics")
+    try:
+        from src.assets.transition_assets import (  # type: ignore
+            transition_analytics as a_transition_analytics,
+        )
+
+        analytics_out = a_transition_analytics(ctx, awards_df, scores_df, contracts_df)
+    except Exception as exc:
+        print(f"[error] transition_analytics failed: {exc}", file=sys.stderr)
+        return 2
+    analytics_path, analytics_meta = _unwrap_output(analytics_out)
+
     # Summary
     validation_path = Path("reports/validation/transition_mvp.json")
     print("✓ Transition MVP completed")
@@ -234,6 +248,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  - transitions rows: {len(scores_df)}")
     print(f"  - evidence path: {evidence_path}")
     print(f"  - validation summary: {validation_path}")
+    print(f"  - analytics summary: {analytics_path}")
+    if analytics_meta and analytics_meta.get("checks_path"):
+        print(f"  - analytics checks: {analytics_meta.get('checks_path')}")
 
     # Optional note on gates
     if validation_path.exists():

@@ -262,16 +262,18 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 - [x] 12.1 Create TransitionAnalytics in src/transition/analysis/analytics.py
   - Notes: Implemented Pandas-based analytics computing award-level and company-level transition rates, Phase I vs Phase II effectiveness, by-agency rates, and optional average time-to-transition by agency when contract dates are available. Module: src/transition/analysis/analytics.py. Provides summarize() for compact JSON metrics.
-- [ ] 12.2 Calculate award-level transition rate (transitioned awards / total awards)
-- [ ] 12.3 Calculate company-level transition rate (companies with transitions / total companies)
-- [ ] 12.4 Calculate Phase I vs Phase II effectiveness
-- [ ] 12.5 Calculate transition rates by agency
+- [x] 12.2 Calculate award-level transition rate (transitioned awards / total awards)
+- [x] 12.3 Calculate company-level transition rate (companies with transitions / total companies)
+- [x] 12.4 Calculate Phase I vs Phase II effectiveness
+- [x] 12.5 Calculate transition rates by agency
 - [ ] 12.6 Calculate transition rates by CET area (NEW)
 - [ ] 12.7 Calculate avg time to transition by CET area (NEW)
 - [ ] 12.8 Calculate patent-backed transition rates by CET area (NEW)
 - [x] 12.9 Create transition_analytics asset
   - Notes: Implemented Dagster asset `transition_analytics` that computes dual-perspective KPIs (award/company rates, phase effectiveness, by-agency rates, optional avg time-to-transition by agency), writes `data/processed/transition_analytics.json` and `transition_analytics.checks.json`, and accepts `SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD` for the score threshold.
 - [ ] 12.10 Generate executive summary reports
+- [x] 12.11 Add transition_analytics asset check (denominator > 0, rates within [0,1], optional min-rate env thresholds)
+  - Notes: Implemented `transition_analytics_quality_check` validating denominators > 0 and rate bounds, with optional minimum thresholds via `SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE` and `SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE`.
 
 ## 13. Neo4j Graph Model - Transition Nodes
 
@@ -346,8 +348,8 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
   - Notes: Pending - CETSignalExtractor not yet implemented (Task 10).
 - [x] 19.6 Unit tests for TransitionDetector (end-to-end detection logic)
   - Notes: Complete test suite in `tests/unit/test_transition_detector.py` covering timing window filtering, vendor matching (all methods), single-award detection, batch processing, metrics tracking, confidence level distribution, and edge cases (empty contracts, missing data, optional vendor matching). Tests full pipeline integration.
-- [ ] 19.7 Unit tests for TransitionAnalytics (dual-perspective calculations)
-  - Notes: Pending - TransitionAnalytics not yet implemented (Task 12).
+- [x] 19.7 Unit tests for TransitionAnalytics (dual-perspective calculations)
+  - Notes: Implemented in tests/unit/transition/test_transition_analytics.py covering award- and company-level transition rates, Phase I vs Phase II effectiveness, by-agency rates, avg time-to-transition by agency, and summarize() payload checks.
 - [ ] 19.8 Unit tests for TransitionLoader (Neo4j node/relationship creation)
   - Notes: Pending - TransitionLoader not yet implemented (Task 13).
 

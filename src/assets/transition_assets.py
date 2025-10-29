@@ -1121,6 +1121,104 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
 
 
 @asset_check(
+    asset="transition_analytics",
+    description="Sanity checks for transition analytics: positive denominators and 0≤rates≤1 (optional min-rate thresholds via env).",
+)
+def transition_analytics_quality_check(context: AssetExecutionContext) -> AssetCheckResult:
+    """
+    Validate transition_analytics KPIs using the emitted checks JSON.
+
+    Gates:
+      - award/company denominators > 0
+      - 0 <= award/company rates <= 1
+      - optional minimum thresholds via:
+          SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE (default 0.0)
+          SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE (default 0.0)
+    """
+    from pathlib import Path as _Path
+    import json as _json
+
+    checks_path = _Path("data/processed/transition_analytics.checks.json")
+    if not checks_path.exists():
+        desc = "Missing transition_analytics.checks.json; analytics asset may not have run."
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "missing_checks"},
+        )
+
+    try:
+        payload = _json.loads(checks_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        desc = f"Failed to read analytics checks JSON: {exc}"
+        context.log.error(desc)
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description=desc,
+            metadata={"checks_path": str(checks_path), "reason": "read_error"},
+        )
+
+    award = payload.get("award_transition_rate") or {}
+    company = payload.get("company_transition_rate") or {}
+
+    def _safe_int(v, default=0):
+        try:
+            return int(v)
+        except Exception:
+            return default
+
+    def _safe_float(v, default=0.0):
+        try:
+            return float(v)
+        except Exception:
+            return default
+
+    a_num = _safe_int(award.get("numerator"))
+    a_den = _safe_int(award.get("denominator"))
+    a_rate = _safe_float(award.get("rate"))
+    c_num = _safe_int(company.get("numerator"))
+    c_den = _safe_int(company.get("denominator"))
+    c_rate = _safe_float(company.get("rate"))
+
+    # Basic sanity
+    denom_ok = (a_den > 0) and (c_den > 0)
+    rate_bounds_ok = (0.0 <= a_rate <= 1.0) and (0.0 <= c_rate <= 1.0)
+
+    # Optional minimum thresholds
+    min_award_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE", 0.0)
+    min_company_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", 0.0)
+    min_ok = (a_rate >= min_award_rate) and (c_rate >= min_company_rate)
+
+    passed = denom_ok and rate_bounds_ok and min_ok
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if passed else '✗'} transition_analytics: "
+            f"award_rate={a_rate:.2%} (den={a_den}, min {min_award_rate:.2%}), "
+            f"company_rate={c_rate:.2%} (den={c_den}, min {min_company_rate:.2%})"
+        ),
+        metadata={
+            "checks_path": str(checks_path),
+            "award": {"num": a_num, "den": a_den, "rate": a_rate},
+            "company": {"num": c_num, "den": c_den, "rate": c_rate},
+            "thresholds": {
+                "min_award_rate": min_award_rate,
+                "min_company_rate": min_company_rate,
+            },
+            "sanity": {
+                "denominators_positive": denom_ok,
+                "rates_within_0_1": rate_bounds_ok,
+            },
+        },
+    )
+
+
+@asset_check(
     asset="transition_evidence_v1",
     description="Evidence completeness for candidates with score ≥ configured threshold",
 )

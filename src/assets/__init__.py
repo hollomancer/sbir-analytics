@@ -64,6 +64,7 @@ __all__: List[str] = [
     "transition_scores_v1",
     "transition_evidence_v1",
     "transition_analytics",
+    "transition_analytics_quality_check",
 ]
 
 # Map exported symbol -> (module_path, attribute_name).
@@ -208,6 +209,10 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
     "transition_evidence_quality_check": (
         "src.assets.transition_assets",
         "transition_evidence_quality_check",
+    ),
+    "transition_analytics_quality_check": (
+        "src.assets.transition_assets",
+        "transition_analytics_quality_check",
     ),
 }
 
