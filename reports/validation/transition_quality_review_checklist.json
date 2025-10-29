@@ -1,0 +1,217 @@
+{
+  "task": "25.6 Quality Gate - Manual Precision Review",
+  "objective": "Validate that \u226580% of transitions with score\u22650.80 are correct",
+  "sample_size": 30,
+  "instructions": [
+    "1. Review each transition detection in the sample",
+    "2. For each record, assess: Does this transition make sense?",
+    "   - Is the vendor name reasonable?",
+    "   - Is the timing plausible (contract after SBIR award)?",
+    "   - Are the matched keys appropriate?",
+    "3. Mark as CORRECT or INCORRECT",
+    "4. Calculate precision: (# correct) / (# reviewed) for score\u22650.80",
+    "5. Gate passes if precision \u2265 80%"
+  ],
+  "high_confidence_sample": [
+    {
+      "transition_id": "TRANS-000003",
+      "award_id": "SBIR-Dep-00003",
+      "contract_id": "R44CA162783",
+      "vendor_name": "NAVIDEA BIOPHARMACEUTICALS, INC.",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.8913,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44CA162783",
+      "obligation_amount": -33975.0,
+      "start_date": "2012-09-18"
+    },
+    {
+      "transition_id": "TRANS-000006",
+      "award_id": "SBIR-Nat-00006",
+      "contract_id": "1915219",
+      "vendor_name": "NEW YORK UNIVERSITY",
+      "agency": "National Science Foundation (NSF)",
+      "score": 0.9515,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from National Science Foundation (NSF) SBIR award to contract 1915219",
+      "obligation_amount": 350000.0,
+      "start_date": "2019-08-15"
+    },
+    {
+      "transition_id": "TRANS-000007",
+      "award_id": "SBIR-Nat-00007",
+      "contract_id": "1517390",
+      "vendor_name": "BETH ISRAEL DEACONESS MEDICAL CENTER, INC",
+      "agency": "National Science Foundation (NSF)",
+      "score": 0.8284,
+      "confidence": "likely",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from National Science Foundation (NSF) SBIR award to contract 1517390",
+      "obligation_amount": 127664.0,
+      "start_date": "2015-08-01"
+    },
+    {
+      "transition_id": "TRANS-000009",
+      "award_id": "SBIR-Dep-00009",
+      "contract_id": "R37AI080289",
+      "vendor_name": "MASSACHUSETTS GENERAL HOSPITAL, THE",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.9133,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R37AI080289",
+      "obligation_amount": 391727.0,
+      "start_date": "2020-04-10"
+    },
+    {
+      "transition_id": "TRANS-000012",
+      "award_id": "SBIR-Dep-00012",
+      "contract_id": "R44AA025804",
+      "vendor_name": "NAPROGENIX, INC.",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.9258,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44AA025804",
+      "obligation_amount": 104999.0,
+      "start_date": "2016-09-22"
+    },
+    {
+      "transition_id": "TRANS-000015",
+      "award_id": "SBIR-Dep-00015",
+      "contract_id": "R44GM134994",
+      "vendor_name": "CIRCULOMICS INC.",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.9475,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44GM134994",
+      "obligation_amount": 410712.0,
+      "start_date": "2017-08-18"
+    },
+    {
+      "transition_id": "TRANS-000018",
+      "award_id": "SBIR-Dep-00018",
+      "contract_id": "R44DK116460",
+      "vendor_name": "THETIS PHARMACEUTICALS LLC",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.9384,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44DK116460",
+      "obligation_amount": 0.0,
+      "start_date": "2017-09-18"
+    },
+    {
+      "transition_id": "TRANS-000019",
+      "award_id": "SBIR-Dep-00019",
+      "contract_id": "R44EY021988",
+      "vendor_name": "ALKEUS PHARMACEUTICALS, INC.",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.8119,
+      "confidence": "likely",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44EY021988",
+      "obligation_amount": 0.0,
+      "start_date": "2012-09-01"
+    },
+    {
+      "transition_id": "TRANS-000021",
+      "award_id": "SBIR-Dep-00021",
+      "contract_id": "R42DA039595",
+      "vendor_name": "REAL PREVENTION LLC",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.9709,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R42DA039595",
+      "obligation_amount": 553420.0,
+      "start_date": "2015-05-01"
+    },
+    {
+      "transition_id": "TRANS-000024",
+      "award_id": "SBIR-Dep-00024",
+      "contract_id": "R01DK106076",
+      "vendor_name": "BETH ISRAEL DEACONESS MEDICAL CENTER, INC",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.8733,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R01DK106076",
+      "obligation_amount": 437500.0,
+      "start_date": "2017-07-01"
+    },
+    {
+      "transition_id": "TRANS-000025",
+      "award_id": "SBIR-Dep-00025",
+      "contract_id": "R44DK101257",
+      "vendor_name": "DELPOR, INC",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.8414,
+      "confidence": "likely",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R44DK101257",
+      "obligation_amount": 734407.0,
+      "start_date": "2014-09-22"
+    },
+    {
+      "transition_id": "TRANS-000027",
+      "award_id": "SBIR-Dep-00027",
+      "contract_id": "R00CA188595",
+      "vendor_name": "BETH ISRAEL DEACONESS MEDICAL CENTER, INC",
+      "agency": "Department of Health and Human Services (HHS)",
+      "score": 0.8639,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Health and Human Services (HHS) SBIR award to contract R00CA188595",
+      "obligation_amount": 249000.0,
+      "start_date": "2017-07-01"
+    },
+    {
+      "transition_id": "TRANS-000030",
+      "award_id": "SBIR-Dep-00030",
+      "contract_id": "W81XWH2010897",
+      "vendor_name": "OCEANIT LABORATORIES, INC.",
+      "agency": "Department of Defense (DOD)",
+      "score": 0.9406,
+      "confidence": "high",
+      "matched_keys": [
+        "vendor_uei"
+      ],
+      "evidence_summary": "Potential transition from Department of Defense (DOD) SBIR award to contract W81XWH2010897",
+      "obligation_amount": 500014.0,
+      "start_date": "2020-09-30"
+    }
+  ],
+  "review_template": {
+    "transition_id": "TRANS-XXXXXX",
+    "verdict": "CORRECT or INCORRECT",
+    "notes": "Brief explanation of verdict"
+  }
+}
