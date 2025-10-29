@@ -337,13 +337,19 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 18. Evaluation & Validation
 
-- [ ] 18.1 Create TransitionEvaluator in src/transition/evaluation/evaluator.py
+- [x] 18.1 Create TransitionEvaluator in src/transition/evaluation/evaluator.py
+  - Notes: Implemented `TransitionEvaluator` with DataFrame-based inputs, serialized results, and package exports.
 - [ ] 18.2 Collect known Phase III awards as ground truth
-- [ ] 18.3 Calculate precision (correct detections / total detections)
-- [ ] 18.4 Calculate recall (detected Phase III / total Phase III)
-- [ ] 18.5 Calculate F1 score
-- [ ] 18.6 Evaluate by confidence band (High vs Likely vs Possible)
-- [ ] 18.7 Generate confusion matrix
+- [x] 18.3 Calculate precision (correct detections / total detections)
+  - Notes: Evaluator computes precision from detection/ground-truth pair sets with score gating.
+- [x] 18.4 Calculate recall (detected Phase III / total Phase III)
+  - Notes: Recall derived from the same evaluation pipeline, honoring the configured score threshold.
+- [x] 18.5 Calculate F1 score
+  - Notes: F1 automatically calculated from precision/recall, returned with evaluation summaries.
+- [x] 18.6 Evaluate by confidence band (High vs Likely vs Possible)
+  - Notes: Per-confidence breakdown added, reporting detections, TP/FP counts, and precision per band.
+- [x] 18.7 Generate confusion matrix
+  - Notes: ConfusionMatrix dataclass captures TP/FP/FN counts for downstream reporting.
 - [ ] 18.8 Identify false positives for algorithm tuning
 - [ ] 18.9 Generate evaluation report with recommendations
 

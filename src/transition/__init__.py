@@ -21,6 +21,8 @@ import logging
 import os
 from typing import Any
 
+from .evaluation.evaluator import ConfusionMatrix, EvaluationResult, TransitionEvaluator
+
 # Package version: bumped manually when making releases for the transition module.
 __version__ = "0.1.0"
 
