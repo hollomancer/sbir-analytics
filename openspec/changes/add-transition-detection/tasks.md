@@ -161,8 +161,10 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [x] 5.5 Extract vendor identifiers (UEI, CAGE, DUNS)
   - Notes: Prioritized UEI-first extraction with CAGE and DUNS fallbacks to support vendor resolution.
   - Notes: Complete vendor identifier extraction implemented. Extracts UEI from column 96 (preferred 12-char format) with fallback to column 10 (legacy UEI/DUNS), CAGE code from column 98, DUNS from legacy identifier field. Priority logic: UEI (12-char) > legacy UEI > DUNS (9-digit). Test results: 99.9% UEI coverage, 0.2% CAGE (procurement contracts only), 0.0% DUNS (legacy). Parent organization UEI also captured for relationship tracking.
-- [ ] 5.6 Handle parent-child contract relationships (IDV, IDIQ, BPA)
-- [ ] 5.7 Create contracts_ingestion asset (depends on USAspending data)
+- [x] 5.6 Handle parent-child contract relationships (IDV, IDIQ, BPA)
+  - Notes: `ContractExtractor` now captures referenced IDV agency/PIID fields, annotates child task orders vs. IDV parents in metadata, and tracks relationship statistics for downstream processing.
+- [x] 5.7 Create contracts_ingestion asset (depends on USAspending data)
+  - Notes: Added Dagster `contracts_ingestion` asset orchestrating filtered extraction via `ContractExtractor`, persisting Parquet output and checks JSON with coverage metrics and configurable paths.
 
 ## 6. Transition Scoring Algorithm
 

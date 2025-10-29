@@ -124,6 +124,8 @@ class ContractExtractor:
             "contracts_found": 0,
             "vendor_matches": 0,
             "records_extracted": 0,
+            "parent_relationships": 0,
+            "idv_parents": 0,
         }
 
     def _load_vendor_filters(self, filter_file: Optional[Path]) -> Dict[str, Set[str]]:
@@ -334,6 +336,21 @@ class ContractExtractor:
             # Get parent contract/IDV information for handling relationships
             parent_idv_piid = get_col(102)  # Referenced IDV PIID
             contract_award_type = get_col(100)  # Contract type (A, B, C, D, IDV-*)
+            parent_idv_agency = get_col(101)  # Referenced IDV agency identifier
+
+            relationship_type = "standalone"
+            if parent_idv_piid:
+                relationship_type = "child_of_idv"
+                self.stats["parent_relationships"] += 1
+            elif contract_award_type:
+                award_type_normalized = contract_award_type.strip().upper()
+                if award_type_normalized.startswith("IDV") or award_type_normalized in {
+                    "BPA",
+                    "BOA",
+                    "IDIQ",
+                }:
+                    relationship_type = "idv_parent"
+                    self.stats["idv_parents"] += 1
 
             # Create FederalContract
             contract = FederalContract(
@@ -350,6 +367,9 @@ class ContractExtractor:
                 is_deobligation=(obligation_amount < 0),  # Flag negative amounts
                 competition_type=competition_type,
                 description=get_col(7),  # award_description
+                parent_contract_id=parent_idv_piid,
+                parent_contract_agency=parent_idv_agency,
+                contract_award_type=contract_award_type,
                 metadata={
                     "transaction_id": get_col(0),
                     "award_id": get_col(1),
@@ -362,6 +382,8 @@ class ContractExtractor:
                     "extent_competed": extent_competed,  # Raw competition field
                     "contract_award_type": contract_award_type,  # Contract type
                     "parent_idv_piid": parent_idv_piid,  # Parent IDV for task orders
+                    "referenced_idv_agency": parent_idv_agency,
+                    "parent_relationship_type": relationship_type,
                 },
             )
 
