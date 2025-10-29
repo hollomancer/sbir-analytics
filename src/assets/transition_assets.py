@@ -18,12 +18,16 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import pandas as pd
 from loguru import logger
+import yaml
 
 from ..extractors.contract_extractor import ContractExtractor
+from ..models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
+from ..transition.detection.detector import TransitionDetector
+from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 # Import-safe shims for Dagster
 try:
@@ -1015,6 +1019,381 @@ def transition_evidence_v1(
 
 
 @asset(
+    name="transition_detections",
+    group_name="transition",
+    compute_kind="python",
+    description=(
+        "Run the TransitionDetector pipeline across vendor-resolved awards and contracts to "
+        "emit consolidated detections with scores, confidence, and evidence bundles."
+    ),
+)
+def transition_detections(
+    context: AssetExecutionContext,
+    enriched_sbir_awards: pd.DataFrame,
+    vendor_resolution: pd.DataFrame,
+    contracts_sample: pd.DataFrame,
+    transition_scores_v1: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    config_path = Path(
+        os.getenv(
+            "SBIR_ETL__TRANSITION__DETECTION_CONFIG",
+            "config/transition/detection.yaml",
+        )
+    )
+    try:
+        detection_config = (
+            yaml.safe_load(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+        ) or {}
+    except Exception as exc:
+        context.log.warning(
+            "Failed to read transition detection config, using defaults",
+            error=str(exc),
+        )
+        detection_config = {}
+
+    def _clean_str(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, float) and pd.isna(value):
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def _canonical_vendor_id(row) -> Optional[str]:
+        uei = _clean_str(row.get("UEI") or row.get("uei"))
+        if uei:
+            return f"uei:{uei}"
+        duns = _clean_str(row.get("Duns") or row.get("duns"))
+        if duns:
+            return f"duns:{duns}"
+        name = _norm_name(str(row.get("Company") or row.get("company_name") or ""))
+        return f"name:{name}" if name else None
+
+    vendor_awards: Dict[str, List[Dict[str, Any]]] = {}
+    vendor_records: List[VendorRecord] = []
+    seen_vendor_ids: Set[str] = set()
+
+    for idx, row in enriched_sbir_awards.iterrows():
+        vendor_id = _canonical_vendor_id(row)
+        if not vendor_id:
+            continue
+        row_dict = row.to_dict()
+        row_dict["__row_index__"] = idx
+        if not _clean_str(row_dict.get("award_id")):
+            fallback_award_id = (
+                _clean_str(row_dict.get("Award ID"))
+                or _clean_str(row_dict.get("awardId"))
+                or f"award_{idx}"
+            )
+            row_dict["award_id"] = fallback_award_id
+        vendor_awards.setdefault(vendor_id, []).append(row_dict)
+
+        if vendor_id in seen_vendor_ids:
+            continue
+        seen_vendor_ids.add(vendor_id)
+        display_name = (
+            _clean_str(row_dict.get("Company"))
+            or _clean_str(row_dict.get("company_name"))
+            or (vendor_id.split("name:", 1)[1] if vendor_id.startswith("name:") else vendor_id)
+        )
+        vendor_records.append(
+            VendorRecord(
+                uei=_clean_str(row_dict.get("UEI") or row_dict.get("uei")),
+                cage=_clean_str(row_dict.get("CAGE") or row_dict.get("cage")),
+                duns=_clean_str(row_dict.get("Duns") or row_dict.get("duns")),
+                name=display_name,
+                metadata={"vendor_id": vendor_id},
+            )
+        )
+
+    def _parse_date(value: Any):
+        if value is None or value == "":
+            return None
+        dt = pd.to_datetime(value, errors="coerce")
+        if pd.isna(dt):
+            return None
+        dt_py = dt.to_pydatetime() if hasattr(dt, "to_pydatetime") else dt
+        return dt_py.date() if hasattr(dt_py, "date") else None
+
+    def _to_competition(value: Any) -> CompetitionType:
+        if isinstance(value, CompetitionType):
+            return value
+        text = str(value or "").strip().lower()
+        if not text:
+            return CompetitionType.OTHER
+        if text in {"sole_source", "sole-source", "sole source"}:
+            return CompetitionType.SOLE_SOURCE
+        if text in {"limited", "limited competition", "restricted"}:
+            return CompetitionType.LIMITED
+        if text in {"full_and_open", "full and open", "full-open", "full & open"}:
+            return CompetitionType.FULL_AND_OPEN
+        return CompetitionType.OTHER
+
+    def _to_float(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and pd.isna(value):
+                return None
+        try:
+            text = str(value).replace(",", "").strip()
+            if not text:
+                return None
+            return float(text)
+        except Exception:
+            return None
+
+    def _build_contract(row_dict: Dict[str, Any]) -> Optional[FederalContract]:
+        cid = _clean_str(row_dict.get("contract_id") or row_dict.get("piid"))
+        if not cid:
+            return None
+        start_date = _parse_date(row_dict.get("start_date") or row_dict.get("action_date"))
+        end_date = _parse_date(
+            row_dict.get("end_date") or row_dict.get("period_of_performance_current_end_date")
+        )
+        amount = _to_float(row_dict.get("obligated_amount"))
+        competition = _to_competition(row_dict.get("competition_type"))
+        description = _clean_str(row_dict.get("description") or row_dict.get("award_description"))
+        parent_id = _clean_str(
+            row_dict.get("parent_contract_id") or row_dict.get("parent_idv_piid")
+        )
+        parent_agency = _clean_str(
+            row_dict.get("parent_contract_agency") or row_dict.get("parent_idv_agency")
+        )
+        contract_award_type = _clean_str(row_dict.get("contract_award_type"))
+
+        return FederalContract(
+            contract_id=cid,
+            agency=_clean_str(row_dict.get("awarding_agency_code") or row_dict.get("agency")),
+            sub_agency=_clean_str(
+                row_dict.get("awarding_sub_tier_agency_name") or row_dict.get("sub_agency")
+            ),
+            vendor_name=_clean_str(row_dict.get("vendor_name")),
+            vendor_uei=_clean_str(row_dict.get("vendor_uei") or row_dict.get("UEI")),
+            vendor_cage=_clean_str(row_dict.get("vendor_cage") or row_dict.get("CAGE")),
+            vendor_duns=_clean_str(row_dict.get("vendor_duns") or row_dict.get("DUNS")),
+            start_date=start_date,
+            end_date=end_date,
+            obligation_amount=amount,
+            is_deobligation=bool(amount is not None and amount < 0),
+            competition_type=competition,
+            description=description,
+            parent_contract_id=parent_id,
+            parent_contract_agency=parent_agency,
+            contract_award_type=contract_award_type,
+            metadata={
+                "awarding_agency_name": _clean_str(row_dict.get("awarding_agency_name")),
+                "action_date": _clean_str(row_dict.get("action_date")),
+            },
+        )
+
+    def _build_award_payload(row_dict: Dict[str, Any], vendor_id: str) -> Dict[str, Any]:
+        completion = None
+        for key in (
+            "completion_date",
+            "Completion Date",
+            "project_end_date",
+            "Project End Date",
+            "award_end_date",
+            "Award End Date",
+            "End Date",
+        ):
+            completion = _parse_date(row_dict.get(key))
+            if completion:
+                break
+        if not completion:
+            completion = _parse_date(row_dict.get("award_date") or row_dict.get("Award Date"))
+        award_id = _clean_str(row_dict.get("award_id"))
+        if not award_id:
+            award_id = _clean_str(row_dict.get("__row_index__"))
+        return {
+            "award_id": award_id,
+            "agency": _clean_str(
+                row_dict.get("awarding_agency_code")
+                or row_dict.get("Agency Code")
+                or row_dict.get("agency_code")
+            ),
+            "department": _clean_str(
+                row_dict.get("awarding_agency_name")
+                or row_dict.get("Agency")
+                or row_dict.get("agency_name")
+            ),
+            "completion_date": completion,
+            "vendor_id": vendor_id,
+            "vendor_uei": _clean_str(row_dict.get("UEI") or row_dict.get("uei")),
+            "vendor_cage": _clean_str(row_dict.get("CAGE") or row_dict.get("cage")),
+            "vendor_duns": _clean_str(row_dict.get("Duns") or row_dict.get("duns")),
+            "vendor_name": _clean_str(row_dict.get("Company") or row_dict.get("company_name")),
+        }
+
+    resolver = VendorResolver.from_records(vendor_records)
+    detector = TransitionDetector(config=detection_config, vendor_resolver=resolver)
+
+    contract_lookup: Dict[str, FederalContract] = {}
+    for _, contract_row in contracts_sample.iterrows():
+        contract = _build_contract(contract_row.to_dict())
+        if contract:
+            contract_lookup[contract.contract_id] = contract
+
+    score_lookup: Dict[Tuple[str, str], float] = {}
+    award_contract_filter: Dict[str, Set[str]] = {}
+    candidate_contract_ids: Set[str] = set()
+
+    for _, score_row in transition_scores_v1.iterrows():
+        aid = _clean_str(score_row.get("award_id"))
+        cid = _clean_str(score_row.get("contract_id"))
+        if not aid or not cid:
+            continue
+        award_contract_filter.setdefault(aid, set()).add(cid)
+        candidate_contract_ids.add(cid)
+        score_val = score_row.get("score")
+        if score_val is None or (isinstance(score_val, float) and pd.isna(score_val)):
+            continue
+        try:
+            score_lookup[(aid, cid)] = float(score_val)
+        except Exception:
+            continue
+
+    vendor_contracts: Dict[str, List[FederalContract]] = {}
+    match_method_lookup: Dict[str, str] = {}
+
+    for _, vr_row in vendor_resolution.iterrows():
+        vid = _clean_str(vr_row.get("matched_vendor_id"))
+        cid = _clean_str(vr_row.get("contract_id") or vr_row.get("piid"))
+        method = _clean_str(vr_row.get("match_method"))
+        if not vid or not cid or method == "unresolved":
+            continue
+        if candidate_contract_ids and cid not in candidate_contract_ids:
+            continue
+        contract = contract_lookup.get(cid)
+        if not contract:
+            continue
+        vendor_contracts.setdefault(vid, []).append(contract)
+        match_method_lookup[cid] = method or "unknown"
+
+    detections = []
+    awards_considered = 0
+
+    for vendor_id, award_rows in vendor_awards.items():
+        contracts_for_vendor = vendor_contracts.get(vendor_id, [])
+        if not contracts_for_vendor:
+            continue
+        for award_row in award_rows:
+            award_payload = _build_award_payload(award_row, vendor_id)
+            if not award_payload.get("completion_date"):
+                continue
+            award_id = award_payload.get("award_id")
+            if not award_id:
+                continue
+            award_contract_ids = award_contract_filter.get(award_id, set())
+            if award_contract_ids:
+                candidate_contracts = [
+                    contract
+                    for contract in contracts_for_vendor
+                    if contract.contract_id in award_contract_ids
+                ]
+            else:
+                candidate_contracts = contracts_for_vendor
+            if not candidate_contracts:
+                continue
+            detections.extend(detector.detect_for_award(award_payload, candidate_contracts))
+            awards_considered += 1
+
+    records: List[Dict[str, Any]] = []
+    for det in detections:
+        contract_id = det.primary_contract.contract_id if det.primary_contract else None
+        award_id = det.award_id
+        signals_payload = det.signals.model_dump(mode="json") if det.signals else None
+        evidence_payload = det.evidence.model_dump(mode="json") if det.evidence else None
+        contract_payload = (
+            det.primary_contract.model_dump(mode="json") if det.primary_contract else None
+        )
+        vendor_match = det.metadata.get("vendor_match") if det.metadata else None
+        records.append(
+            {
+                "transition_id": det.transition_id,
+                "award_id": award_id,
+                "contract_id": contract_id,
+                "likelihood_score": float(det.likelihood_score),
+                "confidence": det.confidence.value,
+                "detected_at": det.detected_at.isoformat(),
+                "signals": signals_payload,
+                "evidence": evidence_payload,
+                "contract": contract_payload,
+                "vendor_match": vendor_match,
+                "mvp_score": score_lookup.get((award_id, contract_id))
+                if award_id and contract_id
+                else None,
+                "match_method": match_method_lookup.get(contract_id) if contract_id else None,
+            }
+        )
+
+    detections_df = pd.DataFrame.from_records(records)
+    if detections_df.empty:
+        detections_df = pd.DataFrame(
+            columns=[
+                "transition_id",
+                "award_id",
+                "contract_id",
+                "likelihood_score",
+                "confidence",
+                "detected_at",
+                "signals",
+                "evidence",
+                "contract",
+                "vendor_match",
+                "mvp_score",
+                "match_method",
+            ]
+        )
+
+    out_path = Path("data/processed/transition_detections.parquet")
+    save_dataframe_parquet(detections_df, out_path)
+
+    total = int(len(detections_df))
+    by_confidence = (
+        detections_df["confidence"].value_counts(dropna=False).to_dict() if total > 0 else {}
+    )
+    high_conf = int(by_confidence.get(ConfidenceLevel.HIGH.value, 0))
+    high_conf_rate = float(high_conf / total) if total > 0 else 0.0
+
+    checks_path = out_path.with_suffix(".checks.json")
+    checks = {
+        "ok": True,
+        "generated_at": now_utc_iso(),
+        "total_transitions": total,
+        "unique_awards": int(detections_df["award_id"].nunique()) if total > 0 else 0,
+        "unique_contracts": int(detections_df["contract_id"].nunique()) if total > 0 else 0,
+        "confidence_counts": by_confidence,
+        "high_confidence": high_conf,
+        "high_confidence_rate": round(high_conf_rate, 4),
+        "awards_considered": awards_considered,
+        "config_path": str(config_path),
+    }
+    write_json(checks_path, checks)
+
+    context.log.info(
+        "Transition detections completed",
+        extra={
+            "rows": total,
+            "high_confidence": high_conf,
+            "awards_considered": awards_considered,
+            "config_path": str(config_path),
+        },
+    )
+
+    metadata = {
+        "output_path": str(out_path),
+        "checks_path": str(checks_path),
+        "rows": total,
+        "confidence_counts": MetadataValue.json(by_confidence),
+        "high_confidence": high_conf,
+        "detector_metrics": MetadataValue.json(detector.metrics),
+    }
+    return Output(detections_df, metadata=metadata)
+
+
+@asset(
     name="transition_analytics",
     group_name="transition",
     compute_kind="pandas",
@@ -1023,69 +1402,6 @@ def transition_evidence_v1(
         "and emit a checks JSON for gating."
     ),
 )
-@asset(
-    name="transition_detections",
-    group_name="transition",
-    compute_kind="pandas",
-    description=(
-        "Consolidated transition detections derived from transition_scores_v1. "
-        "Writes parquet and logs basic metrics."
-    ),
-)
-def transition_detections(
-    context: AssetExecutionContext,
-    transition_scores_v1: pd.DataFrame,
-) -> Output[pd.DataFrame]:
-    out_path = Path("data/processed/transition_detections.parquet")
-
-    # Start from the scored candidates; ensure core columns exist
-    df = transition_scores_v1.copy()
-    required_cols = ["award_id", "contract_id", "score", "method", "computed_at"]
-    for c in required_cols:
-        if c not in df.columns:
-            df[c] = None
-
-    # Metrics
-    threshold = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD", 0.60)
-    scores = (
-        pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
-        if "score" in df.columns
-        else pd.Series([], dtype=float)  # type: ignore
-    )
-    total = int(len(df))
-    high_conf = int((scores >= threshold).sum()) if total > 0 else 0
-    avg_score = float(scores.mean()) if total > 0 else 0.0
-    by_method = (
-        df["method"].value_counts(dropna=False).to_dict()
-        if "method" in df.columns and total > 0
-        else {}
-    )
-
-    # Persist detections table
-    save_dataframe_parquet(df, out_path)
-
-    # Log and return with metadata
-    metrics = {
-        "generated_at": now_utc_iso(),
-        "total_candidates": total,
-        "high_confidence_candidates": high_conf,
-        "avg_score": round(avg_score, 6),
-        "threshold": float(threshold),
-        "by_method": by_method,
-    }
-    context.log.info("Produced transition_detections", extra=metrics)
-
-    meta = {
-        "output_path": str(out_path),
-        "rows": total,
-        "high_confidence_candidates": high_conf,
-        "avg_score": avg_score,
-        "threshold": float(threshold),
-        "by_method": by_method,
-    }
-    return Output(df, metadata=meta)
-
-
 def transition_analytics(
     context: AssetExecutionContext,
     enriched_sbir_awards: pd.DataFrame,

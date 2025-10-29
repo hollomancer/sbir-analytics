@@ -18,6 +18,56 @@ def _unwrap_output(result):
     return result, None
 
 
+def _write_detection_config(base_dir: Path) -> Path:
+    config_path = base_dir / "detection.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "base_score: 0.15",
+                "timing_window:",
+                "  min_days_after_completion: 0",
+                "  max_days_after_completion: 730",
+                "vendor_matching:",
+                "  require_match: true",
+                "  fuzzy_threshold: 0.7",
+                "scoring:",
+                "  agency_continuity:",
+                "    enabled: true",
+                "    weight: 0.25",
+                "    same_agency_bonus: 0.25",
+                "    cross_service_bonus: 0.125",
+                "    different_dept_bonus: 0.05",
+                "  timing_proximity:",
+                "    enabled: true",
+                "    weight: 0.20",
+                "    windows:",
+                "      - range: [0, 90]",
+                "        score: 1.0",
+                "      - range: [91, 365]",
+                "        score: 0.75",
+                "      - range: [366, 730]",
+                "        score: 0.5",
+                "  competition_type:",
+                "    enabled: true",
+                "    weight: 0.20",
+                "    sole_source_bonus: 0.20",
+                "    limited_competition_bonus: 0.10",
+                "    full_and_open_bonus: 0.0",
+                "  patent_signal:",
+                "    enabled: false",
+                "  cet_alignment:",
+                "    enabled: false",
+                "confidence_thresholds:",
+                "  high: 0.8",
+                "  likely: 0.6",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return config_path
+
+
 def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
@@ -190,67 +240,153 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
         assert key in entry
 
 
-def test_transition_detections_persists_metrics(monkeypatch, tmp_path):
+def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
+    config_path = _write_detection_config(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__DETECTION_CONFIG", str(config_path))
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
         transition_detections,
+    )
+
+    awards_df = pd.DataFrame(
+        [
+            {
+                "award_id": "A-001",
+                "Company": "Acme Robotics",
+                "UEI": "UEI1234567890",
+                "completion_date": "2023-01-01",
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            }
+        ]
+    )
+
+    vendor_res_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "PIID-001",
+                "matched_vendor_id": "uei:UEI1234567890",
+                "match_method": "uei",
+                "confidence": 1.0,
+            }
+        ]
+    )
+
+    contracts_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "PIID-001",
+                "piid": "PIID-001",
+                "vendor_uei": "UEI1234567890",
+                "vendor_name": "Acme Robotics",
+                "action_date": "2023-03-01",
+                "start_date": "2023-03-01",
+                "obligated_amount": 250000,
+                "competition_type": "sole_source",
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            }
+        ]
     )
 
     scores_df = pd.DataFrame(
         [
             {
-                "award_id": "A1",
-                "contract_id": "C1",
+                "award_id": "A-001",
+                "contract_id": "PIID-001",
                 "score": 0.9,
                 "method": "uei",
                 "computed_at": "2024-01-01T00:00:00Z",
-            },
-            {
-                "award_id": "A2",
-                "contract_id": "C2",
-                "score": 0.4,
-                "method": "name_fuzzy",
-                "computed_at": "2024-01-02T00:00:00Z",
-            },
+            }
         ]
     )
 
     ctx = AssetExecutionContext()
-    detections_df, metadata = _unwrap_output(transition_detections(ctx, scores_df))
+    detections_df, metadata = _unwrap_output(
+        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+    )
 
     assert isinstance(detections_df, pd.DataFrame)
-    assert len(detections_df) == 2
+    assert len(detections_df) == 1
+    for column in ["transition_id", "award_id", "contract_id", "likelihood_score", "confidence"]:
+        assert column in detections_df.columns
+
     assert metadata is not None
-    assert metadata.get("high_confidence_candidates") == 1
-    assert pytest.approx(metadata.get("avg_score", 0.0), rel=1e-6) == 0.65
-
+    assert metadata.get("rows") == 1
     output_path = Path(metadata.get("output_path", ""))
-    ndjson_fallback = output_path.with_suffix(".ndjson")
-    assert output_path.exists() or ndjson_fallback.exists()
-    by_method = metadata.get("by_method") or {}
-    assert by_method.get("uei") == 1
-    assert by_method.get("name_fuzzy") == 1
+    fallback_path = output_path.with_suffix(".ndjson")
+    assert output_path.exists() or fallback_path.exists()
+    checks_path = Path(metadata.get("checks_path", ""))
+    assert checks_path.exists()
+    detector_metrics = metadata.get("detector_metrics") or {}
+    assert detector_metrics.get("total_detections") == 1
 
 
-def test_transition_detections_fills_missing_columns(monkeypatch, tmp_path):
+def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
+    config_path = _write_detection_config(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__DETECTION_CONFIG", str(config_path))
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
         transition_detections,
     )
 
-    minimal_df = pd.DataFrame([{"award_id": "A1", "contract_id": "C1", "score": 0.75}])
+    awards_df = pd.DataFrame(
+        [
+            {
+                "award_id": "A-001",
+                "Company": "Acme Robotics",
+                "UEI": "UEI1234567890",
+                "completion_date": "2023-01-01",
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            }
+        ]
+    )
+    vendor_res_df = pd.DataFrame(
+        columns=["contract_id", "matched_vendor_id", "match_method", "confidence"]
+    )
+    contracts_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "PIID-001",
+                "piid": "PIID-001",
+                "vendor_uei": "UEI1234567890",
+                "vendor_name": "Acme Robotics",
+                "action_date": "2023-03-01",
+                "start_date": "2023-03-01",
+                "obligated_amount": 250000,
+                "competition_type": "sole_source",
+                "awarding_agency_code": "9700",
+                "awarding_agency_name": "DEPT OF DEFENSE",
+            }
+        ]
+    )
+    scores_df = pd.DataFrame(
+        [
+            {
+                "award_id": "A-001",
+                "contract_id": "PIID-001",
+                "score": 0.9,
+                "method": "uei",
+                "computed_at": "2024-01-01T00:00:00Z",
+            }
+        ]
+    )
 
     ctx = AssetExecutionContext()
-    detections_df, metadata = _unwrap_output(transition_detections(ctx, minimal_df))
+    detections_df, metadata = _unwrap_output(
+        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+    )
 
     assert isinstance(detections_df, pd.DataFrame)
-    for column in ["method", "computed_at"]:
-        assert column in detections_df.columns
-    assert detections_df.loc[0, "method"] is None
+    assert detections_df.empty
     assert metadata is not None
-    assert metadata.get("rows") == 1
-    assert metadata.get("high_confidence_candidates") == 1
+    assert metadata.get("rows") == 0
+    checks_path = Path(metadata.get("checks_path", ""))
+    assert checks_path.exists()
+    detector_metrics = metadata.get("detector_metrics") or {}
+    assert detector_metrics.get("total_detections") == 0

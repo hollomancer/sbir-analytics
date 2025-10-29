@@ -259,9 +259,12 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 11. Dagster Assets - Transition Detection
 
-- [ ] 11.1 Create transition_detections asset (depends on awards, contracts, patents)
-- [ ] 11.2 Run transition detection pipeline for all awards
-- [ ] 11.3 Generate transition detections with scores and evidence
+- [x] 11.1 Create transition_detections asset (depends on awards, contracts, patents)
+  - Notes: Implemented Dagster `transition_detections` asset orchestrating `TransitionDetector` across vendor-resolved awards and contracts, persisting detections parquet and companion checks JSON.
+- [x] 11.2 Run transition detection pipeline for all awards
+  - Notes: Asset batches awards by vendor, enforces timing windows from `config/transition/detection.yaml`, and executes the full TransitionDetector pipeline end-to-end.
+- [x] 11.3 Generate transition detections with scores and evidence
+  - Notes: Each detection now carries likelihood, confidence band, serialized signals/evidence, vendor match metadata, and aggregates high-confidence metrics for downstream gating.
 - [x] 11.4 Add asset checks for detection success rate (≥99%)
 - [x] 11.5 Add asset checks for vendor match rate (target: ≥90%)
   - Notes: Implemented `vendor_resolution_quality_check` with configurable minimum via `SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE`.
