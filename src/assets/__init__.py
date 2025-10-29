@@ -59,6 +59,7 @@ __all__: List[str] = [
     "neo4j_company_cet_enrichment",
     "neo4j_award_cet_relationships",
     "neo4j_company_cet_relationships",
+    "contracts_ingestion",
     "contracts_sample",
     "vendor_resolution",
     "transition_scores_v1",
@@ -190,6 +191,7 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "neo4j_company_cet_relationships",
     ),
     # transition_assets
+    "contracts_ingestion": ("src.assets.transition_assets", "contracts_ingestion"),
     "contracts_sample": ("src.assets.transition_assets", "contracts_sample"),
     "vendor_resolution": ("src.assets.transition_assets", "vendor_resolution"),
     "transition_scores_v1": ("src.assets.transition_assets", "transition_scores_v1"),

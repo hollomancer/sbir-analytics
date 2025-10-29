@@ -23,6 +23,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import pandas as pd
 from loguru import logger
 
+from ..extractors.contract_extractor import ContractExtractor
+
 # Import-safe shims for Dagster
 try:
     from dagster import AssetExecutionContext, MetadataValue, Output, asset
@@ -151,6 +153,138 @@ def _env_bool(key: str, default: bool) -> bool:
     if v is None:
         return default
     return v.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# -----------------------------
+# 0) contracts_ingestion
+# -----------------------------
+
+
+@asset(
+    name="contracts_ingestion",
+    group_name="transition",
+    compute_kind="python",
+    description=(
+        "Extract SBIR-relevant USAspending transactions from removable storage and persist "
+        "them to Parquet for downstream transition detection."
+    ),
+)
+def contracts_ingestion(context) -> Output[pd.DataFrame]:
+    output_path = Path(
+        os.getenv(
+            "SBIR_ETL__TRANSITION__CONTRACTS__OUTPUT_PATH",
+            "/Volumes/X10 Pro/projects/sbir-etl-data/contracts_ingestion.parquet",
+        )
+    )
+    dump_dir = Path(
+        os.getenv(
+            "SBIR_ETL__TRANSITION__CONTRACTS__DUMP_DIR",
+            "/Volumes/X10 Pro/projects/sbir-etl-data/pruned_data_store_api_dump",
+        )
+    )
+    vendor_filter_path = Path(
+        os.getenv(
+            "SBIR_ETL__TRANSITION__CONTRACTS__VENDOR_FILTER_PATH",
+            "/Volumes/X10 Pro/projects/sbir-etl-data/sbir_vendor_filters.json",
+        )
+    )
+    table_files_env = os.getenv("SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES")
+    table_files = (
+        [item.strip() for item in table_files_env.split(",") if item.strip()]
+        if table_files_env
+        else None
+    )
+    batch_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__BATCH_SIZE", 10000)
+    force_refresh = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__FORCE_REFRESH", False)
+
+    context.log.info(
+        "Starting contracts_ingestion",
+        extra={
+            "output_path": str(output_path),
+            "dump_dir": str(dump_dir),
+            "vendor_filter_path": str(vendor_filter_path),
+            "force_refresh": force_refresh,
+            "table_files": table_files,
+        },
+    )
+
+    if not dump_dir.exists():
+        raise FileNotFoundError(f"USAspending dump directory not found: {dump_dir}")
+    if not vendor_filter_path.exists():
+        raise FileNotFoundError(f"Vendor filter file not found: {vendor_filter_path}")
+
+    needs_extract = force_refresh or not output_path.exists()
+    if needs_extract:
+        _ensure_parent_dir(output_path)
+        extractor = ContractExtractor(
+            vendor_filter_file=vendor_filter_path,
+            batch_size=batch_size,
+        )
+        extracted_count = extractor.extract_from_dump(
+            dump_dir=dump_dir,
+            output_file=output_path,
+            table_files=table_files,
+        )
+        context.log.info(
+            "Contracts extraction complete",
+            extra={"rows_written": extracted_count, "output_path": str(output_path)},
+        )
+    else:
+        context.log.info(
+            "Reusing existing contracts dataset", extra={"output_path": str(output_path)}
+        )
+
+    if not output_path.exists():
+        raise FileNotFoundError(f"Expected contracts output at {output_path}")
+
+    df = pd.read_parquet(output_path)
+    total_rows = len(df)
+
+    def _coverage(column: str) -> float:
+        if column not in df.columns or total_rows == 0:
+            return 0.0
+        return float(df[column].notna().mean())
+
+    action_date_cov = _coverage("action_date")
+    if action_date_cov == 0.0:
+        action_date_cov = _coverage("start_date")
+
+    coverage = {
+        "action_date": round(action_date_cov, 4),
+        "vendor_uei": round(_coverage("vendor_uei"), 4),
+        "vendor_duns": round(_coverage("vendor_duns"), 4),
+        "vendor_cage": round(_coverage("vendor_cage"), 4),
+        "contract_id": round(_coverage("contract_id"), 4),
+    }
+
+    checks = {
+        "ok": True,
+        "generated_at": now_utc_iso(),
+        "total_rows": total_rows,
+        "coverage": coverage,
+        "source": {
+            "dump_dir": str(dump_dir),
+            "vendor_filter_path": str(vendor_filter_path),
+            "table_files": table_files,
+        },
+    }
+
+    checks_path = output_path.with_suffix(".checks.json")
+    write_json(checks_path, checks)
+
+    metadata = {
+        "rows": total_rows,
+        "output_path": str(output_path),
+        "checks_path": str(checks_path),
+        "coverage": MetadataValue.json(coverage),
+    }
+
+    context.log.info(
+        "contracts_ingestion completed",
+        extra={"rows": total_rows, "checks_path": str(checks_path)},
+    )
+
+    return Output(df, metadata=metadata)
 
 
 # -----------------------------

@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+import types
 from pathlib import Path
 
 import pandas as pd
@@ -31,6 +33,173 @@ def _assert_artifact_exists(base_path: Path) -> Path:
     return ndjson
 
 
+def _install_dagster_shim(monkeypatch) -> None:
+    shim = types.SimpleNamespace()
+
+    def _asset(*_args, **_kwargs):
+        def _wrap(fn):
+            return fn
+
+        return _wrap
+
+    class _Output:
+        def __init__(self, value, metadata=None):
+            self.value = value
+            self.metadata = metadata or {}
+
+    class _MetadataValue:
+        @staticmethod
+        def json(value):
+            return value
+
+    class _Log:
+        def info(self, *args, **kwargs):
+            return None
+
+    class _AssetExecutionContext:
+        def __init__(self):
+            self.log = _Log()
+
+    shim.asset = _asset
+    shim.Output = _Output
+    shim.MetadataValue = _MetadataValue
+    shim.AssetExecutionContext = _AssetExecutionContext
+
+    monkeypatch.setitem(sys.modules, "dagster", shim)
+
+
+def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    output_path = tmp_path / "data" / "contracts_ingestion.parquet"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    seed_df = pd.DataFrame(
+        {
+            "contract_id": ["C1", "C2"],
+            "vendor_uei": ["UEI123", "UEI456"],
+            "vendor_duns": [None, "123456789"],
+            "vendor_cage": ["1A2B3", None],
+            "action_date": ["2023-01-01", "2023-02-01"],
+            "obligation_amount": [1000.0, 2000.0],
+        }
+    )
+    seed_df.to_parquet(output_path, index=False)
+
+    vendor_filter_path = tmp_path / "sbir_vendor_filters.json"
+    vendor_filter_path.write_text(
+        json.dumps({"uei": ["UEI123", "UEI456"], "duns": ["123456789"], "company_names": []})
+    )
+
+    dump_dir = tmp_path / "pruned_data_store_api_dump"
+    dump_dir.mkdir()
+
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__OUTPUT_PATH", str(output_path))
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__DUMP_DIR", str(dump_dir))
+    monkeypatch.setenv(
+        "SBIR_ETL__TRANSITION__CONTRACTS__VENDOR_FILTER_PATH", str(vendor_filter_path)
+    )
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__FORCE_REFRESH", "0")
+
+    _install_dagster_shim(monkeypatch)
+
+    from src.assets.transition_assets import (  # noqa: WPS433
+        AssetExecutionContext,
+        contracts_ingestion,
+    )
+
+    ctx = AssetExecutionContext()
+    result_df, metadata = _unwrap_output(contracts_ingestion(ctx))
+
+    assert isinstance(result_df, pd.DataFrame)
+    assert len(result_df) == len(seed_df)
+    pd.testing.assert_frame_equal(
+        result_df.sort_index(axis=1).reset_index(drop=True),
+        seed_df.sort_index(axis=1).reset_index(drop=True),
+    )
+
+    assert metadata is not None
+    assert metadata.get("rows") == len(seed_df)
+    checks_path = Path(metadata.get("checks_path"))
+    assert checks_path.exists()
+
+    checks_payload = json.loads(checks_path.read_text(encoding="utf-8"))
+    assert checks_payload["total_rows"] == len(seed_df)
+    assert checks_payload["coverage"]["vendor_uei"] >= 0.5
+
+
+def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    output_path = tmp_path / "data" / "contracts_ingestion.parquet"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    stale_df = pd.DataFrame(
+        {
+            "contract_id": ["S1"],
+            "vendor_uei": ["OLDUEI"],
+            "vendor_duns": [None],
+            "vendor_cage": [None],
+            "action_date": ["2020-01-01"],
+            "obligation_amount": [111.0],
+        }
+    )
+    stale_df.to_parquet(output_path, index=False)
+
+    vendor_filter_path = tmp_path / "sbir_vendor_filters.json"
+    vendor_filter_path.write_text(json.dumps({"uei": ["NEWUEI"], "duns": [], "company_names": []}))
+
+    dump_dir = tmp_path / "pruned_data_store_api_dump"
+    dump_dir.mkdir()
+
+    fresh_df = pd.DataFrame(
+        {
+            "contract_id": ["N1"],
+            "vendor_uei": ["NEWUEI"],
+            "vendor_duns": [None],
+            "vendor_cage": ["NEW1"],
+            "action_date": ["2024-03-01"],
+            "obligation_amount": [5000.0],
+        }
+    )
+
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__OUTPUT_PATH", str(output_path))
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__DUMP_DIR", str(dump_dir))
+    monkeypatch.setenv(
+        "SBIR_ETL__TRANSITION__CONTRACTS__VENDOR_FILTER_PATH", str(vendor_filter_path)
+    )
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS__FORCE_REFRESH", "1")
+
+    _install_dagster_shim(monkeypatch)
+
+    from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
+        AssetExecutionContext,
+        contracts_ingestion,
+    )
+    from src.extractors.contract_extractor import ContractExtractor  # noqa: WPS433 (local import for test isolation)
+
+    def _fake_extract(self, dump_dir, output_file, table_files=None):
+        fresh_df.to_parquet(output_file, index=False)
+        return len(fresh_df)
+
+    monkeypatch.setattr(ContractExtractor, "extract_from_dump", _fake_extract)
+
+    ctx = AssetExecutionContext()
+    refreshed_df, metadata = _unwrap_output(contracts_ingestion(ctx))
+
+    assert isinstance(refreshed_df, pd.DataFrame)
+    assert len(refreshed_df) == len(fresh_df)
+    pd.testing.assert_frame_equal(
+        refreshed_df.sort_index(axis=1).reset_index(drop=True),
+        fresh_df.sort_index(axis=1).reset_index(drop=True),
+    )
+    assert metadata is not None
+    assert metadata.get("rows") == len(fresh_df)
+    checks_path = Path(metadata.get("checks_path"))
+    assert checks_path.exists()
+    checks_payload = json.loads(checks_path.read_text(encoding="utf-8"))
+    assert checks_payload["total_rows"] == len(fresh_df)
+    assert checks_payload["coverage"]["vendor_uei"] >= 0.99
+
+
 def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     """
     Tiny integration test for the Transition MVP chain using import shims (no Dagster required).
@@ -47,6 +216,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import assets and shim context from the transition assets module
+    _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
         AssetExecutionContext,
         transition_evidence_v1,
@@ -176,6 +346,7 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
+    _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
         transition_evidence_v1,
@@ -307,6 +478,7 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
+    _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
         vendor_resolution,
