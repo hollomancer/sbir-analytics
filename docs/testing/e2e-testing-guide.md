@@ -1,275 +1,313 @@
-# End-to-End Testing Guide
+# E2E Testing Guide
 
-This guide explains how to run comprehensive end-to-end (E2E) tests for the SBIR ETL pipeline on local development environments, particularly MacBook Air systems.
+This guide covers the enhanced end-to-end (E2E) testing capabilities for the SBIR ETL pipeline, optimized for MacBook Air development environments.
 
 ## Overview
 
-The E2E testing framework provides comprehensive validation of the entire SBIR ETL pipeline from data ingestion through Neo4j loading. It's designed to run efficiently on MacBook Air development environments with resource constraints (8GB memory, limited CPU).
+The E2E testing system provides comprehensive validation of the entire SBIR ETL pipeline from data ingestion through Neo4j loading, with resource monitoring and MacBook Air compatibility.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Python 3.11+ with Poetry
-- At least 8GB available memory
-- `.env` file configured (copy from `.env.example`)
+1. Copy `.env.example` to `.env` and configure:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Neo4j credentials
+   ```
+
+2. Ensure Docker and Docker Compose are installed and running
 
 ### Running E2E Tests
 
+#### Standard E2E Tests (Recommended)
 ```bash
-# Quick smoke test (< 2 minutes)
-python scripts/run_e2e_tests.py --scenario minimal
+make docker-e2e-standard
+```
 
-# Standard comprehensive test (5-8 minutes)
-python scripts/run_e2e_tests.py --scenario standard
+#### Quick Smoke Tests (Fastest)
+```bash
+make docker-e2e-minimal
+```
 
-# Performance test with larger datasets (8-10 minutes)
-python scripts/run_e2e_tests.py --scenario large
+#### Performance Tests (Larger datasets)
+```bash
+make docker-e2e-large
+```
 
-# Edge case and robustness testing (3-5 minutes)
-python scripts/run_e2e_tests.py --scenario edge-cases
+#### Edge Case Tests (Robustness)
+```bash
+make docker-e2e-edge-cases
+```
+
+#### Interactive Debugging
+```bash
+make docker-e2e-debug
+```
+
+### Cleanup
+```bash
+make docker-e2e-clean
 ```
 
 ## Test Scenarios
 
 ### Minimal Scenario
 - **Duration**: < 2 minutes
-- **Memory Usage**: < 2GB
-- **Data Size**: 100 SBIR records, 500 USAspending records
+- **Data**: Small sample datasets
 - **Purpose**: Quick validation during development
-- **Validation**: Basic pipeline execution, minimal graph validation
+- **Memory**: ~2GB
+- **Use Case**: Pre-commit checks, rapid iteration
 
-### Standard Scenario
-- **Duration**: 5-8 minutes
-- **Memory Usage**: < 6GB
-- **Data Size**: 1,000 SBIR records, 5,000 USAspending records, sample USPTO data
-- **Purpose**: Pre-commit validation, comprehensive testing
-- **Validation**: Full pipeline validation, comprehensive graph checks
+### Standard Scenario (Default)
+- **Duration**: 5-8 minutes  
+- **Data**: Representative datasets
+- **Purpose**: Full pipeline validation
+- **Memory**: ~4GB
+- **Use Case**: Pre-merge validation, CI/CD
 
 ### Large Scenario
 - **Duration**: 8-10 minutes
-- **Memory Usage**: < 8GB
-- **Data Size**: 10,000 SBIR records, 50,000 USAspending records
-- **Purpose**: Performance regression testing
-- **Validation**: Performance metrics, resource usage validation
+- **Data**: Larger datasets for performance testing
+- **Purpose**: Performance regression detection
+- **Memory**: ~6GB
+- **Use Case**: Performance benchmarking
 
 ### Edge Cases Scenario
 - **Duration**: 3-5 minutes
-- **Memory Usage**: < 4GB
-- **Data Size**: Datasets with missing fields, invalid formats, edge cases
-- **Purpose**: Robustness testing
-- **Validation**: Error handling, data quality validation
+- **Data**: Edge cases, malformed data, error conditions
+- **Purpose**: Robustness and error handling validation
+- **Memory**: ~3GB
+- **Use Case**: Quality assurance, error handling validation
 
-## Test Components
+## MacBook Air Optimizations
 
-### Test Data Manager
-- Provides curated test datasets for different scenarios
-- Ensures data isolation from production systems
-- Automatically cleans up test artifacts
-- Generates synthetic data for edge case testing
+The E2E testing system includes specific optimizations for MacBook Air development:
 
-### Pipeline Validator
-- Validates data flow through all ETL stages (Extract, Validate, Enrich, Transform, Load)
-- Checks Neo4j graph structure and relationships
-- Verifies performance metrics and thresholds
-- Generates detailed validation reports
+### Resource Limits
+- **Memory**: Limited to 8GB total system usage
+- **CPU**: Limited to 2 cores maximum
+- **Neo4j Heap**: 1GB maximum
+- **Neo4j Pagecache**: 256MB maximum
 
-### Resource Monitor
-- Tracks memory and CPU usage during test execution
-- Ensures MacBook Air compatibility (< 8GB memory limit)
-- Provides resource usage alerts and recommendations
-- Includes resource metrics in test reports
+### Performance Optimizations
+- Reduced Neo4j checkpoint intervals
+- Disabled query logging
+- Optimized connection pools
+- Efficient health checks with proper timeouts
 
-## Test Environment
+### Configuration
+Set `MACBOOK_AIR_MODE=true` in your `.env` file to enable optimizations.
 
-### Docker Compose Configuration
-The E2E tests use a dedicated Docker Compose configuration optimized for local development:
+## Architecture
+
+### Components
+
+#### E2E Test Orchestrator
+- Manages test execution lifecycle
+- Monitors resource usage
+- Validates environment health
+- Generates test reports
+
+#### Neo4j E2E Instance
+- Isolated Neo4j instance for testing
+- Resource-optimized configuration
+- Ephemeral data (cleaned between runs)
+- Enhanced health checks
+
+#### Test Data Manager
+- Provides curated test datasets
+- Manages data isolation
+- Handles cleanup between runs
+- Supports multiple scenarios
+
+### Docker Compose Structure
 
 ```yaml
-# docker/docker-compose.e2e.yml (created by implementation)
 services:
-  e2e-orchestrator:
-    # Test orchestration container
-  neo4j-e2e:
-    # Ephemeral Neo4j instance for testing
-    # Memory limited to 1GB heap, 256MB pagecache
+  neo4j-e2e:          # Optimized Neo4j for testing
+  e2e-orchestrator:   # Test execution and monitoring
+  duckdb-e2e:         # Optional data processing service
 ```
 
-### Environment Variables
+## Environment Variables
+
+### Required Variables
 ```bash
-# Required in .env file
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 ENVIRONMENT=e2e-test
-
-# Optional E2E-specific settings
-E2E_MEMORY_LIMIT_GB=8.0
-E2E_TIMEOUT_MINUTES=10
-E2E_CLEANUP_ON_FAILURE=true
 ```
 
-## Validation Checkpoints
+### E2E-Specific Variables
+```bash
+# Test scenario selection
+E2E_TEST_SCENARIO=standard
 
-### Stage 1: Data Extraction
-- File reading success
-- Record count verification
-- Schema compliance
-- Performance metrics
+# Test timeout (seconds)
+E2E_TEST_TIMEOUT=600
 
-### Stage 2: Data Validation
-- Schema validation pass rates
-- Data quality metrics
-- Error handling validation
+# MacBook Air optimizations
+MACBOOK_AIR_MODE=true
+MEMORY_LIMIT_GB=8
+CPU_LIMIT=2.0
 
-### Stage 3: Data Enrichment
-- Match rate thresholds (≥ 70%)
-- Enrichment quality metrics
-- Performance benchmarks
-- Memory usage validation
-
-### Stage 4: Data Transformation
-- Business logic validation
-- Data consistency checks
-- Graph preparation validation
-
-### Stage 5: Neo4j Loading
-- Node creation verification
-- Relationship establishment
-- Graph query validation
-- Load success rates
-
-## Test Reports
-
-E2E tests generate comprehensive reports including:
-
-### Test Summary Report
-```json
-{
-  "overall_success": true,
-  "total_duration_seconds": 420.5,
-  "scenario": "standard",
-  "resource_metrics": {
-    "peak_memory_mb": 5120,
-    "avg_cpu_percent": 45.2
-  },
-  "stage_results": [...]
-}
+# E2E Neo4j ports (avoid conflicts)
+NEO4J_E2E_HTTP_PORT=7475
+NEO4J_E2E_BOLT_PORT=7688
 ```
 
-### Validation Report
-- Record counts at each stage
-- Data quality metrics
-- Performance benchmarks
-- Error details and recommendations
+## Health Checks
 
-### Resource Usage Report
-- Memory usage over time
-- CPU utilization patterns
-- MacBook Air compatibility assessment
-- Resource optimization recommendations
+The E2E system includes comprehensive health checks:
+
+### Environment Health
+- ✅ Required environment variables
+- ✅ Python dependencies
+- ✅ Test data availability
+- ✅ Resource constraints
+- ✅ Neo4j connectivity
+
+### Service Health
+- ✅ Neo4j database connectivity
+- ✅ Container resource limits
+- ✅ Network connectivity
+- ✅ Volume mounts
+
+## Test Artifacts
+
+### Generated Artifacts
+- **Test Reports**: `/app/reports/` - JUnit XML, HTML reports
+- **Coverage Reports**: `/app/artifacts/htmlcov/` - Code coverage analysis
+- **Logs**: `/app/artifacts/logs/` - Detailed execution logs
+- **Performance Metrics**: `/app/artifacts/metrics/` - Resource usage data
+
+### Accessing Artifacts
+```bash
+# View artifacts in running container
+docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml exec e2e-orchestrator ls -la /app/artifacts
+
+# Copy artifacts to host
+docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml cp e2e-orchestrator:/app/artifacts ./e2e-artifacts
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Memory Limit Exceeded
+#### Neo4j Connection Timeout
 ```bash
-# Reduce test scenario size
-python scripts/run_e2e_tests.py --scenario minimal
-
-# Check available memory
-free -h  # Linux
-vm_stat | grep free  # macOS
+# Check Neo4j health
+docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml exec neo4j-e2e cypher-shell -u neo4j -p your-password "RETURN 1"
 ```
 
-#### Neo4j Connection Failures
+#### Memory Issues on MacBook Air
 ```bash
-# Check Neo4j container status
-docker compose -f docker/docker-compose.e2e.yml ps
+# Check current memory usage
+docker stats
 
-# View Neo4j logs
-docker compose -f docker/docker-compose.e2e.yml logs neo4j-e2e
+# Reduce memory limits in .env
+MEMORY_LIMIT_GB=6
 ```
 
-#### Test Data Issues
+#### Test Timeouts
 ```bash
-# Clean up test artifacts
-python scripts/run_e2e_tests.py --cleanup-only
+# Increase timeout for slower systems
+E2E_TEST_TIMEOUT=900 make docker-e2e-standard
+```
 
-# Regenerate test data
-python scripts/run_e2e_tests.py --regenerate-data
+#### Port Conflicts
+```bash
+# Use different ports in .env
+NEO4J_E2E_HTTP_PORT=7476
+NEO4J_E2E_BOLT_PORT=7689
 ```
 
 ### Debug Mode
+
+For interactive debugging:
 ```bash
-# Run with verbose logging and artifact preservation
-python scripts/run_e2e_tests.py --scenario standard --debug --preserve-artifacts
+make docker-e2e-debug
+# This opens a shell in the orchestrator container
+```
+
+### Logs and Monitoring
+
+```bash
+# View orchestrator logs
+docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs e2e-orchestrator
+
+# View Neo4j logs  
+docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs neo4j-e2e
+
+# Monitor resource usage
+docker stats
 ```
 
 ## Integration with CI/CD
 
-### GitHub Actions Integration
-The E2E tests can be integrated into CI/CD workflows:
-
+### GitHub Actions Example
 ```yaml
-# .github/workflows/e2e-tests.yml
 - name: Run E2E Tests
   run: |
-    python scripts/run_e2e_tests.py --scenario standard --ci-mode
-    
-- name: Upload Test Artifacts
-  uses: actions/upload-artifact@v3
-  if: failure()
-  with:
-    name: e2e-test-artifacts
-    path: reports/e2e/
+    cp .env.example .env
+    echo "NEO4J_PASSWORD=ci-password" >> .env
+    make docker-e2e-standard
 ```
 
 ### Local Development Workflow
-1. Make code changes
-2. Run minimal E2E test for quick validation
-3. Run standard E2E test before committing
-4. CI runs comprehensive E2E tests on PR
+```bash
+# 1. Quick validation during development
+make docker-e2e-minimal
 
-## Performance Optimization
+# 2. Full validation before commit
+make docker-e2e-standard
 
-### MacBook Air Specific Optimizations
-- Neo4j heap limited to 1GB
-- Parallel processing with thread limits
-- Efficient data structures and streaming
-- Garbage collection monitoring
-- Docker resource constraints
+# 3. Performance check before merge
+make docker-e2e-large
 
-### Test Data Optimization
-- Compressed test datasets
-- Lazy data loading
-- Efficient cleanup strategies
-- Minimal artifact generation
+# 4. Cleanup
+make docker-e2e-clean
+```
+
+## Performance Benchmarks
+
+### MacBook Air M1 (8GB RAM)
+- **Minimal**: ~90 seconds
+- **Standard**: ~6 minutes
+- **Large**: ~9 minutes
+- **Edge Cases**: ~4 minutes
+
+### MacBook Air Intel (8GB RAM)
+- **Minimal**: ~120 seconds
+- **Standard**: ~8 minutes
+- **Large**: ~12 minutes
+- **Edge Cases**: ~5 minutes
 
 ## Best Practices
 
 ### Development Workflow
-1. Start with minimal scenario for rapid iteration
-2. Use standard scenario for comprehensive validation
-3. Run large scenario for performance testing
-4. Use edge-cases scenario for robustness validation
-
-### Test Data Management
-- Keep test datasets small but representative
-- Use synthetic data for edge cases
-- Ensure data isolation from production
-- Clean up artifacts regularly
+1. Use `minimal` scenario for rapid iteration
+2. Run `standard` scenario before commits
+3. Use `large` scenario for performance validation
+4. Run `edge-cases` scenario for robustness testing
 
 ### Resource Management
-- Monitor memory usage during development
-- Use appropriate test scenarios for available resources
-- Clean up Docker containers and volumes regularly
-- Optimize test data sizes based on system capabilities
+1. Enable MacBook Air mode for resource optimization
+2. Monitor memory usage during tests
+3. Clean up volumes regularly
+4. Use appropriate timeouts for your system
 
-## Related Documentation
+### Debugging
+1. Use interactive debug mode for investigation
+2. Check health checks first when tests fail
+3. Review artifacts for detailed analysis
+4. Monitor resource usage for performance issues
 
-- [Container Development Guide](../deployment/containerization.md)
-- [Testing Strategy](../architecture/testing-strategy.md)
-- [Performance Benchmarks](../performance/enrichment-benchmarks.md)
-- [Neo4j Schema Documentation](../schemas/patent-neo4j-schema.md)
+## Future Enhancements
+
+- [ ] Parallel test execution
+- [ ] Test result visualization
+- [ ] Performance regression detection
+- [ ] Automated resource optimization
+- [ ] Integration with external monitoring

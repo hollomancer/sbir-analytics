@@ -25,6 +25,7 @@ DOCKERFILE ?= Dockerfile
 COMPOSE_BASE ?= docker-compose.yml
 COMPOSE_DEV ?= docker/docker-compose.dev.yml
 COMPOSE_TEST ?= docker/docker-compose.test.yml
+COMPOSE_E2E ?= docker/docker-compose.e2e.yml
 COMPOSE_CET_STAGING ?= docker-compose.cet-staging.yml
 
 # Compose command (supports 'docker compose' or 'docker-compose' depending on environment)
@@ -49,6 +50,8 @@ help:
 	@printf "  make docker-down       Stop compose stack and remove anonymous volumes\n"
 	@printf "  make docker-rebuild    Rebuild images and restart dev stack\n"
 	@printf "  make docker-test       Run containerized tests via the test compose profile\n"
+	@printf "  make docker-e2e        Run E2E tests in optimized environment (MacBook Air friendly)\n"
+	@printf "  make docker-e2e-clean  Clean up E2E test environment and volumes\n"
 	@printf "  make transition-mvp-run  Run Transition Detection MVP locally (shim, pandas)\n"
 	@printf "  make transition-mvp-clean Clean Transition MVP artifacts (data/processed, reports)\n"
 	@printf "  make docker-logs       Tail logs for a service (SERVICE=%s)\n" "$(SERVICE)"
@@ -134,6 +137,51 @@ docker-test: env-check
 	else \
 	  echo "No test compose overlay found at $(COMPOSE_TEST)"; exit 2; \
 	fi
+
+# ---------------------------
+# E2E Testing targets
+# ---------------------------
+
+docker-e2e: env-check
+	@echo "Running E2E tests in optimized environment (MacBook Air friendly)"
+	@if [ -f "$(COMPOSE_E2E)" ]; then \
+	  echo "Starting E2E test environment..."; \
+	  $(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_E2E) up --build --abort-on-container-exit; \
+	  status=$$?; \
+	  echo "E2E tests completed with exit code: $$status"; \
+	  echo "Keeping containers running for artifact inspection..."; \
+	  echo "Use 'make docker-e2e-clean' to clean up when done"; \
+	  exit $$status; \
+	else \
+	  echo "No E2E compose overlay found at $(COMPOSE_E2E)"; exit 2; \
+	fi
+
+docker-e2e-clean:
+	@echo "Cleaning up E2E test environment and volumes"
+	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_E2E) down --remove-orphans --volumes
+	@echo "E2E environment cleaned up"
+
+# E2E test scenarios
+docker-e2e-minimal: env-check
+	@echo "Running minimal E2E tests (fastest)"
+	@E2E_TEST_SCENARIO=minimal $(MAKE) docker-e2e
+
+docker-e2e-standard: env-check
+	@echo "Running standard E2E tests"
+	@E2E_TEST_SCENARIO=standard $(MAKE) docker-e2e
+
+docker-e2e-large: env-check
+	@echo "Running large dataset E2E tests"
+	@E2E_TEST_SCENARIO=large $(MAKE) docker-e2e
+
+docker-e2e-edge-cases: env-check
+	@echo "Running edge case E2E tests"
+	@E2E_TEST_SCENARIO=edge-cases $(MAKE) docker-e2e
+
+# Interactive E2E debugging
+docker-e2e-debug: env-check
+	@echo "Starting E2E environment for interactive debugging"
+	@$(DOCKER_COMPOSE) --project-directory $(CURDIR) --env-file $(CURDIR)/.env -f $(COMPOSE_BASE) -f $(COMPOSE_E2E) run --rm e2e-orchestrator sh
 
 # ---------------------------
 # Logs / exec helpers
@@ -302,4 +350,4 @@ neo4j-check:
 # Convenience aliases
 # ---------------------------
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-logs docker-exec docker-push env-check transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod cet-staging-up cet-staging-down docker-down docker-rebuild docker-test docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs docker-exec docker-push env-check transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import
