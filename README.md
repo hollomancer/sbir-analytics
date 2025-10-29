@@ -168,7 +168,19 @@ The project provides Docker Compose for a consistent development and testing env
    make docker-test
    ```
 
-5. **View logs:**
+5. **Run E2E tests locally:**
+   ```bash
+   # Run comprehensive E2E tests (MacBook Air optimized)
+   python scripts/run_e2e_tests.py --scenario standard
+   
+   # Quick smoke test (< 2 minutes)
+   python scripts/run_e2e_tests.py --scenario minimal
+   
+   # Performance test with larger datasets
+   python scripts/run_e2e_tests.py --scenario large
+   ```
+
+6. **View logs:**
    ```bash
    make docker-logs SERVICE=dagster-webserver
    ```
@@ -247,17 +259,26 @@ poetry run pytest
 # Run with coverage
 poetry run pytest --cov=src --cov-report=html
 
-# Run specific test
+# Run specific test categories
 poetry run pytest tests/unit/test_config.py -v
+poetry run pytest tests/integration/ -v
+poetry run pytest tests/e2e/ -v
 
 # Container tests
 make docker-test
+
+# E2E tests (local development)
+python scripts/run_e2e_tests.py --scenario minimal    # Quick smoke test
+python scripts/run_e2e_tests.py --scenario standard   # Full validation
+python scripts/run_e2e_tests.py --scenario large      # Performance test
+python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 ```
 
 **Test Suite:**
-- 29 tests across unit, integration, and E2E
+- 29+ tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
+- E2E tests: MacBook Air optimized (< 10 minutes, < 8GB memory)
 
 ## Project Structure
 
@@ -287,14 +308,19 @@ sbir-etl/
 │   ├── dev.yaml                 # Development overrides
 │   └── prod.yaml                # Production settings
 │
-├── tests/                       # Test suite (29 tests)
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
+├── tests/                       # Test suite (29+ tests)
+│   ├── unit/                    # Component-level tests
+│   ├── integration/             # Multi-component tests
+│   └── e2e/                     # End-to-end pipeline tests
+│       ├── test_dagster_enrichment_pipeline.py  # Existing smoke tests
+│       ├── data_manager.py      # Test data management
+│       ├── pipeline_validator.py # Comprehensive validation
+│       └── resource_monitor.py  # MacBook Air resource monitoring
 │
 ├── scripts/
 │   ├── benchmark_enrichment.py           # Baseline creation
-│   └── detect_performance_regression.py  # CI regression check
+│   ├── detect_performance_regression.py  # CI regression check
+│   └── run_e2e_tests.py                  # E2E test orchestration
 │
 ├── docs/
 │   ├── data/                    # Data dictionaries
@@ -376,9 +402,11 @@ GitHub Actions workflows:
 
 ## Documentation
 
+- **Testing**: `docs/testing/README.md` (comprehensive testing guide including E2E)
 - **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - **Deployment**: `docs/deployment/containerization.md`
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
+- **Architecture**: `docs/architecture/e2e-testing-architecture.md`
 - **OpenSpec**: `openspec/AGENTS.md` (change proposal workflow)
 
 ## Contributing
