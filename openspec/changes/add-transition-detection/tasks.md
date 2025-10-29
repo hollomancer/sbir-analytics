@@ -254,7 +254,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 11.1 Create transition_detections asset (depends on awards, contracts, patents)
 - [ ] 11.2 Run transition detection pipeline for all awards
 - [ ] 11.3 Generate transition detections with scores and evidence
-- [ ] 11.4 Add asset checks for detection success rate (≥99%)
+- [x] 11.4 Add asset checks for detection success rate (≥99%)
 - [x] 11.5 Add asset checks for vendor match rate (target: ≥90%)
   - Notes: Implemented `vendor_resolution_quality_check` with configurable minimum via `SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE`.
 - [x] 11.6 Output detections to data/processed/transition_detections.parquet
@@ -388,7 +388,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 ## 23. Configuration & Deployment
 
-- [ ] 23.1 Add transition configuration to config/base.yaml (enable/disable features)
+- [x] 23.1 Add transition configuration to config/base.yaml (enable/disable features)
 - [ ] 23.2 Add environment-specific configuration (dev/staging/prod)
 - [ ] 23.3 Create deployment checklist for transition module
 - [ ] 23.4 Test configuration override via environment variables

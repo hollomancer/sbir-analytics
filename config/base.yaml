@@ -50,19 +50,19 @@ enrichment:
     # Processing chunk size (records to process in memory at once)
     # Adjust based on available RAM and data characteristics
     # Higher = faster but more memory; Lower = slower but memory-efficient
-    chunk_size: 25000  # Default: 10000-50000 depending on hardware
+    chunk_size: 25000 # Default: 10000-50000 depending on hardware
 
     # Memory threshold before triggering spill-to-disk (MB)
     # System will reduce chunk size or spill to disk if exceeded
-    memory_threshold_mb: 2048  # Default: 2048 (2 GB)
+    memory_threshold_mb: 2048 # Default: 2048 (2 GB)
 
     # Enrichment quality gate threshold
     # Asset fails if match_rate falls below this percentage
-    match_rate_threshold: 0.70  # Default: 0.70 (70%)
+    match_rate_threshold: 0.70 # Default: 0.70 (70%)
 
     # Processing timeout per chunk (seconds)
     # Fails chunk if processing takes longer than this
-    timeout_seconds: 300  # Default: 300 (5 minutes)
+    timeout_seconds: 300 # Default: 300 (5 minutes)
 
     # Retry backoff strategy for failed operations
     # Options: "fixed", "linear", "exponential"
@@ -70,23 +70,23 @@ enrichment:
 
     # Fuzzy matching confidence thresholds
     # Affects match quality and speed tradeoff
-    high_confidence_threshold: 90  # Min score for high-confidence match
-    low_confidence_threshold: 75   # Min score for low-confidence match
+    high_confidence_threshold: 90 # Min score for high-confidence match
+    low_confidence_threshold: 75 # Min score for low-confidence match
 
     # Enable/disable features
-    enable_fuzzy_matching: true    # Enable fuzzy name matching
+    enable_fuzzy_matching: true # Enable fuzzy name matching
     enable_memory_monitoring: true # Track memory usage
     enable_progress_tracking: true # Track per-chunk progress
 
     # Alert thresholds for performance/quality monitoring
-    duration_warning_seconds: 5.0  # WARNING if > 5s per record
+    duration_warning_seconds: 5.0 # WARNING if > 5s per record
     memory_delta_warning_mb: 500.0 # WARNING if memory delta > 500MB
-    memory_pressure_warn_percent: 80.0    # WARNING if memory > 80% available
+    memory_pressure_warn_percent: 80.0 # WARNING if memory > 80% available
     memory_pressure_critical_percent: 95.0 # CRITICAL if memory > 95% available
   sam_gov:
     # SAM.gov API configuration
     base_url: "https://api.sam.gov/entity-information/v3"
-    api_key_env_var: "SAM_GOV_API_KEY"  # pragma: allowlist secret
+    api_key_env_var: "SAM_GOV_API_KEY" # pragma: allowlist secret
     rate_limit_per_minute: 60
     timeout_seconds: 30
     retry_attempts: 3
@@ -170,7 +170,7 @@ loading:
     # Neo4j connection configuration
     uri_env_var: "NEO4J_URI"
     user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
+    password_env_var: "NEO4J_PASSWORD" # pragma: allowlist secret
     output_dir: "data/loaded/uspto"
     load_success_threshold: 0.99 # 99% success rate required
     create_indexes: true
@@ -221,3 +221,29 @@ duckdb:
   # Query optimization
   enable_object_cache: true
   enable_query_profiler: false
+
+transition:
+  # Transition detection & analytics configuration
+  contracts:
+    # Coverage thresholds for contracts_sample asset
+    date_coverage_min: 0.90 # ≥90% rows must have action_date
+    ident_coverage_min: 0.60 # ≥60% rows must have any of UEI|DUNS|PIID|FAIN
+    sample_size_min: 1000 # Expected sample size lower bound
+    sample_size_max: 10000 # Expected sample size upper bound
+    enforce_sample_size: false # Enforce sample size gates (default off for tiny runs)
+
+  analytics:
+    # Thresholds for analytics computations and CI gates
+    score_threshold: 0.60 # Minimum score to count as transitioned
+    min_award_rate: 0.0 # Optional CI gate: minimum award transition rate
+    min_company_rate: 0.0 # Optional CI gate: minimum company transition rate
+
+  detections:
+    # Quality thresholds for consolidated detections
+    min_valid_rate: 0.99 # ≥99% rows valid (required fields + score bounds)
+    min_highconf_rate: 0.0 # Optional rate of high-confidence (score ≥ threshold)
+
+  vendor_resolution:
+    # Vendor resolution quality thresholds and fuzzy config
+    min_rate: 0.60 # Minimum resolution rate (uei/duns/fuzzy)
+    fuzzy_threshold: 0.85 # RapidFuzz partial_ratio threshold for name_fuzzy

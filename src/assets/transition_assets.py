@@ -1338,3 +1338,102 @@ def transition_evidence_quality_check(context: AssetExecutionContext) -> AssetCh
             "complete": complete,
         },
     )
+
+
+@asset_check(
+    asset="transition_detections",
+    description=(
+        "Transition detections quality: required columns present, score bounds [0,1], "
+        "and minimum valid/high-confidence rates."
+    ),
+)
+def transition_detections_quality_check(
+    transition_detections: pd.DataFrame,
+) -> AssetCheckResult:
+    """
+    Validate consolidated transition detections.
+
+    Gates:
+      - Required columns present: award_id, contract_id, score, method, computed_at
+      - 0 <= score <= 1 and non-null
+      - Valid row rate >= SBIR_ETL__TRANSITION__DETECTIONS__MIN_VALID_RATE (default: 0.99)
+      - Optional high-confidence rate gate: share with score >= threshold
+        is >= SBIR_ETL__TRANSITION__DETECTIONS__MIN_HIGHCONF_RATE (default: 0.0)
+        where threshold = SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD (default: 0.60)
+    """
+    # Required schema
+    required_cols = ["award_id", "contract_id", "score", "method", "computed_at"]
+    missing = [c for c in required_cols if c not in transition_detections.columns]
+    total = int(len(transition_detections))
+
+    # Score bounds and validity
+    if total > 0 and "score" in transition_detections.columns:
+        s = pd.to_numeric(transition_detections["score"], errors="coerce")
+        out_of_bounds = int(((s < 0) | (s > 1) | (s.isna())).sum())
+    else:
+        # If empty or missing score column, treat all as out-of-bounds
+        out_of_bounds = total
+
+    # Valid row definition
+    def _nonnull(col: str) -> pd.Series:
+        return transition_detections.get(col, pd.Series(dtype=object)).notna()
+
+    if total > 0:
+        s = pd.to_numeric(
+            transition_detections.get("score", pd.Series(dtype=float)), errors="coerce"
+        )
+        valid_mask = (
+            _nonnull("award_id")
+            & _nonnull("contract_id")
+            & _nonnull("method")
+            & s.notna()
+            & (s >= 0)
+            & (s <= 1)
+        )
+        valid_rate = float(valid_mask.mean())
+    else:
+        valid_rate = 0.0
+
+    # High-confidence rate (optional gate)
+    score_threshold = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD", 0.60)
+    if total > 0 and "score" in transition_detections.columns:
+        s = pd.to_numeric(transition_detections["score"], errors="coerce").fillna(-1.0)
+        highconf_rate = float((s >= score_threshold).mean())
+    else:
+        highconf_rate = 0.0
+
+    # Thresholds
+    min_valid_rate = _env_float("SBIR_ETL__TRANSITION__DETECTIONS__MIN_VALID_RATE", 0.99)
+    min_highconf_rate = _env_float("SBIR_ETL__TRANSITION__DETECTIONS__MIN_HIGHCONF_RATE", 0.0)
+
+    passed = (
+        (len(missing) == 0)
+        and (out_of_bounds == 0)
+        and (valid_rate >= min_valid_rate)
+        and (highconf_rate >= min_highconf_rate)
+    )
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
+        description=(
+            f"{'✓' if passed else '✗'} transition_detections quality: "
+            f"missing_cols={len(missing)}, score_out_of_bounds={out_of_bounds}, "
+            f"valid_rate={valid_rate:.2%} (min {min_valid_rate:.2%}), "
+            f"highconf_rate={highconf_rate:.2%} (min {min_highconf_rate:.2%}, "
+            f"threshold {score_threshold:.2f})"
+        ),
+        metadata={
+            "total_rows": total,
+            "missing_columns": missing,
+            "score_out_of_bounds": out_of_bounds,
+            "rates": {
+                "valid_rate": valid_rate,
+                "min_valid_rate": min_valid_rate,
+                "highconf_rate": highconf_rate,
+                "min_highconf_rate": min_highconf_rate,
+                "score_threshold": score_threshold,
+            },
+            "columns_present": list(transition_detections.columns),
+        },
+    )
