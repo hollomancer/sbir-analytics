@@ -445,7 +445,7 @@ def contracts_sample(context) -> Output[pd.DataFrame]:
     ),
 )
 def vendor_resolution(
-    context: AssetExecutionContext,
+    context,
     contracts_sample: pd.DataFrame,
     enriched_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
@@ -594,7 +594,7 @@ def vendor_resolution(
     ),
 )
 def transition_scores_v1(
-    context: AssetExecutionContext,
+    context,
     vendor_resolution: pd.DataFrame,
     contracts_sample: pd.DataFrame,
     enriched_sbir_awards: pd.DataFrame,
@@ -829,7 +829,7 @@ def transition_scores_v1(
     ),
 )
 def transition_evidence_v1(
-    context: AssetExecutionContext,
+    context,
     transition_scores_v1: pd.DataFrame,
     contracts_sample: pd.DataFrame,
 ) -> Output[str]:
@@ -1043,7 +1043,7 @@ def transition_evidence_v1(
     ),
 )
 def transition_detections(
-    context: AssetExecutionContext,
+    context,
     transition_scores_v1: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     out_path = Path("data/processed/transition_detections.parquet")
@@ -1097,7 +1097,7 @@ def transition_detections(
 
 
 def transition_analytics(
-    context: AssetExecutionContext,
+    context,
     enriched_sbir_awards: pd.DataFrame,
     transition_scores_v1: pd.DataFrame,
     contracts_sample: Optional[pd.DataFrame] = None,
