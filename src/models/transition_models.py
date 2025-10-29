@@ -211,6 +211,18 @@ class FederalContract(BaseModel):
         None, description="Competition type for the award."
     )
     description: Optional[str] = Field(None, description="Free-text contract description.")
+    parent_contract_id: Optional[str] = Field(
+        None,
+        description="Referenced parent contract or IDV PIID when this record is a task or delivery order.",
+    )
+    parent_contract_agency: Optional[str] = Field(
+        None,
+        description="Agency identifier associated with the referenced parent contract or IDV.",
+    )
+    contract_award_type: Optional[str] = Field(
+        None,
+        description="Contract award type code from USAspending (e.g., 'A', 'B', 'IDV-A').",
+    )
     matched_vendor: Optional[VendorMatch] = Field(
         None, description="Vendor match result to canonical entity."
     )
