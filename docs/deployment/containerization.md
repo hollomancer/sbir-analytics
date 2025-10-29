@@ -85,16 +85,33 @@ make docker-test
 docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build
 ```
 
+6) Run E2E tests (comprehensive pipeline validation)
+```/dev/null/example.commands#L39-50
+# Run comprehensive E2E tests optimized for MacBook Air
+python scripts/run_e2e_tests.py --scenario standard
+
+# Quick smoke test for rapid development iteration
+python scripts/run_e2e_tests.py --scenario minimal
+
+# Performance testing with larger datasets
+python scripts/run_e2e_tests.py --scenario large
+
+# Edge case and robustness testing
+python scripts/run_e2e_tests.py --scenario edge-cases
+```
+
 Files you should know
 ---------------------
 - `Dockerfile` — multi-stage image (builder + runtime). The runtime target is used by Compose services.
 - `docker-compose.yml` — base compose file declaring core services and named volumes.
 - `docker/docker-compose.dev.yml` — dev overlay: bind mounts, dev profile, watch/reload knobs.
 - `docker/docker-compose.test.yml` — test overlay: ephemeral Neo4j + `app` service that runs `pytest`.
+- `docker/docker-compose.e2e.yml` — E2E test overlay: optimized for comprehensive pipeline testing on MacBook Air.
 - `Makefile` — convenience commands: `docker-build`, `docker-up-dev`, `docker-test`, `docker-down`, `docker-logs`.
 - `scripts/ci/build_container.sh` — CI-friendly build script (Buildx-supporting).
 - `scripts/docker/entrypoint.sh` — container entrypoint used by runtime images.
 - `scripts/docker/wait-for-service.sh` — robust wait-for utility used by entrypoint scripts.
+- `scripts/run_e2e_tests.py` — E2E test orchestration script for local development.
 - `config/docker.yaml` — container default settings and hints (do not put secrets here).
 - `.env.example` — template for local environment variables; copy to `.env` for development.
 
