@@ -48,7 +48,14 @@ pytest tests/unit/ -v
 # Integration tests  
 pytest tests/integration/ -v
 
-# E2E tests (various scenarios)
+# E2E tests (containerized - recommended)
+make docker-e2e-minimal      # < 2 min (MacBook Air optimized)
+make docker-e2e-standard     # 5-8 min (full validation)
+make docker-e2e-large        # 8-10 min (performance testing)
+make docker-e2e-edge-cases   # 3-5 min (robustness testing)
+make docker-e2e-debug        # Interactive debugging
+
+# E2E tests (direct script execution - alternative)
 python scripts/run_e2e_tests.py --scenario minimal     # < 2 min
 python scripts/run_e2e_tests.py --scenario standard    # 5-8 min
 python scripts/run_e2e_tests.py --scenario large       # 8-10 min

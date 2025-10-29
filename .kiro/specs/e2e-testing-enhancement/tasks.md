@@ -7,14 +7,14 @@
   - Enhance health checks and add startup timeout configurations
   - _Requirements: 1.1, 1.2, 3.1, 3.2, 3.3_
 
-- [ ] 2. Create enhanced E2E test CLI
-  - [ ] 2.1 Implement E2E test CLI script
+- [x] 2. Create enhanced E2E test CLI
+  - [x] 2.1 Implement E2E test CLI script
     - Create `scripts/run_e2e_tests.py` with scenario-based test execution
     - Add argument parsing for test scenarios (minimal, standard, large, edge-cases)
     - Integrate with existing `make docker-test` workflow and extend it
     - _Requirements: 1.1, 3.1, 6.1, 6.2_
 
-  - [ ] 2.2 Enhance existing test orchestration
+  - [x] 2.2 Enhance existing test orchestration
     - Extend existing test container command in `docker-compose.test.yml`
     - Add scenario-based test execution within existing container structure
     - Implement resource monitoring and MacBook Air compatibility checks

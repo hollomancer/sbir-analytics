@@ -146,7 +146,7 @@ loading:
 
 ### Container Development (Recommended)
 
-The project provides Docker Compose for a consistent development and testing environment.
+The project provides Docker Compose for a consistent development and testing environment, including comprehensive E2E testing capabilities optimized for MacBook Air development.
 
 1. **Set up environment:**
    ```bash
@@ -171,13 +171,22 @@ The project provides Docker Compose for a consistent development and testing env
 5. **Run E2E tests locally:**
    ```bash
    # Run comprehensive E2E tests (MacBook Air optimized)
-   python scripts/run_e2e_tests.py --scenario standard
+   make docker-e2e-standard
    
    # Quick smoke test (< 2 minutes)
-   python scripts/run_e2e_tests.py --scenario minimal
+   make docker-e2e-minimal
    
    # Performance test with larger datasets
-   python scripts/run_e2e_tests.py --scenario large
+   make docker-e2e-large
+   
+   # Edge case testing
+   make docker-e2e-edge-cases
+   
+   # Interactive debugging
+   make docker-e2e-debug
+   
+   # Cleanup E2E environment
+   make docker-e2e-clean
    ```
 
 6. **View logs:**
@@ -267,7 +276,13 @@ poetry run pytest tests/e2e/ -v
 # Container tests
 make docker-test
 
-# E2E tests (local development)
+# E2E tests (containerized - recommended)
+make docker-e2e-minimal      # Quick smoke test (< 2 min)
+make docker-e2e-standard     # Full validation (5-8 min)
+make docker-e2e-large        # Performance test (8-10 min)
+make docker-e2e-edge-cases   # Robustness test (3-5 min)
+
+# E2E tests (direct script execution - alternative)
 python scripts/run_e2e_tests.py --scenario minimal    # Quick smoke test
 python scripts/run_e2e_tests.py --scenario standard   # Full validation
 python scripts/run_e2e_tests.py --scenario large      # Performance test
@@ -278,7 +293,11 @@ python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 - 29+ tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
-- E2E tests: MacBook Air optimized (< 10 minutes, < 8GB memory)
+- E2E tests: MacBook Air optimized with Docker Compose
+  - Minimal scenario: < 2 minutes, ~2GB memory
+  - Standard scenario: 5-8 minutes, ~4GB memory  
+  - Large scenario: 8-10 minutes, ~6GB memory
+  - Resource limits: 8GB total memory, 2 CPU cores
 
 ## Project Structure
 
@@ -312,15 +331,13 @@ sbir-etl/
 │   ├── unit/                    # Component-level tests
 │   ├── integration/             # Multi-component tests
 │   └── e2e/                     # End-to-end pipeline tests
-│       ├── test_dagster_enrichment_pipeline.py  # Existing smoke tests
-│       ├── data_manager.py      # Test data management
-│       ├── pipeline_validator.py # Comprehensive validation
-│       └── resource_monitor.py  # MacBook Air resource monitoring
+│       └── test_dagster_enrichment_pipeline.py  # E2E smoke tests
 │
 ├── scripts/
 │   ├── benchmark_enrichment.py           # Baseline creation
 │   ├── detect_performance_regression.py  # CI regression check
-│   └── run_e2e_tests.py                  # E2E test orchestration
+│   ├── run_e2e_tests.py                  # E2E test orchestration
+│   └── e2e_health_check.py               # E2E environment validation
 │
 ├── docs/
 │   ├── data/                    # Data dictionaries
@@ -337,7 +354,13 @@ sbir-etl/
 │   ├── container-ci.yml             # Docker test runner
 │   ├── neo4j-smoke.yml              # Integration tests
 │   ├── performance-regression-check.yml  # Benchmark pipeline
+│   ├── cet-pipeline-ci.yml          # CET pipeline validation
 │   └── secret-scan.yml
+│
+├── docker/                      # Docker Compose configurations
+│   ├── docker-compose.dev.yml      # Development stack with bind mounts
+│   ├── docker-compose.test.yml     # Test runner environment
+│   └── docker-compose.e2e.yml      # E2E testing (MacBook Air optimized)
 │
 └── openspec/                    # Specifications (see openspec/AGENTS.md)
     ├── specs/                   # Current capabilities
@@ -402,11 +425,10 @@ GitHub Actions workflows:
 
 ## Documentation
 
-- **Testing**: `docs/testing/README.md` (comprehensive testing guide including E2E)
+- **Testing**: `docs/testing/README.md`, `docs/testing/e2e-testing-guide.md` (comprehensive testing guides)
 - **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - **Deployment**: `docs/deployment/containerization.md`
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
-- **Architecture**: `docs/architecture/e2e-testing-architecture.md`
 - **OpenSpec**: `openspec/AGENTS.md` (change proposal workflow)
 
 ## Contributing

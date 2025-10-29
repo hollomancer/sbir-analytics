@@ -240,14 +240,14 @@ This checklist ensures the enrichment pipeline is production-ready before deploy
   - All assets materialize: ✅ Verified
   - Data flows correctly: ✅ Verified
   - Output quality acceptable: ✅ Verified
-  - Command: `python scripts/run_e2e_tests.py --scenario standard`
+  - Command: `make docker-e2e-standard` (recommended) or `python scripts/run_e2e_tests.py --scenario standard`
   - Required: Zero errors, match rate > 0.70, < 10 minutes execution
 
 - [ ] **E2E Test Scenarios Validation**
-  - Minimal scenario passes: ✅ Verified (`--scenario minimal`)
-  - Standard scenario passes: ✅ Verified (`--scenario standard`)
-  - Large scenario passes: ✅ Verified (`--scenario large`)
-  - Edge cases handled: ✅ Verified (`--scenario edge-cases`)
+  - Minimal scenario passes: ✅ Verified (`make docker-e2e-minimal`)
+  - Standard scenario passes: ✅ Verified (`make docker-e2e-standard`)
+  - Large scenario passes: ✅ Verified (`make docker-e2e-large`)
+  - Edge cases handled: ✅ Verified (`make docker-e2e-edge-cases`)
   - Resource constraints respected: ✅ Verified (< 8GB memory)
   - Evidence: E2E test reports in `reports/e2e/`
 

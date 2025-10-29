@@ -86,18 +86,24 @@ docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.te
 ```
 
 6) Run E2E tests (comprehensive pipeline validation)
-```/dev/null/example.commands#L39-50
-# Run comprehensive E2E tests optimized for MacBook Air
-python scripts/run_e2e_tests.py --scenario standard
+```bash
+# Run comprehensive E2E tests optimized for MacBook Air (recommended)
+make docker-e2e-standard
 
 # Quick smoke test for rapid development iteration
-python scripts/run_e2e_tests.py --scenario minimal
+make docker-e2e-minimal
 
 # Performance testing with larger datasets
-python scripts/run_e2e_tests.py --scenario large
+make docker-e2e-large
 
 # Edge case and robustness testing
-python scripts/run_e2e_tests.py --scenario edge-cases
+make docker-e2e-edge-cases
+
+# Interactive debugging
+make docker-e2e-debug
+
+# Alternative: Direct script execution
+python scripts/run_e2e_tests.py --scenario standard
 ```
 
 Files you should know
