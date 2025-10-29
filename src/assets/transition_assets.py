@@ -889,6 +889,69 @@ def transition_evidence_v1(
         "and emit a checks JSON for gating."
     ),
 )
+@asset(
+    name="transition_detections",
+    group_name="transition",
+    compute_kind="pandas",
+    description=(
+        "Consolidated transition detections derived from transition_scores_v1. "
+        "Writes parquet and logs basic metrics."
+    ),
+)
+def transition_detections(
+    context: AssetExecutionContext,
+    transition_scores_v1: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    out_path = Path("data/processed/transition_detections.parquet")
+
+    # Start from the scored candidates; ensure core columns exist
+    df = transition_scores_v1.copy()
+    required_cols = ["award_id", "contract_id", "score", "method", "computed_at"]
+    for c in required_cols:
+        if c not in df.columns:
+            df[c] = None
+
+    # Metrics
+    threshold = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD", 0.60)
+    scores = (
+        pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
+        if "score" in df.columns
+        else pd.Series([], dtype=float)  # type: ignore
+    )
+    total = int(len(df))
+    high_conf = int((scores >= threshold).sum()) if total > 0 else 0
+    avg_score = float(scores.mean()) if total > 0 else 0.0
+    by_method = (
+        df["method"].value_counts(dropna=False).to_dict()
+        if "method" in df.columns and total > 0
+        else {}
+    )
+
+    # Persist detections table
+    save_dataframe_parquet(df, out_path)
+
+    # Log and return with metadata
+    metrics = {
+        "generated_at": now_utc_iso(),
+        "total_candidates": total,
+        "high_confidence_candidates": high_conf,
+        "avg_score": round(avg_score, 6),
+        "threshold": float(threshold),
+        "by_method": by_method,
+    }
+    context.log.info("Produced transition_detections", extra=metrics)
+
+    meta = {
+        "output_path": str(out_path),
+        "rows": total,
+        "high_confidence_candidates": high_conf,
+        "avg_score": avg_score,
+        "threshold": float(threshold),
+        "by_method": by_method,
+    }
+    return Output(df, metadata=meta)
+
+
 def transition_analytics(
     context: AssetExecutionContext,
     enriched_sbir_awards: pd.DataFrame,

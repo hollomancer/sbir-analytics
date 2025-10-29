@@ -297,3 +297,84 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
         }
 
     assert list(map(_project_ev, actual_evidence)) == list(map(_project_ev, golden_evidence))
+
+
+def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
+    """
+    Exercise transition_analytics on the tiny shimmed fixture and validate outputs/checks.
+    """
+    # Isolate IO
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
+
+    from src.assets.transition_assets import (  # noqa: WPS433
+        AssetExecutionContext,
+        vendor_resolution,
+        transition_scores_v1,
+        transition_analytics,
+    )
+
+    # Reuse tiny fixtures
+    contracts_df = pd.DataFrame(
+        [
+            {
+                "contract_id": "C1",
+                "piid": "PIID-001",
+                "fain": None,
+                "vendor_uei": "UEI123",
+                "vendor_duns": None,
+                "vendor_name": "UEI Vendor Inc",
+                "action_date": "2023-01-01",
+                "obligated_amount": 100000,
+                "awarding_agency_code": "9700",
+            },
+            {
+                "contract_id": "C2",
+                "piid": "PIID-002",
+                "fain": None,
+                "vendor_uei": None,
+                "vendor_duns": None,
+                "vendor_name": "Acme Corporation",
+                "action_date": "2023-02-01",
+                "obligated_amount": 50000,
+                "awarding_agency_code": "9700",
+            },
+        ]
+    )
+    awards_df = pd.DataFrame(
+        [
+            {"award_id": "A1", "Company": "UEI Vendor Inc", "UEI": "UEI123", "Duns": None},
+            {"award_id": "A2", "Company": "Acme Corp", "UEI": None, "Duns": None},
+        ]
+    )
+
+    # Run chain subset up to analytics
+    ctx = AssetExecutionContext()
+    vr_df, _ = _unwrap_output(vendor_resolution(ctx, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(transition_scores_v1(ctx, vr_df, contracts_df, awards_df))
+
+    analytics_path, meta = _unwrap_output(
+        transition_analytics(ctx, awards_df, scores_df, contracts_df)
+    )
+    p = Path(analytics_path)
+    assert p.exists()
+
+    checks_path = (
+        Path(meta.get("checks_path"))
+        if meta and meta.get("checks_path")
+        else p.with_suffix(".checks.json")
+    )
+    assert checks_path.exists()
+
+    # Load and validate basic payload shape
+    summary = json.loads(p.read_text(encoding="utf-8"))
+    checks = json.loads(checks_path.read_text(encoding="utf-8"))
+
+    assert "score_threshold" in summary
+    assert "award_transition_rate" in summary
+    assert "company_transition_rate" in summary
+
+    assert "counts" in checks
+    counts = checks["counts"]
+    assert counts.get("total_awards", 0) >= 1
+    assert counts.get("total_companies", 0) >= 1

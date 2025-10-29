@@ -55,6 +55,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
   - [ ] Quality gate:
         transition precision quick-check via 30-manual-spot review ≥ 80% for `score>=0.80`
   - [x] Write validation summary to `reports/validation/transition_mvp.json`
+  - [x] Analytics gate in CI: enforce `transition_analytics.checks.json` (denominators > 0, rates within [0,1], optional minimum rates via `SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE` and `SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE`)
   - Acceptance:
     - [x] Gates enforced in CI/dev; failing gate blocks downstream assets (CI gating implemented via validation summary; Dagster downstream blocking pending)
 
@@ -254,9 +255,10 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 11.2 Run transition detection pipeline for all awards
 - [ ] 11.3 Generate transition detections with scores and evidence
 - [ ] 11.4 Add asset checks for detection success rate (≥99%)
-- [ ] 11.5 Add asset checks for vendor match rate (target: ≥90%)
-- [ ] 11.6 Output detections to data/processed/transition_detections.parquet
-- [ ] 11.7 Log detection metrics (total detections, high-confidence count, avg score)
+- [x] 11.5 Add asset checks for vendor match rate (target: ≥90%)
+  - Notes: Implemented `vendor_resolution_quality_check` with configurable minimum via `SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE`.
+- [x] 11.6 Output detections to data/processed/transition_detections.parquet
+- [x] 11.7 Log detection metrics (total detections, high-confidence count, avg score)
 
 ## 12. Dual-Perspective Analytics
 
@@ -359,7 +361,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - [ ] 20.2 Integration test: Vendor resolution with cross-walk
 - [ ] 20.3 Integration test: Patent-backed transition detection
 - [ ] 20.4 Integration test: CET area transition analytics
-- [ ] 20.5 Integration test: Dual-perspective analytics (award + company levels)
+- [x] 20.5 Integration test: Dual-perspective analytics (award + company levels)
 - [ ] 20.6 Integration test: Neo4j graph creation and queries
 - [ ] 20.7 Test with sample dataset (1000 awards, 5000 contracts, 500 patents)
 - [ ] 20.8 Validate data quality metrics meet targets

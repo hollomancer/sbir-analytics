@@ -63,6 +63,7 @@ __all__: List[str] = [
     "vendor_resolution",
     "transition_scores_v1",
     "transition_evidence_v1",
+    "transition_detections",
     "transition_analytics",
     "transition_analytics_quality_check",
 ]
@@ -192,6 +193,7 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
     "vendor_resolution": ("src.assets.transition_assets", "vendor_resolution"),
     "transition_scores_v1": ("src.assets.transition_assets", "transition_scores_v1"),
     "transition_evidence_v1": ("src.assets.transition_assets", "transition_evidence_v1"),
+    "transition_detections": ("src.assets.transition_assets", "transition_detections"),
     "transition_analytics": ("src.assets.transition_assets", "transition_analytics"),
     # transition asset checks
     "contracts_sample_quality_check": (
