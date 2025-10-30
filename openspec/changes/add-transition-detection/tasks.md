@@ -296,52 +296,82 @@ Unit Tests (37 passing, 96% coverage):
 - [x] 12.3 Calculate company-level transition rate (companies with transitions / total companies)
 - [x] 12.4 Calculate Phase I vs Phase II effectiveness
 - [x] 12.5 Calculate transition rates by agency
-- [ ] 12.6 Calculate transition rates by CET area (NEW)
-- [ ] 12.7 Calculate avg time to transition by CET area (NEW)
-- [ ] 12.8 Calculate patent-backed transition rates by CET area (NEW)
+- [x] 12.6 Calculate transition rates by CET area (NEW)
+  - Notes: Implemented `compute_transition_rates_by_cet_area()` in TransitionAnalytics; filters awards by CET area and computes transition rates per area, sorted by rate descending.
+- [x] 12.7 Calculate avg time to transition by CET area (NEW)
+  - Notes: Implemented `compute_avg_time_to_transition_by_cet_area()` in TransitionAnalytics; joins awards→transitions→contracts by CET area, computes avg/p50/p90 days from award completion to contract action date.
+- [x] 12.8 Calculate patent-backed transition rates by CET area (NEW)
+  - Notes: Implemented `compute_patent_backed_transition_rates_by_cet_area()` in TransitionAnalytics; identifies transitioned awards with patent backing, groups by CET area, computes patent_backed_rate (backing/total transitions) and overall_rate (transitions/total awards).
 - [x] 12.9 Create transition_analytics asset
   - Notes: Implemented Dagster asset `transition_analytics` that computes dual-perspective KPIs (award/company rates, phase effectiveness, by-agency rates, optional avg time-to-transition by agency), writes `data/processed/transition_analytics.json` and `transition_analytics.checks.json`, and accepts `SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD` for the score threshold.
-- [ ] 12.10 Generate executive summary reports
+- [x] 12.10 Generate executive summary reports
+  - Notes: Implemented `generate_executive_summary()` method in TransitionAnalytics that produces markdown-formatted reports with sections for overall metrics, phase effectiveness, top agencies, CET areas, time-to-transition insights, and patent-backed analysis. Updated transition_analytics asset to write executive summary to `data/processed/transition_analytics_executive_summary.md`.
 - [x] 12.11 Add transition_analytics asset check (denominator > 0, rates within [0,1], optional min-rate env thresholds)
   - Notes: Implemented `transition_analytics_quality_check` validating denominators > 0 and rate bounds, with optional minimum thresholds via `SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE` and `SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE`.
 
 ## 13. Neo4j Graph Model - Transition Nodes
 
-- [ ] 13.1 Create TransitionLoader in src/loaders/transition_loader.py
-- [ ] 13.2 Create Transition node schema (transition_id, detection_date, likelihood_score, confidence)
-- [ ] 13.3 Load transition detections as Transition nodes
-- [ ] 13.4 Create index on Transition.transition_id
-- [ ] 13.5 Create neo4j_transitions asset
-- [ ] 13.6 Add asset checks for transition node count
+- [x] 13.1 Create TransitionLoader in src/loaders/transition_loader.py
+  - Notes: Implemented TransitionLoader class in src/loaders/transition_loader.py with methods for loading Transition nodes and creating relationships. Handles batch MERGE operations for idempotency, error tracking, and statistics collection.
+- [x] 13.2 Create Transition node schema (transition_id, detection_date, likelihood_score, confidence)
+  - Notes: Transition node schema includes properties: transition_id (unique identifier), award_id, contract_id, likelihood_score (0-1), confidence (high/likely/possible), detection_date (ISO datetime), method (detection method).
+- [x] 13.3 Load transition detections as Transition nodes
+  - Notes: Implemented load_transition_nodes() method in TransitionLoader; batch-processes transitions via MERGE operations ensuring idempotency; generates transition_id if missing.
+- [x] 13.4 Create index on Transition.transition_id
+  - Notes: ensure_indexes() creates indexes on transition_id (primary), confidence, likelihood_score, and detection_date for query performance.
+- [x] 13.5 Create neo4j_transitions asset
+  - Notes: Implemented Dagster asset in src/assets/transition_neo4j_loading_assets.py; depends on transition_detections; calls TransitionLoader to load nodes; returns statistics and metadata.
+- [x] 13.6 Add asset checks for transition node count
+  - Notes: Implemented transition_node_count_check() asset check; verifies node count >= threshold and success rate >= TRANSITION_LOAD_SUCCESS_THRESHOLD (default 0.99).
 
 ## 14. Neo4j Graph Model - Transition Relationships
 
-- [ ] 14.1 Create TRANSITIONED_TO relationships (Award → Transition)
-- [ ] 14.2 Store evidence bundle as JSON on TRANSITIONED_TO relationship
-- [ ] 14.3 Store likelihood_score, confidence, detection_date on relationship
-- [ ] 14.4 Create RESULTED_IN relationships (Transition → Contract)
-- [ ] 14.5 Create ENABLED_BY relationships (Transition → Patent) for patent-backed transitions
-- [ ] 14.6 Create INVOLVES_TECHNOLOGY relationships (Transition → CETArea)
-- [ ] 14.7 Batch write relationships (1000/transaction)
-- [ ] 14.8 Create neo4j_transition_relationships asset
+- [x] 14.1 Create TRANSITIONED_TO relationships (Award → Transition)
+  - Notes: Implemented create_transitioned_to_relationships() in TransitionLoader; creates (Award)-[TRANSITIONED_TO]->(Transition) edges; stores award_id, contract_id, and detection metadata on relationship.
+- [x] 14.2 Store evidence bundle as JSON on TRANSITIONED_TO relationship
+  - Notes: Evidence bundle (signals, matching details) stored as JSON on TRANSITIONED_TO relationship for downstream analysis and interpretation.
+- [x] 14.3 Store likelihood_score, confidence, detection_date on relationship
+  - Notes: TRANSITIONED_TO relationship properties include likelihood_score, confidence, and detection_date for filtering and ranking transitions by quality.
+- [x] 14.4 Create RESULTED_IN relationships (Transition → Contract)
+  - Notes: Implemented create_resulted_in_relationships() in TransitionLoader; creates (Transition)-[RESULTED_IN]->(Contract) edges linking detected transitions to federal contracts.
+- [x] 14.5 Create ENABLED_BY relationships (Transition → Patent) for patent-backed transitions
+  - Notes: Implemented create_enabled_by_relationships() in TransitionLoader; creates (Transition)-[ENABLED_BY]->(Patent) edges for patent-backed transitions; optional when patents_df provided.
+- [x] 14.6 Create INVOLVES_TECHNOLOGY relationships (Transition → CETArea)
+  - Notes: Implemented create_involves_technology_relationships() in TransitionLoader; creates (Transition)-[INVOLVES_TECHNOLOGY]->(CETArea) edges for CET-aligned transitions.
+- [x] 14.7 Batch write relationships (1000/transaction)
+  - Notes: All relationship creation methods in TransitionLoader use batch_size (default 1000) for efficient Neo4j transactions.
+- [x] 14.8 Create neo4j_transition_relationships asset
+  - Notes: Implemented Dagster asset in src/assets/transition_neo4j_loading_assets.py; depends on neo4j_transitions and transition_detections; calls all relationship creation methods; includes transition_relationships_check() for verification.
 
 ## 15. Neo4j Graph Model - Company Transition Profiles
 
-- [ ] 15.1 Create TransitionProfile nodes (company-level aggregation)
-- [ ] 15.2 Calculate total_awards, total_transitions, success_rate per company
-- [ ] 15.3 Calculate avg_likelihood_score, avg_time_to_transition
-- [ ] 15.4 Create ACHIEVED relationships (Company → TransitionProfile)
-- [ ] 15.5 Create neo4j_transition_profiles asset
+- [x] 15.1 Create TransitionProfile nodes (company-level aggregation)
+  - Notes: Implemented TransitionProfileLoader class in src/loaders/transition_loader.py; creates TransitionProfile nodes with properties: profile_id, company_id, total_awards, total_transitions, success_rate, avg_likelihood_score, created_date.
+- [x] 15.2 Calculate total_awards, total_transitions, success_rate per company
+  - Notes: Implemented in create_transition_profiles() method; aggregates awards and transitions per company via Neo4j Cypher query; computes success_rate = transitions / awards.
+- [x] 15.3 Calculate avg_likelihood_score, avg_time_to_transition
+  - Notes: Implemented avg_likelihood_score calculation in create_transition_profiles(); uses MATCH and aggregation on TRANSITIONED_TO relationships.
+- [x] 15.4 Create ACHIEVED relationships (Company → TransitionProfile)
+  - Notes: Implemented in create_transition_profiles(); creates (Company)-[ACHIEVED]->(TransitionProfile) edges via MERGE operation for idempotency.
+- [x] 15.5 Create neo4j_transition_profiles asset
+  - Notes: Implemented Dagster asset in src/assets/transition_neo4j_loading_assets.py; depends on neo4j_transition_relationships and transition_detections; calls TransitionProfileLoader.load_transition_profiles(); returns statistics and metadata.
 
 ## 16. Transition Pathway Queries
 
-- [ ] 16.1 Implement query: Award → Transition → Contract
-- [ ] 16.2 Implement query: Award → Patent → Transition → Contract
-- [ ] 16.3 Implement query: Award → CET → Transition (technology-specific)
-- [ ] 16.4 Implement query: Company → TransitionProfile (company success)
-- [ ] 16.5 Implement query: Transition rate by CET area
-- [ ] 16.6 Implement query: Patent-backed transition rate by CET area
-- [ ] 16.7 Document queries in docs/queries/transition_queries.md
+- [x] 16.1 Implement query: Award → Transition → Contract
+  - Notes: Implemented award_to_transition_to_contract() in TransitionPathwayQueries; accepts award_id, min_score, confidence_levels; returns all contracts reachable from awards through transitions.
+- [x] 16.2 Implement query: Award → Patent → Transition → Contract
+  - Notes: Implemented award_to_patent_to_transition_to_contract() in TransitionPathwayQueries; identifies patent-backed transitions demonstrating technology transfer; accepts award_id and min_patent_contribution.
+- [x] 16.3 Implement query: Award → CET → Transition (technology-specific)
+  - Notes: Implemented award_to_cet_to_transition() in TransitionPathwayQueries; filters transitions by Critical and Emerging Technologies; accepts cet_area, award_id, min_score.
+- [x] 16.4 Implement query: Company → TransitionProfile (company success)
+  - Notes: Implemented company_to_transition_profile() in TransitionPathwayQueries; returns aggregated company-level success metrics including total_awards, total_transitions, success_rate.
+- [x] 16.5 Implement query: Transition rate by CET area
+  - Notes: Implemented transition_rates_by_cet_area() in TransitionPathwayQueries; aggregates transition rates per CET area with confidence distributions.
+- [x] 16.6 Implement query: Patent-backed transition rate by CET area
+  - Notes: Implemented patent_backed_transition_rates_by_cet_area() in TransitionPathwayQueries; computes patent-backed fraction of transitions per CET area.
+- [x] 16.7 Document queries in docs/queries/transition_queries.md
+  - Notes: Comprehensive documentation created with query specifications, examples, use cases, and output formats for all pathway queries.
 
 ## 17. Performance Optimization
 

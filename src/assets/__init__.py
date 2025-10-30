@@ -68,6 +68,11 @@ __all__: List[str] = [
     "transition_analytics",
     "transition_analytics_quality_check",
     "transition_detections_quality_check",
+    "neo4j_transitions",
+    "transition_node_count_check",
+    "neo4j_transition_relationships",
+    "transition_relationships_check",
+    "neo4j_transition_profiles",
 ]
 
 # Map exported symbol -> (module_path, attribute_name).
@@ -222,6 +227,27 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
     "transition_analytics_quality_check": (
         "src.assets.transition_assets",
         "transition_analytics_quality_check",
+    ),
+    # transition neo4j loading assets
+    "neo4j_transitions": (
+        "src.assets.transition_neo4j_loading_assets",
+        "neo4j_transitions",
+    ),
+    "transition_node_count_check": (
+        "src.assets.transition_neo4j_loading_assets",
+        "transition_node_count_check",
+    ),
+    "neo4j_transition_relationships": (
+        "src.assets.transition_neo4j_loading_assets",
+        "neo4j_transition_relationships",
+    ),
+    "transition_relationships_check": (
+        "src.assets.transition_neo4j_loading_assets",
+        "transition_relationships_check",
+    ),
+    "neo4j_transition_profiles": (
+        "src.assets.transition_neo4j_loading_assets",
+        "neo4j_transition_profiles",
     ),
 }
 

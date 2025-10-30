@@ -426,3 +426,169 @@ class TransitionLoader:
     def get_stats(self) -> Dict[str, int]:
         """Return loading statistics."""
         return self.stats.copy()
+
+
+class TransitionProfileLoader:
+    """
+    Load company-level transition aggregations as TransitionProfile nodes.
+
+    Creates:
+    - TransitionProfile nodes (company-level aggregation of transitions)
+    - ACHIEVED relationships (Company → TransitionProfile)
+
+    Properties on TransitionProfile:
+    - profile_id: Unique identifier
+    - company_id: Associated company
+    - total_awards: Total awards for company
+    - total_transitions: Successful transitions
+    - success_rate: success_rate = transitions / awards
+    - avg_likelihood_score: Average transition score
+    - avg_time_to_transition: Average days to transition (optional)
+    - created_date: ISO datetime of profile creation
+    """
+
+    def __init__(
+        self,
+        driver: Driver,
+        batch_size: int = 1000,
+    ):
+        """
+        Initialize TransitionProfile Loader.
+
+        Args:
+            driver: Neo4j driver instance
+            batch_size: Number of profiles per transaction (default: 1000)
+        """
+        self.driver = driver
+        self.batch_size = batch_size
+        self.stats = {
+            "profiles_created": 0,
+            "profiles_updated": 0,
+            "achieved_relationships": 0,
+            "errors": 0,
+        }
+
+    def ensure_profile_indexes(self) -> None:
+        """Create indexes for TransitionProfile nodes."""
+        with self.driver.session() as session:
+            try:
+                # Index on profile_id (primary lookup)
+                session.run(
+                    "CREATE INDEX transition_profile_id_index IF NOT EXISTS "
+                    "FOR (p:TransitionProfile) ON (p.profile_id)"
+                )
+                logger.info("✓ Created index on TransitionProfile.profile_id")
+
+                # Index on company_id for company profile lookups
+                session.run(
+                    "CREATE INDEX transition_profile_company_index IF NOT EXISTS "
+                    "FOR (p:TransitionProfile) ON (p.company_id)"
+                )
+                logger.info("✓ Created index on TransitionProfile.company_id")
+
+                # Index on success_rate for ranking
+                session.run(
+                    "CREATE INDEX transition_profile_rate_index IF NOT EXISTS "
+                    "FOR (p:TransitionProfile) ON (p.success_rate)"
+                )
+                logger.info("✓ Created index on TransitionProfile.success_rate")
+
+            except Exception as e:
+                logger.error(f"Failed to create profile indexes: {e}")
+                raise
+
+    def create_transition_profiles(
+        self,
+        transitions_df: pd.DataFrame,
+        awards_df: Optional[pd.DataFrame] = None,
+    ) -> int:
+        """
+        Create TransitionProfile nodes from transition aggregations.
+
+        Args:
+            transitions_df: DataFrame with transition detections (must include award_id, contract_id, score)
+            awards_df: Optional DataFrame with award data for company matching
+
+        Returns:
+            Number of profiles created/updated
+        """
+        if transitions_df.empty:
+            logger.warning("No transitions for profile creation")
+            return 0
+
+        # Compute company-level aggregations
+        try:
+            with self.driver.session() as session:
+                # Query: For each company, get transition stats
+                cypher_query = """
+                MATCH (c:Company)<-[:AWARDS]-(a:Award)
+                OPTIONAL MATCH (a)-[tt:TRANSITIONED_TO]->(t:Transition)
+                WITH c.company_id as company_id,
+                     c as company_node,
+                     count(distinct a) as total_awards,
+                     count(distinct case when tt IS NOT NULL then a.award_id end) as total_transitions,
+                     avg(case when tt IS NOT NULL then tt.likelihood_score else null end) as avg_likelihood_score
+                WHERE total_awards > 0
+                WITH company_id, company_node, total_awards, total_transitions, avg_likelihood_score,
+                     (toFloat(total_transitions) / toFloat(total_awards)) as success_rate
+                MERGE (p:TransitionProfile {profile_id: company_id + "_transition_profile"})
+                ON CREATE SET
+                    p.company_id = company_id,
+                    p.total_awards = total_awards,
+                    p.total_transitions = total_transitions,
+                    p.success_rate = success_rate,
+                    p.avg_likelihood_score = avg_likelihood_score,
+                    p.created_date = datetime()
+                ON MATCH SET
+                    p.total_awards = total_awards,
+                    p.total_transitions = total_transitions,
+                    p.success_rate = success_rate,
+                    p.avg_likelihood_score = avg_likelihood_score,
+                    p.updated_date = datetime()
+                MERGE (company_node)-[:ACHIEVED]->(p)
+                RETURN count(p) as profiles_created
+                """
+
+                result = session.run(cypher_query)
+                count = result.single()["profiles_created"]
+                self.stats["profiles_created"] = count
+                self.stats["achieved_relationships"] = count
+                logger.info(f"✓ Created/updated {count} transition profiles")
+                return count
+
+        except Exception as e:
+            logger.error(f"Failed to create transition profiles: {e}")
+            self.stats["errors"] += 1
+            raise
+
+    def load_transition_profiles(
+        self,
+        transitions_df: pd.DataFrame,
+        awards_df: Optional[pd.DataFrame] = None,
+    ) -> Dict[str, int]:
+        """
+        Load company transition profiles into Neo4j.
+
+        Args:
+            transitions_df: DataFrame with transition detections
+            awards_df: Optional DataFrame with award data
+
+        Returns:
+            Statistics dictionary
+        """
+        logger.info("Starting transition profile loading")
+
+        # Ensure indexes exist
+        self.ensure_profile_indexes()
+
+        # Create profiles
+        self.create_transition_profiles(transitions_df, awards_df)
+
+        logger.info("✓ Transition profile loading complete")
+        logger.info(f"Statistics: {self.stats}")
+
+        return self.stats
+
+    def get_stats(self) -> Dict[str, int]:
+        """Return loading statistics."""
+        return self.stats.copy()
