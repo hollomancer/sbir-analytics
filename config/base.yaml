@@ -249,27 +249,78 @@ transition:
     fuzzy_threshold: 0.85 # RapidFuzz partial_ratio threshold for name_fuzzy
 
 statistical_reporting:
-  # Statistical reporting configuration
-  output_directory: "reports/statistical"
-  output_formats: ["html", "json", "markdown"]
-  retention_days: 30
-  verbosity_level: "detailed" # minimal, standard, detailed
-  
-  # Insight generation settings
-  insights:
+  # Report generation settings
+  generation:
     enabled: true
-    quality_threshold: 0.95 # Threshold for quality recommendations
-    performance_threshold: 0.80 # Threshold for performance anomaly detection
-    anomaly_detection: true # Enable automated anomaly detection
+    formats: ["html", "json", "markdown", "executive"]
+    output_directory: "reports/statistical"
+    template_directory: "templates/reports"
     
-  # HTML report settings
-  html:
-    enable_plotly: true # Use Plotly for interactive visualizations
-    theme: "plotly_white" # Plotly theme for charts
-    include_raw_data: false # Include raw data in HTML reports
-    
-  # CI/CD integration settings
-  ci:
-    upload_artifacts: true # Upload reports as CI artifacts
-    post_pr_comments: true # Post Markdown summaries as PR comments
-    compare_baselines: true # Compare against historical baselines
+  # Module-specific reporting
+  modules:
+    sbir_enrichment:
+      enabled: true
+      include_coverage_analysis: true
+      include_source_breakdown: true
+    patent_analysis:
+      enabled: true
+      include_validation_details: true
+      include_loading_statistics: true
+    cet_classification:
+      enabled: true
+      include_confidence_distribution: true
+      include_taxonomy_breakdown: true
+    transition_detection:
+      enabled: true
+      include_success_stories: true
+      include_trend_analysis: true
+      
+  # Insight generation
+  insights:
+    anomaly_detection:
+      enabled: true
+      sensitivity: "medium"  # low, medium, high
+      lookback_periods: 5
+    recommendations:
+      enabled: true
+      include_actionable_steps: true
+    success_stories:
+      enabled: true
+      min_impact_threshold: 0.8
+      
+  # Output format configuration
+  formats:
+    html:
+      include_interactive_charts: true
+      chart_library: "plotly"
+      theme: "default"
+    json:
+      include_raw_data: false
+      pretty_print: true
+    markdown:
+      max_length: 2000
+      include_links: true
+    executive:
+      include_visualizations: true
+      focus_areas: ["impact", "quality", "trends"]
+      
+  # CI/CD integration
+  cicd:
+    github_actions:
+      enabled: true
+      upload_artifacts: true
+      post_pr_comments: true
+      artifact_retention_days: 30
+    report_comparison:
+      enabled: true
+      baseline_comparison: true
+      trend_analysis_periods: [7, 30, 90]
+      
+  # Quality thresholds for reporting
+  quality_thresholds:
+    data_completeness_warning: 0.90
+    data_completeness_error: 0.80
+    enrichment_success_warning: 0.85
+    enrichment_success_error: 0.70
+    performance_degradation_warning: 1.5  # 50% slower
+    performance_degradation_error: 2.0    # 100% slower

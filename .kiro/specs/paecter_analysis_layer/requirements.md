@@ -131,3 +131,62 @@ We will use Hugging Face’s hosted Inference API by default (no local GPU requi
 1. THE System SHALL support produce award↔patent semantic similarity pairs (top-k with thresholds)
 2. THE System SHALL ensure proper operation of produce award↔patent semantic similarity pairs (top-k with thresholds)
 
+# Requirements Document
+
+## Introduction
+
+This feature integrates PaECTER (Patent-specific Encoder with Examiner Citations) with Bayesian Mixture of Experts (MoE) routing to create a technology analysis system focused on technology mapping and SBIR transition detection. The system uses emergent experts to reveal new technology clusters and associates both patents and SBIR awards/abstracts with CPC classifications and CET areas for commercialization analysis.
+
+## Glossary
+
+- **PaECTER_System**: The patent-specific encoder fine-tuned with examiner citations that generates embeddings for patent documents
+- **Bayesian_Router**: A probabilistic routing mechanism that infers distributions over experts and routes inputs stochastically with posterior weights
+- **Expert_Pool**: A collection of specialized lightweight adapters or heads trained on specific technology domains
+- **Uncertainty_Head**: A calibrated confidence component that provides abstention capabilities on diffuse posteriors or low evidence
+- **CPC_Section**: Cooperative Patent Classification sections (A, B, C, D, E, F, G, H, Y) used for patent categorization
+- **CET_Area**: Critical and Emerging Technologies areas defined by government agencies for strategic technology assessment
+- **SBIR_Award**: Small Business Innovation Research awards with abstracts describing funded technology development projects
+- **SBIR_Abstract**: Textual descriptions of SBIR-funded research projects and their technical objectives
+- **Technology_Cluster**: Emergent groupings of patents and SBIR awards discovered through Bayesian routing without preset categories
+- **Commercialization_Signal**: Indicators that a patent or SBIR award has transitioned from research to commercial application
+- **ECE**: Expected Calibration Error, a metric for measuring calibration quality of probabilistic predictions
+- **LoRA_Head**: Low-Rank Adaptation heads that serve as lightweight expert modules
+- **DP_Means**: Dirichlet Process means clustering algorithm for dynamic expert creation
+
+## Requirements
+
+### Requirement 1
+
+**User Story:** As a technology analyst, I want emergent expert discovery for technology mapping, so that I can identify new technology clusters from both patents and SBIR awards without preset categories.
+
+#### Acceptance Criteria
+
+1. WHEN patent documents and SBIR_Abstract data are processed, THE Bayesian_Router SHALL discover Technology_Cluster groupings through emergent expert creation
+2. THE PaECTER_System SHALL generate embeddings for both patent documents and SBIR_Abstract text using the same encoding approach
+3. THE system SHALL use DP_Means clustering to avoid preset K values for cluster discovery across both data types
+4. THE Expert_Pool SHALL grow dynamically when posterior mass persistently avoids existing experts for either patents or SBIR awards
+5. THE system SHALL track drift patterns as new Technology_Cluster formations over time for both patents and SBIR_Abstract data
+
+### Requirement 2
+
+**User Story:** As a policy researcher, I want to associate both patents and SBIR awards with CPC and CET classifications, so that I can analyze technology alignment across classification systems for both research funding and patent activity.
+
+#### Acceptance Criteria
+
+1. THE Bayesian_Router SHALL assign probability distributions over CPC_Section classifications for both patent documents and SBIR_Abstract inputs
+2. THE system SHALL map Technology_Cluster assignments to corresponding CET_Area categories for both patents and SBIR awards
+3. THE system SHALL maintain dual classification mappings (CPC_Section and CET_Area) for all processed patents and SBIR_Abstract data
+4. THE system SHALL provide confidence scores for both CPC_Section and CET_Area assignments across both data types
+5. THE system SHALL enable cross-analysis between patent CPC classifications and SBIR_Abstract CET mappings
+
+### Requirement 3
+
+**User Story:** As a commercialization analyst, I want SBIR transition detection capabilities, so that I can determine whether patents and SBIR awards have achieved commercialization and identify relationships between them.
+
+#### Acceptance Criteria
+
+1. WHEN analyzing patent and SBIR_Award pairs, THE system SHALL identify Commercialization_Signal indicators linking research funding to patent activity
+2. THE Uncertainty_Head SHALL flag uncertain transitions requiring human review for both individual items and patent-SBIR relationships
+3. THE system SHALL detect temporal patterns between SBIR_Award funding dates and related patent filing dates
+4. THE system SHALL identify technology transfer signals between SBIR_Abstract research descriptions and patent technical content
+5. THE system SHALL provide calibrated confidence scores for commercialization predictions using ECE metrics for both individual assessments and relationship predictions

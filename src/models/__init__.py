@@ -48,6 +48,14 @@ __all__: List[str] = [
     "QualitySeverity",
     "EnrichmentResult",
     "DataQualitySummary",
+    # Statistical Reports
+    "PipelineMetrics",
+    "ModuleMetrics",
+    "ReportCollection",
+    "ReportArtifact",
+    "PerformanceMetrics",
+    "ExecutiveSummary",
+    "ReportFormat",
 ]
 
 # Mapping of exported symbol -> (module_path, attribute_name)
@@ -81,6 +89,14 @@ _lazy_mapping: Dict[str, tuple] = {
     "QualityIssue": ("src.models.quality", "QualityIssue"),
     "QualityReport": ("src.models.quality", "QualityReport"),
     "QualitySeverity": ("src.models.quality", "QualitySeverity"),
+    # Statistical Report models
+    "ExecutiveSummary": ("src.models.statistical_reports", "ExecutiveSummary"),
+    "ModuleMetrics": ("src.models.statistical_reports", "ModuleMetrics"),
+    "PerformanceMetrics": ("src.models.statistical_reports", "PerformanceMetrics"),
+    "PipelineMetrics": ("src.models.statistical_reports", "PipelineMetrics"),
+    "ReportArtifact": ("src.models.statistical_reports", "ReportArtifact"),
+    "ReportCollection": ("src.models.statistical_reports", "ReportCollection"),
+    "ReportFormat": ("src.models.statistical_reports", "ReportFormat"),
 }
 
 

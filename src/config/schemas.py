@@ -273,6 +273,143 @@ class DuckDBConfig(BaseModel):
     enable_query_profiler: bool = False
 
 
+class StatisticalReportingConfig(BaseModel):
+    """Configuration for statistical reporting system."""
+
+    # Report generation settings
+    generation: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "enabled": True,
+            "formats": ["html", "json", "markdown"],
+            "output_directory": "reports/statistical",
+            "template_directory": "templates/reports",
+        }
+    )
+
+    # Module-specific reporting
+    modules: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "sbir_enrichment": {
+                "enabled": True,
+                "include_coverage_analysis": True,
+                "include_source_breakdown": True,
+            },
+            "patent_analysis": {
+                "enabled": True,
+                "include_validation_details": True,
+                "include_loading_statistics": True,
+            },
+            "cet_classification": {
+                "enabled": True,
+                "include_confidence_distribution": True,
+                "include_taxonomy_breakdown": True,
+            },
+            "transition_detection": {
+                "enabled": True,
+                "include_success_stories": True,
+                "include_trend_analysis": True,
+            },
+        }
+    )
+
+    # Insight generation
+    insights: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "anomaly_detection": {
+                "enabled": True,
+                "sensitivity": "medium",  # low, medium, high
+                "lookback_periods": 5,
+            },
+            "recommendations": {
+                "enabled": True,
+                "include_actionable_steps": True,
+            },
+            "success_stories": {
+                "enabled": True,
+                "min_impact_threshold": 0.8,
+            },
+        }
+    )
+
+    # Output format configuration
+    formats: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "html": {
+                "include_interactive_charts": True,
+                "chart_library": "plotly",
+                "theme": "default",
+            },
+            "json": {
+                "include_raw_data": False,
+                "pretty_print": True,
+            },
+            "markdown": {
+                "max_length": 2000,
+                "include_links": True,
+            },
+            "executive": {
+                "include_visualizations": True,
+                "focus_areas": ["impact", "quality", "trends"],
+            },
+        }
+    )
+
+    # CI/CD integration
+    cicd: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "github_actions": {
+                "enabled": True,
+                "upload_artifacts": True,
+                "post_pr_comments": True,
+                "artifact_retention_days": 30,
+            },
+            "report_comparison": {
+                "enabled": True,
+                "baseline_comparison": True,
+                "trend_analysis_periods": [7, 30, 90],
+            },
+        }
+    )
+
+    # Quality thresholds for reporting
+    quality_thresholds: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "data_completeness_warning": 0.90,
+            "data_completeness_error": 0.80,
+            "enrichment_success_warning": 0.85,
+            "enrichment_success_error": 0.70,
+            "performance_degradation_warning": 1.5,  # 50% slower
+            "performance_degradation_error": 2.0,    # 100% slower
+        }
+    )
+
+    @field_validator("quality_thresholds")
+    @classmethod
+    def validate_quality_thresholds(cls, v: Mapping[str, Any]) -> dict[str, float]:
+        """Validate and coerce quality threshold values to floats."""
+        if not isinstance(v, Mapping):
+            raise TypeError("Expected a mapping for quality thresholds")
+        
+        out: dict[str, float] = {}
+        for key, value in v.items():
+            try:
+                num = float(value)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"{key} must be a number, got {value!r}") from e
+            
+            # Validate threshold ranges based on key type
+            if "warning" in key or "error" in key:
+                if key.startswith("data_completeness") or key.startswith("enrichment_success"):
+                    if not (0.0 <= num <= 1.0):
+                        raise ValueError(f"{key} must be between 0.0 and 1.0, got {num}")
+                elif key.startswith("performance_degradation"):
+                    if num < 1.0:
+                        raise ValueError(f"{key} must be >= 1.0 (1.0 = no degradation), got {num}")
+            
+            out[key] = num
+        return out
+
+
 class PipelineConfig(BaseModel):
     """Root configuration model for the SBIR ETL pipeline."""
 
@@ -293,6 +430,7 @@ class PipelineConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
+    statistical_reporting: StatisticalReportingConfig = Field(default_factory=StatisticalReportingConfig)
 
     model_config = ConfigDict(
         validate_assignment=True,
