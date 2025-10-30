@@ -1,5 +1,10 @@
 # SBIR ETL Pipeline
 
+## Documentation Map
+- Specs (Kiro): `.kiro/specs/`
+- User/Developer Docs: `docs/` (see `docs/index.md`)
+- Historical Reference: `archive/openspec/`
+
 ## Transition Detection System
 
 **Status**: Production-ready. Core implementation 100% complete; deployment in progress.
@@ -469,7 +474,7 @@ The project provides Docker Compose for a consistent development and testing env
    make docker-logs SERVICE=dagster-webserver
    ```
 
-See `docs/deployment/containerization.md` for full details.
+See `docs/guides/containerization.md` for full details.
 
 ### Local Development (Alternative)
 

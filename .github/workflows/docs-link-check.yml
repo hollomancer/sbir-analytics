@@ -1,0 +1,19 @@
+name: Docs Link Check
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  lychee:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Lychee Link Checker
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: --verbose --no-progress --accept 200,429 '**/*.md' '**/*.yaml'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

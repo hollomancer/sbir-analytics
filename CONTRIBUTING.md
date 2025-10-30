@@ -10,6 +10,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 - [Testing Guidelines](#testing-guidelines)
 - [Commit Message Guidelines](#commit-message-guidelines)
 - [Pull Request Process](#pull-request-process)
+- [Documentation Standards](#documentation-standards)
 
 ## Development Setup
 
@@ -328,6 +329,14 @@ Brief description of changes
 2. All CI checks must pass
 3. No merge conflicts
 4. Address all review comments
+
+## Documentation Standards
+
+- Use Diátaxis types: Tutorials, How-to guides, Explanations, References.
+- Every doc includes front-matter: `Type`, `Owner`, `Last-Reviewed`, `Status`.
+- Docs live in `docs/` (see `docs/index.md`). Specs and tasks live in `.kiro/specs/`.
+- Changes to architecture, data contracts, or performance must update relevant docs/specs in the same PR.
+- Neo4j schema changes must update `docs/references/schemas/neo4j.md` and `src/loaders/` together.
 
 ## Project Structure
 

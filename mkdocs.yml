@@ -1,0 +1,47 @@
+site_name: SBIR ETL Docs
+site_description: Documentation for the SBIR ETL pipeline (Dagster, DuckDB, Neo4j)
+repo_url: https://github.com/your-org/sbir-etl
+nav:
+  - Home: docs/index.md
+  - Getting Started: README.md
+  - Architecture:
+      - Overview: docs/architecture/overview.md
+      - Components: docs/architecture/components.md
+      - Diagrams: docs/architecture/diagrams/
+  - Data Sources:
+      - SBIR: docs/data/sbir.md
+      - USAspending: docs/data/usaspending.md
+      - Patents: docs/data/patents.md
+  - How-to Guides: docs/how-to/
+  - References:
+      - Config: docs/references/config.md
+      - CLI: docs/references/cli.md
+      - Neo4j Schema: docs/references/schemas/neo4j.md
+  - Guides:
+      - Containerization: docs/guides/containerization.md
+      - Quality Assurance: docs/guides/quality-assurance.md
+  - Decisions: docs/decisions/
+  - Performance: docs/performance/benchmarks.md
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+plugins:
+  - search
+  - tags
+  - offline
+extra:
+  social:
+    - icon: material/github
+      link: https://github.com/your-org/sbir-etl
