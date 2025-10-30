@@ -459,10 +459,29 @@ def trends(days: int = 30):
 
 ## Next Steps
 
+### Immediate Actions
 1. **Archive `add-initial-architecture`** (91.3% complete, pending environment setup)
-2. **Create `/openspec propose add-rich-cli`** - Start with CLI for immediate UX value
-3. **Implement Rich CLI pattern** (3-5 days)
-4. **Create `/openspec propose add-hierarchical-enrichment`**
-5. **Continue pattern-by-pattern implementation**
+2. **Begin Codebase Consolidation Refactor** - Address architectural debt before adding new patterns
+3. **Create `/openspec propose codebase-consolidation-refactor`** - Implement consolidation plan
+
+### Post-Consolidation Pattern Implementation
+4. **Create `/openspec propose add-rich-cli`** - Start with CLI for immediate UX value
+5. **Implement Rich CLI pattern** (3-5 days)
+6. **Create `/openspec propose add-hierarchical-enrichment`**
+7. **Continue pattern-by-pattern implementation**
+
+### Consolidation Integration
+The remaining design patterns should be implemented **after** the codebase consolidation refactor to:
+- Leverage the unified configuration system for pattern-specific settings
+- Use consolidated asset framework for new pattern implementations
+- Benefit from unified testing framework for pattern validation
+- Integrate with centralized performance monitoring
+
+This approach ensures new patterns are built on a solid, consolidated foundation rather than adding to the current architectural complexity.
+
+**Recommended Sequence**:
+1. Complete codebase consolidation refactor (6-8 weeks)
+2. Implement remaining design patterns on consolidated architecture (4-6 weeks)
+3. Total estimated effort: 10-14 weeks for complete architectural modernization
 
 This incremental approach aligns with OpenSpec best practices and provides clear milestones for each production pattern.

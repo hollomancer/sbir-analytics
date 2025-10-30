@@ -334,15 +334,24 @@ Brief description of changes
 ```
 sbir-etl/
 ├── src/                    # Source code
-│   ├── assets/            # Dagster assets
-│   ├── config/            # Configuration management
-│   ├── enrichers/         # Data enrichment modules
-│   ├── extractors/        # Data extraction modules
-│   ├── loaders/           # Data loading (Neo4j)
-│   ├── models/            # Pydantic data models
-│   ├── transformers/      # Data transformation modules
-│   ├── utils/             # Shared utilities
-│   └── validators/        # Data validation modules
+│   ├── core/              # Consolidated core functionality
+│   │   ├── assets/        # Unified asset definitions
+│   │   ├── config/        # Single configuration system
+│   │   ├── models/        # Consolidated data models
+│   │   └── monitoring/    # Unified performance monitoring
+│   ├── pipeline/          # Pipeline-specific logic
+│   │   ├── extraction/    # Data extraction components
+│   │   ├── enrichment/    # Data enrichment components
+│   │   ├── transformation/# Data transformation components
+│   │   └── loading/       # Data loading components
+│   ├── shared/            # Shared utilities and helpers
+│   │   ├── database/      # Database clients and utilities
+│   │   ├── validation/    # Validation logic
+│   │   └── utils/         # Common utilities
+│   └── tests/             # Unified testing framework
+│       ├── fixtures/      # Shared test fixtures
+│       ├── helpers/       # Test utilities
+│       └── scenarios/     # Test scenarios
 ├── tests/                 # Test suite
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)

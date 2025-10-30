@@ -678,38 +678,74 @@ poetry install --with dev
 
 ## 7. Implementation Recommendations
 
-### 7.1 Directory Structure for Shared Code
+### 7.1 Directory Structure for Shared Code (Post-Consolidation)
+
+**Current Structure** (to be refactored):
 ```
 src/
-├── common/                    # Shared across all modules
-│   ├── config/
-│   │   ├── loader.py          # Configuration loading
-│   │   └── schemas.py         # Base config models
-│   ├── logging/
-│   │   └── setup.py           # Logging configuration
-│   ├── quality/
-│   │   ├── base_validator.py # Quality framework
-│   │   └── metrics.py         # Quality metrics
-│   └── utils/
-│       ├── text.py            # Text normalization
-│       └── dates.py           # Date parsing
-│
-├── loaders/
-│   ├── base_loader.py         # Shared Neo4j patterns
-│   ├── sbir_loader.py         # SBIR-specific
-│   ├── uspto_loader.py        # USPTO-specific
-│   └── cet_loader.py          # CET-specific
-│
-├── models/
-│   ├── base.py                # Shared base models
-│   ├── sbir_models.py         # SBIR entities
-│   ├── uspto_models.py        # Patent entities
-│   └── cet_models.py          # CET entities
-│
-├── sbir/                      # SBIR module
-├── uspto/                     # USPTO module
-└── ml/                        # CET classification module
+├── extractors/              # Stage 1: Data extraction
+├── validators/              # Stage 2: Schema validation
+├── enrichers/               # Stage 3: External enrichment
+├── transformers/            # Stage 4: Business logic
+├── loaders/                 # Stage 5: Neo4j loading
+├── assets/                  # Dagster asset definitions
+├── config/                  # Configuration management
+├── models/                  # Pydantic data models
+└── utils/                   # Shared utilities
 ```
+
+**Target Consolidated Structure**:
+```
+src/
+├── core/                    # Consolidated core functionality
+│   ├── assets/             # Unified asset definitions
+│   │   ├── base_asset.py   # Base asset class with monitoring
+│   │   ├── ingestion.py    # Consolidated ingestion assets
+│   │   ├── enrichment.py   # Consolidated enrichment assets
+│   │   └── loading.py      # Consolidated loading assets
+│   ├── config/             # Single configuration system
+│   │   ├── loader.py       # Unified configuration loader
+│   │   ├── schemas.py      # Consolidated Pydantic schemas
+│   │   └── validation.py   # Configuration validation
+│   ├── models/             # Consolidated data models
+│   │   ├── base.py         # Base model classes
+│   │   ├── awards.py       # Award-related models
+│   │   ├── companies.py    # Company-related models
+│   │   └── patents.py      # Patent-related models
+│   └── monitoring/         # Unified performance monitoring
+│       ├── metrics.py      # Performance metrics collection
+│       ├── alerts.py       # Alert management
+│       └── dashboard.py    # Monitoring dashboard
+├── pipeline/               # Pipeline-specific logic
+│   ├── extraction/         # Data extraction components
+│   ├── enrichment/         # Data enrichment components
+│   ├── transformation/     # Data transformation components
+│   └── loading/            # Data loading components
+├── shared/                 # Shared utilities and helpers
+│   ├── database/           # Database clients and utilities
+│   │   ├── neo4j_client.py # Neo4j client wrapper
+│   │   ├── duckdb_client.py# DuckDB client wrapper
+│   │   └── connection.py   # Connection management
+│   ├── validation/         # Validation logic
+│   │   ├── base.py         # Base validation framework
+│   │   ├── quality.py      # Data quality checks
+│   │   └── schema.py       # Schema validation
+│   └── utils/              # Common utilities
+│       ├── text.py         # Text processing utilities
+│       ├── dates.py        # Date handling utilities
+│       ├── files.py        # File processing utilities
+│       └── performance.py  # Performance utilities
+└── tests/                  # Unified testing framework
+    ├── fixtures/           # Shared test fixtures
+    ├── helpers/            # Test utilities
+    └── scenarios/          # Test scenarios
+```
+
+**Migration Benefits**:
+- **Reduced Duplication**: 30-60% reduction in duplicate code
+- **Consistent Patterns**: Unified approaches across all components
+- **Better Organization**: Clear separation of concerns
+- **Easier Maintenance**: Centralized shared functionality
 
 ### 7.2 Import Conventions
 ```python
