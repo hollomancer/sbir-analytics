@@ -141,4 +141,11 @@ export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
 - **Standard CI**: Lint, test, security scan on push/PR
 - **Container CI**: Docker build and test (8-12 min runtime)
 - **Performance Regression**: Benchmark comparison on enrichment changes
-- **Neo4j Integration**: Database connectivity and schema validation
+- **Neo4j Integration**: Database connectivity and schema validation## 
+Related Documents
+
+- **[product.md](product.md)** - Project overview and key features
+- **[structure.md](structure.md)** - Project organization and code structure
+- **[configuration-patterns.md](configuration-patterns.md)** - Environment variable configuration examples
+- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster orchestration and development workflow
+- **[quick-reference.md](quick-reference.md)** - Common commands quick reference

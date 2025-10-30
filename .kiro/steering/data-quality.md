@@ -1,10 +1,12 @@
 # Data Quality Standards
 
-## Quality Framework
+## Overview
 
-The system implements comprehensive data quality validation at every pipeline stage with configurable thresholds and severity-based actions.
+The system implements comprehensive data quality validation at every pipeline stage with configurable thresholds and severity-based actions. This document focuses on the quality framework, validation methods, and quality dimensions.
 
-## Quality Dimensions
+## Core Concepts
+
+### Quality Dimensions
 
 | Dimension | Definition | Validation Method | Target |
 |-----------|------------|-------------------|--------|
@@ -15,48 +17,13 @@ The system implements comprehensive data quality validation at every pipeline st
 | **Accuracy** | Data matches source of truth | Sample manual verification | ≥95% |
 | **Timeliness** | Data is current and fresh | Timestamp checks | Daily updates |
 
-## Quality Thresholds (Configurable)
-
-### Completeness Requirements
-```yaml
-data_quality:
-  completeness:
-    award_id: 1.00          # 100% required
-    company_name: 0.95      # 95% required
-    award_amount: 0.98      # 98% required
-    naics_code: 0.85        # 85% required (enrichment target)
-```
-
-### Uniqueness Requirements
-```yaml
-  uniqueness:
-    award_id: 1.00          # No duplicates allowed
-```
-
-### Validity Ranges
-```yaml
-  validity:
-    award_amount_min: 0.0
-    award_amount_max: 5000000.0  # $5M max for Phase II
-    award_date_min: "1983-01-01"
-    award_date_max: "2025-12-31"
-```
-
-### Quality Gates
-```yaml
-  thresholds:
-    max_duplicate_rate: 0.10      # Block if >10% duplicates
-    max_missing_rate: 0.15        # Warn if >15% missing
-    min_enrichment_success: 0.90  # Target 90% enrichment
-```
-
-## Severity-Based Actions
+### Severity-Based Actions
 
 - **ERROR**: Block pipeline execution, prevent downstream processing
 - **WARNING**: Log issue but continue processing
 - **INFO**: Log for informational purposes only
 
-## Quality Validation Implementation
+## Implementation Patterns
 
 ### Schema Validation
 - Required columns present
@@ -76,18 +43,32 @@ data_quality:
 - Coverage metrics for key fields
 - Historical quality trend tracking
 
-## Asset Check Integration
+## Configuration
 
-Quality validation is integrated into Dagster asset checks:
-- Asset checks enforce quality thresholds
-- Failed checks block downstream assets
-- Quality metrics stored in asset metadata
-- Quality trends visible in Dagster UI
+Quality thresholds and validation rules are configured in YAML. See **[configuration-patterns.md](configuration-patterns.md)** for complete configuration examples including:
 
-## Configuration-Driven Quality
+- Completeness requirements by field
+- Uniqueness constraints
+- Validity ranges and limits
+- Quality gate thresholds
+- Severity-based action configuration
 
-All quality thresholds are externalized to YAML configuration:
-- Business users can adjust thresholds without code changes
-- Environment-specific quality standards (dev vs prod)
-- A/B testing of different quality rules
-- Runtime configuration via environment variables
+## Best Practices
+
+### Quality Framework Design
+- **Configurable thresholds**: All quality rules externalized to configuration
+- **Severity-based actions**: Different responses based on issue severity
+- **Comprehensive reporting**: Detailed quality reports with actionable information
+- **Historical tracking**: Quality trends over time for regression detection
+
+### Quality Validation Strategy
+- **Early validation**: Catch issues as early as possible in the pipeline
+- **Incremental validation**: Validate data at each pipeline stage
+- **Contextual validation**: Different validation rules for different data types
+- **Graceful degradation**: Continue processing when possible, log failures
+
+## Related Documents
+
+- **[configuration-patterns.md](configuration-patterns.md)** - Complete quality configuration examples
+- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Asset check implementation patterns
+- **[quick-reference.md](quick-reference.md)** - Quality thresholds quick lookup

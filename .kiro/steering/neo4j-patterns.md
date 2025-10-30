@@ -171,17 +171,13 @@ ORDER BY a.record_date ASC
 - Use MERGE for upsert operations
 - Optimize query patterns for large datasets
 
-### Memory Management
-- Process data in chunks to avoid memory exhaustion
-- Monitor transaction size and memory usage
-- Use streaming for very large datasets
-- Implement backpressure mechanisms
-
 ### Query Optimization
 - Use EXPLAIN and PROFILE for query analysis
 - Optimize relationship traversals
 - Use appropriate indexes for query patterns
 - Limit result sets with pagination
+
+Performance configuration and memory management details are covered in **[pipeline-orchestration.md](pipeline-orchestration.md)**.
 
 ## Data Quality Constraints
 
@@ -287,4 +283,10 @@ CREATE (c)-[:OWNS {as_of_date: $assignment_date}]->(p)
 - Query performance analysis
 - Index effectiveness monitoring
 - Memory usage tracking
-- Transaction throughput measurement
+- Transaction throughput measurement## R
+elated Documents
+
+- **[configuration-patterns.md](configuration-patterns.md)** - Complete Neo4j configuration examples
+- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Loading performance optimization and memory management
+- **[data-quality.md](data-quality.md)** - Data quality constraints and validation
+- **[quick-reference.md](quick-reference.md)** - Neo4j patterns quick reference and common queries

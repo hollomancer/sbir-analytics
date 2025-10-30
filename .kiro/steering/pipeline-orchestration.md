@@ -114,25 +114,14 @@ Assets organized by functional area:
 - Spill-to-disk strategies for large datasets
 - Resource-aware processing decisions
 
-## Configuration-Driven Orchestration
+## Configuration
 
-### Pipeline Configuration
-```yaml
-pipeline:
-  chunk_size: 10000              # Records per processing chunk
-  memory_threshold_mb: 2048      # Memory pressure threshold
-  timeout_seconds: 300           # Processing timeout per chunk
-  enable_incremental: true       # Support incremental processing
-```
+Pipeline processing, performance tuning, and orchestration settings are configured in YAML. See **[configuration-patterns.md](configuration-patterns.md)** for complete configuration examples including:
 
-### Performance Tuning
-```yaml
-performance:
-  batch_size: 1000              # Neo4j batch size
-  parallel_threads: 4           # Parallel processing threads
-  retry_attempts: 3             # Retry failed operations
-  backoff_strategy: exponential # Retry backoff strategy
-```
+- Pipeline processing configuration (chunk sizes, memory thresholds, timeouts)
+- Performance tuning settings (batch sizes, parallel threads, retry strategies)
+- Asset execution configuration
+- Memory management settings
 
 ## Error Handling and Recovery
 
@@ -154,9 +143,12 @@ performance:
 - Quality threshold breach alerts
 - Resource utilization monitoring
 
-## Asset Check Examples
+## Asset Check Implementation
 
-### Completeness Check
+### Quality Gate Integration
+Asset checks are co-located with assets and enforce quality thresholds at each pipeline stage. Failed checks block downstream asset execution.
+
+### Completeness Check Pattern
 ```python
 @asset_check(asset=validated_sbir_awards)
 def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> AssetCheckResult:
@@ -174,7 +166,7 @@ def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> Asset
     )
 ```
 
-### Enrichment Success Rate Check
+### Success Rate Check Pattern
 ```python
 @asset_check(asset=enriched_sbir_awards)
 def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
@@ -190,6 +182,22 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
         }
     )
 ```
+
+### Performance Monitoring Integration
+
+**Asset Execution Metadata:**
+- Records processed count
+- Execution duration and throughput
+- Memory usage and performance metrics
+- Quality metrics and success rates
+- Error counts and issue summaries
+
+**Performance Metrics Collection:**
+- Execution time per enrichment source
+- Memory usage during processing
+- Throughput (records/second)
+- API response times and error rates
+- Success rate tracking by source
 
 ## Best Practices
 
@@ -216,3 +224,12 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 - Performance metric collection
 - Quality metric tracking
 - Historical trend analysis
+## Rel
+ated Documents
+
+- **[configuration-patterns.md](configuration-patterns.md)** - Complete pipeline and performance configuration examples
+- **[data-quality.md](data-quality.md)** - Quality framework integrated with asset checks
+- **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment performance monitoring patterns
+- **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database loading patterns
+- **[structure.md](structure.md)** - Code organization and asset structure
+- **[quick-reference.md](quick-reference.md)** - Asset check templates and configuration snippets

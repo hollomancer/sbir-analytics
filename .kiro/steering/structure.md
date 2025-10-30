@@ -143,4 +143,11 @@ from pydantic import BaseModel, Field
 
 from src.config.loader import load_config
 from src.models.sbir_award import SbirAward
-```
+```## Relat
+ed Documents
+
+- **[product.md](product.md)** - Project overview and business context
+- **[tech.md](tech.md)** - Technology stack and development tools
+- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster asset organization patterns
+- **[configuration-patterns.md](configuration-patterns.md)** - Configuration management examples
+- **[quick-reference.md](quick-reference.md)** - Common commands and development setup

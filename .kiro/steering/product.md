@@ -29,4 +29,11 @@ The federal government provides vast amounts of data on innovation and governmen
 
 ### Business Value
 
-Enables analysis of technology transition from research to commercialization, patent ownership patterns, and the effectiveness of government innovation funding programs.
+Enables analysis of technology transition from research to commercialization, patent ownership patterns, and the effectiveness of government innovation funding programs.## Rela
+ted Documents
+
+- **[structure.md](structure.md)** - Project organization and architectural patterns
+- **[tech.md](tech.md)** - Technology stack and development tools
+- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Five-stage ETL pipeline implementation
+- **[data-quality.md](data-quality.md)** - Quality gates and validation framework
+- **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database modeling for SBIR ecosystem
