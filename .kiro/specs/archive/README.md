@@ -21,7 +21,9 @@ archive/
 - **Status**: ✅ Completed successfully
 - **Results**: 8 OpenSpec changes + 9 specs → 13 Kiro specifications
 - **Impact**: Established Kiro as the project's specification system
+- **Migration ID**: migration_20251030_152650
 - **Location**: `completed-migrations/openspec-to-kiro-migration/`
+- **Completion Record**: See `COMPLETION_RECORD.md` for detailed results and artifacts
 
 ## Archive Guidelines
 
