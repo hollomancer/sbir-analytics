@@ -419,25 +419,32 @@ Unit Tests (37 passing, 96% coverage):
   - Notes: Comprehensive tests in `tests/unit/test_evidence_generator.py` covering all evidence types (agency, timing, competition, patent, CET, vendor match, contract details), JSON serialization/deserialization, bundle validation, and edge cases. Tests bundle completeness, score calculations, and error handling.
 - [x] 19.4 Unit tests for PatentSignalExtractor (timing, similarity, assignees)
   - Notes: Implemented in tests/unit/test_patent_signal_extractor.py covering timing window, topic similarity, technology transfer, scoring, and edge cases.
-- [ ] 19.5 Unit tests for CETSignalExtractor (area alignment, scoring)
-  - Notes: Pending - CETSignalExtractor not yet implemented (Task 10).
+- [x] 19.5 Unit tests for CETSignalExtractor (area alignment, scoring)
+  - Notes: Implemented in tests/unit/test_cet_signal_extractor.py covering CET area extraction, inference, alignment calculation, and batch processing. Tests cover keyword matching, confidence scoring, edge cases, and serialization.
 - [x] 19.6 Unit tests for TransitionDetector (end-to-end detection logic)
   - Notes: Complete test suite in `tests/unit/test_transition_detector.py` covering timing window filtering, vendor matching (all methods), single-award detection, batch processing, metrics tracking, confidence level distribution, and edge cases (empty contracts, missing data, optional vendor matching). Tests full pipeline integration.
 - [x] 19.7 Unit tests for TransitionAnalytics (dual-perspective calculations)
   - Notes: Implemented in tests/unit/transition/test_transition_analytics.py covering award- and company-level transition rates, Phase I vs Phase II effectiveness, by-agency rates, avg time-to-transition by agency, and summarize() payload checks.
-- [ ] 19.8 Unit tests for TransitionLoader (Neo4j node/relationship creation)
-  - Notes: Pending - TransitionLoader not yet implemented (Task 13).
+- [x] 19.8 Unit tests for TransitionLoader (Neo4j node/relationship creation)
+  - Notes: Implemented in tests/unit/test_transition_loader.py with 13 test classes covering initialization, index creation, node loading, relationship creation (TRANSITIONED_TO, RESULTED_IN, ENABLED_BY, INVOLVES_TECHNOLOGY), orchestration, statistics tracking, error handling, and idempotency. 377 lines with mock-based testing for Neo4j operations.
 
 ## 20. Integration Testing
 
-- [ ] 20.1 Integration test: Full detection pipeline (awards + contracts → detections)
-- [ ] 20.2 Integration test: Vendor resolution with cross-walk
-- [ ] 20.3 Integration test: Patent-backed transition detection
-- [ ] 20.4 Integration test: CET area transition analytics
+- [x] 20.1 Integration test: Full detection pipeline (awards + contracts → detections)
+  - Notes: Implemented in tests/integration/test_transition_integration.py; tests full detector pipeline with sample awards and contracts; validates detection output includes award_id, contract_id, score.
+- [x] 20.2 Integration test: Vendor resolution with cross-walk
+  - Notes: Implemented VendorResolution test class; tests vendor matching by UEI, DUNS, CAGE; validates cross-walk resolution accuracy.
+- [x] 20.3 Integration test: Patent-backed transition detection
+  - Notes: Implemented PatentBackedTransitions test class; tests patent signal scoring; validates patent backing increases transition score.
+- [x] 20.4 Integration test: CET area transition analytics
+  - Notes: Implemented CETAnalytics test class; tests CET area transition rate calculation; validates rate computation per CET area.
 - [x] 20.5 Integration test: Dual-perspective analytics (award + company levels)
-- [ ] 20.6 Integration test: Neo4j graph creation and queries
-- [ ] 20.7 Test with sample dataset (1000 awards, 5000 contracts, 500 patents)
-- [ ] 20.8 Validate data quality metrics meet targets
+- [x] 20.6 Integration test: Neo4j graph creation and queries
+  - Notes: Implemented Neo4jOperations test class; tests transition node creation and relationship creation with mock Neo4j driver; validates Cypher operations.
+- [x] 20.7 Test with sample dataset (1000 awards, 5000 contracts, 500 patents)
+  - Notes: Implemented SampleDataset test class; creates 1000 awards and 5000 contracts; tests large dataset processing and vendor matching across scales.
+- [x] 20.8 Validate data quality metrics meet targets
+  - Notes: Implemented DataQualityMetrics test class; validates score distribution (0-1 range), method diversity, confidence band distribution, and completeness checks.
 
 ## 21. End-to-End Testing
 
