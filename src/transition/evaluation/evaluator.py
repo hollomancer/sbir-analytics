@@ -306,6 +306,197 @@ class TransitionEvaluator:
 
         return breakdown
 
+    def identify_false_positives(
+        self,
+        detections_df: pd.DataFrame,
+        ground_truth_df: pd.DataFrame,
+        detection_id_columns: Tuple[str, str] = ("award_id", "contract_id"),
+        score_column: str = "score",
+        confidence_column: str = "confidence",
+        truth_id_columns: Tuple[str, str] = ("award_id", "contract_id"),
+    ) -> pd.DataFrame:
+        """
+        Identify false positive detections for algorithm tuning (Task 18.8).
+
+        Returns detections that do not appear in ground truth, sorted by score.
+        These are candidates for algorithm refinement.
+
+        Args:
+            detections_df: DataFrame with detected transitions
+            ground_truth_df: DataFrame with known Phase III transitions
+            detection_id_columns: Columns identifying a detection pair
+            score_column: Column name for detection score
+            confidence_column: Column name for confidence level
+            truth_id_columns: Columns identifying a ground truth pair
+
+        Returns:
+            DataFrame of false positive detections with analysis columns
+        """
+        # Build ground truth set
+        truth_pairs = [
+            tuple(str(ground_truth_df[col].iloc[i]).strip() for col in truth_id_columns)
+            for i in range(len(ground_truth_df))
+        ]
+        truth_set = set(truth_pairs)
+
+        # Build detection set
+        df = detections_df.copy()
+        df = df[pd.to_numeric(df[score_column], errors="coerce") >= self.score_threshold].copy()
+
+        if df.empty:
+            return pd.DataFrame()
+
+        # Identify pairs
+        detection_pairs = [
+            tuple(str(df[col].iloc[i]).strip() for col in detection_id_columns)
+            for i in range(len(df))
+        ]
+
+        # Mark false positives
+        is_false_positive = [pair not in truth_set for pair in detection_pairs]
+        df["is_false_positive"] = is_false_positive
+
+        # Filter to false positives and sort by score (highest first)
+        false_positives = df[df["is_false_positive"]].copy()
+        false_positives = false_positives.sort_values(score_column, ascending=False)
+
+        return false_positives
+
+    def generate_evaluation_report(
+        self,
+        evaluation_result: EvaluationResult,
+        detections_count: int = 0,
+        ground_truth_count: int = 0,
+    ) -> str:
+        """
+        Generate a human-readable evaluation report (Task 18.9).
+
+        Includes metrics summary, confidence band breakdown, confusion matrix,
+        and recommendations for algorithm tuning.
+
+        Args:
+            evaluation_result: EvaluationResult from evaluate()
+            detections_count: Total number of detections analyzed
+            ground_truth_count: Total ground truth samples
+
+        Returns:
+            Formatted markdown report string
+        """
+        lines = [
+            "# Transition Detection Evaluation Report",
+            "",
+            f"**Analysis Date:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"**Score Threshold:** {self.score_threshold}",
+            "",
+            "## Overall Metrics",
+            "",
+            f"- **Precision:** {evaluation_result.precision:.1%}",
+            f"  - Correct detections / Total detections",
+            f"  - TP={evaluation_result.confusion.tp}, FP={evaluation_result.confusion.fp}",
+            "",
+            f"- **Recall:** {evaluation_result.recall:.1%}",
+            f"  - Detected transitions / Total ground truth transitions",
+            f"  - TP={evaluation_result.confusion.tp}, FN={evaluation_result.confusion.fn}",
+            "",
+            f"- **F1 Score:** {evaluation_result.f1:.3f}",
+            f"  - Harmonic mean of precision and recall",
+            "",
+            f"- **Support:** {evaluation_result.support} ground truth samples",
+            "",
+        ]
+
+        # Confusion matrix
+        lines.extend(
+            [
+                "## Confusion Matrix",
+                "",
+                f"| Metric | Count |",
+                f"|--------|-------|",
+                f"| True Positives (TP) | {evaluation_result.confusion.tp} |",
+                f"| False Positives (FP) | {evaluation_result.confusion.fp} |",
+                f"| False Negatives (FN) | {evaluation_result.confusion.fn} |",
+                f"| True Negatives (TN) | {evaluation_result.confusion.tn} |",
+                f"| **Total** | **{evaluation_result.confusion.total}** |",
+                "",
+            ]
+        )
+
+        # Confidence band breakdown
+        if evaluation_result.by_confidence:
+            lines.extend(
+                [
+                    "## Performance by Confidence Band",
+                    "",
+                ]
+            )
+            for confidence, metrics in evaluation_result.by_confidence.items():
+                prec = metrics.get("precision", 0.0)
+                lines.append(
+                    f"- **{confidence}**: "
+                    f"Detections={metrics.get('detections', 0)}, "
+                    f"TP={metrics.get('true_positives', 0)}, "
+                    f"FP={metrics.get('false_positives', 0)}, "
+                    f"Precision={prec:.1%}"
+                )
+            lines.append("")
+
+        # Recommendations
+        lines.extend(
+            [
+                "## Recommendations for Algorithm Tuning",
+                "",
+            ]
+        )
+
+        if evaluation_result.precision < 0.80:
+            lines.append("- ⚠️ **Low Precision:** Many false positives detected")
+            lines.append("  - Consider increasing score threshold to reduce false positives")
+            lines.append("  - Review false positive cases to identify systematic errors")
+            lines.append("  - Adjust signal weights to reduce spurious matches")
+            lines.append("")
+
+        if evaluation_result.recall < 0.70:
+            lines.append("- ⚠️ **Low Recall:** Missing known transitions")
+            lines.append("  - Consider lowering score threshold to catch more transitions")
+            lines.append("  - Analyze false negatives to identify missing signal types")
+            lines.append("  - Increase weights for signals that correlate with true transitions")
+            lines.append("")
+
+        if evaluation_result.precision >= 0.80 and evaluation_result.recall >= 0.70:
+            lines.append("- ✓ **Good Performance:** Algorithm meets quality targets")
+            lines.append("  - Precision and recall are well-balanced")
+            lines.append("  - Continue monitoring with additional validation data")
+            lines.append("")
+
+        # Confidence band recommendations
+        if evaluation_result.by_confidence:
+            low_precision_bands = [
+                conf
+                for conf, metrics in evaluation_result.by_confidence.items()
+                if metrics.get("precision", 0.0) < 0.75
+            ]
+            if low_precision_bands:
+                lines.append(
+                    f"- Consider reviewing detection signals for low-precision bands: "
+                    f"{', '.join(low_precision_bands)}"
+                )
+                lines.append("")
+
+        lines.extend(
+            [
+                "## Next Steps",
+                "",
+                "1. Review false positive cases to identify systematic issues",
+                "2. Validate recall by checking false negatives",
+                "3. Test algorithm adjustments on held-out validation set",
+                "4. Monitor precision and recall post-deployment",
+                "5. Collect feedback on detection quality from domain experts",
+                "",
+            ]
+        )
+
+        return "\n".join(lines)
+
     @staticmethod
     def _safe_divide(numerator: float, denominator: float) -> float:
         """Guard against division-by-zero, returning 0.0 instead."""
