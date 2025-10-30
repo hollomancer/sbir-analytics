@@ -22,6 +22,7 @@ from .assets import (
     transition_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
+from .assets.jobs.transition_job import transition_mvp_job, transition_full_job, transition_analytics_job
 
 # Load all assets and checks from modules
 all_assets = load_assets_from_modules(
@@ -33,6 +34,7 @@ all_assets = load_assets_from_modules(
         uspto_assets,
         uspto_validation_assets,
         uspto_transformation_assets,
+        cet_assets,
         transition_assets,
     ]
 )
@@ -74,7 +76,7 @@ daily_schedule = ScheduleDefinition(
 # Define a small asset job to run the CET drift detection asset
 cet_drift_job = define_asset_job(
     name="cet_drift_job",
-    selection=AssetSelection.keys("cet_drift_detection"),
+    selection=AssetSelection.keys(["ml", "cet_drift_detection"]),
     description="Run CET drift detection asset",
 )
 
@@ -100,6 +102,14 @@ cet_drift_schedule = ScheduleDefinition(
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
-    jobs=[sbir_ingestion_job, etl_job, cet_full_pipeline_job, cet_drift_job],
+    jobs=[
+        sbir_ingestion_job, 
+        etl_job, 
+        cet_full_pipeline_job, 
+        cet_drift_job,
+        transition_mvp_job,
+        transition_full_job,
+        transition_analytics_job
+    ],
     schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
 )

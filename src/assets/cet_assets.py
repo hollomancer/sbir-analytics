@@ -9,7 +9,14 @@ Primary deliverable:
 Helper functions:
 - `taxonomy_to_dataframe` - convert TaxonomyConfig -> pandas.DataFrame
 - `save_dataframe_parquet` - safe parquet saver that creates directories
+
+Notes:
+- This module intentionally keeps asset logic small and testable so it can
+  be executed in CI without heavy dependencies. File I/O uses pandas'
+  `to_parquet` which requires pyarrow or fastparquet available in the env.
 """
+
+from __future__ import annotations
 
 # Import-safe shims for Dagster asset checks
 try:
@@ -46,7 +53,7 @@ except Exception:  # pragma: no cover
     asset="cet_taxonomy",
     description="CET taxonomy completeness and schema validity based on companion checks JSON",
 )
-def cet_taxonomy_completeness_check(context: AssetExecutionContext) -> AssetCheckResult:
+def cet_taxonomy_completeness_check(context) -> AssetCheckResult:
     """
     Verify CET taxonomy was materialized and validated successfully.
     Consumes data/processed/cet_taxonomy.checks.json written by the asset.
@@ -93,7 +100,7 @@ def cet_taxonomy_completeness_check(context: AssetExecutionContext) -> AssetChec
     asset="cet_award_classifications",
     description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
 )
-def cet_award_classifications_quality_check(context: AssetExecutionContext) -> AssetCheckResult:
+def cet_award_classifications_quality_check(context) -> AssetCheckResult:
     """
     Validate CET award classification quality against targets.
     Consumes data/processed/cet_award_classifications.checks.json written by the asset.
@@ -179,7 +186,7 @@ def cet_award_classifications_quality_check(context: AssetExecutionContext) -> A
     asset="cet_company_profiles",
     description="Company CET profiles successfully generated (basic sanity from checks JSON)",
 )
-def cet_company_profiles_check(context: AssetExecutionContext) -> AssetCheckResult:
+def cet_company_profiles_check(context) -> AssetCheckResult:
     """
     Ensure company CET profiles were produced without critical errors.
     Consumes data/processed/cet_company_profiles.checks.json written by the asset.
@@ -220,14 +227,6 @@ def cet_company_profiles_check(context: AssetExecutionContext) -> AssetCheckResu
         description=desc,
         metadata={"checks_path": str(checks_path), **checks},
     )
-
-Notes:
-- This module intentionally keeps asset logic small and testable so it can
-  be executed in CI without heavy dependencies. File I/O uses pandas'
-  `to_parquet` which requires pyarrow or fastparquet available in the env.
-"""
-
-from __future__ import annotations
 
 import os
 from dataclasses import asdict

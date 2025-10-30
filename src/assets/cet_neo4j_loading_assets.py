@@ -263,16 +263,16 @@ def _serialize_metrics(metrics: Optional[LoadMetrics]) -> Dict[str, Any]:
     name="neo4j_cetarea_nodes",
     description="Load CETArea nodes into Neo4j from CET taxonomy artifact.",
     group_name="neo4j_cet",
-    ins={"cet_taxonomy": AssetIn()},
+    ins={"cet_taxonomy": AssetIn(key=["ml", "cet_taxonomy"])},
     config_schema={
-        "create_constraints": {"type": bool, "default": True},
-        "create_indexes": {"type": bool, "default": True},
-        "taxonomy_parquet": {"type": str, "default": str(DEFAULT_TAXONOMY_PARQUET)},
-        "taxonomy_json": {"type": str, "default": str(DEFAULT_TAXONOMY_JSON)},
-        "batch_size": {"type": int, "default": 1000},
+        "create_constraints": bool,
+        "create_indexes": bool,
+        "taxonomy_parquet": str,
+        "taxonomy_json": str,
+        "batch_size": int,
     },
 )
-def neo4j_cetarea_nodes(context: AssetExecutionContext, cet_taxonomy) -> Dict[str, Any]:
+def neo4j_cetarea_nodes(context, cet_taxonomy) -> Dict[str, Any]:
     """Upsert CETArea nodes based on taxonomy output."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping CETArea loading")
@@ -337,17 +337,17 @@ def neo4j_cetarea_nodes(context: AssetExecutionContext, cet_taxonomy) -> Dict[st
     description="Upsert CET enrichment properties onto Award nodes from award classifications artifact.",
     group_name="neo4j_cet",
     ins={
-        "cet_award_classifications": AssetIn(),
+        "cet_award_classifications": AssetIn(key=["ml", "cet_award_classifications"]),
         "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
     },
     config_schema={
-        "classifications_parquet": {"type": str, "default": str(DEFAULT_AWARD_CLASS_PARQUET)},
-        "classifications_json": {"type": str, "default": str(DEFAULT_AWARD_CLASS_JSON)},
-        "batch_size": {"type": int, "default": 1000},
+        "classifications_parquet": str,
+        "classifications_json": str,
+        "batch_size": int,
     },
 )
 def neo4j_award_cet_enrichment(
-    context: AssetExecutionContext,
+    context,
     cet_award_classifications,
     neo4j_cetarea_nodes,
 ) -> Dict[str, Any]:
@@ -424,22 +424,18 @@ def neo4j_award_cet_enrichment(
     description="Upsert CET enrichment properties onto Company nodes from company CET profiles.",
     group_name="neo4j_cet",
     ins={
-        "cet_company_profiles": AssetIn(),
+        "cet_company_profiles": AssetIn(key=["ml", "cet_company_profiles"]),
         "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
     },
     config_schema={
-        "profiles_parquet": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_PARQUET)},
-        "profiles_json": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_JSON)},
-        "key_property": {
-            "type": str,
-            "default": "uei",
-            "description": "Company key to match on in Neo4j (e.g., 'uei' or 'company_id').",
-        },
-        "batch_size": {"type": int, "default": 1000},
+        "profiles_parquet": str,
+        "profiles_json": str,
+        "key_property": str,
+        "batch_size": int,
     },
 )
 def neo4j_company_cet_enrichment(
-    context: AssetExecutionContext,
+    context,
     cet_company_profiles,
     neo4j_cetarea_nodes,
 ) -> Dict[str, Any]:
@@ -524,18 +520,18 @@ def neo4j_company_cet_enrichment(
     description="Create Award -> CETArea relationships from award classifications.",
     group_name="neo4j_cet",
     ins={
-        "cet_award_classifications": AssetIn(),
+        "cet_award_classifications": AssetIn(key=["ml", "cet_award_classifications"]),
         "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
     },
     config_schema={
-        "classifications_parquet": {"type": str, "default": str(DEFAULT_AWARD_CLASS_PARQUET)},
-        "classifications_json": {"type": str, "default": str(DEFAULT_AWARD_CLASS_JSON)},
-        "rel_type": {"type": str, "default": "APPLICABLE_TO"},
-        "batch_size": {"type": int, "default": 1000},
+        "classifications_parquet": str,
+        "classifications_json": str,
+        "rel_type": str,
+        "batch_size": int,
     },
 )
 def neo4j_award_cet_relationships(
-    context: AssetExecutionContext,
+    context,
     cet_award_classifications,
     neo4j_cetarea_nodes,
 ) -> Dict[str, Any]:
@@ -621,23 +617,19 @@ def neo4j_award_cet_relationships(
     description="Create Company -> CETArea relationships from company CET profiles or enrichment.",
     group_name="neo4j_cet",
     ins={
-        "cet_company_profiles": AssetIn(),
+        "cet_company_profiles": AssetIn(key=["ml", "cet_company_profiles"]),
         "neo4j_cetarea_nodes": AssetIn(),  # ensure taxonomy nodes exist first
     },
     config_schema={
-        "profiles_parquet": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_PARQUET)},
-        "profiles_json": {"type": str, "default": str(DEFAULT_COMPANY_PROFILES_JSON)},
-        "key_property": {
-            "type": str,
-            "default": "uei",
-            "description": "Company key to match on in Neo4j (e.g., 'uei' or 'company_id').",
-        },
-        "rel_type": {"type": str, "default": "SPECIALIZES_IN"},
-        "batch_size": {"type": int, "default": 1000},
+        "profiles_parquet": str,
+        "profiles_json": str,
+        "key_property": str,
+        "rel_type": str,
+        "batch_size": int,
     },
 )
 def neo4j_company_cet_relationships(
-    context: AssetExecutionContext,
+    context,
     cet_company_profiles,
     neo4j_cetarea_nodes,
 ) -> Dict[str, Any]:

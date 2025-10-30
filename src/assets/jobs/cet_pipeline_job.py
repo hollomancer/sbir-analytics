@@ -18,7 +18,7 @@ Notes:
 - Provide runtime configuration via Dagster run config for paths, batch sizes, etc.
 """
 
-from dagster import AssetSelection, build_assets_job
+from dagster import AssetSelection, define_asset_job
 
 # Import CET production assets
 try:
@@ -60,18 +60,8 @@ if (
     and neo4j_award_cet_relationships is not None
     and neo4j_company_cet_relationships is not None
 ):
-    cet_full_pipeline_job = build_assets_job(
+    cet_full_pipeline_job = define_asset_job(
         name="cet_full_pipeline_job",
-        assets=[
-            cet_taxonomy,
-            cet_award_classifications,
-            cet_company_profiles,
-            neo4j_cetarea_nodes,
-            neo4j_award_cet_enrichment,
-            neo4j_company_cet_enrichment,
-            neo4j_award_cet_relationships,
-            neo4j_company_cet_relationships,
-        ],
         selection=AssetSelection.keys(
             cet_taxonomy.key,  # type: ignore[attr-defined]
             cet_award_classifications.key,  # type: ignore[attr-defined]
@@ -88,9 +78,9 @@ if (
         ),
     )
 else:
-    cet_full_pipeline_job = build_assets_job(
+    cet_full_pipeline_job = define_asset_job(
         name="cet_full_pipeline_job_placeholder",
-        assets=[],
+        selection=AssetSelection.keys(),
         description="Placeholder job (CET assets unavailable at import time).",
     )
 

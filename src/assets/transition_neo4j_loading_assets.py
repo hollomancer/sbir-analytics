@@ -160,7 +160,7 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
     description="Load transition detections as Transition nodes in Neo4j (Task 13.3-13.5)",
 )
 def neo4j_transitions(
-    context: AssetExecutionContext,
+    context,
     transition_detections: pd.DataFrame,
 ) -> Output[Dict[str, Any]]:
     """
@@ -244,7 +244,7 @@ def neo4j_transitions(
     description="Verify transition node load success rate (Task 13.6)",
 )
 def transition_node_count_check(
-    context: AssetExecutionContext,
+    context,
     transition_detections: pd.DataFrame,
 ) -> AssetCheckResult:
     """
@@ -318,7 +318,7 @@ def transition_node_count_check(
     description="Create transition relationships in Neo4j (Task 14.1-14.7, 14.8)",
 )
 def neo4j_transition_relationships(
-    context: AssetExecutionContext,
+    context,
     neo4j_transitions: Dict[str, Any],
     transition_detections: pd.DataFrame,
 ) -> Output[Dict[str, Any]]:
@@ -403,7 +403,7 @@ def neo4j_transition_relationships(
     description="Verify transition relationships were created (Task 14.8)",
 )
 def transition_relationships_check(
-    context: AssetExecutionContext,
+    context,
     transition_detections: pd.DataFrame,
 ) -> AssetCheckResult:
     """
@@ -492,7 +492,7 @@ def transition_relationships_check(
     description="Create company transition profile nodes in Neo4j (Task 15)",
 )
 def neo4j_transition_profiles(
-    context: AssetExecutionContext,
+    context,
     neo4j_transition_relationships: Dict[str, Any],
     transition_detections: pd.DataFrame,
     enriched_sbir_awards: Optional[pd.DataFrame] = None,

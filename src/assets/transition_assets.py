@@ -980,15 +980,6 @@ def transition_evidence_v1(
 
 
 @asset(
-    name="transition_analytics",
-    group_name="transition",
-    compute_kind="pandas",
-    description=(
-        "Compute dual-perspective transition analytics (award/company rates, phase, agency) "
-        "and emit a checks JSON for gating."
-    ),
-)
-@asset(
     name="transition_detections",
     group_name="transition",
     compute_kind="pandas",
@@ -1051,6 +1042,15 @@ def transition_detections(
     return Output(df, metadata=meta)
 
 
+@asset(
+    name="transition_analytics",
+    group_name="transition",
+    compute_kind="pandas",
+    description=(
+        "Compute dual-perspective transition analytics (award/company rates, phase, agency) "
+        "and emit a checks JSON for gating."
+    ),
+)
 def transition_analytics(
     context,
     enriched_sbir_awards: pd.DataFrame,

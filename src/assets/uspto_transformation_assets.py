@@ -247,7 +247,7 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
-def _resolve_output_paths(context: AssetExecutionContext, prefix: str) -> tuple[Path, Path]:
+def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)
@@ -284,7 +284,7 @@ def _load_assignments_file(path: str | None) -> Iterable[Dict[str, Any]]:
     },
 )
 def transformed_patent_assignments(
-    context: AssetExecutionContext,
+    context,
     assignment_files: List[str],
     assignee_files: List[str],
     assignor_files: List[str],
@@ -384,7 +384,7 @@ def transformed_patent_assignments(
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patents(
-    context: AssetExecutionContext, transformed_assignments: Dict[str, Any]
+    context, transformed_assignments: Dict[str, Any]
 ) -> Dict[str, Any]:
     output_path, base_dir = _resolve_output_paths(context, "patents")
     src_path = transformed_assignments.get("output_path")
@@ -456,7 +456,7 @@ def transformed_patents(
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patent_entities(
-    context: AssetExecutionContext, transformed_assignments: Dict[str, Any]
+    context, transformed_assignments: Dict[str, Any]
 ) -> Dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
@@ -518,7 +518,7 @@ def transformed_patent_entities(
     description="Verify transformation success rate meets threshold",
 )
 def uspto_transformation_success_check(
-    context: AssetExecutionContext, transformed_patent_assignments: Dict[str, Any]
+    context, transformed_patent_assignments: Dict[str, Any]
 ) -> AssetCheckResult:
     success_rate = transformed_patent_assignments.get("success_rate", 0.0)
     passed = success_rate >= TRANSFORM_SUCCESS_THRESHOLD
@@ -545,7 +545,7 @@ def uspto_transformation_success_check(
     description="Ensure SBIR company linkage coverage meets target",
 )
 def uspto_company_linkage_check(
-    context: AssetExecutionContext, transformed_patent_assignments: Dict[str, Any]
+    context, transformed_assignments: Dict[str, Any]
 ) -> AssetCheckResult:
     linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET

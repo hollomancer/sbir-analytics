@@ -177,11 +177,11 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patents"],
     config_schema={
-        "create_indexes": {"type": "bool", "default": True},
-        "create_constraints": {"type": "bool", "default": True},
+        "create_indexes": bool,
+        "create_constraints": bool,
     },
 )
-def neo4j_patents(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patents(context) -> Dict[str, Any]:
     """Phase 1 Step 2: Load Patent nodes into Neo4j.
 
     Reads transformed patent documents and creates Patent nodes with:
@@ -282,7 +282,7 @@ def neo4j_patents(context: AssetExecutionContext) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patent_assignments"],
 )
-def neo4j_patent_assignments(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patent_assignments(context) -> Dict[str, Any]:
     """Phase 1 Step 1: Load PatentAssignment nodes into Neo4j.
 
     Reads transformed patent assignments and creates PatentAssignment nodes with:
@@ -378,7 +378,7 @@ def neo4j_patent_assignments(context: AssetExecutionContext) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["neo4j_patients", "neo4j_patent_assignments", "transformed_patent_entities"],
 )
-def neo4j_patent_entities(context: AssetExecutionContext) -> Dict[str, Any]:
+def neo4j_patent_entities(context) -> Dict[str, Any]:
     """Phase 2 & 3: Load PatentEntity nodes and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
@@ -482,7 +482,7 @@ def neo4j_patent_entities(context: AssetExecutionContext) -> Dict[str, Any]:
     deps=["neo4j_patents", "neo4j_patent_assignments", "neo4j_patent_entities"],
 )
 def neo4j_patent_relationships(
-    context: AssetExecutionContext,
+    context,
     neo4j_patents: Dict[str, Any],
     neo4j_patent_assignments: Dict[str, Any],
     neo4j_patent_entities: Dict[str, Any],
@@ -631,7 +631,7 @@ def neo4j_patent_relationships(
     description="Verify patent load success rate meets minimum threshold",
 )
 def patent_load_success_rate(
-    context: AssetExecutionContext, neo4j_patents: Dict[str, Any]
+    context, neo4j_patents: Dict[str, Any]
 ) -> AssetCheckResult:
     """Check that patent loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patents.get("success_rate", 0.0)
@@ -664,7 +664,7 @@ def patent_load_success_rate(
     description="Verify assignment load success rate meets minimum threshold",
 )
 def assignment_load_success_rate(
-    context: AssetExecutionContext, neo4j_patent_assignments: Dict[str, Any]
+    context, neo4j_patent_assignments: Dict[str, Any]
 ) -> AssetCheckResult:
     """Check that assignment loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patent_assignments.get("success_rate", 0.0)
@@ -697,7 +697,7 @@ def assignment_load_success_rate(
     description="Sanity check relationship cardinality",
 )
 def patent_relationship_cardinality(
-    context: AssetExecutionContext, neo4j_patent_relationships: Dict[str, Any]
+    context, neo4j_patent_relationships: Dict[str, Any]
 ) -> AssetCheckResult:
     """Sanity check that reasonable numbers of each relationship type exist."""
     assigned_via = neo4j_patent_relationships.get("assigned_via_count", 0)

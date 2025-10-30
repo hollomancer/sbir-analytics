@@ -108,7 +108,7 @@ def _batch_to_dataframe(batch: List[Dict]):
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def uspto_ai_extract_to_duckdb(context: AssetExecutionContext) -> Dict[str, object]:
+def uspto_ai_extract_to_duckdb(context) -> Dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -308,7 +308,7 @@ def uspto_ai_extract_to_duckdb(context: AssetExecutionContext) -> Dict[str, obje
     ins={"uspto_ai_extract_to_duckdb": AssetIn()},
 )
 def uspto_ai_deduplicate(
-    context: AssetExecutionContext, uspto_ai_extract_to_duckdb
+    context, uspto_ai_extract_to_duckdb
 ) -> Dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
@@ -407,7 +407,7 @@ def uspto_ai_deduplicate(
     ),
     ins={"uspto_ai_deduplicate": AssetIn()},
 )
-def uspto_ai_human_sample_extraction(context: AssetExecutionContext, uspto_ai_deduplicate) -> str:
+def uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     """
     Implements Task 11.3 (human sampling) using DuckDB ORDER BY RANDOM() LIMIT N.
 
