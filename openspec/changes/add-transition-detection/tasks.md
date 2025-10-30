@@ -463,11 +463,16 @@ Unit Tests (37 passing, 96% coverage):
 
 ## 22. Documentation
 
-- [ ] 22.1 Document transition detection algorithm in docs/transition/detection_algorithm.md
-- [ ] 22.2 Document scoring weights and thresholds in docs/transition/scoring_guide.md
-- [ ] 22.3 Document vendor resolution logic in docs/transition/vendor_matching.md
-- [ ] 22.4 Document evidence bundle structure in docs/transition/evidence_bundles.md
-- [ ] 22.5 Document Neo4j transition graph schema in docs/schemas/transition-graph-schema.md
+- [x] 22.1 Document transition detection algorithm in docs/transition/detection_algorithm.md
+  - Notes: Comprehensive 460-line documentation covering overview, core concept, scoring architecture, all 6 signals with detailed examples, vendor resolution, processing pipeline, configuration, output formats, performance characteristics, validation metrics, tuning guide, known limitations, and future enhancements.
+- [x] 22.2 Document scoring weights and thresholds in docs/transition/scoring_guide.md
+  - Notes: Complete scoring guide with 920-line documentation covering quick reference table, detailed scoring breakdown, signal details with examples, composite score examples, confidence thresholds, preset configurations (high precision, balanced, broad discovery, CET-focused), advanced tuning, validation checklists, troubleshooting, and environment variables.
+- [x] 22.3 Document vendor resolution logic in docs/transition/vendor_matching.md
+  - Notes: Comprehensive vendor matching guide (815 lines) covering all 4 resolution methods (UEI, CAGE, DUNS, fuzzy name), priority-based cascade strategy, vendor cross-walk structure, handling special cases (acquisitions, name changes, subsidiaries), validation metrics, troubleshooting, configuration, performance considerations, and best practices.
+- [x] 22.4 Document evidence bundle structure in docs/transition/evidence_bundles.md
+  - Notes: Complete evidence bundle documentation (926 lines) including overview, why evidence matters, high-level schema, detailed field definitions for all signals (agency, timing, competition, patent, CET, vendor match), contract details, award details, serialization format, validation rules, interpretation examples, and usage guide.
+- [x] 22.5 Document Neo4j transition graph schema in docs/schemas/transition-graph-schema.md
+  - Notes: Comprehensive Neo4j schema documentation (1268 lines) covering overview, 7 node types (Award, Contract, Transition, Company, Patent, CETArea, TransitionProfile), 8 relationship types, all with properties, constraints, and indexes. Includes example Cypher for creation, 13 query examples (traversals, aggregations, patterns, analysis), data loading procedures, performance considerations, best practices, and references.
 - [ ] 22.6 Document CET integration in docs/transition/cet_integration.md
 - [ ] 22.7 Create data dictionary for transition fields
 - [ ] 22.8 Add transition detection section to main README.md
