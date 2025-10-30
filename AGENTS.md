@@ -1,10 +1,6 @@
 <!-- SPECIFICATION SYSTEM:START -->
 # AI Agent Instructions
 
-## Specification System Migration
-
-**Current State**: This project uses Kiro for specification-driven development. The migration from OpenSpec has been completed successfully.
-
 ### Using Kiro Specs
 
 Use `.kiro/specs/` for all development work:
@@ -13,15 +9,6 @@ Use `.kiro/specs/` for all development work:
 - Requirements documentation with EARS patterns
 - Task-driven implementation planning
 - Design documentation and implementation tasks
-
-### Historical Reference
-
-Archived OpenSpec content is available in `archive/openspec/` for:
-- Historical context and completed work
-- Understanding past decisions
-- Migration traceability (see `archive/openspec/migration_mapping.json`)
-
-**Migration Complete**: All OpenSpec changes have been successfully migrated to Kiro specifications.
 
 <!-- SPECIFICATION SYSTEM:END -->
 

@@ -1,256 +1,239 @@
 # Implementation Plan
 
-- [ ] 0.1 Read proposal and design for this change (PaECTER analysis layer).
+## Phase 1: Core PaECTER Infrastructure
 
-- [ ] 0.2 Create/verify change directory and spec deltas are present and formatted (ADDED requirements, scenarios).
-
-- [ ] 0.3 Run OpenSpec strict validation for this change ID and fix issues.
-
-- [ ] 0.4 Confirm no conflicting active changes (naming, overlapping assets).
-
-- [ ] 1.1 Add `paecter.*` configuration block to config/base.yaml with defaults:
-  - [ ] provider: `huggingface` (default), `local` (explicit fallback only)
+- [ ] 1.1 Add `paecter.*` configuration block to config/base.yaml with core settings
+  - [ ] provider: `huggingface` (default), `local` (fallback)
   - [ ] endpoint.type: `inference_api` (default), `endpoint` (later option)
-  - [ ] endpoint.url: "" (required only when `endpoint.type=endpoint`)
   - [ ] auth.token_env: `HF_API_TOKEN`
-  - [ ] remote.batch.size: 64
-  - [ ] remote.max_qps: 10
-  - [ ] remote.timeout_seconds: 60
-  - [ ] remote.retry.max_retries: 5
-  - [ ] remote.retry.backoff_seconds: base 0.5, jittered, cap 30
-  - [ ] max_length: 512
-  - [ ] cache.enable: false
+  - [ ] remote.batch.size: 64, max_qps: 10, timeout_seconds: 60
+  - [ ] cache.enable: false, max_length: 512
   - [ ] text.award_fields: ["solicitation_title", "abstract"]
   - [ ] text.patent_fields: ["title", "abstract"]
-  - [ ] similarity.top_k: 10
-  - [ ] similarity.min_score: 0.60
-  - [ ] join.limit_per_award: 50
-  - [ ] index.backend: `bruteforce` (default) | `faiss` (optional)
-  - [ ] index.path: artifacts/indexes/paecter/awards_patents.faiss
-  - [ ] enable_neo4j_edges: false
-  - [ ] neo4j.prune_previous: false
-  - [ ] neo4j.mark_current: false
-  - [ ] neo4j.max_concurrency: 1
-  - [ ] neo4j.txn_batch_size: 5000
-  - [ ] neo4j.dry_run: false
-  - [ ] validation.coverage.patents: 0.98
-  - [ ] validation.coverage.awards: 0.95
-  - [ ] validation.similarity.neg_mean_max: 0.30
-  - [ ] validation.similarity.pos_mean_min: 0.55
-  - [ ] validation.cohesion.margin_min: 0.05
-  - [ ] validation.cohesion.min_share: 0.70
-  - [ ] validation.cohesion.min_size: 50
-
-- [ ] 1.2 Implement ENV override mapping for all keys (prefix: SBIR_ETL__PAECTER__...).
-
-- [ ] 1.3 (If using Pydantic config) Add a `PaecterConfig` model with defaults and validation.
-
-- [ ] 1.4 Document all keys and env overrides in README/docs.
-
-- [ ] 2.1 Implement a thin client wrapper for remote embedding calls:
-  - [ ] Accept a list of texts; split into batches of `remote.batch.size`.
-  - [ ] Inject auth from `auth.token_env` (Bearer token).
-  - [ ] Enforce client-side QPS throttle (`remote.max_qps`).
-  - [ ] Use `remote.timeout_seconds` per request.
-  - [ ] Retries on 429/5xx/timeouts with jittered exponential backoff (base 0.5s, cap 30s) up to `remote.retry.max_retries`.
-  - [ ] Redact payloads on error; do not log raw text.
-  - [ ] Return embeddings as list[list[float]]; propagate actionable error messages.
-
-- [ ] 2.2 Add optional local dedupe cache (disabled by default):
-  - [ ] Key: SHA256(text); Value: embedding array
-  - [ ] Configurable toggle `cache.enable`; pluggable store path (can be extended later).
-
-- [ ] 2.3 Record and return metadata per run (for artifacts): provider, endpoint.type, endpoint host (not full URL), model_id, model_revision (if available), client versions.
-
-- [ ] 3.1 Implement text builder for awards:
-  - [ ] Concatenate configured `text.award_fields` in order with separator " — ".
-  - [ ] Skip missing fields; trim whitespace; preserve casing.
-
-- [ ] 3.2 Implement text builder for patents:
-  - [ ] Concatenate configured `text.patent_fields` with separator " — "; abstract optional.
-
-- [ ] 3.3 Enforce token truncation via remote model tokenizer by specifying `max_length` if supported; otherwise ensure safe client behavior.
-
-- [ ] 4.1 Create Dagster asset `paecter_embeddings_patents`.
-
-- [ ] 4.2 Inputs: transformed patents (title, abstract if present).
-
-- [ ] 4.3 Use text builder to produce inputs; route to remote inference client in batches.
-
-- [ ] 4.4 Output Parquet `data/processed/paecter_embeddings_patents.parquet` with columns:
-  - [ ] patent_id
-  - [ ] text_source
-  - [ ] embedding (list[float])
-  - [ ] model_name = "mpi-inno-comp/paecter"
-  - [ ] model_revision (if exposed by provider)
-  - [ ] provider (e.g., huggingface)
-  - [ ] computed_at (UTC ISO timestamp)
-
-- [ ] 4.5 Emit checks JSON adjacent to output:
-  - [ ] { ok, coverage, threshold, total, embedded, reason?, config_snapshot }
-
-- [ ] 4.6 Attach Dagster metadata: counts, coverage, latency stats, retries, throughput (texts/sec).
-
-- [ ] 5.1 Create Dagster asset `paecter_embeddings_awards`.
-
-- [ ] 5.2 Inputs: enriched awards (`solicitation_title`, `abstract`).
-
-- [ ] 5.3 Use remote inference client with batched requests, throttling, retries.
-
-- [ ] 5.4 Output Parquet `data/processed/paecter_embeddings_awards.parquet` with columns:
-  - [ ] award_id
-  - [ ] text_source
-  - [ ] embedding (list[float])
-  - [ ] model_name
-  - [ ] model_revision
-  - [ ] provider
-  - [ ] computed_at
-
-- [ ] 5.5 Emit checks JSON analogous to patents; attach Dagster metadata.
-
-- [ ] 6.1 Create Dagster asset `paecter_award_patent_similarity`.
-
-- [ ] 6.2 Load embeddings parquet for awards and patents; L2-normalize vectors.
-
-- [ ] 6.3 Compute cosine similarity:
-  - [ ] Default backend: brute-force matrix multiplication in blocks.
-  - [ ] Optional backend: FAISS (IndexFlatIP or suitable index) when configured.
-
-- [ ] 6.4 For each award:
-  - [ ] Keep top_k (config) with cosine_sim ≥ min_score (config).
-  - [ ] Enforce limit_per_award cap.
-
-- [ ] 6.5 Output Parquet `data/processed/paecter_award_patent_similarity.parquet` with columns:
-  - [ ] award_id, patent_id, cosine_sim, rank, threshold_pass (bool), backend, computed_at
-
-- [ ] 6.6 Emit checks JSON (ok, total_pairs, kept_pairs, backend, top_k, min_score, stats: mean/p50/p90, reason?); attach Dagster metadata.
-
-- [ ] 7.1 Create Dagster asset `paecter_classifier_cohesion_metrics`.
-
-- [ ] 7.2 Inputs: CET labels + embeddings (awards and/or patents).
-
-- [ ] 7.3 For each class:
-  - [ ] Compute intra_mean (within-class), inter_mean (vs negatives or global), margin = intra_mean − inter_mean.
-  - [ ] Exclude classes with size < `validation.cohesion.min_size`.
-
-- [ ] 7.4 Summarize:
-  - [ ] Compute share of classes with margin ≥ `validation.cohesion.margin_min`.
-  - [ ] List worst classes with counts and margins.
-
-- [ ] 7.5 Output JSON `data/processed/paecter_classifier_cohesion.json`; attach Dagster metadata.
-
-- [ ] 7.6 Gate: fail with ERROR if share < `validation.cohesion.min_share`.
-
-- [ ] 8.1 Add asset checks for embedding coverage:
-  - [ ] Patents coverage ≥ 0.98
-  - [ ] Awards coverage ≥ 0.95
-
-- [ ] 8.2 Add similarity quality checks:
-  - [ ] Negative-pair mean ≤ `validation.similarity.neg_mean_max` (default 0.30) → ERROR on violation.
-  - [ ] Heuristic positive-pair mean ≥ `validation.similarity.pos_mean_min` (default 0.55) → WARNING by default (configurable to ERROR).
-
-- [ ] 8.3 Add cohesion gate (from §7.6).
-
-- [ ] 8.4 On any ERROR gate failure, block downstream similarity consumption and optional Neo4j loader.
-
-- [ ] 9.1 Create Dagster asset `neo4j_award_patent_similarity` (skipped unless `enable_neo4j_edges=true`).
-
-- [ ] 9.2 Ingest only `threshold_pass=true` rows; MERGE (Award)-[:SIMILAR_TO {method:"paecter"}]->(Patent).
-
-- [ ] 9.3 Update properties: score, rank, computed_at, model, revision, last_updated; no vectors in Neo4j.
-
-- [ ] 9.4 Pruning/mark_current behavior per config (mutually exclusive; prune takes precedence).
-
-- [ ] 9.5 Validate constraints on Award(award_id) and Patent(patent_id) or auto-create if configured; skip missing nodes.
-
-- [ ] 9.6 Fail if skip_rate > 1% (configurable); batch writes with retries; attach loader metrics and checks JSON.
-
-- [ ] 10.1 Instrument assets with telemetry:
-  - [ ] Embeddings (remote): latency distribution, retries, throughput (texts/sec).
-  - [ ] Similarity: throughput, memory footprint (where applicable).
-
-- [ ] 10.2 Persist baselines:
-  - [ ] `reports/benchmarks/paecter_embeddings.json`
-  - [ ] `reports/benchmarks/paecter_validation_baseline.json`
-
-- [ ] 10.3 Compare and alert on drift/regressions:
-  - [ ] Write alerts to `reports/alerts/paecter_*.json`.
-
-- [ ] 10.4 CI mode: sample to ≤ 2k items to target < 5 min runtime (toggleable via env).
-
-- [ ] 11.1 Unit: text builder (field selection, separator, trimming).
-
-- [ ] 11.2 Unit: remote client batching, QPS throttle, retry backoff, timeout behavior (stub responses).
-
-- [ ] 11.3 Unit: cache behavior (if enabled) with SHA256 keys; duplicate avoidance.
-
-- [ ] 11.4 Unit: cosine similarity and top‑k selection; FAISS fallback path (if included).
-
-- [ ] 11.5 Unit: cohesion metric calculations; small-class exclusion; margin/share logic.
-
-- [ ] 11.6 Unit: checks JSON writers; threshold evaluation paths.
-
-- [ ] 11.7 Integration: end-to-end small fixture (patents + awards) exercising remote client stubs to produce embeddings, similarity, metrics.
-
-- [ ] 11.8 Integration (optional): Neo4j loader with ephemeral DB; verify MERGE upsert, prune/mark_current semantics.
-
-- [ ] 11.9 Performance smoke: ensure telemetry captured; CI sampling respected; no excessive runtime.
-
-- [ ] 12.1 Add `docs/data/paecter.md`:
-  - [ ] Model overview; licensing; usage patterns; limits; calibration approach.
-  - [ ] Remote inference specifics; rate limits; retries; data handling.
-
-- [ ] 12.2 Update `docs/deployment/containerization.md`:
-  - [ ] HF Inference API setup; required env var for token.
-  - [ ] Later option: Inference Endpoint creation and URL wiring.
-
-- [ ] 12.3 Update `docs/schemas/` if enabling Neo4j SIMILAR_TO edges.
-
-- [ ] 12.4 Update README with new assets and how to enable/disable.
-
-- [ ] 13.1 Ensure token via environment variable; no secrets in code or logs.
-
-- [ ] 13.2 Redact all payloads from logs and errors; log only hashed IDs or counts.
-
-- [ ] 13.3 Record model_id and model_revision in outputs for reproducibility.
-
-- [ ] 13.4 Confirm policy approval for sending text to Hugging Face (already approved).
-
-- [ ] 14.1 Extend client to support `endpoint.type=endpoint` with `endpoint.url`.
-
-- [ ] 14.2 Implement a readiness check that verifies endpoint health and (if available) model revision.
-
-- [ ] 14.3 Add configuration for endpoint-specific batch sizes/QPS based on capacity.
-
-- [ ] 14.4 Add tests for endpoint mode (stubbed responses).
-
-- [ ] 14.5 Document when to prefer Endpoints (throughput, stability, cost predictability).
-
-- [ ] 15.1 Register new Dagster assets; integrate with lazy import mapping.
-
-- [ ] 15.2 Ensure materialization plan includes embeddings → similarity → metrics; Neo4j loader stays disabled in CI.
-
-- [ ] 15.3 Add CI secrets management guideline for HF token if needed (avoid real network calls in tests; prefer stubs).
-
-- [ ] 16.1 Default `provider=huggingface`, `endpoint.type=inference_api`, `enable_neo4j_edges=false`.
-
-- [ ] 16.2 Deploy to dev; validate coverage/quality gates; set baselines.
-
-- [ ] 16.3 Deploy to staging; monitor latency, retries, and costs; tune batch/QPS.
-
-- [ ] 16.4 Deploy to prod; enable Neo4j loader selectively; monitor alerts.
-
-- [ ] 16.5 Document rollback plan (disable assets; prune edges if needed).
-
-- [ ] 17.1 Patents embedding coverage ≥ 0.98; awards embedding coverage ≥ 0.95.
-
-- [ ] 17.2 Similarity checks: negatives mean ≤ 0.30 (ERROR otherwise); heuristic positives mean ≥ 0.55 (WARN default).
-
-- [ ] 17.3 Cohesion: share of classes meeting margin ≥ 0.05 is ≥ 0.70 with size ≥ 50.
-
-- [ ] 17.4 Similarity artifact schema valid; integrity checks pass; per-award caps honored.
-
-- [ ] 17.5 Performance telemetry present; baselines persisted; alerts written on significant drift.
-
-- [ ] 17.6 All new assets and checks pass in CI (with stubs); OpenSpec validate passes; coverage targets met (≥80% across new code).
-
+  - [ ] validation.coverage.patents: 0.98, validation.coverage.awards: 0.95
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [ ] 1.2 Implement PaECTER client wrapper for Hugging Face API
+  - [ ] Create `PaECTERClient` class with batch processing, rate limiting, and retry logic
+  - [ ] Implement authentication via Bearer token from environment variable
+  - [ ] Add exponential backoff for 429/5xx errors with jittered delays
+  - [ ] Include embedding metadata (model_id, revision, provider, timestamp)
+  - _Requirements: 1.1, 1.2_
+
+- [ ] 1.3 Implement text preprocessing utilities
+  - [ ] Create text builders for patents (title + abstract) and awards (solicitation_title + abstract)
+  - [ ] Add field concatenation with " — " separator, whitespace trimming
+  - [ ] Implement token truncation to max_length with safe fallback behavior
+  - _Requirements: 1.1, 1.2_
+
+- [ ] 1.4 Create core Dagster assets for basic PaECTER functionality
+  - [ ] `paecter_embeddings_patents` → data/processed/paecter_embeddings_patents.parquet
+  - [ ] `paecter_embeddings_awards` → data/processed/paecter_embeddings_awards.parquet
+  - [ ] Include columns: document_id, text_source, embedding, model_name, computed_at
+  - [ ] Add asset checks for embedding coverage thresholds
+  - _Requirements: 1.1, 1.2_
+
+- [ ] 1.5 Implement basic similarity computation
+  - [ ] Create `paecter_award_patent_similarity` asset with cosine similarity computation
+  - [ ] Support brute-force and optional FAISS backends for similarity search
+  - [ ] Output similarity pairs with scores, ranks, and threshold filtering
+  - [ ] Add quality checks for similarity score distributions
+  - _Requirements: 2.1, 2.2_
+
+## Phase 2: Bayesian MoE Framework Foundation
+
+- [ ]* 2.1 Add Bayesian MoE configuration to config/base.yaml
+  - [ ] bayesian_moe.enable: false (disabled by default)
+  - [ ] bayesian_moe.uncertainty.ece_threshold: 0.1
+  - [ ] bayesian_moe.uncertainty.confidence_threshold: 0.8
+  - [ ] bayesian_moe.uncertainty.review_threshold: 0.3
+  - [ ] bayesian_moe.calibration.method: "platt_scaling"
+  - [ ] bayesian_moe.routing.inference_method: "variational"
+  - _Requirements: 5.1, 6.1, 7.1_
+
+- [ ]* 2.2 Implement core Bayesian router framework
+  - [ ] Create abstract `BayesianRouter` base class with routing interface
+  - [ ] Implement `RoutingDecision` dataclass with probabilities and uncertainty metrics
+  - [ ] Add `UncertaintyMetrics` dataclass with entropy, ECE, and confidence intervals
+  - [ ] Create routing decision logic with variational inference support
+  - _Requirements: 5.1, 6.1, 7.1_
+
+- [ ]* 2.3 Implement uncertainty quantification components
+  - [ ] Create `UncertaintyHead` class with ECE computation and calibration
+  - [ ] Implement epistemic and aleatoric uncertainty calculation methods
+  - [ ] Add confidence score calibration using Platt scaling or temperature scaling
+  - [ ] Create uncertainty-based flagging logic for human review cases
+  - _Requirements: 5.1, 6.1, 7.1_
+
+- [ ]* 2.4 Create LoRA expert pool management system
+  - [ ] Implement `LoRAExpertPool` class for managing adapter loading/unloading
+  - [ ] Add dynamic adapter switching based on routing decisions
+  - [ ] Create adapter weight computation and output merging logic
+  - [ ] Implement memory-efficient adapter storage and caching
+  - _Requirements: 5.1, 6.1, 7.1_
+
+## Phase 3: Stage 1 - Bayesian Classification Routing
+
+- [ ]* 3.1 Implement Bayesian classification router
+  - [ ] Create `BayesianClassificationRouter` class extending `BayesianRouter`
+  - [ ] Implement document feature extraction for routing decisions
+  - [ ] Add variational inference for expert selection probability distributions
+  - [ ] Create technology domain expert definitions (biotech, AI, defense, energy)
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [ ]* 3.2 Create LoRA adapters for classification experts
+  - [ ] Design LoRA adapter configurations for CET and CPC classification tasks
+  - [ ] Implement adapter loading logic for domain-specific classification experts
+  - [ ] Add base model integration with adapter switching capabilities
+  - [ ] Create adapter training pipeline for domain specialization
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [ ]* 3.3 Implement classification routing Dagster asset
+  - [ ] Create `bayesian_classification_routing` asset
+  - [ ] Output classifications with uncertainty metrics to data/processed/bayesian_classifications.parquet
+  - [ ] Include routing probabilities, confidence scores, and review flags
+  - [ ] Add asset checks for classification quality and uncertainty calibration
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [ ]* 3.4 Add classification uncertainty validation
+  - [ ] Implement ECE computation for classification confidence calibration
+  - [ ] Add uncertainty-based quality gates that block downstream processing
+  - [ ] Create classification performance monitoring and drift detection
+  - [ ] Generate classification uncertainty baselines and alerts
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+## Phase 4: Stage 2 - Bayesian Similarity Routing
+
+- [ ]* 4.1 Implement Bayesian similarity router
+  - [ ] Create `BayesianSimilarityRouter` class with category-conditioned routing
+  - [ ] Implement similarity expert selection based on document categories
+  - [ ] Add probabilistic routing to intra-category, cross-category, and temporal experts
+  - [ ] Create Bayesian model averaging for similarity score aggregation
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [ ]* 4.2 Create LoRA adapters for similarity experts
+  - [ ] Design similarity computation LoRA adapters for different expert types
+  - [ ] Implement intra-category similarity experts for domain-specific matching
+  - [ ] Add cross-category similarity experts for technology transfer detection
+  - [ ] Create temporal similarity experts for time-aware relationship modeling
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [ ]* 4.3 Implement similarity routing Dagster asset
+  - [ ] Create `bayesian_similarity_routing` asset building on classification results
+  - [ ] Output similarity scores with uncertainty to data/processed/bayesian_similarities.parquet
+  - [ ] Include confidence intervals, routing decisions, and expert contributions
+  - [ ] Add asset checks for similarity quality and uncertainty validation
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [ ]* 4.4 Add similarity uncertainty quantification
+  - [ ] Implement confidence interval computation for similarity scores
+  - [ ] Add uncertainty propagation from classification to similarity stages
+  - [ ] Create similarity uncertainty validation and quality gates
+  - [ ] Generate similarity performance baselines and regression detection
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+## Phase 5: Stage 3 - Bayesian Embedding Routing
+
+- [ ]* 5.1 Implement Bayesian embedding router
+  - [ ] Create `BayesianEmbeddingRouter` class with multi-stage informed routing
+  - [ ] Implement routing based on classification and similarity analysis results
+  - [ ] Add domain-specialized PaECTER expert selection logic
+  - [ ] Create embedding generation uncertainty quantification
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ]* 5.2 Create LoRA adapters for embedding experts
+  - [ ] Design domain-specific PaECTER LoRA adapters (biotech, AI, defense, energy)
+  - [ ] Implement document type LoRA adapters (patents vs SBIR awards)
+  - [ ] Add temporal LoRA adapters for different time periods
+  - [ ] Create adapter fine-tuning pipeline for embedding specialization
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ]* 5.3 Implement embedding routing Dagster asset
+  - [ ] Create `bayesian_embedding_routing` asset using classification and similarity inputs
+  - [ ] Output specialized embeddings to data/processed/bayesian_embeddings.parquet
+  - [ ] Include domain specialization metadata and quality scores
+  - [ ] Add asset checks for embedding quality and uncertainty validation
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [ ]* 5.4 Add embedding uncertainty integration
+  - [ ] Implement embedding quality confidence score computation
+  - [ ] Add uncertainty propagation through the complete pipeline
+  - [ ] Create end-to-end uncertainty validation and calibration checks
+  - [ ] Generate embedding performance baselines and monitoring
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+## Phase 6: Neo4j Integration and System Compatibility
+
+- [ ] 6.1 Implement Neo4j integration with uncertainty metadata
+  - [ ] Create `neo4j_bayesian_similarity_edges` asset (optional, disabled by default)
+  - [ ] Add SIMILAR_TO relationships with uncertainty scores and routing metadata
+  - [ ] Include confidence intervals and expert routing information in edge properties
+  - [ ] Implement uncertainty-based edge filtering and quality validation
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+
+- [ ] 6.2 Ensure system compatibility and additive implementation
+  - [ ] Verify all Bayesian MoE assets are strictly additive to existing functionality
+  - [ ] Implement feature flags to enable/disable Bayesian components independently
+  - [ ] Add backward compatibility checks for existing data schemas and APIs
+  - [ ] Create migration path documentation for enabling Bayesian features
+  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+
+- [ ] 6.3 Implement comprehensive quality gates and validation
+  - [ ] Add uncertainty calibration quality gates across all pipeline stages
+  - [ ] Implement ECE validation thresholds that block poor calibration
+  - [ ] Create uncertainty-error correlation validation for system reliability
+  - [ ] Add performance regression detection for Bayesian components
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+## Phase 7: Testing and Validation
+
+- [ ] 7.1 Unit testing for Bayesian components
+  - [ ] Test Bayesian router uncertainty computation and calibration methods
+  - [ ] Test LoRA expert pool management and adapter switching logic
+  - [ ] Test uncertainty head ECE computation and confidence calibration
+  - [ ] Test routing decision logic and expert selection algorithms
+  - _Requirements: All requirements_
+
+- [ ] 7.2 Integration testing for end-to-end pipeline
+  - [ ] Test complete Classification → Similarity → Embedding pipeline flow
+  - [ ] Test uncertainty propagation across all three routing stages
+  - [ ] Test quality gate enforcement and error handling with uncertainty
+  - [ ] Test Neo4j integration with Bayesian uncertainty metadata
+  - _Requirements: All requirements_
+
+- [ ] 7.3 Uncertainty calibration validation testing
+  - [ ] Test ECE computation on validation datasets across all stages
+  - [ ] Test confidence interval coverage and uncertainty-error correlation
+  - [ ] Test calibration drift detection and recalibration triggers
+  - [ ] Test human review flagging accuracy and effectiveness
+  - _Requirements: 5.1, 6.1, 7.1, 3.1_
+
+- [ ] 7.4 Performance and scalability testing
+  - [ ] Test LoRA adapter switching overhead and memory efficiency
+  - [ ] Test Bayesian routing computational overhead vs accuracy gains
+  - [ ] Test system scalability with large patent and award datasets
+  - [ ] Test uncertainty computation performance and optimization
+  - _Requirements: All requirements_
+
+## Phase 8: Documentation and Deployment
+
+- [ ] 8.1 Create comprehensive documentation
+  - [ ] Document Bayesian MoE architecture and uncertainty quantification approach
+  - [ ] Document LoRA adapter management and expert pool configuration
+  - [ ] Document uncertainty calibration methods and quality validation
+  - [ ] Document deployment and configuration for Bayesian features
+  - _Requirements: All requirements_
+
+- [ ] 8.2 Implement monitoring and observability
+  - [ ] Add uncertainty quality monitoring and alerting systems
+  - [ ] Create Bayesian routing performance dashboards and metrics
+  - [ ] Implement calibration drift detection and automated recalibration
+  - [ ] Add expert pool performance monitoring and adapter health checks
+  - _Requirements: All requirements_
+
+- [ ] 8.3 Deploy and validate in production
+  - [ ] Deploy core PaECTER functionality with Bayesian features disabled
+  - [ ] Gradually enable Bayesian classification routing with monitoring
+  - [ ] Enable similarity and embedding routing with uncertainty validation
+  - [ ] Monitor system performance and uncertainty calibration quality
+  - _Requirements: All requirements_
