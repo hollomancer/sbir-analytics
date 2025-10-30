@@ -370,19 +370,18 @@ class TransitionScorer:
             cet_alignment_score=min(score, 1.0),
         )
 
-    def score_text_similarity(self, contract: FederalContract) -> float:
+    def score_text_similarity(self, similarity_score: Optional[float]) -> float:
         """
         Score optional text similarity between award and contract descriptions.
 
         This is an optional signal that can be enabled/disabled via configuration.
 
         Args:
-            contract: FederalContract object
+            similarity_score: Pre-computed text similarity score (0.0-1.0)
 
         Returns:
             Weighted contribution to final score
         """
-        similarity_score = contract.text_similarity_score
         if similarity_score is None:
             return 0.0
 
@@ -490,7 +489,7 @@ class TransitionScorer:
         cet_signal = self.score_cet_alignment(cet_data)
 
         # Optional text similarity
-        text_similarity = self.score_text_similarity(contract)
+        text_similarity = self.score_text_similarity(contract.text_similarity_score)
 
         return TransitionSignals(
             agency=agency_signal,

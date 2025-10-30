@@ -226,6 +226,9 @@ class FederalContract(BaseModel):
     matched_vendor: Optional[VendorMatch] = Field(
         None, description="Vendor match result to canonical entity."
     )
+    text_similarity_score: Optional[float] = Field(
+        None, description="Pre-computed text similarity score for transition detection."
+    )
     metadata: Dict[str, object] = Field(default_factory=dict)
 
     @field_validator("start_date", "end_date", mode="before")
