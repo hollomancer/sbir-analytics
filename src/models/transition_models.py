@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from datetime import date, datetime
 
 
@@ -118,12 +118,15 @@ class TransitionSignals(BaseModel):
 
     @field_validator("text_similarity_score")
     @classmethod
-    def check_text_similarity(cls, v):
+    def validate_text_similarity_score(cls, v):
+        """Validate text similarity score is within valid range."""
         if v is None:
             return v
+        if not isinstance(v, (int, float)):
+            raise ValueError(f"text_similarity_score must be a numeric value, got {type(v).__name__}: {v}")
         if not (0.0 <= v <= 1.0):
-            raise ValueError("text_similarity_score must be between 0.0 and 1.0")
-        return v
+            raise ValueError(f"text_similarity_score must be between 0.0 and 1.0, got: {v}")
+        return float(v)
 
 
 class EvidenceItem(BaseModel):
@@ -153,10 +156,19 @@ class EvidenceBundle(BaseModel):
     summary: Optional[str] = Field(None, description="Human-readable short summary of the bundle.")
 
     def add_item(self, item: EvidenceItem) -> None:
+        """Add an evidence item to the bundle.
+        
+        Args:
+            item: The evidence item to add to the bundle.
+        """
         self.items.append(item)
 
     def total_score(self) -> float:
-        # Compute a simple aggregated score if item scores available (mean of present scores)
+        """Calculate the aggregate score for all evidence items.
+        
+        Returns:
+            The mean score of all items with non-None scores, or 0.0 if no scores available.
+        """
         scores = [i.score for i in self.items if i.score is not None]
         if not scores:
             return 0.0
@@ -226,14 +238,12 @@ class FederalContract(BaseModel):
     matched_vendor: Optional[VendorMatch] = Field(
         None, description="Vendor match result to canonical entity."
     )
-    text_similarity_score: Optional[float] = Field(
-        None, description="Pre-computed text similarity score for transition detection."
-    )
     metadata: Dict[str, object] = Field(default_factory=dict)
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
-    def parse_dates(cls, v):
+    def validate_and_parse_dates(cls, v):
+        """Parse and validate date fields from various input formats."""
         if v is None:
             return None
         if isinstance(v, (date, datetime)):
@@ -243,6 +253,14 @@ class FederalContract(BaseModel):
             return date.fromisoformat(str(v))
         except Exception:
             raise ValueError("Dates must be ISO-formatted strings or date objects")
+
+    @model_validator(mode="after")
+    def validate_date_logic(self):
+        """Validate logical constraints between date fields."""
+        if self.start_date and self.end_date:
+            if self.end_date < self.start_date:
+                raise ValueError("end_date must be after start_date")
+        return self
 
 
 class Transition(BaseModel):
@@ -276,9 +294,10 @@ class Transition(BaseModel):
 
     @field_validator("likelihood_score")
     @classmethod
-    def validate_score(cls, v):
+    def validate_likelihood_score(cls, v):
+        """Validate likelihood score is within valid range."""
         if not (0.0 <= v <= 1.0):
-            raise ValueError("likelihood_score must be between 0.0 and 1.0")
+            raise ValueError(f"likelihood_score must be between 0.0 and 1.0, got: {v}")
         return float(v)
 
     @field_validator("confidence", mode="before")
@@ -315,15 +334,21 @@ class TransitionProfile(BaseModel):
 
     @field_validator("success_rate", "avg_likelihood_score")
     @classmethod
-    def validate_ratios(cls, v):
+    def validate_ratio_fields(cls, v):
+        """Validate ratio fields are within valid range."""
         if v is None:
             return v
         if not (0.0 <= v <= 1.0):
-            raise ValueError("ratios must be between 0.0 and 1.0")
+            raise ValueError(f"ratio fields must be between 0.0 and 1.0, got: {v}")
         return float(v)
 
     @property
-    def to_summary(self) -> Dict[str, object]:
+    def to_summary(self) -> Dict[str, Union[str, int, float, None]]:
+        """Generate a summary dictionary of the transition profile.
+        
+        Returns:
+            Dictionary containing key metrics for the company's transition profile.
+        """
         return {
             "company_id": self.company_id,
             "total_awards": self.total_awards,
