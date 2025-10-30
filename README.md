@@ -215,12 +215,14 @@ poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% co
 
 ### Next Steps
 
-See [COMPLETION_STATUS.md](openspec/changes/add-transition-detection/COMPLETION_STATUS.md) for:
-- Current completion status (91% complete)
-- Remaining tasks (17, all documentation/deployment)
-- Timeline and effort estimates
+The project has successfully migrated from OpenSpec to Kiro for specification-driven development. All active OpenSpec changes have been converted to Kiro specifications.
 
-**Note**: This project is transitioning from OpenSpec to Kiro for specification-driven development. See [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md) for migration details.
+For ongoing development:
+- Use Kiro specifications in `.kiro/specs/` for new features and changes
+- Follow the Kiro workflow for requirements, design, and task management
+- Reference archived OpenSpec content in `archive/openspec/` for historical context only
+
+**Migration Complete**: OpenSpec to Kiro migration completed successfully. See [Migration Report](migration_output/) for details.
 
 ---
 
@@ -646,11 +648,10 @@ sbir-etl/
 │   ├── docker-compose.test.yml     # Test runner environment
 │   └── docker-compose.e2e.yml      # E2E testing (MacBook Air optimized)
 │
-├── .kiro/                       # Kiro specifications (new spec system)
+├── .kiro/                       # Kiro specifications (active spec system)
 │   └── specs/                   # Specification-driven development
-└── openspec/                    # Legacy specifications (being migrated to Kiro)
-    ├── specs/                   # Current capabilities
-    └── changes/                 # Proposed changes
+└── archive/                     # Archived content
+    └── openspec/                # Archived OpenSpec content (historical reference)
 ```
 
 ## Neo4j Graph Model
@@ -715,25 +716,25 @@ GitHub Actions workflows:
 - **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - **Deployment**: `docs/deployment/containerization.md`
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
-- **Specifications**: `.kiro/specs/` (Kiro specification system) and `openspec/AGENTS.md` (legacy OpenSpec workflow)
+- **Specifications**: `.kiro/specs/` (Kiro specification system) - see `AGENTS.md` for workflow guidance
 
 ## Contributing
 
 1. Follow code quality standards (black, ruff, mypy, bandit)
 2. Write tests for new functionality (≥80% coverage)
 3. Update documentation as needed
-4. Use Kiro specs for architectural changes (see `.kiro/specs/`) or OpenSpec during migration period (see `openspec/AGENTS.md`)
+4. Use Kiro specs for architectural changes (see `.kiro/specs/` and `AGENTS.md` for workflow)
 5. Ensure performance regression checks pass in CI
 
 ### Upcoming Architecture Changes
 
-**Specification System Migration** (Q1 2025): The project is migrating from OpenSpec to Kiro for specification-driven development. This transition will:
-- Consolidate all specifications into Kiro's unified format
-- Implement EARS patterns for requirements documentation
-- Establish task-driven development workflows
-- Preserve historical OpenSpec content for reference
+**Specification System Migration** (Completed): The project has successfully migrated from OpenSpec to Kiro for specification-driven development. This migration:
+- Consolidated all specifications into Kiro's unified format
+- Implemented EARS patterns for requirements documentation
+- Established task-driven development workflows
+- Preserved historical OpenSpec content in `archive/openspec/` for reference
 
-See [OpenSpec to Kiro Migration Guide](docs/architecture/openspec-to-kiro-migration-guide.md) for details.
+All new development should use the Kiro specification system in `.kiro/specs/`.
 
 **Codebase Consolidation Refactor** (Q1 2025): A comprehensive refactoring effort is planned to consolidate and streamline the codebase architecture. This will:
 - Reduce code duplication by 30-60%

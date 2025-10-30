@@ -356,8 +356,8 @@ sbir-etl/
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)
 ├── docs/                  # Additional documentation
-├── .kiro/specs/           # Kiro specifications (new system)
-└── openspec/              # Legacy OpenSpec (being migrated)
+├── .kiro/specs/           # Kiro specifications (active system)
+└── archive/openspec/      # Archived OpenSpec content (historical reference)
 ```
 
 ## Questions or Issues?

@@ -1,0 +1,155 @@
+{
+  "migration_metadata": {
+    "migration_date": "2025-10-30T15:26:50.222360",
+    "migration_tool": "openspec_to_kiro_migrator",
+    "total_specs_generated": 13
+  },
+  "openspec_to_kiro_mapping": {
+    "mcp_interface": {
+      "kiro_spec_path": ".kiro/specs/mcp_interface",
+      "files_created": [
+        "requirements.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-mcp-interface",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "web_search_enrichment": {
+      "kiro_spec_path": ".kiro/specs/web_search_enrichment",
+      "files_created": [
+        "requirements.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "evaluate-web-search-enrichment",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "paecter_analysis_layer": {
+      "kiro_spec_path": ".kiro/specs/paecter_analysis_layer",
+      "files_created": [
+        "requirements.md",
+        "design.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-paecter-analysis-layer",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "statistical_reporting": {
+      "kiro_spec_path": ".kiro/specs/statistical_reporting",
+      "files_created": [
+        "requirements.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-statistical-reporting",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "transition_detection": {
+      "kiro_spec_path": ".kiro/specs/transition_detection",
+      "files_created": [
+        "requirements.md",
+        "design.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-transition-detection",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "neo4j_backup_sync": {
+      "kiro_spec_path": ".kiro/specs/neo4j_backup_sync",
+      "files_created": [
+        "requirements.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-neo4j-backup-sync",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "merger_acquisition_detection": {
+      "kiro_spec_path": ".kiro/specs/merger_acquisition_detection",
+      "files_created": [
+        "requirements.md",
+        "design.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-merger-acquisition-detection",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "iterative_api_enrichment": {
+      "kiro_spec_path": ".kiro/specs/iterative_api_enrichment",
+      "files_created": [
+        "requirements.md",
+        "tasks.md"
+      ],
+      "source_openspec_changes": "add-iterative-api-enrichment",
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "data_pipeline_consolidated": {
+      "kiro_spec_path": ".kiro/specs/data_pipeline_consolidated",
+      "files_created": [
+        "requirements.md",
+        "design.md"
+      ],
+      "source_openspec_changes": [],
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "data_enrichment_consolidated": {
+      "kiro_spec_path": ".kiro/specs/data_enrichment_consolidated",
+      "files_created": [
+        "requirements.md",
+        "design.md"
+      ],
+      "source_openspec_changes": [],
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "infrastructure_consolidated": {
+      "kiro_spec_path": ".kiro/specs/infrastructure_consolidated",
+      "files_created": [
+        "requirements.md",
+        "design.md"
+      ],
+      "source_openspec_changes": [],
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "orchestration_consolidated": {
+      "kiro_spec_path": ".kiro/specs/orchestration_consolidated",
+      "files_created": [
+        "requirements.md",
+        "design.md"
+      ],
+      "source_openspec_changes": [],
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    },
+    "configuration_consolidated": {
+      "kiro_spec_path": ".kiro/specs/configuration_consolidated",
+      "files_created": [
+        "requirements.md",
+        "design.md"
+      ],
+      "source_openspec_changes": [],
+      "source_openspec_specs": [],
+      "migration_status": "completed"
+    }
+  },
+  "archived_content": {
+    "openspec_directory": "openspec/",
+    "changes_directory": "openspec/changes/",
+    "specs_directory": "openspec/specs/",
+    "project_documentation": "openspec/project.md",
+    "agent_instructions": "openspec/AGENTS.md"
+  },
+  "migration_notes": [
+    "All OpenSpec content has been preserved in the openspec/ directory",
+    "Generated Kiro specs are located in .kiro/specs/",
+    "This mapping provides traceability between old and new systems",
+    "Archived content should be treated as read-only historical reference"
+  ]
+}

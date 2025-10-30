@@ -3,24 +3,25 @@
 
 ## Specification System Migration
 
-**Current State**: This project is migrating from OpenSpec to Kiro for specification-driven development.
+**Current State**: This project uses Kiro for specification-driven development. The migration from OpenSpec has been completed successfully.
 
-### When to Use Kiro Specs (Preferred)
+### Using Kiro Specs
 
-Use `.kiro/specs/` for new development:
+Use `.kiro/specs/` for all development work:
 - Planning new features or capabilities
 - Architecture changes and design decisions
 - Requirements documentation with EARS patterns
 - Task-driven implementation planning
+- Design documentation and implementation tasks
 
-### When to Use OpenSpec (Legacy - Migration Period Only)
+### Historical Reference
 
-Check `openspec/AGENTS.md` during migration period for:
-- Existing OpenSpec changes being migrated
-- Legacy change proposal workflow
+Archived OpenSpec content is available in `archive/openspec/` for:
 - Historical context and completed work
+- Understanding past decisions
+- Migration traceability (see `archive/openspec/migration_mapping.json`)
 
-**Migration Status**: See [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md) for complete migration plan.
+**Migration Complete**: All OpenSpec changes have been successfully migrated to Kiro specifications.
 
 <!-- SPECIFICATION SYSTEM:END -->
 
@@ -57,8 +58,8 @@ docs/
   data/                 # Data dictionaries, evaluation guides
   deployment/containerization.md
   schemas/              # Neo4j schemas
-.kiro/specs/            # Kiro specifications (new system)
-openspec/               # Legacy specs (being migrated to Kiro)
+.kiro/specs/            # Kiro specifications (active system)
+archive/openspec/       # Archived OpenSpec content (historical reference)
 
 .github/workflows/
   performance-regression-check.yml  # Benchmark + regression detection
@@ -115,7 +116,7 @@ make docker-test        # Run tests in container
 
 ## References
 
-- Kiro specifications: `.kiro/specs/` (preferred) or OpenSpec workflow: `openspec/AGENTS.md` (legacy)
+- Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
 - Container guide: `docs/deployment/containerization.md`
 - Data sources: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - Neo4j schemas: `docs/schemas/patent-neo4j-schema.md`

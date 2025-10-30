@@ -1,5 +1,20 @@
 # Implementation Plan
 
+## Current State Analysis
+
+**OpenSpec Content to Migrate:**
+- **Active Changes**: 8 changes in `openspec/changes/` (excluding archive)
+  - `add-iterative-api-enrichment`, `add-mcp-interface`, `add-merger-acquisition-detection`
+  - `add-neo4j-backup-sync`, `add-paecter-analysis-layer`, `add-statistical-reporting`
+  - `add-transition-detection` (appears mostly complete), `evaluate-web-search-enrichment`
+- **Specifications**: 9 specs in `openspec/specs/`
+  - `configuration`, `data-enrichment`, `data-extraction`, `data-loading`
+  - `data-transformation`, `data-validation`, `neo4j-server`, `pipeline-orchestration`, `runtime-environment`
+- **Archived Changes**: 8 completed changes already in `openspec/changes/archive/`
+- **Documentation**: `openspec/project.md`, `openspec/AGENTS.md`
+
+**Migration Status**: No migration work has started yet. All tasks below are pending implementation.
+
 ## 1. Set up migration framework and analysis tools
 
 - [ ] 1.1 Create migration project structure and base classes
@@ -83,22 +98,29 @@
 - [ ] 4.1 Migrate high-priority active changes
   - Convert `add-iterative-api-enrichment` change to Kiro spec
   - Convert `add-mcp-interface` change to Kiro spec
-  - Convert `add-transition-detection` change to Kiro spec
+  - Convert `add-paecter-analysis-layer` change to Kiro spec
   - _Requirements: 1.1, 1.2_
 
 - [ ] 4.2 Migrate remaining active changes
   - Convert `add-merger-acquisition-detection` change to Kiro spec
   - Convert `add-neo4j-backup-sync` change to Kiro spec
   - Convert `add-statistical-reporting` change to Kiro spec
+  - Convert `evaluate-web-search-enrichment` change to Kiro spec
   - _Requirements: 1.1, 1.2_
 
-- [ ] 4.3 Validate migrated change specifications
+- [ ] 4.3 Handle transition detection change (special case)
+  - Review `add-transition-detection` change completion status
+  - Migrate completed work to Kiro spec format for historical reference
+  - Document lessons learned and implementation patterns
+  - _Requirements: 1.1, 4.2, 4.3_
+
+- [ ] 4.4 Validate migrated change specifications
   - Run validation on all migrated Kiro specs from OpenSpec changes
   - Verify EARS patterns and user story format compliance
   - Ensure all tasks are actionable and properly referenced
   - _Requirements: 5.1, 5.4, 10.2_
 
-- [ ] 4.4 Handle OpenSpec spec consolidation
+- [ ] 4.5 Handle OpenSpec spec consolidation
   - Analyze existing OpenSpec specs/ directory for consolidation opportunities
   - Group related specifications into logical Kiro spec boundaries
   - Create consolidated requirements.md files capturing all functionality
@@ -106,28 +128,32 @@
 
 ## 5. Archive OpenSpec content and establish historical preservation
 
-- [ ] 5.1 Create OpenSpec archive structure
+- [ ] 5.1 Create comprehensive OpenSpec archive structure
   - Implement `HistoricalPreserver` class for archiving OpenSpec content
   - Create archive directory structure under `archive/openspec/`
   - Copy complete OpenSpec directory structure for historical reference
+  - Preserve existing archive/ directory with completed changes (8 archived changes)
   - _Requirements: 4.1, 4.4_
 
 - [ ] 5.2 Generate migration mapping and traceability
   - Create comprehensive mapping document linking Kiro specs to OpenSpec origins
   - Generate JSON mapping file with change IDs, spec names, and migration details
   - Document all archived changes with completion dates and context
+  - Map 8 active changes and 9 specifications to new Kiro structure
   - _Requirements: 4.2, 4.3_
 
 - [ ] 5.3 Preserve OpenSpec documentation and context
   - Archive openspec/project.md and openspec/AGENTS.md as historical documentation
   - Create README files explaining archived content and migration context
   - Ensure archived data is accessible but clearly marked as legacy
+  - Document the transition from OpenSpec to Kiro workflows
   - _Requirements: 4.4, 4.5_
 
 - [ ]* 5.4 Validate archive completeness and integrity
   - Verify all OpenSpec content is properly archived
   - Check that migration mapping is complete and accurate
   - Test accessibility of archived content for future reference
+  - Validate that no active development work is lost
   - _Requirements: 4.1, 4.5_
 
 ## 6. Update documentation and establish Kiro workflows
