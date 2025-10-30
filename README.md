@@ -220,6 +220,8 @@ See [COMPLETION_STATUS.md](openspec/changes/add-transition-detection/COMPLETION_
 - Remaining tasks (17, all documentation/deployment)
 - Timeline and effort estimates
 
+**Note**: This project is transitioning from OpenSpec to Kiro for specification-driven development. See [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md) for migration details.
+
 ---
 
 ## Transition Detection MVP
@@ -644,7 +646,9 @@ sbir-etl/
 │   ├── docker-compose.test.yml     # Test runner environment
 │   └── docker-compose.e2e.yml      # E2E testing (MacBook Air optimized)
 │
-└── openspec/                    # Specifications (see openspec/AGENTS.md)
+├── .kiro/                       # Kiro specifications (new spec system)
+│   └── specs/                   # Specification-driven development
+└── openspec/                    # Legacy specifications (being migrated to Kiro)
     ├── specs/                   # Current capabilities
     └── changes/                 # Proposed changes
 ```
@@ -711,17 +715,25 @@ GitHub Actions workflows:
 - **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - **Deployment**: `docs/deployment/containerization.md`
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
-- **OpenSpec**: `openspec/AGENTS.md` (change proposal workflow)
+- **Specifications**: `.kiro/specs/` (Kiro specification system) and `openspec/AGENTS.md` (legacy OpenSpec workflow)
 
 ## Contributing
 
 1. Follow code quality standards (black, ruff, mypy, bandit)
 2. Write tests for new functionality (≥80% coverage)
 3. Update documentation as needed
-4. Use OpenSpec for architectural changes (see `openspec/AGENTS.md`)
+4. Use Kiro specs for architectural changes (see `.kiro/specs/`) or OpenSpec during migration period (see `openspec/AGENTS.md`)
 5. Ensure performance regression checks pass in CI
 
 ### Upcoming Architecture Changes
+
+**Specification System Migration** (Q1 2025): The project is migrating from OpenSpec to Kiro for specification-driven development. This transition will:
+- Consolidate all specifications into Kiro's unified format
+- Implement EARS patterns for requirements documentation
+- Establish task-driven development workflows
+- Preserve historical OpenSpec content for reference
+
+See [OpenSpec to Kiro Migration Guide](docs/architecture/openspec-to-kiro-migration-guide.md) for details.
 
 **Codebase Consolidation Refactor** (Q1 2025): A comprehensive refactoring effort is planned to consolidate and streamline the codebase architecture. This will:
 - Reduce code duplication by 30-60%

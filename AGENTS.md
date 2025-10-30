@@ -1,16 +1,28 @@
-<!-- OPENSPEC:START -->
+<!-- SPECIFICATION SYSTEM:START -->
 # AI Agent Instructions
 
-## When to Use OpenSpec
+## Specification System Migration
 
-Check `openspec/AGENTS.md` when requests involve:
-- Planning, proposals, specs, changes, or architecture shifts
-- New capabilities, breaking changes, or performance/security work
-- Ambiguous requirements needing authoritative specifications
+**Current State**: This project is migrating from OpenSpec to Kiro for specification-driven development.
 
-See `openspec/AGENTS.md` for change proposal workflow, spec format, and project conventions.
+### When to Use Kiro Specs (Preferred)
 
-<!-- OPENSPEC:END -->
+Use `.kiro/specs/` for new development:
+- Planning new features or capabilities
+- Architecture changes and design decisions
+- Requirements documentation with EARS patterns
+- Task-driven implementation planning
+
+### When to Use OpenSpec (Legacy - Migration Period Only)
+
+Check `openspec/AGENTS.md` during migration period for:
+- Existing OpenSpec changes being migrated
+- Legacy change proposal workflow
+- Historical context and completed work
+
+**Migration Status**: See [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md) for complete migration plan.
+
+<!-- SPECIFICATION SYSTEM:END -->
 
 ## Project: SBIR ETL Pipeline
 
@@ -45,7 +57,8 @@ docs/
   data/                 # Data dictionaries, evaluation guides
   deployment/containerization.md
   schemas/              # Neo4j schemas
-openspec/               # Specs and changes (see openspec/AGENTS.md)
+.kiro/specs/            # Kiro specifications (new system)
+openspec/               # Legacy specs (being migrated to Kiro)
 
 .github/workflows/
   performance-regression-check.yml  # Benchmark + regression detection
@@ -102,7 +115,7 @@ make docker-test        # Run tests in container
 
 ## References
 
-- OpenSpec workflow: `openspec/AGENTS.md`
+- Kiro specifications: `.kiro/specs/` (preferred) or OpenSpec workflow: `openspec/AGENTS.md` (legacy)
 - Container guide: `docs/deployment/containerization.md`
 - Data sources: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - Neo4j schemas: `docs/schemas/patent-neo4j-schema.md`
