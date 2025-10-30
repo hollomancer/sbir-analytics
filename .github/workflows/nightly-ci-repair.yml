@@ -1,0 +1,203 @@
+# .github/workflows/nightly-ci-repair.yml
+name: Nightly CI Repair
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC nightly
+  workflow_dispatch:
+
+permissions:
+  contents: write          # create branch and commits
+  pull-requests: write     # open PR
+  actions: read
+  checks: read
+
+env:
+  REPAIR_BRANCH_PREFIX: "bot/ci-fix"
+  REPAIR_MAX_RUNTIME_MIN: "15"
+
+jobs:
+  diagnose:
+    name: Run tests and capture logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run tests
+        id: test
+        run: |
+          set -o pipefail
+          poetry run pytest -q 2>&1 | tee test.log
+        continue-on-error: true
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-logs
+          path: test.log
+
+      - name: Set failure flag
+        id: flags
+        run: |
+          if [ "${{ steps.test.outcome }}" != "success" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+        outputs:
+          failed: ${{ steps.flags.outputs.failed }}
+
+  attempt_repair:
+    name: Attempt minimal, reversible fixes
+    needs: diagnose
+    if: needs.diagnose.outputs.failed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Create repair branch
+        id: branch
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          branch="${REPAIR_BRANCH_PREFIX}/${short_sha}"
+          git switch -c "$branch"
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install formatters
+        run: python -m pip install --disable-pip-version-check -q black isort
+
+      - name: Autofix (black + isort)
+        run: |
+          black . || true
+          isort . || true
+
+      - name: Fix common CI YAML issues
+        run: |
+          set -e
+          shopt -s globstar || true
+          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$f" ] || continue
+            sed -i 's/ubuntu-latest/ubuntu-24.04/g' "$f" || true
+            sed -i 's/actions\/checkout@v[0-9]*/actions\/checkout@v4/g' "$f" || true
+          done
+
+      - name: Commit changes if any
+        id: commit
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git -c user.name="ci-bot" -c user.email="actions@users.noreply.github.com" \
+              commit -m "ci: minimal nightly repair (lint/format/config)"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Re-run tests locally
+        id: retest
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          set -o pipefail
+          # Need to install dependencies before running tests
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry install --no-interaction
+          poetry run pytest -q 2>&1 | tee test-after-fix.log
+        continue-on-error: true
+
+      - name: Upload post-fix logs
+        uses: actions/upload-artifact@v4
+        if: steps.commit.outputs.changed == 'true'
+        with:
+          name: nightly-test-after-fix
+          path: test-after-fix.log
+
+      - name: Open PR with fixes
+        if: steps.commit.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ steps.branch.outputs.branch }}
+          title: "CI: nightly minimal repair"
+          commit-message: "ci: minimal nightly repair"
+          body: |
+            ## Root cause
+            Nightly repair attempted after failing tests. See artifacts.
+
+            ## Why this fix
+            Applied safe tiers: format, lint, workflow nudges.
+
+            ## Evidence
+            Logs attached as workflow artifacts. CI must pass before merge.
+
+            ## Policy
+            No edits to release, secrets, or ruleset files. Review required.
+          labels: ci:autofix-candidate,bot
+          draft: true
+
+  fallback_issue:
+    name: Open issue if no safe changes
+    needs: [diagnose, attempt_repair]
+    if: |
+      needs.diagnose.outputs.failed == 'true' &&
+      (needs.attempt_repair.result == 'skipped' ||
+       needs.attempt_repair.outputs.changed == 'false')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Nightly CI failure: ${context.sha.substring(0,7)}`;
+            const body = `
+**What failed**
+See nightly logs artifacts.
+
+**Ask**
+Propose minimal, reversible fix in a PR.
+Link failing tests and rationale.
+
+**Guardrails**
+No secrets, release, or ruleset changes.
+`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["ci:triage","bot"]
+            })
