@@ -183,6 +183,15 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
     )
 ```
 
+### How to Add a New Quality Gate
+
+1. Co-locate the check with the target asset in `src/assets/...`.
+2. Name the function `<asset_name>_<check_purpose>_check`.
+3. Read thresholds from loaded config (e.g., `config.data_quality.thresholds`).
+4. Compute metrics and return `AssetCheckResult(passed=..., metadata=...)`.
+5. Use ERROR/WARNING semantics to block or continue downstream assets.
+6. Add the check to Dagster jobs if needed and verify in the UI.
+
 ### Performance Monitoring Integration
 
 **Asset Execution Metadata:**
@@ -224,8 +233,8 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 - Performance metric collection
 - Quality metric tracking
 - Historical trend analysis
-## Rel
-ated Documents
+
+## Related Documents
 
 - **[configuration-patterns.md](configuration-patterns.md)** - Complete pipeline and performance configuration examples
 - **[data-quality.md](data-quality.md)** - Quality framework integrated with asset checks

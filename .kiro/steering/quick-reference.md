@@ -2,6 +2,8 @@
 
 Fast lookup for common patterns, configurations, and code snippets used in the SBIR ETL Pipeline.
 
+Note: Values shown here are illustrative. The single source of truth for configuration and defaults is `configuration-patterns.md` and `config/base.yaml`.
+
 ## Quality Thresholds Quick Lookup
 
 | Field | Completeness | Validity Range | Notes |
@@ -14,85 +16,20 @@ Fast lookup for common patterns, configurations, and code snippets used in the S
 
 ## Enrichment Confidence Levels
 
-| Level | Range | Sources | Use Case |
-|-------|-------|---------|----------|
-| **High** | ≥0.80 | Exact matches, API lookups | Production ready |
-| **Medium** | 0.60-0.79 | Fuzzy matches, validated proximity | Review recommended |
-| **Low** | <0.60 | Agency defaults, sector fallbacks | Manual review required |
+See confidence definitions in `glossary.md`.
 
 ## Common Configuration Snippets
 
-### Quality Gates
-```yaml
-data_quality:
-  thresholds:
-    max_duplicate_rate: 0.10      # Block if >10% duplicates
-    max_missing_rate: 0.15        # Warn if >15% missing
-    min_enrichment_success: 0.90  # Target 90% enrichment
-```
+For full YAML examples, see `configuration-patterns.md`.
 
-### Enrichment Batch Processing
-```yaml
-enrichment:
-  batch_size: 100
-  max_retries: 3
-  timeout_seconds: 30
-  rate_limit_per_second: 10.0
-```
-
-### Pipeline Performance
-```yaml
-pipeline:
-  chunk_size: 10000
-  memory_threshold_mb: 2048
-  timeout_seconds: 300
-performance:
-  batch_size: 1000
-  parallel_threads: 4
-```
-
-### Neo4j Loading
-```yaml
-neo4j:
-  loading:
-    batch_size: 1000
-    parallel_threads: 4
-    transaction_timeout_seconds: 300
-```
+- Quality gates: thresholds and actions → `configuration-patterns.md#data-quality-configuration`
+- Enrichment: sources, batch processing, confidence → `configuration-patterns.md#enrichment-configuration`
+- Pipeline performance: chunking, memory, retries → `configuration-patterns.md#pipeline-orchestration-configuration`
+- Neo4j loading: batch size, parallelism, timeouts → `configuration-patterns.md#neo4j-configuration`
 
 ## Asset Check Templates
 
-### Completeness Check
-```python
-@asset_check(asset=my_asset)
-def completeness_check(my_asset: pd.DataFrame) -> AssetCheckResult:
-    required_fields = ["field1", "field2", "field3"]
-    coverage = {
-        field: 1.0 - (my_asset[field].isna().sum() / len(my_asset))
-        for field in required_fields
-    }
-    min_coverage = min(coverage.values())
-    return AssetCheckResult(
-        passed=min_coverage >= 0.95,
-        metadata={"min_coverage": min_coverage, "field_coverage": coverage}
-    )
-```
-
-### Success Rate Check
-```python
-@asset_check(asset=enriched_data)
-def success_rate_check(enriched_data: pd.DataFrame) -> AssetCheckResult:
-    success_count = enriched_data["enriched_field"].notna().sum()
-    success_rate = success_count / len(enriched_data)
-    return AssetCheckResult(
-        passed=success_rate >= 0.90,
-        metadata={
-            "success_rate": success_rate,
-            "success_count": success_count,
-            "total_count": len(enriched_data)
-        }
-    )
-```
+Canonical templates live in `pipeline-orchestration.md#asset-check-implementation`.
 
 ## Neo4j Patterns Quick Reference
 
@@ -131,26 +68,13 @@ CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
 
 ## Environment Variables Quick Setup
 
-### Development
+Prefer `SBIR_ETL__...` overrides that mirror YAML structure. See details in `configuration-patterns.md#environment-variable-overrides`.
+
+Example:
 ```bash
 export SBIR_ETL_ENV=dev
 export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
-export SBIR_ETL__NEO4J__PASSWORD="dev_password"
-```
-
-### Production
-```bash
-export SBIR_ETL_ENV=prod
-export SBIR_ETL__NEO4J__URI="bolt://prod-neo4j:7687"
-export SBIR_ETL__NEO4J__PASSWORD="secure_prod_password"
-export SBIR_ETL__ENRICHMENT__SAM_GOV_API_KEY="prod_api_key"
-```
-
-### Performance Tuning
-```bash
 export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
-export SBIR_ETL__PERFORMANCE__BATCH_SIZE=2000
-export SBIR_ETL__PERFORMANCE__PARALLEL_THREADS=8
 ```
 
 ## Common Commands

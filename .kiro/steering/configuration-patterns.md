@@ -290,6 +290,39 @@ export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
 export SBIR_ETL__CET__SCORING__HIGH_MIN=75
 ```
 
+### Override Model and Secret Mapping
+
+There are two complementary layers for runtime configuration:
+
+- SBIR_ETL overrides: Prefer `SBIR_ETL__...` env vars that mirror the YAML structure. These directly override loaded config values at runtime.
+- Secret mapping: Some sections (e.g., `neo4j`) reference raw env var names such as `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD`. The YAML keys (e.g., `uri_env_var`) specify which raw environment variables to read.
+
+Example:
+
+```yaml
+neo4j:
+  uri_env_var: "NEO4J_URI"
+  user_env_var: "NEO4J_USER"
+  password_env_var: "NEO4J_PASSWORD"
+```
+
+You can either set raw secrets:
+
+```bash
+export NEO4J_URI="bolt://localhost:7687"
+export NEO4J_USER="neo4j"
+export NEO4J_PASSWORD="dev_password"
+```
+
+Or override resolved values directly via SBIR_ETL overrides:
+
+```bash
+export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
+export SBIR_ETL__NEO4J__PASSWORD="dev_password"
+```
+
+Prefer SBIR_ETL overrides in development/CI for clarity and portability; use raw env secrets where infrastructure already manages them.
+
 ## Configuration Validation
 
 ### Pydantic Schema Example

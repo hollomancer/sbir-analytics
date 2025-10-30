@@ -179,6 +179,16 @@ ORDER BY a.record_date ASC
 
 Performance configuration and memory management details are covered in **[pipeline-orchestration.md](pipeline-orchestration.md)**.
 
+## Safety Checklist (Before Large Loads)
+
+- Create unique constraints first (Company.uei, Award.award_id, Patent.grant_doc_num).
+- Ensure indexes needed by MERGE patterns exist prior to loading.
+- Use UNWIND batches sized to avoid transaction timeouts (e.g., 1k–5k).
+- Enable deadlock retries, keep transactions short, and commit per batch.
+- Order operations: constraints → indexes → bulk load → additional indexes if needed.
+- Validate sample batches end-to-end before full-scale execution.
+- Monitor for constraint violations; capture and report failed records.
+
 ## Data Quality Constraints
 
 ### Node Property Validation
@@ -283,8 +293,9 @@ CREATE (c)-[:OWNS {as_of_date: $assignment_date}]->(p)
 - Query performance analysis
 - Index effectiveness monitoring
 - Memory usage tracking
-- Transaction throughput measurement## R
-elated Documents
+- Transaction throughput measurement
+
+## Related Documents
 
 - **[configuration-patterns.md](configuration-patterns.md)** - Complete Neo4j configuration examples
 - **[pipeline-orchestration.md](pipeline-orchestration.md)** - Loading performance optimization and memory management

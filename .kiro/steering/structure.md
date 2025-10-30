@@ -143,8 +143,9 @@ from pydantic import BaseModel, Field
 
 from src.config.loader import load_config
 from src.models.sbir_award import SbirAward
-```## Relat
-ed Documents
+```
+
+## Related Documents
 
 - **[product.md](product.md)** - Project overview and business context
 - **[tech.md](tech.md)** - Technology stack and development tools
