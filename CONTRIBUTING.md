@@ -366,6 +366,7 @@ sbir-etl/
 ├── data/                  # Data files (not in git)
 ├── docs/                  # Additional documentation
 ├── .kiro/specs/           # Kiro specifications (active system)
+├── .kiro/steering/        # Agent steering documents (architectural patterns)
 └── archive/openspec/      # Archived OpenSpec content (historical reference)
 ```
 

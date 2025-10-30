@@ -11,6 +11,7 @@ Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
 - Specs and requirements live in `.kiro/specs/` (Kiro is the source of truth for designs, tasks, and requirements).
 - User and developer docs live under `docs/` (this site).
+- Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
 - Historical OpenSpec content is archived in `archive/openspec/`.
 
 ## What is this project?

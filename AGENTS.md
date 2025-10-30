@@ -59,6 +59,7 @@ docs/
   deployment/containerization.md
   schemas/              # Neo4j schemas
 .kiro/specs/            # Kiro specifications (active system)
+.kiro/steering/         # Agent steering documents (architectural patterns)
 archive/openspec/       # Archived OpenSpec content (historical reference)
 
 .github/workflows/
@@ -117,6 +118,7 @@ make docker-test        # Run tests in container
 ## References
 
 - Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
+- Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/README.md`)
 - Container guide: `docs/deployment/containerization.md`
 - Data sources: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
 - Neo4j schemas: `docs/schemas/patent-neo4j-schema.md`

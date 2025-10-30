@@ -3,6 +3,7 @@
 ## Documentation Map
 - Specs (Kiro): `.kiro/specs/`
 - User/Developer Docs: `docs/` (see `docs/index.md`)
+- Agent Steering: `.kiro/steering/` (see `.kiro/steering/README.md`)
 - Historical Reference: `archive/openspec/`
 
 ## Transition Detection System
@@ -654,7 +655,8 @@ sbir-etl/
 │   └── docker-compose.e2e.yml      # E2E testing (MacBook Air optimized)
 │
 ├── .kiro/                       # Kiro specifications (active spec system)
-│   └── specs/                   # Specification-driven development
+│   ├── specs/                   # Specification-driven development
+│   └── steering/                # Agent steering documents (architectural patterns)
 └── archive/                     # Archived content
     └── openspec/                # Archived OpenSpec content (historical reference)
 ```
