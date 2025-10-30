@@ -247,3 +247,29 @@ transition:
     # Vendor resolution quality thresholds and fuzzy config
     min_rate: 0.60 # Minimum resolution rate (uei/duns/fuzzy)
     fuzzy_threshold: 0.85 # RapidFuzz partial_ratio threshold for name_fuzzy
+
+statistical_reporting:
+  # Statistical reporting configuration
+  output_directory: "reports/statistical"
+  output_formats: ["html", "json", "markdown"]
+  retention_days: 30
+  verbosity_level: "detailed" # minimal, standard, detailed
+  
+  # Insight generation settings
+  insights:
+    enabled: true
+    quality_threshold: 0.95 # Threshold for quality recommendations
+    performance_threshold: 0.80 # Threshold for performance anomaly detection
+    anomaly_detection: true # Enable automated anomaly detection
+    
+  # HTML report settings
+  html:
+    enable_plotly: true # Use Plotly for interactive visualizations
+    theme: "plotly_white" # Plotly theme for charts
+    include_raw_data: false # Include raw data in HTML reports
+    
+  # CI/CD integration settings
+  ci:
+    upload_artifacts: true # Upload reports as CI artifacts
+    post_pr_comments: true # Post Markdown summaries as PR comments
+    compare_baselines: true # Compare against historical baselines

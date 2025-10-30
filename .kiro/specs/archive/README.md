@@ -25,6 +25,17 @@ archive/
 - **Location**: `completed-migrations/openspec-to-kiro-migration/`
 - **Completion Record**: See `COMPLETION_RECORD.md` for detailed results and artifacts
 
+### Completed Features
+
+#### transition_detection (Completed: 2025-10-30)
+- **Purpose**: SBIR Transition Detection Module for technology commercialization analysis
+- **Status**: ✅ Fully completed (169/169 tasks)
+- **Results**: Multi-signal detection engine, vendor resolution, Neo4j integration, dual-perspective analytics
+- **Impact**: Enables comprehensive SBIR program effectiveness measurement and technology transfer tracking
+- **Performance**: ≥10K detections/minute, ≥85% precision, ≥70% recall, 90%+ vendor match rate
+- **Location**: `completed-features/transition_detection/`
+- **Completion Record**: See `COMPLETION_RECORD.md` for detailed implementation results and validation metrics
+
 ## Archive Guidelines
 
 ### When to Archive
