@@ -9,11 +9,17 @@ This design outlines a comprehensive consolidation and refactoring strategy for 
 ### Current State Analysis
 
 The current codebase exhibits several patterns that indicate organic growth:
-- **Asset Proliferation**: 12+ asset files with overlapping responsibilities
-- **Configuration Fragmentation**: Multiple configuration patterns across modules
-- **Utility Duplication**: Similar functions scattered across different modules
-- **Testing Inconsistency**: Different test patterns and setup approaches
-- **Performance Monitoring Scatter**: Performance tracking code duplicated across assets
+- **Asset Proliferation**: 15+ asset files with overlapping responsibilities including:
+  - Multiple ingestion assets: `sbir_ingestion.py`, `usaspending_ingestion.py`, `uspto_ai_extraction_assets.py`
+  - Separate Neo4j loading assets: `cet_neo4j_loading_assets.py`, `transition_neo4j_loading_assets.py`, `uspto_neo4j_loading_assets.py`
+  - Fragmented validation and transformation: `uspto_validation_assets.py`, `uspto_transformation_assets.py`
+- **Configuration Fragmentation**: Multiple configuration classes scattered across modules:
+  - 16+ separate Config classes in `src/config/schemas.py`
+  - Duplicate Neo4j configurations in multiple files
+  - Inconsistent validation configurations across validators
+- **Utility Duplication**: Similar functions scattered across different modules in `src/utils/`
+- **Testing Inconsistency**: Different test patterns and setup approaches across unit, integration, and E2E tests
+- **Performance Monitoring Scatter**: Performance tracking code duplicated across assets and utilities
 
 ### Target Architecture
 
@@ -60,11 +66,11 @@ class ConsolidatedAsset:
 ```
 
 **Asset Groups:**
-- **Ingestion Assets**: Consolidate raw_sbir_awards, usaspending_extraction, uspto_extraction
-- **Validation Assets**: Merge validation logic across all data sources
-- **Enrichment Assets**: Unify company_enrichment, usaspending_enrichment
-- **Transformation Assets**: Consolidate graph preparation and data transformation
-- **Loading Assets**: Merge Neo4j loading assets with consistent patterns
+- **Ingestion Assets**: Consolidate `sbir_ingestion.py`, `usaspending_ingestion.py`, `uspto_ai_extraction_assets.py`, `uspto_assets.py`
+- **Validation Assets**: Merge `uspto_validation_assets.py` with validation logic across all data sources
+- **Enrichment Assets**: Unify `sbir_usaspending_enrichment.py` with other enrichment patterns
+- **Transformation Assets**: Consolidate `uspto_transformation_assets.py`, `transition_assets.py`, and graph preparation logic
+- **Loading Assets**: Merge `cet_neo4j_loading_assets.py`, `transition_neo4j_loading_assets.py`, `uspto_neo4j_loading_assets.py` with consistent patterns
 
 ### 2. Unified Configuration System
 
@@ -77,24 +83,39 @@ class CoreConfig(BaseModel):
     log_level: str
 
 class DatabaseConfig(BaseModel):
-    """Unified database configuration."""
-    neo4j: Neo4jConfig
-    duckdb: DuckDBConfig
+    """Unified database configuration consolidating multiple Neo4j configs."""
+    neo4j: Neo4jConfig  # Consolidate from loaders/neo4j_client.py and config/schemas.py
+    duckdb: DuckDBConfig  # Merge SbirDuckDBConfig and DuckDBConfig
 
-class PipelineConfig(BaseModel):
-    """Root configuration with all subsystems."""
+class ConsolidatedPipelineConfig(BaseModel):
+    """Root configuration consolidating 16+ existing config classes."""
     core: CoreConfig
     databases: DatabaseConfig
-    data_quality: DataQualityConfig
-    performance: PerformanceConfig
+    data_quality: DataQualityConfig  # Merge ValidationConfig classes
+    enrichment: EnrichmentConfig
+    extraction: ExtractionConfig
+    transformation: TransformationConfig
+    logging: LoggingConfig
+    metrics: MetricsConfig
+    statistical_reporting: StatisticalReportingConfig
+    taxonomy: TaxonomyConfig  # From ml/config/taxonomy_loader.py
+    classification: ClassificationConfig  # From ml/config/taxonomy_loader.py
 ```
 
 **Configuration Loading Strategy:**
-- Single configuration loader with environment-specific overrides
-- Type-safe validation with clear error messages
-- Consistent environment variable naming (SBIR_ETL__ prefix)
-- Hot-reload capability for development environments### 3. Unifi
-ed Testing Framework
+- Single configuration loader consolidating existing `config/loader.py` functionality
+- Environment-specific overrides maintaining existing `config/base.yaml`, `config/dev.yaml` patterns
+- Type-safe validation with clear error messages leveraging existing Pydantic validation
+- Consistent environment variable naming (SBIR_ETL__ prefix) standardizing current mixed patterns
+- Hot-reload capability for development environments
+
+**Migration from Current State:**
+- Consolidate 16+ separate Config classes in `src/config/schemas.py` into hierarchical structure
+- Merge duplicate Neo4j configurations from `loaders/neo4j_client.py` and `config/schemas.py`
+- Unify validation configurations from `validators/schemas.py` and main config
+- Preserve existing configuration values and environment variable patterns during transition
+
+### 3. Unified Testing Framework
 
 **Test Infrastructure:**
 ```python
@@ -174,6 +195,38 @@ class PatentModel(BaseDataModel):
     """Consolidated patent model with relationships."""
     pass
 ```
+
+### 6. Docker and Deployment Consolidation
+
+**Current Docker Configuration State:**
+- Multiple Docker Compose files: `docker/docker-compose.dev.yml`, `docker/docker-compose.e2e.yml`, `docker/docker-compose.test.yml`
+- Root-level compose files: `docker-compose.yml`, `docker-compose.cet-staging.yml`
+- Inconsistent environment variable management across containers
+- Varying resource limits and health check patterns
+
+**Consolidated Docker Architecture:**
+```yaml
+# Single docker-compose.yml with profile-based environments
+services:
+  app:
+    profiles: ["dev", "test", "prod"]
+    environment:
+      - SBIR_ETL_ENV=${COMPOSE_PROFILE:-dev}
+    # Unified resource limits and health checks
+    
+  neo4j:
+    profiles: ["dev", "test", "prod"]
+    # Standardized Neo4j configuration
+    
+# Environment-specific overrides via profiles
+```
+
+**Docker Consolidation Strategy:**
+- Merge redundant compose files into single `docker-compose.yml` with profiles
+- Standardize environment variable patterns using `SBIR_ETL__` prefix
+- Unify container resource limits and health check configurations
+- Consolidate build stages and optimize layer caching
+- Create consistent startup and dependency management patterns
 
 ## Data Models
 
@@ -304,28 +357,28 @@ class TestDataManager:
 ### Incremental Migration Approach
 
 **Phase 1: Foundation (Weeks 1-2)**
-- Establish unified configuration system
-- Create consolidated performance monitoring
-- Set up unified testing framework
-- Implement error handling infrastructure
+- Establish unified configuration system by consolidating 16+ Config classes in `src/config/schemas.py`
+- Create consolidated performance monitoring merging scattered `src/utils/performance_*.py` modules
+- Set up unified testing framework standardizing patterns across `tests/unit/`, `tests/integration/`, `tests/e2e/`
+- Implement error handling infrastructure with consistent patterns
 
 **Phase 2: Asset Consolidation (Weeks 3-4)**
-- Merge similar assets with backward compatibility
-- Consolidate asset execution patterns
-- Unify asset metadata and monitoring
-- Update asset dependencies and relationships
+- Merge 15+ asset files starting with similar ingestion assets (`sbir_ingestion.py`, `usaspending_ingestion.py`, `uspto_ai_extraction_assets.py`)
+- Consolidate Neo4j loading assets (`cet_neo4j_loading_assets.py`, `transition_neo4j_loading_assets.py`, `uspto_neo4j_loading_assets.py`)
+- Unify validation and transformation assets (`uspto_validation_assets.py`, `uspto_transformation_assets.py`)
+- Update asset dependencies and relationships maintaining existing Dagster job definitions
 
 **Phase 3: Model and Utility Consolidation (Weeks 5-6)**
-- Merge duplicate data models
-- Consolidate utility functions
-- Unify validation logic
-- Streamline database clients
+- Merge duplicate data models across `src/models/` maintaining existing Pydantic validation
+- Consolidate utility functions in `src/utils/` eliminating duplication
+- Unify validation logic from `src/validators/` and `src/quality/`
+- Streamline database clients consolidating Neo4j configurations
 
 **Phase 4: Testing and Documentation (Weeks 7-8)**
-- Migrate all tests to unified framework
-- Update documentation and developer guides
-- Performance optimization and validation
-- Final cleanup and code quality enforcement
+- Migrate all tests to unified framework preserving existing coverage (≥85%)
+- Update documentation consolidating scattered guides in `docs/`
+- Performance optimization ensuring no regression in existing benchmarks
+- Final cleanup removing deprecated code and temporary migration utilities
 
 ### Backward Compatibility Strategy
 
@@ -354,25 +407,43 @@ class MigrationHelper:
 ### Code Quality Enforcement
 
 **Automated Quality Gates:**
-- Architectural compliance validation
-- Duplicate code detection and prevention
-- Import organization and dependency management
-- Performance regression detection
+- Architectural compliance validation ensuring consolidated patterns are followed
+- Duplicate code detection preventing reintroduction of consolidated functionality
+- Import organization enforcing consistent import patterns across modules
+- Performance regression detection maintaining existing benchmark performance
+- Asset consolidation validation ensuring no functionality is lost during merging
 
-**Quality Metrics:**
-- Code duplication reduction targets (30-60% reduction)
-- Test coverage maintenance (≥85%)
-- Performance benchmark compliance
-- Documentation completeness validation
+**Quality Metrics and Targets:**
+- Code duplication reduction: 30-60% reduction in duplicate functions and classes
+- Asset file reduction: Minimum 30% reduction from current 15+ asset files
+- Configuration consolidation: 50% reduction in configuration-related code duplication
+- Test code consolidation: 40% reduction in duplicate test setup and utilities
+- Performance monitoring consolidation: 60% reduction in scattered performance tracking code
+- Test coverage maintenance: ≥85% coverage throughout consolidation process
 
 **Continuous Integration Enhancements:**
 ```yaml
 quality_gates:
-  - architectural_compliance_check
-  - duplicate_code_detection
-  - performance_regression_test
-  - migration_validation
-  - documentation_completeness
+  - architectural_compliance_check:
+      - validate_consolidated_asset_patterns
+      - check_configuration_hierarchy_usage
+      - verify_unified_testing_framework_adoption
+  - duplicate_code_detection:
+      - scan_for_duplicate_functions
+      - identify_similar_asset_logic
+      - detect_redundant_configuration_classes
+  - performance_regression_test:
+      - benchmark_consolidated_assets
+      - validate_memory_usage_improvements
+      - ensure_no_performance_degradation
+  - migration_validation:
+      - verify_backward_compatibility
+      - validate_configuration_migration
+      - check_asset_dependency_integrity
+  - documentation_completeness:
+      - validate_consolidated_documentation
+      - check_migration_guide_accuracy
+      - verify_api_documentation_updates
 ```
 
 ### Documentation Strategy

@@ -2,9 +2,9 @@
 
 ## Overview
 
-This design document outlines the architecture and implementation approach for enhancing the SBIR ETL pipeline's end-to-end testing capabilities. The solution provides a comprehensive, dockerized testing environment that can run efficiently on a MacBook Air while validating the complete pipeline from data ingestion through Neo4j graph creation.
+This design document outlines the architecture and implementation approach for enhancing the SBIR ETL pipeline's end-to-end testing capabilities. The solution provides a comprehensive, dockerized testing environment that can run efficiently on a MacBook Air with 8GB RAM while validating the complete pipeline from data ingestion through Neo4j graph creation within a 10-minute execution window.
 
-The design builds upon the existing test infrastructure while adding robust E2E capabilities, resource monitoring, and comprehensive validation across all pipeline stages.
+The design builds upon the existing test infrastructure in `tests/e2e/` and `docker/docker-compose.test.yml` while adding robust E2E capabilities, resource monitoring, and comprehensive validation across all five ETL pipeline stages (Extract, Validate, Enrich, Transform, Load).
 
 ## Architecture
 
@@ -50,22 +50,24 @@ graph TB
 ### Component Architecture
 
 #### 1. E2E Test CLI
-- **Purpose**: Single entry point for running E2E tests
-- **Location**: `scripts/e2e_test_runner.py`
+- **Purpose**: Single entry point for running E2E tests with scenario selection
+- **Location**: `scripts/run_e2e_tests.py` (enhances existing `scripts/run_e2e_tests.py`)
 - **Responsibilities**:
-  - Parse command-line arguments for test scenarios
+  - Parse command-line arguments for test scenarios (minimal, standard, large, edge-cases)
   - Orchestrate Docker Compose environment startup/teardown
-  - Aggregate and display test results
-  - Handle cleanup on interruption
+  - Aggregate and display test results with timing and resource metrics
+  - Handle cleanup on interruption and preserve artifacts for failed tests
+  - Integrate with existing `make docker-test` workflow
 
 #### 2. Dockerized Test Environment
-- **Purpose**: Isolated, reproducible test environment
-- **Configuration**: `docker/docker-compose.e2e.yml`
+- **Purpose**: Isolated, reproducible test environment optimized for MacBook Air
+- **Configuration**: Enhances existing `docker/docker-compose.test.yml` with E2E-specific optimizations
 - **Components**:
-  - Test orchestrator container (Python-based)
-  - Neo4j test instance (ephemeral)
-  - SBIR ETL application container
+  - Test orchestrator container (extends existing test container)
+  - Neo4j test instance (1GB heap limit, ephemeral)
+  - SBIR ETL application container (existing)
   - Shared volumes for test data and artifacts
+- **Resource Constraints**: 8GB total memory limit, 2-minute startup timeout
 
 #### 3. Test Data Manager
 - **Purpose**: Manage test datasets and data lifecycle
@@ -107,10 +109,10 @@ class TestDataManager:
 ```
 
 **Test Scenarios**:
-- `MINIMAL`: Small datasets for quick validation
-- `STANDARD`: Representative datasets for full testing
-- `LARGE`: Larger datasets for performance testing
-- `EDGE_CASES`: Datasets with edge cases and error conditions
+- `MINIMAL`: Small datasets (100 SBIR, 500 USAspending records) for quick validation under 2 minutes
+- `STANDARD`: Representative datasets (1,000 SBIR, 5,000 USAspending records) for full testing within 5-8 minutes
+- `LARGE`: Larger datasets (10,000 SBIR, 50,000 USAspending records) for performance testing within 8-10 minutes
+- `EDGE_CASES`: Datasets with missing fields, invalid formats, and error conditions for robustness testing within 3-5 minutes
 
 ### Pipeline Validator Interface
 
@@ -237,9 +239,9 @@ class E2ETestResult:
    - Schema compliance
 
 2. **Data Enrichment Validation**
-   - Match rate thresholds (>= 70%)
-   - Enrichment quality metrics
-   - Performance benchmarks
+   - Match rate thresholds (>= 70% minimum requirement)
+   - Enrichment quality metrics and confidence scoring
+   - Performance benchmarks and API response times
 
 3. **Neo4j Loading Validation**
    - Node creation verification
@@ -281,47 +283,89 @@ class E2ETestResult:
 
 ### Service Definitions
 
-```yaml
-# docker/docker-compose.e2e.yml
-services:
-  e2e-orchestrator:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.e2e
-    environment:
-      - ENVIRONMENT=e2e-test
-      - NEO4J_URI=bolt://neo4j-e2e:7687
-    depends_on:
-      neo4j-e2e:
-        condition: service_healthy
-    volumes:
-      - ./tests/fixtures:/app/test-data:ro
-      - e2e-artifacts:/app/artifacts
-    networks:
-      - e2e-network
+The E2E testing environment extends the existing `docker/docker-compose.test.yml` configuration with MacBook Air optimizations:
 
-  neo4j-e2e:
-    image: neo4j:5.20.0
+```yaml
+# Enhancement to existing docker/docker-compose.test.yml
+services:
+  app:
+    # Existing service with E2E test scenario support
     environment:
-      - NEO4J_AUTH=neo4j/e2e-password
-      - NEO4J_PLUGINS=["apoc"]
-    volumes:
-      - e2e-neo4j-data:/data
-    networks:
-      - e2e-network
+      - E2E_TEST_SCENARIO=${E2E_TEST_SCENARIO:-standard}
+      - SBIR_ETL__PIPELINE__CHUNK_SIZE=1000  # Reduced for memory efficiency
+    mem_limit: 4g  # MacBook Air memory constraint
+    
+  neo4j:
+    # Existing Neo4j service with E2E optimizations
+    environment:
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1g
+      - NEO4J_dbms_memory_pagecache_size=256m
+    mem_limit: 2g  # MacBook Air memory constraint
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p e2e-password 'RETURN 1'"]
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD} 'RETURN 1'"]
       interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 30s
 
+  # New E2E-specific volumes for test artifacts
 volumes:
-  e2e-neo4j-data:
-  e2e-artifacts:
+  e2e-test-artifacts:
+    driver: local
+```
 
-networks:
-  e2e-network:
-    driver: bridge
+## Integration with Existing Infrastructure
+
+### Leveraging Current Test Framework
+
+The E2E testing enhancement builds upon existing infrastructure:
+
+1. **Existing Test Structure**
+   - Extends `tests/e2e/test_dagster_enrichment_pipeline.py` with scenario-based testing
+   - Utilizes existing `tests/fixtures/` for sample data
+   - Integrates with current `conftest.py` and pytest configuration
+
+2. **Docker Infrastructure**
+   - Enhances existing `docker/docker-compose.test.yml` rather than creating new compose files
+   - Leverages existing `make docker-test` workflow with scenario selection
+   - Uses existing container images with E2E-specific environment variables
+
+3. **Performance Monitoring**
+   - Integrates with existing `src/utils/performance_monitor.py` infrastructure
+   - Utilizes current `src/utils/metrics.py` for resource tracking
+   - Extends existing performance baseline and alerting systems
+
+4. **Dagster Integration**
+   - Works with existing Dagster asset definitions in `src/assets/`
+   - Leverages current asset execution and materialization patterns
+   - Integrates with existing asset checks and quality gates
+
+### Configuration Integration
+
+The E2E testing system integrates with the existing configuration framework:
+
+```python
+# Extends existing config/base.yaml
+e2e_testing:
+  scenarios:
+    minimal:
+      timeout_minutes: 2
+      memory_limit_gb: 6.0
+      dataset_sizes:
+        sbir_records: 100
+        usaspending_records: 500
+    standard:
+      timeout_minutes: 8
+      memory_limit_gb: 8.0
+      dataset_sizes:
+        sbir_records: 1000
+        usaspending_records: 5000
+  
+  resource_monitoring:
+    memory_warning_threshold_gb: 6.0
+    memory_critical_threshold_gb: 7.5
+    cpu_warning_threshold_percent: 80.0
 ```
 
 ## Performance Considerations
@@ -329,19 +373,29 @@ networks:
 ### MacBook Air Optimization
 
 1. **Memory Management**
-   - Limit Neo4j heap size to 1GB
-   - Use streaming data processing where possible
-   - Implement garbage collection monitoring
+   - Limit Neo4j heap size to 1GB maximum (512MB initial, 1GB max)
+   - Neo4j pagecache limited to 256MB
+   - Application container limited to 4GB
+   - Total system memory usage monitored to stay below 8GB
+   - Use streaming data processing and chunked operations
+   - Implement garbage collection monitoring and alerts
 
 2. **CPU Optimization**
-   - Parallel processing with thread limits
-   - Efficient data structures and algorithms
-   - Minimize container resource overhead
+   - Parallel processing limited to 2-4 threads maximum
+   - Efficient data structures and algorithms optimized for memory
+   - Minimize container resource overhead with optimized base images
+   - Use existing performance monitoring infrastructure
 
 3. **Storage Optimization**
-   - Use Docker volumes for persistent data
-   - Implement efficient cleanup strategies
-   - Compress test artifacts when possible
+   - Use Docker volumes for persistent test data and artifacts
+   - Implement efficient cleanup strategies with automatic artifact removal
+   - Compress test artifacts when possible to save disk space
+   - Leverage existing test fixtures and data management patterns
+
+4. **Startup Optimization**
+   - 2-minute maximum startup time for all services
+   - Health checks optimized for quick service readiness detection
+   - Parallel service startup where possible
 
 ### Scalability Considerations
 

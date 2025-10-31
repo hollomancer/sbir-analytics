@@ -11,6 +11,8 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 - **Pipeline_Validation**: Automated verification that all pipeline stages execute successfully and produce expected outputs
 - **Test_Data_Manager**: Component responsible for managing and providing test datasets for E2E testing
 - **Resource_Monitor**: System that tracks memory and CPU usage during test execution to ensure compatibility with MacBook Air constraints
+- **MacBook_Air**: Apple laptop computer with 8GB RAM used as the target development environment
+- **ETL_Pipeline**: Extract, Transform, Load data processing pipeline with five stages (Extract, Validate, Enrich, Transform, Load)
 
 ## Requirements
 
@@ -20,9 +22,9 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 
 #### Acceptance Criteria
 
-1. WHEN a developer executes the E2E test command, THE E2E_Test_Suite SHALL complete all pipeline stages within 10 minutes on a MacBook Air
-2. WHILE E2E tests are running, THE Resource_Monitor SHALL ensure memory usage stays below 8GB total
-3. THE E2E_Test_Suite SHALL validate data flow through all five ETL stages (Extract, Validate, Enrich, Transform, Load)
+1. WHEN a developer executes the E2E test command, THE E2E_Test_Suite SHALL complete all pipeline stages within 10 minutes on a MacBook_Air
+2. WHILE E2E tests are running, THE Resource_Monitor SHALL ensure memory usage remains below 8GB total
+3. THE E2E_Test_Suite SHALL validate data flow through all five stages of the ETL_Pipeline
 4. THE E2E_Test_Suite SHALL verify Neo4j graph structure and relationships are created correctly
 5. IF any pipeline stage fails, THEN THE E2E_Test_Suite SHALL provide detailed error reporting with stage-specific diagnostics
 
@@ -33,9 +35,9 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 #### Acceptance Criteria
 
 1. THE Test_Data_Manager SHALL provide sample datasets that represent realistic SBIR, USAspending, and USPTO data
-2. THE Test_Data_Manager SHALL ensure test datasets are small enough to process quickly but large enough to validate functionality
+2. THE Test_Data_Manager SHALL ensure test datasets are sized to process within 5 minutes while validating all functionality
 3. THE Dockerized_Test_Environment SHALL use containerized Neo4j and DuckDB instances that are automatically cleaned between test runs
-4. THE E2E_Test_Suite SHALL validate that test data isolation prevents any interaction with production databases
+4. THE E2E_Test_Suite SHALL validate that test data isolation prevents interaction with production databases
 5. WHEN tests complete, THE Test_Data_Manager SHALL automatically clean up all temporary test artifacts
 
 ### Requirement 3
@@ -44,11 +46,11 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 
 #### Acceptance Criteria
 
-1. THE Dockerized_Test_Environment SHALL start all required services (Neo4j, DuckDB, app container) with a single Docker Compose command
+1. THE Dockerized_Test_Environment SHALL start all required services with a single Docker Compose command
 2. THE Dockerized_Test_Environment SHALL automatically configure all necessary environment variables and container networking
 3. WHEN the test environment starts, THE Dockerized_Test_Environment SHALL verify all services are healthy before proceeding with tests
 4. THE Dockerized_Test_Environment SHALL provide a cleanup command that removes all containers, volumes, and networks
-5. THE Dockerized_Test_Environment SHALL complete startup within 2 minutes on a MacBook Air
+5. THE Dockerized_Test_Environment SHALL complete startup within 2 minutes on a MacBook_Air
 
 ### Requirement 4
 
@@ -56,11 +58,11 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 
 #### Acceptance Criteria
 
-1. THE Pipeline_Validation SHALL verify record counts at each pipeline stage match expected ranges
+1. THE Pipeline_Validation SHALL verify record counts at each ETL_Pipeline stage match expected ranges
 2. THE Pipeline_Validation SHALL validate data schema compliance for all intermediate and final outputs
-3. THE Pipeline_Validation SHALL check that enrichment match rates meet minimum thresholds
+3. THE Pipeline_Validation SHALL verify enrichment match rates meet minimum thresholds of 70 percent
 4. THE Pipeline_Validation SHALL verify Neo4j graph contains expected node types and relationship patterns
-5. THE Pipeline_Validation SHALL validate that performance metrics are captured and within acceptable ranges
+5. THE Pipeline_Validation SHALL validate that performance metrics are captured and remain within acceptable ranges
 
 ### Requirement 5
 
@@ -69,9 +71,9 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 #### Acceptance Criteria
 
 1. THE E2E_Test_Suite SHALL generate a comprehensive test report with timing, memory usage, and validation results
-2. THE E2E_Test_Suite SHALL capture logs from all pipeline stages and services during test execution
-3. IF validation fails, THEN THE E2E_Test_Suite SHALL provide specific details about which checks failed and why
-4. THE E2E_Test_Suite SHALL save test artifacts (intermediate data files, logs, reports) for debugging
+2. THE E2E_Test_Suite SHALL capture logs from all ETL_Pipeline stages and services during test execution
+3. IF validation fails, THEN THE E2E_Test_Suite SHALL provide specific details about which checks failed and the failure reasons
+4. THE E2E_Test_Suite SHALL save test artifacts including intermediate data files, logs, and reports for debugging
 5. THE E2E_Test_Suite SHALL provide recommendations for fixing common failure scenarios
 
 ### Requirement 6
@@ -80,8 +82,8 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 
 #### Acceptance Criteria
 
-1. THE E2E_Test_Suite SHALL support running tests for individual pipeline stages (ingestion, enrichment, loading)
-2. THE E2E_Test_Suite SHALL allow testing with different data scenarios (small dataset, large dataset, edge cases)
+1. THE E2E_Test_Suite SHALL support running tests for individual ETL_Pipeline stages
+2. THE E2E_Test_Suite SHALL allow testing with different data scenarios including small dataset, large dataset, and edge cases
 3. THE E2E_Test_Suite SHALL provide options to skip time-intensive stages for rapid iteration
 4. WHERE stage-specific testing is requested, THE E2E_Test_Suite SHALL validate dependencies and prerequisites
-5. THE E2E_Test_Suite SHALL maintain test isolation even when running partial test suites
+5. THE E2E_Test_Suite SHALL maintain test isolation when running partial test suites
