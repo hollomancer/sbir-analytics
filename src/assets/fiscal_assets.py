@@ -18,6 +18,8 @@ from loguru import logger
 from ..config.loader import get_config
 from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
 from ..enrichers.fiscal_naics_enricher import enrich_sbir_awards_with_fiscal_naics
+from ..transformers.fiscal_shock_aggregator import FiscalShockAggregator
+from ..transformers.r_stateio_adapter import RStateIOAdapter
 from ..utils.performance_monitor import performance_monitor
 
 
@@ -301,3 +303,342 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
     }
     
     return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)
+
+
+@asset(
+    description="Economic shocks aggregated by state, BEA sector, and fiscal year for StateIO model input",
+    group_name="economic_modeling",
+    compute_kind="pandas",
+)
+def economic_shocks(
+    context: AssetExecutionContext,
+    bea_mapped_sbir_awards: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Aggregate SBIR awards into state-by-sector-by-fiscal-year economic shocks.
+
+    This asset maintains award-to-shock traceability for audit purposes and supports
+    chunked processing for large datasets. Each shock represents aggregated SBIR spending
+    in a specific state, BEA sector, and fiscal year combination.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting economic shock aggregation",
+        extra={"bea_mapped_records": len(bea_mapped_sbir_awards)},
+    )
+
+    # Get chunk size from config
+    chunk_size = config.fiscal_analysis.performance.get("chunk_size", 10000)
+
+    # Aggregate shocks
+    aggregator = FiscalShockAggregator(config=config)
+    with performance_monitor.monitor_block("economic_shock_aggregation"):
+        shocks_df = aggregator.aggregate_shocks_to_dataframe(
+            awards_df=bea_mapped_sbir_awards,
+            chunk_size=chunk_size if len(bea_mapped_sbir_awards) > chunk_size else None,
+        )
+
+    # Get statistics
+    shocks_list = aggregator.aggregate_shocks(
+        awards_df=bea_mapped_sbir_awards,
+        chunk_size=chunk_size if len(bea_mapped_sbir_awards) > chunk_size else None,
+    )
+    stats = aggregator.get_aggregation_statistics(shocks_list)
+
+    context.log.info(
+        "Economic shock aggregation complete",
+        extra={
+            "num_shocks": len(shocks_df),
+            "total_awards_aggregated": stats.total_awards_aggregated,
+            "unique_states": stats.unique_states,
+            "unique_sectors": stats.unique_sectors,
+            "unique_fiscal_years": stats.unique_fiscal_years,
+            "total_shock_amount": f"${stats.total_shock_amount:,.2f}",
+            "avg_confidence": round(stats.avg_confidence, 3),
+        },
+    )
+
+    # Create metadata
+    metadata = {
+        "num_shocks": len(shocks_df),
+        "total_awards_aggregated": stats.total_awards_aggregated,
+        "unique_states": stats.unique_states,
+        "unique_sectors": stats.unique_sectors,
+        "unique_fiscal_years": stats.unique_fiscal_years,
+        "fiscal_year_range": (
+            f"{stats.unique_fiscal_years}" if stats.unique_fiscal_years > 0 else "N/A"
+        ),
+        "total_shock_amount": f"${stats.total_shock_amount:,.2f}",
+        "avg_confidence": round(stats.avg_confidence, 3),
+        "naics_coverage_rate": f"{stats.naics_coverage_rate:.1%}",
+        "geographic_resolution_rate": f"{stats.geographic_resolution_rate:.1%}",
+        "awards_per_shock_avg": round(stats.awards_per_shock_avg, 2),
+        "preview": MetadataValue.md(shocks_df.head(10).to_markdown()) if not shocks_df.empty else "No shocks",
+    }
+
+    return Output(value=shocks_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset_check(
+    asset="economic_shocks",
+    description="Validate economic shock aggregation coverage and quality",
+)
+def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckResult:
+    """Asset check to ensure economic shock aggregation meets quality thresholds."""
+    config = get_config()
+
+    if economic_shocks.empty:
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description="✗ Economic shocks aggregation FAILED: No shocks generated",
+            metadata={"num_shocks": 0},
+        )
+
+    # Check minimum shock count
+    min_shocks = 10  # Reasonable minimum for analysis
+    num_shocks = len(economic_shocks)
+    passed_min_count = num_shocks >= min_shocks
+
+    # Check coverage rates
+    naics_rates = economic_shocks["naics_coverage_rate"].dropna()
+    geo_rates = economic_shocks["geographic_resolution_rate"].dropna()
+
+    avg_naics_coverage = naics_rates.mean() if not naics_rates.empty else 0.0
+    avg_geo_coverage = geo_rates.mean() if not geo_rates.empty else 0.0
+
+    # Check confidence scores
+    confidences = economic_shocks["confidence"].dropna()
+    avg_confidence = confidences.mean() if not confidences.empty else 0.0
+
+    # Get thresholds
+    quality_thresholds = config.fiscal_analysis.quality_thresholds
+    min_naics_coverage = quality_thresholds.get("naics_coverage_rate", 0.85)
+    min_geo_coverage = quality_thresholds.get("geographic_resolution_rate", 0.90)
+
+    # Determine if checks pass
+    passed = (
+        passed_min_count
+        and avg_naics_coverage >= min_naics_coverage * 0.8  # Allow some tolerance
+        and avg_geo_coverage >= min_geo_coverage * 0.8
+        and avg_confidence >= 0.60
+    )
+
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    description = (
+        f"✓ Economic shocks aggregation PASSED: {num_shocks} shocks, "
+        f"{avg_naics_coverage:.1%} NAICS coverage, {avg_geo_coverage:.1%} geo coverage"
+        if passed
+        else f"✗ Economic shocks aggregation FAILED: Quality metrics below thresholds"
+    )
+
+    metadata = {
+        "num_shocks": num_shocks,
+        "avg_naics_coverage": f"{avg_naics_coverage:.1%}",
+        "avg_geo_coverage": f"{avg_geo_coverage:.1%}",
+        "avg_confidence": round(avg_confidence, 3),
+        "total_shock_amount": f"${economic_shocks['shock_amount'].sum():,.2f}",
+    }
+
+    return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)
+
+
+@asset(
+    description="Economic impacts computed from shocks using StateIO model",
+    group_name="economic_modeling",
+    compute_kind="r",
+)
+def economic_impacts(
+    context: AssetExecutionContext,
+    economic_shocks: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Compute economic impacts from spending shocks using StateIO input-output model.
+
+    This asset uses the RStateIOAdapter to call EPA's StateIO R package via rpy2
+    to compute multiplier effects and economic impact components from SBIR spending.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting economic impact computation",
+        extra={"num_shocks": len(economic_shocks)},
+    )
+
+    # Check if R adapter is available
+    try:
+        adapter = RStateIOAdapter(config=config.fiscal_analysis)
+        if not adapter.is_available():
+            context.log.warning(
+                "R StateIO adapter not available. This may require: "
+                "1. Install rpy2: poetry install --extras r"
+                "2. Install StateIO R package in R: install.packages('stateior')"
+            )
+            # Return placeholder DataFrame with same structure
+            return _create_placeholder_impacts(economic_shocks, context)
+    except ImportError as e:
+        context.log.warning(f"R StateIO adapter not available: {e}")
+        return _create_placeholder_impacts(economic_shocks, context)
+
+    # Prepare shocks DataFrame for model input
+    shocks_input = economic_shocks[
+        ["state", "bea_sector", "fiscal_year", "shock_amount"]
+    ].copy()
+
+    # Compute impacts with performance monitoring
+    with performance_monitor.monitor_block("economic_impact_computation"):
+        try:
+            impacts_df = adapter.compute_impacts(shocks_input)
+        except Exception as e:
+            context.log.error(f"Failed to compute economic impacts: {e}")
+            return _create_placeholder_impacts(economic_shocks, context)
+
+    # Merge back with shock metadata
+    result_df = economic_shocks.merge(
+        impacts_df,
+        on=["state", "bea_sector", "fiscal_year"],
+        how="left",
+        suffixes=("_shock", "_impact"),
+    )
+
+    # Fill any missing impacts with zeros
+    impact_cols = [
+        "wage_impact",
+        "proprietor_income_impact",
+        "gross_operating_surplus",
+        "consumption_impact",
+        "tax_impact",
+        "production_impact",
+    ]
+    for col in impact_cols:
+        if col not in result_df.columns:
+            result_df[col] = 0.0
+        result_df[col] = result_df[col].fillna(0.0)
+
+    context.log.info(
+        "Economic impact computation complete",
+        extra={
+            "num_impacts": len(result_df),
+            "total_wage_impact": f"${result_df['wage_impact'].sum():,.2f}",
+            "total_production_impact": f"${result_df['production_impact'].sum():,.2f}",
+            "model_version": adapter.get_model_version(),
+        },
+    )
+
+    # Create metadata
+    metadata = {
+        "num_impacts": len(result_df),
+        "model_version": adapter.get_model_version(),
+        "total_wage_impact": f"${result_df['wage_impact'].sum():,.2f}",
+        "total_proprietor_income_impact": f"${result_df['proprietor_income_impact'].sum():,.2f}",
+        "total_gross_operating_surplus": f"${result_df['gross_operating_surplus'].sum():,.2f}",
+        "total_production_impact": f"${result_df['production_impact'].sum():,.2f}",
+        "preview": MetadataValue.md(result_df.head(10).to_markdown()) if not result_df.empty else "No impacts",
+    }
+
+    return Output(value=result_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+def _create_placeholder_impacts(
+    shocks_df: pd.DataFrame, context: AssetExecutionContext
+) -> Output[pd.DataFrame]:
+    """Create placeholder impacts DataFrame when R adapter is unavailable.
+
+    Args:
+        shocks_df: Economic shocks DataFrame
+        context: Dagster context
+
+    Returns:
+        Output with placeholder impacts DataFrame
+    """
+    context.log.warning("Creating placeholder impacts (R StateIO adapter unavailable)")
+
+    placeholder_df = shocks_df.copy()
+    # Add placeholder impact columns with zero values
+    placeholder_df["wage_impact"] = 0.0
+    placeholder_df["proprietor_income_impact"] = 0.0
+    placeholder_df["gross_operating_surplus"] = 0.0
+    placeholder_df["consumption_impact"] = 0.0
+    placeholder_df["tax_impact"] = 0.0
+    placeholder_df["production_impact"] = 0.0
+    placeholder_df["model_version"] = "placeholder"
+    placeholder_df["confidence"] = 0.0
+    placeholder_df["quality_flags"] = "r_adapter_unavailable"
+
+    metadata = {
+        "num_impacts": len(placeholder_df),
+        "model_version": "placeholder",
+        "warning": "R StateIO adapter unavailable - placeholder impacts generated",
+    }
+
+    return Output(value=placeholder_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset_check(
+    asset="economic_impacts",
+    description="Validate economic impacts computation quality",
+)
+def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheckResult:
+    """Asset check to ensure economic impacts meet quality thresholds."""
+    if economic_impacts.empty:
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description="✗ Economic impacts FAILED: No impacts generated",
+            metadata={"num_impacts": 0},
+        )
+
+    # Check if using placeholder model
+    is_placeholder = economic_impacts["model_version"].iloc[0] == "placeholder" if len(economic_impacts) > 0 else False
+    if is_placeholder:
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description="✗ Economic impacts FAILED: Using placeholder model (R adapter unavailable)",
+            metadata={"model_version": "placeholder"},
+        )
+
+    # Check impact values are reasonable
+    impact_cols = [
+        "wage_impact",
+        "proprietor_income_impact",
+        "gross_operating_surplus",
+        "consumption_impact",
+        "tax_impact",
+        "production_impact",
+    ]
+
+    checks_passed = True
+    issues = []
+
+    for col in impact_cols:
+        if col not in economic_impacts.columns:
+            issues.append(f"Missing column: {col}")
+            checks_passed = False
+            continue
+
+        # Check for negative values (shouldn't occur for economic impacts)
+        negative_count = (economic_impacts[col] < 0).sum()
+        if negative_count > 0:
+            issues.append(f"{col}: {negative_count} negative values")
+            checks_passed = False
+
+        # Check for NaN values
+        nan_count = economic_impacts[col].isna().sum()
+        if nan_count > 0:
+            issues.append(f"{col}: {nan_count} NaN values")
+            checks_passed = False
+
+    severity = AssetCheckSeverity.WARN if checks_passed else AssetCheckSeverity.ERROR
+    description = (
+        f"✓ Economic impacts PASSED: {len(economic_impacts)} impacts computed"
+        if checks_passed
+        else f"✗ Economic impacts FAILED: {', '.join(issues)}"
+    )
+
+    metadata = {
+        "num_impacts": len(economic_impacts),
+        "model_version": economic_impacts["model_version"].iloc[0] if len(economic_impacts) > 0 else "unknown",
+        "issues": issues if issues else [],
+    }
+
+    return AssetCheckResult(passed=checks_passed, severity=severity, description=description, metadata=metadata)

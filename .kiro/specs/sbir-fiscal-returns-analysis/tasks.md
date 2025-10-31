@@ -26,26 +26,29 @@
     - Add quality flags for extrapolation and missing periods
     - _Requirements: 1.4, 6.1_
 
-- [ ] 3. Implement economic modeling components
-  - [ ] 3.1 Create NAICS-to-BEA sector mapper
+- [x] 3. Implement economic modeling components
+  - [x] 3.1 Create NAICS-to-BEA sector mapper
     - Implement official crosswalk mapping with weighted allocations
     - Support proportional allocation across multiple BEA sectors
     - Add versioning and historical mapping support
     - _Requirements: 2.1, 2.2, 5.4_
+    - Implementation: `src/enrichers/fiscal_bea_mapper.py`, `src/assets/fiscal_assets.py::bea_mapped_sbir_awards`
 
-  - [ ] 3.2 Implement economic shock aggregator
+  - [x] 3.2 Implement economic shock aggregator
     - Aggregate SBIR awards into state-by-sector-by-fiscal-year economic shocks
     - Maintain award-to-shock traceability for audit purposes
     - Support chunked processing for large datasets
     - _Requirements: 2.3, 2.4, 5.3_
+    - Implementation: `src/transformers/fiscal_shock_aggregator.py`, `src/assets/fiscal_assets.py::economic_shocks`
 
-  - [ ] 3.3 Create StateIO/USEEIO adapter using rpy2
+  - [x] 3.3 Create StateIO/USEEIO adapter using rpy2
     - Design abstract `EconomicModelInterface` for state-level input-output economic models
     - Implement `RStateIOAdapter` with rpy2 calling EPA's USEEIO/StateIO R packages
     - Add R dependency management (rpy2, EPA packages installation/configuration)
     - Implement result caching with versioned keys and automatic data conversion
     - Add pandas ↔ R data.frame conversion utilities
     - _Requirements: 2.5, 6.1_
+    - Implementation: `src/transformers/economic_model_interface.py`, `src/transformers/r_stateio_adapter.py`, `src/utils/r_conversion.py`, `src/assets/fiscal_assets.py::economic_impacts`
 
 - [ ] 4. Implement tax calculation components
   - [ ] 4.1 Create economic component calculator
@@ -87,9 +90,9 @@
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 5.1_
 
   - [ ] 6.2 Implement economic modeling assets
-    - Create `bea_sector_mapped_awards` asset with NAICS-to-BEA sector mapping
-    - Create `economic_shocks` asset with state-by-sector-by-fiscal-year aggregation
-    - Create `economic_impacts` asset with StateIO model integration
+    - [x] Create `bea_sector_mapped_awards` asset with NAICS-to-BEA sector mapping
+    - [x] Create `economic_shocks` asset with state-by-sector-by-fiscal-year aggregation
+    - [x] Create `economic_impacts` asset with StateIO model integration
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
   - [ ] 6.3 Implement tax calculation assets
