@@ -44,14 +44,14 @@
   - Compute data quality scores for patent records
   - _Requirements: 2.1, 2.2_
 
-- [ ] 2.3 Create CET classification analyzer
+- [x] 2.3 Create CET classification analyzer
   - Implement `CetClassificationAnalyzer` class in `src/utils/reporting/analyzers/cet_analyzer.py`
   - Generate technology category distribution statistics
   - Calculate classification confidence score distributions
   - Analyze coverage metrics across CET taxonomy areas
   - _Requirements: 2.1, 2.2_
 
-- [ ] 2.4 Create transition detection analyzer
+- [x] 2.4 Create transition detection analyzer
   - Implement `TransitionDetectionAnalyzer` class in `src/utils/reporting/analyzers/transition_analyzer.py`
   - Calculate technology transition success rates by sector
   - Generate commercialization pattern analysis
@@ -145,31 +145,31 @@
   - Upload container-based reports as separate artifacts
   - _Requirements: 5.1, 5.3_
 
-- [ ] 6. Integrate with existing Dagster assets
+- [x] 6. Integrate with existing Dagster assets
   - Update pipeline assets to collect statistical data
   - Add report generation triggers to asset execution
   - Integrate with existing performance monitoring infrastructure
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6.1 Update SBIR enrichment assets
+- [x] 6.1 Update SBIR enrichment assets
   - Modify SBIR enrichment assets to collect enrichment statistics
   - Add hooks to trigger SBIR analyzer after enrichment completion
   - Integrate with existing performance monitoring decorators
   - _Requirements: 2.1, 2.2_
 
-- [ ] 6.2 Update patent analysis assets
+- [x] 6.2 Update patent analysis assets
   - Modify patent loading assets to collect validation and loading statistics
   - Add hooks to trigger patent analyzer after analysis completion
   - Collect Neo4j loading metrics (nodes, relationships created)
   - _Requirements: 2.1, 2.2_
 
-- [ ] 6.3 Update CET classification assets
+- [x] 6.3 Update CET classification assets
   - Modify CET classification assets to collect classification statistics
   - Add hooks to trigger CET analyzer after classification completion
   - Collect confidence score distributions and coverage metrics
   - _Requirements: 2.1, 2.2_
 
-- [ ] 6.4 Update transition detection assets
+- [x] 6.4 Update transition detection assets
   - Modify transition detection assets to collect analysis statistics
   - Add hooks to trigger transition analyzer after detection completion
   - Collect success rate and commercialization pattern data

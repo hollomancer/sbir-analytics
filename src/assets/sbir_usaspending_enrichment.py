@@ -18,7 +18,9 @@ from loguru import logger
 from ..config.loader import get_config
 from ..enrichers.chunked_enrichment import ChunkedEnricher
 from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from ..models.quality import ModuleReport
 from ..utils.performance_monitor import performance_monitor
+from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
 
 @asset(
@@ -108,6 +110,43 @@ def enriched_sbir_awards(
         },
     )
 
+    # Perform statistical analysis with SBIR analyzer
+    analyzer = SbirEnrichmentAnalyzer()
+    run_context = {
+        "run_id": context.run.run_id if context.run else f"run_{context.run_id}",
+        "pipeline_name": "sbir_enrichment",
+        "stage": "enrich",
+    }
+
+    # Prepare module data for analysis
+    module_data = {
+        "enriched_df": enriched_df,
+        "original_df": validated_sbir_awards,
+        "enrichment_metrics": {
+            "records_processed": total_awards,
+            "records_failed": 0,  # Enrichment doesn't typically "fail" records
+            "duration_seconds": duration,
+            "records_per_second": records_per_second,
+            "match_rate": match_rate,
+            "matched_records": int(matched_awards),
+            "exact_matches": int(exact_matches),
+            "fuzzy_matches": int(fuzzy_matches),
+            "processing_mode": "chunked" if use_chunked else "standard",
+        },
+        "run_context": run_context,
+    }
+
+    # Generate analysis report
+    analysis_report = analyzer.analyze(module_data)
+
+    context.log.info(
+        "SBIR enrichment analysis complete",
+        extra={
+            "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+            "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+        },
+    )
+
     # Get performance metrics
     if not enrichment_metrics:
         perf_summary = performance_monitor.get_metrics_summary()
@@ -142,6 +181,11 @@ def enriched_sbir_awards(
         # Processing metadata
         "processing_mode": "chunked" if use_chunked else "standard",
         "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
+        # Statistical analysis results
+        "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+        "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
+        "analysis_success_rate": round(analysis_report.success_rate, 3),
+        "analysis_throughput": round(analysis_report.throughput_records_per_second, 2),
     }
 
     # Add progress metadata if chunked processing was used

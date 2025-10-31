@@ -75,6 +75,15 @@ except Exception:  # pragma: no cover
         log = _L()
 
 
+# Statistical reporting imports
+try:  # pragma: no cover - defensive import
+    from ..models.quality import ModuleReport  # type: ignore
+    from ..utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer  # type: ignore
+except Exception:
+    ModuleReport = None  # type: ignore
+    CetClassificationAnalyzer = None  # type: ignore
+
+
 @asset_check(
     asset="raw_cet_taxonomy",
     description="CET taxonomy completeness and schema validity based on companion checks JSON",
@@ -842,6 +851,70 @@ def enriched_cet_award_classifications() -> Output:
     logger.info(
         "Completed cet_award_classifications asset", rows=len(df_out), output=str(output_path)
     )
+
+    # Perform statistical analysis with CET analyzer
+    if CetClassificationAnalyzer is not None:
+        try:
+            analyzer = CetClassificationAnalyzer()
+            run_context = {
+                "run_id": "cet_classification_run",  # Could be enhanced with actual run_id
+                "pipeline_name": "cet_classification",
+                "stage": "transform",
+            }
+
+            # Load the classified DataFrame from the output file
+            import pandas as pd
+            try:
+                classified_df = pd.read_parquet(output_path)
+            except Exception:
+                logger.warning(f"Could not load classified DataFrame from {output_path}")
+                classified_df = pd.DataFrame()
+
+            # Prepare module data for analysis
+            module_data = {
+                "classified_df": classified_df,
+                "classification_results": {
+                    "classified_records": len(classified_df),
+                    "failed_records": 0,  # Assume all records were processed
+                    "duration_seconds": 0.0,  # Could be enhanced with actual timing
+                    "classification_rate": len(classified_df[classified_df["primary_cet_area"].notna()]) / len(classified_df) if len(classified_df) > 0 else 0,
+                    "model_accuracy": checks.get("accuracy", 0.0),
+                    "model_precision": checks.get("precision", 0.0),
+                    "model_recall": checks.get("recall", 0.0),
+                    "model_f1_score": checks.get("f1_score", 0.0),
+                },
+                "taxonomy_data": {
+                    "taxonomy_areas": list(taxonomy.cet_areas.keys()) if hasattr(taxonomy, 'cet_areas') else [],
+                    "total_areas": len(taxonomy.cet_areas) if hasattr(taxonomy, 'cet_areas') else 0,
+                },
+                "run_context": run_context,
+            }
+
+            # Generate analysis report
+            analysis_report = analyzer.analyze(module_data)
+
+            logger.info(
+                "CET classification analysis complete",
+                extra={
+                    "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+                    "classification_success_rate": analysis_report.success_rate,
+                },
+            )
+
+            # Add analysis results to metadata
+            metadata.update({
+                "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
+                "analysis_category_distribution": analysis_report.module_metrics.get("category_distribution", {}) if analysis_report.module_metrics else {},
+                "analysis_confidence_distribution": analysis_report.module_metrics.get("confidence_distribution", {}) if analysis_report.module_metrics else {},
+                "analysis_taxonomy_coverage": analysis_report.module_metrics.get("taxonomy_coverage", {}) if analysis_report.module_metrics else {},
+            })
+
+        except Exception as e:
+            logger.warning(f"CET classification analysis failed: {e}")
+    else:
+        logger.info("CET analyzer not available; skipping statistical analysis")
 
     return Output(value=str(output_path), metadata=metadata)
 

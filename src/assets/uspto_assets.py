@@ -59,6 +59,14 @@ from dagster import (
 )
 from loguru import logger
 
+# Statistical reporting imports
+try:  # pragma: no cover - defensive import
+    from ..models.quality import ModuleReport  # type: ignore
+    from ..utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
+except Exception:
+    ModuleReport = None  # type: ignore
+    PatentAnalysisAnalyzer = None  # type: ignore
+
 # ============================================================================
 # Optional imports - degrade gracefully when dependencies are unavailable
 # ============================================================================
@@ -1494,6 +1502,66 @@ def loaded_patents(context) -> dict[str, Any]:
             f"Phase 1 Step 2 completed in {duration:.2f}s: "
             f"{success_count}/{len(patents)} patents loaded"
         )
+
+        # Perform statistical analysis with patent analyzer
+        if PatentAnalysisAnalyzer is not None:
+            try:
+                analyzer = PatentAnalysisAnalyzer()
+                run_context = {
+                    "run_id": context.run.run_id if context.run else f"run_{context.run_id}",
+                    "pipeline_name": "uspto_patent_loading",
+                    "stage": "load",
+                }
+
+                # Convert patents list to DataFrame for analyzer
+                import pandas as pd
+                patent_df = pd.DataFrame(patents) if patents else pd.DataFrame()
+
+                # Prepare module data for analysis
+                module_data = {
+                    "patent_df": patent_df,
+                    "validation_results": {},  # Could be enhanced with validation metrics
+                    "loading_results": {
+                        "records_processed": len(patents),
+                        "records_failed": len(patents) - success_count,
+                        "duration_seconds": duration,
+                        "records_per_second": success_count / duration if duration > 0 else 0,
+                        "success_rate": success_rate,
+                    },
+                    "neo4j_stats": {
+                        "nodes_created": metrics.nodes_created,
+                        "nodes_updated": metrics.nodes_updated,
+                        "relationships_created": metrics.relationships_created,
+                        "errors": metrics.errors,
+                    },
+                    "run_context": run_context,
+                }
+
+                # Generate analysis report
+                analysis_report = analyzer.analyze(module_data)
+
+                context.log.info(
+                    "Patent loading analysis complete",
+                    extra={
+                        "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                        "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+                        "validation_pass_rate": analysis_report.data_hygiene.validation_pass_rate if analysis_report.data_hygiene else None,
+                    },
+                )
+
+                # Add analysis results to metadata
+                context.add_output_metadata({
+                    "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                    "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
+                    "analysis_validation_pass_rate": round(analysis_report.data_hygiene.validation_pass_rate, 3) if analysis_report.data_hygiene else None,
+                    "analysis_nodes_created": dict(metrics.nodes_created),
+                    "analysis_relationships_created": dict(metrics.relationships_created),
+                })
+
+            except Exception as e:
+                context.log.warning(f"Patent analysis failed: {e}")
+        else:
+            context.log.info("Patent analyzer not available; skipping statistical analysis")
 
         client.close()
         return result

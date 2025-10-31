@@ -25,6 +25,14 @@ from uuid import uuid4
 import pandas as pd
 from loguru import logger
 
+# Statistical reporting imports
+try:  # pragma: no cover - defensive import
+    from ..models.quality import ModuleReport  # type: ignore
+    from ..utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer  # type: ignore
+except Exception:
+    ModuleReport = None  # type: ignore
+    TransitionDetectionAnalyzer = None  # type: ignore
+
 from ..extractors.contract_extractor import ContractExtractor
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
 
@@ -1178,6 +1186,56 @@ def transformed_transition_detections(
         "by_method": by_method,
     }
     context.log.info("Produced transition_detections", extra=metrics)
+
+    # Perform statistical analysis with transition analyzer
+    if TransitionDetectionAnalyzer is not None:
+        try:
+            analyzer = TransitionDetectionAnalyzer()
+            run_context = {
+                "run_id": context.run.run_id if context.run else f"run_{context.run_id}",
+                "pipeline_name": "transition_detection",
+                "stage": "detect",
+            }
+
+            # Prepare module data for analysis
+            module_data = {
+                "transitions_df": df,
+                "awards_df": enriched_sbir_awards,  # Should be available from dependency
+                "detection_results": {
+                    "awards_processed": total,
+                    "detection_failed": 0,  # Could be enhanced with actual failure counts
+                    "duration_seconds": 0.0,  # Could be enhanced with actual timing
+                    "records_per_second": 0.0,  # Could be enhanced with actual throughput
+                },
+                "run_context": run_context,
+            }
+
+            # Generate analysis report
+            analysis_report = analyzer.analyze(module_data)
+
+            context.log.info(
+                "Transition detection analysis complete",
+                extra={
+                    "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+                    "transition_success_rate": analysis_report.success_rate,
+                },
+            )
+
+            # Add analysis results to metadata
+            meta.update({
+                "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
+                "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
+                "analysis_transition_rate": analysis_report.module_metrics.get("overall_transition_rate", 0) if analysis_report.module_metrics else 0,
+                "analysis_sector_transition_rates": analysis_report.module_metrics.get("sector_transition_rates", {}) if analysis_report.module_metrics else {},
+                "analysis_success_story_metrics": analysis_report.module_metrics.get("success_story_metrics", {}) if analysis_report.module_metrics else {},
+                "analysis_signal_strength_metrics": analysis_report.module_metrics.get("signal_strength_metrics", {}) if analysis_report.module_metrics else {},
+            })
+
+        except Exception as e:
+            context.log.warning(f"Transition detection analysis failed: {e}")
+    else:
+        context.log.info("Transition analyzer not available; skipping statistical analysis")
 
     meta = {
         "output_path": str(out_path),
