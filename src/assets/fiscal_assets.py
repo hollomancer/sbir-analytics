@@ -266,7 +266,7 @@ def bea_mapped_sbir_awards(
         "avg_confidence": round(mapping_stats.avg_confidence, 3),
     }
     
-    return Output(value=enriched_df, metadata=metadata)
+    return Output(value=enriched_df, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset_check(
