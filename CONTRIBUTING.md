@@ -345,24 +345,20 @@ Brief description of changes
 ```
 sbir-etl/
 ├── src/                    # Source code
-│   ├── core/              # Consolidated core functionality
-│   │   ├── assets/        # Unified asset definitions
-│   │   ├── config/        # Single configuration system
-│   │   ├── models/        # Consolidated data models
-│   │   └── monitoring/    # Unified performance monitoring
-│   ├── pipeline/          # Pipeline-specific logic
-│   │   ├── extraction/    # Data extraction components
-│   │   ├── enrichment/    # Data enrichment components
-│   │   ├── transformation/# Data transformation components
-│   │   └── loading/       # Data loading components
-│   ├── shared/            # Shared utilities and helpers
-│   │   ├── database/      # Database clients and utilities
-│   │   ├── validation/    # Validation logic
-│   │   └── utils/         # Common utilities
-│   └── tests/             # Unified testing framework
-│       ├── fixtures/      # Shared test fixtures
-│       ├── helpers/       # Test utilities
-│       └── scenarios/     # Test scenarios
+│   ├── assets/            # Dagster asset definitions (pipeline orchestration)
+│   ├── config/            # Configuration management and schemas
+│   ├── extractors/        # Stage 1: Data extraction from various sources
+│   ├── validators/        # Stage 2: Schema validation and data quality checks
+│   ├── enrichers/         # Stage 3: External enrichment and fuzzy matching
+│   ├── transformers/      # Stage 4: Business logic and graph preparation
+│   ├── loaders/           # Stage 5: Neo4j loading and relationship creation
+│   ├── models/            # Pydantic data models and type definitions
+│   ├── utils/             # Shared utilities (logging, metrics, performance)
+│   ├── quality/           # Data quality validation modules
+│   ├── ml/                # Machine learning models (CET classification)
+│   ├── transition/        # Technology transition detection logic
+│   ├── migration/         # Migration utilities
+│   └── definitions.py     # Dagster repository definitions
 ├── tests/                 # Test suite
 ├── config/                # Configuration files
 ├── data/                  # Data files (not in git)

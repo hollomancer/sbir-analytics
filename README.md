@@ -69,12 +69,12 @@ After transition detection pipeline:
 
 ```bash
 # Run full transition detection pipeline (all SBIR awards)
-poetry run python -m dagster job execute -f src/definitions.py -j transition_full_pipeline_job
+poetry run python -m dagster job execute -f src/definitions.py -j transition_full_job
 
 # Or: Run from Dagster UI
 dagster dev
 
-# Then select and materialize "transition_full_pipeline_job"
+# Then select and materialize "transition_full_job"
 ```
 
 **Expected Output** (10–30 minutes on typical hardware):
@@ -395,9 +395,9 @@ See **docs/transition/mvp.md** for full documentation, scoring signals, and trou
 ## CET (Critical and Emerging Technologies) Pipeline
 
 Deployment
-- CET deployment guide (staging/prod runbook): docs/deployment/cet-assets-deployment.md
+- Containerization guide: docs/deployment/containerization.md
 - Staging Compose overlay: docker-compose.cet-staging.yml (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
-- General production checklist: docs/DEPLOYMENT_CHECKLIST.md
+- Neo4j server guide: docs/neo4j/server.md
 
 This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
 
@@ -434,11 +434,11 @@ The job orchestrates these assets in dependency order:
 
 ### Neo4j schema for CET
 
-See the CET graph schema documentation:
-- docs/schemas/cet-neo4j-schema.md
+See the Neo4j schema documentation:
+- docs/references/schemas/neo4j.md
 
-This document covers:
-- CETArea node schema and constraints
+CET-specific schema details:
+- CETArea node schema and constraints (defined in `src/loaders/cet_loader.py`)
 - Award/Company CET enrichment properties
 - Award → CETArea APPLICABLE_TO relationships
 - Company → CETArea SPECIALIZES_IN relationships
@@ -700,24 +700,20 @@ python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 ```
 sbir-etl/
 ├── src/
-│   ├── core/                    # Consolidated core functionality
-│   │   ├── assets/             # Unified asset definitions
-│   │   ├── config/             # Single configuration system
-│   │   ├── models/             # Consolidated data models
-│   │   └── monitoring/         # Unified performance monitoring
-│   ├── pipeline/               # Pipeline-specific logic
-│   │   ├── extraction/         # Data extraction components
-│   │   ├── enrichment/         # Data enrichment components
-│   │   ├── transformation/     # Data transformation components
-│   │   └── loading/            # Data loading components
-│   ├── shared/                 # Shared utilities and helpers
-│   │   ├── database/           # Database clients and utilities
-│   │   ├── validation/         # Validation logic
-│   │   └── utils/              # Common utilities
-│   └── tests/                  # Unified testing framework
-│       ├── fixtures/           # Shared test fixtures
-│       ├── helpers/            # Test utilities
-│       └── scenarios/          # Test scenarios
+│   ├── assets/                 # Dagster asset definitions (pipeline orchestration)
+│   ├── config/                 # Configuration management and schemas
+│   ├── extractors/             # Stage 1: Data extraction from various sources
+│   ├── validators/             # Stage 2: Schema validation and data quality checks
+│   ├── enrichers/              # Stage 3: External enrichment and fuzzy matching
+│   ├── transformers/           # Stage 4: Business logic and graph preparation
+│   ├── loaders/                # Stage 5: Neo4j loading and relationship creation
+│   ├── models/                 # Pydantic data models and type definitions
+│   ├── utils/                  # Shared utilities (logging, metrics, performance)
+│   ├── quality/                # Data quality validation modules
+│   ├── ml/                     # Machine learning models (CET classification)
+│   ├── transition/             # Technology transition detection logic
+│   ├── migration/              # Migration utilities
+│   └── definitions.py          # Dagster repository definitions
 │
 ├── config/                      # YAML configuration
 │   ├── base.yaml                # Defaults + thresholds
