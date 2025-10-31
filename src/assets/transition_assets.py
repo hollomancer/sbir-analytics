@@ -32,7 +32,6 @@ from ..models.transition_models import (
     ConfidenceLevel,
     FederalContract,
 )
-from ..transition.detection.detector import TransitionDetector
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 # Import-safe shims for Dagster

@@ -25,16 +25,26 @@ from typing import Any, Dict, List
 
 # Import-safe shims for Dagster asset checks
 try:
-    from dagster import asset, asset_check, AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, AssetIn  # type: ignore
+    from dagster import (
+        asset,
+        asset_check,
+        AssetCheckResult,
+        AssetCheckSeverity,
+        AssetExecutionContext,
+        AssetIn,
+    )  # type: ignore
 except Exception:  # pragma: no cover
+
     def asset(*args, **kwargs):  # type: ignore
         def _wrap(fn):
             return fn
+
         return _wrap
 
     def asset_check(*args, **kwargs):  # type: ignore
         def _wrap(fn):
             return fn
+
         return _wrap
 
     def AssetIn(*args, **kwargs):  # type: ignore
@@ -55,10 +65,13 @@ except Exception:  # pragma: no cover
         class _L:
             def info(self, *a, **kw):  # noqa: D401
                 print(*a)
+
             def warning(self, *a, **kw):
                 print(*a)
+
             def error(self, *a, **kw):
                 print(*a)
+
         log = _L()
 
 
@@ -99,7 +112,11 @@ def cet_taxonomy_completeness_check(context) -> AssetCheckResult:
         )
 
     ok = bool(checks.get("ok", False))
-    desc = "CET taxonomy completeness checks passed" if ok else "CET taxonomy completeness checks failed"
+    desc = (
+        "CET taxonomy completeness checks passed"
+        if ok
+        else "CET taxonomy completeness checks failed"
+    )
     severity = AssetCheckSeverity.WARN if ok else AssetCheckSeverity.ERROR
     return AssetCheckResult(
         passed=ok,
@@ -147,8 +164,12 @@ def cet_award_classifications_quality_check(context) -> AssetCheckResult:
         )
 
     # Targets (defaults align with project guidance; override via env)
-    target_high_conf = float(os.environ.get("SBIR_ETL__CET__CLASSIFICATION__HIGH_CONF_THRESHOLD", "0.60"))
-    target_evidence_cov = float(os.environ.get("SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD", "0.80"))
+    target_high_conf = float(
+        os.environ.get("SBIR_ETL__CET__CLASSIFICATION__HIGH_CONF_THRESHOLD", "0.60")
+    )
+    target_evidence_cov = float(
+        os.environ.get("SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD", "0.80")
+    )
 
     high_conf_rate = checks.get("high_conf_rate")
     evidence_cov_rate = checks.get("evidence_coverage_rate")
@@ -190,7 +211,9 @@ def cet_award_classifications_quality_check(context) -> AssetCheckResult:
         "evidence_coverage_rate": evidence_cov_rate,
         "target_high_conf_rate": target_high_conf,
         "target_evidence_coverage_rate": target_evidence_cov,
-        **{k: v for k, v in checks.items() if k not in {"high_conf_rate", "evidence_coverage_rate"}},
+        **{
+            k: v for k, v in checks.items() if k not in {"high_conf_rate", "evidence_coverage_rate"}
+        },
     }
     return AssetCheckResult(passed=passed, severity=severity, description=desc, metadata=metadata)
 
@@ -241,8 +264,8 @@ def cet_company_profiles_check(context) -> AssetCheckResult:
         metadata={"checks_path": str(checks_path), **checks},
     )
 
+
 import os
-from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable, List
 
@@ -2826,11 +2849,13 @@ def _get_neo4j_client():
         return None
 
 
-def _read_parquet_or_ndjson(parquet_path: Path, json_path: Path, expected_columns: tuple) -> List[Dict]:
+def _read_parquet_or_ndjson(
+    parquet_path: Path, json_path: Path, expected_columns: tuple
+) -> List[Dict]:
     """Read data from parquet or fallback to NDJSON."""
     if pd is None:
         return []
-    
+
     try:
         if parquet_path.exists():
             df = pd.read_parquet(parquet_path)
@@ -2942,7 +2967,9 @@ def loaded_cet_areas(context, cet_taxonomy) -> Dict[str, Any]:
     description="Upsert CET enrichment properties onto Award nodes from award classifications artifact.",
     group_name="neo4j_cet",
     ins={
-        "enriched_cet_award_classifications": AssetIn(key=["ml", "enriched_cet_award_classifications"]),
+        "enriched_cet_award_classifications": AssetIn(
+            key=["ml", "enriched_cet_award_classifications"]
+        ),
         "loaded_cet_areas": AssetIn(),
     },
     config_schema={
@@ -2951,7 +2978,9 @@ def loaded_cet_areas(context, cet_taxonomy) -> Dict[str, Any]:
         "batch_size": int,
     },
 )
-def loaded_award_cet_enrichment(context, enriched_cet_award_classifications, loaded_cet_areas) -> Dict[str, Any]:
+def loaded_award_cet_enrichment(
+    context, enriched_cet_award_classifications, loaded_cet_areas
+) -> Dict[str, Any]:
     """Upsert CET enrichment properties onto Award nodes."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Award CET enrichment")
@@ -2965,12 +2994,16 @@ def loaded_award_cet_enrichment(context, enriched_cet_award_classifications, loa
     award_class_parquet = Path(
         context.op_config.get("award_class_parquet") or str(DEFAULT_AWARD_CLASS_PARQUET)
     )
-    award_class_json = Path(context.op_config.get("award_class_json") or str(DEFAULT_AWARD_CLASS_JSON))
+    award_class_json = Path(
+        context.op_config.get("award_class_json") or str(DEFAULT_AWARD_CLASS_JSON)
+    )
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read award classifications
     expected_cols = ("award_id", "primary_cet", "supporting_cets", "confidence", "evidence")
-    classifications = _read_parquet_or_ndjson(award_class_parquet, award_class_json, expected_columns=expected_cols)
+    classifications = _read_parquet_or_ndjson(
+        award_class_parquet, award_class_json, expected_columns=expected_cols
+    )
     context.log.info(f"Loaded award classifications for Neo4j: {len(classifications)}")
 
     try:
@@ -3019,7 +3052,9 @@ def loaded_award_cet_enrichment(context, enriched_cet_award_classifications, loa
         "batch_size": int,
     },
 )
-def loaded_company_cet_enrichment(context, transformed_cet_company_profiles, loaded_cet_areas) -> Dict[str, Any]:
+def loaded_company_cet_enrichment(
+    context, transformed_cet_company_profiles, loaded_cet_areas
+) -> Dict[str, Any]:
     """Upsert CET enrichment properties onto Company nodes."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Company CET enrichment")
@@ -3033,12 +3068,22 @@ def loaded_company_cet_enrichment(context, transformed_cet_company_profiles, loa
     company_profiles_parquet = Path(
         context.op_config.get("company_profiles_parquet") or str(DEFAULT_COMPANY_PROFILES_PARQUET)
     )
-    company_profiles_json = Path(context.op_config.get("company_profiles_json") or str(DEFAULT_COMPANY_PROFILES_JSON))
+    company_profiles_json = Path(
+        context.op_config.get("company_profiles_json") or str(DEFAULT_COMPANY_PROFILES_JSON)
+    )
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = ("company_uei", "dominant_cet", "specialization_score", "award_count", "total_funding")
-    profiles = _read_parquet_or_ndjson(company_profiles_parquet, company_profiles_json, expected_columns=expected_cols)
+    expected_cols = (
+        "company_uei",
+        "dominant_cet",
+        "specialization_score",
+        "award_count",
+        "total_funding",
+    )
+    profiles = _read_parquet_or_ndjson(
+        company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
+    )
     context.log.info(f"Loaded company profiles for Neo4j: {len(profiles)}")
 
     try:
@@ -3078,7 +3123,9 @@ def loaded_company_cet_enrichment(context, transformed_cet_company_profiles, loa
     description="Create Award -> CETArea relationships from award classifications.",
     group_name="neo4j_cet",
     ins={
-        "enriched_cet_award_classifications": AssetIn(key=["ml", "enriched_cet_award_classifications"]),
+        "enriched_cet_award_classifications": AssetIn(
+            key=["ml", "enriched_cet_award_classifications"]
+        ),
         "loaded_cet_areas": AssetIn(),
         "loaded_award_cet_enrichment": AssetIn(),
     },
@@ -3088,7 +3135,9 @@ def loaded_company_cet_enrichment(context, transformed_cet_company_profiles, loa
         "batch_size": int,
     },
 )
-def loaded_award_cet_relationships(context, enriched_cet_award_classifications, loaded_cet_areas, loaded_award_cet_enrichment) -> Dict[str, Any]:
+def loaded_award_cet_relationships(
+    context, enriched_cet_award_classifications, loaded_cet_areas, loaded_award_cet_enrichment
+) -> Dict[str, Any]:
     """Create Award -> CETArea relationships."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Award CET relationships")
@@ -3102,12 +3151,16 @@ def loaded_award_cet_relationships(context, enriched_cet_award_classifications, 
     award_class_parquet = Path(
         context.op_config.get("award_class_parquet") or str(DEFAULT_AWARD_CLASS_PARQUET)
     )
-    award_class_json = Path(context.op_config.get("award_class_json") or str(DEFAULT_AWARD_CLASS_JSON))
+    award_class_json = Path(
+        context.op_config.get("award_class_json") or str(DEFAULT_AWARD_CLASS_JSON)
+    )
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read award classifications
     expected_cols = ("award_id", "primary_cet", "supporting_cets", "confidence", "evidence")
-    classifications = _read_parquet_or_ndjson(award_class_parquet, award_class_json, expected_columns=expected_cols)
+    classifications = _read_parquet_or_ndjson(
+        award_class_parquet, award_class_json, expected_columns=expected_cols
+    )
     context.log.info(f"Creating Award->CETArea relationships for {len(classifications)} awards")
 
     try:
@@ -3157,7 +3210,9 @@ def loaded_award_cet_relationships(context, enriched_cet_award_classifications, 
         "batch_size": int,
     },
 )
-def loaded_company_cet_relationships(context, transformed_cet_company_profiles, loaded_cet_areas, loaded_company_cet_enrichment) -> Dict[str, Any]:
+def loaded_company_cet_relationships(
+    context, transformed_cet_company_profiles, loaded_cet_areas, loaded_company_cet_enrichment
+) -> Dict[str, Any]:
     """Create Company -> CETArea relationships."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Company CET relationships")
@@ -3171,12 +3226,22 @@ def loaded_company_cet_relationships(context, transformed_cet_company_profiles, 
     company_profiles_parquet = Path(
         context.op_config.get("company_profiles_parquet") or str(DEFAULT_COMPANY_PROFILES_PARQUET)
     )
-    company_profiles_json = Path(context.op_config.get("company_profiles_json") or str(DEFAULT_COMPANY_PROFILES_JSON))
+    company_profiles_json = Path(
+        context.op_config.get("company_profiles_json") or str(DEFAULT_COMPANY_PROFILES_JSON)
+    )
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = ("company_uei", "dominant_cet", "specialization_score", "award_count", "total_funding")
-    profiles = _read_parquet_or_ndjson(company_profiles_parquet, company_profiles_json, expected_columns=expected_cols)
+    expected_cols = (
+        "company_uei",
+        "dominant_cet",
+        "specialization_score",
+        "award_count",
+        "total_funding",
+    )
+    profiles = _read_parquet_or_ndjson(
+        company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
+    )
     context.log.info(f"Creating Company->CETArea relationships for {len(profiles)} companies")
 
     try:
