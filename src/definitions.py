@@ -24,6 +24,7 @@ from .assets import (
     uspto_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
+from .assets.jobs.fiscal_returns_job import fiscal_returns_analysis_job, fiscal_returns_full_job, fiscal_returns_mvp_job
 from .assets.jobs.transition_job import (
     transition_analytics_job,
     transition_full_job,
@@ -123,6 +124,8 @@ defs = Definitions(
         transition_full_job,
         transition_analytics_job,
         usaspending_iterative_enrichment_job,
+        fiscal_returns_mvp_job,
+        fiscal_returns_full_job,
     ],
     schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
     sensors=all_sensors,

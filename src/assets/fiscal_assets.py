@@ -18,7 +18,14 @@ from loguru import logger
 from ..config.loader import get_config
 from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
 from ..enrichers.fiscal_naics_enricher import enrich_sbir_awards_with_fiscal_naics
+from ..enrichers.geographic_resolver import GeographicResolver
+from ..enrichers.inflation_adjuster import InflationAdjuster, adjust_awards_for_inflation
+from ..transformers.fiscal_component_calculator import FiscalComponentCalculator
+from ..transformers.fiscal_parameter_sweep import FiscalParameterSweep
+from ..transformers.fiscal_roi_calculator import FiscalROICalculator
 from ..transformers.fiscal_shock_aggregator import FiscalShockAggregator
+from ..transformers.fiscal_tax_estimator import FiscalTaxEstimator
+from ..transformers.fiscal_uncertainty_quantifier import FiscalUncertaintyQuantifier
 from ..transformers.r_stateio_adapter import RStateIOAdapter
 from ..utils.performance_monitor import performance_monitor
 
@@ -642,3 +649,579 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
     }
 
     return AssetCheckResult(passed=checks_passed, severity=severity, description=description, metadata=metadata)
+
+
+# Task 6.1: Fiscal Data Preparation Assets
+
+
+@asset(
+    description="SBIR awards prepared for fiscal analysis with NAICS enrichment and geographic resolution",
+    group_name="fiscal_data_prep",
+    compute_kind="pandas",
+)
+def fiscal_prepared_sbir_awards(
+    context: AssetExecutionContext,
+    fiscal_naics_enriched_awards: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Prepare SBIR awards for fiscal analysis by adding geographic resolution.
+
+    This asset combines NAICS enrichment (from fiscal_naics_enriched_awards) with
+    geographic resolution to state-level, creating a fully prepared dataset for
+    economic modeling.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting fiscal award preparation",
+        extra={"num_awards": len(fiscal_naics_enriched_awards)},
+    )
+
+    # Resolve geographic locations
+    from ..enrichers.geographic_resolver import resolve_award_geography
+
+    with performance_monitor.monitor_block("geographic_resolution"):
+        resolved_df, geo_quality = resolve_award_geography(
+            fiscal_naics_enriched_awards,
+            config=config.fiscal_analysis,
+        )
+
+    # Map geographic resolution columns to standard names
+    if "fiscal_state_code" in resolved_df.columns:
+        resolved_df["resolved_state"] = resolved_df["fiscal_state_code"]
+
+    geo_coverage = resolved_df["resolved_state"].notna().sum() / len(resolved_df) if len(resolved_df) > 0 else 0.0
+
+    context.log.info(
+        "Fiscal award preparation complete",
+        extra={
+            "num_awards": len(resolved_df),
+            "naics_coverage": f"{(resolved_df['fiscal_naics_code'].notna().sum() / len(resolved_df)):.1%}" if len(resolved_df) > 0 else "0%",
+            "geographic_coverage": f"{geo_coverage:.1%}",
+        },
+    )
+
+    metadata = {
+        "num_awards": len(resolved_df),
+        "naics_coverage": f"{(resolved_df['fiscal_naics_code'].notna().sum() / len(resolved_df)):.1%}" if len(resolved_df) > 0 else "0%",
+        "geographic_coverage": f"{geo_coverage:.1%}",
+        "preview": MetadataValue.md(resolved_df.head(10).to_markdown()) if not resolved_df.empty else "No awards",
+    }
+
+    return Output(value=resolved_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset_check(
+    asset="fiscal_prepared_sbir_awards",
+    description="Validate geographic resolution success rate meets threshold",
+)
+def fiscal_geographic_resolution_check(fiscal_prepared_sbir_awards: pd.DataFrame) -> AssetCheckResult:
+    """Asset check to ensure geographic resolution meets minimum threshold."""
+    config = get_config()
+    min_resolution_rate = config.fiscal_analysis.quality_thresholds.get("geographic_resolution_rate", 0.90)
+
+    total_awards = len(fiscal_prepared_sbir_awards)
+    resolved_awards = fiscal_prepared_sbir_awards.get("resolved_state", pd.Series()).notna().sum()
+    resolution_rate = resolved_awards / total_awards if total_awards > 0 else 0.0
+
+    passed = resolution_rate >= min_resolution_rate
+
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    description = (
+        f"✓ Geographic resolution PASSED: {resolution_rate:.1%} (threshold: {min_resolution_rate:.1%})"
+        if passed
+        else f"✗ Geographic resolution FAILED: {resolution_rate:.1%} is below threshold of {min_resolution_rate:.1%}"
+    )
+
+    metadata = {
+        "resolution_rate": f"{resolution_rate:.1%}",
+        "threshold": f"{min_resolution_rate:.1%}",
+        "total_awards": total_awards,
+        "resolved_awards": resolved_awards,
+        "unresolved_awards": total_awards - resolved_awards,
+    }
+
+    return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)
+
+
+@asset(
+    description="SBIR awards with inflation-adjusted amounts normalized to base year",
+    group_name="fiscal_data_prep",
+    compute_kind="pandas",
+)
+def inflation_adjusted_awards(
+    context: AssetExecutionContext,
+    fiscal_prepared_sbir_awards: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Adjust SBIR award amounts for inflation using BEA GDP deflator.
+
+    This asset normalizes all award amounts to the configured base year,
+    enabling consistent comparison across different award years.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting inflation adjustment",
+        extra={"num_awards": len(fiscal_prepared_sbir_awards)},
+    )
+
+    # Adjust for inflation
+    with performance_monitor.monitor_block("inflation_adjustment"):
+        adjusted_df, quality_metrics = adjust_awards_for_inflation(
+            fiscal_prepared_sbir_awards,
+            target_year=config.fiscal_analysis.base_year,
+            config=config.fiscal_analysis,
+        )
+
+    # Use adjusted amount as primary amount column
+    if "fiscal_adjusted_amount" in adjusted_df.columns:
+        adjusted_df["inflation_adjusted_amount"] = adjusted_df["fiscal_adjusted_amount"]
+
+    success_rate = quality_metrics.get("adjustment_success_rate", 0.0)
+
+    context.log.info(
+        "Inflation adjustment complete",
+        extra={
+            "num_awards": len(adjusted_df),
+            "adjustment_success_rate": f"{success_rate:.1%}",
+            "base_year": config.fiscal_analysis.base_year,
+        },
+    )
+
+    metadata = {
+        "num_awards": len(adjusted_df),
+        "base_year": config.fiscal_analysis.base_year,
+        "adjustment_success_rate": f"{success_rate:.1%}",
+        "total_original_amount": f"${adjusted_df.get('award_amount', pd.Series([0])).sum():,.2f}",
+        "total_adjusted_amount": f"${adjusted_df['inflation_adjusted_amount'].sum():,.2f}" if "inflation_adjusted_amount" in adjusted_df.columns else "N/A",
+        "preview": MetadataValue.md(adjusted_df.head(10).to_markdown()) if not adjusted_df.empty else "No awards",
+    }
+
+    return Output(value=adjusted_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset_check(
+    asset="inflation_adjusted_awards",
+    description="Validate inflation adjustment quality meets threshold",
+)
+def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) -> AssetCheckResult:
+    """Asset check to ensure inflation adjustment quality meets minimum threshold."""
+    config = get_config()
+    min_success_rate = config.fiscal_analysis.quality_thresholds.get("inflation_adjustment_success", 0.95)
+
+    total_awards = len(inflation_adjusted_awards)
+    adjusted_cols = ["inflation_adjusted_amount", "fiscal_adjusted_amount"]
+    adjusted_awards = 0
+
+    for col in adjusted_cols:
+        if col in inflation_adjusted_awards.columns:
+            adjusted_awards = inflation_adjusted_awards[col].notna().sum()
+            break
+
+    success_rate = adjusted_awards / total_awards if total_awards > 0 else 0.0
+
+    passed = success_rate >= min_success_rate
+
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    description = (
+        f"✓ Inflation adjustment PASSED: {success_rate:.1%} (threshold: {min_success_rate:.1%})"
+        if passed
+        else f"✗ Inflation adjustment FAILED: {success_rate:.1%} is below threshold of {min_success_rate:.1%}"
+    )
+
+    metadata = {
+        "success_rate": f"{success_rate:.1%}",
+        "threshold": f"{min_success_rate:.1%}",
+        "total_awards": total_awards,
+        "adjusted_awards": adjusted_awards,
+        "unadjusted_awards": total_awards - adjusted_awards,
+    }
+
+    return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)
+
+
+# Task 6.3: Tax Calculation Assets
+
+
+@asset(
+    description="Economic components extracted from StateIO impacts for tax base calculation",
+    group_name="tax_calculation",
+    compute_kind="pandas",
+)
+def tax_base_components(
+    context: AssetExecutionContext,
+    economic_impacts: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Extract and validate economic components from StateIO model outputs.
+
+    This asset transforms economic impacts into validated tax base components:
+    wage impacts, proprietor income, gross operating surplus, and consumption.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting tax base component extraction",
+        extra={"num_impacts": len(economic_impacts)},
+    )
+
+    calculator = FiscalComponentCalculator(config=config.fiscal_analysis)
+    with performance_monitor.monitor_block("component_extraction"):
+        components_df = calculator.extract_components(economic_impacts)
+
+    # Validate aggregate components
+    validation_result = calculator.validate_aggregate_components(components_df)
+
+    context.log.info(
+        "Tax base component extraction complete",
+        extra={
+            "num_components": len(components_df),
+            "validation_passed": validation_result.is_valid,
+            "total_wage_impact": f"${components_df['wage_impact'].sum():,.2f}",
+            "total_component_total": f"${components_df['component_total'].sum():,.2f}",
+        },
+    )
+
+    metadata = {
+        "num_components": len(components_df),
+        "validation_passed": validation_result.is_valid,
+        "total_wage_impact": f"${components_df['wage_impact'].sum():,.2f}",
+        "total_proprietor_income": f"${components_df['proprietor_income_impact'].sum():,.2f}",
+        "total_gos": f"${components_df['gross_operating_surplus'].sum():,.2f}",
+        "total_consumption": f"${components_df['consumption_impact'].sum():,.2f}",
+        "validation_difference": f"${validation_result.difference:,.2f}",
+        "validation_tolerance": f"${validation_result.tolerance:,.2f}",
+        "quality_flags": validation_result.quality_flags,
+        "preview": MetadataValue.md(components_df.head(10).to_markdown()) if not components_df.empty else "No components",
+    }
+
+    return Output(value=components_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset(
+    description="Federal tax receipt estimates from economic components",
+    group_name="tax_calculation",
+    compute_kind="pandas",
+)
+def federal_tax_estimates(
+    context: AssetExecutionContext,
+    tax_base_components: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Estimate federal tax receipts from economic components.
+
+    This asset computes individual income tax, payroll tax, corporate income tax,
+    and excise tax estimates using configurable tax rates.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting federal tax estimation",
+        extra={"num_components": len(tax_base_components)},
+    )
+
+    estimator = FiscalTaxEstimator(config=config.fiscal_analysis)
+    with performance_monitor.monitor_block("tax_estimation"):
+        tax_estimates_df = estimator.estimate_taxes_from_components(tax_base_components)
+
+    stats = estimator.get_estimation_statistics(tax_estimates_df)
+
+    context.log.info(
+        "Federal tax estimation complete",
+        extra={
+            "num_estimates": len(tax_estimates_df),
+            "total_tax_receipts": f"${stats.total_tax_receipts:,.2f}",
+            "avg_effective_rate": f"{stats.avg_effective_rate:.2f}%",
+        },
+    )
+
+    metadata = {
+        "num_estimates": len(tax_estimates_df),
+        "total_individual_income_tax": f"${stats.total_individual_income_tax:,.2f}",
+        "total_payroll_tax": f"${stats.total_payroll_tax:,.2f}",
+        "total_corporate_income_tax": f"${stats.total_corporate_income_tax:,.2f}",
+        "total_excise_tax": f"${stats.total_excise_tax:,.2f}",
+        "total_tax_receipts": f"${stats.total_tax_receipts:,.2f}",
+        "avg_effective_rate": f"{stats.avg_effective_rate:.2f}%",
+        "preview": MetadataValue.md(tax_estimates_df.head(10).to_markdown()) if not tax_estimates_df.empty else "No estimates",
+    }
+
+    return Output(value=tax_estimates_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset(
+    description="Fiscal return summary with ROI metrics for SBIR program evaluation",
+    group_name="tax_calculation",
+    compute_kind="pandas",
+)
+def fiscal_return_summary(
+    context: AssetExecutionContext,
+    federal_tax_estimates: pd.DataFrame,
+    inflation_adjusted_awards: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Compute fiscal return summary with ROI metrics.
+
+    This asset aggregates tax receipts and compares them to SBIR investments,
+    computing ROI, payback period, NPV, and benefit-cost ratio.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting fiscal return summary calculation",
+        extra={
+            "num_tax_estimates": len(federal_tax_estimates),
+            "num_awards": len(inflation_adjusted_awards),
+        },
+    )
+
+    calculator = FiscalROICalculator(config=config.fiscal_analysis)
+
+    # Calculate total SBIR investment
+    investment_cols = ["inflation_adjusted_amount", "fiscal_adjusted_amount", "award_amount", "shock_amount"]
+    sbir_investment = 0.0
+    for col in investment_cols:
+        if col in inflation_adjusted_awards.columns:
+            sbir_investment = float(inflation_adjusted_awards[col].sum())
+            break
+
+    from decimal import Decimal
+
+    if sbir_investment == 0:
+        logger.warning("No SBIR investment amount found in inflation_adjusted_awards")
+
+    with performance_monitor.monitor_block("roi_calculation"):
+        summary = calculator.calculate_roi_summary(
+            tax_estimates_df=federal_tax_estimates,
+            sbir_investment=Decimal(str(sbir_investment)),
+            discount_rate=0.03,  # Default 3% discount rate
+            time_horizon_years=10,  # Default 10-year horizon
+        )
+
+    # Convert summary to DataFrame for asset output
+    summary_dict = {
+        "analysis_id": [summary.analysis_id],
+        "analysis_date": [summary.analysis_date.isoformat()],
+        "base_year": [summary.base_year],
+        "methodology_version": [summary.methodology_version],
+        "total_sbir_investment": [float(summary.total_sbir_investment)],
+        "total_tax_receipts": [float(summary.total_tax_receipts)],
+        "net_fiscal_return": [float(summary.net_fiscal_return)],
+        "roi_ratio": [summary.roi_ratio],
+        "payback_period_years": [summary.payback_period_years],
+        "net_present_value": [float(summary.net_present_value)],
+        "benefit_cost_ratio": [summary.benefit_cost_ratio],
+        "confidence_interval_low": [float(summary.confidence_interval_low)],
+        "confidence_interval_high": [float(summary.confidence_interval_high)],
+        "confidence_level": [summary.confidence_level],
+        "quality_score": [summary.quality_score],
+    }
+
+    summary_df = pd.DataFrame(summary_dict)
+
+    context.log.info(
+        "Fiscal return summary calculation complete",
+        extra={
+            "roi_ratio": f"{summary.roi_ratio:.3f}",
+            "payback_period_years": summary.payback_period_years,
+            "npv": f"${summary.net_present_value:,.2f}",
+            "total_investment": f"${summary.total_sbir_investment:,.2f}",
+            "total_receipts": f"${summary.total_tax_receipts:,.2f}",
+        },
+    )
+
+    metadata = {
+        "roi_ratio": f"{summary.roi_ratio:.3f}",
+        "payback_period_years": summary.payback_period_years,
+        "net_present_value": f"${summary.net_present_value:,.2f}",
+        "benefit_cost_ratio": f"{summary.benefit_cost_ratio:.3f}",
+        "total_sbir_investment": f"${summary.total_sbir_investment:,.2f}",
+        "total_tax_receipts": f"${summary.total_tax_receipts:,.2f}",
+        "net_fiscal_return": f"${summary.net_fiscal_return:,.2f}",
+        "quality_score": f"{summary.quality_score:.3f}",
+        "quality_flags": summary.quality_flags,
+        "preview": MetadataValue.md(summary_df.to_markdown()),
+    }
+
+    return Output(value=summary_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+# Task 6.4: Sensitivity Analysis Assets
+
+
+@asset(
+    description="Parameter sweep scenarios for sensitivity analysis",
+    group_name="sensitivity_analysis",
+    compute_kind="pandas",
+)
+def sensitivity_scenarios(
+    context: AssetExecutionContext,
+) -> Output[pd.DataFrame]:
+    """
+    Generate parameter sweep scenarios for uncertainty quantification.
+
+    This asset creates scenario combinations using Monte Carlo, Latin Hypercube,
+    or grid search sampling based on configuration.
+    """
+    config = get_config()
+    context.log.info("Starting sensitivity scenario generation")
+
+    sweep = FiscalParameterSweep(config=config.fiscal_analysis)
+    with performance_monitor.monitor_block("parameter_sweep"):
+        scenarios_df = sweep.generate_scenarios()
+
+    context.log.info(
+        "Sensitivity scenario generation complete",
+        extra={
+            "num_scenarios": len(scenarios_df),
+            "method": scenarios_df["method"].iloc[0] if len(scenarios_df) > 0 else "unknown",
+            "parameters": [col for col in scenarios_df.columns if col not in ["scenario_id", "method", "random_seed", "points_per_dimension"]],
+        },
+    )
+
+    metadata = {
+        "num_scenarios": len(scenarios_df),
+        "method": scenarios_df["method"].iloc[0] if len(scenarios_df) > 0 else "unknown",
+        "parameters": [col for col in scenarios_df.columns if col not in ["scenario_id", "method", "random_seed", "points_per_dimension"]],
+        "preview": MetadataValue.md(scenarios_df.head(10).to_markdown()) if not scenarios_df.empty else "No scenarios",
+    }
+
+    return Output(value=scenarios_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset(
+    description="Uncertainty analysis with confidence intervals from sensitivity scenarios",
+    group_name="sensitivity_analysis",
+    compute_kind="pandas",
+)
+def uncertainty_analysis(
+    context: AssetExecutionContext,
+    sensitivity_scenarios: pd.DataFrame,
+    federal_tax_estimates: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Compute uncertainty quantification from sensitivity scenario results.
+
+    This asset computes confidence intervals, min/mean/max estimates, and
+    sensitivity indices from parameter sweep results.
+    """
+    config = get_config()
+    context.log.info(
+        "Starting uncertainty analysis",
+        extra={
+            "num_scenarios": len(sensitivity_scenarios),
+            "num_tax_estimates": len(federal_tax_estimates),
+        },
+    )
+
+    # For now, use tax estimates as baseline
+    # In full implementation, would re-run analysis for each scenario
+    # This is a simplified version that quantifies uncertainty from baseline
+    quantifier = FiscalUncertaintyQuantifier(config=config.fiscal_analysis)
+
+    # Create scenario results by using tax estimates as baseline
+    # In production, this would run full pipeline for each scenario
+    scenario_results = sensitivity_scenarios.copy()
+    baseline_tax = float(federal_tax_estimates["total_tax_receipt"].sum())
+
+    # Simulate scenario results by applying parameter variations to baseline
+    # This is a placeholder - full implementation would recompute for each scenario
+    if "economic_multiplier" in scenario_results.columns:
+        scenario_results["total_tax_receipt"] = (
+            baseline_tax * scenario_results["economic_multiplier"] / 2.0
+        )
+    else:
+        scenario_results["total_tax_receipt"] = baseline_tax
+
+    with performance_monitor.monitor_block("uncertainty_quantification"):
+        uncertainty_result = quantifier.quantify_uncertainty(
+            scenario_results_df=scenario_results,
+            target_column="total_tax_receipt",
+        )
+
+    # Convert to DataFrame
+    uncertainty_df = pd.DataFrame(
+        [
+            {
+                "min_estimate": float(uncertainty_result.min_estimate),
+                "mean_estimate": float(uncertainty_result.mean_estimate),
+                "max_estimate": float(uncertainty_result.max_estimate),
+                "confidence_90_low": float(uncertainty_result.confidence_intervals.get(0.90, (Decimal("0"), Decimal("0")))[0]),
+                "confidence_90_high": float(uncertainty_result.confidence_intervals.get(0.90, (Decimal("0"), Decimal("0")))[1]),
+                "confidence_95_low": float(uncertainty_result.confidence_intervals.get(0.95, (Decimal("0"), Decimal("0")))[0]),
+                "confidence_95_high": float(uncertainty_result.confidence_intervals.get(0.95, (Decimal("0"), Decimal("0")))[1]),
+                "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
+            }
+        ]
+    )
+
+    # Add sensitivity indices as metadata
+    sensitivity_dict = uncertainty_result.sensitivity_indices
+
+    context.log.info(
+        "Uncertainty analysis complete",
+        extra={
+            "min_estimate": f"${uncertainty_result.min_estimate:,.2f}",
+            "mean_estimate": f"${uncertainty_result.mean_estimate:,.2f}",
+            "max_estimate": f"${uncertainty_result.max_estimate:,.2f}",
+            "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
+        },
+    )
+
+    metadata = {
+        "min_estimate": f"${uncertainty_result.min_estimate:,.2f}",
+        "mean_estimate": f"${uncertainty_result.mean_estimate:,.2f}",
+        "max_estimate": f"${uncertainty_result.max_estimate:,.2f}",
+        "sensitivity_indices": MetadataValue.json(sensitivity_dict),
+        "quality_flags": uncertainty_result.quality_flags,
+        "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
+        "preview": MetadataValue.md(uncertainty_df.to_markdown()),
+    }
+
+    return Output(value=uncertainty_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset(
+    description="Comprehensive fiscal returns analysis report with all metrics and uncertainty bands",
+    group_name="sensitivity_analysis",
+    compute_kind="pandas",
+)
+def fiscal_returns_report(
+    context: AssetExecutionContext,
+    fiscal_return_summary: pd.DataFrame,
+    uncertainty_analysis: pd.DataFrame,
+    federal_tax_estimates: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Generate comprehensive fiscal returns analysis report.
+
+    This asset combines ROI summary, uncertainty analysis, and tax estimates
+    into a comprehensive report for policy analysis.
+    """
+    config = get_config()
+    context.log.info("Starting fiscal returns report generation")
+
+    # Combine summary and uncertainty
+    report_df = fiscal_return_summary.merge(
+        uncertainty_analysis,
+        left_index=True,
+        right_index=True,
+        how="outer",
+    )
+
+    # Add summary statistics
+    report_df["total_tax_receipts_baseline"] = float(federal_tax_estimates["total_tax_receipt"].sum())
+    report_df["num_tax_estimates"] = len(federal_tax_estimates)
+
+    context.log.info(
+        "Fiscal returns report generation complete",
+        extra={
+            "roi_ratio": f"{report_df['roi_ratio'].iloc[0]:.3f}" if len(report_df) > 0 and "roi_ratio" in report_df.columns else "N/A",
+            "num_scenarios": len(uncertainty_analysis),
+        },
+    )
+
+    metadata = {
+        "report_generated_at": MetadataValue.timestamp(pd.Timestamp.now()),
+        "base_year": config.fiscal_analysis.base_year,
+        "model_version": config.fiscal_analysis.stateio_model_version,
+        "preview": MetadataValue.md(report_df.to_markdown()) if not report_df.empty else "No report",
+    }
+
+    return Output(value=report_df, metadata=metadata)  # type: ignore[arg-type]
