@@ -16,6 +16,7 @@ from dagster import (
 from loguru import logger
 
 from ..config.loader import get_config
+from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
 from ..enrichers.fiscal_naics_enricher import enrich_sbir_awards_with_fiscal_naics
 from ..utils.performance_monitor import performance_monitor
 
@@ -142,7 +143,7 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
     """
     # Get configuration
     config = get_config()
-    min_coverage_rate = config.fiscal_analysis.quality_thresholds.naics_coverage_rate
+    min_coverage_rate = config.fiscal_analysis.quality_thresholds.get("naics_coverage_rate", 0.85)
 
     # Calculate coverage
     total_records = len(fiscal_naics_enriched_awards)
@@ -226,3 +227,77 @@ def fiscal_naics_quality_check(fiscal_naics_enriched_awards: pd.DataFrame) -> As
     return AssetCheckResult(
         passed=passed, severity=severity, description=description, metadata=metadata
     )
+
+
+@asset(
+    description="SBIR awards mapped to BEA Input-Output sectors",
+    group_name="economic_modeling",
+    compute_kind="pandas",
+)
+def bea_mapped_sbir_awards(
+    context: AssetExecutionContext,
+    fiscal_naics_enriched_awards: pd.DataFrame,
+) -> Output[pd.DataFrame]:
+    """
+    Map NAICS codes to BEA Input-Output sectors using hierarchical fallback strategy.
+    """
+    config = get_config()
+    context.log.info("Starting BEA sector mapping", extra={"sbir_records": len(fiscal_naics_enriched_awards)})
+    
+    mapper = NAICSToBEAMapper()
+    with performance_monitor.monitor_block("bea_sector_mapping"):
+        enriched_df, mapping_stats = enrich_awards_with_bea_sectors(
+            awards_df=fiscal_naics_enriched_awards,
+            mapper=mapper,
+        )
+    
+    context.log.info(
+        "BEA sector mapping complete",
+        extra={
+            "mapping_coverage_rate": f"{mapping_stats.coverage_rate:.1%}",
+            "avg_confidence": round(mapping_stats.avg_confidence, 3),
+        },
+    )
+    
+    metadata = {
+        "num_input_records": len(fiscal_naics_enriched_awards),
+        "num_output_records": len(enriched_df),
+        "mapping_coverage_rate": f"{mapping_stats.coverage_rate:.1%}",
+        "avg_confidence": round(mapping_stats.avg_confidence, 3),
+    }
+    
+    return Output(value=enriched_df, metadata=metadata)  # type: ignore[arg-type]
+
+
+@asset_check(
+    asset="bea_mapped_sbir_awards",
+    description="Validate BEA sector mapping coverage and confidence",
+)
+def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetCheckResult:
+    """Asset check to ensure BEA sector mapping coverage meets quality thresholds."""
+    config = get_config()
+    min_coverage_rate = config.fiscal_analysis.quality_thresholds.get("bea_sector_mapping_rate", 0.90)
+    
+    total_mappings = len(bea_mapped_sbir_awards)
+    valid_mappings = bea_mapped_sbir_awards["bea_sector_code"].notna().sum()
+    coverage_rate = valid_mappings / total_mappings if total_mappings > 0 else 0.0
+    
+    confidence_scores = bea_mapped_sbir_awards["bea_mapping_confidence"].dropna()
+    avg_confidence = confidence_scores.mean() if not confidence_scores.empty else 0.0
+    
+    passed = coverage_rate >= min_coverage_rate and avg_confidence >= 0.70
+    
+    severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
+    description = (
+        f"✓ BEA mapping PASSED: {coverage_rate:.1%} coverage, {avg_confidence:.3f} confidence"
+        if passed
+        else f"✗ BEA mapping FAILED: {coverage_rate:.1%} coverage (threshold {min_coverage_rate:.1%})"
+    )
+    
+    metadata = {
+        "coverage_rate": f"{coverage_rate:.1%}",
+        "avg_confidence": round(avg_confidence, 3),
+        "total_mappings": total_mappings,
+    }
+    
+    return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)

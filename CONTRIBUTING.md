@@ -350,6 +350,7 @@ sbir-etl/
 │   ├── extractors/        # Stage 1: Data extraction from various sources
 │   ├── validators/        # Stage 2: Schema validation and data quality checks
 │   ├── enrichers/         # Stage 3: External enrichment and fuzzy matching
+│   │   └── usaspending_api_client.py  # Iterative enrichment refresh (see docs/enrichment/usaspending-iterative-refresh.md)
 │   ├── transformers/      # Stage 4: Business logic and graph preparation
 │   ├── loaders/           # Stage 5: Neo4j loading and relationship creation
 │   ├── models/            # Pydantic data models and type definitions

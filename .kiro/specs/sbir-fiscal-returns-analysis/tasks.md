@@ -39,10 +39,12 @@
     - Support chunked processing for large datasets
     - _Requirements: 2.3, 2.4, 5.3_
 
-  - [ ] 3.3 Create StateIO model interface and adapter
-    - Design abstract interface for state-level input-output economic models
-    - Implement adapter pattern supporting multiple model implementations
-    - Add model result caching and versioned cache invalidation
+  - [ ] 3.3 Create StateIO/USEEIO adapter using rpy2
+    - Design abstract `EconomicModelInterface` for state-level input-output economic models
+    - Implement `RStateIOAdapter` with rpy2 calling EPA's USEEIO/StateIO R packages
+    - Add R dependency management (rpy2, EPA packages installation/configuration)
+    - Implement result caching with versioned keys and automatic data conversion
+    - Add pandas ↔ R data.frame conversion utilities
     - _Requirements: 2.5, 6.1_
 
 - [ ] 4. Implement tax calculation components

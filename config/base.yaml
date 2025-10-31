@@ -99,6 +99,40 @@ enrichment:
     retry_attempts: 3
     retry_backoff_seconds: 2
 
+  enrichment_refresh:
+    # Iterative refresh configuration for enrichment APIs
+    # Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+
+    usaspending:
+      # Refresh cadence and SLA
+      cadence_days: 1  # Daily refresh
+      sla_staleness_days: 1  # Max 24 hours old before considered stale
+      
+      # Batch processing configuration
+      batch_size: 100  # Awards per batch
+      max_concurrent_requests: 5  # Rate limit respect
+      rate_limit_per_minute: 120  # Conservative default based on API documentation
+      
+      # Delta detection
+      enable_delta_detection: true  # Skip unchanged records based on payload hash
+      hash_algorithm: "sha256"  # Algorithm for payload hashing
+      
+      # Retry configuration
+      retry_attempts: 3
+      retry_backoff_seconds: 2
+      retry_backoff_multiplier: 2.0  # Exponential backoff multiplier
+      
+      # Timeout configuration
+      timeout_seconds: 30
+      connection_timeout_seconds: 10
+      
+      # State management
+      checkpoint_interval: 50  # Save checkpoint every N records
+      state_file: "data/state/enrichment_refresh_state.json"
+      
+      # Metrics
+      enable_metrics: true
+      metrics_file: "reports/metrics/enrichment_freshness.json"
+
 extraction:
   sbir:
     # SBIR CSV configuration
@@ -329,8 +363,17 @@ fiscal_analysis:
   # Base analysis parameters
   base_year: 2023
   inflation_source: "bea_gdp_deflator"
-  naics_crosswalk_version: "2022"
+  naics_crosswalk_version: "2017"
   stateio_model_version: "v2.1"
+  
+  # NAICS-to-BEA sector mapping configuration
+  naics_to_bea:
+    crosswalk_version: "2017"
+    crosswalk_path: "data/reference/bea/naics_to_bea_crosswalk_2017.csv"
+    fallback_path: "config/fiscal/naics_bea_mappings.yaml"
+    min_confidence_threshold: 0.50
+    enable_weighted_allocation: true
+    hierarchical_fallback: true  # 6→4→3→2 digit
   
   # Tax calculation parameters
   tax_parameters:

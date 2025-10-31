@@ -9,6 +9,7 @@ from dagster import (
     define_asset_job,
     load_asset_checks_from_modules,
     load_assets_from_modules,
+    load_sensors_from_modules,
 )
 
 from . import assets
@@ -19,6 +20,7 @@ from .assets import (
     sbir_usaspending_enrichment,
     transition_assets,
     usaspending_ingestion,
+    usaspending_iterative_enrichment,
     uspto_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
@@ -27,6 +29,7 @@ from .assets.jobs.transition_job import (
     transition_full_job,
     transition_mvp_job,
 )
+from .assets.jobs.usaspending_iterative_job import usaspending_iterative_enrichment_job
 
 # Load all assets and checks from modules
 all_assets = load_assets_from_modules(
@@ -36,6 +39,7 @@ all_assets = load_assets_from_modules(
         sbir_ingestion,
         usaspending_ingestion,
         sbir_usaspending_enrichment,
+        usaspending_iterative_enrichment,
         uspto_assets,
         cet_assets,
         transition_assets,
@@ -45,6 +49,7 @@ all_asset_checks = load_asset_checks_from_modules(
     [
         fiscal_assets,
         sbir_ingestion,
+        usaspending_iterative_enrichment,
         uspto_assets,
         cet_assets,
         transition_assets,
@@ -100,6 +105,11 @@ cet_drift_schedule = ScheduleDefinition(
     description="Daily CET drift detection and alerting",
 )
 
+# Load sensors
+from .assets import sensors
+
+all_sensors = load_sensors_from_modules([sensors])
+
 # Create the definitions object
 defs = Definitions(
     assets=all_assets,
@@ -111,7 +121,9 @@ defs = Definitions(
         cet_drift_job,
         transition_mvp_job,
         transition_full_job,
-        transition_analytics_job
+        transition_analytics_job,
+        usaspending_iterative_enrichment_job,
     ],
     schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
+    sensors=all_sensors,
 )
