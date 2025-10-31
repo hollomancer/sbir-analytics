@@ -225,12 +225,15 @@ docker-e2e: env-check ## Run full end-to-end test suite (profile=e2e)
 	 $(call info,Running E2E tests (profile: e2e)); \
 	 $(call print-cmd,$(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator; then STATUS=$$?; fi; \
-	 $(call info,E2E tests completed with exit code $$STATUS); \
-	 if [ $$STATUS -eq 0 ]; then \
-	   $(call success,E2E tests passed – containers left running for inspection); \
+	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator 2>&1; then STATUS=$$?; fi; \
+	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
+	 if [ $$STATUS -ne 0 ]; then \
+	   $(call error,E2E tests failed with exit code $$STATUS); \
+	   $(call info,Showing recent logs from failed containers...); \
+	   $(COMPOSE) --profile e2e logs --tail=50 e2e-orchestrator 2>&1 || true; \
+	   $(COMPOSE) --profile e2e logs --tail=20 neo4j-e2e 2>&1 || true; \
 	 else \
-	   $(call error,E2E tests failed); \
+	   $(call success,E2E tests passed – containers left running for inspection); \
 	 fi; \
 	 $(call warn,Use 'make docker-logs SERVICE=e2e-orchestrator' to view orchestrator logs); \
 	 $(call warn,Use 'make docker-e2e-clean' to tear down when finished); \

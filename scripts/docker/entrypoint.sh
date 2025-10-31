@@ -45,7 +45,10 @@ load_env() {
     if [ -f "$f" ]; then
       log "Sourcing environment variables from $f"
       # shellcheck disable=SC1090
-      . "$f"
+      # Temporarily disable -e and -u to allow .env files with potential errors or unset variable references
+      set +eu
+      . "$f" 2>/dev/null || true
+      set -eu
     fi
   done
 

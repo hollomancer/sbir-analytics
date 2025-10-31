@@ -26,8 +26,6 @@ __all__: list[str] = [
     "raw_uspto_documentids",
     "raw_uspto_conveyances",
     "parsed_uspto_assignments",
-    "parsed_uspto_assignees",
-    "parsed_uspto_assignors",
     "parsed_uspto_documentids",
     "parsed_uspto_conveyances",
     "uspto_assignments_parsing_check",
@@ -88,8 +86,6 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "raw_uspto_documentids": ("src.assets.uspto_assets", "raw_uspto_documentids"),
     "raw_uspto_conveyances": ("src.assets.uspto_assets", "raw_uspto_conveyances"),
     "parsed_uspto_assignments": ("src.assets.uspto_assets", "parsed_uspto_assignments"),
-    "parsed_uspto_assignees": ("src.assets.uspto_assets", "parsed_uspto_assignees"),
-    "parsed_uspto_assignors": ("src.assets.uspto_assets", "parsed_uspto_assignors"),
     "parsed_uspto_documentids": ("src.assets.uspto_assets", "parsed_uspto_documentids"),
     "parsed_uspto_conveyances": ("src.assets.uspto_assets", "parsed_uspto_conveyances"),
     "uspto_assignments_parsing_check": (
@@ -139,15 +135,15 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
         "uspto_company_linkage_check",
     ),
     # uspto_neo4j_loading_assets (consolidated)
-    "neo4j_patents": ("src.assets.uspto_assets", "neo4j_patents"),
+    "neo4j_patents": ("src.assets.uspto_assets", "loaded_patents"),
     "neo4j_patent_assignments": (
         "src.assets.uspto_assets",
-        "neo4j_patent_assignments",
+        "loaded_patent_assignments",
     ),
-    "neo4j_patent_entities": ("src.assets.uspto_assets", "neo4j_patent_entities"),
+    "neo4j_patent_entities": ("src.assets.uspto_assets", "loaded_patent_entities"),
     "neo4j_patent_relationships": (
         "src.assets.uspto_assets",
-        "neo4j_patent_relationships",
+        "loaded_patent_relationships",
     ),
     "patent_load_success_rate": (
         "src.assets.uspto_assets",

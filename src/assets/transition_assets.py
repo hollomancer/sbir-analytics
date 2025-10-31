@@ -602,7 +602,7 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
 )
 def enriched_vendor_resolution(
     context,
-    contracts_sample: pd.DataFrame,
+    validated_contracts_sample: pd.DataFrame,
     enriched_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     # Config
@@ -636,7 +636,7 @@ def enriched_vendor_resolution(
 
     # Resolve each contract vendor
     rows: list[dict[str, Any]] = []
-    for _, contract in contracts_sample.iterrows():
+    for _, contract in validated_contracts_sample.iterrows():
         match = resolver.resolve(
             uei=str(contract.get("vendor_uei") or "").strip(),
             duns=str(contract.get("vendor_duns") or "").strip(),
@@ -706,8 +706,8 @@ def enriched_vendor_resolution(
 )
 def transformed_transition_scores(
     context,
-    vendor_resolution: pd.DataFrame,
-    contracts_sample: pd.DataFrame,
+    enriched_vendor_resolution: pd.DataFrame,
+    validated_contracts_sample: pd.DataFrame,
     enriched_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     limit_per_award = _env_int("SBIR_ETL__TRANSITION__LIMIT_PER_AWARD", 50)
@@ -791,10 +791,10 @@ def transformed_transition_scores(
     results: list[dict[str, Any]] = []
     # Build quick lookup for contracts by contract_id
     contracts_by_id = {
-        str(c.get("contract_id") or c.get("piid") or ""): c for _, c in contracts_sample.iterrows()
+        str(c.get("contract_id") or c.get("piid") or ""): c for _, c in validated_contracts_sample.iterrows()
     }
 
-    for _, row in vendor_resolution.iterrows():
+    for _, row in enriched_vendor_resolution.iterrows():
         method = str(row.get("match_method") or "unresolved")
         if method == "unresolved":
             continue
@@ -941,15 +941,15 @@ def transformed_transition_scores(
 )
 def transformed_transition_evidence(
     context,
-    transition_scores_v1: pd.DataFrame,
-    contracts_sample: pd.DataFrame,
+    transformed_transition_scores: pd.DataFrame,
+    validated_contracts_sample: pd.DataFrame,
 ) -> Output[str]:
     out_path = Path("data/processed/transitions_evidence.ndjson")
     _ensure_parent_dir(out_path)
 
     # Build lookup of contracts for quick evidence reference
     contracts_by_id: dict[str, dict[str, Any]] = {}
-    for _, c in contracts_sample.iterrows():
+    for _, c in validated_contracts_sample.iterrows():
         cid = str(c.get("contract_id") or c.get("piid") or "")
         contracts_by_id[cid] = {
             "piid": c.get("piid"),
@@ -965,7 +965,7 @@ def transformed_transition_evidence(
     count = 0
     count_above = 0
     with out_path.open("w", encoding="utf-8") as fh:
-        for _, row in transition_scores_v1.iterrows():
+        for _, row in transformed_transition_scores.iterrows():
             cid = str(row.get("contract_id") or "")
             cs = contracts_by_id.get(cid, {})
             evidence = {
@@ -1006,25 +1006,25 @@ def transformed_transition_evidence(
                 "contracts_sample_checks": "data/processed/contracts_sample.checks.json",
             },
             "candidates": {
-                "total": int(len(transition_scores_v1)),
-                "distinct_awards": int(transition_scores_v1["award_id"].nunique())
-                if len(transition_scores_v1)
+                "total": int(len(transformed_transition_scores)),
+                "distinct_awards": int(transformed_transition_scores["award_id"].nunique())
+                if len(transformed_transition_scores)
                 else 0,
-                "distinct_contracts": int(transition_scores_v1["contract_id"].nunique())
-                if len(transition_scores_v1)
+                "distinct_contracts": int(transformed_transition_scores["contract_id"].nunique())
+                if len(transformed_transition_scores)
                 else 0,
-                "by_method": transition_scores_v1["method"].value_counts(dropna=False).to_dict()
-                if len(transition_scores_v1)
+                "by_method": transformed_transition_scores["method"].value_counts(dropna=False).to_dict()
+                if len(transformed_transition_scores)
                 else {},
                 "score": {
-                    "min": float(transition_scores_v1["score"].min())
-                    if len(transition_scores_v1)
+                    "min": float(transformed_transition_scores["score"].min())
+                    if len(transformed_transition_scores)
                     else None,
-                    "max": float(transition_scores_v1["score"].max())
-                    if len(transition_scores_v1)
+                    "max": float(transformed_transition_scores["score"].max())
+                    if len(transformed_transition_scores)
                     else None,
-                    "mean": float(transition_scores_v1["score"].mean())
-                    if len(transition_scores_v1)
+                    "mean": float(transformed_transition_scores["score"].mean())
+                    if len(transformed_transition_scores)
                     else None,
                 },
             },
@@ -1102,8 +1102,8 @@ def transformed_transition_evidence(
     # Checks JSON for evidence
     checks_path = out_path.with_suffix(".checks.json")
     num_above = (
-        int((transition_scores_v1["score"] >= float(threshold)).sum())
-        if len(transition_scores_v1)
+        int((transformed_transition_scores["score"] >= float(threshold)).sum())
+        if len(transformed_transition_scores)
         else 0
     )
     checks = {
@@ -1146,12 +1146,12 @@ def transformed_transition_evidence(
 )
 def transformed_transition_detections(
     context,
-    transition_scores_v1: pd.DataFrame,
+    transformed_transition_scores: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     out_path = Path("data/processed/transition_detections.parquet")
 
     # Start from the scored candidates; ensure core columns exist
-    df = transition_scores_v1.copy()
+    df = transformed_transition_scores.copy()
     required_cols = ["award_id", "contract_id", "score", "method", "computed_at"]
     for c in required_cols:
         if c not in df.columns:
@@ -1260,8 +1260,8 @@ def transformed_transition_detections(
 def transformed_transition_analytics(
     context,
     enriched_sbir_awards: pd.DataFrame,
-    transition_scores_v1: pd.DataFrame,
-    contracts_sample: pd.DataFrame | None = None,
+    transformed_transition_scores: pd.DataFrame,
+    validated_contracts_sample: pd.DataFrame | None = None,
 ) -> Output[str]:
     """
     Analyze transition candidates and awards to produce summary KPIs:
@@ -1284,8 +1284,8 @@ def transformed_transition_analytics(
     # Compute summary (contracts optional for time-to-transition metrics)
     summary = analytics.summarize(
         awards_df=enriched_sbir_awards,
-        transitions_df=transition_scores_v1,
-        contracts_df=contracts_sample,
+        transitions_df=transformed_transition_scores,
+        contracts_df=validated_contracts_sample,
     )
 
     # Persist summary JSON
@@ -1331,16 +1331,16 @@ def transformed_transition_analytics(
     asset="validated_contracts_sample",
     description="Contracts sample thresholds: action_date ≥ 0.90, any identifier ≥ 0.60, sample size within configured range",
 )
-def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheckResult:
-    total = len(contracts_sample)
-    date_cov = float(contracts_sample["action_date"].notna().mean()) if total > 0 else 0.0
+def contracts_sample_quality_check(validated_contracts_sample: pd.DataFrame) -> AssetCheckResult:
+    total = len(validated_contracts_sample)
+    date_cov = float(validated_contracts_sample["action_date"].notna().mean()) if total > 0 else 0.0
     ident_cov = (
         float(
             (
-                (contracts_sample.get("vendor_uei", pd.Series(dtype=object)).notna())
-                | (contracts_sample.get("vendor_duns", pd.Series(dtype=object)).notna())
-                | (contracts_sample.get("piid", pd.Series(dtype=object)).notna())
-                | (contracts_sample.get("fain", pd.Series(dtype=object)).notna())
+                (validated_contracts_sample.get("vendor_uei", pd.Series(dtype=object)).notna())
+                | (validated_contracts_sample.get("vendor_duns", pd.Series(dtype=object)).notna())
+                | (validated_contracts_sample.get("piid", pd.Series(dtype=object)).notna())
+                | (validated_contracts_sample.get("fain", pd.Series(dtype=object)).notna())
             ).mean()
         )
         if total > 0
@@ -1390,10 +1390,10 @@ def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheck
     asset="enriched_vendor_resolution",
     description="Vendor resolution rate meets minimum threshold (default 60%)",
 )
-def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetCheckResult:
-    total = len(vendor_resolution)
+def vendor_resolution_quality_check(enriched_vendor_resolution: pd.DataFrame) -> AssetCheckResult:
+    total = len(enriched_vendor_resolution)
     res_rate = (
-        float((vendor_resolution["match_method"] != "unresolved").mean()) if total > 0 else 0.0
+        float((enriched_vendor_resolution["match_method"] != "unresolved").mean()) if total > 0 else 0.0
     )
     min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
     passed = res_rate >= min_rate
@@ -1408,7 +1408,7 @@ def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetChe
             "total_contracts": total,
             "resolution_rate": f"{res_rate:.2%}",
             "threshold": f"{min_rate:.2%}",
-            "by_method": vendor_resolution["match_method"].value_counts(dropna=False).to_dict()
+            "by_method": enriched_vendor_resolution["match_method"].value_counts(dropna=False).to_dict()
             if total > 0
             else {},
         },
@@ -1419,19 +1419,19 @@ def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetChe
     asset="transformed_transition_scores",
     description="Transition scores quality: schema fields, score bounds [0,1], and non-empty signals",
 )
-def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> AssetCheckResult:
+def transition_scores_quality_check(transformed_transition_scores: pd.DataFrame) -> AssetCheckResult:
     required_cols = ["award_id", "contract_id", "score", "method", "signals", "computed_at"]
-    missing = [c for c in required_cols if c not in transition_scores_v1.columns]
-    total = len(transition_scores_v1)
+    missing = [c for c in required_cols if c not in transformed_transition_scores.columns]
+    total = len(transformed_transition_scores)
 
     # Validate score bounds and signals presence
     invalid_scores = 0
     empty_signals = 0
-    if total > 0 and "score" in transition_scores_v1.columns:
-        s = pd.to_numeric(transition_scores_v1["score"], errors="coerce")
+    if total > 0 and "score" in transformed_transition_scores.columns:
+        s = pd.to_numeric(transformed_transition_scores["score"], errors="coerce")
         invalid_scores = int(((s < 0) | (s > 1) | (s.isna())).sum())
 
-    if total > 0 and "signals" in transition_scores_v1.columns:
+    if total > 0 and "signals" in transformed_transition_scores.columns:
 
         def _is_empty_signals(v):
             if v is None:
@@ -1444,7 +1444,7 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
             except Exception:
                 return False
 
-        empty_signals = int(transition_scores_v1["signals"].apply(_is_empty_signals).sum())
+        empty_signals = int(transformed_transition_scores["signals"].apply(_is_empty_signals).sum())
     else:
         # If signals column is absent, treat as fully empty
         empty_signals = total
@@ -1463,7 +1463,7 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
             "missing_columns": missing,
             "invalid_score_count": invalid_scores,
             "empty_signals_count": empty_signals,
-            "columns_present": list(transition_scores_v1.columns),
+            "columns_present": list(transformed_transition_scores.columns),
         },
     )
 

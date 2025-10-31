@@ -31,7 +31,7 @@ from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 def enriched_sbir_awards(
     context: AssetExecutionContext,
     validated_sbir_awards: pd.DataFrame,
-    usaspending_recipient_lookup: pd.DataFrame,
+    raw_usaspending_recipients: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
     Enrich validated SBIR awards with USAspending recipient data.
@@ -41,7 +41,7 @@ def enriched_sbir_awards(
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
-        usaspending_recipient_lookup: USAspending recipient lookup data
+        raw_usaspending_recipients: USAspending recipient lookup data
 
     Returns:
         Enriched SBIR awards with USAspending data and match metadata
@@ -52,14 +52,14 @@ def enriched_sbir_awards(
         "Starting SBIR-USAspending enrichment",
         extra={
             "sbir_records": len(validated_sbir_awards),
-            "usaspending_recipients": len(usaspending_recipient_lookup),
+            "usaspending_recipients": len(raw_usaspending_recipients),
         },
     )
 
     # Determine if chunked processing is needed
     use_chunked = _should_use_chunked_processing(
         validated_sbir_awards,
-        usaspending_recipient_lookup,
+        raw_usaspending_recipients,
         config,
     )
 
@@ -67,7 +67,7 @@ def enriched_sbir_awards(
         context.log.info("Using chunked enrichment processing")
         enriched_df, enrichment_metrics, enricher = _enrich_chunked(
             validated_sbir_awards,
-            usaspending_recipient_lookup,
+            raw_usaspending_recipients,
             config,
             context,
         )
@@ -77,7 +77,7 @@ def enriched_sbir_awards(
         with performance_monitor.monitor_block("enrichment_core"):
             enriched_df = enrich_sbir_with_usaspending(
                 sbir_df=validated_sbir_awards,
-                recipient_df=usaspending_recipient_lookup,
+                recipient_df=raw_usaspending_recipients,
                 sbir_company_col="Company",
                 sbir_uei_col="UEI",
                 sbir_duns_col="Duns",

@@ -44,11 +44,9 @@ from .dashboard import (
 # General quality checks
 from .checks import (
     check_completeness,
-    check_data_types,
-    check_date_formats,
-    check_range_constraints,
     check_uniqueness,
-    validate_quality_report,
+    check_value_ranges,
+    validate_sbir_awards,
 )
 
 __all__ = [
@@ -73,9 +71,7 @@ __all__ = [
     "QualityDashboard",
     # General quality checks
     "check_completeness",
-    "check_data_types",
-    "check_date_formats",
-    "check_range_constraints",
     "check_uniqueness",
-    "validate_quality_report",
+    "check_value_ranges",
+    "validate_sbir_awards",
 ]

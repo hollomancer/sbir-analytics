@@ -1778,9 +1778,9 @@ def loaded_patent_entities(context) -> dict[str, Any]:
 )
 def loaded_patent_relationships(
     context,
-    neo4j_patents: dict[str, Any],
-    neo4j_patent_assignments: dict[str, Any],
-    neo4j_patent_entities: dict[str, Any],
+    loaded_patents: dict[str, Any],
+    loaded_patent_assignments: dict[str, Any],
+    loaded_patent_entities: dict[str, Any],
 ) -> dict[str, Any]:
     """Phase 1 Step 3 & Phase 4: Create all relationships.
 

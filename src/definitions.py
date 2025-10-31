@@ -78,7 +78,7 @@ daily_schedule = ScheduleDefinition(
 # Define a small asset job to run the CET drift detection asset
 cet_drift_job = define_asset_job(
     name="cet_drift_job",
-    selection=AssetSelection.keys(["ml", "cet_drift_detection"]),
+    selection=AssetSelection.keys(["ml", "validated_cet_drift_detection"]),
     description="Run CET drift detection asset",
 )
 

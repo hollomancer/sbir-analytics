@@ -15,6 +15,7 @@ transition_mvp_job = define_asset_job(
 )
 
 # Define full transition pipeline job (includes analytics and Neo4j loading)
+# Note: Asset checks are registered separately in Definitions, so we don't need .with_checks()
 transition_full_job = define_asset_job(
     name="transition_full_job",
     selection=AssetSelection.keys(
@@ -27,17 +28,6 @@ transition_full_job = define_asset_job(
         "loaded_transitions",
         "loaded_transition_relationships",
         "loaded_transition_profiles",
-    ).with_checks(
-        AssetSelection.checks_for_keys(
-            "validated_contracts_sample",
-            "enriched_vendor_resolution",
-            "transformed_transition_scores",
-            "transformed_transition_evidence",
-            "transformed_transition_detections",
-            "transformed_transition_analytics",
-            "loaded_transitions",
-            "loaded_transition_relationships",
-        )
     ),
     description="Complete transition detection pipeline with analytics and Neo4j loading",
 )

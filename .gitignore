@@ -168,6 +168,9 @@ neo4j/logs/
 # Dagster local state
 .dagster_home/
 dagster_home/
+*.tmp_dagster
+.tmp_dagster/
+.tmp_dagster*
 
 # Docker local overrides
 **/.docker/
