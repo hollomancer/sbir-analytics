@@ -410,6 +410,221 @@ class StatisticalReportingConfig(BaseModel):
         return out
 
 
+class TaxParameterConfig(BaseModel):
+    """Configuration for federal tax calculation parameters."""
+    
+    # Individual income tax parameters
+    individual_income_tax: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "effective_rate": 0.22,  # Average effective federal income tax rate
+            "progressive_rates": {
+                "10_percent": 0.10,
+                "12_percent": 0.12,
+                "22_percent": 0.22,
+                "24_percent": 0.24,
+                "32_percent": 0.32,
+                "35_percent": 0.35,
+                "37_percent": 0.37,
+            },
+            "standard_deduction": 13850,  # 2023 standard deduction (single)
+        }
+    )
+    
+    # Payroll tax parameters
+    payroll_tax: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "social_security_rate": 0.062,  # Employee portion
+            "medicare_rate": 0.0145,  # Employee portion
+            "unemployment_rate": 0.006,  # FUTA rate
+            "wage_base_limit": 160200,  # 2023 Social Security wage base
+        }
+    )
+    
+    # Corporate income tax parameters
+    corporate_income_tax: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "federal_rate": 0.21,  # Federal corporate tax rate
+            "effective_rate": 0.18,  # Average effective rate accounting for deductions
+        }
+    )
+    
+    # Excise tax parameters
+    excise_tax: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "fuel_tax_rate": 0.184,  # Federal gasoline tax per gallon
+            "general_rate": 0.03,  # General excise tax rate on goods
+        }
+    )
+
+    @field_validator("individual_income_tax", "payroll_tax", "corporate_income_tax", "excise_tax")
+    @classmethod
+    def validate_tax_parameters(cls, v: Mapping[str, Any]) -> dict[str, Any]:
+        """Validate tax parameter values are reasonable."""
+        if not isinstance(v, Mapping):
+            raise TypeError("Expected a mapping for tax parameters")
+        
+        # Convert to dict and validate rate values
+        out: dict[str, Any] = dict(v)
+        for key, value in out.items():
+            if "rate" in key and isinstance(value, (int, float)):
+                rate = float(value)
+                if not (0.0 <= rate <= 1.0):
+                    raise ValueError(f"Tax rate {key} must be between 0.0 and 1.0, got {rate}")
+                out[key] = rate
+        
+        return out
+
+
+class SensitivityConfig(BaseModel):
+    """Configuration for sensitivity analysis and uncertainty quantification."""
+    
+    # Parameter sweep configuration
+    parameter_sweep: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "enabled": True,
+            "method": "monte_carlo",  # monte_carlo, latin_hypercube, grid_search
+            "num_scenarios": 1000,
+            "random_seed": 42,
+        }
+    )
+    
+    # Uncertainty parameters
+    uncertainty_parameters: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "tax_rates": {
+                "variation_percent": 0.10,  # ±10% variation
+                "distribution": "normal",
+            },
+            "multipliers": {
+                "variation_percent": 0.15,  # ±15% variation
+                "distribution": "normal",
+            },
+            "inflation_adjustment": {
+                "variation_percent": 0.05,  # ±5% variation
+                "distribution": "normal",
+            },
+        }
+    )
+    
+    # Confidence interval configuration
+    confidence_intervals: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "levels": [0.90, 0.95, 0.99],  # 90%, 95%, 99% confidence intervals
+            "method": "percentile",  # percentile, bootstrap
+            "bootstrap_samples": 1000,
+        }
+    )
+    
+    # Performance thresholds
+    performance: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "max_scenarios_parallel": 10,
+            "timeout_seconds": 3600,  # 1 hour timeout
+            "memory_limit_gb": 8,
+        }
+    )
+
+    @field_validator("uncertainty_parameters")
+    @classmethod
+    def validate_uncertainty_parameters(cls, v: Mapping[str, Any]) -> dict[str, Any]:
+        """Validate uncertainty parameter values."""
+        if not isinstance(v, Mapping):
+            raise TypeError("Expected a mapping for uncertainty parameters")
+        
+        out: dict[str, Any] = dict(v)
+        for param_name, param_config in out.items():
+            if isinstance(param_config, dict) and "variation_percent" in param_config:
+                variation = param_config["variation_percent"]
+                if isinstance(variation, (int, float)):
+                    variation = float(variation)
+                    if not (0.0 <= variation <= 1.0):
+                        raise ValueError(f"Variation percent for {param_name} must be between 0.0 and 1.0, got {variation}")
+                    param_config["variation_percent"] = variation
+        
+        return out
+
+
+class FiscalAnalysisConfig(BaseModel):
+    """Configuration for SBIR fiscal returns analysis."""
+    
+    # Base analysis parameters
+    base_year: int = Field(default=2023, description="Base year for inflation adjustment")
+    inflation_source: str = Field(default="bea_gdp_deflator", description="Source for inflation data")
+    naics_crosswalk_version: str = Field(default="2022", description="NAICS-to-BEA crosswalk version")
+    stateio_model_version: str = Field(default="v2.1", description="StateIO model version")
+    
+    # Tax calculation parameters
+    tax_parameters: TaxParameterConfig = Field(
+        default_factory=TaxParameterConfig,
+        description="Federal tax calculation parameters"
+    )
+    
+    # Sensitivity analysis parameters
+    sensitivity_parameters: SensitivityConfig = Field(
+        default_factory=SensitivityConfig,
+        description="Sensitivity analysis and uncertainty quantification parameters"
+    )
+    
+    # Data quality thresholds
+    quality_thresholds: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "naics_coverage_rate": 0.85,  # 85% of awards must have NAICS codes
+            "geographic_resolution_rate": 0.90,  # 90% must resolve to state level
+            "inflation_adjustment_success": 0.95,  # 95% must have valid inflation data
+            "bea_sector_mapping_rate": 0.90,  # 90% must map to BEA sectors
+        }
+    )
+    
+    # Performance configuration
+    performance: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "chunk_size": 10000,
+            "parallel_processing": True,
+            "max_workers": 4,
+            "memory_limit_gb": 4,
+            "timeout_seconds": 1800,  # 30 minutes
+        }
+    )
+    
+    # Output configuration
+    output: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "formats": ["json", "csv", "html"],
+            "include_audit_trail": True,
+            "include_sensitivity_analysis": True,
+            "output_directory": "reports/fiscal_returns",
+        }
+    )
+
+    @field_validator("base_year")
+    @classmethod
+    def validate_base_year(cls, v: int) -> int:
+        """Validate base year is reasonable."""
+        if not (1980 <= v <= 2030):
+            raise ValueError(f"Base year must be between 1980 and 2030, got {v}")
+        return v
+
+    @field_validator("quality_thresholds")
+    @classmethod
+    def validate_quality_thresholds(cls, v: Mapping[str, Any]) -> dict[str, float]:
+        """Validate quality threshold values."""
+        if not isinstance(v, Mapping):
+            raise TypeError("Expected a mapping for quality thresholds")
+        
+        out: dict[str, float] = {}
+        for key, value in v.items():
+            try:
+                num = float(value)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"{key} must be a number, got {value!r}") from e
+            
+            if not (0.0 <= num <= 1.0):
+                raise ValueError(f"{key} must be between 0.0 and 1.0, got {num}")
+            
+            out[key] = num
+        return out
+
+
 class PipelineConfig(BaseModel):
     """Root configuration model for the SBIR ETL pipeline."""
 
@@ -431,6 +646,7 @@ class PipelineConfig(BaseModel):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
     statistical_reporting: StatisticalReportingConfig = Field(default_factory=StatisticalReportingConfig)
+    fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
 
     model_config = ConfigDict(
         validate_assignment=True,

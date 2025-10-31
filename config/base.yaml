@@ -43,7 +43,7 @@ data_quality:
   enrichment:
     sam_gov_success_rate: 0.85 # 85% of companies should enrich successfully
     usaspending_match_rate: 0.70 # 70% of awards should match USAspending data
-    regression_threshold_percent: 5.0 # Fail asset if match rate declines >5 percentage points
+    regression_threshold_percent: 0.05 # Fail asset if match rate declines >5 percentage points
 
 enrichment:
   performance:
@@ -324,3 +324,97 @@ statistical_reporting:
     enrichment_success_error: 0.70
     performance_degradation_warning: 1.5  # 50% slower
     performance_degradation_error: 2.0    # 100% slower
+
+fiscal_analysis:
+  # Base analysis parameters
+  base_year: 2023
+  inflation_source: "bea_gdp_deflator"
+  naics_crosswalk_version: "2022"
+  stateio_model_version: "v2.1"
+  
+  # Tax calculation parameters
+  tax_parameters:
+    # Individual income tax parameters
+    individual_income_tax:
+      effective_rate: 0.22  # Average effective federal income tax rate
+      progressive_rates:
+        "10_percent": 0.10
+        "12_percent": 0.12
+        "22_percent": 0.22
+        "24_percent": 0.24
+        "32_percent": 0.32
+        "35_percent": 0.35
+        "37_percent": 0.37
+      standard_deduction: 13850  # 2023 standard deduction (single)
+      
+    # Payroll tax parameters
+    payroll_tax:
+      social_security_rate: 0.062  # Employee portion
+      medicare_rate: 0.0145  # Employee portion
+      unemployment_rate: 0.006  # FUTA rate
+      wage_base_limit: 160200  # 2023 Social Security wage base
+      
+    # Corporate income tax parameters
+    corporate_income_tax:
+      federal_rate: 0.21  # Federal corporate tax rate
+      effective_rate: 0.18  # Average effective rate accounting for deductions
+      
+    # Excise tax parameters
+    excise_tax:
+      fuel_tax_rate: 0.184  # Federal gasoline tax per gallon
+      general_rate: 0.03  # General excise tax rate on goods
+  
+  # Sensitivity analysis parameters
+  sensitivity_parameters:
+    # Parameter sweep configuration
+    parameter_sweep:
+      enabled: true
+      method: "monte_carlo"  # monte_carlo, latin_hypercube, grid_search
+      num_scenarios: 1000
+      random_seed: 42
+      
+    # Uncertainty parameters
+    uncertainty_parameters:
+      tax_rates:
+        variation_percent: 0.10  # ±10% variation
+        distribution: "normal"
+      multipliers:
+        variation_percent: 0.15  # ±15% variation
+        distribution: "normal"
+      inflation_adjustment:
+        variation_percent: 0.05  # ±5% variation
+        distribution: "normal"
+        
+    # Confidence interval configuration
+    confidence_intervals:
+      levels: [0.90, 0.95, 0.99]  # 90%, 95%, 99% confidence intervals
+      method: "percentile"  # percentile, bootstrap
+      bootstrap_samples: 1000
+      
+    # Performance thresholds
+    performance:
+      max_scenarios_parallel: 10
+      timeout_seconds: 3600  # 1 hour timeout
+      memory_limit_gb: 8
+  
+  # Data quality thresholds
+  quality_thresholds:
+    naics_coverage_rate: 0.85  # 85% of awards must have NAICS codes
+    geographic_resolution_rate: 0.90  # 90% must resolve to state level
+    inflation_adjustment_success: 0.95  # 95% must have valid inflation data
+    bea_sector_mapping_rate: 0.90  # 90% must map to BEA sectors
+  
+  # Performance configuration
+  performance:
+    chunk_size: 10000
+    parallel_processing: true
+    max_workers: 4
+    memory_limit_gb: 4
+    timeout_seconds: 1800  # 30 minutes
+  
+  # Output configuration
+  output:
+    formats: ["json", "csv", "html"]
+    include_audit_trail: true
+    include_sensitivity_analysis: true
+    output_directory: "reports/fiscal_returns"
