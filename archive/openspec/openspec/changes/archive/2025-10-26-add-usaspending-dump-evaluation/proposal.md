@@ -34,7 +34,7 @@
 ### Affected Code / Docs
 - `src/extractors/usaspending.py`: add zipped Postgres dump handling + metadata profiling helper that can stream directly from removable storage.
 - `scripts/profile_usaspending_dump.py` (new): command-line profiler that emits table stats + sample rows while reading from the mounted drive.
-- `docs/data/usaspending-evaluation.md` (new): instructions for mounting "X10 Pro", validating the archive in place, and reading profiling outputs.
+- `docs/data/usaspending.md` (new): instructions for mounting "X10 Pro", validating the archive in place, and reading profiling outputs.
 - `reports/usaspending_subset_profile.md` (new): running log of profiling runs (date, checksum, row counts, coverage observations) referencing the external path.
 
 ### Dependencies / Tooling

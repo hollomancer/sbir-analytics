@@ -238,12 +238,12 @@ When modifying SBIR configuration:
 
 - Update `config/base.yaml` for new settings
 - Add validation in `src/config/schemas.py`
-- Document configuration options in `docs/sbir_ingestion.md`
+- Document configuration options in `docs/data/sbir.md`
 - Test configuration loading and overrides
 
 ### Documentation Updates
 
-- Update field descriptions in `docs/sbir_ingestion.md` when data structure changes
+- Update field descriptions in `docs/data/sbir.md` when data structure changes
 - Maintain API documentation for extractor and validator classes
 - Keep validation rules documentation current
 - Update README.md SBIR section for user-facing changes

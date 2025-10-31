@@ -105,6 +105,55 @@ make docker-test
 - Extend coverage by mirroring real workflows—prefer Dagster asset entry points when possible
 - Update documentation in this guide when test commands or targets change
 
+## Test Fixtures (Task 1.4)
+
+- Canonical scenarios live in `tests/fixtures/enrichment_scenarios.json` with a helper loader at `tests/fixtures/enrichment_scenarios.py`.
+- Each fixture describes SBIR/USAspending pairs, expected match methods, and confidence thresholds. Use them in unit tests to exercise good/bad/edge cases:
+  ```python
+  from tests.fixtures.enrichment_scenarios import load_enrichment_scenarios
+
+  scenarios = load_enrichment_scenarios()
+  for case in scenarios["good_scenarios"]["scenarios"]:
+      result = enrich_single_company(case["sbir_company"], case["usaspending_recipient"])
+      assert result["confidence"] >= case["expected_confidence"]
+  ```
+- Scenario keys: `id`, `name`, `sbir_company`, `usaspending_recipient`, `expected_match_method`, `expected_confidence`, and `description`.
+
+## Performance Reporting (Task 2.5)
+
+- Reporting helpers live in `src/utils/performance_reporting.py` and read/write `reports/benchmarks/*.json`.
+- Create a reporter, load benchmarks, and render Markdown/HTML artifacts:
+  ```python
+  from pathlib import Path
+  import json
+  from src.utils.performance_reporting import PerformanceReporter, PerformanceMetrics
+
+  reporter = PerformanceReporter()
+  with open("reports/benchmarks/baseline.json") as f:
+      baseline = PerformanceMetrics.from_benchmark(json.load(f))
+  with open("reports/benchmarks/benchmark_latest.json") as f:
+      current_data = json.load(f)
+
+  current = PerformanceMetrics.from_benchmark(current_data)
+  comparison = reporter.compare_metrics(baseline, current)
+  reporter.save_markdown_report(current_data, Path("reports/enrichment_benchmark.md"))
+  ```
+- The helper also supports historical trend analysis and GitHub-friendly Markdown for PR comments.
+
+## Regression Detection (Task 4.2)
+
+- CLI entry point: `scripts/detect_performance_regression.py`.
+- Typical workflow:
+  ```bash
+  python scripts/detect_performance_regression.py \
+    --sample-size 500 \
+    --output-json reports/regression.json \
+    --output-markdown reports/regression.md \
+    --fail-on-regression
+  ```
+- Threshold flags control warning/failure levels; the script returns non-zero on regression when `--fail-on-regression` is supplied.
+- GitHub Actions integration (`.github/workflows/performance-regression-check.yml`) runs the script and posts the Markdown summary as a PR comment.
+
 ## Test Scenarios
 
 ### Minimal Scenario

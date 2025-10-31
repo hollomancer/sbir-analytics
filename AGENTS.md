@@ -107,5 +107,5 @@ make docker-test        # Run tests in container
 - Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
 - Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/README.md`)
 - Container guide: `docs/deployment/containerization.md`
-- Data sources: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
+- Data sources: `docs/data/index.md`, `data/raw/uspto/README.md`
 - Neo4j schemas: `docs/schemas/patent-neo4j-schema.md`

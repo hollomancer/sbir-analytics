@@ -133,7 +133,7 @@
   - [x] 7.1.1 Data source description
   - [x] 7.1.2 CSV structure and field counts
   - [x] 7.1.3 Usage instructions
-- [x] 7.2 Create docs/sbir_ingestion.md with detailed documentation
+- [x] 7.2 Create docs/data/sbir.md with detailed documentation
   - [x] 7.2.1 Field descriptions from data dictionary
   - [x] 7.2.2 Validation rules reference
   - [x] 7.2.3 Example queries and usage
@@ -210,7 +210,7 @@ The SBIR ingestion implementation is now complete and ready for production use. 
 - New: `src/models/sbir_award.py`, `src/extractors/sbir.py`, `src/validators/sbir_awards.py`, `src/assets/sbir_ingestion.py`
 - Modified: `src/models/award.py`, `src/definitions.py`, `config/base.yaml`, `config/schemas.py`
 - Tests: 15 new test files with comprehensive coverage
-- Docs: Updated README.md, created `docs/sbir_ingestion.md`
+- Docs: Updated README.md, created `docs/data/sbir.md`
 
 ### Next Steps
 This implementation provides the foundation for downstream enrichment and loading stages. The validated SBIR data is now ready for:

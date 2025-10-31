@@ -9,18 +9,17 @@ nav:
       - Asset Naming Standards: docs/architecture/asset-naming-standards.md
       - Consolidation Guide: docs/architecture/consolidation-refactor-plan.md
   - Data Sources:
-      - SBIR: docs/data/sbir.md
+      - Overview: docs/data/index.md
+      - SBIR Awards: docs/data/sbir.md
       - USAspending: docs/data/usaspending.md
       - Patents: docs/data/patents.md
   - References:
-      - Config: docs/references/config.md
-      - CLI: docs/references/cli.md
       - Neo4j Schema: docs/references/schemas/neo4j.md
   - Guides:
-      - Containerization: docs/guides/containerization.md
+      - Containerization: docs/deployment/containerization.md
       - Quality Assurance: docs/guides/quality-assurance.md
   - Decisions: docs/decisions/
-  - Performance: docs/performance/pipeline-benchmarks.md
+  - Performance: docs/performance/index.md
 theme:
   name: material
   features:

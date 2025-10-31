@@ -18,5 +18,5 @@
 - [x] 4.2 Provide a Dagster/CLI hook that surfaces the latest profiling stats (row counts, snapshot date) so enrichment/transition assets can assert the dataset is available before running.
 
 ## 5. Documentation & Handoff
-- [x] 5.1 Add `docs/data/usaspending-evaluation.md` covering staging steps, profiling workflow, and how to refresh the report when a new dump arrives.
+- [x] 5.1 Add `docs/data/usaspending.md` covering staging steps, profiling workflow, and how to refresh the report when a new dump arrives.
 - [x] 5.2 Update `README.md` or relevant onboarding docs to mention the removable-drive workflow and the need to run the profiler before enabling USAspending-powered assets.

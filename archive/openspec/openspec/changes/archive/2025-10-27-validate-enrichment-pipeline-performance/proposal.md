@@ -51,7 +51,7 @@ The SBIR-USAspending enrichment pipeline has foundational infrastructure in plac
 - `tests/test_enrichment_pipeline.py`: Add Dagster-native end-to-end smoke tests
 - `scripts/benchmark_enrichment.py` (new): Automated performance baseline and regression detection
 - `config/base.yaml`: Add performance tuning parameters (chunk sizes, memory thresholds, match-rate targets)
-- `docs/performance/enrichment-benchmarks.md` (new): Performance expectations, tuning guide, scaling recommendations
+- `docs/performance/index.md` (new): Performance expectations, tuning guide, scaling recommendations
 - `docs/DEPLOYMENT_CHECKLIST.md` (new): Pre-production validation requirements
 
 ### Dependencies / Tooling

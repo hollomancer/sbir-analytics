@@ -580,7 +580,7 @@ The project provides Docker Compose for a consistent development and testing env
    make docker-logs SERVICE=dagster-webserver
    ```
 
-See `docs/guides/containerization.md` for full details.
+See `docs/deployment/containerization.md` for full details.
 
 ### Local Development (Alternative)
 
@@ -824,8 +824,8 @@ GitHub Actions workflows:
 
 ## Documentation
 
-- **Testing**: `docs/testing/README.md`, `docs/testing/e2e-testing-guide.md` (comprehensive testing guides)
-- **Data Sources**: `docs/data/usaspending-evaluation.md`, `data/raw/uspto/README.md`
+- **Testing**: `docs/testing/e2e-testing-guide.md`
+- **Data Sources**: `docs/data/index.md`, `data/raw/uspto/README.md`
 - **Deployment**: `docs/deployment/containerization.md`
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
 - **Specifications**: `.kiro/specs/` (Kiro specification system) - see `AGENTS.md` for workflow guidance

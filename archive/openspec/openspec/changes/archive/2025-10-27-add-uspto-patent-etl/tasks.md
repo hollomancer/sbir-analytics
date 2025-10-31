@@ -7,7 +7,7 @@
 - [x] 1.2 Document table schemas and relationships in detail
   - Notes: Created `docs/schemas/patent-assignment-schema.md` with comprehensive documentation of all five USPTO tables (assignment, documentid, assignee, assignor, assignment_conveyance), their schemas, relationships, data quality issues, and SBIR integration strategy.
 - [x] 1.3 Generate data quality baseline report (completeness, duplicates, missing values)
-  - Notes: Generated `docs/uspto_data_quality_baseline.md` with detailed analysis of 100-row sample per table, including completeness metrics (97.6% aggregate), primary key uniqueness (100%), critical issues (30% NULL grant_doc_num), and recommendations for ETL pipeline.
+  - Notes: Generated `docs/data/patents.md` with detailed analysis of 100-row sample per table, including completeness metrics (97.6% aggregate), primary key uniqueness (100%), critical issues (30% NULL grant_doc_num), and recommendations for ETL pipeline.
 - [x] 1.4 Design Neo4j graph schema for patents and assignments
   - Notes: Created `docs/schemas/patent-neo4j-schema.md` with complete Neo4j data model: 5 node types (Patent, PatentAssignment, PatentEntity, Award, Company), 6 relationship types (ASSIGNED_VIA, ASSIGNED_TO, ASSIGNED_FROM, FUNDED_BY, OWNS, CHAIN_OF), with indexes, constraints, and example queries for patent chains and SBIR linkage.
 - [x] 1.5 Map USPTO fields to graph node/relationship properties

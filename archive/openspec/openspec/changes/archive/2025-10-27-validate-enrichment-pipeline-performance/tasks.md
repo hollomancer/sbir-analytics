@@ -186,9 +186,9 @@
     - ✅ Markdown summary reports with trend analysis and recommendations
     - ✅ JSON fallback when Plotly unavailable
 
-- [x] 4.4 Create performance documentation (`docs/performance/enrichment-benchmarks.md`)
+- [x] 4.4 Create performance documentation (`docs/performance/index.md`)
   - **Status:** COMPLETE
-  - **Evidence:** Comprehensive performance documentation created in `docs/performance/enrichment-benchmarks.md` with 697 lines covering full operational guidance
+  - **Evidence:** Comprehensive performance documentation created in `docs/performance/index.md` with 697 lines covering full operational guidance
   - **Details:** Includes baseline metrics for 100-10K records, performance by match method, scaling guide for 1M+ records, tuning recommendations for different hardware, monitoring setup with Prometheus alerts, extensive troubleshooting section, and best practices for development/production/operators
   - **Acceptance Criteria:**
     - ✅ Baseline metrics documented (100/500/1000/10K record samples)
@@ -238,7 +238,7 @@
 
 - [x] 5.2 Add configuration options for performance tuning (chunk sizes, thresholds, retry/backoff)
   - **Status:** COMPLETE
-  - **Evidence:** Configuration parameters added to `config/base.yaml` under `enrichment.performance` section with 11 tunable parameters and 772-line comprehensive guide in `docs/performance/configuration-guide.md`
+  - **Evidence:** Configuration parameters added to `config/base.yaml` under `enrichment.performance` section with 11 tunable parameters and 772-line comprehensive guide in `docs/performance/index.md`
   - **Details:** Added parameters: chunk_size (default 25000), memory_threshold_mb (default 2048), match_rate_threshold (default 0.70), timeout_seconds (default 300), retry_backoff (default exponential), high_confidence_threshold (90), low_confidence_threshold (75), enable_fuzzy_matching (true), enable_memory_monitoring (true), enable_progress_tracking (true). Created 5 configuration profiles (memory-constrained, balanced, high-performance, maximum-quality, maximum-speed).
   - **Acceptance Criteria:**
     - ✅ Configuration parameters defined in config/base.yaml

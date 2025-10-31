@@ -20,7 +20,7 @@ Graph-based ETL that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph
 ## Quick links
 - Getting started: `README.md`
 - Architecture overview: `docs/architecture/shared-tech-stack.md`
-- Containerization guide: `docs/guides/containerization.md`
+- Containerization guide: `docs/deployment/containerization.md`
 - Statistical reporting guide: `docs/guides/statistical-reporting.md`
 - Neo4j schema reference: `docs/references/schemas/neo4j.md`
 - Decisions (ADRs): `docs/decisions/`
