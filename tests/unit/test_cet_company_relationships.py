@@ -203,7 +203,7 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     import importlib
 
     monkeypatch.chdir(tmp_path)
-    mod = importlib.import_module("src.assets.cet_neo4j_loading_assets")
+    mod = importlib.import_module("src.assets.cet_assets")
 
     # Prepare fake input rows
     rows = [
@@ -287,7 +287,7 @@ def test_asset_neo4j_company_cet_relationships_fallback_key_property(monkeypatch
     import importlib
 
     monkeypatch.chdir(tmp_path)
-    mod = importlib.import_module("src.assets.cet_neo4j_loading_assets")
+    mod = importlib.import_module("src.assets.cet_assets")
 
     # Rows with no 'uei' field populated; only 'company_id' present
     rows = [

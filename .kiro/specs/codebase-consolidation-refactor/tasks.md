@@ -49,7 +49,7 @@ Based on analysis of the current codebase, the following tasks represent the hig
   - Update all import references to use the consolidated uspto_assets.py
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] 2.2 Consolidate CET asset files
+- [x] 2.2 Consolidate CET asset files
   - Merge cet_assets.py and cet_neo4j_loading_assets.py with unified patterns
   - Eliminate duplicate CET classification logic and create consistent interfaces
   - Standardize CET enrichment metadata and confidence scoring

@@ -174,25 +174,25 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "src.assets.uspto_assets",
         "uspto_ai_human_sample_extraction",
     ),
-    # cet_neo4j_loading_assets
+    # cet_assets (consolidated)
     "neo4j_cetarea_nodes": (
-        "src.assets.cet_neo4j_loading_assets",
+        "src.assets.cet_assets",
         "neo4j_cetarea_nodes",
     ),
     "neo4j_award_cet_enrichment": (
-        "src.assets.cet_neo4j_loading_assets",
+        "src.assets.cet_assets",
         "neo4j_award_cet_enrichment",
     ),
     "neo4j_company_cet_enrichment": (
-        "src.assets.cet_neo4j_loading_assets",
+        "src.assets.cet_assets",
         "neo4j_company_cet_enrichment",
     ),
     "neo4j_award_cet_relationships": (
-        "src.assets.cet_neo4j_loading_assets",
+        "src.assets.cet_assets",
         "neo4j_award_cet_relationships",
     ),
     "neo4j_company_cet_relationships": (
-        "src.assets.cet_neo4j_loading_assets",
+        "src.assets.cet_assets",
         "neo4j_company_cet_relationships",
     ),
     # transition_assets

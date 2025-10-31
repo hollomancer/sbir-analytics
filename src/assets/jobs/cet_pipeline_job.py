@@ -32,9 +32,9 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
     cet_award_classifications = None  # type: ignore
     cet_company_profiles = None  # type: ignore
 
-# Import CET Neo4j loading/enrichment assets
+# Import CET Neo4j loading/enrichment assets (consolidated)
 try:
-    from src.assets.cet_neo4j_loading_assets import (  # type: ignore
+    from src.assets.cet_assets import (  # type: ignore
         neo4j_award_cet_enrichment,
         neo4j_award_cet_relationships,
         neo4j_cetarea_nodes,
