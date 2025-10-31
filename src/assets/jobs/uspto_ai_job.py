@@ -20,7 +20,7 @@ from dagster import AssetSelection, build_assets_job
 # Import the USPTO AI asset definitions. These are expected to be defined in:
 #   src.assets.uspto_ai_extraction_assets
 try:
-    from src.assets.uspto_ai_extraction_assets import (  # type: ignore
+    from src.assets.uspto_assets import (  # type: ignore
         uspto_ai_deduplicate,
         uspto_ai_extract_to_duckdb,
         uspto_ai_human_sample_extraction,

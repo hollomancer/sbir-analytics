@@ -106,72 +106,72 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "src.assets.uspto_assets",
         "uspto_conveyances_parsing_check",
     ),
-    # uspto_validation_assets
+    # uspto_validation_assets (consolidated)
     "validated_uspto_assignments": (
-        "src.assets.uspto_validation_assets",
+        "src.assets.uspto_assets",
         "validated_uspto_assignments",
     ),
-    "uspto_rf_id_asset_check": ("src.assets.uspto_validation_assets", "uspto_rf_id_asset_check"),
+    "uspto_rf_id_asset_check": ("src.assets.uspto_assets", "uspto_rf_id_asset_check"),
     "uspto_completeness_asset_check": (
-        "src.assets.uspto_validation_assets",
+        "src.assets.uspto_assets",
         "uspto_completeness_asset_check",
     ),
     "uspto_referential_asset_check": (
-        "src.assets.uspto_validation_assets",
+        "src.assets.uspto_assets",
         "uspto_referential_asset_check",
     ),
-    # uspto_transformation_assets
+    # uspto_transformation_assets (consolidated)
     "transformed_patent_assignments": (
-        "src.assets.uspto_transformation_assets",
+        "src.assets.uspto_assets",
         "transformed_patent_assignments",
     ),
-    "transformed_patents": ("src.assets.uspto_transformation_assets", "transformed_patents"),
+    "transformed_patents": ("src.assets.uspto_assets", "transformed_patents"),
     "transformed_patent_entities": (
-        "src.assets.uspto_transformation_assets",
+        "src.assets.uspto_assets",
         "transformed_patent_entities",
     ),
     "uspto_transformation_success_check": (
-        "src.assets.uspto_transformation_assets",
+        "src.assets.uspto_assets",
         "uspto_transformation_success_check",
     ),
     "uspto_company_linkage_check": (
-        "src.assets.uspto_transformation_assets",
+        "src.assets.uspto_assets",
         "uspto_company_linkage_check",
     ),
-    # uspto_neo4j_loading_assets
-    "neo4j_patents": ("src.assets.uspto_neo4j_loading_assets", "neo4j_patents"),
+    # uspto_neo4j_loading_assets (consolidated)
+    "neo4j_patents": ("src.assets.uspto_assets", "neo4j_patents"),
     "neo4j_patent_assignments": (
-        "src.assets.uspto_neo4j_loading_assets",
+        "src.assets.uspto_assets",
         "neo4j_patent_assignments",
     ),
-    "neo4j_patent_entities": ("src.assets.uspto_neo4j_loading_assets", "neo4j_patent_entities"),
+    "neo4j_patent_entities": ("src.assets.uspto_assets", "neo4j_patent_entities"),
     "neo4j_patent_relationships": (
-        "src.assets.uspto_neo4j_loading_assets",
+        "src.assets.uspto_assets",
         "neo4j_patent_relationships",
     ),
     "patent_load_success_rate": (
-        "src.assets.uspto_neo4j_loading_assets",
+        "src.assets.uspto_assets",
         "patent_load_success_rate",
     ),
     "assignment_load_success_rate": (
-        "src.assets.uspto_neo4j_loading_assets",
+        "src.assets.uspto_assets",
         "assignment_load_success_rate",
     ),
     "patent_relationship_cardinality": (
-        "src.assets.uspto_neo4j_loading_assets",
+        "src.assets.uspto_assets",
         "patent_relationship_cardinality",
     ),
-    # uspto_ai_extraction_assets
+    # uspto_ai_extraction_assets (consolidated)
     "uspto_ai_extract_to_duckdb": (
-        "src.assets.uspto_ai_extraction_assets",
+        "src.assets.uspto_assets",
         "uspto_ai_extract_to_duckdb",
     ),
     "uspto_ai_deduplicate": (
-        "src.assets.uspto_ai_extraction_assets",
+        "src.assets.uspto_assets",
         "uspto_ai_deduplicate",
     ),
     "uspto_ai_human_sample_extraction": (
-        "src.assets.uspto_ai_extraction_assets",
+        "src.assets.uspto_assets",
         "uspto_ai_human_sample_extraction",
     ),
     # cet_neo4j_loading_assets
