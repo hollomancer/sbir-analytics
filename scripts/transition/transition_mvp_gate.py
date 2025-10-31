@@ -34,6 +34,7 @@ Examples:
       --contracts-checks data/processed/contracts_sample.checks.json \
       --vendor-checks data/processed/vendor_resolution.checks.json \
       --evidence-checks data/processed/transitions_evidence.checks.json
+  poetry run python scripts/transition_mvp_gate.py --check-only  # Simple gate check (like transition_mvp_gate_check.py)
 """
 
 from __future__ import annotations
@@ -289,6 +290,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+
+    # Check-only mode: simple gate checking like transition_mvp_gate_check.py
+    if args.check_only:
+        summary_path = Path(args.summary)
+        if not summary_path.exists():
+            print(f"Validation summary not found at {summary_path}", file=sys.stderr)
+            return 2
+
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+        gates = data.get("gates", {})
+        cs = gates.get("contracts_sample", {}) or {}
+        vr = gates.get("vendor_resolution", {}) or {}
+        failures = []
+
+        if not cs.get("passed", False):
+            failures.append("contracts_sample coverage gate failed")
+
+        if not vr.get("passed", False):
+            failures.append("vendor_resolution rate gate failed")
+
+        if failures:
+            for f in failures:
+                print(f"ERROR: {f}", file=sys.stderr)
+            return 1
+
+        print("Validation gates passed.")
+        return 0
 
     summary_path = Path(args.summary)
     contracts_checks_path = Path(args.contracts_checks)

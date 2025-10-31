@@ -16,7 +16,6 @@ Usage:
         --output reports/quality/assessment.html
 """
 
-import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +23,18 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+from ..lib.cli_utils import (
+    add_input_file_argument,
+    add_json_output_argument,
+    add_output_file_argument,
+    create_parser,
+    print_header,
+    print_section,
+    save_json_output,
+    setup_logging_for_script,
+    validate_file_exists,
+)
 
 
 class EnrichmentQualityValidator:
@@ -557,37 +568,38 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
 
 def main():
     """Run quality validation."""
-    parser = argparse.ArgumentParser(
-        description="Validate enrichment quality with detailed breakdowns"
+    setup_logging_for_script("validate_enrichment_quality")
+
+    parser = create_parser(
+        "Validate enrichment quality with detailed breakdowns",
+        "validate_enrichment_quality"
     )
-    parser.add_argument(
-        "--enriched-file",
-        type=Path,
-        default="data/enriched/sbir_enriched.parquet",
-        help="Path to enriched SBIR data (parquet or CSV)",
+
+    add_input_file_argument(
+        parser,
+        "enriched-file",
+        "data/enriched/sbir_enriched.parquet",
+        "Path to enriched SBIR data (parquet or CSV)"
     )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default="reports/quality/assessment.html",
-        help="Output path for HTML report",
+    add_output_file_argument(
+        parser,
+        "output",
+        "reports/quality/assessment.html",
+        "Output path for HTML report"
     )
-    parser.add_argument(
-        "--json-output",
-        type=Path,
-        default=None,
-        help="Optional path to save JSON report",
-    )
+    add_json_output_argument()
 
     args = parser.parse_args()
 
-    logger.info("=" * 80)
-    logger.info("SBIR-USAspending Enrichment Quality Validation")
-    logger.info("=" * 80)
+    print_header("SBIR-USAspending Enrichment Quality Validation")
 
     try:
+        # Validate input file exists
+        validate_file_exists(args.enriched_file, "Enriched data file")
+
         # Load enriched data
-        logger.info(f"\nLoading enriched data from {args.enriched_file}")
+        print_section("Loading enriched data")
+        logger.info(f"Loading data from {args.enriched_file}")
         if args.enriched_file.suffix == ".parquet":
             df = pd.read_parquet(args.enriched_file)
         else:
@@ -595,20 +607,17 @@ def main():
         logger.info(f"Loaded {len(df)} records")
 
         # Validate
-        logger.info("\nRunning quality validation...")
+        print_section("Running quality validation")
         validator = EnrichmentQualityValidator(df)
         report = validator.validate()
 
         # Generate HTML report
-        logger.info(f"\nGenerating HTML report: {args.output}")
+        print_section("Generating reports")
+        logger.info(f"Generating HTML report: {args.output}")
         generate_html_report(report, args.output)
 
-        # Optionally save JSON
-        if args.json_output:
-            logger.info(f"Saving JSON report: {args.json_output}")
-            args.json_output.parent.mkdir(parents=True, exist_ok=True)
-            with open(args.json_output, "w") as f:
-                json.dump(report, f, indent=2, default=str)
+        # Save JSON output if requested
+        save_json_output(report, args.json_output)
 
         # Print summary
         logger.info("\n" + "=" * 80)

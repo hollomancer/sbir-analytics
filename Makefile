@@ -252,7 +252,7 @@ endif
 transition-mvp-run:
 	@echo "🔬 Running Transition Detection MVP locally..."
 	@mkdir -p data/processed reports/validation
-	@poetry run python scripts/transition_mvp_run.py
+	@poetry run python scripts/transition/transition_mvp_run.py
 
 transition-mvp-clean:
 	@echo "🧹 Cleaning Transition MVP artifacts..."
@@ -265,18 +265,18 @@ transition-mvp-clean:
 # Transition MVP gated helpers
 transition-mvp-run-gated:
 	@$(MAKE) transition-mvp-run
-	@poetry run python scripts/transition_mvp_gate_check.py
+	@poetry run python scripts/transition_mvp_gate.py --check-only
 	@echo "✅ Transition MVP gated run succeeded"
 
 transition-audit-export:
 	@echo "📊 Exporting precision audit sample CSV..."
 	@mkdir -p reports/validation
-	@poetry run python scripts/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
+	@poetry run python scripts/transition/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
 
 transition-audit-import:
 	@if [ -z "$${CSV}" ]; then echo "❌ Provide CSV=path/to/labeled.csv"; exit 2; fi
 	@THRESHOLD=$${THRESHOLD:-0.80}; \
-	poetry run python scripts/transition_precision_audit.py --import-csv "$$CSV" --threshold "$$THRESHOLD"
+	poetry run python scripts/transition/transition_precision_audit.py --import-csv "$$CSV" --threshold "$$THRESHOLD"
 
 # ---------------------------
 # Migration and validation targets
@@ -309,7 +309,7 @@ env-check:
 
 benchmark-transition-detection:
 	@echo "📊 Running transition detection benchmark..."
-	@poetry run python scripts/benchmark_transition_detection.py --save-as-baseline
+	@poetry run python scripts/performance/benchmark_transition_detection.py --save-as-baseline
 
 # ---------------------------
 # Profile information and help

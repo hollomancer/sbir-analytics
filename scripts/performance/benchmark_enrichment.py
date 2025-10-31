@@ -15,7 +15,6 @@ Usage:
     python scripts/benchmark_enrichment.py [--sample-size 1000] [--output reports/benchmarks/baseline.json]
 """
 
-import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +22,19 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+from ..lib.cli_utils import (
+    add_baseline_argument,
+    add_input_file_argument,
+    add_output_file_argument,
+    add_sample_size_argument,
+    add_save_as_baseline_argument,
+    create_parser,
+    print_header,
+    print_section,
+    save_json_output,
+    setup_logging_for_script,
+)
 
 from src.config.loader import get_config
 from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
@@ -324,53 +336,41 @@ def save_benchmark(
 
 def main():
     """Run the benchmarking script."""
-    parser = argparse.ArgumentParser(
-        description="Benchmark the SBIR-USAspending enrichment pipeline"
+    setup_logging_for_script("benchmark_enrichment")
+
+    parser = create_parser(
+        "Benchmark the SBIR-USAspending enrichment pipeline",
+        "benchmark_enrichment"
     )
-    parser.add_argument(
-        "--sample-size",
-        type=int,
-        default=None,
-        help="Maximum number of SBIR records to benchmark (default: all)",
+
+    add_sample_size_argument(parser)
+    add_output_file_argument(
+        parser,
+        "output",
+        None,
+        "Output path for benchmark JSON (default: reports/benchmarks/benchmark_<timestamp>.json)"
     )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=None,
-        help="Output path for benchmark JSON (default: reports/benchmarks/benchmark_<timestamp>.json)",
-    )
-    parser.add_argument(
-        "--baseline",
-        type=Path,
-        default=None,
-        help="Path to baseline benchmark for regression detection (default: reports/benchmarks/baseline.json)",
-    )
-    parser.add_argument(
-        "--save-as-baseline",
-        action="store_true",
-        help="Save this benchmark as the new baseline",
-    )
+    add_baseline_argument(parser)
+    add_save_as_baseline_argument(parser)
 
     args = parser.parse_args()
 
-    logger.info("=" * 80)
-    logger.info("SBIR-USAspending Enrichment Pipeline Benchmark")
-    logger.info("=" * 80)
+    print_header("SBIR-USAspending Enrichment Pipeline Benchmark")
 
     try:
         # Load data
-        logger.info("\n1. Loading data...")
+        print_section("Loading data")
         sbir_df, total_sbir = load_sample_data(args.sample_size)
         usaspending_df = load_usaspending_lookup()
 
         # Run enrichment benchmark
-        logger.info("\n2. Running enrichment benchmark...")
+        print_section("Running enrichment benchmark")
         benchmark_results = run_enrichment_benchmark(sbir_df, usaspending_df)
 
         # Load baseline if available
         baseline = load_baseline(args.baseline)
         if baseline:
-            logger.info("\n3. Detecting regressions...")
+            print_section("Detecting regressions")
             regressions = detect_regressions(benchmark_results, baseline)
             benchmark_results["regressions"] = regressions
 
@@ -387,16 +387,13 @@ def main():
             logger.info("No baseline available for comparison (creating new)")
 
         # Save benchmark
-        logger.info("\n4. Saving benchmark results...")
+        print_section("Saving benchmark results")
         output_path = save_benchmark(benchmark_results, args.output)
 
         # Optionally save as baseline
         if args.save_as_baseline:
             baseline_path = Path("reports/benchmarks/baseline.json")
-            baseline_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(baseline_path, "w") as f:
-                json.dump(benchmark_results, f, indent=2, default=str)
-            logger.info(f"Saved as new baseline: {baseline_path}")
+            save_json_output(benchmark_results, baseline_path)
 
         # Print summary
         logger.info("\n" + "=" * 80)
