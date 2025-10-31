@@ -31,14 +31,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+import logging
 import math
 import sys
-import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("init_cet_baseline")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -53,7 +51,7 @@ def try_import_pandas():
         return None
 
 
-def read_json_records(path: Path) -> List[Dict[str, Any]]:
+def read_json_records(path: Path) -> list[dict[str, Any]]:
     """Read a JSON array file or NDJSON (one JSON object per line) and return list of records."""
     path = Path(path)
     if not path.exists():
@@ -69,7 +67,7 @@ def read_json_records(path: Path) -> List[Dict[str, Any]]:
             if isinstance(data, list):
                 return data
         # Fallback to NDJSON
-        records: List[Dict[str, Any]] = []
+        records: list[dict[str, Any]] = []
         with path.open("r", encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
@@ -88,7 +86,7 @@ def read_json_records(path: Path) -> List[Dict[str, Any]]:
         return []
 
 
-def read_parquet_dataframe(path: Path, pd) -> Optional["pd.DataFrame"]:
+def read_parquet_dataframe(path: Path, pd) -> pd.DataFrame | None:
     """Attempt to read a parquet into a DataFrame using pandas if available."""
     if pd is None:
         return None
@@ -100,7 +98,7 @@ def read_parquet_dataframe(path: Path, pd) -> Optional["pd.DataFrame"]:
     return None
 
 
-def compute_coverage_from_awards_parquet(path: Path, pd) -> Optional[Dict[str, Any]]:
+def compute_coverage_from_awards_parquet(path: Path, pd) -> dict[str, Any] | None:
     """Compute overall coverage metrics from award-level classifications parquet/ndjson."""
     if pd is None:
         return None
@@ -151,7 +149,7 @@ def compute_coverage_from_awards_parquet(path: Path, pd) -> Optional[Dict[str, A
     }
 
 
-def compute_specialization_from_companies(path: Path, pd) -> Optional[Dict[str, Any]]:
+def compute_specialization_from_companies(path: Path, pd) -> dict[str, Any] | None:
     """Compute average specialization_score from company profiles parquet/ndjson."""
     if pd is None:
         return None
@@ -181,7 +179,7 @@ def compute_specialization_from_companies(path: Path, pd) -> Optional[Dict[str, 
     return {"specialization_avg": None, "company_count": len(df)}
 
 
-def write_baseline(out_path: Path, payload: Dict[str, Any], force: bool = False) -> None:
+def write_baseline(out_path: Path, payload: dict[str, Any], force: bool = False) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists() and not force:
         logger.error("Baseline file %s already exists; use --force to overwrite", out_path)
@@ -192,7 +190,7 @@ def write_baseline(out_path: Path, payload: Dict[str, Any], force: bool = False)
     logger.info("Baseline written to %s", out_path)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Initialize CET baseline from processed artifacts")
     parser.add_argument(
         "--coverage-path",
@@ -350,7 +348,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             specialization_min = None
 
-    baseline_payload: Dict[str, Any] = {
+    baseline_payload: dict[str, Any] = {
         "created_at": datetime.utcnow().isoformat(),
         "coverage": {
             "latest_year": latest_year,

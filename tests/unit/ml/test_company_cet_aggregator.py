@@ -1,6 +1,7 @@
-import pytest
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import pytest
 
 from src.transformers.company_cet_aggregator import CompanyCETAggregator
 

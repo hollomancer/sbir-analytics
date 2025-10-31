@@ -47,12 +47,11 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
-    AssetExecutionContext,
     AssetIn,
     MetadataValue,
     asset,
@@ -539,7 +538,7 @@ def _build_validator_config(context) -> USPTOValidationConfig:
     )
 
 
-def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict[str, Any]]:
+def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict[str, Any]]:
     """Extract table-specific results from validation report."""
     return (report or {}).get("tables", {}).get(table, {}) or {}
 
@@ -557,12 +556,12 @@ def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict
 )
 def validated_uspto_assignments(
     context,
-    assignment_files: List[str],
-    assignee_files: List[str],
-    assignor_files: List[str],
-    documentid_files: List[str],
-    conveyance_files: List[str],
-) -> Dict[str, Any]:
+    assignment_files: list[str],
+    assignee_files: list[str],
+    assignor_files: list[str],
+    documentid_files: list[str],
+    conveyance_files: list[str],
+) -> dict[str, Any]:
     """Run the USPTO data quality validator across all discovered tables."""
     if USPTODataQualityValidator is None:
         context.log.warning("USPTODataQualityValidator unavailable")
@@ -628,8 +627,8 @@ def validated_uspto_assignments(
 )
 def uspto_rf_id_asset_check(
     context,
-    validation_report: Dict[str, Any],
-    assignment_files: List[str],
+    validation_report: dict[str, Any],
+    assignment_files: list[str],
 ) -> AssetCheckResult:
     """Check that rf_id uniqueness holds for all assignment files."""
     assignments = _extract_table_results(validation_report, "assignments")
@@ -645,7 +644,7 @@ def uspto_rf_id_asset_check(
             },
         )
 
-    failed_files: List[Dict[str, Any]] = []
+    failed_files: list[dict[str, Any]] = []
     duplicate_total = 0
 
     for file_path, result in assignments.items():
@@ -688,11 +687,11 @@ def uspto_rf_id_asset_check(
 )
 def uspto_completeness_asset_check(
     context,
-    validation_report: Dict[str, Any],
+    validation_report: dict[str, Any],
 ) -> AssetCheckResult:
     """Check that required fields have sufficient completeness."""
     tables = (validation_report or {}).get("tables", {})
-    failures: List[Dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
 
     for table, results in tables.items():
         for file_path, result in (results or {}).items():
@@ -736,11 +735,11 @@ def uspto_completeness_asset_check(
 )
 def uspto_referential_asset_check(
     context,
-    validation_report: Dict[str, Any],
+    validation_report: dict[str, Any],
 ) -> AssetCheckResult:
     """Check referential integrity across USPTO tables."""
     tables = (validation_report or {}).get("tables", {})
-    failures: List[Dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
 
     for table, results in tables.items():
         if table == "assignments":
@@ -808,7 +807,7 @@ def _ensure_dir(path: Path) -> Path:
     return path
 
 
-def _load_sbir_index(index_path: str | None) -> Dict[str, str]:
+def _load_sbir_index(index_path: str | None) -> dict[str, str]:
     if not index_path:
         return {}
     idx_file = Path(index_path)
@@ -824,7 +823,7 @@ def _load_sbir_index(index_path: str | None) -> Dict[str, str]:
     return {}
 
 
-def _serialize_assignment(model: Any) -> Dict[str, Any]:
+def _serialize_assignment(model: Any) -> dict[str, Any]:
     if model is None:
         return {}
     if hasattr(model, "model_dump"):
@@ -834,7 +833,7 @@ def _serialize_assignment(model: Any) -> Dict[str, Any]:
     return dict(model.__dict__)
 
 
-def _iter_small_sample(store: List[Any], new_item: Any, limit: int) -> None:
+def _iter_small_sample(store: list[Any], new_item: Any, limit: int) -> None:
     if len(store) < limit:
         store.append(new_item)
 
@@ -863,7 +862,7 @@ def _normalize_country(country: str | None) -> str | None:
 
 @dataclass
 class JoinedRow:
-    data: Dict[str, Any]
+    data: dict[str, Any]
     rf_id: str | None
 
 
@@ -874,8 +873,8 @@ class USPTOAssignmentJoiner:
         self.extractor = extractor
         self.chunk_size = chunk_size
 
-    def _lookup(self, files: Iterable[str]) -> Dict[str, List[Dict[str, Any]]]:
-        table: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    def _lookup(self, files: Iterable[str]) -> dict[str, list[dict[str, Any]]]:
+        table: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for file_path in files or []:
             path = Path(file_path)
             if not path.exists():
@@ -891,13 +890,13 @@ class USPTOAssignmentJoiner:
 
     @staticmethod
     def _merge_rows(
-        assignment: Dict[str, Any],
-        assignee: Dict[str, Any] | None,
-        assignor: Dict[str, Any] | None,
-        document: Dict[str, Any] | None,
-        conveyance: Dict[str, Any] | None,
-    ) -> Dict[str, Any]:
-        merged: Dict[str, Any] = {}
+        assignment: dict[str, Any],
+        assignee: dict[str, Any] | None,
+        assignor: dict[str, Any] | None,
+        document: dict[str, Any] | None,
+        conveyance: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        merged: dict[str, Any] = {}
 
         def set_if(key: str, *values: Any) -> None:
             for value in values:
@@ -1005,7 +1004,7 @@ def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
     return base_dir / f"{prefix}_{timestamp}.jsonl", base_dir
 
 
-def _load_assignments_file(path: str | None) -> Iterable[Dict[str, Any]]:
+def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
     if not path:
         return []
     src = Path(path)
@@ -1035,13 +1034,13 @@ def _load_assignments_file(path: str | None) -> Iterable[Dict[str, Any]]:
 )
 def transformed_patent_assignments(
     context,
-    assignment_files: List[str],
-    assignee_files: List[str],
-    assignor_files: List[str],
-    documentid_files: List[str],
-    conveyance_files: List[str],
-    validation_report: Dict[str, Any],
-) -> Dict[str, Any]:
+    assignment_files: list[str],
+    assignee_files: list[str],
+    assignor_files: list[str],
+    documentid_files: list[str],
+    conveyance_files: list[str],
+    validation_report: dict[str, Any],
+) -> dict[str, Any]:
     if USPTOExtractor is None or PatentAssignmentTransformer is None:
         msg = "USPTOExtractor or PatentAssignmentTransformer unavailable"
         context.log.warning(msg)
@@ -1064,7 +1063,7 @@ def transformed_patent_assignments(
         "error_count": 0,
         "linked_count": 0,
     }
-    samples: List[Dict[str, Any]] = []
+    samples: list[dict[str, Any]] = []
 
     extractor = USPTOExtractor(Path(assignment_files[0]).parent)
     joiner = USPTOAssignmentJoiner(extractor, chunk_size=chunk_size)
@@ -1133,14 +1132,14 @@ def transformed_patent_assignments(
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patents(context, transformed_assignments: Dict[str, Any]) -> Dict[str, Any]:
+def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, base_dir = _resolve_output_paths(context, "patents")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
         context.log.warning("No transformed assignments output available for patent aggregation")
         return {"error": "missing_assignments", "patent_count": 0}
 
-    patents: Dict[str, Dict[str, Any]] = {}
+    patents: dict[str, dict[str, Any]] = {}
     linked = 0
     for record in _load_assignments_file(src_path):
         document = record.get("document") or {}
@@ -1203,16 +1202,16 @@ def transformed_patents(context, transformed_assignments: Dict[str, Any]) -> Dic
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patent_entities(context, transformed_assignments: Dict[str, Any]) -> Dict[str, Any]:
+def transformed_patent_entities(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
         context.log.warning("No transformed assignments output available for entity aggregation")
         return {"error": "missing_assignments", "entity_count": 0}
 
-    entities: Dict[str, Dict[str, Any]] = {}
+    entities: dict[str, dict[str, Any]] = {}
 
-    def upsert(entity: Dict[str, Any], entity_type: str, rf_id: str | None) -> None:
+    def upsert(entity: dict[str, Any], entity_type: str, rf_id: str | None) -> None:
         if not entity:
             return
         name = entity.get("name")
@@ -1264,7 +1263,7 @@ def transformed_patent_entities(context, transformed_assignments: Dict[str, Any]
     description="Verify transformation success rate meets threshold",
 )
 def uspto_transformation_success_check(
-    context, transformed_patent_assignments: Dict[str, Any]
+    context, transformed_patent_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     success_rate = transformed_patent_assignments.get("success_rate", 0.0)
     passed = success_rate >= TRANSFORM_SUCCESS_THRESHOLD
@@ -1291,7 +1290,7 @@ def uspto_transformation_success_check(
     description="Ensure SBIR company linkage coverage meets target",
 )
 def uspto_company_linkage_check(
-    context, transformed_assignments: Dict[str, Any]
+    context, transformed_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET
@@ -1341,7 +1340,7 @@ def _ensure_output_dir() -> Path:
     return DEFAULT_NEO4J_OUTPUT_DIR
 
 
-def _load_transformed_file(file_path: Path) -> List[Dict[str, Any]]:
+def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
     """Load JSONL file of transformed records."""
     records = []
     if not file_path.exists():
@@ -1377,7 +1376,7 @@ def _convert_dates_to_iso(obj: Any) -> Any:
     return obj
 
 
-def _serialize_metrics(metrics: LoadMetrics | None) -> Dict[str, Any]:
+def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
     """Serialize LoadMetrics to dict for output."""
     if metrics is None:
         return {
@@ -1409,7 +1408,7 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> Dict[str, Any]:
         "create_constraints": bool,
     },
 )
-def loaded_patents(context) -> Dict[str, Any]:
+def loaded_patents(context) -> dict[str, Any]:
     """Phase 1 Step 2: Load Patent nodes into Neo4j.
 
     Reads transformed patent documents and creates Patent nodes with:
@@ -1510,7 +1509,7 @@ def loaded_patents(context) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patent_assignments"],
 )
-def loaded_patent_assignments(context) -> Dict[str, Any]:
+def loaded_patent_assignments(context) -> dict[str, Any]:
     """Phase 1 Step 1: Load PatentAssignment nodes into Neo4j.
 
     Reads transformed patent assignments and creates PatentAssignment nodes with:
@@ -1606,7 +1605,7 @@ def loaded_patent_assignments(context) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["neo4j_patients", "loaded_patent_assignments", "transformed_patent_entities"],
 )
-def loaded_patent_entities(context) -> Dict[str, Any]:
+def loaded_patent_entities(context) -> dict[str, Any]:
     """Phase 2 & 3: Load PatentEntity nodes and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
@@ -1711,10 +1710,10 @@ def loaded_patent_entities(context) -> Dict[str, Any]:
 )
 def loaded_patent_relationships(
     context,
-    neo4j_patents: Dict[str, Any],
-    neo4j_patent_assignments: Dict[str, Any],
-    neo4j_patent_entities: Dict[str, Any],
-) -> Dict[str, Any]:
+    neo4j_patents: dict[str, Any],
+    neo4j_patent_assignments: dict[str, Any],
+    neo4j_patent_entities: dict[str, Any],
+) -> dict[str, Any]:
     """Phase 1 Step 3 & Phase 4: Create all relationships.
 
     Creates relationships:
@@ -1858,7 +1857,7 @@ def loaded_patent_relationships(
     asset=loaded_patents,
     description="Verify patent load success rate meets minimum threshold",
 )
-def patent_load_success_rate(context, neo4j_patents: Dict[str, Any]) -> AssetCheckResult:
+def patent_load_success_rate(context, neo4j_patents: dict[str, Any]) -> AssetCheckResult:
     """Check that patent loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patents.get("success_rate", 0.0)
     total = neo4j_patents.get("total_patents", 0)
@@ -1890,7 +1889,7 @@ def patent_load_success_rate(context, neo4j_patents: Dict[str, Any]) -> AssetChe
     description="Verify assignment load success rate meets minimum threshold",
 )
 def assignment_load_success_rate(
-    context, neo4j_patent_assignments: Dict[str, Any]
+    context, neo4j_patent_assignments: dict[str, Any]
 ) -> AssetCheckResult:
     """Check that assignment loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patent_assignments.get("success_rate", 0.0)
@@ -1923,7 +1922,7 @@ def assignment_load_success_rate(
     description="Sanity check relationship cardinality",
 )
 def patent_relationship_cardinality(
-    context, neo4j_patent_relationships: Dict[str, Any]
+    context, neo4j_patent_relationships: dict[str, Any]
 ) -> AssetCheckResult:
     """Sanity check that reasonable numbers of each relationship type exist."""
     assigned_via = neo4j_patent_relationships.get("assigned_via_count", 0)
@@ -1974,7 +1973,7 @@ def _ensure_dir_ai(p: Path) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _batch_to_dataframe(batch: List[Dict]):
+def _batch_to_dataframe(batch: list[dict]):
     """
     Convert a normalized batch into a pandas DataFrame using only lightweight fields:
       - grant_doc_num
@@ -2009,7 +2008,7 @@ def _batch_to_dataframe(batch: List[Dict]):
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def raw_uspto_ai_extract(context) -> Dict[str, object]:
+def raw_uspto_ai_extract(context) -> dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -2124,7 +2123,7 @@ def raw_uspto_ai_extract(context) -> Dict[str, object]:
 
     total_ingested = 0
     total_batches = 0
-    sources: List[str] = []
+    sources: list[str] = []
 
     try:
         for fp in files:
@@ -2208,7 +2207,7 @@ def raw_uspto_ai_extract(context) -> Dict[str, object]:
     ),
     ins={"uspto_ai_extract_to_duckdb": AssetIn()},
 )
-def uspto_ai_deduplicate(context, uspto_ai_extract_to_duckdb) -> Dict[str, object]:
+def uspto_ai_deduplicate(context, uspto_ai_extract_to_duckdb) -> dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
 
@@ -2327,7 +2326,7 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     )
 
     try:
-        import duckdb  # type: ignore
+        pass  # type: ignore
     except Exception as exc:
         context.log.warning("duckdb unavailable; cannot sample: %s", exc)  # type: ignore[attr-defined]
         _ensure_dir_ai(output_path)
@@ -2348,7 +2347,7 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
         "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
     ),
 )
-def raw_uspto_ai_predictions(context) -> Dict[str, object]:
+def raw_uspto_ai_predictions(context) -> dict[str, object]:
     """
     Dagster asset that ingests the raw USPTO AI NDJSON into the DuckDB cache.
 
@@ -2569,7 +2568,7 @@ def raw_uspto_ai_predictions(context) -> Dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context) -> Dict[str, Optional[int]]:
+def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """
@@ -2709,7 +2708,7 @@ def raw_uspto_ai_human_sample(context) -> str:
         "and produce a summary checks JSON and an NDJSON of matches."
     ),
 )
-def enriched_uspto_ai_patent_join(context) -> Dict[str, object]:
+def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
     """
     Asset that links cached USPTO AI predictions to transformed patents for downstream
     validation and agreement analysis.
@@ -2727,7 +2726,7 @@ def enriched_uspto_ai_patent_join(context) -> Dict[str, object]:
     processed_dir.mkdir(parents=True, exist_ok=True)
 
     # Load patent records
-    patents: List[Dict] = []
+    patents: list[dict] = []
     patents_parquet = Path("data/processed/transformed_patents.parquet")
     patents_ndjson = Path("data/processed/transformed_patents.ndjson")
 

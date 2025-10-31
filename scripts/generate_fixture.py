@@ -19,8 +19,6 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
-from typing import Dict, List
-
 
 HEADER = [
     "Company",
@@ -68,7 +66,7 @@ HEADER = [
 ]
 
 
-SAMPLE_ROWS: List[Dict[str, str]] = [
+SAMPLE_ROWS: list[dict[str, str]] = [
     {
         "Company": "Acme Innovations",
         "Address1": "123 Main St",
@@ -340,7 +338,7 @@ SAMPLE_ROWS: List[Dict[str, str]] = [
 ]
 
 
-def generate_csv(output_path: Path, rows: List[Dict[str, str]]) -> None:
+def generate_csv(output_path: Path, rows: list[dict[str, str]]) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # Use newline='' and csv module to ensure proper quoting and line endings
     with output_path.open("w", encoding="utf-8", newline="") as fh:

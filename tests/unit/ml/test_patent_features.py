@@ -3,16 +3,15 @@
 import pytest
 
 from src.ml.features.patent_features import (
-    normalize_title,
-    tokenize,
-    remove_stopwords,
-    extract_ipc_cpc,
-    guess_assignee_type,
+    DEFAULT_KEYWORDS_MAP,
+    PatentFeatureVector,
     bag_of_keywords_features,
     extract_features,
-    PatentFeatureVector,
-    DEFAULT_KEYWORDS_MAP,
-    DEFAULT_STOPWORDS,
+    extract_ipc_cpc,
+    guess_assignee_type,
+    normalize_title,
+    remove_stopwords,
+    tokenize,
 )
 
 

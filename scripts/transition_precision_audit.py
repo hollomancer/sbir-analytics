@@ -37,16 +37,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import random
 import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
-
 
 # -----------------------------
 # IO helpers
@@ -101,8 +99,8 @@ def _read_any(path: Path) -> pd.DataFrame:
             raise RuntimeError(f"Failed to read parquet: {path} ({exc})") from exc
     if p.endswith(".ndjson") or p.endswith(".jsonl"):
         # Read streaming NDJSON
-        rows: List[Dict[str, Any]] = []
-        with open(path, "r", encoding="utf-8") as fh:
+        rows: list[dict[str, Any]] = []
+        with open(path, encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:
@@ -112,7 +110,7 @@ def _read_any(path: Path) -> pd.DataFrame:
     if p.endswith(".csv"):
         return pd.read_csv(p)
     if p.endswith(".json"):
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         # Accept list[dict] or dict with "data" key
         if isinstance(data, list):
@@ -129,7 +127,7 @@ def _read_any(path: Path) -> pd.DataFrame:
 # -----------------------------
 
 
-def _parse_bool_label(v: Any) -> Optional[int]:
+def _parse_bool_label(v: Any) -> int | None:
     """
     Map various truthy/falsey labels to 1/0.
 
@@ -155,12 +153,12 @@ class PrecisionMetrics:
     n_total: int
     n_labeled: int
     n_positive: int
-    precision: Optional[float]  # positive / labeled (None if n_labeled == 0)
+    precision: float | None  # positive / labeled (None if n_labeled == 0)
 
 
 def _compute_precision(
     df: pd.DataFrame, threshold: float | None = None
-) -> Dict[str, PrecisionMetrics]:
+) -> dict[str, PrecisionMetrics]:
     """
     Compute precision metrics overall and for cohort above threshold (if threshold provided).
 
@@ -176,7 +174,7 @@ def _compute_precision(
             n_total=len(sub), n_labeled=n_labeled, n_positive=n_positive, precision=prec
         )
 
-    out: Dict[str, PrecisionMetrics] = {}
+    out: dict[str, PrecisionMetrics] = {}
     out["overall"] = _metrics(df)
 
     if threshold is not None:
@@ -203,7 +201,7 @@ def _sample_vendor_resolution(df: pd.DataFrame, sample_size: int, seed: int) -> 
     return matched.loc[chosen].reset_index(drop=True)
 
 
-def _enrich_with_contracts(sample: pd.DataFrame, contracts_path: Optional[Path]) -> pd.DataFrame:
+def _enrich_with_contracts(sample: pd.DataFrame, contracts_path: Path | None) -> pd.DataFrame:
     """
     Attach selected fields from contracts_sample if available.
     """
@@ -284,7 +282,7 @@ def _import_labeled_csv(path: Path) -> pd.DataFrame:
 # -----------------------------
 
 
-def _prompt_label(row: pd.Series) -> Optional[int]:
+def _prompt_label(row: pd.Series) -> int | None:
     """
     Prompt: y (yes), n (no), u (unsure), q (quit).
     Returns 1/0/None or raises KeyboardInterrupt on 'q'.
@@ -323,7 +321,7 @@ def _prompt_label(row: pd.Series) -> Optional[int]:
 
 def _interactive_label(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    labels: List[Optional[int]] = []
+    labels: list[int | None] = []
     try:
         for _, row in df.iterrows():
             label = _prompt_label(row)
@@ -350,15 +348,15 @@ def _now_iso() -> str:
 def _write_report(
     out_path: Path,
     input_path: Path,
-    contracts_path: Optional[Path],
+    contracts_path: Path | None,
     sample_size: int,
     threshold: float,
     df_labeled: pd.DataFrame,
-    metrics: Dict[str, PrecisionMetrics],
+    metrics: dict[str, PrecisionMetrics],
 ) -> None:
     _ensure_parent(out_path)
 
-    def _metrics_to_dict(pm: PrecisionMetrics) -> Dict[str, Any]:
+    def _metrics_to_dict(pm: PrecisionMetrics) -> dict[str, Any]:
         return {
             "n_total": pm.n_total,
             "n_labeled": pm.n_labeled,
@@ -391,7 +389,7 @@ def _write_report(
 # -----------------------------
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Transition MVP - Vendor Resolution Precision Audit")
     p.add_argument(
         "--input",
@@ -449,7 +447,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
     input_path = Path(args.input)

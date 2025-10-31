@@ -22,8 +22,8 @@ Record shape expected by `extract_features`:
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 # Simple default English stopwords (small subset) to keep import-free and deterministic.
 DEFAULT_STOPWORDS = frozenset(
@@ -82,7 +82,7 @@ _cpc_token_re = re.compile(
 )  # CPC has similar format
 
 
-def normalize_title(text: Optional[str]) -> str:
+def normalize_title(text: str | None) -> str:
     """
     Normalize a patent title or short text.
 
@@ -101,7 +101,7 @@ def normalize_title(text: Optional[str]) -> str:
     return s
 
 
-def tokenize(text: Optional[str]) -> List[str]:
+def tokenize(text: str | None) -> list[str]:
     """
     Tokenize text into word tokens using a simple regex.
 
@@ -112,7 +112,7 @@ def tokenize(text: Optional[str]) -> List[str]:
     return [m.group(0) for m in _token_re.finditer(text)]
 
 
-def remove_stopwords(tokens: Iterable[str], stopwords: Optional[Iterable[str]] = None) -> List[str]:
+def remove_stopwords(tokens: Iterable[str], stopwords: Iterable[str] | None = None) -> list[str]:
     """
     Remove stopwords from an iterable of tokens.
 
@@ -126,8 +126,8 @@ def remove_stopwords(tokens: Iterable[str], stopwords: Optional[Iterable[str]] =
 
 
 def extract_ipc_cpc(
-    metadata_or_text: Optional[Union[str, Mapping[str, object]]],
-) -> Dict[str, List[str]]:
+    metadata_or_text: str | Mapping[str, object] | None,
+) -> dict[str, list[str]]:
     """
     Try to extract IPC/CPC codes from a metadata mapping or free text.
 
@@ -138,8 +138,8 @@ def extract_ipc_cpc(
 
     Returns dict with keys "ipc" and "cpc" mapping to lists (possibly empty).
     """
-    ipc_list: List[str] = []
-    cpc_list: List[str] = []
+    ipc_list: list[str] = []
+    cpc_list: list[str] = []
 
     if metadata_or_text is None:
         return {"ipc": ipc_list, "cpc": cpc_list}
@@ -178,7 +178,7 @@ def extract_ipc_cpc(
     return {"ipc": ipc_list, "cpc": cpc_list}
 
 
-def _coerce_to_list_of_str(value: object) -> List[str]:
+def _coerce_to_list_of_str(value: object) -> list[str]:
     """
     Convert a value to a list of string tokens. Accepts:
     - str: split on common delimiters
@@ -196,17 +196,17 @@ def _coerce_to_list_of_str(value: object) -> List[str]:
     return [str(value).strip()]
 
 
-def _find_ipc_in_text(text: str) -> List[str]:
+def _find_ipc_in_text(text: str) -> list[str]:
     return [m.group(1) for m in _ipc_token_re.finditer(text)]
 
 
-def _find_cpc_in_text(text: str) -> List[str]:
+def _find_cpc_in_text(text: str) -> list[str]:
     return [m.group(1) for m in _cpc_token_re.finditer(text)]
 
 
-def _unique_preserve_order(items: Iterable[str]) -> List[str]:
+def _unique_preserve_order(items: Iterable[str]) -> list[str]:
     seen = set()
-    out: List[str] = []
+    out: list[str] = []
     for it in items:
         if it not in seen:
             seen.add(it)
@@ -214,7 +214,7 @@ def _unique_preserve_order(items: Iterable[str]) -> List[str]:
     return out
 
 
-def guess_assignee_type(assignee: Optional[Union[str, Sequence[str]]]) -> str:
+def guess_assignee_type(assignee: str | Sequence[str] | None) -> str:
     """
     Heuristic to guess assignee type.
 
@@ -287,8 +287,8 @@ def guess_assignee_type(assignee: Optional[Union[str, Sequence[str]]]) -> str:
 
 
 def bag_of_keywords_features(
-    text: Optional[str], keywords_map: Optional[Mapping[str, Sequence[str]]] = None
-) -> Dict[str, Union[int, float]]:
+    text: str | None, keywords_map: Mapping[str, Sequence[str]] | None = None
+) -> dict[str, int | float]:
     """
     Compute simple bag-of-keywords features.
 
@@ -305,7 +305,7 @@ def bag_of_keywords_features(
         keywords_map = DEFAULT_KEYWORDS_MAP
 
     txt = text.lower()
-    features: Dict[str, Union[int, float]] = {}
+    features: dict[str, int | float] = {}
     for feat_name, phrases in keywords_map.items():
         count = 0
         for ph in phrases:
@@ -327,20 +327,20 @@ class PatentFeatureVector:
     """
 
     normalized_title: str
-    tokens: List[str]
-    tokens_no_stopwords: List[str]
+    tokens: list[str]
+    tokens_no_stopwords: list[str]
     n_tokens: int
     n_tokens_no_stopwords: int
-    ipc_codes: List[str]
-    cpc_codes: List[str]
+    ipc_codes: list[str]
+    cpc_codes: list[str]
     has_ipc: bool
     has_cpc: bool
     assignee_type: str
-    keyword_features: Dict[str, Union[int, float]]
-    application_year: Optional[int]
+    keyword_features: dict[str, int | float]
+    application_year: int | None
 
-    def as_dict(self) -> Dict[str, object]:
-        d: Dict[str, object] = {
+    def as_dict(self) -> dict[str, object]:
+        d: dict[str, object] = {
             "normalized_title": self.normalized_title,
             "tokens": self.tokens,
             "tokens_no_stopwords": self.tokens_no_stopwords,
@@ -358,10 +358,10 @@ class PatentFeatureVector:
 
 
 def extract_features(
-    record: Optional[Mapping[str, object]],
+    record: Mapping[str, object] | None,
     *,
-    keywords_map: Optional[Mapping[str, Sequence[str]]] = None,
-    stopwords: Optional[Iterable[str]] = None,
+    keywords_map: Mapping[str, Sequence[str]] | None = None,
+    stopwords: Iterable[str] | None = None,
 ) -> PatentFeatureVector:
     """
     Extract a bundle of lightweight features from a patent record.
@@ -444,7 +444,7 @@ def extract_features(
 # Simple keyword map loader helpers
 
 
-def load_keywords_map(path: Optional[object] = None) -> Mapping[str, Sequence[str]]:
+def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]:
     """
     Load a CET patent keywords map from YAML.
 
@@ -456,6 +456,7 @@ def load_keywords_map(path: Optional[object] = None) -> Mapping[str, Sequence[st
     try:
         # Local imports for import-safety
         from pathlib import Path  # type: ignore
+
         import yaml  # type: ignore
     except Exception:
         return {}
@@ -479,7 +480,7 @@ def load_keywords_map(path: Optional[object] = None) -> Mapping[str, Sequence[st
         else:
             kw_map = data
         # Coerce to mapping[str, list[str]]
-        out: Dict[str, List[str]] = {}
+        out: dict[str, list[str]] = {}
         for k, v in kw_map.items():
             if not k:
                 continue
@@ -496,7 +497,7 @@ def load_keywords_map(path: Optional[object] = None) -> Mapping[str, Sequence[st
 
 
 def get_keywords_map(
-    preferred: Optional[Mapping[str, Sequence[str]]] = None,
+    preferred: Mapping[str, Sequence[str]] | None = None,
 ) -> Mapping[str, Sequence[str]]:
     """
     Return a keywords_map to use for feature extraction:

@@ -42,13 +42,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Try imports that may not be present in minimal environments.
 try:
@@ -77,7 +75,7 @@ def _normalize_header(h: str) -> str:
     return re.sub(r"\s+", " ", str(h).strip().lower())
 
 
-def _choose_best_sheet(xls: "pd.ExcelFile") -> str:
+def _choose_best_sheet(xls: pd.ExcelFile) -> str:
     """
     Choose the most likely sheet containing the data dictionary.
     Strategy:
@@ -105,7 +103,7 @@ def _choose_best_sheet(xls: "pd.ExcelFile") -> str:
     return best or sheet_names[0]
 
 
-def _find_column_by_keys(cols: List[str], keys: List[str]) -> Optional[str]:
+def _find_column_by_keys(cols: list[str], keys: list[str]) -> str | None:
     """
     Return the first column name that matches any of the candidate keys heuristically.
     """
@@ -117,7 +115,7 @@ def _find_column_by_keys(cols: List[str], keys: List[str]) -> Optional[str]:
     return None
 
 
-def _is_date_like(series: "pd.Series", sample_n: int = 20) -> bool:
+def _is_date_like(series: pd.Series, sample_n: int = 20) -> bool:
     """
     Heuristic: check a sample of non-null values for date-like patterns.
     """
@@ -148,7 +146,7 @@ def _is_date_like(series: "pd.Series", sample_n: int = 20) -> bool:
     return date_like >= max(1, len(vals) // 2)
 
 
-def _is_numeric_like(series: "pd.Series", sample_n: int = 20) -> bool:
+def _is_numeric_like(series: pd.Series, sample_n: int = 20) -> bool:
     """
     Heuristic: check if most sample values are numeric (allow commas, $).
     """
@@ -169,7 +167,7 @@ def _is_numeric_like(series: "pd.Series", sample_n: int = 20) -> bool:
     return numeric_like >= max(1, len(vals) // 2)
 
 
-def _is_uei_like(series: "pd.Series") -> bool:
+def _is_uei_like(series: pd.Series) -> bool:
     """UEI heuristic: after stripping non-alnum, length 12 for many samples."""
     if pd is None:
         return False
@@ -184,7 +182,7 @@ def _is_uei_like(series: "pd.Series") -> bool:
     return matches >= max(1, len(vals) // 3)
 
 
-def _is_duns_like(series: "pd.Series") -> bool:
+def _is_duns_like(series: pd.Series) -> bool:
     """DUNS heuristic: digits-only and 9 digits after cleaning."""
     if pd is None:
         return False
@@ -199,7 +197,7 @@ def _is_duns_like(series: "pd.Series") -> bool:
     return matches >= max(1, len(vals) // 3)
 
 
-def _is_zip_like(series: "pd.Series") -> bool:
+def _is_zip_like(series: pd.Series) -> bool:
     if pd is None:
         return False
     vals = series.dropna().astype(str).head(50).tolist()
@@ -219,13 +217,13 @@ def _is_zip_like(series: "pd.Series") -> bool:
 @dataclass
 class ColumnSpec:
     name: str
-    dtype_hint: Optional[str] = None
-    description: Optional[str] = None
-    required: Optional[bool] = None
-    example: Optional[str] = None
+    dtype_hint: str | None = None
+    description: str | None = None
+    required: bool | None = None
+    example: str | None = None
 
 
-def parse_data_dictionary(xlsx_path: Path) -> Tuple[List[ColumnSpec], Dict[str, Any]]:
+def parse_data_dictionary(xlsx_path: Path) -> tuple[list[ColumnSpec], dict[str, Any]]:
     """
     Parse the Excel data dictionary and return an ordered list of ColumnSpec.
 
@@ -253,7 +251,7 @@ def parse_data_dictionary(xlsx_path: Path) -> Tuple[List[ColumnSpec], Dict[str, 
     example_col = _find_column_by_keys(df_columns, COMMON_EXAMPLE_KEYS)
     required_col = _find_column_by_keys(df_columns, COMMON_REQUIRED_KEYS)
 
-    specs: List[ColumnSpec] = []
+    specs: list[ColumnSpec] = []
     for _, row in df.iterrows():
         name = None
         if col_name_col:
@@ -298,7 +296,7 @@ def parse_data_dictionary(xlsx_path: Path) -> Tuple[List[ColumnSpec], Dict[str, 
     return specs, meta
 
 
-def analyze_csv(csv_path: Path, max_preview: int = 5) -> Dict[str, Any]:
+def analyze_csv(csv_path: Path, max_preview: int = 5) -> dict[str, Any]:
     """
     Read CSV using pandas with conservative options and compute per-column statistics.
 
@@ -329,11 +327,11 @@ def analyze_csv(csv_path: Path, max_preview: int = 5) -> Dict[str, Any]:
         except Exception as exc2:
             raise RuntimeError(f"Failed to read CSV fixture: {exc} / {exc2}")
 
-    summary: Dict[str, Any] = {}
+    summary: dict[str, Any] = {}
     summary["row_count"] = len(df)
     summary["columns"] = list(df.columns)
     summary["preview_rows"] = df.head(max_preview).to_dict(orient="records")
-    per_column: Dict[str, Dict[str, Any]] = {}
+    per_column: dict[str, dict[str, Any]] = {}
 
     for col in df.columns:
         ser = df[col]
@@ -371,8 +369,8 @@ def analyze_csv(csv_path: Path, max_preview: int = 5) -> Dict[str, Any]:
 
 
 def compare_dictionary_and_csv(
-    dict_specs: List[ColumnSpec], csv_summary: Dict[str, Any]
-) -> Dict[str, Any]:
+    dict_specs: list[ColumnSpec], csv_summary: dict[str, Any]
+) -> dict[str, Any]:
     """Compare data dictionary specs against CSV columns and return a comparison summary."""
     csv_cols = csv_summary.get("columns", [])
     dict_cols = [spec.name for spec in dict_specs]
@@ -398,16 +396,16 @@ def compare_dictionary_and_csv(
     }
 
 
-def suggest_validators(dict_specs: List[ColumnSpec], csv_summary: Dict[str, Any]) -> Dict[str, Any]:
+def suggest_validators(dict_specs: list[ColumnSpec], csv_summary: dict[str, Any]) -> dict[str, Any]:
     """
     Based on dictionary hints and CSV analysis, produce suggestions for validators.
     """
-    suggestions: Dict[str, Dict[str, Any]] = {}
+    suggestions: dict[str, dict[str, Any]] = {}
     per_col = csv_summary.get("per_column", {})
     for spec in dict_specs:
         name = spec.name
         col_summary = per_col.get(name)
-        s: Dict[str, Any] = {}
+        s: dict[str, Any] = {}
         if spec.dtype_hint:
             s["dtype_hint"] = spec.dtype_hint
         if col_summary:
@@ -433,15 +431,15 @@ def suggest_validators(dict_specs: List[ColumnSpec], csv_summary: Dict[str, Any]
 
 def render_markdown_report(
     out_path: Path,
-    dict_specs: List[ColumnSpec],
-    dict_meta: Dict[str, Any],
-    csv_summary: Dict[str, Any],
-    compare_summary: Dict[str, Any],
-    validator_suggestions: Dict[str, Any],
+    dict_specs: list[ColumnSpec],
+    dict_meta: dict[str, Any],
+    csv_summary: dict[str, Any],
+    compare_summary: dict[str, Any],
+    validator_suggestions: dict[str, Any],
 ) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as f:
-        f.write(f"# SBIR Data Dictionary & CSV Analysis\n\n")
+        f.write("# SBIR Data Dictionary & CSV Analysis\n\n")
         f.write(f"Generated: {datetime.utcnow().isoformat()} UTC\n\n")
         f.write("## Summary\n\n")
         f.write(f"- CSV rows: **{csv_summary.get('row_count', 'N/A')}**\n")
@@ -510,7 +508,7 @@ def render_markdown_report(
         f.write("Report generated by sbir-etl/scripts/analyze_data_dictionary_and_csv.py\n")
 
 
-def write_json_diagnostics(out_path: Path, payload: Dict[str, Any]) -> None:
+def write_json_diagnostics(out_path: Path, payload: dict[str, Any]) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, default=str)
@@ -519,7 +517,7 @@ def write_json_diagnostics(out_path: Path, payload: Dict[str, Any]) -> None:
 # ---- CLI -----------------------------------------------------------------
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Analyze SBIR data dictionary (Excel) and CSV fixture."
     )

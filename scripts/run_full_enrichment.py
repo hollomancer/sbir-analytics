@@ -33,12 +33,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
@@ -52,19 +51,19 @@ except Exception as e:
 # ----------------------
 # Helpers
 # ----------------------
-def clean_uei(v: Optional[str]) -> str:
+def clean_uei(v: str | None) -> str:
     if not v:
         return ""
     return "".join(ch for ch in str(v) if ch.isalnum()).upper()
 
 
-def clean_duns(v: Optional[str]) -> str:
+def clean_duns(v: str | None) -> str:
     if not v:
         return ""
     return "".join(ch for ch in str(v) if ch.isdigit())
 
 
-def normalize_name(s: Optional[str]) -> str:
+def normalize_name(s: str | None) -> str:
     if not s:
         return ""
     t = str(s).strip().lower()
@@ -89,7 +88,7 @@ def build_company_indexes(
     uei_col: str = "UEI",
     duns_col_names: Iterable[str] = ("DUNs", "Duns"),
     prefix_len: int = 2,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """
     Create helper indexes:
     - comp_df: canonical companies DataFrame (indexed by original index)
@@ -107,7 +106,7 @@ def build_company_indexes(
     df["_norm_name"] = df[company_col].astype(str).map(normalize_name)
     df["_block"] = df["_norm_name"].map(lambda n: build_block_key(n, prefix_len))
 
-    comp_by_uei: Dict[str, int] = {}
+    comp_by_uei: dict[str, int] = {}
     if uei_col in df.columns:
         for _, row in df.iterrows():
             k = clean_uei(row.get(uei_col, ""))
@@ -121,14 +120,14 @@ def build_company_indexes(
             duns_col = cand
             break
 
-    comp_by_duns: Dict[str, int] = {}
+    comp_by_duns: dict[str, int] = {}
     if duns_col:
         for _, row in df.iterrows():
             k = clean_duns(row.get(duns_col, ""))
             if k:
                 comp_by_duns[k] = int(row["index"])
 
-    blocks: Dict[str, List[int]] = defaultdict(list)
+    blocks: dict[str, list[int]] = defaultdict(list)
     for _, row in df.iterrows():
         blk = row["_block"]
         if blk is None:
@@ -152,7 +151,7 @@ def build_company_indexes(
 # ----------------------
 def enrich_awards_chunk(
     awards_chunk: pd.DataFrame,
-    idxs: Dict[str, object],
+    idxs: dict[str, object],
     *,
     award_company_col: str = "Company",
     uei_col_awards: str = "UEI",
@@ -161,7 +160,7 @@ def enrich_awards_chunk(
     med_threshold: int = 75,
     top_k: int = 3,
     prefix_len: int = 2,
-) -> Tuple[pd.DataFrame, List[Dict]]:
+) -> tuple[pd.DataFrame, list[dict]]:
     """
     Enrich a chunk of awards_df using the provided company indexes.
     Returns enriched chunk (with merged company_ columns) and a list of candidate-review rows.
@@ -202,7 +201,7 @@ def enrich_awards_chunk(
     awards["_match_method"] = pd.NA
     awards["_match_candidates"] = pd.NA
 
-    candidate_review_rows: List[Dict] = []
+    candidate_review_rows: list[dict] = []
 
     # Precompute global choices mapping for fallback
     global_choices = norm_map
@@ -246,7 +245,7 @@ def enrich_awards_chunk(
             target, choices, scorer=fuzz.token_set_ratio, processor=None, limit=top_k
         )
         # results are tuples; normalize to (idx, score)
-        simple_results: List[Tuple[int, int]] = []
+        simple_results: list[tuple[int, int]] = []
         for r in results:
             # r often (choice_value, score, key) where key is original choice key (our index)
             if len(r) >= 3:
@@ -378,7 +377,7 @@ def run_full_enrichment(
 
     # Stats counters
     stats = Counter()
-    candidate_rows_accum: List[Dict] = []
+    candidate_rows_accum: list[dict] = []
 
     # Process awards CSV in chunks
     print(f"Processing awards from: {awards_path} in chunks of {chunk_size}")

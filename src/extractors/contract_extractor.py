@@ -12,16 +12,15 @@ We filter specifically for contract transactions (type code 'contract').
 
 import gzip
 import json
-from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Set
+from collections.abc import Iterator
 from datetime import date, datetime
+from pathlib import Path
 
 import pandas as pd
 from loguru import logger
 from pydantic import ValidationError
 
-from src.models.transition_models import FederalContract, CompetitionType
-
+from src.models.transition_models import CompetitionType, FederalContract
 
 # USAspending transaction_normalized column mapping
 # Based on actual .dat.gz file structure observed from subset database
@@ -105,7 +104,7 @@ class ContractExtractor:
 
     def __init__(
         self,
-        vendor_filter_file: Optional[Path] = None,
+        vendor_filter_file: Path | None = None,
         batch_size: int = 10000,
     ):
         """
@@ -130,17 +129,17 @@ class ContractExtractor:
             "unique_parent_ids": 0,
             "unique_idv_parents": 0,
         }
-        self._parent_ids_seen: Set[str] = set()
-        self._idv_parent_ids_seen: Set[str] = set()
+        self._parent_ids_seen: set[str] = set()
+        self._idv_parent_ids_seen: set[str] = set()
 
-    def _load_vendor_filters(self, filter_file: Optional[Path]) -> Dict[str, Set[str]]:
+    def _load_vendor_filters(self, filter_file: Path | None) -> dict[str, set[str]]:
         """Load vendor filter sets from JSON file."""
         if not filter_file or not Path(filter_file).exists():
             logger.warning("No vendor filter file provided, will extract all contracts")
             return {"uei": set(), "duns": set(), "company_names": set()}
 
         logger.info(f"Loading vendor filters from {filter_file}")
-        with open(filter_file, "r") as f:
+        with open(filter_file) as f:
             data = json.load(f)
 
         filters = {
@@ -232,7 +231,7 @@ class ContractExtractor:
 
         return CompetitionType.OTHER
 
-    def _matches_vendor_filter(self, row_data: List[str]) -> bool:
+    def _matches_vendor_filter(self, row_data: list[str]) -> bool:
         """
         Check if transaction matches SBIR vendor filters.
 
@@ -270,7 +269,7 @@ class ContractExtractor:
 
         return False
 
-    def _parse_contract_row(self, row_data: List[str]) -> Optional[FederalContract]:
+    def _parse_contract_row(self, row_data: list[str]) -> FederalContract | None:
         """
         Parse tab-delimited row into FederalContract model.
 
@@ -282,7 +281,7 @@ class ContractExtractor:
         """
         try:
             # Helper to safely get column value
-            def get_col(idx: int, default: Optional[str] = None) -> Optional[str]:
+            def get_col(idx: int, default: str | None = None) -> str | None:
                 try:
                     val = (
                         row_data[idx].strip() if idx < len(row_data) and row_data[idx] else default
@@ -296,7 +295,7 @@ class ContractExtractor:
             competition_type = self._parse_competition_type(extent_competed)
 
             # Parse dates
-            def parse_date(date_str: Optional[str]) -> Optional[date]:
+            def parse_date(date_str: str | None) -> date | None:
                 if not date_str or date_str == "\\N":
                     return None
                 try:
@@ -461,7 +460,7 @@ class ContractExtractor:
         self,
         dump_dir: Path,
         output_file: Path,
-        table_files: Optional[List[str]] = None,
+        table_files: list[str] | None = None,
     ) -> int:
         """
         Extract contracts from PostgreSQL dump directory.

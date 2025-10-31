@@ -17,7 +17,7 @@ from importlib import import_module
 from typing import Any, Dict, List, Tuple
 
 # Public API exported by this package. Keep this list in sync with the lazy mapping below.
-__all__: List[str] = [
+__all__: list[str] = [
     "raw_sbir_data",
     "validated_sbir_data",
     "raw_uspto_assignments",
@@ -77,7 +77,7 @@ __all__: List[str] = [
 
 # Map exported symbol -> (module_path, attribute_name).
 # Module paths are package-qualified so importlib can resolve them.
-_lazy_mapping: Dict[str, Tuple[str, str]] = {
+_lazy_mapping: dict[str, tuple[str, str]] = {
     # example_assets
     "raw_sbir_data": ("src.assets.example_assets", "raw_sbir_data"),
     "validated_sbir_data": ("src.assets.example_assets", "validated_sbir_data"),
@@ -272,6 +272,6 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def __dir__() -> List[str]:
+def __dir__() -> list[str]:
     """Expose a helpful completion list."""
     return sorted(list(__all__) + list(globals().keys()))

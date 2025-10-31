@@ -7,20 +7,19 @@ including extraction, enrichment, and Neo4j graph validation.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
 from loguru import logger
-from neo4j import Session
-from pydantic import BaseModel, Field
 
+from neo4j import Session
 from src.loaders.neo4j_client import Neo4jClient
-from src.models.quality import QualityIssue, QualitySeverity
+from src.models.quality import QualitySeverity
 
 
 class ValidationStage(str, Enum):
     """Pipeline stages that can be validated."""
-    
+
     EXTRACTION = "extraction"
     VALIDATION = "validation"
     ENRICHMENT = "enrichment"
@@ -30,7 +29,7 @@ class ValidationStage(str, Enum):
 
 class ValidationStatus(str, Enum):
     """Validation result status."""
-    
+
     PASSED = "passed"
     FAILED = "failed"
     WARNING = "warning"
@@ -40,47 +39,47 @@ class ValidationStatus(str, Enum):
 @dataclass
 class ValidationCheck:
     """Individual validation check result."""
-    
+
     name: str
     status: ValidationStatus
     message: str
-    expected: Optional[Any] = None
-    actual: Optional[Any] = None
-    threshold: Optional[float] = None
+    expected: Any | None = None
+    actual: Any | None = None
+    threshold: float | None = None
     severity: QualitySeverity = QualitySeverity.MEDIUM
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class StageValidationResult:
     """Validation result for a single pipeline stage."""
-    
+
     stage: ValidationStage
     status: ValidationStatus
     duration_seconds: float
-    checks: List[ValidationCheck] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    checks: list[ValidationCheck] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     @property
-    def passed_checks(self) -> List[ValidationCheck]:
+    def passed_checks(self) -> list[ValidationCheck]:
         """Get all checks that passed."""
         return [c for c in self.checks if c.status == ValidationStatus.PASSED]
-    
+
     @property
-    def failed_checks(self) -> List[ValidationCheck]:
+    def failed_checks(self) -> list[ValidationCheck]:
         """Get all checks that failed."""
         return [c for c in self.checks if c.status == ValidationStatus.FAILED]
-    
+
     @property
-    def warning_checks(self) -> List[ValidationCheck]:
+    def warning_checks(self) -> list[ValidationCheck]:
         """Get all checks with warnings."""
         return [c for c in self.checks if c.status == ValidationStatus.WARNING]
 
 
 class PipelineValidator:
     """Comprehensive pipeline validator for E2E testing."""
-    
-    def __init__(self, neo4j_client: Optional[Neo4jClient] = None):
+
+    def __init__(self, neo4j_client: Neo4jClient | None = None):
         """Initialize pipeline validator.
         
         Args:
@@ -88,13 +87,13 @@ class PipelineValidator:
         """
         self.neo4j_client = neo4j_client
         self.logger = logger.bind(component="pipeline_validator")
-    
+
     def validate_extraction_stage(
         self,
         raw_data: pd.DataFrame,
-        expected_columns: Optional[List[str]] = None,
+        expected_columns: list[str] | None = None,
         min_records: int = 1,
-        max_records: Optional[int] = None
+        max_records: int | None = None
     ) -> StageValidationResult:
         """Validate data extraction stage.
         
@@ -109,7 +108,7 @@ class PipelineValidator:
         """
         start_time = datetime.now()
         checks = []
-        
+
         # Record count validation
         record_count = len(raw_data)
         if record_count < min_records:
@@ -129,7 +128,7 @@ class PipelineValidator:
                 expected=min_records,
                 actual=record_count
             ))
-        
+
         if max_records and record_count > max_records:
             checks.append(ValidationCheck(
                 name="maximum_record_count",
@@ -139,7 +138,7 @@ class PipelineValidator:
                 actual=record_count,
                 severity=QualitySeverity.LOW
             ))
-        
+
         # Column validation
         if expected_columns:
             missing_columns = set(expected_columns) - set(raw_data.columns)
@@ -160,7 +159,7 @@ class PipelineValidator:
                     expected=expected_columns,
                     actual=list(raw_data.columns)
                 ))
-        
+
         # Data type validation
         null_columns = raw_data.columns[raw_data.isnull().all()].tolist()
         if null_columns:
@@ -171,7 +170,7 @@ class PipelineValidator:
                 actual=null_columns,
                 severity=QualitySeverity.MEDIUM
             ))
-        
+
         # Schema compliance check
         duplicate_columns = raw_data.columns[raw_data.columns.duplicated()].tolist()
         if duplicate_columns:
@@ -182,13 +181,13 @@ class PipelineValidator:
                 actual=duplicate_columns,
                 severity=QualitySeverity.HIGH
             ))
-        
+
         duration = (datetime.now() - start_time).total_seconds()
-        
+
         # Determine overall status
         failed_checks = [c for c in checks if c.status == ValidationStatus.FAILED]
         overall_status = ValidationStatus.FAILED if failed_checks else ValidationStatus.PASSED
-        
+
         return StageValidationResult(
             stage=ValidationStage.EXTRACTION,
             status=overall_status,
@@ -201,13 +200,13 @@ class PipelineValidator:
                 "memory_usage_mb": raw_data.memory_usage(deep=True).sum() / 1024 / 1024
             }
         )
-    
+
     def validate_enrichment_stage(
         self,
         enriched_data: pd.DataFrame,
         original_data: pd.DataFrame,
         min_match_rate: float = 0.7,
-        expected_enrichment_columns: Optional[List[str]] = None
+        expected_enrichment_columns: list[str] | None = None
     ) -> StageValidationResult:
         """Validate data enrichment stage.
         
@@ -222,11 +221,11 @@ class PipelineValidator:
         """
         start_time = datetime.now()
         checks = []
-        
+
         # Record count preservation
         original_count = len(original_data)
         enriched_count = len(enriched_data)
-        
+
         if enriched_count != original_count:
             checks.append(ValidationCheck(
                 name="record_count_preservation",
@@ -244,7 +243,7 @@ class PipelineValidator:
                 expected=original_count,
                 actual=enriched_count
             ))
-        
+
         # Enrichment columns validation
         if expected_enrichment_columns:
             missing_enrichment_cols = set(expected_enrichment_columns) - set(enriched_data.columns)
@@ -265,7 +264,7 @@ class PipelineValidator:
                     expected=expected_enrichment_columns,
                     actual=[col for col in enriched_data.columns if col not in original_data.columns]
                 ))
-        
+
         # Match rate validation
         match_rate = self._calculate_match_rate(enriched_data)
         if match_rate < min_match_rate:
@@ -287,16 +286,16 @@ class PipelineValidator:
                 actual=match_rate,
                 threshold=min_match_rate
             ))
-        
+
         # Quality metrics validation
         quality_metrics = self._calculate_enrichment_quality_metrics(enriched_data)
-        
+
         duration = (datetime.now() - start_time).total_seconds()
-        
+
         # Determine overall status
         failed_checks = [c for c in checks if c.status == ValidationStatus.FAILED]
         overall_status = ValidationStatus.FAILED if failed_checks else ValidationStatus.PASSED
-        
+
         return StageValidationResult(
             stage=ValidationStage.ENRICHMENT,
             status=overall_status,
@@ -308,11 +307,11 @@ class PipelineValidator:
                 "enrichment_columns": [col for col in enriched_data.columns if col not in original_data.columns]
             }
         )
-    
+
     def validate_neo4j_graph(
         self,
-        expected_node_types: Optional[List[str]] = None,
-        expected_relationships: Optional[List[str]] = None,
+        expected_node_types: list[str] | None = None,
+        expected_relationships: list[str] | None = None,
         min_nodes: int = 1,
         min_relationships: int = 0
     ) -> StageValidationResult:
@@ -329,7 +328,7 @@ class PipelineValidator:
         """
         start_time = datetime.now()
         checks = []
-        
+
         if not self.neo4j_client:
             checks.append(ValidationCheck(
                 name="neo4j_client",
@@ -343,7 +342,7 @@ class PipelineValidator:
                 duration_seconds=0,
                 checks=checks
             )
-        
+
         try:
             with self.neo4j_client.session() as session:
                 # Node count validation
@@ -365,7 +364,7 @@ class PipelineValidator:
                         expected=min_nodes,
                         actual=node_count
                     ))
-                
+
                 # Relationship count validation
                 rel_count = self._get_total_relationship_count(session)
                 if rel_count < min_relationships:
@@ -385,7 +384,7 @@ class PipelineValidator:
                         expected=min_relationships,
                         actual=rel_count
                     ))
-                
+
                 # Node type validation
                 if expected_node_types:
                     actual_node_types = self._get_node_types(session)
@@ -407,7 +406,7 @@ class PipelineValidator:
                             expected=expected_node_types,
                             actual=actual_node_types
                         ))
-                
+
                 # Relationship type validation
                 if expected_relationships:
                     actual_rel_types = self._get_relationship_types(session)
@@ -429,11 +428,11 @@ class PipelineValidator:
                             expected=expected_relationships,
                             actual=actual_rel_types
                         ))
-                
+
                 # Graph connectivity validation
                 connectivity_check = self._validate_graph_connectivity(session)
                 checks.append(connectivity_check)
-                
+
         except Exception as e:
             checks.append(ValidationCheck(
                 name="neo4j_connection",
@@ -441,13 +440,13 @@ class PipelineValidator:
                 message=f"Failed to connect to Neo4j: {str(e)}",
                 severity=QualitySeverity.CRITICAL
             ))
-        
+
         duration = (datetime.now() - start_time).total_seconds()
-        
+
         # Determine overall status
         failed_checks = [c for c in checks if c.status == ValidationStatus.FAILED]
         overall_status = ValidationStatus.FAILED if failed_checks else ValidationStatus.PASSED
-        
+
         return StageValidationResult(
             stage=ValidationStage.LOADING,
             status=overall_status,
@@ -460,44 +459,44 @@ class PipelineValidator:
                 "relationship_types": actual_rel_types if 'actual_rel_types' in locals() else []
             }
         )
-    
+
     def _calculate_match_rate(self, enriched_data: pd.DataFrame) -> float:
         """Calculate enrichment match rate from enriched data."""
         if len(enriched_data) == 0:
             return 0.0
-        
+
         # Look for common enrichment match columns
         match_columns = [col for col in enriched_data.columns if 'match' in col.lower()]
         if not match_columns:
             return 0.0
-        
+
         # Use the first match column to determine match rate
         match_col = match_columns[0]
         matched_count = enriched_data[match_col].notna().sum()
         return matched_count / len(enriched_data)
-    
-    def _calculate_enrichment_quality_metrics(self, enriched_data: pd.DataFrame) -> Dict[str, Any]:
+
+    def _calculate_enrichment_quality_metrics(self, enriched_data: pd.DataFrame) -> dict[str, Any]:
         """Calculate quality metrics for enriched data."""
         metrics = {}
-        
+
         # Match method distribution
         match_method_col = None
         for col in enriched_data.columns:
             if 'match_method' in col.lower():
                 match_method_col = col
                 break
-        
+
         if match_method_col:
             method_counts = enriched_data[match_method_col].value_counts()
             metrics['match_methods'] = method_counts.to_dict()
-        
+
         # Match score statistics
         match_score_col = None
         for col in enriched_data.columns:
             if 'match_score' in col.lower():
                 match_score_col = col
                 break
-        
+
         if match_score_col:
             scores = enriched_data[match_score_col].dropna()
             if len(scores) > 0:
@@ -508,20 +507,20 @@ class PipelineValidator:
                     'max': float(scores.max()),
                     'std': float(scores.std()) if len(scores) > 1 else 0.0
                 }
-        
+
         return metrics
-    
+
     def _get_total_node_count(self, session: Session) -> int:
         """Get total node count from Neo4j."""
         result = session.run("MATCH (n) RETURN count(n) as count")
         return result.single()["count"]
-    
+
     def _get_total_relationship_count(self, session: Session) -> int:
         """Get total relationship count from Neo4j."""
         result = session.run("MATCH ()-[r]->() RETURN count(r) as count")
         return result.single()["count"]
-    
-    def _get_node_types(self, session: Session) -> List[str]:
+
+    def _get_node_types(self, session: Session) -> list[str]:
         """Get all node types (labels) from Neo4j."""
         result = session.run("CALL db.labels()")
         try:
@@ -529,8 +528,8 @@ class PipelineValidator:
         except (TypeError, AttributeError):
             # Handle mock objects that might not have proper record structure
             return [getattr(record, 'label', str(record)) for record in result]
-    
-    def _get_relationship_types(self, session: Session) -> List[str]:
+
+    def _get_relationship_types(self, session: Session) -> list[str]:
         """Get all relationship types from Neo4j."""
         result = session.run("CALL db.relationshipTypes()")
         try:
@@ -538,7 +537,7 @@ class PipelineValidator:
         except (TypeError, AttributeError):
             # Handle mock objects that might not have proper record structure
             return [getattr(record, 'relationshipType', str(record)) for record in result]
-    
+
     def _validate_graph_connectivity(self, session: Session) -> ValidationCheck:
         """Validate basic graph connectivity."""
         try:
@@ -550,7 +549,7 @@ class PipelineValidator:
             """)
             record = result.single()
             isolated_count = record["isolated_count"]
-            
+
             if isolated_count > 0:
                 return ValidationCheck(
                     name="graph_connectivity",

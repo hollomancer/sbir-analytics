@@ -16,7 +16,7 @@ Features:
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from loguru import logger
@@ -28,11 +28,11 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from src.ml.models.cet_classifier import ApplicabilityModel
-from src.models.cet_models import CETArea, TrainingDataset, TrainingExample
+from src.models.cet_models import CETArea, TrainingDataset
 
 
 class CETModelTrainer:
@@ -45,8 +45,8 @@ class CETModelTrainer:
 
     def __init__(
         self,
-        cet_areas: List[CETArea],
-        config: Dict[str, Any],
+        cet_areas: list[CETArea],
+        config: dict[str, Any],
         taxonomy_version: str,
     ):
         """
@@ -86,7 +86,7 @@ class CETModelTrainer:
         self.mlb = MultiLabelBinarizer()
 
         # Training metrics
-        self.metrics: Dict[str, Any] = {}
+        self.metrics: dict[str, Any] = {}
 
         logger.info(
             f"Initialized CETModelTrainer: {len(self.cet_areas)} CET areas, "
@@ -95,7 +95,7 @@ class CETModelTrainer:
 
     def prepare_data(
         self, dataset: TrainingDataset
-    ) -> Tuple[List[str], np.ndarray, List[str], np.ndarray]:
+    ) -> tuple[list[str], np.ndarray, list[str], np.ndarray]:
         """
         Prepare training data from TrainingDataset.
 
@@ -202,8 +202,8 @@ class CETModelTrainer:
         return model
 
     def _cross_validate(
-        self, model: ApplicabilityModel, X_train: List[str], y_train: np.ndarray
-    ) -> Dict[str, Any]:
+        self, model: ApplicabilityModel, X_train: list[str], y_train: np.ndarray
+    ) -> dict[str, Any]:
         """
         Perform cross-validation for hyperparameter tuning.
 
@@ -238,7 +238,7 @@ class CETModelTrainer:
 
         return best_params
 
-    def _update_model_config(self, model: ApplicabilityModel, params: Dict[str, Any]) -> None:
+    def _update_model_config(self, model: ApplicabilityModel, params: dict[str, Any]) -> None:
         """
         Update model configuration with tuned hyperparameters.
 
@@ -258,7 +258,7 @@ class CETModelTrainer:
             logger.info(f"Will use C={params['c_value']}")
 
     def _calibrate_model(
-        self, model: ApplicabilityModel, X_train: List[str], y_train: np.ndarray
+        self, model: ApplicabilityModel, X_train: list[str], y_train: np.ndarray
     ) -> None:
         """
         Calibrate model probabilities using cross-validation.
@@ -277,8 +277,8 @@ class CETModelTrainer:
         )
 
     def _evaluate(
-        self, model: ApplicabilityModel, X_test: List[str], y_test: np.ndarray
-    ) -> Dict[str, Any]:
+        self, model: ApplicabilityModel, X_test: list[str], y_test: np.ndarray
+    ) -> dict[str, Any]:
         """
         Evaluate model on test set.
 
@@ -437,7 +437,7 @@ class CETModelTrainer:
 
         return "\n".join(report)
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get training metrics.
 

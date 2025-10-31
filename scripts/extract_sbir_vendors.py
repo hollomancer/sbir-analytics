@@ -10,9 +10,10 @@ Usage:
     poetry run python scripts/extract_sbir_vendors.py
 """
 
-import pandas as pd
-from pathlib import Path
 import json
+from pathlib import Path
+
+import pandas as pd
 from loguru import logger
 
 

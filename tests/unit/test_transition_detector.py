@@ -5,8 +5,7 @@ Tests the TransitionDetector's complete workflow including
 candidate selection, vendor matching, scoring, and evidence generation.
 """
 
-from datetime import date, datetime, timedelta
-from typing import Dict, List
+from datetime import date, timedelta
 
 import pytest
 
@@ -17,13 +16,11 @@ from src.models.transition_models import (
     Transition,
 )
 from src.transition.detection.detector import TransitionDetector
-from src.transition.detection.evidence import EvidenceGenerator
-from src.transition.detection.scoring import TransitionScorer
 from src.transition.features.vendor_resolver import VendorResolver
 
 
 @pytest.fixture
-def sample_config() -> Dict:
+def sample_config() -> dict:
     """Sample configuration for detector."""
     return {
         "base_score": 0.15,
@@ -117,7 +114,7 @@ def detector(sample_config, vendor_resolver):
 
 
 @pytest.fixture
-def sample_award() -> Dict:
+def sample_award() -> dict:
     """Sample SBIR award for testing."""
     return {
         "award_id": "AWARD-123",
@@ -132,7 +129,7 @@ def sample_award() -> Dict:
 
 
 @pytest.fixture
-def sample_contracts() -> List[FederalContract]:
+def sample_contracts() -> list[FederalContract]:
     """Sample federal contracts for testing."""
     base_date = date(2024, 1, 15)
 

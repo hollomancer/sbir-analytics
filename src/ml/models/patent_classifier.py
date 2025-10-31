@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 # Defensive imports (may be None in minimal CI environments)
 try:
@@ -37,8 +37,8 @@ try:
 except Exception:  # pragma: no cover - defensive import
     pd = None  # type: ignore
 
-import pickle
 import logging
+import pickle
 
 # Define optional placeholders so static analysis doesn't flag undefined names before lazy import
 extract_features = None  # type: ignore
@@ -49,8 +49,10 @@ PatentFeatureVector = None  # type: ignore
 # available, but do not raise if it's missing in minimal CI environments.
 try:
     from src.ml.features.patent_features import (
-        extract_features as _extract_features,
         PatentFeatureVector as _PatentFeatureVector,
+    )
+    from src.ml.features.patent_features import (
+        extract_features as _extract_features,
     )  # type: ignore
 
     # Populate module-level names only if not already present or None
@@ -84,7 +86,7 @@ class PatentFeatureExtractor:
         self.stopwords = stopwords
 
     def features_for_dataframe(
-        self, df, title_col: str = "title", assignee_col: Optional[str] = None
+        self, df, title_col: str = "title", assignee_col: str | None = None
     ):
         """
         Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
@@ -95,14 +97,14 @@ class PatentFeatureExtractor:
         """
         # Local import to remain import-safe at module import time
         try:
-            import pandas as _pd  # type: ignore
+            pass  # type: ignore
         except Exception:
             raise RuntimeError(
                 "pandas is required for PatentFeatureExtractor.features_for_dataframe"
             )
 
-        texts: List[str] = []
-        feature_vectors: List[PatentFeatureVector] = []
+        texts: list[str] = []
+        feature_vectors: list[PatentFeatureVector] = []
 
         # iterate deterministic order
         for _, row in df.iterrows():
@@ -166,7 +168,7 @@ class PatentClassification:
     cet_id: str
     score: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"cet_id": self.cet_id, "score": float(self.score)}
 
 
@@ -188,11 +190,11 @@ class PatentCETClassifier:
 
     def __init__(
         self,
-        pipelines: Optional[Dict[str, Any]] = None,
-        taxonomy_version: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
+        pipelines: dict[str, Any] | None = None,
+        taxonomy_version: str | None = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
-        self.pipelines: Dict[str, Any] = pipelines.copy() if pipelines else {}
+        self.pipelines: dict[str, Any] = pipelines.copy() if pipelines else {}
         self.taxonomy_version = taxonomy_version
         self.config = config or {}
         self.model_version = self.config.get("model_version")
@@ -206,14 +208,14 @@ class PatentCETClassifier:
     # -----------------------
     def train_from_dataframe(
         self,
-        df: "pd.DataFrame",
+        df: pd.DataFrame,
         title_col: str = "title",
-        assignee_col: Optional[str] = None,
+        assignee_col: str | None = None,
         cet_label_col: str = "cet_labels",
-        pipelines_factory: Optional[Any] = None,
+        pipelines_factory: Any | None = None,
         use_feature_extraction: bool = False,
-        keywords_map: Optional[Dict[str, List[str]]] = None,
-        feature_matrix_builder: Optional[Any] = None,
+        keywords_map: dict[str, list[str]] | None = None,
+        feature_matrix_builder: Any | None = None,
     ) -> None:
         """
         Train per-CET binary pipelines using a labeled DataFrame.
@@ -316,14 +318,14 @@ class PatentCETClassifier:
         if not self.pipelines:
             raise RuntimeError("No pipelines available for classification")
 
-    def _text_from_record(self, title: str, assignee: Optional[str] = None) -> str:
+    def _text_from_record(self, title: str, assignee: str | None = None) -> str:
         # Combine title and assignee for extra signal
         parts = [str(title or "")]
         if assignee:
             parts.append(str(assignee or ""))
         return " ".join(p.strip() for p in parts if p)
 
-    def _score_with_pipeline(self, pipeline: Any, texts: List[str]) -> List[float]:
+    def _score_with_pipeline(self, pipeline: Any, texts: list[str]) -> list[float]:
         """
         Invoke `pipeline.predict_proba` if available and normalize to positive-class scores.
         Return list[float] with length == len(texts).
@@ -352,8 +354,8 @@ class PatentCETClassifier:
         raise RuntimeError("Pipeline does not implement predict_proba or predict")
 
     def classify(
-        self, title: str, assignee: Optional[str] = None, top_k: int = 3
-    ) -> List[PatentClassification]:
+        self, title: str, assignee: str | None = None, top_k: int = 3
+    ) -> list[PatentClassification]:
         """
         Classify a single patent (title + optional assignee). Returns a sorted list
         of `PatentClassification` objects ordered by score descending (top_k).
@@ -361,7 +363,7 @@ class PatentCETClassifier:
         self._ensure_model_ready()
         text = self._text_from_record(title, assignee)
         # For each pipeline, score the text
-        scores: List[Tuple[str, float]] = []
+        scores: list[tuple[str, float]] = []
         for cet_id, pipe in self.pipelines.items():
             try:
                 sc = self._score_with_pipeline(pipe, [text])[0]
@@ -376,11 +378,11 @@ class PatentCETClassifier:
 
     def classify_batch(
         self,
-        titles: List[str],
-        assignees: Optional[List[Optional[str]]] = None,
+        titles: list[str],
+        assignees: list[str | None] | None = None,
         batch_size: int = 1000,
         top_k: int = 3,
-    ) -> List[List[PatentClassification]]:
+    ) -> list[list[PatentClassification]]:
         """
         Classify a batch of patent titles. Optionally provide a parallel `assignees`
         list. Returns a list (len==n_inputs) of lists of `PatentClassification` objects.
@@ -395,16 +397,16 @@ class PatentCETClassifier:
             return [[] for _ in range(n)]
 
         # Build combined texts
-        texts = [self._text_from_record(t, a) for t, a in zip(titles, assignees)]
+        texts = [self._text_from_record(t, a) for t, a in zip(titles, assignees, strict=False)]
 
         # For memory reasons, iterate pipelines and get scores per pipeline
         # Build scores_map: cet_id -> list[float] of length n
-        scores_map: Dict[str, List[float]] = {}
+        scores_map: dict[str, list[float]] = {}
         for cet_id, pipe in self.pipelines.items():
             try:
                 # Score in batches if pipeline is expensive
                 if batch_size and batch_size > 0:
-                    scores: List[float] = []
+                    scores: list[float] = []
                     for i in range(0, n, batch_size):
                         chunk = texts[i : i + batch_size]
                         chunk_scores = self._score_with_pipeline(pipe, chunk)
@@ -421,7 +423,7 @@ class PatentCETClassifier:
             scores_map[cet_id] = scores
 
         # Convert per-input: for each index, collect (cet_id, score) and pick top_k
-        results: List[List[PatentClassification]] = []
+        results: list[list[PatentClassification]] = []
         for i in range(n):
             row_scores = [(cet, scores_map[cet][i]) for cet in scores_map.keys()]
             row_scores.sort(key=lambda x: x[1], reverse=True)
@@ -458,7 +460,7 @@ class PatentCETClassifier:
             pickle.dump(payload, fh)
 
     @classmethod
-    def load(cls, path: Path) -> "PatentCETClassifier":
+    def load(cls, path: Path) -> PatentCETClassifier:
         """
         Load a previously saved classifier (pickle) and return an instance.
         """
@@ -479,7 +481,7 @@ class PatentCETClassifier:
     # -----------------------
     # Utilities
     # -----------------------
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """
         Return metadata about the classifier (useful for checks and asset metadata).
         """

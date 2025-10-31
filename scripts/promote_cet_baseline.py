@@ -44,13 +44,12 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Default paths (relative to repository root)
 DEFAULT_CANDIDATE = Path("reports/benchmarks/cet_baseline_distributions_current.json")
@@ -60,7 +59,7 @@ LOG = logging.getLogger("promote_cet_baseline")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
-def load_json_safe(path: Path) -> Optional[Dict[str, Any]]:
+def load_json_safe(path: Path) -> dict[str, Any] | None:
     """Load JSON from path returning dict or None on failure."""
     try:
         with path.open("r", encoding="utf-8") as fh:
@@ -70,7 +69,7 @@ def load_json_safe(path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def validate_baseline_structure(obj: Dict[str, Any]) -> bool:
+def validate_baseline_structure(obj: dict[str, Any]) -> bool:
     """
     Basic validation of baseline shape. Expected top-level keys:
       - label_pmf (dict) or label distribution structure
@@ -102,7 +101,7 @@ def validate_baseline_structure(obj: Dict[str, Any]) -> bool:
     return True
 
 
-def atomic_write_json(target: Path, data: Dict[str, Any]) -> None:
+def atomic_write_json(target: Path, data: dict[str, Any]) -> None:
     """Write JSON atomically to target path using a temp file + os.replace."""
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_path = tempfile.mkstemp(prefix="cet_baseline_", suffix=".json", dir=str(target.parent))
@@ -219,7 +218,7 @@ def promote_candidate(
     return 0
 
 
-def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
+def parse_args(argv: list | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Promote CET baseline candidate to canonical baseline (optional git commit/push)."
     )
@@ -270,7 +269,7 @@ def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: list | None = None) -> int:
     args = parse_args(argv)
 
     candidate_path = Path(args.candidate_path)

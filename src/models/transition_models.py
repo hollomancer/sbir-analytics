@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from datetime import date, datetime
+from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ConfidenceLevel(str, Enum):
@@ -27,7 +26,7 @@ class AgencySignal(BaseModel):
         ...,
         description="True if the contract/award are with the same agency (highly indicative).",
     )
-    same_department: Optional[bool] = Field(
+    same_department: bool | None = Field(
         None, description="True if the contract/award are within the same department (less strict)."
     )
     agency_score: float = Field(
@@ -41,11 +40,11 @@ class AgencySignal(BaseModel):
 class TimingSignal(BaseModel):
     """Timing relationship between award completion and contract start that indicates likelihood."""
 
-    days_between_award_and_contract: Optional[int] = Field(
+    days_between_award_and_contract: int | None = Field(
         None,
         description="Number of days between award completion and contract start (signed or effective date).",
     )
-    months_between_award_and_contract: Optional[float] = Field(
+    months_between_award_and_contract: float | None = Field(
         None, description="Approximate months between award completion and contract start."
     )
     timing_score: float = Field(
@@ -75,13 +74,13 @@ class PatentSignal(BaseModel):
         ge=0,
         description="Number of patents filed before the contract start date (supportive signal).",
     )
-    patent_topic_similarity: Optional[float] = Field(
+    patent_topic_similarity: float | None = Field(
         None,
         ge=0.0,
         le=1.0,
         description="Similarity between patent text/topics and award/contract topic (0-1).",
     )
-    avg_filing_lag_days: Optional[float] = Field(
+    avg_filing_lag_days: float | None = Field(
         None,
         ge=0.0,
         description="Average days between award completion and patent filing for patents considered.",
@@ -94,8 +93,8 @@ class PatentSignal(BaseModel):
 class CETSignal(BaseModel):
     """CET (technology area) alignment between award & contract."""
 
-    award_cet: Optional[str] = Field(None, description="CET area identifier for the award.")
-    contract_cet: Optional[str] = Field(None, description="Inferred CET area for the contract.")
+    award_cet: str | None = Field(None, description="CET area identifier for the award.")
+    contract_cet: str | None = Field(None, description="Inferred CET area for the contract.")
     cet_alignment_score: float = Field(
         0.0, ge=0.0, le=1.0, description="Score indicating CET area alignment (1.0 = exact match)."
     )
@@ -104,12 +103,12 @@ class CETSignal(BaseModel):
 class TransitionSignals(BaseModel):
     """Aggregate container of the different signal categories."""
 
-    agency: Optional[AgencySignal] = None
-    timing: Optional[TimingSignal] = None
-    competition: Optional[CompetitionSignal] = None
-    patent: Optional[PatentSignal] = None
-    cet: Optional[CETSignal] = None
-    text_similarity_score: Optional[float] = Field(
+    agency: AgencySignal | None = None
+    timing: TimingSignal | None = None
+    competition: CompetitionSignal | None = None
+    patent: PatentSignal | None = None
+    cet: CETSignal | None = None
+    text_similarity_score: float | None = Field(
         None,
         ge=0.0,
         le=1.0,
@@ -138,12 +137,12 @@ class EvidenceItem(BaseModel):
     signal: str = Field(
         ..., description="Signal type (e.g., 'agency', 'timing', 'patent', 'cet', 'text')."
     )
-    snippet: Optional[str] = Field(None, description="Textual excerpt that supports the signal.")
-    citation: Optional[str] = Field(None, description="URL or canonical citation for the snippet.")
-    score: Optional[float] = Field(
+    snippet: str | None = Field(None, description="Textual excerpt that supports the signal.")
+    citation: str | None = Field(None, description="URL or canonical citation for the snippet.")
+    score: float | None = Field(
         None, ge=0.0, le=1.0, description="Normalized score for this evidence item."
     )
-    metadata: Dict[str, object] = Field(
+    metadata: dict[str, object] = Field(
         default_factory=dict, description="Arbitrary structured metadata."
     )
 
@@ -151,9 +150,9 @@ class EvidenceItem(BaseModel):
 class EvidenceBundle(BaseModel):
     """Comprehensive audit trail for a detection result."""
 
-    items: List[EvidenceItem] = Field(default_factory=list)
+    items: list[EvidenceItem] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    summary: Optional[str] = Field(None, description="Human-readable short summary of the bundle.")
+    summary: str | None = Field(None, description="Human-readable short summary of the bundle.")
 
     def add_item(self, item: EvidenceItem) -> None:
         """Add an evidence item to the bundle.
@@ -178,15 +177,15 @@ class EvidenceBundle(BaseModel):
 class VendorMatch(BaseModel):
     """Result of vendor/company resolution for a contract."""
 
-    vendor_id: Optional[str] = Field(
+    vendor_id: str | None = Field(
         None, description="Canonical vendor ID (e.g., company node id or UEI)."
     )
     method: str = Field(
         ..., description="How the match was determined ('uei', 'cage', 'duns', 'name_fuzzy', ...)."
     )
     score: float = Field(0.0, ge=0.0, le=1.0, description="Confidence score for the vendor match.")
-    matched_name: Optional[str] = Field(None, description="Matched vendor canonical name.")
-    metadata: Dict[str, object] = Field(default_factory=dict)
+    matched_name: str | None = Field(None, description="Matched vendor canonical name.")
+    metadata: dict[str, object] = Field(default_factory=dict)
 
 
 class FederalContract(BaseModel):
@@ -202,43 +201,43 @@ class FederalContract(BaseModel):
     """
 
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
-    agency: Optional[str] = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
-    sub_agency: Optional[str] = Field(None, description="Sub-agency or office.")
-    vendor_name: Optional[str] = Field(
+    agency: str | None = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
+    sub_agency: str | None = Field(None, description="Sub-agency or office.")
+    vendor_name: str | None = Field(
         None, description="Vendor name string as present on contract."
     )
-    vendor_uei: Optional[str] = Field(None, description="Vendor UEI if available.")
-    vendor_cage: Optional[str] = Field(None, description="Vendor CAGE code if available.")
-    vendor_duns: Optional[str] = Field(None, description="Vendor DUNS if available (legacy).")
-    start_date: Optional[date] = Field(None, description="Contract start/award effective date.")
-    end_date: Optional[date] = Field(None, description="Contract end date (if present).")
-    obligation_amount: Optional[float] = Field(
+    vendor_uei: str | None = Field(None, description="Vendor UEI if available.")
+    vendor_cage: str | None = Field(None, description="Vendor CAGE code if available.")
+    vendor_duns: str | None = Field(None, description="Vendor DUNS if available (legacy).")
+    start_date: date | None = Field(None, description="Contract start/award effective date.")
+    end_date: date | None = Field(None, description="Contract end date (if present).")
+    obligation_amount: float | None = Field(
         None, description="Contract obligation/award amount. Can be negative for deobligations."
     )
     is_deobligation: bool = Field(
         default=False,
         description="True if obligation_amount is negative (contract reduction/modification).",
     )
-    competition_type: Optional[CompetitionType] = Field(
+    competition_type: CompetitionType | None = Field(
         None, description="Competition type for the award."
     )
-    description: Optional[str] = Field(None, description="Free-text contract description.")
-    parent_contract_id: Optional[str] = Field(
+    description: str | None = Field(None, description="Free-text contract description.")
+    parent_contract_id: str | None = Field(
         None,
         description="Referenced parent contract or IDV PIID when this record is a task or delivery order.",
     )
-    parent_contract_agency: Optional[str] = Field(
+    parent_contract_agency: str | None = Field(
         None,
         description="Agency identifier associated with the referenced parent contract or IDV.",
     )
-    contract_award_type: Optional[str] = Field(
+    contract_award_type: str | None = Field(
         None,
         description="Contract award type code from USAspending (e.g., 'A', 'B', 'IDV-A').",
     )
-    matched_vendor: Optional[VendorMatch] = Field(
+    matched_vendor: VendorMatch | None = Field(
         None, description="Vendor match result to canonical entity."
     )
-    metadata: Dict[str, object] = Field(default_factory=dict)
+    metadata: dict[str, object] = Field(default_factory=dict)
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
@@ -267,7 +266,7 @@ class Transition(BaseModel):
     """High-level transition detection result tied to an award and (candidate) contract(s)."""
 
     transition_id: str = Field(..., description="Unique transition detection id.")
-    award_id: Optional[str] = Field(
+    award_id: str | None = Field(
         None, description="Canonical award id associated with the detection."
     )
     detected_at: datetime = Field(
@@ -279,16 +278,16 @@ class Transition(BaseModel):
     confidence: ConfidenceLevel = Field(
         ..., description="Categorical confidence derived from thresholds."
     )
-    primary_contract: Optional[FederalContract] = Field(
+    primary_contract: FederalContract | None = Field(
         None, description="Primary contract candidate associated with this detection (if any)."
     )
-    signals: Optional[TransitionSignals] = Field(
+    signals: TransitionSignals | None = Field(
         None, description="Detailed per-signal contributions."
     )
-    evidence: Optional[EvidenceBundle] = Field(
+    evidence: EvidenceBundle | None = Field(
         None, description="Evidence bundle documenting the detection."
     )
-    metadata: Dict[str, object] = Field(
+    metadata: dict[str, object] = Field(
         default_factory=dict, description="Additional, implementation-specific metadata."
     )
 
@@ -325,7 +324,7 @@ class TransitionProfile(BaseModel):
     avg_likelihood_score: float = Field(
         0.0, ge=0.0, le=1.0, description="Average likelihood across detections."
     )
-    avg_time_to_transition_days: Optional[float] = Field(
+    avg_time_to_transition_days: float | None = Field(
         None,
         ge=0.0,
         description="Average time in days from award completion to contract start for transitions.",
@@ -343,7 +342,7 @@ class TransitionProfile(BaseModel):
         return float(v)
 
     @property
-    def to_summary(self) -> Dict[str, Union[str, int, float, None]]:
+    def to_summary(self) -> dict[str, str | int | float | None]:
         """Generate a summary dictionary of the transition profile.
         
         Returns:

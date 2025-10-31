@@ -22,17 +22,17 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Import the project's TaxonomyLoader. This module lives under src/ml/config and
 # depends on the project's models (Pydantic) to validate the taxonomy.
-from src.ml.config.taxonomy_loader import TaxonomyLoader, TaxonomyConfig
+from src.ml.config.taxonomy_loader import TaxonomyConfig, TaxonomyLoader
 
 logger = logging.getLogger("taxonomy_checks")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
-def run_taxonomy_checks(config_dir: Optional[Path] = None) -> Dict[str, Any]:
+def run_taxonomy_checks(config_dir: Path | None = None) -> dict[str, Any]:
     """
     Load taxonomy and run completeness checks.
 
@@ -51,7 +51,7 @@ def run_taxonomy_checks(config_dir: Optional[Path] = None) -> Dict[str, Any]:
     # Use loader helper to compute completeness metrics (non-fatal)
     completeness = loader.validate_taxonomy_completeness(taxonomy)
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "version": taxonomy.version,
         "cet_count": len(taxonomy.cet_areas),
         "last_updated": taxonomy.last_updated,
@@ -61,7 +61,7 @@ def run_taxonomy_checks(config_dir: Optional[Path] = None) -> Dict[str, Any]:
     return result
 
 
-def pretty_print_checks(checks: Dict[str, Any], out=None) -> None:
+def pretty_print_checks(checks: dict[str, Any], out=None) -> None:
     """
     Print a human-friendly summary of taxonomy checks.
 
@@ -144,7 +144,7 @@ def pretty_print_checks(checks: Dict[str, Any], out=None) -> None:
                 print(f"  - {it}", file=out)
 
 
-def save_checks_json(checks: Dict[str, Any], dest: Path) -> None:
+def save_checks_json(checks: dict[str, Any], dest: Path) -> None:
     """
     Save checks dictionary to the provided destination as JSON.
 
@@ -159,7 +159,7 @@ def save_checks_json(checks: Dict[str, Any], dest: Path) -> None:
     logger.info("Wrote taxonomy checks JSON", path=str(dest))
 
 
-def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
+def parse_args(argv: list | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run CET taxonomy completeness checks")
     parser.add_argument(
         "--config-dir",
@@ -194,7 +194,7 @@ def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: list | None = None) -> int:
     """
     Execute the CLI. Returns exit code:
       0: no issues (or --fail-on-issues not specified)

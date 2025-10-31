@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,7 +20,7 @@ class DummyLog:
 
 
 class DummyContext:
-    def __init__(self, op_config: Dict[str, Any] | None = None):
+    def __init__(self, op_config: dict[str, Any] | None = None):
         self.op_config = op_config or {}
         self.log = DummyLog()
 
@@ -42,7 +42,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting():
     from src.loaders.neo4j_client import LoadMetrics
 
     # Arrange: mock client with capture of relationships
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def _fake_batch_create_relationships(*, relationships, metrics):
         captured["relationships"] = relationships

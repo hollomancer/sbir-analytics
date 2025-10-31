@@ -4,10 +4,9 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
-from src.ml.models.dummy_pipeline import DummyPipeline
 from src.assets.cet_assets import cet_patent_classifications
+from src.ml.models.dummy_pipeline import DummyPipeline
 
 
 def _write_configs(root: Path):
@@ -77,7 +76,7 @@ def _write_transformed_patents_ndjson(root: Path, records):
 def _read_patent_checks(root: Path):
     p = root / "data" / "processed" / "cet_patent_classifications.checks.json"
     assert p.exists(), f"Checks file not found at {p}"
-    with open(p, "r", encoding="utf-8") as fh:
+    with open(p, encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -90,7 +89,7 @@ def _read_patent_output_records(root: Path):
     out_json = root / "data" / "processed" / "cet_patent_classifications.json"
     if out_json.exists():
         recs = []
-        with open(out_json, "r", encoding="utf-8") as fh:
+        with open(out_json, encoding="utf-8") as fh:
             for line in fh:
                 if line.strip():
                     recs.append(json.loads(line))

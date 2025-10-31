@@ -20,13 +20,13 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
-def get_test_config(scenario: str) -> Dict[str, Any]:
+def get_test_config(scenario: str) -> dict[str, Any]:
     """Get test configuration for the specified scenario."""
     configs = {
         "minimal": {
@@ -68,16 +68,16 @@ def check_environment() -> bool:
         "NEO4J_PASSWORD",
         "SBIR_ETL__NEO4J__BOLT_URL",
     ]
-    
+
     missing_vars = []
     for var in required_vars:
         if not os.getenv(var):
             missing_vars.append(var)
-    
+
     if missing_vars:
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
         return False
-    
+
     print("✅ Environment configuration validated")
     return True
 
@@ -85,23 +85,23 @@ def check_environment() -> bool:
 def check_macbook_air_resources() -> bool:
     """Check if system resources are suitable for MacBook Air testing."""
     macbook_air_mode = os.getenv("MACBOOK_AIR_MODE", "true").lower() == "true"
-    
+
     if not macbook_air_mode:
         print("ℹ️  MacBook Air optimizations disabled")
         return True
-    
+
     print("🍎 MacBook Air mode enabled - checking resource constraints...")
-    
+
     # Check memory limit
     memory_limit_gb = float(os.getenv("MEMORY_LIMIT_GB", "8"))
     if memory_limit_gb > 8:
         print(f"⚠️  Memory limit ({memory_limit_gb}GB) exceeds MacBook Air recommendation (8GB)")
-    
+
     # Check CPU limit
     cpu_limit = float(os.getenv("CPU_LIMIT", "2.0"))
     if cpu_limit > 2.0:
         print(f"⚠️  CPU limit ({cpu_limit}) exceeds MacBook Air recommendation (2.0)")
-    
+
     print("✅ Resource constraints validated for MacBook Air")
     return True
 
@@ -109,20 +109,20 @@ def check_macbook_air_resources() -> bool:
 def run_e2e_tests(scenario: str, timeout: int) -> int:
     """Run E2E tests for the specified scenario."""
     config = get_test_config(scenario)
-    
-    print(f"\n🚀 Starting E2E Tests")
+
+    print("\n🚀 Starting E2E Tests")
     print(f"   Scenario: {scenario}")
     print(f"   Description: {config['description']}")
     print(f"   Expected Duration: {config['expected_duration']}")
     print(f"   Memory Limit: {config['memory_limit']}")
     print(f"   Timeout: {timeout}s")
     print("-" * 60)
-    
+
     # Set environment variables for the test run
     env = os.environ.copy()
     env["E2E_TEST_SCENARIO"] = scenario
     env["E2E_TEST_TIMEOUT"] = str(timeout)
-    
+
     # Build pytest command
     pytest_args = [
         "python", "-m", "pytest",
@@ -132,11 +132,11 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
         f"--timeout={timeout}",
         "--timeout-method=thread",
     ]
-    
+
     # Add test markers if specified
     if config["test_markers"]:
         pytest_args.extend(["-m", config["test_markers"]])
-    
+
     # Add coverage if not in minimal mode
     if scenario != "minimal":
         pytest_args.extend([
@@ -144,13 +144,13 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
             "--cov-report=term-missing",
             "--cov-report=html:/app/artifacts/htmlcov",
         ])
-    
+
     print(f"Running: {' '.join(pytest_args)}")
     print()
-    
+
     # Record start time
     start_time = time.time()
-    
+
     # Run tests
     import subprocess
     try:
@@ -162,25 +162,25 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
     except Exception as e:
         print(f"\n❌ Test execution failed: {e}")
         exit_code = 1
-    
+
     # Calculate duration
     duration = time.time() - start_time
-    
+
     print("\n" + "=" * 60)
-    print(f"📊 E2E Test Results")
+    print("📊 E2E Test Results")
     print(f"   Scenario: {scenario}")
     print(f"   Duration: {duration:.1f}s")
     print(f"   Exit Code: {exit_code}")
-    
+
     if exit_code == 0:
         print("   Status: ✅ PASSED")
     elif exit_code == 124:
         print("   Status: ⏰ TIMEOUT")
     else:
         print("   Status: ❌ FAILED")
-    
+
     print("=" * 60)
-    
+
     return exit_code
 
 
@@ -202,43 +202,43 @@ Examples:
   python scripts/run_e2e_tests.py --scenario large --timeout 900
         """
     )
-    
+
     parser.add_argument(
         "--scenario",
         choices=["minimal", "standard", "large", "edge-cases"],
         default=os.getenv("E2E_TEST_SCENARIO", "standard"),
         help="Test scenario to run (default: standard)"
     )
-    
+
     parser.add_argument(
         "--timeout",
         type=int,
         default=int(os.getenv("E2E_TEST_TIMEOUT", "600")),
         help="Test timeout in seconds (default: 600)"
     )
-    
+
     args = parser.parse_args()
-    
+
     print("🧪 SBIR ETL E2E Test Runner")
     print("=" * 60)
-    
+
     # Environment checks
     if not check_environment():
         return 1
-    
+
     if not check_macbook_air_resources():
         return 1
-    
+
     # Run tests
     exit_code = run_e2e_tests(args.scenario, args.timeout)
-    
+
     # Final status
     if exit_code == 0:
         print("\n🎉 All E2E tests completed successfully!")
     else:
         print(f"\n💥 E2E tests failed with exit code {exit_code}")
         print("Check the logs above for details.")
-    
+
     return exit_code
 
 

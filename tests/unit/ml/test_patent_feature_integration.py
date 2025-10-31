@@ -1,6 +1,6 @@
 # sbir-etl/tests/unit/ml/test_patent_feature_integration.py
+
 import pytest
-from pathlib import Path
 
 # These tests exercise integration between the lightweight patent feature
 # extractor and the PatentCETClassifier training flow using DummyPipeline.
@@ -11,7 +11,7 @@ from src.ml.models.patent_classifier import PatentCETClassifier
 
 # Feature helpers are optional in some environments; skip the integration test if not present.
 pytest.importorskip("src.ml.features.patent_features")
-from src.ml.features.patent_features import extract_features, PatentFeatureVector
+from src.ml.features.patent_features import PatentFeatureVector, extract_features
 
 
 def make_pipelines_factory():
@@ -99,7 +99,7 @@ def test_train_classifier_with_feature_extraction_and_dummy_pipelines(tmp_path):
     for cet, pipe in classifier.pipelines.items():
         # DummyPipeline exposes is_fitted attribute
         if hasattr(pipe, "is_fitted"):
-            assert getattr(pipe, "is_fitted") is True
+            assert pipe.is_fitted is True
 
     # Classify a ML-related title and expect artificial_intelligence to be top
     res_ai = classifier.classify(

@@ -42,19 +42,19 @@ def _print_result_summary(result: Any) -> None:
 
     # Common API: result.success (bool)
     if hasattr(result, "success"):
-        logger.info("  success: %s", getattr(result, "success"))
+        logger.info("  success: %s", result.success)
     # Some versions expose .success_as_bool or similar; try a few fallbacks
     elif hasattr(result, "was_successful"):
-        logger.info("  success (was_successful): %s", getattr(result, "was_successful"))
+        logger.info("  success (was_successful): %s", result.was_successful)
     else:
         logger.info("  result object: %s", repr(result))
 
     # If the result contains step/event info, show a short snippet if available
     if hasattr(result, "run_id"):
-        logger.info("  run_id: %s", getattr(result, "run_id"))
+        logger.info("  run_id: %s", result.run_id)
     elif hasattr(result, "run"):
         try:
-            run = getattr(result, "run")
+            run = result.run
             logger.info("  run: %s", getattr(run, "run_id", repr(run)))
         except Exception:
             pass

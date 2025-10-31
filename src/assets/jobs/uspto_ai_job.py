@@ -18,7 +18,7 @@ Notes:
 from dagster import AssetSelection, build_assets_job
 
 # Import the USPTO AI asset definitions. These are expected to be defined in:
-#   src.assets.uspto_ai_extraction_assets
+#   src.assets.uspto_assets (consolidated module)
 try:
     from src.assets.uspto_assets import (  # type: ignore
         uspto_ai_deduplicate,

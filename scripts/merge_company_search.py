@@ -34,13 +34,11 @@ python sbir-etl/scripts/merge_company_search.py \
 
 from __future__ import annotations
 
-import argparse
 import json
-import os
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
 
 try:
     import pandas as pd
@@ -49,21 +47,21 @@ except Exception as e:  # pragma: no cover - runtime guard
 
 
 # ---- Normalization helpers ----
-def clean_uei(v: Optional[str]) -> str:
+def clean_uei(v: str | None) -> str:
     """Strip non-alphanumeric and uppercase."""
     if not v or str(v).strip() == "":
         return ""
     return "".join(ch for ch in str(v) if ch.isalnum()).upper()
 
 
-def clean_duns(v: Optional[str]) -> str:
+def clean_duns(v: str | None) -> str:
     """Strip non-digits."""
     if not v or str(v).strip() == "":
         return ""
     return "".join(ch for ch in str(v) if ch.isdigit())
 
 
-def normalize_name(v: Optional[str]) -> str:
+def normalize_name(v: str | None) -> str:
     """Lowercase, remove punctuation, collapse whitespace."""
     if not v or str(v).strip() == "":
         return ""
@@ -152,7 +150,7 @@ class MergeDiagnostics:
     unique_by_duns: int = 0
     leftover_rows: int = 0
     canonical_count: int = 0
-    sources: Dict[str, int] = None
+    sources: dict[str, int] = None
 
     def to_dict(self):
         # Ensure all numeric values are native Python ints so json.dump won't fail
@@ -174,7 +172,7 @@ class MergeDiagnostics:
         }
 
 
-def find_company_search_files(input_dir: Path, pattern: str = "company_search_*.csv") -> List[Path]:
+def find_company_search_files(input_dir: Path, pattern: str = "company_search_*.csv") -> list[Path]:
     """List matching CSV files in input_dir (non-recursive)."""
     p = Path(input_dir)
     if not p.exists() or not p.is_dir():
@@ -203,7 +201,7 @@ def merge_company_search_files(
     input_dir: Path,
     pattern: str = "company_search_*.csv",
     output_path: Path = Path("data/raw/sbir/companies_merged.csv"),
-    diagnostics_path: Optional[Path] = None,
+    diagnostics_path: Path | None = None,
 ) -> MergeDiagnostics:
     files = find_company_search_files(input_dir, pattern)
     if not files:
@@ -327,7 +325,7 @@ def merge_company_search_files(
 
 
 # ---- CLI ----
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(

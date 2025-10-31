@@ -1,5 +1,4 @@
 # sbir-etl/tests/unit/ml/test_patent_vectorizer_and_training.py
-import os
 from pathlib import Path
 
 import pytest
@@ -8,23 +7,23 @@ pd = pytest.importorskip("pandas")
 np = pytest.importorskip("numpy")
 
 from src.ml.features.patent_features import (
-    extract_features,
-    PatentFeatureVector,
     DEFAULT_KEYWORDS_MAP,
+    PatentFeatureVector,
+    extract_features,
 )
 from src.ml.features.vectorizers import (
+    AssigneeTypeVectorizer,
+    FeatureMatrixBuilder,
+    IPCPresenceVectorizer,
     KeywordVectorizer,
     TokenCounterVectorizer,
-    AssigneeTypeVectorizer,
-    IPCPresenceVectorizer,
-    FeatureMatrixBuilder,
 )
 from src.ml.models.dummy_pipeline import DummyPipeline
 from src.ml.models.patent_classifier import PatentCETClassifier
 from src.ml.train.patent_training import (
-    train_patent_classifier,
     evaluate_patent_classifier,
     precision_recall_at_k,
+    train_patent_classifier,
 )
 
 

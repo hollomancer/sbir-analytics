@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 from pathlib import Path
+
 from loguru import logger
 
 from src.extractors.contract_extractor import ContractExtractor

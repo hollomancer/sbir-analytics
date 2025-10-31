@@ -63,13 +63,13 @@ def validate_contracts_sample(sample_path: Path = None) -> bool:
     # Acceptance Criteria 2: ≥ 90% rows have action_date
     action_date_col = "action_date" if "action_date" in df.columns else "start_date"
     if action_date_col not in df.columns:
-        print(f"\n❌ Date column not found (looked for: action_date, start_date)")
+        print("\n❌ Date column not found (looked for: action_date, start_date)")
         return False
 
     action_date_cov = df[action_date_col].notna().sum() / total_rows if total_rows > 0 else 0.0
     date_ok = action_date_cov >= 0.90
     print(f"\n✓ Action date coverage (≥90%): {date_ok}")
-    print(f"  Required: ≥ 90%")
+    print("  Required: ≥ 90%")
     print(f"  Actual: {action_date_cov * 100:.1f}%")
 
     # Acceptance Criteria 3: ≥ 60% have at least one identifier
@@ -92,9 +92,9 @@ def validate_contracts_sample(sample_path: Path = None) -> bool:
     ident_cov = has_any_ident.sum() / total_rows if total_rows > 0 else 0.0
     ident_ok = ident_cov >= 0.60
     print(f"\n✓ Identifier coverage (≥60%): {ident_ok}")
-    print(f"  Required: ≥ 60%")
+    print("  Required: ≥ 60%")
     print(f"  Actual: {ident_cov * 100:.1f}%")
-    print(f"  Breakdown:")
+    print("  Breakdown:")
     print(f"    - UEI: {has_uei.sum():,} ({has_uei.sum() / total_rows * 100:.1f}%)")
     print(f"    - DUNS: {has_duns.sum():,} ({has_duns.sum() / total_rows * 100:.1f}%)")
     print(f"    - PIID: {has_piid.sum():,} ({has_piid.sum() / total_rows * 100:.1f}%)")

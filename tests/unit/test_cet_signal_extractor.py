@@ -6,9 +6,10 @@ and batch processing for transition detection signals.
 """
 
 import pytest
+
 from src.transition.features.cet_analyzer import (
-    CETSignalExtractor,
     CETAnalysisResult,
+    CETSignalExtractor,
     create_cet_extractor,
 )
 

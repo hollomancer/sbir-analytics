@@ -12,10 +12,12 @@ Tests cover:
 - Batch evidence extraction
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from src.ml.features.evidence_extractor import EvidenceExtractor
-from src.models.cet_models import CETArea, EvidenceStatement, CETClassification, ClassificationLevel
+from src.models.cet_models import CETArea, CETClassification, ClassificationLevel, EvidenceStatement
 
 
 @pytest.fixture

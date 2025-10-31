@@ -15,7 +15,6 @@ to produce a composite likelihood score (0.0-1.0) and confidence classification.
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 
 from loguru import logger

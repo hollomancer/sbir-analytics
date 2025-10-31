@@ -5,7 +5,7 @@ Loads YAML configuration files and validates them against Pydantic schemas.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -20,11 +20,11 @@ class TaxonomyConfig(BaseModel):
     version: str = Field(..., description="Taxonomy version (e.g., 'NSTC-2025Q1')")
     last_updated: str = Field(..., description="Last update date")
     description: str = Field(..., description="Taxonomy description")
-    cet_areas: List[CETArea] = Field(..., description="List of CET areas")
+    cet_areas: list[CETArea] = Field(..., description="List of CET areas")
 
     @field_validator("cet_areas")
     @classmethod
-    def validate_unique_cet_ids(cls, v: List[CETArea]) -> List[CETArea]:
+    def validate_unique_cet_ids(cls, v: list[CETArea]) -> list[CETArea]:
         """Ensure all CET IDs are unique."""
         cet_ids = [area.cet_id for area in v]
         if len(cet_ids) != len(set(cet_ids)):
@@ -33,7 +33,7 @@ class TaxonomyConfig(BaseModel):
 
     @field_validator("cet_areas")
     @classmethod
-    def validate_cet_count(cls, v: List[CETArea]) -> List[CETArea]:
+    def validate_cet_count(cls, v: list[CETArea]) -> list[CETArea]:
         """Validate we have 21 CET areas as per NSTC framework."""
         if len(v) != 21:
             logger.warning("Expected 21 CET areas from NSTC framework, got %d", len(v))
@@ -45,21 +45,21 @@ class ClassificationConfig(BaseModel):
 
     model_version: str
     created_date: str
-    confidence_thresholds: Dict[str, float]
-    tfidf: Dict
-    logistic_regression: Dict
-    calibration: Dict
-    feature_selection: Dict
-    evidence: Dict
-    supporting: Dict
-    batch: Dict
-    performance: Dict
-    quality: Dict
-    analytics: Dict
+    confidence_thresholds: dict[str, float]
+    tfidf: dict
+    logistic_regression: dict
+    calibration: dict
+    feature_selection: dict
+    evidence: dict
+    supporting: dict
+    batch: dict
+    performance: dict
+    quality: dict
+    analytics: dict
 
     @field_validator("confidence_thresholds")
     @classmethod
-    def validate_thresholds(cls, v: Dict[str, float]) -> Dict[str, float]:
+    def validate_thresholds(cls, v: dict[str, float]) -> dict[str, float]:
         """Validate confidence threshold values."""
         required_keys = {"high", "medium", "low"}
         if not required_keys.issubset(v.keys()):
@@ -77,7 +77,7 @@ class TaxonomyLoader:
     Provides validated access to taxonomy and ML configuration.
     """
 
-    def __init__(self, config_dir: Optional[Path] = None) -> None:
+    def __init__(self, config_dir: Path | None = None) -> None:
         """
         Initialize the taxonomy loader.
 
@@ -114,7 +114,7 @@ class TaxonomyLoader:
         """
         logger.info("Loading CET taxonomy", extra={"file": str(self.taxonomy_path)})
 
-        with open(self.taxonomy_path, "r") as f:
+        with open(self.taxonomy_path) as f:
             raw_config = yaml.safe_load(f)
 
         # Convert cet_areas dict entries to CETArea objects
@@ -156,7 +156,7 @@ class TaxonomyLoader:
 
         return taxonomy
 
-    def validate_taxonomy_completeness(self, taxonomy: TaxonomyConfig) -> Dict[str, Any]:
+    def validate_taxonomy_completeness(self, taxonomy: TaxonomyConfig) -> dict[str, Any]:
         """
         Perform lightweight completeness checks on a loaded taxonomy.
 
@@ -174,8 +174,8 @@ class TaxonomyLoader:
             dict: completeness metrics
         """
         total = len(taxonomy.cet_areas)
-        areas_missing_keywords: List[str] = []
-        areas_missing_definition: List[str] = []
+        areas_missing_keywords: list[str] = []
+        areas_missing_definition: list[str] = []
         areas_with_parent: int = 0
         missing_required_fields = False
 
@@ -195,7 +195,7 @@ class TaxonomyLoader:
             if not getattr(area, "cet_id", None) or not getattr(area, "name", None):
                 missing_required_fields = True
 
-        metrics: Dict[str, Any] = {
+        metrics: dict[str, Any] = {
             "total_areas": total,
             "areas_missing_keywords_count": len(areas_missing_keywords),
             "areas_missing_keywords": areas_missing_keywords[:20],  # limit length for metadata
@@ -227,7 +227,7 @@ class TaxonomyLoader:
         """
         logger.info("Loading classification config", extra={"file": str(self.classification_path)})
 
-        with open(self.classification_path, "r") as f:
+        with open(self.classification_path) as f:
             raw_config = yaml.safe_load(f)
 
         config = ClassificationConfig(**raw_config)
@@ -239,7 +239,7 @@ class TaxonomyLoader:
 
         return config
 
-    def get_cet_area(self, cet_id: str) -> Optional[CETArea]:
+    def get_cet_area(self, cet_id: str) -> CETArea | None:
         """
         Get a specific CET area by ID.
 
@@ -255,7 +255,7 @@ class TaxonomyLoader:
                 return area
         return None
 
-    def get_all_cet_ids(self) -> List[str]:
+    def get_all_cet_ids(self) -> list[str]:
         """
         Get list of all CET IDs.
 
@@ -265,7 +265,7 @@ class TaxonomyLoader:
         taxonomy = self.load_taxonomy()
         return [area.cet_id for area in taxonomy.cet_areas]
 
-    def get_cet_keywords(self, cet_id: str) -> List[str]:
+    def get_cet_keywords(self, cet_id: str) -> list[str]:
         """
         Get keywords for a specific CET area.
 

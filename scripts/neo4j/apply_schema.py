@@ -28,7 +28,6 @@ import argparse
 import logging
 import os
 import sys
-from typing import List
 
 try:
     from neo4j import GraphDatabase
@@ -44,7 +43,7 @@ LOG = logging.getLogger("apply_schema")
 # Review and adapt these statements to match your Neo4j version's supported syntax.
 # We use relatively standard "IF NOT EXISTS" where available; if your Neo4j version
 # doesn't support it, the script will attempt the statement and ignore "already exists" errors.
-SCHEMA_STATEMENTS: List[str] = [
+SCHEMA_STATEMENTS: list[str] = [
     # Example unique constraint on Company by UEI (adapt label and property as needed)
     # Modern Neo4j (4.4+) syntax:
     # "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
@@ -75,7 +74,7 @@ def connect(uri: str, user: str, password: str):
     return driver
 
 
-def run_statements(driver, statements: List[str], dry_run: bool = False) -> int:
+def run_statements(driver, statements: list[str], dry_run: bool = False) -> int:
     """
     Execute a list of Cypher statements using a write transaction.
     Returns the number of statements successfully applied (best-effort).
@@ -154,9 +153,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_statements_from_file(path: str) -> List[str]:
+def load_statements_from_file(path: str) -> list[str]:
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             lines = [
                 line.strip() for line in fh if line.strip() and not line.strip().startswith("#")
             ]

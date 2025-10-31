@@ -9,7 +9,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Optional
 
 from loguru import logger
 
@@ -25,7 +24,7 @@ class USAspendingStatsProvider:
         """
         self.profile_path = profile_path
 
-    def get_stats(self) -> Optional[Dict]:
+    def get_stats(self) -> dict | None:
         """Get the profiling statistics.
 
         Returns:
@@ -94,7 +93,7 @@ class USAspendingStatsProvider:
 
         return 0
 
-    def get_dump_info(self) -> Dict:
+    def get_dump_info(self) -> dict:
         """Get basic dump information.
 
         Returns:
@@ -112,7 +111,7 @@ class USAspendingStatsProvider:
             "table_count": self.get_table_count(),
         }
 
-    def get_coverage_assessment(self) -> Dict:
+    def get_coverage_assessment(self) -> dict:
         """Get enrichment coverage assessment if available.
 
         Returns:
@@ -132,7 +131,7 @@ class USAspendingStatsProvider:
             return {"available": False, "error": str(e)}
 
 
-def format_stats_for_display(stats: Dict) -> str:
+def format_stats_for_display(stats: dict) -> str:
     """Format statistics for human-readable display.
 
     Args:
@@ -237,7 +236,7 @@ def main():
         print(format_stats_for_display(dump_info))
 
         if coverage.get("available"):
-            print(f"\nCoverage Assessment:")
+            print("\nCoverage Assessment:")
             print(
                 f"  Overall Match Rate: {coverage.get('overall_coverage', {}).get('match_rate', 0):.1%}"
             )

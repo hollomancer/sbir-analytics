@@ -1,10 +1,11 @@
+
 import pandas as pd
-from typing import List
+
 from src.models.transitions import CompanyTransition, TransitionType
 
 
 class TransitionDetector:
-    def detect(self, df: pd.DataFrame) -> List[CompanyTransition]:
+    def detect(self, df: pd.DataFrame) -> list[CompanyTransition]:
         # Placeholder for transition detection logic
         transitions = []
         for i, row in df.iterrows():

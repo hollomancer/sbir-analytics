@@ -8,7 +8,7 @@ report collections for multi-format outputs.
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -36,8 +36,8 @@ class PerformanceMetrics(BaseModel):
     average_memory_mb: float = Field(..., description="Average memory usage in MB")
 
     # Resource utilization
-    cpu_usage_percent: Optional[float] = Field(None, description="Average CPU usage percentage")
-    disk_io_mb: Optional[float] = Field(None, description="Total disk I/O in MB")
+    cpu_usage_percent: float | None = Field(None, description="Average CPU usage percentage")
+    disk_io_mb: float | None = Field(None, description="Total disk I/O in MB")
 
     # Error and retry metrics
     total_retries: int = Field(default=0, description="Total number of retries across all operations")
@@ -69,24 +69,24 @@ class ModuleMetrics(BaseModel):
     throughput_records_per_second: float = Field(..., description="Processing throughput")
 
     # Quality metrics
-    quality_metrics: Dict[str, float] = Field(
+    quality_metrics: dict[str, float] = Field(
         default_factory=dict, description="Module-specific quality scores"
     )
 
     # Enrichment-specific metrics (optional)
-    enrichment_coverage: Optional[float] = Field(
+    enrichment_coverage: float | None = Field(
         None, ge=0.0, le=1.0, description="Percentage of records successfully enriched"
     )
-    match_rates: Optional[Dict[str, float]] = Field(
+    match_rates: dict[str, float] | None = Field(
         None, description="Match rates by enrichment source"
     )
 
     # Memory and performance
-    peak_memory_mb: Optional[float] = Field(None, description="Peak memory usage during module execution")
-    average_cpu_percent: Optional[float] = Field(None, description="Average CPU usage percentage")
+    peak_memory_mb: float | None = Field(None, description="Peak memory usage during module execution")
+    average_cpu_percent: float | None = Field(None, description="Average CPU usage percentage")
 
     # Module-specific metrics
-    module_specific_metrics: Dict[str, Any] = Field(
+    module_specific_metrics: dict[str, Any] = Field(
         default_factory=dict, description="Additional module-specific metrics"
     )
 
@@ -112,12 +112,12 @@ class PipelineMetrics(BaseModel):
     )
 
     # Quality scores
-    quality_scores: Dict[str, float] = Field(
+    quality_scores: dict[str, float] = Field(
         default_factory=dict, description="Aggregate quality scores by category"
     )
 
     # Module metrics
-    module_metrics: Dict[str, ModuleMetrics] = Field(
+    module_metrics: dict[str, ModuleMetrics] = Field(
         default_factory=dict, description="Metrics for each pipeline module"
     )
 
@@ -125,17 +125,17 @@ class PipelineMetrics(BaseModel):
     performance_metrics: PerformanceMetrics = Field(..., description="Pipeline performance metrics")
 
     # Data coverage and completeness
-    data_coverage_metrics: Dict[str, float] = Field(
+    data_coverage_metrics: dict[str, float] = Field(
         default_factory=dict, description="Data coverage metrics by source/type"
     )
 
     # Technology transition metrics (if applicable)
-    transition_metrics: Optional[Dict[str, Any]] = Field(
+    transition_metrics: dict[str, Any] | None = Field(
         None, description="Technology transition analysis metrics"
     )
 
     # Ecosystem insights (if applicable)
-    ecosystem_metrics: Optional[Dict[str, Any]] = Field(
+    ecosystem_metrics: dict[str, Any] | None = Field(
         None, description="SBIR ecosystem analysis metrics"
     )
 
@@ -182,12 +182,12 @@ class ReportCollection(BaseModel):
     generated_at: datetime = Field(..., description="When the collection was generated")
 
     # Report artifacts
-    artifacts: List[ReportArtifact] = Field(
+    artifacts: list[ReportArtifact] = Field(
         default_factory=list, description="List of generated report artifacts"
     )
 
     # Format availability
-    available_formats: List[ReportFormat] = Field(
+    available_formats: list[ReportFormat] = Field(
         default_factory=list, description="List of available report formats"
     )
 
@@ -202,12 +202,12 @@ class ReportCollection(BaseModel):
 
     # Output configuration
     output_directory: Path = Field(..., description="Base directory for report outputs")
-    retention_policy_days: Optional[int] = Field(
+    retention_policy_days: int | None = Field(
         None, description="Number of days to retain reports (None = indefinite)"
     )
 
     # CI/CD integration metadata
-    ci_context: Optional[Dict[str, Any]] = Field(
+    ci_context: dict[str, Any] | None = Field(
         None, description="CI/CD context information if applicable"
     )
     pr_comment_generated: bool = Field(
@@ -217,7 +217,7 @@ class ReportCollection(BaseModel):
         default=False, description="Whether artifacts were uploaded to CI system"
     )
 
-    def get_artifact_by_format(self, format: ReportFormat) -> Optional[ReportArtifact]:
+    def get_artifact_by_format(self, format: ReportFormat) -> ReportArtifact | None:
         """Get artifact by format type.
 
         Args:
@@ -231,7 +231,7 @@ class ReportCollection(BaseModel):
                 return artifact
         return None
 
-    def get_primary_artifact_paths(self) -> Dict[str, Path]:
+    def get_primary_artifact_paths(self) -> dict[str, Path]:
         """Get paths to primary artifacts by format.
 
         Returns:
@@ -266,37 +266,37 @@ class ExecutiveSummary(BaseModel):
     technology_areas_covered: int = Field(..., description="Number of CET technology areas covered")
 
     # Program effectiveness metrics
-    funding_roi_indicators: Dict[str, float] = Field(
+    funding_roi_indicators: dict[str, float] = Field(
         default_factory=dict, description="Return on investment indicators"
     )
-    commercialization_rates: Dict[str, float] = Field(
+    commercialization_rates: dict[str, float] = Field(
         default_factory=dict, description="Commercialization success rates by sector"
     )
 
     # Success stories
     success_story_count: int = Field(default=0, description="Number of identified success stories")
-    high_impact_transitions: List[Dict[str, Any]] = Field(
+    high_impact_transitions: list[dict[str, Any]] = Field(
         default_factory=list, description="High-impact technology transition examples"
     )
 
     # Comparative analysis
-    program_goals_comparison: Dict[str, Any] = Field(
+    program_goals_comparison: dict[str, Any] = Field(
         default_factory=dict, description="Comparison against program goals and benchmarks"
     )
-    historical_trends: Dict[str, Any] = Field(
+    historical_trends: dict[str, Any] = Field(
         default_factory=dict, description="Historical trend analysis"
     )
 
     # Geographic and temporal insights
-    geographic_distribution: Dict[str, Any] = Field(
+    geographic_distribution: dict[str, Any] = Field(
         default_factory=dict, description="Geographic distribution of innovation activities"
     )
-    temporal_patterns: Dict[str, Any] = Field(
+    temporal_patterns: dict[str, Any] = Field(
         default_factory=dict, description="Temporal patterns in funding and outcomes"
     )
 
     # Key performance indicators
-    kpis: Dict[str, float] = Field(
+    kpis: dict[str, float] = Field(
         default_factory=dict, description="Key performance indicators for executive reporting"
     )
 

@@ -309,11 +309,11 @@ class Award(BaseModel):
             "pi_name": "principal_investigator",
             "ri_name": "research_institution",
         }
-        
+
         for sbir_key, award_key in field_mapping.items():
             if sbir_key in data:
                 mapped_data[award_key] = data[sbir_key]
-        
+
         # Copy fields that are the same in both formats
         for key in ["award_title", "abstract", "agency", "branch", "phase", "program",
                     "award_amount", "award_year", "proposal_award_date", "contract_end_date",
@@ -324,14 +324,14 @@ class Award(BaseModel):
                     "solicitation_year", "topic_code", "company_website", "address1", "address2"]:
             if key in data:
                 mapped_data[key] = data[key]
-        
+
         # Combine address1 and address2 into company_address if company_address not provided
         if "company_address" not in mapped_data and ("address1" in mapped_data or "address2" in mapped_data):
             addr_parts = [mapped_data.get("address1"), mapped_data.get("address2")]
             addr_parts = [p for p in addr_parts if p]
             if addr_parts:
                 mapped_data["company_address"] = ", ".join(addr_parts)
-        
+
         # Generate award_id if not provided
         if "award_id" not in mapped_data and "award_id" not in data:
             tracking = mapped_data.get("agency_tracking_number") or data.get("agency_tracking_number", "")
@@ -347,7 +347,7 @@ class Award(BaseModel):
                 agency = mapped_data.get("agency") or data.get("agency", "UNKNOWN")
                 year = mapped_data.get("award_year") or data.get("award_year", "")
                 mapped_data["award_id"] = f"{agency}_{year}_UNKNOWN"
-        
+
         # Handle award_date - if not provided, use proposal_award_date
         if "award_date" not in mapped_data and "award_date" not in data:
             proposal_date = mapped_data.get("proposal_award_date")
@@ -359,7 +359,7 @@ class Award(BaseModel):
                 if award_year:
                     from datetime import date as date_cls
                     mapped_data["award_date"] = date_cls(award_year, 1, 1)
-        
+
         return cls(**mapped_data)
 
 

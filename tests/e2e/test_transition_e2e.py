@@ -15,8 +15,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -43,11 +42,11 @@ class TestDagsterPipelineMaterialization:
         from src.assets import (
             contracts_ingestion,
             contracts_sample,
-            vendor_resolution,
-            transition_scores_v1,
-            transition_evidence_v1,
-            transition_detections,
             transition_analytics,
+            transition_detections,
+            transition_evidence_v1,
+            transition_scores_v1,
+            vendor_resolution,
         )
 
         # Verify all assets are callable (decorated with @asset)
@@ -63,11 +62,11 @@ class TestDagsterPipelineMaterialization:
         """Test that all asset checks are properly defined."""
         from src.assets import (
             contracts_sample_quality_check,
-            vendor_resolution_quality_check,
-            transition_scores_quality_check,
-            transition_evidence_quality_check,
-            transition_detections_quality_check,
             transition_analytics_quality_check,
+            transition_detections_quality_check,
+            transition_evidence_quality_check,
+            transition_scores_quality_check,
+            vendor_resolution_quality_check,
         )
 
         # Verify all checks are callable
@@ -81,11 +80,11 @@ class TestDagsterPipelineMaterialization:
     def test_neo4j_assets_defined(self):
         """Test that Neo4j transition assets are defined."""
         from src.assets import (
+            neo4j_transition_profiles,
+            neo4j_transition_relationships,
             neo4j_transitions,
             transition_node_count_check,
-            neo4j_transition_relationships,
             transition_relationships_check,
-            neo4j_transition_profiles,
         )
 
         assert callable(neo4j_transitions)
@@ -98,10 +97,12 @@ class TestDagsterPipelineMaterialization:
         """Test that asset dependencies are correctly defined."""
         # This would normally be validated by Dagster's type system,
         # but we verify the assets can be imported in dependency order
-        from src.assets import contracts_ingestion
-        from src.assets import vendor_resolution
-        from src.assets import transition_scores_v1
-        from src.assets import transition_detections
+        from src.assets import (
+            contracts_ingestion,
+            transition_detections,
+            transition_scores_v1,
+            vendor_resolution,
+        )
 
         # If these import successfully, dependency graph is likely correct
         assert contracts_ingestion is not None
@@ -561,8 +562,8 @@ class TestEndToEndIntegration:
         )
 
         # Run detection pipeline
-        from src.transition.detection.detector import TransitionDetector
         from src.transition.analysis.analytics import TransitionAnalytics
+        from src.transition.detection.detector import TransitionDetector
 
         detector = TransitionDetector()
         detections = []
@@ -688,10 +689,10 @@ class TestFullScaleDatasetSimulation:
         scale_factor = 252000 / len(awards)
         extrapolated_detections = int(len(all_detections) * scale_factor)
 
-        print(f"\nFull dataset extrapolation:")
+        print("\nFull dataset extrapolation:")
         print(f"  Sample size: {len(awards)} awards")
         print(f"  Sample detections: {len(all_detections)}")
-        print(f"  Full size: 252,000 awards")
+        print("  Full size: 252,000 awards")
         print(f"  Extrapolated detections: {extrapolated_detections:,}")
 
 
@@ -853,7 +854,7 @@ class TestPerformanceAndQualityValidation:
         # For this simulation, calculate expected
         expected_dpm = (50000 / 5) if metrics.get("detections_per_minute", 0) > 0 else 0
 
-        print(f"\nPerformance Validation (Task 21.5):")
+        print("\nPerformance Validation (Task 21.5):")
         print(f"  Awards: {metrics['awards_processed']:,}")
         print(f"  Contracts: {metrics['contracts_processed']:,}")
         print(f"  Detections: {metrics['detections_found']:,}")
@@ -890,7 +891,7 @@ class TestPerformanceAndQualityValidation:
             ground_truth_df=ground_truth,
         )
 
-        print(f"\nQuality Metrics Validation (Task 21.6):")
+        print("\nQuality Metrics Validation (Task 21.6):")
         print(f"  Precision: {result.precision:.1%} (target: ≥85%)")
         print(f"  Recall: {result.recall:.1%} (target: ≥70%)")
         print(f"  F1 Score: {result.f1:.3f}")
@@ -933,7 +934,7 @@ class TestPerformanceAndQualityValidation:
 
         # High confidence should have better metrics
         if result.by_confidence:
-            print(f"\nConfidence Band Quality (Task 21.6):")
+            print("\nConfidence Band Quality (Task 21.6):")
             for band, metrics_dict in result.by_confidence.items():
                 precision = metrics_dict.get("precision", 0.0)
                 print(

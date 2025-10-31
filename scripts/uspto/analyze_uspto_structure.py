@@ -42,10 +42,9 @@ import logging
 import os
 import sys
 import time
-from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     import pandas as pd
@@ -67,14 +66,14 @@ def now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
 
 
-def find_uspto_files(input_dir: Path) -> List[Path]:
-    files: List[Path] = []
+def find_uspto_files(input_dir: Path) -> list[Path]:
+    files: list[Path] = []
     for ext in SUPPORTED_EXT:
         files.extend(sorted(input_dir.rglob(f"*{ext}")))
     return files
 
 
-def read_sample_with_pandas(path: Path, nrows: int) -> Tuple[Any, Optional[int]]:
+def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
     """
     Attempt to read a sample using pandas. Returns (DataFrame, approx_total_rows_or_None).
     For Stata files, pandas supports reading fully but may struggle with huge files; we try to read a small sample
@@ -152,11 +151,11 @@ def read_sample_with_pandas(path: Path, nrows: int) -> Tuple[Any, Optional[int]]
     raise ValueError(f"Unsupported file type for sampling: {path}")
 
 
-def column_summary(df, sample_size: int = DEFAULT_SAMPLE) -> Dict[str, Any]:
+def column_summary(df, sample_size: int = DEFAULT_SAMPLE) -> dict[str, Any]:
     """
     Produce a per-column summary from a dataframe sample.
     """
-    summary: Dict[str, Any] = {}
+    summary: dict[str, Any] = {}
     total_rows = len(df)
     for col in df.columns:
         ser = df[col]
@@ -178,7 +177,7 @@ def column_summary(df, sample_size: int = DEFAULT_SAMPLE) -> Dict[str, Any]:
         except Exception:
             top = {}
         dtype = str(ser.dtype)
-        col_info: Dict[str, Any] = {
+        col_info: dict[str, Any] = {
             "dtype": dtype,
             "nonnull_count": nonnull_count,
             "null_count": null_count,
@@ -208,11 +207,11 @@ def column_summary(df, sample_size: int = DEFAULT_SAMPLE) -> Dict[str, Any]:
     return summary
 
 
-def detect_key_candidates(df, approx_total_rows: Optional[int] = None) -> List[str]:
+def detect_key_candidates(df, approx_total_rows: int | None = None) -> list[str]:
     """
     Heuristic: columns which are unique or nearly unique in the sample may be primary keys.
     """
-    candidates: List[Tuple[str, float]] = []
+    candidates: list[tuple[str, float]] = []
     total = len(df)
     for col in df.columns:
         try:
@@ -232,7 +231,7 @@ def detect_key_candidates(df, approx_total_rows: Optional[int] = None) -> List[s
     return result
 
 
-def analyze_file(path: Path, sample_size: int, out_dir: Path) -> Dict[str, Any]:
+def analyze_file(path: Path, sample_size: int, out_dir: Path) -> dict[str, Any]:
     LOG.info("Analyzing file: %s", path)
     start = time.time()
     try:
@@ -241,7 +240,7 @@ def analyze_file(path: Path, sample_size: int, out_dir: Path) -> Dict[str, Any]:
         LOG.exception("Failed to read sample for %s: %s", path, e)
         return {"file": str(path), "error": str(e)}
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         "file": str(path),
         "sample_rows": len(df_sample),
         "approx_total_rows": approx_total,
@@ -377,7 +376,7 @@ def main():
         files = [f for f in files if f.suffix.lower() not in skip_set]
 
     LOG.info("Found %d files to analyze", len(files))
-    summary: List[Dict[str, Any]] = []
+    summary: list[dict[str, Any]] = []
     for fp in files:
         try:
             meta = analyze_file(fp, args.sample_size, out_dir=out_dir)

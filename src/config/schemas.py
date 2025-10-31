@@ -389,14 +389,14 @@ class StatisticalReportingConfig(BaseModel):
         """Validate and coerce quality threshold values to floats."""
         if not isinstance(v, Mapping):
             raise TypeError("Expected a mapping for quality thresholds")
-        
+
         out: dict[str, float] = {}
         for key, value in v.items():
             try:
                 num = float(value)
             except (TypeError, ValueError) as e:
                 raise ValueError(f"{key} must be a number, got {value!r}") from e
-            
+
             # Validate threshold ranges based on key type
             if "warning" in key or "error" in key:
                 if key.startswith("data_completeness") or key.startswith("enrichment_success"):
@@ -405,14 +405,14 @@ class StatisticalReportingConfig(BaseModel):
                 elif key.startswith("performance_degradation"):
                     if num < 1.0:
                         raise ValueError(f"{key} must be >= 1.0 (1.0 = no degradation), got {num}")
-            
+
             out[key] = num
         return out
 
 
 class TaxParameterConfig(BaseModel):
     """Configuration for federal tax calculation parameters."""
-    
+
     # Individual income tax parameters
     individual_income_tax: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -429,7 +429,7 @@ class TaxParameterConfig(BaseModel):
             "standard_deduction": 13850,  # 2023 standard deduction (single)
         }
     )
-    
+
     # Payroll tax parameters
     payroll_tax: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -439,7 +439,7 @@ class TaxParameterConfig(BaseModel):
             "wage_base_limit": 160200,  # 2023 Social Security wage base
         }
     )
-    
+
     # Corporate income tax parameters
     corporate_income_tax: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -447,7 +447,7 @@ class TaxParameterConfig(BaseModel):
             "effective_rate": 0.18,  # Average effective rate accounting for deductions
         }
     )
-    
+
     # Excise tax parameters
     excise_tax: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -462,7 +462,7 @@ class TaxParameterConfig(BaseModel):
         """Validate tax parameter values are reasonable."""
         if not isinstance(v, Mapping):
             raise TypeError("Expected a mapping for tax parameters")
-        
+
         # Convert to dict and validate rate values
         out: dict[str, Any] = dict(v)
         for key, value in out.items():
@@ -471,13 +471,13 @@ class TaxParameterConfig(BaseModel):
                 if not (0.0 <= rate <= 1.0):
                     raise ValueError(f"Tax rate {key} must be between 0.0 and 1.0, got {rate}")
                 out[key] = rate
-        
+
         return out
 
 
 class SensitivityConfig(BaseModel):
     """Configuration for sensitivity analysis and uncertainty quantification."""
-    
+
     # Parameter sweep configuration
     parameter_sweep: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -487,7 +487,7 @@ class SensitivityConfig(BaseModel):
             "random_seed": 42,
         }
     )
-    
+
     # Uncertainty parameters
     uncertainty_parameters: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -505,7 +505,7 @@ class SensitivityConfig(BaseModel):
             },
         }
     )
-    
+
     # Confidence interval configuration
     confidence_intervals: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -514,7 +514,7 @@ class SensitivityConfig(BaseModel):
             "bootstrap_samples": 1000,
         }
     )
-    
+
     # Performance thresholds
     performance: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -530,7 +530,7 @@ class SensitivityConfig(BaseModel):
         """Validate uncertainty parameter values."""
         if not isinstance(v, Mapping):
             raise TypeError("Expected a mapping for uncertainty parameters")
-        
+
         out: dict[str, Any] = dict(v)
         for param_name, param_config in out.items():
             if isinstance(param_config, dict) and "variation_percent" in param_config:
@@ -540,31 +540,31 @@ class SensitivityConfig(BaseModel):
                     if not (0.0 <= variation <= 1.0):
                         raise ValueError(f"Variation percent for {param_name} must be between 0.0 and 1.0, got {variation}")
                     param_config["variation_percent"] = variation
-        
+
         return out
 
 
 class FiscalAnalysisConfig(BaseModel):
     """Configuration for SBIR fiscal returns analysis."""
-    
+
     # Base analysis parameters
     base_year: int = Field(default=2023, description="Base year for inflation adjustment")
     inflation_source: str = Field(default="bea_gdp_deflator", description="Source for inflation data")
     naics_crosswalk_version: str = Field(default="2022", description="NAICS-to-BEA crosswalk version")
     stateio_model_version: str = Field(default="v2.1", description="StateIO model version")
-    
+
     # Tax calculation parameters
     tax_parameters: TaxParameterConfig = Field(
         default_factory=TaxParameterConfig,
         description="Federal tax calculation parameters"
     )
-    
+
     # Sensitivity analysis parameters
     sensitivity_parameters: SensitivityConfig = Field(
         default_factory=SensitivityConfig,
         description="Sensitivity analysis and uncertainty quantification parameters"
     )
-    
+
     # Data quality thresholds
     quality_thresholds: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -574,7 +574,7 @@ class FiscalAnalysisConfig(BaseModel):
             "bea_sector_mapping_rate": 0.90,  # 90% must map to BEA sectors
         }
     )
-    
+
     # Performance configuration
     performance: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -585,7 +585,7 @@ class FiscalAnalysisConfig(BaseModel):
             "timeout_seconds": 1800,  # 30 minutes
         }
     )
-    
+
     # Output configuration
     output: dict[str, Any] = Field(
         default_factory=lambda: {
@@ -610,17 +610,17 @@ class FiscalAnalysisConfig(BaseModel):
         """Validate quality threshold values."""
         if not isinstance(v, Mapping):
             raise TypeError("Expected a mapping for quality thresholds")
-        
+
         out: dict[str, float] = {}
         for key, value in v.items():
             try:
                 num = float(value)
             except (TypeError, ValueError) as e:
                 raise ValueError(f"{key} must be a number, got {value!r}") from e
-            
+
             if not (0.0 <= num <= 1.0):
                 raise ValueError(f"{key} must be between 0.0 and 1.0, got {num}")
-            
+
             out[key] = num
         return out
 

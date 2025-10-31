@@ -37,7 +37,6 @@ import ssl
 import tempfile
 import time
 from datetime import datetime
-from typing import Dict, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -69,7 +68,7 @@ RATE_LIMIT_PATTERNS = [
 ]
 
 
-def http_get(url: str, timeout: int = DEFAULT_TIMEOUT) -> Tuple[int, Dict[str, str], str]:
+def http_get(url: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[int, dict[str, str], str]:
     """
     Perform a simple HTTP GET and return (status_code, headers, body_text).
 
@@ -100,13 +99,13 @@ def http_get(url: str, timeout: int = DEFAULT_TIMEOUT) -> Tuple[int, Dict[str, s
         except Exception:
             body = ""
         return he.code if getattr(he, "code", None) else 0, {}, body
-    except URLError as ue:
+    except URLError:
         raise
     except Exception:
         raise
 
 
-def extract_rate_limit_from_headers(headers: Dict[str, str]) -> Optional[Dict[str, str]]:
+def extract_rate_limit_from_headers(headers: dict[str, str]) -> dict[str, str] | None:
     """
     Inspect headers for common rate-limit / retry headers and return a small dict
     if found.
@@ -118,7 +117,7 @@ def extract_rate_limit_from_headers(headers: Dict[str, str]) -> Optional[Dict[st
     return found if found else None
 
 
-def extract_rate_limit_from_text(text: str) -> Optional[str]:
+def extract_rate_limit_from_text(text: str) -> str | None:
     """
     Search the text for human-readable rate-limit mentions using heuristics.
     Return the first matched snippet or None.
@@ -134,7 +133,7 @@ def extract_rate_limit_from_text(text: str) -> Optional[str]:
     return None
 
 
-def annotate_provider(provider: Dict, url_key: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+def annotate_provider(provider: dict, url_key: str, timeout: int = DEFAULT_TIMEOUT) -> None:
     """
     Attempt to fetch and analyze a single URL (docs or api_docs) for the given provider.
     Annotates provider['discovery'][url_key] with findings.
@@ -210,13 +209,13 @@ def now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
 
 
-def load_providers(path: str) -> Dict:
-    with open(path, "r", encoding="utf-8") as fh:
+def load_providers(path: str) -> dict:
+    with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     return data
 
 
-def safe_write_json(path: str, data: Dict) -> None:
+def safe_write_json(path: str, data: dict) -> None:
     # Write to temp and atomically move
     dirpath = os.path.dirname(path) or "."
     fd, tmp = tempfile.mkstemp(prefix="providers.", dir=dirpath, text=True)
@@ -234,7 +233,7 @@ def safe_write_json(path: str, data: Dict) -> None:
 
 
 def find_and_annotate(
-    providers_obj: Dict, timeout: int = DEFAULT_TIMEOUT, single_id: Optional[str] = None
+    providers_obj: dict, timeout: int = DEFAULT_TIMEOUT, single_id: str | None = None
 ) -> None:
     providers = providers_obj.get("providers", [])
     for p in providers:
@@ -250,7 +249,7 @@ def find_and_annotate(
         time.sleep(0.25)
 
 
-def summarize_findings(providers_obj: Dict) -> None:
+def summarize_findings(providers_obj: dict) -> None:
     providers = providers_obj.get("providers", [])
     for p in providers:
         pid = p.get("id")

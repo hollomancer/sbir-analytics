@@ -17,21 +17,19 @@ Usage:
 
 import argparse
 import json
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from src.config.loader import get_config
 from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
-from src.extractors.sbir import SbirDuckDBExtractor
 from src.utils.performance_monitor import performance_monitor
 
 
-def load_sample_data(sample_size: Optional[int] = None) -> tuple[pd.DataFrame, int]:
+def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
     """
     Load sample SBIR data for benchmarking.
 
@@ -102,7 +100,7 @@ def load_usaspending_lookup() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> Dict[str, Any]:
+def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> dict[str, Any]:
     """
     Run enrichment pipeline with performance monitoring.
 
@@ -189,7 +187,7 @@ def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame
         raise
 
 
-def load_baseline(baseline_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+def load_baseline(baseline_path: Path | None = None) -> dict[str, Any] | None:
     """
     Load historical benchmark baseline if it exists.
 
@@ -216,7 +214,7 @@ def load_baseline(baseline_path: Optional[Path] = None) -> Optional[Dict[str, An
         return None
 
 
-def detect_regressions(current: Dict[str, Any], baseline: Dict[str, Any]) -> Dict[str, Any]:
+def detect_regressions(current: dict[str, Any], baseline: dict[str, Any]) -> dict[str, Any]:
     """
     Detect performance regressions by comparing current to baseline.
 
@@ -292,8 +290,8 @@ def detect_regressions(current: Dict[str, Any], baseline: Dict[str, Any]) -> Dic
 
 
 def save_benchmark(
-    benchmark_data: Dict[str, Any],
-    output_path: Optional[Path] = None,
+    benchmark_data: dict[str, Any],
+    output_path: Path | None = None,
 ) -> Path:
     """
     Save benchmark results to JSON file.

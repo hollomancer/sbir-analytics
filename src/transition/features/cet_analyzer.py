@@ -5,12 +5,10 @@ This module provides methods to extract CET area alignment signals between SBIR 
 and federal contracts, supporting technology-focused transition scoring.
 """
 
-from typing import Optional, Dict, List, Tuple
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from ...models.transition_models import CETSignal
-
 
 # CET Area Keyword Mappings
 # Maps CET areas to keywords commonly found in contract descriptions
@@ -108,11 +106,11 @@ CET_KEYWORD_MAPPINGS = {
 class CETAnalysisResult:
     """Result of CET area analysis."""
 
-    award_cet: Optional[str]
-    contract_cet: Optional[str]
+    award_cet: str | None
+    contract_cet: str | None
     alignment_score: float
     confidence: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class CETSignalExtractor:
@@ -126,7 +124,7 @@ class CETSignalExtractor:
     - Generate CET signal scores for transition likelihood
     """
 
-    def __init__(self, cet_keyword_mappings: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, cet_keyword_mappings: dict[str, list[str]] | None = None):
         """
         Initialize CET Signal Extractor.
 
@@ -138,7 +136,7 @@ class CETSignalExtractor:
         # Precompile regex patterns for efficiency
         self.compiled_patterns = self._compile_patterns()
 
-    def _compile_patterns(self) -> Dict[str, List]:
+    def _compile_patterns(self) -> dict[str, list]:
         """Precompile regex patterns for all CET keywords for efficiency."""
         compiled = {}
         for cet_area, keywords in self.keyword_mappings.items():
@@ -150,7 +148,7 @@ class CETSignalExtractor:
             compiled[cet_area] = patterns
         return compiled
 
-    def extract_award_cet(self, award_data: dict) -> Optional[str]:
+    def extract_award_cet(self, award_data: dict) -> str | None:
         """
         Extract CET classification from award data.
 
@@ -195,8 +193,8 @@ class CETSignalExtractor:
         return None
 
     def infer_contract_cet(
-        self, contract_description: Optional[str]
-    ) -> Tuple[Optional[str], float]:
+        self, contract_description: str | None
+    ) -> tuple[str | None, float]:
         """
         Infer CET area from contract description using keyword matching.
 
@@ -234,7 +232,7 @@ class CETSignalExtractor:
 
         return best_match, best_score
 
-    def calculate_alignment(self, award_cet: Optional[str], contract_cet: Optional[str]) -> float:
+    def calculate_alignment(self, award_cet: str | None, contract_cet: str | None) -> float:
         """
         Calculate CET area alignment score between award and contract.
 
@@ -270,7 +268,7 @@ class CETSignalExtractor:
     def extract_signal(
         self,
         award_data: dict,
-        contract_description: Optional[str],
+        contract_description: str | None,
         weight: float = 0.10,
     ) -> CETSignal:
         """
@@ -302,10 +300,10 @@ class CETSignalExtractor:
 
     def batch_extract_signals(
         self,
-        awards: List[dict],
-        contracts: List[dict],
+        awards: list[dict],
+        contracts: list[dict],
         weight: float = 0.10,
-    ) -> List[Tuple[int, int, CETSignal]]:
+    ) -> list[tuple[int, int, CETSignal]]:
         """
         Extract CET signals for multiple award-contract pairs.
 
@@ -328,7 +326,7 @@ class CETSignalExtractor:
         return signals
 
     def get_analysis_report(
-        self, award_data: dict, contract_description: Optional[str]
+        self, award_data: dict, contract_description: str | None
     ) -> CETAnalysisResult:
         """
         Generate a detailed CET analysis report for a single award-contract pair.
@@ -372,7 +370,7 @@ class CETSignalExtractor:
 
 
 def create_cet_extractor(
-    custom_keywords: Optional[Dict[str, List[str]]] = None,
+    custom_keywords: dict[str, list[str]] | None = None,
 ) -> CETSignalExtractor:
     """
     Factory function to create a CETSignalExtractor instance.

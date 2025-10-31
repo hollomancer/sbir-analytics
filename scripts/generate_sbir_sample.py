@@ -7,8 +7,6 @@ Creates 100 representative records with edge cases and invalid data.
 
 import csv
 import random
-from datetime import date, timedelta
-from typing import Optional
 
 # CSV columns (42 total)
 COLUMNS = [

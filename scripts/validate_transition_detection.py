@@ -6,9 +6,9 @@ This script demonstrates that the core transition detection functionality
 is working by running a minimal example with sample data.
 """
 
-import pandas as pd
-from datetime import date, timedelta
-from src.models.transition_models import FederalContract, CompetitionType
+from datetime import date
+
+from src.models.transition_models import CompetitionType, FederalContract
 from src.transition.detection.detector import TransitionDetector
 from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
@@ -127,7 +127,7 @@ def main():
     awards, contracts = create_sample_data()
     vendor_resolver = create_vendor_resolver(awards)
 
-    print(f"✓ Created sample data:")
+    print("✓ Created sample data:")
     print(f"  - {len(awards)} awards")
     print(f"  - {len(contracts)} contracts")
     stats = vendor_resolver.stats()
@@ -157,7 +157,7 @@ def main():
         all_detections.extend(detections)
 
     # Summary
-    print(f"\n📊 Detection Summary:")
+    print("\n📊 Detection Summary:")
     print(f"  - Total detections: {len(all_detections)}")
 
     if all_detections:
@@ -166,7 +166,7 @@ def main():
 
         print(f"  - Score range: {min(scores):.3f} - {max(scores):.3f}")
         print(f"  - Average score: {sum(scores)/len(scores):.3f}")
-        print(f"  - Confidence distribution:")
+        print("  - Confidence distribution:")
 
         from collections import Counter
 
@@ -176,13 +176,13 @@ def main():
 
     # Metrics
     metrics = detector.get_metrics()
-    print(f"\n📈 Detection Metrics:")
+    print("\n📈 Detection Metrics:")
     print(f"  - Awards processed: {metrics.get('awards_processed', 0)}")
     print(f"  - Contracts evaluated: {metrics.get('contracts_evaluated', 0)}")
     print(f"  - Vendor match rate: {metrics.get('vendor_match_rate', 0):.1%}")
 
-    print(f"\n✅ Validation completed successfully!")
-    print(f"   The transition detection system is working correctly.")
+    print("\n✅ Validation completed successfully!")
+    print("   The transition detection system is working correctly.")
 
     return len(all_detections) > 0
 

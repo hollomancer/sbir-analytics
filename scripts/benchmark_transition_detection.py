@@ -8,20 +8,18 @@ Usage:
 
 import argparse
 import json
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
 from src.enrichers.transition_detector import TransitionDetector
 from src.utils.performance_monitor import performance_monitor
 
 
-def load_company_data(sample_size: Optional[int] = None) -> tuple[pd.DataFrame, int]:
+def load_company_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
     """
     Load company data for benchmarking.
     Args:
@@ -49,7 +47,7 @@ def load_company_data(sample_size: Optional[int] = None) -> tuple[pd.DataFrame, 
         return full_df, total_records
 
 
-def run_transition_detection_benchmark(company_df: pd.DataFrame) -> Dict[str, Any]:
+def run_transition_detection_benchmark(company_df: pd.DataFrame) -> dict[str, Any]:
     """
     Run transition detection with performance monitoring.
     Args:
@@ -89,8 +87,8 @@ def run_transition_detection_benchmark(company_df: pd.DataFrame) -> Dict[str, An
 
 
 def save_benchmark(
-    benchmark_data: Dict[str, Any],
-    output_path: Optional[Path] = None,
+    benchmark_data: dict[str, Any],
+    output_path: Path | None = None,
 ) -> Path:
     """
     Save benchmark results to JSON file.

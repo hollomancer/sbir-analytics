@@ -17,8 +17,9 @@ comprehensive logging and metrics.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any
 from uuid import uuid4
 
 from loguru import logger
@@ -26,10 +27,8 @@ from tqdm import tqdm
 
 from src.models.transition_models import (
     ConfidenceLevel,
-    EvidenceBundle,
     FederalContract,
     Transition,
-    TransitionSignals,
     VendorMatch,
 )
 from src.transition.detection.evidence import EvidenceGenerator
@@ -76,10 +75,10 @@ class TransitionDetector:
 
     def __init__(
         self,
-        config: Dict[str, Any],
-        vendor_resolver: Optional[VendorResolver] = None,
-        scorer: Optional[TransitionScorer] = None,
-        evidence_generator: Optional[EvidenceGenerator] = None,
+        config: dict[str, Any],
+        vendor_resolver: VendorResolver | None = None,
+        scorer: TransitionScorer | None = None,
+        evidence_generator: EvidenceGenerator | None = None,
     ):
         """
         Initialize transition detector with configuration and dependencies.
@@ -130,7 +129,7 @@ class TransitionDetector:
         self,
         award_completion_date: date,
         contracts: Iterable[FederalContract],
-    ) -> List[FederalContract]:
+    ) -> list[FederalContract]:
         """
         Filter contracts to those within configured timing window.
 
@@ -168,8 +167,8 @@ class TransitionDetector:
     def match_vendor(
         self,
         contract: FederalContract,
-        award_vendor_id: Optional[str] = None,
-    ) -> Optional[VendorMatch]:
+        award_vendor_id: str | None = None,
+    ) -> VendorMatch | None:
         """
         Match contract vendor to award vendor using resolver.
 
@@ -272,11 +271,11 @@ class TransitionDetector:
 
     def detect_for_award(
         self,
-        award: Dict[str, Any],
-        candidate_contracts: List[FederalContract],
-        patent_data: Optional[Dict[str, Any]] = None,
-        cet_data: Optional[Dict[str, Any]] = None,
-    ) -> List[Transition]:
+        award: dict[str, Any],
+        candidate_contracts: list[FederalContract],
+        patent_data: dict[str, Any] | None = None,
+        cet_data: dict[str, Any] | None = None,
+    ) -> list[Transition]:
         """
         Detect transitions for a single SBIR award.
 
@@ -383,8 +382,8 @@ class TransitionDetector:
 
     def detect_batch(
         self,
-        awards: List[Dict[str, Any]],
-        contracts: List[FederalContract],
+        awards: list[dict[str, Any]],
+        contracts: list[FederalContract],
         batch_size: int = 1000,
         show_progress: bool = True,
     ) -> Iterator[Transition]:
@@ -404,7 +403,7 @@ class TransitionDetector:
         """
         # Index contracts by vendor for efficient lookup
         # (In production, this would use DuckDB or similar for larger datasets)
-        contract_map: Dict[str, List[FederalContract]] = {}
+        contract_map: dict[str, list[FederalContract]] = {}
         for contract in contracts:
             vendor_id = (
                 contract.vendor_uei
@@ -469,7 +468,7 @@ class TransitionDetector:
             },
         )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get current detection metrics.
 

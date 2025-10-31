@@ -11,7 +11,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import duckdb
 import pandas as pd
@@ -21,7 +20,7 @@ from loguru import logger
 class USAspendingDumpProfiler:
     """Profiler for USAspending PostgreSQL COPY dumps."""
 
-    def __init__(self, dump_path: Path, temp_dir: Optional[Path] = None):
+    def __init__(self, dump_path: Path, temp_dir: Path | None = None):
         """Initialize profiler.
 
         Args:
@@ -30,7 +29,7 @@ class USAspendingDumpProfiler:
         """
         self.dump_path = dump_path
         self.temp_dir = temp_dir or Path("/tmp")
-        self.connection: Optional[duckdb.DuckDBPyConnection] = None
+        self.connection: duckdb.DuckDBPyConnection | None = None
 
         # Known table OID mappings (PostgreSQL object IDs to table names)
         # These may need to be verified/updated based on actual dump
@@ -72,7 +71,7 @@ class USAspendingDumpProfiler:
         logger.info("Dump file validation passed")
         return True
 
-    def get_dump_metadata_from_files(self) -> Dict:
+    def get_dump_metadata_from_files(self) -> dict:
         """Get dump metadata by analyzing the ZIP file contents.
 
         Returns:
@@ -126,7 +125,7 @@ class USAspendingDumpProfiler:
 
     def get_table_sample_from_copy_file(
         self, table_oid: int, limit: int = 10000, chunk_size: int = 100000
-    ) -> Dict:
+    ) -> dict:
         """Stream-sample rows from a PostgreSQL COPY file inside the ZIP archive.
 
         This implementation streams the compressed `.dat.gz` file directly from the ZIP
@@ -149,8 +148,9 @@ class USAspendingDumpProfiler:
             Dictionary with sample data and simple progress/diagnostics
         """
         # Local imports to keep top-level imports stable
-        from src.utils.performance_monitor import performance_monitor
         import json
+
+        from src.utils.performance_monitor import performance_monitor
 
         table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
         logger.info(
@@ -322,10 +322,10 @@ class USAspendingDumpProfiler:
 
     def profile_dump(
         self,
-        sample_oids: Optional[List[int]] = None,
+        sample_oids: list[int] | None = None,
         sample_limit: int = 10000,
         chunk_size: int = 100000,
-    ) -> Dict:
+    ) -> dict:
         """Profile the entire dump.
 
         Args:
@@ -365,7 +365,7 @@ class USAspendingDumpProfiler:
 
         return report
 
-    def save_report(self, report: Dict, output_path: Path):
+    def save_report(self, report: dict, output_path: Path):
         """Save profiling report to file.
 
         Args:
@@ -383,7 +383,7 @@ class USAspendingDumpProfiler:
         summary_path = output_path.with_suffix(".summary.md")
         self.save_summary_report(report, summary_path)
 
-    def save_summary_report(self, report: Dict, output_path: Path):
+    def save_summary_report(self, report: dict, output_path: Path):
         """Save a human-readable summary report.
 
         Args:
@@ -515,7 +515,7 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("Profiling interrupted by user")
-    except Exception as e:
+    except Exception:
         # Emit full stacktrace to make root cause debugging easier
         logger.exception("Profiling failed")
         sys.exit(1)

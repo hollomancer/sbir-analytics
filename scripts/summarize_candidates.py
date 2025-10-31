@@ -33,20 +33,17 @@ will attempt to map matched company indices to company names for better readabil
 """
 from __future__ import annotations
 
-import argparse
 import json
 import math
-import os
-from collections import Counter, defaultdict
-from datetime import datetime
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # pandas is required; assume installed in the environment used to run the script.
 import pandas as pd
 
 
-def safe_load_json_candidates(s: Any) -> List[Dict[str, Any]]:
+def safe_load_json_candidates(s: Any) -> list[dict[str, Any]]:
     """
     Parse a JSON candidates string/structure into a list of candidate dicts.
     Accepts:
@@ -89,7 +86,7 @@ def safe_load_json_candidates(s: Any) -> List[Dict[str, Any]]:
         return []
 
 
-def build_company_index_map(companies_path: Path) -> Dict[str, str]:
+def build_company_index_map(companies_path: Path) -> dict[str, str]:
     """
     Build a mapping from company index (stringified) to canonical company name.
     The merged companies file typically has original index in the CSV's implicit index,
@@ -99,7 +96,7 @@ def build_company_index_map(companies_path: Path) -> Dict[str, str]:
 
     Returns dict: str(idx) -> company_name
     """
-    mapping: Dict[str, str] = {}
+    mapping: dict[str, str] = {}
     if not companies_path or not companies_path.exists():
         return mapping
     try:
@@ -157,9 +154,9 @@ def bucket_score(score: float) -> str:
 
 def summarize_candidates(
     candidates_csv: Path,
-    companies_csv: Optional[Path] = None,
+    companies_csv: Path | None = None,
     sample_n: int = 25,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Produce a summary dictionary for candidate-review CSV.
 
@@ -259,4 +256,9 @@ def summarize_candidates(
         samples.append(
             {
                 "award_index": row.get("award_index") or row.get("index") or "",
-                "award_company": row.get("
+                "award_company": row.get("award_company") or row.get("company") or "",
+                "best_match_idx": row.get("best_match_idx") or row.get("company_idx") or "",
+                "best_match_score": row.get("best_match_score") or "",
+                "candidates": norm_cands,
+            }
+        )

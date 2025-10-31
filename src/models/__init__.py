@@ -20,7 +20,7 @@ from importlib import import_module
 from typing import Any, Dict, List
 
 # Public API exported by this package. Keep this list in sync with the lazy mapping below.
-__all__: List[str] = [
+__all__: list[str] = [
     # Awards
     "Award",
     "RawAward",
@@ -61,7 +61,7 @@ __all__: List[str] = [
 # Mapping of exported symbol -> (module_path, attribute_name)
 # When a symbol is accessed on this package, the target module will be imported
 # and the attribute will be resolved and cached in the module globals for future use.
-_lazy_mapping: Dict[str, tuple] = {
+_lazy_mapping: dict[str, tuple] = {
     # Award models
     "Award": ("src.models.award", "Award"),
     "RawAward": ("src.models.award", "RawAward"),
@@ -123,7 +123,7 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def __dir__() -> List[str]:
+def __dir__() -> list[str]:
     """
     Enhance completion by exposing defined __all__ items alongside module globals.
     """

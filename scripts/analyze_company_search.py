@@ -28,15 +28,12 @@ Notes:
 
 from __future__ import annotations
 
-import argparse
 import json
-import math
 import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 # Optional dependencies
 try:
@@ -50,7 +47,6 @@ try:
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:
-    from difflib import SequenceMatcher  # type: ignore
 
     _RAPIDFUZZ_AVAILABLE = False
 
@@ -58,7 +54,7 @@ except Exception:
 # -------------------------
 # Helpers
 # -------------------------
-def normalize_name_for_matching(s: Optional[str]) -> str:
+def normalize_name_for_matching(s: str | None) -> str:
     if not s:
         return ""
     s2 = str(s).strip().lower()
@@ -72,13 +68,13 @@ def normalize_name_for_matching(s: Optional[str]) -> str:
     return s2
 
 
-def digits_only(s: Optional[str]) -> str:
+def digits_only(s: str | None) -> str:
     if not s:
         return ""
     return "".join(ch for ch in str(s) if ch.isdigit())
 
 
-def alnum_upper(s: Optional[str]) -> str:
+def alnum_upper(s: str | None) -> str:
     if not s:
         return ""
     return "".join(ch for ch in str(s) if ch.isalnum()).upper()
@@ -105,8 +101,8 @@ class CompanySummary:
     state_nonnull: int
     zip_nonnull: int
     unique_names: int
-    top_states: List[Tuple[str, int]]
-    top_domains: List[Tuple[str, int]]
+    top_states: list[tuple[str, int]]
+    top_domains: list[tuple[str, int]]
     duplicate_name_count: int
 
 
@@ -192,7 +188,7 @@ def estimate_enrichment_value(
     high_threshold: int = 90,
     med_threshold: int = 75,
     fuzzy_limit: int = 1,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """
     Compute:
     - counts of exact matches by UEI and DUNs
@@ -354,7 +350,7 @@ def estimate_enrichment_value(
         "company_rows": len(comp),
         "company_columns": comp.columns.tolist(),
         "company_summary": {
-            "uei_nonnull": int((comp.get("UEI", "").replace("", pd.NA).dropna().shape[0])),
+            "uei_nonnull": int(comp.get("UEI", "").replace("", pd.NA).dropna().shape[0]),
             "duns_nonnull": int(
                 (comp.get(duns_col, "").replace("", pd.NA).dropna().shape[0]) if duns_col else 0
             ),
@@ -389,7 +385,7 @@ def estimate_enrichment_value(
 # -------------------------
 # Reporting
 # -------------------------
-def render_markdown_report(out_path: Path, diagnostics: Dict[str, object]) -> None:
+def render_markdown_report(out_path: Path, diagnostics: dict[str, object]) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         fh.write("# Company Search Enrichment Analysis\n\n")
@@ -440,7 +436,7 @@ def render_markdown_report(out_path: Path, diagnostics: Dict[str, object]) -> No
         )
 
 
-def write_json(out_path: Path, diagnostics: Dict[str, object]) -> None:
+def write_json(out_path: Path, diagnostics: dict[str, object]) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         json.dump(diagnostics, fh, indent=2, default=str)
@@ -449,7 +445,7 @@ def write_json(out_path: Path, diagnostics: Dict[str, object]) -> None:
 # -------------------------
 # CLI
 # -------------------------
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(

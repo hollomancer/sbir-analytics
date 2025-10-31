@@ -17,31 +17,30 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
 
 
 @dataclass
 class NAICSEnrichmentResult:
     """Result of NAICS enrichment with confidence and source tracking."""
-    
-    naics_code: Optional[str]
+
+    naics_code: str | None
     confidence: float
     source: str
     method: str
     timestamp: datetime
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class FiscalNAICSEnricher:
     """NAICS enrichment service for fiscal returns analysis."""
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the NAICS enricher.
         
         Args:
@@ -49,12 +48,12 @@ class FiscalNAICSEnricher:
         """
         self.config = config or get_config().fiscal_analysis
         self.quality_thresholds = self.config.quality_thresholds
-        
+
         # Agency default NAICS mappings
         self.agency_defaults = {
             "DOD": "3364",  # Aerospace product and parts manufacturing
             "ARMY": "3364",
-            "NAVY": "3364", 
+            "NAVY": "3364",
             "AIR FORCE": "3364",
             "HHS": "5417",  # Scientific research and development services
             "NIH": "5417",
@@ -69,12 +68,12 @@ class FiscalNAICSEnricher:
             "DOC": "5415",  # Commerce and technology research
             "NIST": "5415", # Standards and technology research
         }
-        
+
         # Sector fallback code for unclassified awards
         self.sector_fallback_code = "5415"  # Computer systems design and related services
-        
+
         logger.info(f"Initialized FiscalNAICSEnricher with {len(self.agency_defaults)} agency mappings")
-    
+
     def validate_naics_code(self, naics_code: str) -> bool:
         """Validate NAICS code format and structure.
         
@@ -86,22 +85,22 @@ class FiscalNAICSEnricher:
         """
         if not naics_code:
             return False
-            
+
         # Remove any non-digit characters
         clean_code = re.sub(r'\D', '', str(naics_code))
-        
+
         # NAICS codes should be 2-6 digits
         if len(clean_code) < 2 or len(clean_code) > 6:
             return False
-            
+
         # Check if it's a valid numeric string
         try:
             int(clean_code)
             return True
         except ValueError:
             return False
-    
-    def normalize_naics_code(self, naics_code: str) -> Optional[str]:
+
+    def normalize_naics_code(self, naics_code: str) -> str | None:
         """Normalize NAICS code to standard format.
         
         Args:
@@ -112,20 +111,20 @@ class FiscalNAICSEnricher:
         """
         if not naics_code:
             return None
-            
+
         # Remove non-digit characters and leading zeros
         clean_code = re.sub(r'\D', '', str(naics_code)).lstrip('0')
-        
+
         if not clean_code:
             return None
-            
+
         # Validate the cleaned code
         if self.validate_naics_code(clean_code):
             return clean_code
-        
+
         return None
-    
-    def enrich_from_original_data(self, award_row: pd.Series) -> Optional[NAICSEnrichmentResult]:
+
+    def enrich_from_original_data(self, award_row: pd.Series) -> NAICSEnrichmentResult | None:
         """Extract NAICS from original SBIR data.
         
         Args:
@@ -136,7 +135,7 @@ class FiscalNAICSEnricher:
         """
         # Check common NAICS column names
         naics_columns = ['NAICS', 'naics', 'NAICS_Code', 'naics_code', 'Primary_NAICS']
-        
+
         for col in naics_columns:
             if col in award_row.index and pd.notna(award_row[col]):
                 naics_code = self.normalize_naics_code(str(award_row[col]))
@@ -149,10 +148,10 @@ class FiscalNAICSEnricher:
                         timestamp=datetime.now(),
                         metadata={"original_column": col, "original_value": str(award_row[col])}
                     )
-        
+
         return None
-    
-    def enrich_from_usaspending(self, award_row: pd.Series, usaspending_df: pd.DataFrame) -> Optional[NAICSEnrichmentResult]:
+
+    def enrich_from_usaspending(self, award_row: pd.Series, usaspending_df: pd.DataFrame) -> NAICSEnrichmentResult | None:
         """Enrich NAICS from USAspending data.
         
         Args:
@@ -177,11 +176,11 @@ class FiscalNAICSEnricher:
                         timestamp=datetime.now(),
                         metadata={"match_method": str(award_row['_usaspending_match_method'])}
                     )
-        
+
         # Attempt new USAspending lookup by UEI/DUNS
         uei = award_row.get('UEI') or award_row.get('uei')
         duns = award_row.get('Duns') or award_row.get('duns')
-        
+
         if uei and pd.notna(uei):
             matches = usaspending_df[usaspending_df['recipient_uei'] == str(uei)]
             if not matches.empty and 'naics_code' in matches.columns:
@@ -199,7 +198,7 @@ class FiscalNAICSEnricher:
                             timestamp=datetime.now(),
                             metadata={"uei": str(uei), "matches_found": len(matches)}
                         )
-        
+
         if duns and pd.notna(duns):
             # Clean DUNS to digits only
             clean_duns = re.sub(r'\D', '', str(duns))
@@ -219,10 +218,10 @@ class FiscalNAICSEnricher:
                                 timestamp=datetime.now(),
                                 metadata={"duns": clean_duns, "matches_found": len(matches)}
                             )
-        
+
         return None
-    
-    def enrich_from_sam_gov(self, award_row: pd.Series) -> Optional[NAICSEnrichmentResult]:
+
+    def enrich_from_sam_gov(self, award_row: pd.Series) -> NAICSEnrichmentResult | None:
         """Enrich NAICS from SAM.gov API (placeholder for future implementation).
         
         Args:
@@ -235,8 +234,8 @@ class FiscalNAICSEnricher:
         # This would require API key and rate limiting implementation
         logger.debug("SAM.gov NAICS enrichment not yet implemented")
         return None
-    
-    def enrich_from_agency_defaults(self, award_row: pd.Series) -> Optional[NAICSEnrichmentResult]:
+
+    def enrich_from_agency_defaults(self, award_row: pd.Series) -> NAICSEnrichmentResult | None:
         """Apply agency-specific default NAICS codes.
         
         Args:
@@ -247,11 +246,11 @@ class FiscalNAICSEnricher:
         """
         # Check agency column
         agency_columns = ['Agency', 'agency', 'Awarding_Agency', 'awarding_agency']
-        
+
         for col in agency_columns:
             if col in award_row.index and pd.notna(award_row[col]):
                 agency = str(award_row[col]).upper().strip()
-                
+
                 # Direct match
                 if agency in self.agency_defaults:
                     return NAICSEnrichmentResult(
@@ -262,7 +261,7 @@ class FiscalNAICSEnricher:
                         timestamp=datetime.now(),
                         metadata={"agency": agency, "column": col}
                     )
-                
+
                 # Partial match for complex agency names
                 for agency_key, naics_code in self.agency_defaults.items():
                     if agency_key in agency or agency in agency_key:
@@ -274,9 +273,9 @@ class FiscalNAICSEnricher:
                             timestamp=datetime.now(),
                             metadata={"agency": agency, "matched_key": agency_key, "column": col}
                         )
-        
+
         return None
-    
+
     def enrich_from_sector_fallback(self, award_row: pd.Series) -> NAICSEnrichmentResult:
         """Apply sector fallback NAICS code.
         
@@ -294,8 +293,8 @@ class FiscalNAICSEnricher:
             timestamp=datetime.now(),
             metadata={"fallback_code": self.sector_fallback_code}
         )
-    
-    def enrich_single_award(self, award_row: pd.Series, usaspending_df: Optional[pd.DataFrame] = None) -> NAICSEnrichmentResult:
+
+    def enrich_single_award(self, award_row: pd.Series, usaspending_df: pd.DataFrame | None = None) -> NAICSEnrichmentResult:
         """Enrich a single award with NAICS code using hierarchical fallback.
         
         Args:
@@ -312,7 +311,7 @@ class FiscalNAICSEnricher:
             self.enrich_from_sam_gov,
             self.enrich_from_agency_defaults,
         ]
-        
+
         for method in enrichment_methods:
             try:
                 result = method(award_row)
@@ -321,11 +320,11 @@ class FiscalNAICSEnricher:
             except Exception as e:
                 logger.warning(f"NAICS enrichment method failed: {e}")
                 continue
-        
+
         # Final fallback
         return self.enrich_from_sector_fallback(award_row)
-    
-    def enrich_awards_dataframe(self, awards_df: pd.DataFrame, usaspending_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+
+    def enrich_awards_dataframe(self, awards_df: pd.DataFrame, usaspending_df: pd.DataFrame | None = None) -> pd.DataFrame:
         """Enrich entire awards DataFrame with NAICS codes.
         
         Args:
@@ -336,7 +335,7 @@ class FiscalNAICSEnricher:
             Enriched DataFrame with NAICS columns
         """
         enriched_df = awards_df.copy()
-        
+
         # Initialize enrichment columns
         enriched_df['fiscal_naics_code'] = None
         enriched_df['fiscal_naics_confidence'] = None
@@ -344,18 +343,18 @@ class FiscalNAICSEnricher:
         enriched_df['fiscal_naics_method'] = None
         enriched_df['fiscal_naics_timestamp'] = None
         enriched_df['fiscal_naics_metadata'] = None
-        
+
         logger.info(f"Starting NAICS enrichment for {len(awards_df)} awards")
-        
+
         # Track enrichment statistics
         source_counts = {}
         confidence_distribution = []
-        
+
         # Enrich each award
         for idx, row in awards_df.iterrows():
             try:
                 result = self.enrich_single_award(row, usaspending_df)
-                
+
                 # Store enrichment results
                 enriched_df.at[idx, 'fiscal_naics_code'] = result.naics_code
                 enriched_df.at[idx, 'fiscal_naics_confidence'] = result.confidence
@@ -363,11 +362,11 @@ class FiscalNAICSEnricher:
                 enriched_df.at[idx, 'fiscal_naics_method'] = result.method
                 enriched_df.at[idx, 'fiscal_naics_timestamp'] = result.timestamp
                 enriched_df.at[idx, 'fiscal_naics_metadata'] = str(result.metadata)
-                
+
                 # Track statistics
                 source_counts[result.source] = source_counts.get(result.source, 0) + 1
                 confidence_distribution.append(result.confidence)
-                
+
             except Exception as e:
                 logger.error(f"Failed to enrich award {idx}: {e}")
                 # Apply fallback for failed enrichments
@@ -378,20 +377,20 @@ class FiscalNAICSEnricher:
                 enriched_df.at[idx, 'fiscal_naics_method'] = fallback_result.method
                 enriched_df.at[idx, 'fiscal_naics_timestamp'] = fallback_result.timestamp
                 enriched_df.at[idx, 'fiscal_naics_metadata'] = str(fallback_result.metadata)
-        
+
         # Log enrichment statistics
         total_awards = len(awards_df)
         naics_coverage = enriched_df['fiscal_naics_code'].notna().sum() / total_awards
         avg_confidence = sum(confidence_distribution) / len(confidence_distribution) if confidence_distribution else 0
-        
-        logger.info(f"NAICS enrichment complete:")
+
+        logger.info("NAICS enrichment complete:")
         logger.info(f"  Coverage: {naics_coverage:.1%} ({enriched_df['fiscal_naics_code'].notna().sum()}/{total_awards})")
         logger.info(f"  Average confidence: {avg_confidence:.2f}")
         logger.info(f"  Source breakdown: {source_counts}")
-        
+
         return enriched_df
-    
-    def validate_enrichment_quality(self, enriched_df: pd.DataFrame) -> Dict[str, Any]:
+
+    def validate_enrichment_quality(self, enriched_df: pd.DataFrame) -> dict[str, Any]:
         """Validate enrichment quality against configured thresholds.
         
         Args:
@@ -402,16 +401,16 @@ class FiscalNAICSEnricher:
         """
         total_awards = len(enriched_df)
         naics_coverage = enriched_df['fiscal_naics_code'].notna().sum() / total_awards if total_awards > 0 else 0
-        
+
         # Calculate confidence distribution
         confidences = enriched_df['fiscal_naics_confidence'].dropna()
         high_confidence_count = (confidences >= 0.80).sum() if not confidences.empty else 0
         medium_confidence_count = ((confidences >= 0.60) & (confidences < 0.80)).sum() if not confidences.empty else 0
         low_confidence_count = (confidences < 0.60).sum() if not confidences.empty else 0
-        
+
         # Source distribution
         source_counts = enriched_df['fiscal_naics_source'].value_counts().to_dict()
-        
+
         # Quality assessment
         quality_results = {
             "total_awards": total_awards,
@@ -427,21 +426,21 @@ class FiscalNAICSEnricher:
             "average_confidence": float(confidences.mean()) if not confidences.empty else 0.0,
             "fallback_usage_rate": source_counts.get("sector_fallback", 0) / total_awards if total_awards > 0 else 0,
         }
-        
+
         # Log quality assessment
         if quality_results["coverage_meets_threshold"]:
             logger.info(f"NAICS enrichment quality: PASS (coverage: {naics_coverage:.1%})")
         else:
             logger.warning(f"NAICS enrichment quality: FAIL (coverage: {naics_coverage:.1%}, threshold: {quality_results['naics_coverage_threshold']:.1%})")
-        
+
         return quality_results
 
 
 def enrich_sbir_awards_with_fiscal_naics(
     awards_df: pd.DataFrame,
-    usaspending_df: Optional[pd.DataFrame] = None,
-    config: Optional[Dict[str, Any]] = None
-) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    usaspending_df: pd.DataFrame | None = None,
+    config: dict[str, Any] | None = None
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Main function to enrich SBIR awards with fiscal NAICS codes.
     
     Args:
@@ -455,5 +454,5 @@ def enrich_sbir_awards_with_fiscal_naics(
     enricher = FiscalNAICSEnricher(config)
     enriched_df = enricher.enrich_awards_dataframe(awards_df, usaspending_df)
     quality_metrics = enricher.validate_enrichment_quality(enriched_df)
-    
+
     return enriched_df, quality_metrics

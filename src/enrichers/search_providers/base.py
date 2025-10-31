@@ -14,11 +14,12 @@ Goals:
 
 from __future__ import annotations
 
-import time
 import logging
+import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Callable, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +32,14 @@ class ProviderError(RuntimeError):
 class ProviderResult:
     """Single normalized search result item."""
 
-    title: Optional[str]
-    snippet: Optional[str]
-    url: Optional[str]
-    source: Optional[str] = None
-    score: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    title: str | None
+    snippet: str | None
+    url: str | None
+    source: str | None = None
+    score: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
             "snippet": self.snippet,
@@ -66,14 +67,14 @@ class ProviderResponse:
 
     provider: str
     query: str
-    results: List[ProviderResult]
-    citations: List[Dict[str, Any]] = field(default_factory=list)
-    raw: Optional[Any] = None
-    latency_ms: Optional[float] = None
-    cost_usd: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    results: list[ProviderResult]
+    citations: list[dict[str, Any]] = field(default_factory=list)
+    raw: Any | None = None
+    latency_ms: float | None = None
+    cost_usd: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "provider": self.provider,
             "query": self.query,
@@ -92,7 +93,7 @@ class BaseSearchProvider(ABC):
     helpers provided here (latency measurement, retry/backoff, normalization).
     """
 
-    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, config: dict[str, Any] | None = None):
         self.name = name
         self.config = config or {}
         self.default_timeout = float(self.config.get("timeout_seconds", 10.0))
@@ -100,7 +101,7 @@ class BaseSearchProvider(ABC):
         self.backoff_base = float(self.config.get("backoff_base", 2.0))
 
     @abstractmethod
-    def search(self, query: str, context: Optional[Dict[str, Any]] = None) -> ProviderResponse:
+    def search(self, query: str, context: dict[str, Any] | None = None) -> ProviderResponse:
         """Execute a search/enrichment request.
 
         Must return a normalized `ProviderResponse`. Implementations should
@@ -110,7 +111,7 @@ class BaseSearchProvider(ABC):
 
     # --- Utilities for adapters ------------------------------------------------
 
-    def measure_latency(self, func: Callable[..., Any], *args, **kwargs) -> Tuple[Any, float]:
+    def measure_latency(self, func: Callable[..., Any], *args, **kwargs) -> tuple[Any, float]:
         """Run `func` and measure elapsed time in milliseconds."""
         start = time.time()
         rv = func(*args, **kwargs)
@@ -120,11 +121,11 @@ class BaseSearchProvider(ABC):
     def backoff_retry(
         self,
         func: Callable[..., Any],
-        args: Optional[Iterable[Any]] = None,
-        kwargs: Optional[Dict[str, Any]] = None,
-        max_retries: Optional[int] = None,
-        backoff_base: Optional[float] = None,
-        retriable_exceptions: Optional[Tuple[type, ...]] = None,
+        args: Iterable[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
+        max_retries: int | None = None,
+        backoff_base: float | None = None,
+        retriable_exceptions: tuple[type, ...] | None = None,
     ) -> Any:
         """Retry call to `func` with exponential backoff.
 
@@ -149,7 +150,7 @@ class BaseSearchProvider(ABC):
         backoff_base = backoff_base if backoff_base is not None else self.backoff_base
         retriable_exceptions = retriable_exceptions or (Exception,)
 
-        last_exc: Optional[BaseException] = None
+        last_exc: BaseException | None = None
         for attempt in range(1, max_retries + 1):
             try:
                 return func(*args, **kwargs)
@@ -175,7 +176,7 @@ class BaseSearchProvider(ABC):
     # --- Light normalization helpers -----------------------------------------
 
     @staticmethod
-    def normalize_snippet(text: Optional[str], max_length: Optional[int] = 1024) -> Optional[str]:
+    def normalize_snippet(text: str | None, max_length: int | None = 1024) -> str | None:
         """Clean and normalize a snippet/summary returned by providers.
 
         - Collapse whitespace
@@ -190,7 +191,7 @@ class BaseSearchProvider(ABC):
         return s
 
     @staticmethod
-    def pick_top_results(results: Iterable[ProviderResult], top_k: int = 5) -> List[ProviderResult]:
+    def pick_top_results(results: Iterable[ProviderResult], top_k: int = 5) -> list[ProviderResult]:
         """Return the top-k results by an available `score` field.
 
         If scores are not present, preserve original order up to `top_k`.
@@ -206,9 +207,9 @@ class BaseSearchProvider(ABC):
         )[:top_k]
 
     @staticmethod
-    def extract_urls_from_results(results: Iterable[ProviderResult]) -> List[str]:
+    def extract_urls_from_results(results: Iterable[ProviderResult]) -> list[str]:
         """Collect non-empty URLs from results in order."""
-        urls: List[str] = []
+        urls: list[str] = []
         for r in results:
             if r.url:
                 urls.append(r.url)
@@ -224,12 +225,12 @@ class BaseSearchProvider(ABC):
 
 # --- Small example helper for testing / mocking -------------------------------
 def make_mock_response(
-    provider: str, query: str, snippets: Iterable[str], urls: Optional[Iterable[str]] = None
+    provider: str, query: str, snippets: Iterable[str], urls: Iterable[str] | None = None
 ) -> ProviderResponse:
     """Create a lightweight mock ProviderResponse for tests/fixtures."""
     urls_list = list(urls) if urls is not None else [None] * len(list(snippets))
-    results: List[ProviderResult] = []
-    for idx, (s, u) in enumerate(zip(snippets, urls_list)):
+    results: list[ProviderResult] = []
+    for idx, (s, u) in enumerate(zip(snippets, urls_list, strict=False)):
         results.append(
             ProviderResult(
                 title=f"mock result {idx + 1}",

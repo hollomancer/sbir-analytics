@@ -21,9 +21,10 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -52,7 +53,7 @@ class CETLoader:
         config: CETLoaderConfig with batch size and feature flags
     """
 
-    def __init__(self, client: Neo4jClient, config: Optional[CETLoaderConfig] = None) -> None:
+    def __init__(self, client: Neo4jClient, config: CETLoaderConfig | None = None) -> None:
         self.client = client
         self.config = config or CETLoaderConfig()
         logger.info(
@@ -108,7 +109,7 @@ class CETLoader:
     # -------------------------------------------------------------------------
 
     def load_cet_areas(
-        self, areas: Iterable[Dict[str, Any]], metrics: Optional[LoadMetrics] = None
+        self, areas: Iterable[dict[str, Any]], metrics: LoadMetrics | None = None
     ) -> LoadMetrics:
         """Upsert CETArea nodes.
 
@@ -128,7 +129,7 @@ class CETLoader:
         """
         metrics = metrics or LoadMetrics()
 
-        area_nodes: List[Dict[str, Any]] = []
+        area_nodes: list[dict[str, Any]] = []
         for raw in areas:
             cet_id = _as_str(raw.get("cet_id"))
             name = _as_str(raw.get("name"))
@@ -142,7 +143,7 @@ class CETLoader:
                 metrics.errors += 1
                 continue
 
-            node: Dict[str, Any] = {
+            node: dict[str, Any] = {
                 "cet_id": cet_id,
                 "name": name,
                 "taxonomy_version": taxonomy_version,
@@ -177,10 +178,10 @@ class CETLoader:
 
     def upsert_company_cet_enrichment(
         self,
-        enrichments: Iterable[Dict[str, Any]],
+        enrichments: Iterable[dict[str, Any]],
         *,
         key_property: str = "uei",
-        metrics: Optional[LoadMetrics] = None,
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Upsert CET enrichment properties onto Company nodes.
 
@@ -202,7 +203,7 @@ class CETLoader:
             LoadMetrics with counts of updated nodes
         """
         metrics = metrics or LoadMetrics()
-        nodes: List[Dict[str, Any]] = []
+        nodes: list[dict[str, Any]] = []
 
         for raw in enrichments:
             key_val = _as_str(raw.get(key_property))
@@ -211,7 +212,7 @@ class CETLoader:
                 metrics.errors += 1
                 continue
 
-            node: Dict[str, Any] = {key_property: key_val}
+            node: dict[str, Any] = {key_property: key_val}
 
             # Whitelisted fields
             if "cet_dominant_id" in raw and raw["cet_dominant_id"] is not None:
@@ -249,10 +250,10 @@ class CETLoader:
 
     def upsert_award_cet_enrichment(
         self,
-        enrichments: Iterable[Dict[str, Any]],
+        enrichments: Iterable[dict[str, Any]],
         *,
         key_property: str = "award_id",
-        metrics: Optional[LoadMetrics] = None,
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Upsert CET enrichment properties onto Award nodes.
 
@@ -274,7 +275,7 @@ class CETLoader:
             LoadMetrics with counts of updated nodes
         """
         metrics = metrics or LoadMetrics()
-        nodes: List[Dict[str, Any]] = []
+        nodes: list[dict[str, Any]] = []
 
         for raw in enrichments:
             key_val = _as_str(raw.get(key_property))
@@ -283,7 +284,7 @@ class CETLoader:
                 metrics.errors += 1
                 continue
 
-            node: Dict[str, Any] = {key_property: key_val}
+            node: dict[str, Any] = {key_property: key_val}
 
             if "cet_primary_id" in raw and raw["cet_primary_id"] is not None:
                 node["cet_primary_id"] = _as_str(raw["cet_primary_id"])
@@ -322,10 +323,10 @@ class CETLoader:
 
     def create_award_cet_relationships(
         self,
-        classifications: Iterable[Dict[str, Any]],
+        classifications: Iterable[dict[str, Any]],
         *,
         rel_type: str = "APPLICABLE_TO",
-        metrics: Optional[LoadMetrics] = None,
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create Award -> CETArea relationships with MERGE semantics.
 
@@ -350,7 +351,7 @@ class CETLoader:
         if metrics is None:
             metrics = LoadMetrics()
 
-        relationships: List[tuple[str, str, Any, str, str, Any, str, Dict[str, Any] | None]] = []
+        relationships: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
 
         for row in classifications:
             aid = _as_str(row.get("award_id"))
@@ -435,11 +436,11 @@ class CETLoader:
 
     def create_company_cet_relationships(
         self,
-        profiles: Iterable[Dict[str, Any]],
+        profiles: Iterable[dict[str, Any]],
         *,
         rel_type: str = "SPECIALIZES_IN",
         key_property: str = "uei",
-        metrics: Optional[LoadMetrics] = None,
+        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create Company -> CETArea relationships with MERGE semantics.
 
@@ -462,7 +463,7 @@ class CETLoader:
         if metrics is None:
             metrics = LoadMetrics()
 
-        relationships: List[tuple[str, str, Any, str, str, Any, str, Dict[str, Any] | None]] = []
+        relationships: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
 
         for row in profiles:
             key_val = _as_str(row.get(key_property))
@@ -534,9 +535,9 @@ def _as_str(v: Any) -> str:
     return s
 
 
-def _normalize_keywords(words: Iterable[Any]) -> List[str]:
+def _normalize_keywords(words: Iterable[Any]) -> list[str]:
     seen: set[str] = set()
-    out: List[str] = []
+    out: list[str] = []
     for w in words:
         s = _as_str(w).lower()
         if not s or s in seen:

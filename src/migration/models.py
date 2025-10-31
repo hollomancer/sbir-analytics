@@ -8,7 +8,7 @@ including OpenSpec content models, Kiro content models, and migration metadata.
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Optional
 
 
 # Migration Configuration
@@ -33,8 +33,8 @@ class OpenSpecChange:
     proposal: Optional['OpenSpecProposal'] = None
     tasks: Optional['OpenSpecTasks'] = None
     design: Optional['OpenSpecDesign'] = None
-    spec_deltas: List['OpenSpecDelta'] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    spec_deltas: list['OpenSpecDelta'] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -42,7 +42,7 @@ class OpenSpecProposal:
     """OpenSpec proposal.md content."""
     title: str
     why: str
-    what_changes: List[str]
+    what_changes: list[str]
     impact: 'OpenSpecImpact'
     raw_content: str
 
@@ -50,16 +50,16 @@ class OpenSpecProposal:
 @dataclass
 class OpenSpecImpact:
     """Impact section from OpenSpec proposal."""
-    affected_specs: List[str] = field(default_factory=list)
-    affected_code: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    risks: List[str] = field(default_factory=list)
+    affected_specs: list[str] = field(default_factory=list)
+    affected_code: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    risks: list[str] = field(default_factory=list)
 
 
 @dataclass
 class OpenSpecTasks:
     """OpenSpec tasks.md content."""
-    tasks: List['OpenSpecTask']
+    tasks: list['OpenSpecTask']
     raw_content: str
 
 
@@ -69,7 +69,7 @@ class OpenSpecTask:
     id: str
     description: str
     completed: bool
-    subtasks: List[str] = field(default_factory=list)
+    subtasks: list[str] = field(default_factory=list)
     notes: str = ""
 
 
@@ -77,7 +77,7 @@ class OpenSpecTask:
 class OpenSpecDesign:
     """OpenSpec design.md content."""
     content: str
-    sections: Dict[str, str] = field(default_factory=dict)
+    sections: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -94,17 +94,17 @@ class OpenSpecSpec:
     name: str
     path: Path
     content: str
-    sections: Dict[str, str] = field(default_factory=dict)
+    sections: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class OpenSpecContent:
     """Complete OpenSpec content structure."""
-    active_changes: List[OpenSpecChange] = field(default_factory=list)
-    specifications: List[OpenSpecSpec] = field(default_factory=list)
-    project_context: Optional[str] = None
-    agent_instructions: Optional[str] = None
-    archived_changes: List[str] = field(default_factory=list)
+    active_changes: list[OpenSpecChange] = field(default_factory=list)
+    specifications: list[OpenSpecSpec] = field(default_factory=list)
+    project_context: str | None = None
+    agent_instructions: str | None = None
+    archived_changes: list[str] = field(default_factory=list)
 
 
 # Kiro Content Models
@@ -115,15 +115,15 @@ class KiroSpec:
     requirements: 'KiroRequirements'
     design: Optional['KiroDesign'] = None
     tasks: Optional['KiroTasks'] = None
-    source_mapping: Dict[str, Any] = field(default_factory=dict)
+    source_mapping: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class KiroRequirements:
     """Kiro requirements.md content."""
     introduction: str
-    glossary: Dict[str, str] = field(default_factory=dict)
-    requirements: List['KiroRequirement'] = field(default_factory=list)
+    glossary: dict[str, str] = field(default_factory=dict)
+    requirements: list['KiroRequirement'] = field(default_factory=list)
 
 
 @dataclass
@@ -131,8 +131,8 @@ class KiroRequirement:
     """Individual requirement in EARS format."""
     number: int
     user_story: str
-    acceptance_criteria: List[str]
-    source_references: List[str] = field(default_factory=list)
+    acceptance_criteria: list[str]
+    source_references: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -150,7 +150,7 @@ class KiroDesign:
 @dataclass
 class KiroTasks:
     """Kiro tasks.md content."""
-    tasks: List['KiroTask']
+    tasks: list['KiroTask']
 
 
 @dataclass
@@ -158,8 +158,8 @@ class KiroTask:
     """Individual task for Kiro execution."""
     number: str
     description: str
-    subtasks: List[str] = field(default_factory=list)
-    requirements_refs: List[str] = field(default_factory=list)
+    subtasks: list[str] = field(default_factory=list)
+    requirements_refs: list[str] = field(default_factory=list)
     completed: bool = False
     optional: bool = False
 
@@ -167,8 +167,8 @@ class KiroTask:
 @dataclass
 class KiroContent:
     """Complete Kiro content structure."""
-    specs: List[KiroSpec] = field(default_factory=list)
-    consolidation_mapping: Dict[str, List[str]] = field(default_factory=dict)
+    specs: list[KiroSpec] = field(default_factory=list)
+    consolidation_mapping: dict[str, list[str]] = field(default_factory=dict)
 
 
 # Migration Results and Validation
@@ -177,9 +177,9 @@ class GeneratedSpec:
     """Represents a generated Kiro specification."""
     name: str
     path: Path
-    files_created: List[str] = field(default_factory=list)
-    source_changes: List[str] = field(default_factory=list)
-    source_specs: List[str] = field(default_factory=list)
+    files_created: list[str] = field(default_factory=list)
+    source_changes: list[str] = field(default_factory=list)
+    source_specs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -189,30 +189,30 @@ class ValidationIssue:
     issue_type: str
     severity: str  # ERROR, WARNING, INFO
     message: str
-    file_path: Optional[str] = None
-    line_number: Optional[int] = None
-    suggestion: Optional[str] = None
+    file_path: str | None = None
+    line_number: int | None = None
+    suggestion: str | None = None
 
 
 @dataclass
 class ValidationReport:
     """Report of migration validation results."""
     total_specs: int
-    issues: List[ValidationIssue] = field(default_factory=list)
+    issues: list[ValidationIssue] = field(default_factory=list)
     passed: bool = True
     validation_time: datetime = field(default_factory=datetime.now)
-    
+
     def add_issue(self, issue: ValidationIssue):
         """Add a validation issue."""
         self.issues.append(issue)
         if issue.severity == "ERROR":
             self.passed = False
-    
-    def get_issues_by_severity(self, severity: str) -> List[ValidationIssue]:
+
+    def get_issues_by_severity(self, severity: str) -> list[ValidationIssue]:
         """Get issues by severity level."""
         return [issue for issue in self.issues if issue.severity == severity]
-    
-    def get_issues_by_type(self, issue_type: str) -> List[ValidationIssue]:
+
+    def get_issues_by_type(self, issue_type: str) -> list[ValidationIssue]:
         """Get issues by type."""
         return [issue for issue in self.issues if issue.issue_type == issue_type]
 
@@ -225,12 +225,12 @@ class MigrationReport:
     end_time: datetime
     config: MigrationConfig
     openspec_content: OpenSpecContent
-    generated_specs: List[GeneratedSpec] = field(default_factory=list)
-    validation_report: Optional[ValidationReport] = None
-    progress: Dict[str, Any] = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    generated_specs: list[GeneratedSpec] = field(default_factory=list)
+    validation_report: ValidationReport | None = None
+    progress: dict[str, Any] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for JSON serialization."""
         return {
             "migration_id": self.migration_id,

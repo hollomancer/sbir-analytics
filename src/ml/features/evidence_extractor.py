@@ -14,7 +14,7 @@ Features:
 - Evidence ranking (top 3 most relevant)
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -37,7 +37,7 @@ class EvidenceExtractor:
     relevant text excerpts that explain why a classification was made.
     """
 
-    def __init__(self, cet_areas: List[CETArea], config: Dict[str, Any]):
+    def __init__(self, cet_areas: list[CETArea], config: dict[str, Any]):
         """
         Initialize evidence extractor.
 
@@ -52,7 +52,7 @@ class EvidenceExtractor:
         self.cet_keywords = {area.cet_id: area.keywords for area in cet_areas}
 
         # Build reverse lookup: keyword -> CET IDs
-        self.keyword_to_cets: Dict[str, List[str]] = {}
+        self.keyword_to_cets: dict[str, list[str]] = {}
         for cet_id, keywords in self.cet_keywords.items():
             for keyword in keywords:
                 keyword_lower = keyword.lower()
@@ -70,7 +70,7 @@ class EvidenceExtractor:
         )
 
         # Initialize spaCy
-        self.nlp: "Language | None" = None
+        self.nlp: Language | None = None
         # Initialize spaCy at runtime if the spacy module is present. Tests may patch the
         # module-level `spacy` variable to simulate availability, so evaluate at init time.
         if spacy is not None:
@@ -86,7 +86,7 @@ class EvidenceExtractor:
             f"{len(self.keyword_to_cets)} keywords"
         )
 
-    def _initialize_spacy(self, spacy_config: Dict[str, Any]) -> None:
+    def _initialize_spacy(self, spacy_config: dict[str, Any]) -> None:
         """
         Initialize spaCy language model.
 
@@ -111,8 +111,8 @@ class EvidenceExtractor:
     def extract_evidence(
         self,
         cet_id: str,
-        document_parts: Dict[str, str],
-    ) -> List[EvidenceStatement]:
+        document_parts: dict[str, str],
+    ) -> list[EvidenceStatement]:
         """
         Extract evidence statements for a specific CET area.
 
@@ -137,8 +137,8 @@ class EvidenceExtractor:
         cet_keywords_lower = [k.lower() for k in cet_keywords_list]
 
         # Extract candidate sentences from each source
-        candidates: List[
-            Tuple[str, str, List[str], int]
+        candidates: list[
+            tuple[str, str, list[str], int]
         ] = []  # (sentence, source, keywords, score)
 
         for source in self.source_priority:
@@ -185,7 +185,7 @@ class EvidenceExtractor:
 
         return evidence_statements
 
-    def _segment_sentences(self, text: str) -> List[str]:
+    def _segment_sentences(self, text: str) -> list[str]:
         """
         Segment text into sentences using spaCy.
 
@@ -203,7 +203,7 @@ class EvidenceExtractor:
         sentences = [sent.text.strip() for sent in doc.sents]
         return sentences
 
-    def _find_keywords(self, text: str, keywords: List[str]) -> List[str]:
+    def _find_keywords(self, text: str, keywords: list[str]) -> list[str]:
         """
         Find CET keywords present in text.
 
@@ -248,7 +248,7 @@ class EvidenceExtractor:
         truncated = " ".join(words[: self.excerpt_max_words])
         return f"{truncated}..."
 
-    def _generate_rationale(self, keywords: List[str]) -> str:
+    def _generate_rationale(self, keywords: list[str]) -> str:
         """
         Generate rationale tag explaining why excerpt is relevant.
 
@@ -266,8 +266,8 @@ class EvidenceExtractor:
         return f"Contains: {keywords_str}"
 
     def _simple_extraction(
-        self, cet_id: str, document_parts: Dict[str, str]
-    ) -> List[EvidenceStatement]:
+        self, cet_id: str, document_parts: dict[str, str]
+    ) -> list[EvidenceStatement]:
         """
         Simple evidence extraction when spaCy is not available.
 
@@ -319,9 +319,9 @@ class EvidenceExtractor:
 
     def extract_batch_evidence(
         self,
-        classifications_list: List[List[Any]],  # List of CETClassification lists
-        document_parts_list: List[Dict[str, str]],
-    ) -> List[List[Any]]:
+        classifications_list: list[list[Any]],  # List of CETClassification lists
+        document_parts_list: list[dict[str, str]],
+    ) -> list[list[Any]]:
         """
         Extract evidence for a batch of classifications.
 
@@ -339,7 +339,7 @@ class EvidenceExtractor:
 
         results = []
 
-        for classifications, document_parts in zip(classifications_list, document_parts_list):
+        for classifications, document_parts in zip(classifications_list, document_parts_list, strict=False):
             # Process each classification in the list
             updated_classifications = []
             for classification in classifications:
@@ -354,7 +354,7 @@ class EvidenceExtractor:
 
         return results
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get extractor statistics."""
         return {
             "num_cet_areas": len(self.cet_areas),

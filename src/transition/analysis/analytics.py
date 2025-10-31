@@ -33,7 +33,7 @@ All computations gracefully degrade when optional fields are missing.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -46,7 +46,7 @@ def _norm_str(v: Any) -> str:
         return ""
 
 
-def _first_col(df: pd.DataFrame, candidates: list[str]) -> Optional[str]:
+def _first_col(df: pd.DataFrame, candidates: list[str]) -> str | None:
     for c in candidates:
         if c in df.columns:
             return c
@@ -110,21 +110,21 @@ def _transition_award_id_col(df: pd.DataFrame) -> str:
     return c
 
 
-def _contract_id_col(df: pd.DataFrame) -> Optional[str]:
+def _contract_id_col(df: pd.DataFrame) -> str | None:
     return _first_col(df, ["contract_id", "piid", "PIID"])
 
 
-def _agency_col(df: pd.DataFrame) -> Optional[str]:
+def _agency_col(df: pd.DataFrame) -> str | None:
     return _first_col(
         df, ["Agency", "agency", "awarding_agency_name", "awarding_agency_code", "Agency Code"]
     )
 
 
-def _phase_col(df: pd.DataFrame) -> Optional[str]:
+def _phase_col(df: pd.DataFrame) -> str | None:
     return _first_col(df, ["Phase", "phase", "Award Phase"])
 
 
-def _award_date_col(df: pd.DataFrame) -> Optional[str]:
+def _award_date_col(df: pd.DataFrame) -> str | None:
     return _first_col(
         df,
         [
@@ -138,7 +138,7 @@ def _award_date_col(df: pd.DataFrame) -> Optional[str]:
     )
 
 
-def _contract_date_col(df: pd.DataFrame) -> Optional[str]:
+def _contract_date_col(df: pd.DataFrame) -> str | None:
     return _first_col(df, ["action_date", "start_date", "period_of_performance_start_date"])
 
 
@@ -148,7 +148,7 @@ class RateResult:
     denominator: int
     rate: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"numerator": self.numerator, "denominator": self.denominator, "rate": self.rate}
 
 
@@ -205,7 +205,7 @@ class TransitionAnalytics:
         self,
         awards_df: pd.DataFrame,
         transitions_df: pd.DataFrame,
-    ) -> Tuple[RateResult, pd.DataFrame]:
+    ) -> tuple[RateResult, pd.DataFrame]:
         """
         Fraction of unique companies with ≥1 transitioned award.
 
@@ -397,14 +397,14 @@ class TransitionAnalytics:
         awards_df: pd.DataFrame,
         transitions_df: pd.DataFrame,
         contracts_df: pd.DataFrame | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Produce a compact metrics summary dict (JSON-serializable), excluding large tables.
         """
         award_rate = self.compute_award_transition_rate(awards_df, transitions_df)
         company_rate, _ = self.compute_company_transition_rate(awards_df, transitions_df)
 
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "score_threshold": self.score_threshold,
             "award_transition_rate": award_rate.to_dict(),
             "company_transition_rate": company_rate.to_dict(),

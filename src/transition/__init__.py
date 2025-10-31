@@ -222,4 +222,13 @@ def get_config() -> Config:
     return _MODULE_CONFIG
 
 
-__all__ = ["Config", "load_config", "get_config", "DEFAULT_CONFIG_PATH", "__version__"]
+__all__ = [
+    "Config",
+    "load_config",
+    "get_config",
+    "DEFAULT_CONFIG_PATH",
+    "__version__",
+    "ConfusionMatrix",
+    "EvaluationResult",
+    "TransitionEvaluator",
+]

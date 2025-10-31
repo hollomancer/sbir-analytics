@@ -5,13 +5,12 @@ Loads company transition profiles (aggregated company-level metrics) into Neo4j
 as TransitionProfile nodes and creates relationships to Company nodes.
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 
 import pandas as pd
-from neo4j import Driver, Session
 from loguru import logger
+
+from neo4j import Driver
 
 
 class TransitionProfileLoader:
@@ -49,7 +48,7 @@ class TransitionProfileLoader:
     def calculate_company_profiles(
         self,
         transitions_df: pd.DataFrame,
-        awards_df: Optional[pd.DataFrame] = None,
+        awards_df: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         """
         Calculate company-level transition profiles.
@@ -326,8 +325,8 @@ class TransitionProfileLoader:
     def load_profiles(
         self,
         transitions_df: pd.DataFrame,
-        awards_df: Optional[pd.DataFrame] = None,
-    ) -> Dict[str, int]:
+        awards_df: pd.DataFrame | None = None,
+    ) -> dict[str, int]:
         """
         End-to-end profile loading orchestration.
 
@@ -363,6 +362,6 @@ class TransitionProfileLoader:
 
         return self.stats
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Return loading statistics."""
         return self.stats.copy()

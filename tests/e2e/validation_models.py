@@ -7,16 +7,19 @@ test reports, and recommendations for E2E testing.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-from pydantic import BaseModel, Field
-
-from tests.e2e.pipeline_validator import ValidationCheck, ValidationStage, ValidationStatus, StageValidationResult
+from tests.e2e.pipeline_validator import (
+    StageValidationResult,
+    ValidationCheck,
+    ValidationStage,
+    ValidationStatus,
+)
 
 
 class TestScenario(str, Enum):
     """E2E test scenarios."""
-    
+
     MINIMAL = "minimal"
     STANDARD = "standard"
     LARGE = "large"
@@ -25,7 +28,7 @@ class TestScenario(str, Enum):
 
 class RecommendationPriority(str, Enum):
     """Priority levels for recommendations."""
-    
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -35,45 +38,45 @@ class RecommendationPriority(str, Enum):
 @dataclass
 class ValidationResult:
     """Comprehensive validation result for E2E testing."""
-    
+
     test_id: str
     scenario: TestScenario
     timestamp: datetime
     overall_status: ValidationStatus
     total_duration_seconds: float
-    stage_results: List[StageValidationResult] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    stage_results: list[StageValidationResult] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     @property
-    def passed_stages(self) -> List[StageValidationResult]:
+    def passed_stages(self) -> list[StageValidationResult]:
         """Get all stages that passed validation."""
         return [s for s in self.stage_results if s.status == ValidationStatus.PASSED]
-    
+
     @property
-    def failed_stages(self) -> List[StageValidationResult]:
+    def failed_stages(self) -> list[StageValidationResult]:
         """Get all stages that failed validation."""
         return [s for s in self.stage_results if s.status == ValidationStatus.FAILED]
-    
+
     @property
-    def warning_stages(self) -> List[StageValidationResult]:
+    def warning_stages(self) -> list[StageValidationResult]:
         """Get all stages with warnings."""
         return [s for s in self.stage_results if s.status == ValidationStatus.WARNING]
-    
+
     @property
-    def all_checks(self) -> List[ValidationCheck]:
+    def all_checks(self) -> list[ValidationCheck]:
         """Get all validation checks across all stages."""
         checks = []
         for stage_result in self.stage_results:
             checks.extend(stage_result.checks)
         return checks
-    
+
     @property
-    def failed_checks(self) -> List[ValidationCheck]:
+    def failed_checks(self) -> list[ValidationCheck]:
         """Get all failed validation checks."""
         return [c for c in self.all_checks if c.status == ValidationStatus.FAILED]
-    
+
     @property
-    def critical_issues(self) -> List[ValidationCheck]:
+    def critical_issues(self) -> list[ValidationCheck]:
         """Get all critical validation issues."""
         from src.models.quality import QualitySeverity
         return [c for c in self.all_checks if c.severity == QualitySeverity.CRITICAL]
@@ -82,38 +85,38 @@ class ValidationResult:
 @dataclass
 class Recommendation:
     """Actionable recommendation based on validation results."""
-    
+
     title: str
     description: str
     priority: RecommendationPriority
     category: str  # e.g., "data_quality", "performance", "configuration"
-    actions: List[str] = field(default_factory=list)
-    related_checks: List[str] = field(default_factory=list)  # Check names
-    details: Dict[str, Any] = field(default_factory=dict)
+    actions: list[str] = field(default_factory=list)
+    related_checks: list[str] = field(default_factory=list)  # Check names
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class TestReport:
     """Comprehensive test report with validation results and recommendations."""
-    
+
     report_id: str
     test_id: str
     scenario: TestScenario
     timestamp: datetime
     validation_result: ValidationResult
-    recommendations: List[Recommendation] = field(default_factory=list)
-    summary: Dict[str, Any] = field(default_factory=dict)
-    artifacts: Dict[str, str] = field(default_factory=dict)  # artifact_type -> file_path
-    
+    recommendations: list[Recommendation] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, str] = field(default_factory=dict)  # artifact_type -> file_path
+
     def __post_init__(self):
         """Generate summary and recommendations after initialization."""
         self._generate_summary()
         self._generate_recommendations()
-    
+
     def _generate_summary(self):
         """Generate test summary statistics."""
         validation = self.validation_result
-        
+
         self.summary = {
             "overall_status": validation.overall_status.value,
             "total_duration_seconds": validation.total_duration_seconds,
@@ -127,12 +130,12 @@ class TestReport:
             "critical_issues": len(validation.critical_issues),
             "scenario": validation.scenario.value
         }
-    
+
     def _generate_recommendations(self):
         """Generate actionable recommendations based on validation results."""
         recommendations = []
         validation = self.validation_result
-        
+
         # Critical issues recommendations
         if validation.critical_issues:
             critical_checks = [c.name for c in validation.critical_issues]
@@ -150,7 +153,7 @@ class TestReport:
                 related_checks=critical_checks,
                 details={"critical_count": len(validation.critical_issues)}
             ))
-        
+
         # Performance recommendations
         slow_stages = [s for s in validation.stage_results if s.duration_seconds > 30]
         if slow_stages:
@@ -168,7 +171,7 @@ class TestReport:
                 ],
                 details={"slow_stages": stage_names}
             ))
-        
+
         # Data quality recommendations
         failed_data_checks = [c for c in validation.failed_checks if "record_count" in c.name or "match_rate" in c.name]
         if failed_data_checks:
@@ -186,7 +189,7 @@ class TestReport:
                 ],
                 related_checks=check_names
             ))
-        
+
         # Neo4j specific recommendations
         neo4j_failures = [c for c in validation.failed_checks if any(stage.stage == ValidationStage.LOADING for stage in validation.stage_results)]
         if neo4j_failures:
@@ -203,7 +206,7 @@ class TestReport:
                 ],
                 related_checks=[c.name for c in neo4j_failures]
             ))
-        
+
         # Success recommendations
         if validation.overall_status == ValidationStatus.PASSED:
             recommendations.append(Recommendation(
@@ -217,13 +220,13 @@ class TestReport:
                     "Monitor ongoing data quality"
                 ]
             ))
-        
+
         self.recommendations = recommendations
 
 
 class ValidationReporter:
     """Reporter for generating validation reports and artifacts."""
-    
+
     def __init__(self, output_dir: str = "artifacts"):
         """Initialize validation reporter.
         
@@ -231,11 +234,11 @@ class ValidationReporter:
             output_dir: Directory to save report artifacts
         """
         self.output_dir = output_dir
-    
+
     def generate_report(
         self,
         validation_result: ValidationResult,
-        test_id: Optional[str] = None,
+        test_id: str | None = None,
         include_artifacts: bool = True
     ) -> TestReport:
         """Generate comprehensive test report.
@@ -250,9 +253,9 @@ class ValidationReporter:
         """
         if not test_id:
             test_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         report_id = f"report_{test_id}"
-        
+
         report = TestReport(
             report_id=report_id,
             test_id=test_id,
@@ -260,14 +263,14 @@ class ValidationReporter:
             timestamp=datetime.now(),
             validation_result=validation_result
         )
-        
+
         if include_artifacts:
             artifacts = self._generate_artifacts(report)
             report.artifacts = artifacts
-        
+
         return report
-    
-    def _generate_artifacts(self, report: TestReport) -> Dict[str, str]:
+
+    def _generate_artifacts(self, report: TestReport) -> dict[str, str]:
         """Generate report artifacts (files).
         
         Args:
@@ -277,15 +280,14 @@ class ValidationReporter:
             Dictionary mapping artifact type to file path
         """
         import json
-        import os
         from pathlib import Path
-        
+
         # Create output directory
         output_path = Path(self.output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
-        
+
         artifacts = {}
-        
+
         # JSON report
         json_path = output_path / f"{report.report_id}.json"
         json_data = {
@@ -331,20 +333,20 @@ class ValidationReporter:
                 for rec in report.recommendations
             ]
         }
-        
+
         with open(json_path, 'w') as f:
             json.dump(json_data, f, indent=2, default=str)
         artifacts["json"] = str(json_path)
-        
+
         # Markdown report
         md_path = output_path / f"{report.report_id}.md"
         md_content = self._generate_markdown_report(report)
         with open(md_path, 'w') as f:
             f.write(md_content)
         artifacts["markdown"] = str(md_path)
-        
+
         return artifacts
-    
+
     def _generate_markdown_report(self, report: TestReport) -> str:
         """Generate markdown report content.
         
@@ -355,7 +357,7 @@ class ValidationReporter:
             Markdown report content as string
         """
         lines = []
-        
+
         # Header
         lines.append(f"# E2E Test Report: {report.test_id}")
         lines.append("")
@@ -365,7 +367,7 @@ class ValidationReporter:
         lines.append(f"**Overall Status:** {report.validation_result.overall_status.value.upper()}")
         lines.append(f"**Duration:** {report.validation_result.total_duration_seconds:.2f} seconds")
         lines.append("")
-        
+
         # Summary
         lines.append("## Summary")
         lines.append("")
@@ -378,7 +380,7 @@ class ValidationReporter:
         lines.append(f"- **Checks Failed:** {summary['checks_failed']}")
         lines.append(f"- **Critical Issues:** {summary['critical_issues']}")
         lines.append("")
-        
+
         # Stage Results
         lines.append("## Stage Results")
         lines.append("")
@@ -389,7 +391,7 @@ class ValidationReporter:
             lines.append(f"**Status:** {stage_result.status.value}")
             lines.append(f"**Duration:** {stage_result.duration_seconds:.2f} seconds")
             lines.append("")
-            
+
             if stage_result.checks:
                 lines.append("**Validation Checks:**")
                 lines.append("")
@@ -397,7 +399,7 @@ class ValidationReporter:
                     check_icon = "✅" if check.status == ValidationStatus.PASSED else "❌" if check.status == ValidationStatus.FAILED else "⚠️"
                     lines.append(f"- {check_icon} **{check.name}**: {check.message}")
                 lines.append("")
-        
+
         # Recommendations
         if report.recommendations:
             lines.append("## Recommendations")
@@ -416,5 +418,5 @@ class ValidationReporter:
                     for action in rec.actions:
                         lines.append(f"- {action}")
                     lines.append("")
-        
+
         return "\n".join(lines)

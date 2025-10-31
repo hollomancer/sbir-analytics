@@ -40,10 +40,10 @@ import csv
 import json
 import logging
 import os
+from collections.abc import Generator, Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Union
 
 LOG = logging.getLogger(__name__)
 
@@ -82,9 +82,9 @@ class USPTOAIExtractor:
 
     def __init__(
         self,
-        input_dir: Union[str, Path],
+        input_dir: str | Path,
         *,
-        checkpoint_dir: Union[str, Path] = "data/cache/uspto_ai_checkpoints",
+        checkpoint_dir: str | Path = "data/cache/uspto_ai_checkpoints",
         continue_on_error: bool = True,
         log_every: int = 100_000,
     ) -> None:
@@ -100,11 +100,11 @@ class USPTOAIExtractor:
     # ----------------------------
     # Discovery
     # ----------------------------
-    def discover_files(self, file_globs: Optional[Iterable[str]] = None) -> List[Path]:
+    def discover_files(self, file_globs: Iterable[str] | None = None) -> list[Path]:
         """
         Discover files under `input_dir` matching supported extensions or provided globs.
         """
-        files: List[Path] = []
+        files: list[Path] = []
         if file_globs:
             for pattern in file_globs:
                 files.extend(sorted(self.input_dir.glob(pattern)))
@@ -119,11 +119,11 @@ class USPTOAIExtractor:
     # ----------------------------
     def stream_raw(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         *,
         chunk_size: int = 10000,
         resume: bool = False,
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         """
         Stream raw records from a single file as dictionaries.
 
@@ -158,14 +158,14 @@ class USPTOAIExtractor:
 
     def stream_normalized(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         *,
         chunk_size: int = 10000,
         resume: bool = False,
         dedupe: bool = False,
         skip_missing_id: bool = True,
-        id_candidates: Optional[List[str]] = None,
-    ) -> Generator[Dict, None, None]:
+        id_candidates: list[str] | None = None,
+    ) -> Generator[dict, None, None]:
         """
         Stream records normalized into the canonical schema:
             {
@@ -197,26 +197,26 @@ class USPTOAIExtractor:
                 "_meta": {
                     "source_file": str(src.resolve()),
                     "row_index": idx,
-                    "extracted_at": datetime.now(timezone.utc).isoformat(),
+                    "extracted_at": datetime.now(UTC).isoformat(),
                 },
             }
             yield out
 
     def stream_batches(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         *,
         batch_size: int = 1000,
         resume: bool = False,
         normalized: bool = True,
         dedupe: bool = False,
         skip_missing_id: bool = True,
-        id_candidates: Optional[List[str]] = None,
-    ) -> Generator[List[Dict], None, None]:
+        id_candidates: list[str] | None = None,
+    ) -> Generator[list[dict], None, None]:
         """
         Stream the file but yield lists of dicts (batches) for efficiency.
         """
-        batch: List[Dict] = []
+        batch: list[dict] = []
         it = (
             self.stream_normalized(
                 file_path,
@@ -242,7 +242,7 @@ class USPTOAIExtractor:
     # ----------------------------
     def _stream_ndjson(
         self, path: Path, *, chunk_size: int, resume: bool
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         cp = self._load_checkpoint(path) if resume else _Checkpoint(path, 0)
         last_line = cp.last_offset
         emitted = 0
@@ -277,7 +277,7 @@ class USPTOAIExtractor:
 
     def _stream_csv(
         self, path: Path, *, chunk_size: int, resume: bool
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         # CSV via stdlib reader for memory-safety
         cp = self._load_checkpoint(path) if resume else _Checkpoint(path, 0)
         last_rows = cp.last_offset
@@ -307,7 +307,7 @@ class USPTOAIExtractor:
 
     def _stream_dta(
         self, path: Path, *, chunk_size: int, resume: bool
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         """
         Stream rows from a .dta (Stata) file. Attempts:
             1) pandas iterator get_chunk
@@ -408,7 +408,7 @@ class USPTOAIExtractor:
 
     def _stream_parquet(
         self, path: Path, *, chunk_size: int, resume: bool
-    ) -> Generator[Dict, None, None]:
+    ) -> Generator[dict, None, None]:
         cp = self._load_checkpoint(path) if resume else _Checkpoint(path, 0)
         offset = cp.last_offset
         emitted = 0
@@ -500,7 +500,7 @@ class USPTOAIExtractor:
             raise RuntimeError(f"{path}: {msg}")
 
     @staticmethod
-    def _extract_grant_id(rec: Dict, id_candidates: Optional[List[str]] = None) -> Optional[str]:
+    def _extract_grant_id(rec: dict, id_candidates: list[str] | None = None) -> str | None:
         """
         Attempt to extract a canonical grant_doc_num from common fields.
         """
@@ -534,7 +534,7 @@ class USPTOAIExtractor:
         return None
 
     @staticmethod
-    def _coerce_score_fields(rec: Dict) -> Dict:
+    def _coerce_score_fields(rec: dict) -> dict:
         """
         Best-effort coercion for common score/predict fields to numeric/boolean types
         while preserving the original keys and payload.
@@ -576,9 +576,9 @@ class USPTOAIExtractor:
         return out
 
     # Convenience helpers
-    def read_first_n(self, file_path: Union[str, Path], n: int = 10) -> List[Dict]:
+    def read_first_n(self, file_path: str | Path, n: int = 10) -> list[dict]:
         """Return a small preview of the first n raw rows."""
-        out: List[Dict] = []
+        out: list[dict] = []
         it = self.stream_raw(file_path, chunk_size=n, resume=False)
         for _ in range(n):
             try:
@@ -587,7 +587,7 @@ class USPTOAIExtractor:
                 break
         return out
 
-    def count_rows_estimate(self, file_path: Union[str, Path]) -> Optional[int]:
+    def count_rows_estimate(self, file_path: str | Path) -> int | None:
         """
         Best-effort estimate of row count:
           - NDJSON/CSV: None (requires full scan)

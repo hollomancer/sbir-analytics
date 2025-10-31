@@ -6,8 +6,7 @@ auditable evidence trails for transition detections.
 """
 
 import json
-from datetime import date, datetime
-from typing import Dict
+from datetime import date
 
 import pytest
 
@@ -66,7 +65,7 @@ def sample_signals():
 
 
 @pytest.fixture
-def sample_award_data() -> Dict:
+def sample_award_data() -> dict:
     """Sample award data for testing."""
     return {
         "award_id": "AWARD-123",
@@ -78,7 +77,7 @@ def sample_award_data() -> Dict:
 
 
 @pytest.fixture
-def sample_contract_data() -> Dict:
+def sample_contract_data() -> dict:
     """Sample contract data for testing."""
     return {
         "contract_id": "CONTRACT-456",

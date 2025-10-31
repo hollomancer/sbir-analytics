@@ -6,17 +6,16 @@ and the `BaseSearchProvider` abstraction.
 """
 
 # Re-export commonly used enrichment utilities
-from .chunked_enrichment import (
-    ChunkedEnricher,
-    create_dynamic_outputs_enrichment,
-    combine_enriched_chunks,
-)
-from .company_enricher import enrich_awards_with_companies
-from .usaspending_enricher import enrich_sbir_with_usaspending
-
 # Re-export search provider package and base types for convenience
 from . import search_providers as search_providers
+from .chunked_enrichment import (
+    ChunkedEnricher,
+    combine_enriched_chunks,
+    create_dynamic_outputs_enrichment,
+)
+from .company_enricher import enrich_awards_with_companies
 from .search_providers.base import BaseSearchProvider, ProviderResponse, ProviderResult
+from .usaspending_enricher import enrich_sbir_with_usaspending
 
 __all__ = [
     "ChunkedEnricher",

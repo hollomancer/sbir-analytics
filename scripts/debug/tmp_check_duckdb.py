@@ -11,9 +11,9 @@ Usage:
     python sbir-etl/scripts/debug/tmp_check_duckdb.py
 """
 
-from pathlib import Path
 import reprlib
 import sys
+from pathlib import Path
 
 try:
     import duckdb

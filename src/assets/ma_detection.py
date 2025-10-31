@@ -1,8 +1,10 @@
-from dagster import asset
-import pandas as pd
-from src.models.ma_models import MAEvent
-from datetime import date
 import json
+from datetime import date
+
+import pandas as pd
+from dagster import asset
+
+from src.models.ma_models import MAEvent
 
 
 @asset(deps=["sbir_awards", "uspto_patent_assignments"])

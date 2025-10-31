@@ -43,8 +43,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
-
+from typing import Any
 
 # -----------------------------
 # Data structures
@@ -76,7 +75,7 @@ def _info(msg: str) -> None:
     print(msg)
 
 
-def _load_json(path: Path) -> Optional[dict[str, Any]]:
+def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
@@ -101,7 +100,7 @@ def _get(d: dict[str, Any], path: str, default: Any = None) -> Any:
 # -----------------------------
 
 
-def eval_contracts_gate_from_summary(summary: dict[str, Any]) -> Optional[GateResult]:
+def eval_contracts_gate_from_summary(summary: dict[str, Any]) -> GateResult | None:
     gates = summary.get("gates") or {}
     cs = gates.get("contracts_sample")
     if not isinstance(cs, dict):
@@ -147,7 +146,7 @@ def eval_contracts_gate_from_checks(
     )
 
 
-def eval_vendor_gate_from_summary(summary: dict[str, Any]) -> Optional[GateResult]:
+def eval_vendor_gate_from_summary(summary: dict[str, Any]) -> GateResult | None:
     gates = summary.get("gates") or {}
     vr = gates.get("vendor_resolution")
     if not isinstance(vr, dict):
@@ -292,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     evidence_checks_path = Path(args.evidence_checks)
 
     # Load summary if present
-    summary: Optional[dict[str, Any]] = None
+    summary: dict[str, Any] | None = None
     if summary_path.exists():
         summary = _load_json(summary_path)
         if summary is None:
@@ -304,7 +303,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Contracts gate
     if not args.no_contracts_gate:
-        cs_result: Optional[GateResult] = None
+        cs_result: GateResult | None = None
         if summary is not None and not args.force_compute:
             cs_result = eval_contracts_gate_from_summary(summary)
         if cs_result is None:
@@ -323,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Vendor gate
     if not args.no_vendor_gate:
-        vr_result: Optional[GateResult] = None
+        vr_result: GateResult | None = None
         if summary is not None and not args.force_compute:
             vr_result = eval_vendor_gate_from_summary(summary)
         if vr_result is None:

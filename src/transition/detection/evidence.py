@@ -11,8 +11,8 @@ properties for query-time inspection and verification.
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any
 
 from loguru import logger
 
@@ -65,10 +65,10 @@ class EvidenceGenerator:
     def generate_agency_evidence(
         self,
         signal: AgencySignal,
-        award_agency: Optional[str],
-        contract_agency: Optional[str],
-        award_department: Optional[str] = None,
-        contract_department: Optional[str] = None,
+        award_agency: str | None,
+        contract_agency: str | None,
+        award_department: str | None = None,
+        contract_department: str | None = None,
     ) -> EvidenceItem:
         """
         Generate evidence item for agency continuity signal.
@@ -121,10 +121,10 @@ class EvidenceGenerator:
     def generate_timing_evidence(
         self,
         signal: TimingSignal,
-        award_completion_date: Optional[date],
-        contract_start_date: Optional[date],
-        award_id: Optional[str] = None,
-        contract_id: Optional[str] = None,
+        award_completion_date: date | None,
+        contract_start_date: date | None,
+        award_id: str | None = None,
+        contract_id: str | None = None,
     ) -> EvidenceItem:
         """
         Generate evidence item for timing proximity signal.
@@ -181,7 +181,7 @@ class EvidenceGenerator:
     def generate_competition_evidence(
         self,
         signal: CompetitionSignal,
-        contract_id: Optional[str] = None,
+        contract_id: str | None = None,
     ) -> EvidenceItem:
         """
         Generate evidence item for competition type signal.
@@ -222,8 +222,8 @@ class EvidenceGenerator:
     def generate_patent_evidence(
         self,
         signal: PatentSignal,
-        vendor_id: Optional[str] = None,
-        contract_start_date: Optional[date] = None,
+        vendor_id: str | None = None,
+        contract_start_date: date | None = None,
     ) -> EvidenceItem:
         """
         Generate evidence item for patent signal.
@@ -400,11 +400,11 @@ class EvidenceGenerator:
     def generate_bundle(
         self,
         signals: TransitionSignals,
-        award_data: Dict[str, Any],
+        award_data: dict[str, Any],
         contract: FederalContract,
-        vendor_match: Optional[VendorMatch] = None,
-        patent_data: Optional[Dict[str, Any]] = None,
-        cet_data: Optional[Dict[str, Any]] = None,
+        vendor_match: VendorMatch | None = None,
+        patent_data: dict[str, Any] | None = None,
+        cet_data: dict[str, Any] | None = None,
     ) -> EvidenceBundle:
         """
         Generate complete evidence bundle for a transition detection.

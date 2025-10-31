@@ -1,8 +1,5 @@
 # sbir-etl/tests/unit/ml/test_patent_classifier.py
-import pickle
-from pathlib import Path
 
-import pytest
 
 from src.ml.models.dummy_pipeline import DummyPipeline
 from src.ml.models.patent_classifier import PatentCETClassifier, PatentClassification

@@ -1,6 +1,5 @@
-import re
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,13 +22,13 @@ def _make_mock_client_with_capture():
     class _Cfg:
         batch_size = 0
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     mock_client = MagicMock()
     mock_client.config = _Cfg()
 
     def _fake_batch_upsert_nodes(
-        label: str, key_property: str, nodes: List[Dict[str, Any]], metrics=None
+        label: str, key_property: str, nodes: list[dict[str, Any]], metrics=None
     ):
         captured["label"] = label
         captured["key_property"] = key_property

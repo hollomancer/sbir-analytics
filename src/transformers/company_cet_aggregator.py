@@ -18,14 +18,13 @@ the class will raise an informative ImportError when used.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
-import math
-import json
 from collections import defaultdict
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 try:
-    import pandas as pd
     import numpy as np  # used for numeric safety
+    import pandas as pd
 except Exception:  # pragma: no cover - defensive import
     pd = None
     np = None  # type: ignore
@@ -53,7 +52,7 @@ class CompanyCETAggregator:
     include both in per-CET aggregations.
     """
 
-    def __init__(self, awards: Union[pd.DataFrame, Iterable[Mapping[str, Any]]]) -> None:
+    def __init__(self, awards: pd.DataFrame | Iterable[Mapping[str, Any]]) -> None:
         if pd is None:
             raise ImportError(
                 "pandas is required for CompanyCETAggregator. Please install pandas to use this class."
@@ -97,13 +96,13 @@ class CompanyCETAggregator:
             self.df["award_date_parsed"] = pd.NaT
 
     @staticmethod
-    def _extract_cet_rows_from_award(row: Mapping[str, Any]) -> List[Tuple[str, float, str]]:
+    def _extract_cet_rows_from_award(row: Mapping[str, Any]) -> list[tuple[str, float, str]]:
         """
         Given an award record (mapping), return list of (cet_id, score, award_id).
         Includes primary and supporting CETs. Scores are normalized to floats; missing scores
         are treated as 0.0.
         """
-        rows: List[Tuple[str, float, str]] = []
+        rows: list[tuple[str, float, str]] = []
         award_id = str(row.get("award_id") or "")
         primary = row.get("primary_cet")
         primary_score = row.get("primary_score") or 0.0
@@ -274,7 +273,7 @@ class CompanyCETAggregator:
         cet_group = cet_rows.groupby(["company_id", "cet_id"])["score"].agg(list).to_frame("scores")
 
         # compute aggregate (mean by default)
-        def _agg_list(scores: List[float]) -> float:
+        def _agg_list(scores: list[float]) -> float:
             if not scores:
                 return 0.0
             try:
@@ -293,7 +292,7 @@ class CompanyCETAggregator:
         cet_group = cet_group.reset_index()  # columns: company_id, cet_id, scores, agg_score
 
         # Build per-company cet_scores mapping
-        cet_scores_map: Dict[Any, Dict[str, float]] = defaultdict(dict)
+        cet_scores_map: dict[Any, dict[str, float]] = defaultdict(dict)
         for _, r in cet_group.iterrows():
             cmp = r["company_id"]
             cid = r["cet_id"]
@@ -301,7 +300,7 @@ class CompanyCETAggregator:
             cet_scores_map[cmp][cid] = float(sc)
 
         # Build dominant CET and specialization
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         company_ids = sorted(stats.index.tolist(), key=lambda x: (str(x) if x is not None else ""))
         for cid in company_ids:
             company_row = stats.loc[cid]
@@ -336,7 +335,7 @@ class CompanyCETAggregator:
                 last_dt = pd.NaT
 
             # Build CET trend by period: prefer `phase`, else use year
-            trend: Dict[str, Dict[str, float]] = {}
+            trend: dict[str, dict[str, float]] = {}
             # choose period column
             if company_awards["phase"].notnull().any():
                 period_col = "phase"
@@ -345,7 +344,7 @@ class CompanyCETAggregator:
                 for p in periods["phase"].dropna().unique():
                     part = company_awards.loc[company_awards["phase"] == p]
                     # build local cet score sums for this period
-                    local_cet_totals: Dict[str, float] = {}
+                    local_cet_totals: dict[str, float] = {}
                     for _, ar in part.iterrows():
                         for cet_id, sc, _ in self._extract_cet_rows_from_award(ar):
                             local_cet_totals[cet_id] = local_cet_totals.get(cet_id, 0.0) + float(sc)
@@ -368,7 +367,7 @@ class CompanyCETAggregator:
                     years = []
                 for y in years:
                     part = company_awards.loc[company_awards["award_date_parsed"].dt.year == int(y)]
-                    local_cet_totals: Dict[str, float] = {}
+                    local_cet_totals: dict[str, float] = {}
                     for _, ar in part.iterrows():
                         for cet_id, sc, _ in self._extract_cet_rows_from_award(ar):
                             local_cet_totals[cet_id] = local_cet_totals.get(cet_id, 0.0) + float(sc)
@@ -417,7 +416,7 @@ class CompanyCETAggregator:
         return CompanyCETAggregator._hhi_from_scores(cet_scores)
 
     @staticmethod
-    def serialize_row_for_storage(row: Mapping[str, Any]) -> Dict[str, Any]:
+    def serialize_row_for_storage(row: Mapping[str, Any]) -> dict[str, Any]:
         """
         Prepare a single company profile row for JSON/NDJSON storage. Ensures
         serializable types (datetimes -> ISO strings).

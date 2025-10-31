@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import functools
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -30,7 +31,7 @@ class PerformanceTracker:
     def __init__(self, operation_name: str):
         """Initialize performance tracker."""
         self.operation_name = operation_name
-        self.metrics: Dict[str, Any] = {
+        self.metrics: dict[str, Any] = {
             "operation": operation_name,
             "start_time": None,
             "end_time": None,
@@ -71,7 +72,7 @@ class PerformanceTracker:
                 self.metrics["duration_ms"] / 1000
             )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get recorded metrics."""
         return self.metrics.copy()
 
@@ -86,7 +87,7 @@ class PerformanceTracker:
 
 
 def monitor_performance(
-    operation_name: Optional[str] = None,
+    operation_name: str | None = None,
     log_memory: bool = False,
 ) -> Callable:
     """
@@ -163,7 +164,7 @@ class BatchProcessor:
     def __init__(
         self,
         batch_size: int = 1000,
-        max_batches: Optional[int] = None,
+        max_batches: int | None = None,
     ):
         """
         Initialize batch processor.
@@ -182,9 +183,9 @@ class BatchProcessor:
 
     def process(
         self,
-        items: List[Any],
-        process_func: Callable[[List[Any]], Any],
-    ) -> List[Any]:
+        items: list[Any],
+        process_func: Callable[[list[Any]], Any],
+    ) -> list[Any]:
         """
         Process items in batches.
 
@@ -225,7 +226,7 @@ class BatchProcessor:
 
         return results
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get processing statistics."""
         return self.stats.copy()
 
@@ -254,10 +255,10 @@ class ParallelExecutor:
 
     def execute_tasks(
         self,
-        tasks: List[Any],
+        tasks: list[Any],
         task_func: Callable[[Any], Any],
         use_multiprocessing: bool = False,
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Execute tasks in parallel.
 
@@ -299,7 +300,7 @@ class ParallelExecutor:
 
         return results
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get execution statistics."""
         return self.stats.copy()
 
@@ -309,7 +310,7 @@ def profile_detection_performance(
     contracts_count: int,
     detections_count: int,
     total_time_ms: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Calculate detection pipeline performance metrics.
 

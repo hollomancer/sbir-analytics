@@ -34,9 +34,10 @@ import json
 import math
 import sys
 from collections import Counter
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 # Optional imports
 try:
@@ -50,7 +51,7 @@ except Exception:
     pd = None  # type: ignore
 
 
-def read_json_records(path: Path) -> List[Dict[str, Any]]:
+def read_json_records(path: Path) -> list[dict[str, Any]]:
     """Read JSON array or NDJSON file and return list of dicts."""
     if not path.exists():
         return []
@@ -65,7 +66,7 @@ def read_json_records(path: Path) -> List[Dict[str, Any]]:
     except Exception:
         pass
     # Fallback NDJSON
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -99,7 +100,7 @@ def load_awards_dataframe(parquet_path: Path, json_path: Path):
     return None
 
 
-def read_awards_records(parquet_path: Path, json_path: Path) -> List[Dict[str, Any]]:
+def read_awards_records(parquet_path: Path, json_path: Path) -> list[dict[str, Any]]:
     """Return a list of award dicts from parquet (via pandas) or NDJSON."""
     df = load_awards_dataframe(parquet_path, json_path)
     if df is not None:
@@ -112,12 +113,12 @@ def read_awards_records(parquet_path: Path, json_path: Path) -> List[Dict[str, A
     return read_json_records(json_path)
 
 
-def pmf_from_counts(counts: Dict[Any, int]) -> Dict[str, float]:
+def pmf_from_counts(counts: dict[Any, int]) -> dict[str, float]:
     """Normalize counts dict into a PMF mapping str(key) -> probability."""
     total = sum(int(v) for v in counts.values()) if counts else 0
     if total <= 0:
         return {}
-    pmf: Dict[str, float] = {}
+    pmf: dict[str, float] = {}
     for k, v in counts.items():
         try:
             pmf[str(k)] = float(v) / float(total)
@@ -126,7 +127,7 @@ def pmf_from_counts(counts: Dict[Any, int]) -> Dict[str, float]:
     return pmf
 
 
-def score_hist_pmf(scores: Iterable[float], bins: List[float]) -> Dict[str, float]:
+def score_hist_pmf(scores: Iterable[float], bins: list[float]) -> dict[str, float]:
     """Compute histogram PMF for scores clipped to [min(bins), max(bins)]."""
     if np is not None:
         try:
@@ -146,7 +147,7 @@ def score_hist_pmf(scores: Iterable[float], bins: List[float]) -> Dict[str, floa
             total = int(hist.sum())
             if total == 0:
                 return {}
-            pmf: Dict[str, float] = {}
+            pmf: dict[str, float] = {}
             for i in range(len(hist)):
                 label = f"{int(edges[i])}-{int(edges[i+1])}"
                 pmf[label] = float(hist[i]) / float(total)
@@ -184,15 +185,15 @@ def score_hist_pmf(scores: Iterable[float], bins: List[float]) -> Dict[str, floa
                     break
     if total == 0:
         return {}
-    pmf: Dict[str, float] = {}
+    pmf: dict[str, float] = {}
     for i, (lo, hi) in enumerate(ranges):
         pmf[f"{int(lo)}-{int(hi)}"] = float(counts[i]) / float(total)
     return pmf
 
 
 def align_pmfs_dicts(
-    a: Dict[str, float], b: Dict[str, float]
-) -> Tuple[List[float], List[float], List[str]]:
+    a: dict[str, float], b: dict[str, float]
+) -> tuple[list[float], list[float], list[str]]:
     """Align two PMF dicts onto the union of keys, returning arrays (p_arr, q_arr, keys_sorted)."""
     keys = sorted(set(a.keys()) | set(b.keys()))
     p_arr = [float(a.get(k, 0.0)) for k in keys]
@@ -200,7 +201,7 @@ def align_pmfs_dicts(
     return p_arr, q_arr, keys
 
 
-def js_divergence(p_arr: List[float], q_arr: List[float]) -> float:
+def js_divergence(p_arr: list[float], q_arr: list[float]) -> float:
     """Compute Jensen-Shannon divergence between two probability arrays. Uses log base 2."""
     # Convert to numpy if available
     if np is not None:
@@ -231,14 +232,14 @@ def js_divergence(p_arr: List[float], q_arr: List[float]) -> float:
         p = [x / p_sum for x in p]
     if q_sum > 0:
         q = [x / q_sum for x in q]
-    m = [0.5 * (pp + qq) for pp, qq in zip(p, q)]
+    m = [0.5 * (pp + qq) for pp, qq in zip(p, q, strict=False)]
 
     def _safe_log2(x):
         return math.log(x, 2) if x > 0 else 0.0
 
     def _kl(a, b):
         s = 0.0
-        for ai, bi in zip(a, b):
+        for ai, bi in zip(a, b, strict=False):
             if ai > 0 and bi > 0:
                 s += ai * _safe_log2(ai / bi)
         return s
@@ -252,7 +253,7 @@ def write_json(path: Path, obj: Any) -> None:
         json.dump(obj, fh, indent=2, sort_keys=True, default=str)
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run CET drift detection standalone (no Dagster).")
     parser.add_argument(
         "--awards",
@@ -355,7 +356,7 @@ def main(argv: List[str] | None = None) -> int:
 
     # Build label counts and score list
     label_counts: Counter = Counter()
-    scores_list: List[float] = []
+    scores_list: list[float] = []
     for r in records:
         # primary_cet may be nested or directly present
         pc = r.get("primary_cet")
@@ -445,7 +446,7 @@ def main(argv: List[str] | None = None) -> int:
         "counts": {"total_awards": len(records), "label_count": sum(label_counts.values())},
     }
 
-    alerts: Dict[str, Any] = {"alerts": [], "generated_at": datetime.utcnow().isoformat()}
+    alerts: dict[str, Any] = {"alerts": [], "generated_at": datetime.utcnow().isoformat()}
 
     # Evaluate thresholds
     if label_js is not None:

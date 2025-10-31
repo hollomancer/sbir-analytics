@@ -20,7 +20,7 @@ Results are saved to metrics/sbir_performance_report.json
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -30,7 +30,7 @@ from src.extractors.sbir import SbirDuckDBExtractor
 from src.validators.sbir_awards import validate_sbir_awards
 
 
-def get_memory_usage() -> Dict[str, float]:
+def get_memory_usage() -> dict[str, float]:
     """Get basic memory usage estimate (simplified without psutil)."""
     # Simplified memory tracking - just return placeholder
     return {
@@ -40,7 +40,7 @@ def get_memory_usage() -> Dict[str, float]:
     }
 
 
-def profile_csv_import(extractor: SbirDuckDBExtractor, method: str, **kwargs) -> Dict[str, Any]:
+def profile_csv_import(extractor: SbirDuckDBExtractor, method: str, **kwargs) -> dict[str, Any]:
     """Profile CSV import performance."""
     logger.info(f"Profiling CSV import with method: {method}")
 
@@ -69,13 +69,13 @@ def profile_csv_import(extractor: SbirDuckDBExtractor, method: str, **kwargs) ->
         "metadata": metadata,
     }
 
-    logger.info(f"Import profiling complete", **result)
+    logger.info("Import profiling complete", **result)
     return result
 
 
 def profile_chunked_extraction(
-    extractor: SbirDuckDBExtractor, batch_sizes: List[int]
-) -> List[Dict[str, Any]]:
+    extractor: SbirDuckDBExtractor, batch_sizes: list[int]
+) -> list[dict[str, Any]]:
     """Profile chunked extraction with different batch sizes."""
     logger.info("Profiling chunked extraction with different batch sizes")
 
@@ -131,8 +131,8 @@ def profile_chunked_extraction(
 
 
 def profile_validation_performance(
-    sample_df: pd.DataFrame, sample_sizes: List[int]
-) -> List[Dict[str, Any]]:
+    sample_df: pd.DataFrame, sample_sizes: list[int]
+) -> list[dict[str, Any]]:
     """Profile validation performance with different sample sizes."""
     logger.info("Profiling validation performance")
 
@@ -183,7 +183,7 @@ def profile_validation_performance(
     return results
 
 
-def profile_end_to_end_pipeline(config) -> Dict[str, Any]:
+def profile_end_to_end_pipeline(config) -> dict[str, Any]:
     """Profile end-to-end pipeline performance."""
     logger.info("Profiling end-to-end pipeline")
 

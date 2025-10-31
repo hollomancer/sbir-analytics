@@ -174,7 +174,9 @@ def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
         AssetExecutionContext,
         contracts_ingestion,
     )
-    from src.extractors.contract_extractor import ContractExtractor  # noqa: WPS433 (local import for test isolation)
+    from src.extractors.contract_extractor import (
+        ContractExtractor,  # noqa: WPS433 (local import for test isolation)
+    )
 
     def _fake_extract(self, dump_dir, output_file, table_files=None):
         fresh_df.to_parquet(output_file, index=False)
@@ -481,9 +483,9 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
-        vendor_resolution,
-        transition_scores_v1,
         transition_analytics,
+        transition_scores_v1,
+        vendor_resolution,
     )
 
     # Reuse tiny fixtures

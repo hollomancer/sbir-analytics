@@ -5,12 +5,13 @@ This script analyzes the structure and relationships of USPTO patent assignment
 data files to inform ETL strategy development.
 """
 
-import pandas as pd
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
+
+import pandas as pd
 
 
-def analyze_file(filepath: Path) -> Dict[str, Any]:
+def analyze_file(filepath: Path) -> dict[str, Any]:
     """Analyze a single Stata file and return summary statistics."""
     print(f"\n{'=' * 60}")
     print(f"Analyzing: {filepath.name}")
@@ -41,7 +42,7 @@ def analyze_file(filepath: Path) -> Dict[str, Any]:
 
         # Check for key linking fields
         if 'rf_id' in info['columns']:
-            print(f"✓ Contains rf_id (assignment record ID)")
+            print("✓ Contains rf_id (assignment record ID)")
 
         # Show data types
         print("\nKey data types:")

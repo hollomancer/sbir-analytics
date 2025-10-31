@@ -9,7 +9,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import duckdb
 import pandas as pd
@@ -20,7 +19,7 @@ class USAspendingCoverageAssessor:
     """Assesses USAspending coverage for SBIR enrichment."""
 
     def __init__(
-        self, usaspending_dump: Optional[Path] = None, profile_json: Optional[Path] = None
+        self, usaspending_dump: Path | None = None, profile_json: Path | None = None
     ):
         """Initialize assessor.
 
@@ -30,9 +29,9 @@ class USAspendingCoverageAssessor:
         """
         self.usaspending_dump = usaspending_dump
         self.profile_json = profile_json
-        self.connection: Optional[duckdb.DuckDBPyConnection] = None
+        self.connection: duckdb.DuckDBPyConnection | None = None
 
-    def load_sbir_sample(self, sample_path: Path, limit: Optional[int] = None) -> pd.DataFrame:
+    def load_sbir_sample(self, sample_path: Path, limit: int | None = None) -> pd.DataFrame:
         """Load SBIR awards sample data.
 
         Args:
@@ -56,7 +55,7 @@ class USAspendingCoverageAssessor:
         duns_count = df["Duns"].notna().sum()
         contract_count = df["Contract"].notna().sum()
 
-        logger.info(f"SBIR identifier coverage:")
+        logger.info("SBIR identifier coverage:")
         logger.info(f"  UEI: {uei_count}/{total} ({uei_count/total:.1%})")
         logger.info(f"  DUNS: {duns_count}/{total} ({duns_count/total:.1%})")
         logger.info(f"  Contract: {contract_count}/{total} ({contract_count/total:.1%})")
@@ -162,7 +161,7 @@ class USAspendingCoverageAssessor:
             logger.error(f"Query failed: {e}")
             return pd.DataFrame()
 
-    def assess_coverage(self, sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> Dict:
+    def assess_coverage(self, sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> dict:
         """Assess coverage by joining SBIR and USAspending data.
 
         Args:
@@ -265,7 +264,7 @@ class USAspendingCoverageAssessor:
         usaspending_df: pd.DataFrame,
         sbir_col: str,
         usaspending_col: str,
-    ) -> Dict:
+    ) -> dict:
         """Calculate match rate for a specific identifier."""
         # Get non-null values
         sbir_valid = sbir_df[sbir_df[sbir_col].notna()]
@@ -296,7 +295,7 @@ class USAspendingCoverageAssessor:
 
     def _calculate_overall_coverage(
         self, sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame
-    ) -> Dict:
+    ) -> dict:
         """Calculate overall coverage using any identifier."""
         # Create match flags for each identifier
         matches = []
@@ -367,7 +366,7 @@ class USAspendingCoverageAssessor:
 
         return matched_indices
 
-    def save_report(self, results: Dict, output_path: Path):
+    def save_report(self, results: dict, output_path: Path):
         """Save assessment report to file.
 
         Args:

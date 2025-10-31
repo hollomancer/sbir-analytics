@@ -284,8 +284,8 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
 
     from src.assets.transition_assets import (
         AssetExecutionContext,
-        transition_scores_v1,
         transition_evidence_v1,
+        transition_scores_v1,
     )
 
     # Reuse consistent fixtures (contracts + awards + vendor_resolution outputs)

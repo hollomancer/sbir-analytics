@@ -21,7 +21,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class PatentETLValidator:
     """Comprehensive validator for USPTO Patent ETL pipeline."""
 
-    def __init__(self, data_file: Path, neo4j_uri: Optional[str] = None):
+    def __init__(self, data_file: Path, neo4j_uri: str | None = None):
         """Initialize validator with data file and optional Neo4j connection."""
         self.data_file = Path(data_file)
         self.neo4j_uri = neo4j_uri
@@ -156,8 +156,9 @@ class PatentETLValidator:
 
         try:
             import pandas as pd
-            from src.transformers.patent_transformer import PatentAssignmentTransformer
+
             from src.models.uspto_models import PatentAssignment
+            from src.transformers.patent_transformer import PatentAssignmentTransformer
         except ImportError as e:
             logger.error(f"Required dependencies not available: {e}")
             self.validation_results["stages"]["transformation"] = {
@@ -431,7 +432,7 @@ class PatentETLValidator:
             "patterns": validated_patterns,
         }
 
-        logger.info(f"✓ STAGE 5: QUERY PATTERNS VALIDATION PASSED")
+        logger.info("✓ STAGE 5: QUERY PATTERNS VALIDATION PASSED")
         return True
 
     def validate_incremental_update_workflow(self) -> bool:
@@ -487,7 +488,7 @@ class PatentETLValidator:
             }
             return False
 
-    def generate_evaluation_report(self) -> Dict[str, Any]:
+    def generate_evaluation_report(self) -> dict[str, Any]:
         """Generate comprehensive evaluation report."""
         logger.info("=" * 80)
         logger.info("GENERATING EVALUATION REPORT")
@@ -544,7 +545,7 @@ class PatentETLValidator:
         self.validation_results["overall_status"] = overall_status
 
         # Log summary
-        logger.info(f"Validation Summary:")
+        logger.info("Validation Summary:")
         logger.info(f"  Passed:  {passed_count}")
         logger.info(f"  Warning: {warned_count}")
         logger.info(f"  Failed:  {failed_count}")

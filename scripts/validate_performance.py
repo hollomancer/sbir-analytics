@@ -6,9 +6,9 @@ Tests that the system meets the ≥10K detections/minute target.
 """
 
 import time
-import pandas as pd
 from datetime import date, timedelta
-from src.models.transition_models import FederalContract, CompetitionType
+
+from src.models.transition_models import CompetitionType, FederalContract
 from src.transition.detection.detector import TransitionDetector
 from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
@@ -148,7 +148,7 @@ def main():
     results = measure_throughput(detector, awards, contracts, target)
 
     # Results
-    print(f"\n📈 Performance Results:")
+    print("\n📈 Performance Results:")
     print(f"   Total detections: {results['total_detections']:,}")
     print(f"   Time elapsed: {results['elapsed_minutes']:.2f} minutes")
     print(f"   Throughput: {results['detections_per_minute']:,.0f} detections/minute")
@@ -158,7 +158,7 @@ def main():
     target_rate = 10000  # 10K detections/minute
     meets_target = results["detections_per_minute"] >= target_rate
 
-    print(f"\n🎯 Performance Target Validation:")
+    print("\n🎯 Performance Target Validation:")
     print(f"   Target: ≥{target_rate:,} detections/minute")
     print(f"   Actual: {results['detections_per_minute']:,.0f} detections/minute")
     print(f"   Status: {'✅ PASSED' if meets_target else '❌ FAILED'}")
@@ -172,13 +172,14 @@ def main():
         print(f"   Performance shortfall: {shortfall:,.0f} det/min")
 
     # Memory usage (basic check)
-    import psutil
     import os
+
+    import psutil
 
     process = psutil.Process(os.getpid())
     memory_mb = process.memory_info().rss / 1024 / 1024
 
-    print(f"\n💾 Memory Usage:")
+    print("\n💾 Memory Usage:")
     print(f"   Current usage: {memory_mb:.1f} MB")
     print(
         f"   Status: {'✅ EFFICIENT' if memory_mb < 500 else '⚠️ HIGH' if memory_mb < 1000 else '❌ EXCESSIVE'}"

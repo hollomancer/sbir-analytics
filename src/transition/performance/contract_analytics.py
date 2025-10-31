@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -37,7 +37,7 @@ class ContractAnalytics:
     and indexed lookups for vendor-based filtering.
     """
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         """
         Initialize Contract Analytics.
 
@@ -110,9 +110,9 @@ class ContractAnalytics:
 
     def filter_by_vendors(
         self,
-        vendor_ids: List[str],
-        vendor_ueis: Optional[List[str]] = None,
-        vendor_duns: Optional[List[str]] = None,
+        vendor_ids: list[str],
+        vendor_ueis: list[str] | None = None,
+        vendor_duns: list[str] | None = None,
     ) -> int:
         """
         Filter contracts to only those matching specified vendors.
@@ -176,8 +176,8 @@ class ContractAnalytics:
             raise
 
     def vendor_lookup(
-        self, vendor_uei: Optional[str] = None, vendor_duns: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, vendor_uei: str | None = None, vendor_duns: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Look up contracts for a specific vendor.
 
@@ -237,7 +237,7 @@ class ContractAnalytics:
             logger.error(f"Failed to get DataFrame: {e}")
             raise
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Return analytics statistics."""
         return self.stats.copy()
 
@@ -255,7 +255,7 @@ class VendorResolutionCache:
     Task 17.5: Cache vendor resolutions to avoid redundant matching
     """
 
-    def __init__(self, cache_file: Optional[str] = None):
+    def __init__(self, cache_file: str | None = None):
         """
         Initialize vendor resolution cache.
 
@@ -263,7 +263,7 @@ class VendorResolutionCache:
             cache_file: Optional file path to persist cache
         """
         self.cache_file = cache_file
-        self.cache: Dict[str, Dict[str, Any]] = {}
+        self.cache: dict[str, dict[str, Any]] = {}
         self.hits = 0
         self.misses = 0
 
@@ -273,7 +273,7 @@ class VendorResolutionCache:
     def _load_cache(self) -> None:
         """Load cache from file."""
         try:
-            with open(self.cache_file, "r") as f:
+            with open(self.cache_file) as f:
                 self.cache = json.load(f)
             logger.info(f"Loaded vendor resolution cache: {len(self.cache)} entries")
         except Exception as e:
@@ -293,7 +293,7 @@ class VendorResolutionCache:
         except Exception as e:
             logger.warning(f"Failed to save cache: {e}")
 
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
+    def get(self, key: str) -> dict[str, Any] | None:
         """
         Get cached vendor resolution.
 
@@ -309,7 +309,7 @@ class VendorResolutionCache:
         self.misses += 1
         return None
 
-    def set(self, key: str, value: Dict[str, Any]) -> None:
+    def set(self, key: str, value: dict[str, Any]) -> None:
         """
         Cache a vendor resolution.
 
@@ -319,7 +319,7 @@ class VendorResolutionCache:
         """
         self.cache[key] = value
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Return cache statistics."""
         total = self.hits + self.misses
         hit_rate = (self.hits / total * 100) if total > 0 else 0.0
@@ -344,8 +344,8 @@ class PerformanceProfiler:
 
     def __init__(self):
         """Initialize performance profiler."""
-        self.timings: Dict[str, List[float]] = {}
-        self.counters: Dict[str, int] = {}
+        self.timings: dict[str, list[float]] = {}
+        self.counters: dict[str, int] = {}
 
     def record_timing(self, phase: str, duration_ms: float) -> None:
         """
@@ -371,7 +371,7 @@ class PerformanceProfiler:
             self.counters[counter] = 0
         self.counters[counter] += count
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get performance summary.
 

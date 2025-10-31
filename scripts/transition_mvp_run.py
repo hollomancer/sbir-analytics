@@ -26,7 +26,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -50,7 +50,7 @@ def _to_parquet_or_csv(df: pd.DataFrame, path: Path) -> Path:
         return csv_path
 
 
-def _unwrap_output(result: Any) -> Tuple[Any, dict | None]:
+def _unwrap_output(result: Any) -> tuple[Any, dict | None]:
     """
     Helper to unwrap Dagster Output-like objects or pass through the bare value.
     The transition assets return Output(value=..., metadata=...).
@@ -146,10 +146,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from src.assets.transition_assets import (  # type: ignore
             AssetExecutionContext,
+        )
+        from src.assets.transition_assets import (
             contracts_sample as a_contracts_sample,
-            vendor_resolution as a_vendor_resolution,
-            transition_scores_v1 as a_transition_scores_v1,
+        )
+        from src.assets.transition_assets import (
             transition_evidence_v1 as a_transition_evidence_v1,
+        )
+        from src.assets.transition_assets import (
+            transition_scores_v1 as a_transition_scores_v1,
+        )
+        from src.assets.transition_assets import (
+            vendor_resolution as a_vendor_resolution,
         )
     except Exception as exc:
         print(f"[error] Failed to import transition assets: {exc}", file=sys.stderr)

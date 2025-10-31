@@ -11,13 +11,14 @@ Tests cover:
 - Training report generation
 """
 
-import pytest
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
+
 import numpy as np
+import pytest
+
 from src.ml.models.trainer import CETModelTrainer
-from src.models.cet_models import CETArea, TrainingExample, TrainingDataset
+from src.models.cet_models import CETArea, TrainingDataset, TrainingExample
 
 
 @pytest.fixture

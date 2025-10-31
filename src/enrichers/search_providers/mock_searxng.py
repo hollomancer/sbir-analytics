@@ -22,7 +22,7 @@ import json
 import random
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from .base import BaseSearchProvider, ProviderResponse, ProviderResult
 
@@ -44,7 +44,7 @@ class MockSearxngProvider(BaseSearchProvider):
         "seed": None,
     }
 
-    def __init__(self, name: str = "searxng-mock", config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str = "searxng-mock", config: dict[str, Any] | None = None):
         super().__init__(name=name, config=config or {})
         # Apply defaults to config
         for k, v in self.DEFAULTS.items():
@@ -54,12 +54,12 @@ class MockSearxngProvider(BaseSearchProvider):
         if seed is not None:
             random.seed(int(seed))
 
-        self._fixture_data: Optional[List[Dict[str, Any]]] = None
+        self._fixture_data: list[dict[str, Any]] | None = None
         fixture_path = self.config.get("fixture_path")
         if fixture_path:
             self._fixture_data = self._try_load_fixture(Path(fixture_path))
 
-    def _try_load_fixture(self, path: Path) -> Optional[List[Dict[str, Any]]]:
+    def _try_load_fixture(self, path: Path) -> list[dict[str, Any]] | None:
         """Attempt to load a JSON fixture containing an array of result objects.
 
         Returns None on failure.
@@ -76,9 +76,9 @@ class MockSearxngProvider(BaseSearchProvider):
             # Do not raise in mocks; treat as no fixture available
             return None
 
-    def _synthesize_results(self, query: str, k: int) -> List[ProviderResult]:
+    def _synthesize_results(self, query: str, k: int) -> list[ProviderResult]:
         """Create k synthetic results that include the query in snippets."""
-        results: List[ProviderResult] = []
+        results: list[ProviderResult] = []
         include_titles = bool(self.config.get("include_titles", True))
         base_url = "https://example.com/search"
         for i in range(1, k + 1):
@@ -97,13 +97,13 @@ class MockSearxngProvider(BaseSearchProvider):
             )
         return results
 
-    def _results_from_fixture(self, query: str, k: int) -> List[ProviderResult]:
+    def _results_from_fixture(self, query: str, k: int) -> list[ProviderResult]:
         """Select up to k results from loaded fixture, preferring entries that
         contain the query substring, otherwise returning the head of the fixture.
         """
         assert self._fixture_data is not None
         # Case-insensitive substring match on title or snippet
-        matches: List[Dict[str, Any]] = []
+        matches: list[dict[str, Any]] = []
         ql = query.lower()
         for item in self._fixture_data:
             title = (item.get("title") or "").lower()
@@ -111,7 +111,7 @@ class MockSearxngProvider(BaseSearchProvider):
             if ql in title or ql in snippet:
                 matches.append(item)
         source_list = matches or self._fixture_data
-        out: List[ProviderResult] = []
+        out: list[ProviderResult] = []
         for idx, item in enumerate(source_list[:k], start=1):
             out.append(
                 ProviderResult(
@@ -124,7 +124,7 @@ class MockSearxngProvider(BaseSearchProvider):
             )
         return out
 
-    def search(self, query: str, context: Optional[Dict[str, Any]] = None) -> ProviderResponse:
+    def search(self, query: str, context: dict[str, Any] | None = None) -> ProviderResponse:
         """Return a normalized ProviderResponse.
 
         The method simulates real request characteristics:
@@ -141,7 +141,7 @@ class MockSearxngProvider(BaseSearchProvider):
 
         # Build results
         k = int(self.config.get("result_count", 5))
-        results: List[ProviderResult]
+        results: list[ProviderResult]
         fixture_used = False
         if self._fixture_data:
             results = self._results_from_fixture(query, k)
@@ -168,7 +168,7 @@ class MockSearxngProvider(BaseSearchProvider):
 
 
 # Simple factory for tests
-def make_mock_searxng(config: Optional[Dict[str, Any]] = None) -> MockSearxngProvider:
+def make_mock_searxng(config: dict[str, Any] | None = None) -> MockSearxngProvider:
     """Create a configured MockSearxngProvider for tests or CLI runs."""
     return MockSearxngProvider(config=config or {})
 

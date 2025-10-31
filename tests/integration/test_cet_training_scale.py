@@ -1,21 +1,15 @@
-/Users/conradhollomon/projects/sbir-etl/tests/integration/test_cet_training_scale.py
-# Integration test: larger-scale synthetic training + classification for CET ApplicabilityModel
-#
-# This test intentionally marked as slow and integration-level. It creates a
-# synthetic labeled dataset for a small set of CET areas, trains the
-# ApplicabilityModel on the synthetic dataset, and verifies that held-out
-# texts are classified into the expected CET areas.
-#
-# The test size is configurable via environment variable:
-#   CET_TRAIN_SCALE (default: 2000)
-#
-# Usage:
-#   pytest -k test_cet_training_scale -m "integration and slow" -v
-#
+"""Integration test: larger-scale synthetic training + classification for CET ApplicabilityModel.
+
+This test intentionally marked as slow and integration-level. It creates a
+synthetic labeled dataset for a small set of CET areas, trains the
+ApplicabilityModel on the synthetic dataset, and verifies that held-out
+texts are classified into the expected CET areas.
+
+The test size is configurable via environment variable:
+  CET_TRAIN_SCALE (default: 2000)
+"""
 import os
 import random
-from datetime import datetime
-from typing import List, Dict
 
 import pytest
 
@@ -23,8 +17,8 @@ import pytest
 pytest.importorskip("sklearn", reason="scikit-learn required for integration training")
 pytest.importorskip("pandas", reason="pandas required for integration training")
 
-import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 
 from src.ml.models.cet_classifier import ApplicabilityModel  # type: ignore
 from src.models.cet_models import CETArea  # type: ignore
@@ -50,7 +44,7 @@ def test_cet_training_scale_synthetic():
     np.random.seed(seed)
 
     # Define a small taxonomy of CET areas for synthetic training
-    cet_areas: List[CETArea] = [
+    cet_areas: list[CETArea] = [
         CETArea(
             cet_id="artificial_intelligence",
             name="Artificial Intelligence",
@@ -79,8 +73,8 @@ def test_cet_training_scale_synthetic():
 
     # Build synthetic training corpus.
     # For each CET area, create a number of positive examples emphasizing that CET's keywords.
-    examples: List[str] = []
-    labels_rows: List[List[int]] = []
+    examples: list[str] = []
+    labels_rows: list[list[int]] = []
 
     # Distribute examples roughly evenly across CETs (allow some multi-label mixes)
     per_cet = max(10, total_examples // num_cets)
@@ -136,9 +130,9 @@ def test_cet_training_scale_synthetic():
         labels_rows.append(labels)
 
     # Shuffle dataset
-    combined = list(zip(examples, labels_rows))
+    combined = list(zip(examples, labels_rows, strict=False))
     random.shuffle(combined)
-    examples, labels_rows = zip(*combined) if combined else ([], [])
+    examples, labels_rows = zip(*combined, strict=False) if combined else ([], [])
 
     # Split into train/test
     split_idx = int(len(examples) * 0.85)
@@ -217,7 +211,7 @@ def test_cet_training_scale_synthetic():
     test_results = model.classify_batch(list(X_test[:200]), batch_size=256)
     hits = 0
     total = 0
-    for y_true_row, preds in zip(y_test_df.iloc[:200].values.tolist(), test_results):
+    for y_true_row, preds in zip(y_test_df.iloc[:200].values.tolist(), test_results, strict=False):
         total += 1
         # Get true labels
         true_idxs = [i for i, v in enumerate(y_true_row) if int(v) == 1]

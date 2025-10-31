@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,7 +26,7 @@ class DummyLog:
 
 
 class DummyContext:
-    def __init__(self, op_config: Dict[str, Any] | None = None):
+    def __init__(self, op_config: dict[str, Any] | None = None):
         self.op_config = op_config or {}
         self.log = DummyLog()
 
@@ -41,7 +41,7 @@ def test_create_company_cet_relationships_dominant_props():
     - Produces correct relationship properties
     - Updates metrics with the created relationships count
     """
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def _fake_batch_create_relationships(*, relationships, metrics):
         captured["relationships"] = relationships
@@ -98,7 +98,7 @@ def test_create_company_cet_relationships_alternate_field_names_and_custom_key()
     - cet_dominant_id, cet_dominant_score, cet_specialization_score, cet_taxonomy_version
     Also ensure custom key_property works (company_id).
     """
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def _fake_batch_create_relationships(*, relationships, metrics):
         captured["relationships"] = relationships
@@ -149,7 +149,7 @@ def test_create_company_cet_relationships_missing_key_and_missing_cet_are_skippe
     """
     Rows missing company key or dominant CET should be skipped and counted as errors.
     """
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def _fake_batch_create_relationships(*, relationships, metrics):
         captured["relationships"] = relationships

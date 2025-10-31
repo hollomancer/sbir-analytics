@@ -5,13 +5,11 @@ Loads transition detections into Neo4j as Transition nodes and creates
 relationships to Awards, Contracts, Patents, and CET areas.
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
-from neo4j import Driver, Session
 from loguru import logger
+
+from neo4j import Driver
 
 
 class TransitionLoader:
@@ -267,7 +265,7 @@ class TransitionLoader:
     def create_enabled_by_relationships(
         self,
         transitions_df: pd.DataFrame,
-        patent_transitions_df: Optional[pd.DataFrame] = None,
+        patent_transitions_df: pd.DataFrame | None = None,
     ) -> int:
         """
         Create ENABLED_BY relationships from Transitions to Patents.
@@ -390,8 +388,8 @@ class TransitionLoader:
     def load_transitions(
         self,
         transitions_df: pd.DataFrame,
-        patent_transitions_df: Optional[pd.DataFrame] = None,
-    ) -> Dict[str, int]:
+        patent_transitions_df: pd.DataFrame | None = None,
+    ) -> dict[str, int]:
         """
         End-to-end transition loading orchestration.
 
@@ -423,7 +421,7 @@ class TransitionLoader:
 
         return self.stats
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Return loading statistics."""
         return self.stats.copy()
 
@@ -500,7 +498,7 @@ class TransitionProfileLoader:
     def create_transition_profiles(
         self,
         transitions_df: pd.DataFrame,
-        awards_df: Optional[pd.DataFrame] = None,
+        awards_df: pd.DataFrame | None = None,
     ) -> int:
         """
         Create TransitionProfile nodes from transition aggregations.
@@ -564,8 +562,8 @@ class TransitionProfileLoader:
     def load_transition_profiles(
         self,
         transitions_df: pd.DataFrame,
-        awards_df: Optional[pd.DataFrame] = None,
-    ) -> Dict[str, int]:
+        awards_df: pd.DataFrame | None = None,
+    ) -> dict[str, int]:
         """
         Load company transition profiles into Neo4j.
 
@@ -589,6 +587,6 @@ class TransitionProfileLoader:
 
         return self.stats
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Return loading statistics."""
         return self.stats.copy()

@@ -8,7 +8,6 @@ include timing (patents filed between award and contract), technology transfer
 """
 
 from datetime import date, timedelta
-from typing import Dict, List, Optional
 
 from loguru import logger
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -61,12 +60,12 @@ class PatentSignalExtractor:
 
     def extract_signals(
         self,
-        patents: List[Patent],
+        patents: list[Patent],
         award_completion_date: date,
         contract_start_date: date,
-        contract_description: Optional[str] = None,
-        award_description: Optional[str] = None,
-        vendor_name: Optional[str] = None,
+        contract_description: str | None = None,
+        award_description: str | None = None,
+        vendor_name: str | None = None,
     ) -> PatentSignal:
         """
         Extract patent signals for a potential transition.
@@ -149,10 +148,10 @@ class PatentSignalExtractor:
 
     def _filter_by_timing(
         self,
-        patents: List[Patent],
+        patents: list[Patent],
         award_completion_date: date,
         contract_start_date: date,
-    ) -> List[Patent]:
+    ) -> list[Patent]:
         """
         Filter patents filed between award completion and contract start.
 
@@ -193,10 +192,10 @@ class PatentSignalExtractor:
 
     def _calculate_topic_similarity(
         self,
-        patents: List[Patent],
+        patents: list[Patent],
         contract_description: str,
-        award_description: Optional[str] = None,
-    ) -> Optional[float]:
+        award_description: str | None = None,
+    ) -> float | None:
         """
         Calculate topic similarity between patents and contract.
 
@@ -261,8 +260,8 @@ class PatentSignalExtractor:
 
     def _detect_technology_transfer(
         self,
-        patents: List[Patent],
-        vendor_name: Optional[str],
+        patents: list[Patent],
+        vendor_name: str | None,
     ) -> bool:
         """
         Detect if patents were assigned to a different entity (technology transfer).
@@ -303,7 +302,7 @@ class PatentSignalExtractor:
         patent_count: int,
         patents_in_window: int,
         patents_pre_contract: int,
-        topic_similarity: Optional[float],
+        topic_similarity: float | None,
         has_tech_transfer: bool,
     ) -> float:
         """

@@ -51,12 +51,13 @@ loader.close()
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any
 
 # Import neo4j lazily; avoid import error at module import time
 try:
-    from neo4j import GraphDatabase, Driver, Transaction  # type: ignore
+    from neo4j import Driver, GraphDatabase, Transaction  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     GraphDatabase = None  # type: ignore
     Driver = None  # type: ignore
@@ -84,11 +85,11 @@ class Neo4jPatentCETLoader:
 
     def __init__(
         self,
-        driver: Optional["Driver"] = None,
+        driver: Driver | None = None,
         *,
-        uri: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        uri: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
         database: str = "neo4j",
         max_connection_lifetime: int = 3600,
         auto_create_constraints: bool = False,
@@ -165,7 +166,7 @@ class Neo4jPatentCETLoader:
     # -----------------------
     # Upserts (MERGE)
     # -----------------------
-    def upsert_cet_areas(self, areas: Iterable[Dict[str, Any]]) -> int:
+    def upsert_cet_areas(self, areas: Iterable[dict[str, Any]]) -> int:
         """
         Upsert CETArea nodes.
 
@@ -196,7 +197,7 @@ class Neo4jPatentCETLoader:
 
         return self._run_batched_write(query, rows)
 
-    def upsert_patents(self, patents: Iterable[Dict[str, Any]]) -> int:
+    def upsert_patents(self, patents: Iterable[dict[str, Any]]) -> int:
         """
         Upsert Patent nodes.
 
@@ -241,7 +242,7 @@ class Neo4jPatentCETLoader:
 
         return self._run_batched_write(query, rows)
 
-    def link_patent_cet(self, rels: Iterable[Dict[str, Any]]) -> int:
+    def link_patent_cet(self, rels: Iterable[dict[str, Any]]) -> int:
         """
         Create/Update CLASSIFIED_AS relationships between Patent and CETArea.
 
@@ -307,12 +308,12 @@ class Neo4jPatentCETLoader:
     # -----------------------
     def load_classifications(
         self,
-        classifications: Sequence[Dict[str, Any]],
+        classifications: Sequence[dict[str, Any]],
         *,
-        cet_areas: Optional[Iterable[Dict[str, Any]]] = None,
-        patents: Optional[Iterable[Dict[str, Any]]] = None,
+        cet_areas: Iterable[dict[str, Any]] | None = None,
+        patents: Iterable[dict[str, Any]] | None = None,
         derive_patents_from_rows: bool = True,
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """
         Load a batch of patent classifications end-to-end:
         - Ensure constraints
@@ -329,7 +330,7 @@ class Neo4jPatentCETLoader:
         if cet_areas:
             counts["cet_areas"] = self.upsert_cet_areas(cet_areas)
 
-        patent_rows: List[Dict[str, Any]] = []
+        patent_rows: list[dict[str, Any]] = []
         if patents:
             patent_rows = list(patents)
         elif derive_patents_from_rows:
@@ -355,7 +356,7 @@ class Neo4jPatentCETLoader:
     # -----------------------
     # Internals
     # -----------------------
-    def _run_batched_write(self, cypher: str, rows: List[Dict[str, Any]]) -> int:
+    def _run_batched_write(self, cypher: str, rows: list[dict[str, Any]]) -> int:
         """
         Execute a write query in batches. Returns number of processed rows.
 

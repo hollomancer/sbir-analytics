@@ -19,19 +19,13 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any
 from uuid import uuid4
 
 import pandas as pd
-import yaml
 from loguru import logger
 
 from ..extractors.contract_extractor import ContractExtractor
-from ..models.transition_models import (
-    CompetitionType,
-    ConfidenceLevel,
-    FederalContract,
-)
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 # Import-safe shims for Dagster
@@ -77,8 +71,8 @@ except Exception:  # pragma: no cover
     class AssetCheckResult:  # type: ignore
         passed: bool
         severity: str = "WARN"
-        description: Optional[str] = None
-        metadata: Optional[Dict[str, Any]] = None
+        description: str | None = None
+        metadata: dict[str, Any] | None = None
 
     class AssetCheckSeverity:  # type: ignore
         ERROR = "ERROR"
@@ -101,6 +95,7 @@ except Exception:  # pragma: no cover
 # Optional imports – degrade gracefully if heavy modules unavailable at import time
 try:  # pragma: no cover
     from neo4j import Driver
+
     from ..loaders.neo4j_client import Neo4jClient, Neo4jConfig
 except Exception:  # pragma: no cover
     Driver = None  # type: ignore
@@ -188,7 +183,7 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
         logger.warning("Parquet save failed; wrote NDJSON fallback", path=str(ndjson_path))
 
 
-def write_json(path: Path, payload: Dict[str, Any]) -> None:
+def write_json(path: Path, payload: dict[str, Any]) -> None:
     _ensure_parent_dir(path)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2, ensure_ascii=False)
@@ -198,7 +193,7 @@ def now_utc_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
 
-def _norm_name(s: Optional[str]) -> str:
+def _norm_name(s: str | None) -> str:
     return (s or "").strip().lower()
 
 
@@ -365,7 +360,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         },
     )
 
-    stats_snapshot: Optional[Dict[str, Any]] = None
+    stats_snapshot: dict[str, Any] | None = None
 
     if not dump_dir.exists():
         raise FileNotFoundError(f"USAspending dump directory not found: {dump_dir}")
@@ -632,7 +627,7 @@ def enriched_vendor_resolution(
     context.log.info("Built VendorResolver", extra=resolver.stats())
 
     # Resolve each contract vendor
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for _, contract in contracts_sample.iterrows():
         match = resolver.resolve(
             uei=str(contract.get("vendor_uei") or "").strip(),
@@ -726,7 +721,7 @@ def transformed_transition_scores(
     awards["_vendor_id"] = awards.apply(_award_vendor_id, axis=1)
 
     # Prepare mapping vendor_id -> award_ids
-    vendor_to_awards: Dict[str, List[str]] = {}
+    vendor_to_awards: dict[str, list[str]] = {}
     for vid, grp in awards.groupby("_vendor_id"):
         vendor_to_awards[vid] = list(grp["award_id"].astype(str).dropna().unique())
 
@@ -750,7 +745,7 @@ def transformed_transition_scores(
         except Exception:
             return None
 
-    def _award_date_from_row(r: Optional[pd.Series]):
+    def _award_date_from_row(r: pd.Series | None):
         if r is None:
             return None
         for key in [
@@ -768,7 +763,7 @@ def transformed_transition_scores(
                     return d
         return None
 
-    def _agency_from_award_row(r: Optional[pd.Series]) -> Tuple[Optional[str], Optional[str]]:
+    def _agency_from_award_row(r: pd.Series | None) -> tuple[str | None, str | None]:
         if r is None:
             return None, None
         code = None
@@ -785,7 +780,7 @@ def transformed_transition_scores(
                 break
         return code, name
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     # Build quick lookup for contracts by contract_id
     contracts_by_id = {
         str(c.get("contract_id") or c.get("piid") or ""): c for _, c in contracts_sample.iterrows()
@@ -808,7 +803,7 @@ def transformed_transition_scores(
             # Temporal and agency alignment boosts (best-effort; optional fields)
             contract_row = contracts_by_id.get(contract_id, {})
             c_date = _parse_date_any(contract_row.get("action_date"))
-            a_row: Optional[pd.Series] = None
+            a_row: pd.Series | None = None
             try:
                 # Filter once; safe even when no rows match
                 matches = awards.loc[awards["award_id"] == aid]
@@ -945,7 +940,7 @@ def transformed_transition_evidence(
     _ensure_parent_dir(out_path)
 
     # Build lookup of contracts for quick evidence reference
-    contracts_by_id: Dict[str, Dict[str, Any]] = {}
+    contracts_by_id: dict[str, dict[str, Any]] = {}
     for _, c in contracts_sample.iterrows():
         cid = str(c.get("contract_id") or c.get("piid") or "")
         contracts_by_id[cid] = {
@@ -1208,7 +1203,7 @@ def transformed_transition_analytics(
     context,
     enriched_sbir_awards: pd.DataFrame,
     transition_scores_v1: pd.DataFrame,
-    contracts_sample: Optional[pd.DataFrame] = None,
+    contracts_sample: pd.DataFrame | None = None,
 ) -> Output[str]:
     """
     Analyze transition candidates and awards to produce summary KPIs:
@@ -1430,8 +1425,8 @@ def transition_analytics_quality_check(context) -> AssetCheckResult:
           SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE (default 0.0)
           SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE (default 0.0)
     """
-    from pathlib import Path as _Path
     import json as _json
+    from pathlib import Path as _Path
 
     checks_path = _Path("data/processed/transition_analytics.checks.json")
     if not checks_path.exists():
@@ -1523,8 +1518,8 @@ def transition_evidence_quality_check(context) -> AssetCheckResult:
 
     Passes when all candidates with score >= threshold have an evidence row.
     """
-    from pathlib import Path as _Path
     import json as _json
+    from pathlib import Path as _Path
 
     checks_path = _Path("data/processed/transitions_evidence.checks.json")
     if not checks_path.exists():
@@ -1680,7 +1675,7 @@ def transition_detections_quality_check(
 def loaded_transitions(
     context,
     transformed_transition_detections: pd.DataFrame,
-) -> Output[Dict[str, Any]]:
+) -> Output[dict[str, Any]]:
     """
     Load transition detections as Transition nodes in Neo4j.
 
@@ -1839,9 +1834,9 @@ def transition_node_count_check(
 )
 def loaded_transition_relationships(
     context,
-    loaded_transitions: Dict[str, Any],
+    loaded_transitions: dict[str, Any],
     transformed_transition_detections: pd.DataFrame,
-) -> Output[Dict[str, Any]]:
+) -> Output[dict[str, Any]]:
     """
     Create transition relationships in Neo4j.
 
@@ -2015,10 +2010,10 @@ def transition_relationships_check(
 )
 def loaded_transition_profiles(
     context,
-    loaded_transition_relationships: Dict[str, Any],
+    loaded_transition_relationships: dict[str, Any],
     transformed_transition_detections: pd.DataFrame,
-    enriched_sbir_awards: Optional[pd.DataFrame] = None,
-) -> Output[Dict[str, Any]]:
+    enriched_sbir_awards: pd.DataFrame | None = None,
+) -> Output[dict[str, Any]]:
     """
     Create company-level transition profile nodes in Neo4j (Task 15).
 

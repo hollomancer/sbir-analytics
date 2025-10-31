@@ -27,7 +27,7 @@ import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -57,7 +57,7 @@ class PerformanceMetricsArchive:
         self.quality_dir.mkdir(parents=True, exist_ok=True)
         self.archive_dir.mkdir(parents=True, exist_ok=True)
 
-    def archive_current_metrics(self) -> Dict[str, Path]:
+    def archive_current_metrics(self) -> dict[str, Path]:
         """Archive current benchmark and quality metrics with timestamp.
 
         Returns:
@@ -88,7 +88,7 @@ class PerformanceMetricsArchive:
         self,
         days: int = 7,
         metric_type: str = "benchmark",
-    ) -> List[Tuple[Path, Dict[str, Any]]]:
+    ) -> list[tuple[Path, dict[str, Any]]]:
         """Query historical metrics within time range.
 
         Args:
@@ -138,8 +138,8 @@ class PerformanceMetricsArchive:
 
     def analyze_trends(
         self,
-        metrics_list: List[Tuple[Path, Dict[str, Any]]],
-    ) -> Dict[str, Any]:
+        metrics_list: list[tuple[Path, dict[str, Any]]],
+    ) -> dict[str, Any]:
         """Analyze performance trends from historical metrics.
 
         Args:
@@ -240,8 +240,8 @@ class PerformanceMetricsArchive:
 
     def generate_trend_report(
         self,
-        metrics_list: List[Tuple[Path, Dict[str, Any]]],
-        output_path: Optional[Path] = None,
+        metrics_list: list[tuple[Path, dict[str, Any]]],
+        output_path: Path | None = None,
     ) -> str:
         """Generate markdown trend report.
 
@@ -268,7 +268,7 @@ class PerformanceMetricsArchive:
 
         return report
 
-    def list_archived_metrics(self) -> List[Dict[str, Any]]:
+    def list_archived_metrics(self) -> list[dict[str, Any]]:
         """List all archived metrics files with metadata.
 
         Returns:
@@ -310,7 +310,7 @@ class PerformanceMetricsArchive:
         return files
 
     @staticmethod
-    def _find_latest_file(directory: Path, pattern: str) -> Optional[Path]:
+    def _find_latest_file(directory: Path, pattern: str) -> Path | None:
         """Find the most recently modified file matching pattern.
 
         Args:
@@ -348,7 +348,7 @@ class PerformanceMetricsArchive:
             json.dump(data, f, indent=2)
 
     @staticmethod
-    def _extract_timestamp(filename: str) -> Optional[datetime]:
+    def _extract_timestamp(filename: str) -> datetime | None:
         """Extract timestamp from filename.
 
         Args:
@@ -375,7 +375,7 @@ class PerformanceMetricsArchive:
         return None
 
     @staticmethod
-    def _calculate_trend(values: List[float]) -> str:
+    def _calculate_trend(values: list[float]) -> str:
         """Determine if trend is improving or degrading.
 
         Args:
@@ -417,7 +417,7 @@ class PerformanceMetricsArchive:
         return round(((later - earlier) / earlier) * 100, 1)
 
     @staticmethod
-    def _format_trend_report(trend_analysis: Dict[str, Any]) -> str:
+    def _format_trend_report(trend_analysis: dict[str, Any]) -> str:
         """Format trend analysis as markdown.
 
         Args:

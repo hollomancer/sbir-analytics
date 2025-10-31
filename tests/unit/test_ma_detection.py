@@ -1,7 +1,8 @@
-import pandas as pd
-from src.assets.ma_detection import company_mergers_and_acquisitions
-from src.models.ma_models import MAEvent
 from datetime import date
+
+import pandas as pd
+
+from src.assets.ma_detection import company_mergers_and_acquisitions
 
 
 def test_company_mergers_and_acquisitions():

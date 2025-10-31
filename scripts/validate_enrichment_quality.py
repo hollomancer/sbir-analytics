@@ -20,7 +20,7 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -38,7 +38,7 @@ class EnrichmentQualityValidator:
         self.df = enriched_df
         self.report = {}
 
-    def validate(self) -> Dict[str, Any]:
+    def validate(self) -> dict[str, Any]:
         """Run full quality validation.
 
         Returns:
@@ -68,7 +68,7 @@ class EnrichmentQualityValidator:
         logger.info("Quality validation complete")
         return self.report
 
-    def _calculate_overall_stats(self) -> Dict[str, Any]:
+    def _calculate_overall_stats(self) -> dict[str, Any]:
         """Calculate overall enrichment statistics."""
         total = len(self.df)
         matched = self.df["_usaspending_match_method"].notna().sum()
@@ -88,7 +88,7 @@ class EnrichmentQualityValidator:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _breakdown_by_phase(self) -> Dict[str, Any]:
+    def _breakdown_by_phase(self) -> dict[str, Any]:
         """Break down metrics by SBIR award phase."""
         phase_col = self._find_phase_column()
         if phase_col is None:
@@ -109,7 +109,7 @@ class EnrichmentQualityValidator:
 
         return breakdown
 
-    def _breakdown_by_company_size(self) -> Dict[str, Any]:
+    def _breakdown_by_company_size(self) -> dict[str, Any]:
         """Break down metrics by company size (if available)."""
         size_col = self._find_company_size_column()
         if size_col is None:
@@ -130,7 +130,7 @@ class EnrichmentQualityValidator:
 
         return breakdown
 
-    def _breakdown_by_identifier_type(self) -> Dict[str, Any]:
+    def _breakdown_by_identifier_type(self) -> dict[str, Any]:
         """Break down metrics by identifier type (UEI vs DUNS)."""
         breakdown = {
             "both_uei_and_duns": {},
@@ -193,7 +193,7 @@ class EnrichmentQualityValidator:
 
         return breakdown
 
-    def _breakdown_by_match_method(self) -> Dict[str, Any]:
+    def _breakdown_by_match_method(self) -> dict[str, Any]:
         """Break down metrics by match method."""
         breakdown = {}
         for method in sorted(self.df["_usaspending_match_method"].dropna().unique()):
@@ -212,7 +212,7 @@ class EnrichmentQualityValidator:
 
         return breakdown
 
-    def _calculate_quality_metrics(self) -> Dict[str, Any]:
+    def _calculate_quality_metrics(self) -> dict[str, Any]:
         """Calculate quality metrics."""
         metrics = {
             "completeness": self._calculate_completeness(),
@@ -272,7 +272,7 @@ class EnrichmentQualityValidator:
         accurate = (fuzzy_matches["_usaspending_match_score"] >= 85).sum()
         return accurate / len(fuzzy_matches)
 
-    def _calculate_confidence_distribution(self) -> Dict[str, int]:
+    def _calculate_confidence_distribution(self) -> dict[str, int]:
         """Calculate distribution of match confidence scores."""
         if "_usaspending_match_score" not in self.df.columns:
             return {}
@@ -288,7 +288,7 @@ class EnrichmentQualityValidator:
 
         return {str(label): int(count) for label, count in distribution.items()}
 
-    def _identify_issues(self) -> List[str]:
+    def _identify_issues(self) -> list[str]:
         """Identify quality issues."""
         issues = []
 
@@ -323,7 +323,7 @@ class EnrichmentQualityValidator:
 
         return issues
 
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """Generate recommendations for improvement."""
         recommendations = []
 
@@ -359,14 +359,14 @@ class EnrichmentQualityValidator:
 
         return recommendations
 
-    def _find_phase_column(self) -> Optional[str]:
+    def _find_phase_column(self) -> str | None:
         """Find phase column in DataFrame."""
         phase_candidates = [
             col for col in self.df.columns if "phase" in col.lower() or "award_type" in col.lower()
         ]
         return phase_candidates[0] if phase_candidates else None
 
-    def _find_company_size_column(self) -> Optional[str]:
+    def _find_company_size_column(self) -> str | None:
         """Find company size column in DataFrame."""
         size_candidates = [
             col for col in self.df.columns if "size" in col.lower() or "employees" in col.lower()
@@ -374,7 +374,7 @@ class EnrichmentQualityValidator:
         return size_candidates[0] if size_candidates else None
 
 
-def generate_html_report(report: Dict[str, Any], output_path: Path) -> None:
+def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
     """Generate HTML report from validation results.
 
     Args:

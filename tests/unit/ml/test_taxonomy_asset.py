@@ -1,14 +1,12 @@
-import os
-import yaml
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 import pytest
+import yaml
 
-from src.models.cet_models import CETArea
-from src.ml.config.taxonomy_loader import TaxonomyLoader
 import src.assets.cet_assets as cet_assets
+from src.ml.config.taxonomy_loader import TaxonomyLoader
+from src.models.cet_models import CETArea
 
 
 def _write_yaml(path: Path, data: dict) -> None:
@@ -100,7 +98,7 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
     """
 
     # Create a few CETArea instances to simulate a loaded taxonomy
-    cet_areas: List[CETArea] = [
+    cet_areas: list[CETArea] = [
         CETArea(
             cet_id="artificial_intelligence",
             name="Artificial Intelligence",
@@ -130,7 +128,7 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
     # Create a fake loader class that returns an object with the attributes used by the asset
     class FakeTaxonomy:
         def __init__(
-            self, version: str, last_updated: str, description: str, cet_areas: List[CETArea]
+            self, version: str, last_updated: str, description: str, cet_areas: list[CETArea]
         ):
             self.version = version
             self.last_updated = last_updated
@@ -179,7 +177,7 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
             df = pd.read_json(json_fallback, orient="records", lines=True)
         elif checks_fallback.exists():
             # The checks JSON contains metadata rather than rows; validate basic keys
-            with open(checks_fallback, "r", encoding="utf-8") as fh:
+            with open(checks_fallback, encoding="utf-8") as fh:
                 checks = json.load(fh)
             # Synthesize a minimal DataFrame for assertions from checks if possible
             total = (

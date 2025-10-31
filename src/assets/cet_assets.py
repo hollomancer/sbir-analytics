@@ -21,17 +21,17 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Import-safe shims for Dagster asset checks
 try:
     from dagster import (
-        asset,
-        asset_check,
         AssetCheckResult,
         AssetCheckSeverity,
         AssetExecutionContext,
         AssetIn,
+        asset,
+        asset_check,
     )  # type: ignore
 except Exception:  # pragma: no cover
 
@@ -265,15 +265,12 @@ def cet_company_profiles_check(context) -> AssetCheckResult:
     )
 
 
-import os
-from pathlib import Path
-from typing import Iterable, List
+from collections.abc import Iterable
 
-import json
 import pandas as pd
 
 try:
-    from dagster import Output, asset, AssetKey, MetadataValue
+    from dagster import AssetKey, MetadataValue, Output, asset
 except Exception:  # pragma: no cover - fallback stubs when dagster is not installed
     # Lightweight stubs so this module can be imported in environments without dagster.
     class Output:
@@ -326,7 +323,7 @@ def taxonomy_to_dataframe(cet_areas: Iterable[CETArea]) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Flattened table suitable for writing to Parquet / DuckDB ingestion.
     """
-    rows: List[dict] = []
+    rows: list[dict] = []
     for area in cet_areas:
         # CETArea is a Pydantic model, use attribute access to be safe
         row = {
@@ -518,7 +515,6 @@ def enriched_cet_award_classifications() -> Output:
     # Local imports to keep module import-safe when optional deps are missing
     import json
     from pathlib import Path
-    from typing import List, Dict
 
     # Lazy imports for ML components (may be unavailable in minimal CI)
     try:
@@ -561,7 +557,7 @@ def enriched_cet_award_classifications() -> Output:
             logger.exception("Failed to initialize EvidenceExtractor; evidence extraction disabled")
 
     # Load awards (prefer parquet, then ndjson). If neither present, use a tiny sample.
-    awards: List[Dict] = []
+    awards: list[dict] = []
     try:
         if awards_parquet.exists():
             import pandas as pd
@@ -578,7 +574,7 @@ def enriched_cet_award_classifications() -> Output:
                     }
                 )
         elif awards_ndjson.exists():
-            with open(awards_ndjson, "r", encoding="utf-8") as fh:
+            with open(awards_ndjson, encoding="utf-8") as fh:
                 for line in fh:
                     if line.strip():
                         awards.append(json.loads(line))
@@ -737,7 +733,7 @@ def enriched_cet_award_classifications() -> Output:
     import pandas as pd
 
     rows = []
-    for aid, cls_list in zip(award_ids, classifications_with_evidence):
+    for aid, cls_list in zip(award_ids, classifications_with_evidence, strict=False):
         if not cls_list:
             rows.append(
                 {
@@ -878,7 +874,6 @@ def enriched_cet_patent_classifications() -> Output:
     # Local imports to keep module import-safe when optional deps are missing
     import json
     from pathlib import Path
-    from typing import List, Dict
 
     # Lazy import of classifier implementation (may be unavailable in minimal CI)
     try:
@@ -901,7 +896,7 @@ def enriched_cet_patent_classifications() -> Output:
         taxonomy = None
 
     # Load patent records (prefer parquet, then ndjson). If neither present, use a tiny sample.
-    patents: List[Dict] = []
+    patents: list[dict] = []
     try:
         if patents_parquet.exists():
             import pandas as pd
@@ -917,7 +912,7 @@ def enriched_cet_patent_classifications() -> Output:
                     }
                 )
         elif patents_ndjson.exists():
-            with open(patents_ndjson, "r", encoding="utf-8") as fh:
+            with open(patents_ndjson, encoding="utf-8") as fh:
                 for line in fh:
                     if line.strip():
                         patents.append(json.loads(line))
@@ -1025,14 +1020,14 @@ def enriched_cet_patent_classifications() -> Output:
     assignees = []
     # Prefer PatentFeatureExtractor for normalized title strings if available
     try:
-        from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
         from src.ml.features.patent_features import get_keywords_map  # type: ignore
+        from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
 
         kw_map = get_keywords_map()
         extractor = PatentFeatureExtractor(keywords_map=kw_map)
         if hasattr(extractor, "transform"):
             feature_dicts = extractor.transform(patents)  # type: ignore
-            for p, fv in zip(patents, feature_dicts):
+            for p, fv in zip(patents, feature_dicts, strict=False):
                 norm_title = (
                     fv.get("normalized_title")
                     if isinstance(fv, dict)
@@ -1074,7 +1069,7 @@ def enriched_cet_patent_classifications() -> Output:
     import pandas as pd
 
     rows = []
-    for pid, cls_list in zip(patent_ids, classifications_by_patent):
+    for pid, cls_list in zip(patent_ids, classifications_by_patent, strict=False):
         if not cls_list:
             rows.append(
                 {
@@ -1194,9 +1189,9 @@ def train_cet_patent_classifier() -> Output:
 
     # Attempt to import training helper and dummy pipeline for simple factory
     try:
-        from src.ml.train.patent_training import train_patent_classifier
-        from src.ml.models.dummy_pipeline import DummyPipeline
         from src.ml.features.patent_features import get_keywords_map
+        from src.ml.models.dummy_pipeline import DummyPipeline
+        from src.ml.train.patent_training import train_patent_classifier
     except Exception:
         checks = {"ok": False, "reason": "training_helper_missing", "model_path": str(model_path)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1228,7 +1223,7 @@ def train_cet_patent_classifier() -> Output:
         ndjson_path = train_data_parquet.with_suffix(".ndjson")
         records = []
         if ndjson_path.exists():
-            with open(ndjson_path, "r", encoding="utf-8") as fh:
+            with open(ndjson_path, encoding="utf-8") as fh:
                 for line in fh:
                     if line.strip():
                         records.append(json.loads(line))
@@ -1549,8 +1544,8 @@ def transformed_cet_analytics() -> Output:
     Write a checks JSON under reports/alerts/.
     """
     import json
-    from pathlib import Path
     from datetime import datetime
+    from pathlib import Path
 
     try:
         import pandas as pd  # type: ignore
@@ -1879,8 +1874,8 @@ def validated_cet_iaa_report() -> Output:
     - Writes `reports/analytics/cet_iaa_report.json` and returns a summary.
     """
     import json
-    from pathlib import Path
     from itertools import combinations
+    from pathlib import Path
 
     try:
         import pandas as pd  # type: ignore
@@ -1950,7 +1945,7 @@ def validated_cet_iaa_report() -> Output:
         import math
 
         # Drop pairs with missing values
-        paired = [(a, b) for a, b in zip(series_a, series_b) if pd.notna(a) and pd.notna(b)]
+        paired = [(a, b) for a, b in zip(series_a, series_b, strict=False) if pd.notna(a) and pd.notna(b)]
         if not paired:
             return None
         labels = list({x for ab in paired for x in ab})
@@ -2029,8 +2024,8 @@ def transformed_cet_analytics_aggregates() -> Output:
       - Write dashboards under reports/analytics and alerts under reports/alerts
     """
     import json
-    from pathlib import Path
     from datetime import datetime
+    from pathlib import Path
 
     try:
         import pandas as pd  # type: ignore
@@ -2278,21 +2273,24 @@ def validated_cet_drift_detection() -> Output:
         - reports/alerts/cet_drift_alerts.json       (alerts if any)
     """
     import json
-    import math
     import os
-    from pathlib import Path
     from datetime import datetime
+    from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
         import numpy as np  # type: ignore
+        import pandas as pd  # type: ignore
     except Exception:
         pd = None  # type: ignore
         np = None  # type: ignore
 
     # Lazy import for AlertCollector (best-effort)
     try:
-        from src.utils.performance_alerts import AlertCollector, Alert, AlertSeverity  # type: ignore
+        from src.utils.performance_alerts import (  # type: ignore
+            Alert,
+            AlertCollector,
+            AlertSeverity,
+        )
     except Exception:
         AlertCollector = None  # type: ignore
         Alert = None  # type: ignore
@@ -2459,7 +2457,6 @@ def validated_cet_drift_detection() -> Output:
     def _js_divergence(p_arr, q_arr):
         try:
             import math
-            import statistics
         except Exception:
             # Fallback simple impl using pure math
             pass
@@ -2504,11 +2501,11 @@ def validated_cet_drift_detection() -> Output:
                 p = [x / p_sum for x in p]
             if q_sum > 0:
                 q = [x / q_sum for x in q]
-            m = [0.5 * (pp + qq) for pp, qq in zip(p, q)]
+            m = [0.5 * (pp + qq) for pp, qq in zip(p, q, strict=False)]
 
             def kl(a, b):
                 s = 0.0
-                for ai, bi in zip(a, b):
+                for ai, bi in zip(a, b, strict=False):
                     if ai > 0 and bi > 0:
                         s += ai * safe_log2(ai / bi)
                 return s
@@ -2696,7 +2693,7 @@ def transformed_cet_company_profiles() -> Output:
             df_cls = pd.read_parquet(classifications_parquet)
         elif classifications_ndjson.exists():
             recs = []
-            with open(classifications_ndjson, "r", encoding="utf-8") as fh:
+            with open(classifications_ndjson, encoding="utf-8") as fh:
                 for line in fh:
                     if line.strip():
                         recs.append(json.loads(line))
@@ -2802,7 +2799,7 @@ def transformed_cet_company_profiles() -> Output:
 
 # Neo4j loader imports (import-safe)
 try:
-    from src.loaders.neo4j_client import Neo4jClient, Neo4jConfig, LoadMetrics  # type: ignore
+    from src.loaders.neo4j_client import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:  # pragma: no cover
     Neo4jClient = None  # type: ignore
     Neo4jConfig = None  # type: ignore
@@ -2851,7 +2848,7 @@ def _get_neo4j_client():
 
 def _read_parquet_or_ndjson(
     parquet_path: Path, json_path: Path, expected_columns: tuple
-) -> List[Dict]:
+) -> list[dict]:
     """Read data from parquet or fallback to NDJSON."""
     if pd is None:
         return []
@@ -2875,7 +2872,7 @@ def _read_parquet_or_ndjson(
     return []
 
 
-def _serialize_metrics(metrics) -> Dict[str, Any]:
+def _serialize_metrics(metrics) -> dict[str, Any]:
     """Serialize LoadMetrics to dict."""
     if metrics is None:
         return {}
@@ -2901,7 +2898,7 @@ def _serialize_metrics(metrics) -> Dict[str, Any]:
         "batch_size": int,
     },
 )
-def loaded_cet_areas(context, cet_taxonomy) -> Dict[str, Any]:
+def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
     """Upsert CETArea nodes based on taxonomy output."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping CETArea loading")
@@ -2980,7 +2977,7 @@ def loaded_cet_areas(context, cet_taxonomy) -> Dict[str, Any]:
 )
 def loaded_award_cet_enrichment(
     context, enriched_cet_award_classifications, loaded_cet_areas
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Upsert CET enrichment properties onto Award nodes."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Award CET enrichment")
@@ -3054,7 +3051,7 @@ def loaded_award_cet_enrichment(
 )
 def loaded_company_cet_enrichment(
     context, transformed_cet_company_profiles, loaded_cet_areas
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Upsert CET enrichment properties onto Company nodes."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Company CET enrichment")
@@ -3137,7 +3134,7 @@ def loaded_company_cet_enrichment(
 )
 def loaded_award_cet_relationships(
     context, enriched_cet_award_classifications, loaded_cet_areas, loaded_award_cet_enrichment
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create Award -> CETArea relationships."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Award CET relationships")
@@ -3212,7 +3209,7 @@ def loaded_award_cet_relationships(
 )
 def loaded_company_cet_relationships(
     context, transformed_cet_company_profiles, loaded_cet_areas, loaded_company_cet_enrichment
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create Company -> CETArea relationships."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping Company CET relationships")

@@ -34,9 +34,10 @@ import json
 import os
 import pickle
 import time
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -69,12 +70,12 @@ DEFAULT_SAMPLE_NDJSON = Path("data/processed/enriched_sbir_awards.ndjson")
 DEFAULT_BASELINE_OUT = Path("reports/benchmarks/baseline.json")
 
 
-def load_sample_texts(sample_size: int) -> List[str]:
+def load_sample_texts(sample_size: int) -> list[str]:
     """
     Load award texts for profiling. Returns a list of concatenated text documents
     (title + abstract + keywords) to be classified.
     """
-    texts: List[str] = []
+    texts: list[str] = []
 
     # Try parquet first
     if pd is not None and DEFAULT_SAMPLE_PARQUET.exists():
@@ -154,7 +155,7 @@ class FallbackClassifier:
     It maps a small set of keywords to CET IDs for the purpose of profiling.
     """
 
-    def __init__(self, taxonomy: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, taxonomy: dict[str, list[str]] | None = None):
         # Default minimal keyword map
         self.keyword_map = taxonomy or {
             "artificial_intelligence": ["machine", "learning", "neural", "network", "deep"],
@@ -164,16 +165,16 @@ class FallbackClassifier:
 
     def classify_batch(
         self, texts: Iterable[str], batch_size: int = 128
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> list[list[dict[str, Any]]]:
         """
         Returns a list of lists (predictions per text). Each prediction is a dict:
             {"cet_id": str, "score": float}
         The primary prediction is first in the list.
         """
-        out: List[List[Dict[str, Any]]] = []
+        out: list[list[dict[str, Any]]] = []
         for t in texts:
             txt = (t or "").lower()
-            scores: Dict[str, int] = {}
+            scores: dict[str, int] = {}
             for cet_id, keys in self.keyword_map.items():
                 score = 0
                 for k in keys:
@@ -252,10 +253,10 @@ def try_load_model(path: Path):
 
 
 def profile_inference(
-    texts: List[str],
+    texts: list[str],
     classifier,
     batch_size: int = 128,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run classification in batches and capture performance metrics using performance_monitor if available.
     Returns a summary dict with timing and throughput metrics.
@@ -331,7 +332,7 @@ def profile_inference(
     return summary
 
 
-def save_reports(summary: Dict[str, Any], output_json: Path, output_md: Path) -> None:
+def save_reports(summary: dict[str, Any], output_json: Path, output_md: Path) -> None:
     """
     Save JSON and Markdown reports summarizing the profiling results.
     """
@@ -356,7 +357,7 @@ def save_reports(summary: Dict[str, Any], output_json: Path, output_md: Path) ->
 
 
 def maybe_publish_baseline(
-    summary: Dict[str, Any], baseline_path: Path, force: bool = False
+    summary: dict[str, Any], baseline_path: Path, force: bool = False
 ) -> None:
     """
     Optionally write the summary into the baseline file for future regression comparisons.
@@ -380,7 +381,7 @@ def maybe_publish_baseline(
         logger.exception("Failed to write baseline: %s", exc)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Profile CET inference performance")
     parser.add_argument(
         "--sample-size", type=int, default=1000, help="Number of award texts to profile"

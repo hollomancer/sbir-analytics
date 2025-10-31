@@ -16,9 +16,8 @@ Based on the NSTC Critical and Emerging Technologies taxonomy (21 categories).
 import pickle
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 
-import numpy as np
 import pandas as pd
 from loguru import logger
 from sklearn.calibration import CalibratedClassifierCV
@@ -39,7 +38,7 @@ class CETAwareTfidfVectorizer(TfidfVectorizer):
     """
 
     def __init__(
-        self, cet_keywords: Dict[str, List[str]], keyword_boost_factor: float = 2.0, **kwargs
+        self, cet_keywords: dict[str, list[str]], keyword_boost_factor: float = 2.0, **kwargs
     ):
         """
         Initialize CET-aware TF-IDF vectorizer.
@@ -124,8 +123,8 @@ class ApplicabilityModel:
 
     def __init__(
         self,
-        cet_areas: List[CETArea],
-        config: Dict[str, Any],
+        cet_areas: list[CETArea],
+        config: dict[str, Any],
         taxonomy_version: str,
     ):
         """
@@ -145,11 +144,11 @@ class ApplicabilityModel:
         self.cet_id_to_name = {area.cet_id: area.name for area in cet_areas}
 
         # Initialize pipelines (one per CET area for binary classification)
-        self.pipelines: Dict[str, Pipeline] = {}
+        self.pipelines: dict[str, Pipeline] = {}
         self.is_trained = False
 
         # Model metadata
-        self.training_date: Optional[str] = None
+        self.training_date: str | None = None
         self.model_version = config.get("model_version", "v1.0.0")
 
         logger.info(
@@ -235,7 +234,7 @@ class ApplicabilityModel:
         logger.debug(f"Built pipeline for {cet_id} with {len(steps)} steps")
         return pipeline
 
-    def train(self, X_train: List[str], y_train: pd.DataFrame) -> Dict[str, Any]:
+    def train(self, X_train: list[str], y_train: pd.DataFrame) -> dict[str, Any]:
         """
         Train classification models for all CET areas.
 
@@ -321,7 +320,7 @@ class ApplicabilityModel:
         self,
         text: str,
         return_all_scores: bool = False,
-    ) -> List[CETClassification]:
+    ) -> list[CETClassification]:
         """
         Classify a single document into CET areas.
 
@@ -379,9 +378,9 @@ class ApplicabilityModel:
 
     def classify_batch(
         self,
-        texts: List[str],
-        batch_size: Optional[int] = None,
-    ) -> List[List[CETClassification]]:
+        texts: list[str],
+        batch_size: int | None = None,
+    ) -> list[list[CETClassification]]:
         """
         Classify multiple documents efficiently.
 
@@ -418,7 +417,7 @@ class ApplicabilityModel:
         logger.info(f"Batch classification complete: {len(all_classifications)} documents")
         return all_classifications
 
-    def _get_scores(self, texts: List[str]) -> List[Dict[str, float]]:
+    def _get_scores(self, texts: list[str]) -> list[dict[str, float]]:
         """
         Get classification scores for documents.
 
@@ -449,7 +448,7 @@ class ApplicabilityModel:
 
         return scores_list
 
-    def _scores_to_classifications(self, scores: Dict[str, float]) -> List[CETClassification]:
+    def _scores_to_classifications(self, scores: dict[str, float]) -> list[CETClassification]:
         """Convert score dictionary to CETClassification objects."""
         thresholds = self.config.get("confidence_thresholds", {})
         medium_threshold = thresholds.get("medium", 40.0)
@@ -561,7 +560,7 @@ class ApplicabilityModel:
 
         return model
 
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """Get model metadata."""
         return {
             "model_version": self.model_version,

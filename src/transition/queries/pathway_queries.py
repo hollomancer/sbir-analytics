@@ -9,11 +9,10 @@ Implements sophisticated queries to traverse transition detection pathways:
 - Aggregations by CET area and confidence levels
 """
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from typing import Any
 
-from neo4j import Driver, Session
-from loguru import logger
+from neo4j import Driver
 
 
 @dataclass
@@ -22,8 +21,8 @@ class PathwayResult:
 
     pathway_name: str
     records_count: int
-    records: List[Dict[str, Any]]
-    metadata: Dict[str, Any]
+    records: list[dict[str, Any]]
+    metadata: dict[str, Any]
 
 
 class TransitionPathwayQueries:
@@ -40,9 +39,9 @@ class TransitionPathwayQueries:
 
     def award_to_transition_to_contract(
         self,
-        award_id: Optional[str] = None,
+        award_id: str | None = None,
         min_score: float = 0.0,
-        confidence_levels: Optional[List[str]] = None,
+        confidence_levels: list[str] | None = None,
         limit: int = 1000,
     ) -> PathwayResult:
         """
@@ -96,7 +95,7 @@ class TransitionPathwayQueries:
 
     def award_to_patent_to_transition_to_contract(
         self,
-        award_id: Optional[str] = None,
+        award_id: str | None = None,
         min_patent_contribution: float = 0.0,
         limit: int = 1000,
     ) -> PathwayResult:
@@ -148,7 +147,7 @@ class TransitionPathwayQueries:
 
     def award_to_cet_to_transition(
         self,
-        cet_area: Optional[str] = None,
+        cet_area: str | None = None,
         min_score: float = 0.0,
         limit: int = 1000,
     ) -> PathwayResult:
@@ -198,7 +197,7 @@ class TransitionPathwayQueries:
 
     def company_to_transition_profile(
         self,
-        company_id: Optional[str] = None,
+        company_id: str | None = None,
         min_success_rate: float = 0.0,
         limit: int = 100,
     ) -> PathwayResult:

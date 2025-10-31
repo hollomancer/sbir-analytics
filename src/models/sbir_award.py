@@ -8,7 +8,7 @@ directly with field aliases. SbirAward is maintained for backward compatibility.
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict
 
 from .award import Award
 
@@ -43,7 +43,7 @@ class SbirAward(BaseModel):
         """Delegate attribute access to internal Award instance with SBIR field name mapping."""
         if name == "_award" or name.startswith("__") or name in ["model_dump", "model_dump_json", "model_validate"]:
             return super().__getattribute__(name)
-        
+
         # Map SBIR field names to Award field names
         field_map = {
             "company": "company_name",
@@ -59,7 +59,7 @@ class SbirAward(BaseModel):
             "pi_name": "principal_investigator",
             "ri_name": "research_institution",
         }
-        
+
         award_field = field_map.get(name, name)
         award = super().__getattribute__("_award")
         if award_field in award.model_fields:
@@ -72,7 +72,7 @@ class SbirAward(BaseModel):
         award = self._award
         if award is None:
             return {}
-        
+
         # Convert Award format back to SBIR format
         data = award.model_dump()
         reverse_map = {
@@ -89,12 +89,12 @@ class SbirAward(BaseModel):
             "principal_investigator": "pi_name",
             "research_institution": "ri_name",
         }
-        
+
         sbir_data = {}
         for award_key, sbir_key in reverse_map.items():
             if award_key in data:
                 sbir_data[sbir_key] = data[award_key]
-        
+
         # Copy fields that are the same
         for key in ["award_title", "abstract", "agency", "branch", "phase", "program",
                     "award_amount", "award_year", "proposal_award_date", "contract_end_date",
@@ -105,7 +105,7 @@ class SbirAward(BaseModel):
                     "solicitation_year", "topic_code", "company_website", "address1", "address2"]:
             if key in data:
                 sbir_data[key] = data[key]
-        
+
         return sbir_data
 
     # Validators (delegated to Award, but kept for backward compatibility)

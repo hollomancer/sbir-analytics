@@ -35,18 +35,18 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 
 def inspect_csv_once(
     path: Path,
     delimiter: str = ",",
     quotechar: str = '"',
-    escapechar: Optional[str] = None,
-    expected_columns: Optional[int] = None,
-    max_rows: Optional[int] = None,
+    escapechar: str | None = None,
+    expected_columns: int | None = None,
+    max_rows: int | None = None,
     preview: int = 3,
     show_raw: bool = False,
     limit_problems: int = 10,
@@ -72,7 +72,7 @@ def inspect_csv_once(
         raise FileNotFoundError(f"CSV file not found: {path}")
 
     # For showing raw lines if requested, load them into a list once for indexing
-    raw_lines: List[str] = []
+    raw_lines: list[str] = []
     if show_raw:
         with path.open("r", encoding="utf-8", newline="") as rf:
             raw_lines = rf.readlines()
@@ -125,14 +125,14 @@ def inspect_csv_once(
         # csv.Error often includes helpful info about the line that failed
         summary["csv_error"] = str(e)
         return summary
-    except Exception as e:
+    except Exception:
         raise
 
     return summary
 
 
 def print_summary(
-    result: dict, show_raw: bool = False, raw_lines: Optional[List[str]] = None
+    result: dict, show_raw: bool = False, raw_lines: list[str] | None = None
 ) -> None:
     """
     Nicely print the summary returned by inspect_csv_once.
@@ -189,15 +189,15 @@ def try_multiple_quotechars(
     path: Path,
     delimiter: str,
     quotechars: Iterable[str],
-    expected_columns: Optional[int],
-    max_rows: Optional[int],
+    expected_columns: int | None,
+    max_rows: int | None,
     preview: int,
     show_raw: bool,
     limit_problems: int,
 ) -> None:
     """Run inspect_csv_once for each quotechar and print compact summaries."""
     # If show_raw we will load the raw lines once
-    raw_lines: Optional[List[str]] = None
+    raw_lines: list[str] | None = None
     if show_raw:
         raw_lines = path.read_text(encoding="utf-8").splitlines()
 
@@ -219,7 +219,7 @@ def try_multiple_quotechars(
         print_summary(res, show_raw=show_raw, raw_lines=raw_lines)
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Inspect a CSV file for inconsistent row lengths and quoting issues."
     )
@@ -254,7 +254,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     path = Path(args.path)
     try:

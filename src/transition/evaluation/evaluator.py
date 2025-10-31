@@ -25,8 +25,9 @@ DataFrames so it can be reused in notebooks, CLI scripts, and CI checks.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -45,7 +46,7 @@ class ConfusionMatrix:
         """Total observations represented by the confusion matrix."""
         return self.tp + self.fp + self.fn + self.tn
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         """Serialize the confusion matrix into a plain dictionary."""
         return {"tp": self.tp, "fp": self.fp, "fn": self.fn, "tn": self.tn, "total": self.total}
 
@@ -59,11 +60,11 @@ class EvaluationResult:
     f1: float
     support: int
     confusion: ConfusionMatrix
-    by_confidence: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    thresholds: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    by_confidence: dict[str, dict[str, Any]] = field(default_factory=dict)
+    thresholds: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the evaluation result to a JSON-serializable dict."""
         return {
             "precision": self.precision,
@@ -94,7 +95,7 @@ class TransitionEvaluator:
     def __init__(
         self,
         score_threshold: float = 0.60,
-        positive_confidence_levels: Optional[Sequence[str]] = None,
+        positive_confidence_levels: Sequence[str] | None = None,
     ) -> None:
         self.score_threshold = score_threshold
         self.positive_confidence_levels = tuple(
@@ -109,10 +110,10 @@ class TransitionEvaluator:
         self,
         detections_df: pd.DataFrame,
         ground_truth_df: pd.DataFrame,
-        detection_id_columns: Tuple[str, str] = ("award_id", "contract_id"),
+        detection_id_columns: tuple[str, str] = ("award_id", "contract_id"),
         score_column: str = "likelihood_score",
         confidence_column: str = "confidence",
-        ground_truth_label_column: Optional[str] = None,
+        ground_truth_label_column: str | None = None,
     ) -> EvaluationResult:
         """
         Compare detected transitions against a ground-truth set.
@@ -203,9 +204,9 @@ class TransitionEvaluator:
     def _extract_pairs(
         self,
         detections_df: pd.DataFrame,
-        id_columns: Tuple[str, str],
+        id_columns: tuple[str, str],
         score_column: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Materialize detected transitions above the score threshold."""
         if detections_df.empty:
             return {"set": set(), "count": 0}
@@ -226,9 +227,9 @@ class TransitionEvaluator:
     def _extract_ground_truth_pairs(
         self,
         ground_truth_df: pd.DataFrame,
-        id_columns: Tuple[str, str],
-        label_column: Optional[str],
-    ) -> Dict[str, Any]:
+        id_columns: tuple[str, str],
+        label_column: str | None,
+    ) -> dict[str, Any]:
         """Materialize the set of known positive transitions."""
         if ground_truth_df.empty:
             return {"set": set(), "count": 0}
@@ -248,8 +249,8 @@ class TransitionEvaluator:
 
     def _build_confusion_matrix(
         self,
-        detected_pairs: Dict[str, Any],
-        truth_pairs: Dict[str, Any],
+        detected_pairs: dict[str, Any],
+        truth_pairs: dict[str, Any],
     ) -> ConfusionMatrix:
         """Construct the confusion matrix from detected and true pairs."""
         detected_set = detected_pairs["set"]
@@ -264,11 +265,11 @@ class TransitionEvaluator:
     def _confidence_breakdown(
         self,
         detections_df: pd.DataFrame,
-        truth_pairs: Iterable[Tuple[str, str]],
-        id_columns: Tuple[str, str],
+        truth_pairs: Iterable[tuple[str, str]],
+        id_columns: tuple[str, str],
         score_column: str,
         confidence_column: str,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         Produce per-confidence metrics to highlight band-specific performance.
 
@@ -279,7 +280,7 @@ class TransitionEvaluator:
             return {}
 
         truth_set = set(truth_pairs)
-        breakdown: Dict[str, Dict[str, Any]] = {}
+        breakdown: dict[str, dict[str, Any]] = {}
 
         df = detections_df.copy()
         df = df[pd.to_numeric(df[score_column], errors="coerce") >= self.score_threshold].copy()
@@ -310,10 +311,10 @@ class TransitionEvaluator:
         self,
         detections_df: pd.DataFrame,
         ground_truth_df: pd.DataFrame,
-        detection_id_columns: Tuple[str, str] = ("award_id", "contract_id"),
+        detection_id_columns: tuple[str, str] = ("award_id", "contract_id"),
         score_column: str = "score",
         confidence_column: str = "confidence",
-        truth_id_columns: Tuple[str, str] = ("award_id", "contract_id"),
+        truth_id_columns: tuple[str, str] = ("award_id", "contract_id"),
     ) -> pd.DataFrame:
         """
         Identify false positive detections for algorithm tuning (Task 18.8).
@@ -391,15 +392,15 @@ class TransitionEvaluator:
             "## Overall Metrics",
             "",
             f"- **Precision:** {evaluation_result.precision:.1%}",
-            f"  - Correct detections / Total detections",
+            "  - Correct detections / Total detections",
             f"  - TP={evaluation_result.confusion.tp}, FP={evaluation_result.confusion.fp}",
             "",
             f"- **Recall:** {evaluation_result.recall:.1%}",
-            f"  - Detected transitions / Total ground truth transitions",
+            "  - Detected transitions / Total ground truth transitions",
             f"  - TP={evaluation_result.confusion.tp}, FN={evaluation_result.confusion.fn}",
             "",
             f"- **F1 Score:** {evaluation_result.f1:.3f}",
-            f"  - Harmonic mean of precision and recall",
+            "  - Harmonic mean of precision and recall",
             "",
             f"- **Support:** {evaluation_result.support} ground truth samples",
             "",
@@ -410,8 +411,8 @@ class TransitionEvaluator:
             [
                 "## Confusion Matrix",
                 "",
-                f"| Metric | Count |",
-                f"|--------|-------|",
+                "| Metric | Count |",
+                "|--------|-------|",
                 f"| True Positives (TP) | {evaluation_result.confusion.tp} |",
                 f"| False Positives (FP) | {evaluation_result.confusion.fp} |",
                 f"| False Negatives (FN) | {evaluation_result.confusion.fn} |",

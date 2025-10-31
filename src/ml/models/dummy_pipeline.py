@@ -17,8 +17,9 @@ Design goals:
 - No optional heavy dependencies (pure Python + numpy + re).
 """
 
-from typing import List, Optional, Pattern, Tuple
 import re
+from re import Pattern
+
 import numpy as np
 
 
@@ -52,21 +53,21 @@ class DummyPipeline:
     def __init__(
         self,
         cet_id: str,
-        keywords: Optional[List[str]] = None,
+        keywords: list[str] | None = None,
         keyword_boost: float = 1.0,
         max_score: float = 0.95,
     ) -> None:
         self.cet_id = cet_id
         self.keywords = keywords or []
         # compile regex patterns for deterministic matching (word boundaries)
-        self._keyword_patterns: List[Pattern] = [
+        self._keyword_patterns: list[Pattern] = [
             re.compile(rf"\b{re.escape(k.lower())}\b") for k in self.keywords if k
         ]
         self.keyword_boost = float(keyword_boost)
         self.max_score = float(max_score)
         self.is_fitted = False
 
-    def fit(self, X: List[str], y) -> "DummyPipeline":
+    def fit(self, X: list[str], y) -> "DummyPipeline":
         """
         Fit the dummy pipeline. This is intentionally lightweight: it simply
         records that the pipeline was 'fitted' so tests can assert fitted state.
@@ -112,7 +113,7 @@ class DummyPipeline:
         prob = max(0.0, min(1.0, prob))
         return prob
 
-    def predict_proba(self, texts: List[str]) -> np.ndarray:
+    def predict_proba(self, texts: list[str]) -> np.ndarray:
         """
         Predict probabilities for the positive class for each input text.
 

@@ -14,13 +14,11 @@ Capabilities:
 
 from __future__ import annotations
 
-from dataclasses import asdict
+import logging
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
-
-import json
-import logging
+from typing import Any
 
 # pandas is optional at import-time; fail only when training is invoked
 try:
@@ -46,11 +44,11 @@ def _ensure_pandas() -> None:
         raise RuntimeError("pandas is required for patent classifier training")
 
 
-def _normalize_labels_column(df: "pd.DataFrame", cet_label_col: str) -> List[Set[str]]:
+def _normalize_labels_column(df: pd.DataFrame, cet_label_col: str) -> list[set[str]]:
     """
     Coerce the labels column to a list of sets of strings.
     """
-    labels: List[Set[str]] = []
+    labels: list[set[str]] = []
     for v in df[cet_label_col].tolist():
         if v is None:
             labels.append(set())
@@ -67,12 +65,12 @@ def _normalize_labels_column(df: "pd.DataFrame", cet_label_col: str) -> List[Set
 
 
 def build_training_inputs(
-    df: "pd.DataFrame",
+    df: pd.DataFrame,
     *,
     title_col: str = "title",
-    assignee_col: Optional[str] = None,
+    assignee_col: str | None = None,
     use_feature_extraction: bool = True,
-) -> Tuple[List[str], List[Dict[str, Any]]]:
+) -> tuple[list[str], list[dict[str, Any]]]:
     """
     Produce training inputs from a DataFrame:
     - texts: list[str] to pass to pipelines (normalized title + assignee hint)
@@ -82,8 +80,8 @@ def build_training_inputs(
     """
     _ensure_pandas()
 
-    titles: List[str] = []
-    features: List[Dict[str, Any]] = []
+    titles: list[str] = []
+    features: list[dict[str, Any]] = []
 
     # Prefer the extractor for consistent normalization and small additional signal
     if use_feature_extraction:
@@ -115,18 +113,18 @@ def build_training_inputs(
 
 
 def train_patent_classifier(
-    df: "pd.DataFrame",
+    df: pd.DataFrame,
     output_model_path: Path,
     pipelines_factory: Callable[[str], Any],
     *,
     title_col: str = "title",
-    assignee_col: Optional[str] = None,
+    assignee_col: str | None = None,
     cet_label_col: str = "cet_labels",
     use_feature_extraction: bool = True,
-    keywords_map: Optional[Dict[str, List[str]]] = None,
-    taxonomy_version: Optional[str] = None,
-    model_version: Optional[str] = None,
-) -> Dict[str, Any]:
+    keywords_map: dict[str, list[str]] | None = None,
+    taxonomy_version: str | None = None,
+    model_version: str | None = None,
+) -> dict[str, Any]:
     """
     Train a PatentCETClassifier and persist it to output_model_path.
 
@@ -210,11 +208,11 @@ def train_patent_classifier(
 # Basic evaluation (optional)
 # ------------------------------
 def precision_recall_at_k(
-    y_true: Sequence[Set[str]],
+    y_true: Sequence[set[str]],
     y_pred_ranked: Sequence[Sequence[PatentClassification]],
     *,
     k: int = 1,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compute simple micro-averaged precision@k and recall@k for multi-label classification.
 
@@ -228,7 +226,7 @@ def precision_recall_at_k(
     total_true = 0
     total_correct = 0
 
-    for true_set, preds in zip(y_true, y_pred_ranked):
+    for true_set, preds in zip(y_true, y_pred_ranked, strict=False):
         topk = [p.cet_id for p in (preds[:k] if preds else [])]
         pred_set = set(topk)
         true_labels = set(true_set or [])
@@ -243,14 +241,14 @@ def precision_recall_at_k(
 
 def evaluate_patent_classifier(
     classifier: PatentCETClassifier,
-    df_eval: "pd.DataFrame",
+    df_eval: pd.DataFrame,
     *,
     title_col: str = "title",
-    assignee_col: Optional[str] = None,
+    assignee_col: str | None = None,
     cet_label_col: str = "cet_labels",
     k_values: Sequence[int] = (1, 3),
     batch_size: int = 1000,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Evaluate a trained classifier on a labeled evaluation DataFrame.
 
@@ -271,7 +269,7 @@ def evaluate_patent_classifier(
         titles=texts, assignees=assignees, batch_size=batch_size, top_k=max(k_values or [1])
     )
 
-    metrics: Dict[str, Any] = {"ok": True, "n": int(len(df_eval))}
+    metrics: dict[str, Any] = {"ok": True, "n": int(len(df_eval))}
     for k in k_values:
         m = precision_recall_at_k(y_true, y_pred, k=k)
         metrics.update(
@@ -281,20 +279,20 @@ def evaluate_patent_classifier(
 
 
 def train_and_evaluate(
-    df_train: "pd.DataFrame",
-    df_eval: Optional["pd.DataFrame"],
+    df_train: pd.DataFrame,
+    df_eval: pd.DataFrame | None,
     output_model_path: Path,
     pipelines_factory: Callable[[str], Any],
     *,
     title_col: str = "title",
-    assignee_col: Optional[str] = None,
+    assignee_col: str | None = None,
     cet_label_col: str = "cet_labels",
     use_feature_extraction: bool = True,
-    keywords_map: Optional[Dict[str, List[str]]] = None,
-    taxonomy_version: Optional[str] = None,
-    model_version: Optional[str] = None,
+    keywords_map: dict[str, list[str]] | None = None,
+    taxonomy_version: str | None = None,
+    model_version: str | None = None,
     k_values: Sequence[int] = (1, 3),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Convenience wrapper: train and optionally evaluate, returning merged metadata.
 

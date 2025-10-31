@@ -17,9 +17,9 @@ Features:
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -60,9 +60,9 @@ class StatisticalReporter:
 
     def __init__(
         self,
-        output_dir: Optional[Path] = None,
-        config: Optional[Dict[str, Any]] = None,
-        metrics_collector: Optional[MetricsCollector] = None,
+        output_dir: Path | None = None,
+        config: dict[str, Any] | None = None,
+        metrics_collector: MetricsCollector | None = None,
     ):
         """Initialize statistical reporter.
 
@@ -84,7 +84,7 @@ class StatisticalReporter:
         if self.ci_context:
             logger.info(f"CI/CD context detected: {self.ci_context.get('provider', 'unknown')}")
 
-    def _detect_ci_context(self) -> Optional[Dict[str, Any]]:
+    def _detect_ci_context(self) -> dict[str, Any] | None:
         """Detect CI/CD environment context.
 
         Returns:
@@ -114,7 +114,7 @@ class StatisticalReporter:
 
         return ci_context if ci_context else None
 
-    def generate_reports(self, run_context: Dict[str, Any]) -> ReportCollection:
+    def generate_reports(self, run_context: dict[str, Any]) -> ReportCollection:
         """Generate comprehensive statistical reports for a pipeline run.
 
         Args:
@@ -156,9 +156,9 @@ class StatisticalReporter:
         module_name: str,
         run_id: str,
         stage: str,
-        metrics_data: Dict[str, Any],
-        data_hygiene: Optional[DataHygieneMetrics] = None,
-        changes_summary: Optional[ChangesSummary] = None,
+        metrics_data: dict[str, Any],
+        data_hygiene: DataHygieneMetrics | None = None,
+        changes_summary: ChangesSummary | None = None,
     ) -> ModuleMetrics:
         """Generate metrics for a specific pipeline module.
 
@@ -669,7 +669,7 @@ class StatisticalReporter:
         return paths
 
     def _collect_pipeline_metrics(
-        self, run_id: str, run_context: Dict[str, Any]
+        self, run_id: str, run_context: dict[str, Any]
     ) -> PipelineMetrics:
         """Collect comprehensive pipeline metrics from various sources.
 
@@ -749,7 +749,7 @@ class StatisticalReporter:
 
     def _generate_all_formats(
         self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
-    ) -> List[ReportArtifact]:
+    ) -> list[ReportArtifact]:
         """Generate reports in all configured formats.
 
         Args:
@@ -776,7 +776,7 @@ class StatisticalReporter:
 
     def _generate_format_artifact(
         self, pipeline_metrics: PipelineMetrics, format: ReportFormat, collection: ReportCollection
-    ) -> Optional[ReportArtifact]:
+    ) -> ReportArtifact | None:
         """Generate a single report artifact in the specified format.
 
         Args:
@@ -1119,7 +1119,7 @@ class StatisticalReporter:
             return
 
         # Read markdown content
-        with open(markdown_artifact.file_path, "r") as f:
+        with open(markdown_artifact.file_path) as f:
             markdown_content = f.read()
 
         # Truncate if too long

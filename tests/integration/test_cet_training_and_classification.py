@@ -1,5 +1,5 @@
-import pytest
 import pandas as pd
+import pytest
 
 from src.ml.models.cet_classifier import ApplicabilityModel
 from src.models.cet_models import CETArea

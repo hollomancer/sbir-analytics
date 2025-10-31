@@ -16,9 +16,10 @@ Design goals:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable, Sequence
+from dataclasses import asdict, dataclass
 from difflib import SequenceMatcher
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 # Import project-normalized types when available to keep type hints helpful.
@@ -36,7 +37,7 @@ except Exception:
 # -------------------------------
 
 
-def normalize_url(u: Optional[str]) -> Optional[str]:
+def normalize_url(u: str | None) -> str | None:
     """Return a normalized URL with scheme and hostname lowercased and
     without query/fragment. Returns None for falsy inputs."""
     if not u:
@@ -53,7 +54,7 @@ def normalize_url(u: Optional[str]) -> Optional[str]:
         return u.strip()
 
 
-def domain_of_url(u: Optional[str]) -> Optional[str]:
+def domain_of_url(u: str | None) -> str | None:
     """Return the effective domain/host for a URL or None."""
     nu = normalize_url(u)
     if not nu:
@@ -64,7 +65,7 @@ def domain_of_url(u: Optional[str]) -> Optional[str]:
         return None
 
 
-def tokenize_text(s: Optional[str]) -> List[str]:
+def tokenize_text(s: str | None) -> list[str]:
     """Very small tokenizer: lowercase, split on whitespace and punctuation.
     Keeps tokens of length >= 2 to avoid noise."""
     if not s:
@@ -97,7 +98,7 @@ def sequence_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
 
 
-def text_similarity(a: Optional[str], b: Optional[str]) -> float:
+def text_similarity(a: str | None, b: str | None) -> float:
     """Combine token Jaccard and sequence similarity for a stable score in [0,1].
 
     We compute:
@@ -127,8 +128,8 @@ class FieldMatchScore:
     """Per-field match scoring summary."""
 
     field: str
-    truth: Optional[str]
-    candidate: Optional[str]
+    truth: str | None
+    candidate: str | None
     similarity: float
 
 
@@ -150,15 +151,15 @@ class ResultScore:
     provider: str
     query: str
     rank: int
-    url: Optional[str]
-    title: Optional[str]
-    snippet: Optional[str]
+    url: str | None
+    title: str | None
+    snippet: str | None
     text_similarity: float
-    field_scores: List[FieldMatchScore]
+    field_scores: list[FieldMatchScore]
     citation_score: float
-    latency_ms: Optional[float] = None
+    latency_ms: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         # Convert dataclasses in field_scores to dicts
         d["field_scores"] = [asdict(fs) for fs in self.field_scores]
@@ -170,7 +171,7 @@ class ResultScore:
 # -------------------------------
 
 
-def score_citation(candidate_url: Optional[str], truth_url: Optional[str]) -> float:
+def score_citation(candidate_url: str | None, truth_url: str | None) -> float:
     """Score how well a candidate URL matches the authoritative truth URL.
 
     - 1.0 for exact normalized URL match
@@ -197,8 +198,8 @@ def score_citation(candidate_url: Optional[str], truth_url: Optional[str]) -> fl
 
 def score_result_against_truth(
     result: ProviderResult,
-    truth: Dict[str, Any],
-    fields_to_check: Optional[Sequence[str]] = None,
+    truth: dict[str, Any],
+    fields_to_check: Sequence[str] | None = None,
     text_weight: float = 0.5,
 ) -> ResultScore:
     """Score a single `ProviderResult` against ground-truth entity.
@@ -225,8 +226,8 @@ def score_result_against_truth(
     combined_text = " ".join([t for t in (title or "", snippet or "") if t]).strip()
 
     # Compute per-field similarities
-    field_scores: List[FieldMatchScore] = []
-    structured_sims: List[float] = []
+    field_scores: list[FieldMatchScore] = []
+    structured_sims: list[float] = []
     for k in keys:
         truth_val = truth.get(k)
         # For website, prefer URL normalization + domain comparison
@@ -353,12 +354,12 @@ def f1_from_precision_recall(p: float, r: float) -> float:
 
 def aggregate_run_metrics(
     provider_response: ProviderResponse,
-    truth: Dict[str, Any],
+    truth: dict[str, Any],
     top_k: int = 5,
     threshold: float = 0.5,
-    fields_to_check: Optional[Sequence[str]] = None,
+    fields_to_check: Sequence[str] | None = None,
     text_weight: float = 0.5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Score a provider response (single query) against a ground-truth dict.
 
     Returns a dict with:
@@ -371,7 +372,7 @@ def aggregate_run_metrics(
     results = []
     provider_name = None
     query = truth.get("__query__", "")
-    latency_values: List[float] = []
+    latency_values: list[float] = []
 
     if isinstance(provider_response, dict):
         provider_name = provider_response.get("provider", "")
@@ -382,7 +383,7 @@ def aggregate_run_metrics(
         )
         raw_results = getattr(provider_response, "results", [])  # type: ignore
 
-    scored_results: List[ResultScore] = []
+    scored_results: list[ResultScore] = []
     for idx, rr in enumerate(raw_results, start=1):
         # rr may be dict-like or ProviderResult
         if isinstance(rr, dict):
@@ -416,7 +417,7 @@ def aggregate_run_metrics(
             rr_obj.metadata.setdefault("provider", provider_name)
             # optionally set latency_ms metadata if available on result
             if getattr(rr_obj, "latency_ms", None) is not None:
-                rr_obj.metadata.setdefault("latency_ms", getattr(rr_obj, "latency_ms"))
+                rr_obj.metadata.setdefault("latency_ms", rr_obj.latency_ms)
 
         rs = score_result_against_truth(
             rr_obj, truth, fields_to_check=fields_to_check, text_weight=text_weight
@@ -465,12 +466,12 @@ def aggregate_run_metrics(
 
 def score_provider_run(
     provider_responses: Iterable[ProviderResponse],
-    truths: Iterable[Dict[str, Any]],
+    truths: Iterable[dict[str, Any]],
     top_k: int = 5,
     threshold: float = 0.5,
-    fields_to_check: Optional[Sequence[str]] = None,
+    fields_to_check: Sequence[str] | None = None,
     text_weight: float = 0.5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Score a sequence of provider responses against an aligned sequence of truths.
 
     Both iterables must be in the same order and have the same length; each
@@ -487,10 +488,10 @@ def score_provider_run(
     total_r = 0.0
     total_f1 = 0.0
     total_citation = 0.0
-    latency_vals: List[float] = []
+    latency_vals: list[float] = []
     count = 0
 
-    for pr, truth in zip(provider_responses, truths):
+    for pr, truth in zip(provider_responses, truths, strict=False):
         m = aggregate_run_metrics(
             pr,
             truth,

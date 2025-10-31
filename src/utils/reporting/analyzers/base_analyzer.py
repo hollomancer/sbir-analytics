@@ -2,31 +2,30 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
-from src.models.quality import InsightRecommendation, ModuleReport
-from src.models.statistical_reports import ModuleMetrics
+from src.models.quality import ModuleReport
 
 
 class AnalysisInsight(BaseModel):
     """Individual analysis insight with context and recommendations."""
-    
+
     category: str
     title: str
     message: str
     severity: str
     confidence: float
     affected_records: int
-    recommendations: List[str]
-    metadata: Dict[str, Any]
+    recommendations: list[str]
+    metadata: dict[str, Any]
 
 
 class ModuleAnalyzer(ABC):
     """Base class for module-specific statistical analyzers."""
-    
-    def __init__(self, module_name: str, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, module_name: str, config: dict[str, Any] | None = None):
         """Initialize the analyzer.
         
         Args:
@@ -35,10 +34,10 @@ class ModuleAnalyzer(ABC):
         """
         self.module_name = module_name
         self.config = config or {}
-        self.insights: List[AnalysisInsight] = []
-    
+        self.insights: list[AnalysisInsight] = []
+
     @abstractmethod
-    def analyze(self, module_data: Dict[str, Any]) -> ModuleReport:
+    def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
         """Analyze module data and generate a comprehensive report.
         
         Args:
@@ -48,9 +47,9 @@ class ModuleAnalyzer(ABC):
             ModuleReport with analysis results
         """
         pass
-    
+
     @abstractmethod
-    def get_key_metrics(self, module_data: Dict[str, Any]) -> Dict[str, Any]:
+    def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from module data.
         
         Args:
@@ -60,9 +59,9 @@ class ModuleAnalyzer(ABC):
             Dictionary of key metrics
         """
         pass
-    
+
     @abstractmethod
-    def generate_insights(self, module_data: Dict[str, Any]) -> List[AnalysisInsight]:
+    def generate_insights(self, module_data: dict[str, Any]) -> list[AnalysisInsight]:
         """Generate automated insights and recommendations.
         
         Args:
@@ -72,7 +71,7 @@ class ModuleAnalyzer(ABC):
             List of analysis insights
         """
         pass
-    
+
     def calculate_success_rate(self, processed: int, total: int) -> float:
         """Calculate success rate with safe division.
         
@@ -84,7 +83,7 @@ class ModuleAnalyzer(ABC):
             Success rate as a float between 0.0 and 1.0
         """
         return processed / total if total > 0 else 0.0
-    
+
     def calculate_coverage_rate(self, enriched: int, total: int) -> float:
         """Calculate coverage rate with safe division.
         
@@ -96,7 +95,7 @@ class ModuleAnalyzer(ABC):
             Coverage rate as a float between 0.0 and 1.0
         """
         return enriched / total if total > 0 else 0.0
-    
+
     def add_insight(self, insight: AnalysisInsight) -> None:
         """Add an insight to the analyzer's insight collection.
         
@@ -104,7 +103,7 @@ class ModuleAnalyzer(ABC):
             insight: Analysis insight to add
         """
         self.insights.append(insight)
-    
+
     def create_module_report(
         self,
         run_id: str,
@@ -113,9 +112,9 @@ class ModuleAnalyzer(ABC):
         records_processed: int,
         records_failed: int,
         duration_seconds: float,
-        module_metrics: Dict[str, Any],
-        data_hygiene: Optional[Any] = None,
-        changes_summary: Optional[Any] = None,
+        module_metrics: dict[str, Any],
+        data_hygiene: Any | None = None,
+        changes_summary: Any | None = None,
     ) -> ModuleReport:
         """Create a standardized module report.
         
@@ -135,7 +134,7 @@ class ModuleAnalyzer(ABC):
         """
         success_rate = self.calculate_success_rate(records_processed, total_records)
         throughput = records_processed / duration_seconds if duration_seconds > 0 else 0.0
-        
+
         return ModuleReport(
             module_name=self.module_name,
             run_id=run_id,
@@ -151,7 +150,7 @@ class ModuleAnalyzer(ABC):
             changes_summary=changes_summary,
             module_metrics=module_metrics,
         )
-    
+
     def detect_anomalies(self, current_value: float, expected_value: float, threshold: float = 0.2) -> bool:
         """Detect if a metric value is anomalous compared to expected value.
         
@@ -165,10 +164,10 @@ class ModuleAnalyzer(ABC):
         """
         if expected_value == 0:
             return current_value > 0
-        
+
         deviation = abs(current_value - expected_value) / expected_value
         return deviation > threshold
-    
+
     def categorize_confidence(self, confidence: float) -> str:
         """Categorize confidence score into human-readable levels.
         

@@ -1,6 +1,7 @@
 """Dagster definitions for SBIR ETL pipeline."""
 
 import os
+
 from dagster import (
     AssetSelection,
     Definitions,
@@ -12,15 +13,19 @@ from dagster import (
 
 from . import assets
 from .assets import (
-    sbir_ingestion,
-    usaspending_ingestion,
-    sbir_usaspending_enrichment,
-    uspto_assets,
     cet_assets,
+    sbir_ingestion,
+    sbir_usaspending_enrichment,
     transition_assets,
+    usaspending_ingestion,
+    uspto_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
-from .assets.jobs.transition_job import transition_mvp_job, transition_full_job, transition_analytics_job
+from .assets.jobs.transition_job import (
+    transition_analytics_job,
+    transition_full_job,
+    transition_mvp_job,
+)
 
 # Load all assets and checks from modules
 all_assets = load_assets_from_modules(
@@ -97,9 +102,9 @@ defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
     jobs=[
-        sbir_ingestion_job, 
-        etl_job, 
-        cet_full_pipeline_job, 
+        sbir_ingestion_job,
+        etl_job,
+        cet_full_pipeline_job,
         cet_drift_job,
         transition_mvp_job,
         transition_full_job,

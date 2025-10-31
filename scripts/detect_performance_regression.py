@@ -28,18 +28,18 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
+import pandas as pd
 from loguru import logger
 
 from src.config.loader import get_config
 from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
-from src.utils.performance_reporting import PerformanceMetrics, PerformanceReporter
 from src.utils.performance_monitor import performance_monitor
-import pandas as pd
+from src.utils.performance_reporting import PerformanceMetrics, PerformanceReporter
 
 
-def load_sample_data(sample_size: Optional[int] = None) -> tuple[pd.DataFrame, int]:
+def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
     """Load sample SBIR data for benchmarking."""
     config = get_config()
     sbir_config = config.extraction.sbir
@@ -93,7 +93,7 @@ def load_usaspending_lookup() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> Dict[str, Any]:
+def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame) -> dict[str, Any]:
     """Run enrichment pipeline with performance monitoring."""
     logger.info(f"Running enrichment on {len(sbir_df)} SBIR records")
 
@@ -168,7 +168,7 @@ def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame
 
 def load_baseline(
     baseline_path: Path = Path("reports/benchmarks/baseline.json"),
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Load historical benchmark baseline."""
     if baseline_path.exists():
         try:
@@ -185,10 +185,10 @@ def load_baseline(
 
 
 def generate_regression_summary(
-    current_benchmark: Dict[str, Any],
-    baseline: Optional[Dict[str, Any]],
+    current_benchmark: dict[str, Any],
+    baseline: dict[str, Any] | None,
     reporter: PerformanceReporter,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate comprehensive regression summary."""
     current_metrics = PerformanceMetrics.from_benchmark(current_benchmark)
     summary = {
@@ -227,7 +227,7 @@ def generate_regression_summary(
 
 
 def output_github_pr_comment(
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     output_path: Path,
 ) -> None:
     """Generate GitHub PR comment format output."""

@@ -10,7 +10,6 @@ These models represent:
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -100,7 +99,7 @@ class CETClassification(BaseModel):
     """
 
     cet_id: str = Field(..., description="CET area identifier")
-    cet_name: Optional[str] = Field(None, description="Human-readable CET area name")
+    cet_name: str | None = Field(None, description="Human-readable CET area name")
     score: float = Field(..., ge=0.0, le=100.0, description="Confidence score (0-100)")
     classification: ClassificationLevel = Field(
         ..., description="Classification level (High/Medium/Low)"
@@ -109,8 +108,8 @@ class CETClassification(BaseModel):
     evidence: list[EvidenceStatement] = Field(
         default_factory=list, description="Supporting evidence (up to 3 statements)"
     )
-    classified_at: Optional[str] = Field(None, description="ISO 8601 timestamp of classification")
-    taxonomy_version: Optional[str] = Field(
+    classified_at: str | None = Field(None, description="ISO 8601 timestamp of classification")
+    taxonomy_version: str | None = Field(
         None, description="Taxonomy version (e.g., 'NSTC-2025Q1')"
     )
 
@@ -245,23 +244,23 @@ class TrainingExample(BaseModel):
 
     example_id: str = Field(..., description="Unique identifier for this training example")
     text: str = Field(..., description="Text to classify (award abstract or combined fields)")
-    title: Optional[str] = Field(None, description="Award title (if available)")
-    keywords: Optional[str] = Field(None, description="Award keywords (if available)")
-    solicitation: Optional[str] = Field(None, description="Solicitation topic (if available)")
-    labels: List[str] = Field(..., description="Ground truth CET IDs (one or more applicable CETs)")
-    label_confidence: Optional[float] = Field(
+    title: str | None = Field(None, description="Award title (if available)")
+    keywords: str | None = Field(None, description="Award keywords (if available)")
+    solicitation: str | None = Field(None, description="Solicitation topic (if available)")
+    labels: list[str] = Field(..., description="Ground truth CET IDs (one or more applicable CETs)")
+    label_confidence: float | None = Field(
         None, ge=0.0, le=1.0, description="Confidence in labels (0-1, if provided by annotator)"
     )
     source: str = Field(
         ..., description="Source of the label (e.g., 'manual', 'bootstrap', 'expert')"
     )
-    annotated_by: Optional[str] = Field(None, description="Annotator ID or name")
-    annotated_at: Optional[datetime] = Field(None, description="Timestamp of annotation")
-    notes: Optional[str] = Field(None, description="Optional notes about this example")
+    annotated_by: str | None = Field(None, description="Annotator ID or name")
+    annotated_at: datetime | None = Field(None, description="Timestamp of annotation")
+    notes: str | None = Field(None, description="Optional notes about this example")
 
     @field_validator("labels")
     @classmethod
-    def validate_labels_not_empty(cls, v: List[str]) -> List[str]:
+    def validate_labels_not_empty(cls, v: list[str]) -> list[str]:
         """Ensure at least one label is provided."""
         if not v:
             raise ValueError("At least one label is required")
@@ -284,17 +283,17 @@ class TrainingDataset(BaseModel):
     """
 
     dataset_id: str = Field(..., description="Unique identifier for this dataset")
-    examples: List[TrainingExample] = Field(..., description="Training examples")
+    examples: list[TrainingExample] = Field(..., description="Training examples")
     taxonomy_version: str = Field(..., description="CET taxonomy version (e.g., 'NSTC-2025Q1')")
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="Dataset creation timestamp"
     )
-    description: Optional[str] = Field(None, description="Description of this dataset")
-    split: Optional[str] = Field(None, description="Dataset split (e.g., 'train', 'val', 'test')")
+    description: str | None = Field(None, description="Description of this dataset")
+    split: str | None = Field(None, description="Dataset split (e.g., 'train', 'val', 'test')")
 
     @field_validator("examples")
     @classmethod
-    def validate_examples_not_empty(cls, v: List[TrainingExample]) -> List[TrainingExample]:
+    def validate_examples_not_empty(cls, v: list[TrainingExample]) -> list[TrainingExample]:
         """Ensure dataset contains examples."""
         if not v:
             raise ValueError("Dataset must contain at least one example")
