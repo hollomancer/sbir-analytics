@@ -6,20 +6,20 @@
   - Add fiscal analysis configuration section to `config/base.yaml`
   - _Requirements: 6.1, 6.2_
 
-- [ ] 2. Implement data preparation and enrichment components
-  - [ ] 2.1 Create NAICS enrichment service for fiscal analysis
+- [x] 2. Implement data preparation and enrichment components
+  - [x] 2.1 Create NAICS enrichment service for fiscal analysis
     - Extend existing enrichment patterns with fiscal-specific NAICS requirements
     - Implement hierarchical fallback chain: original → USAspending → SAM.gov → agency defaults → sector fallback
     - Add confidence scoring and quality tracking for NAICS coverage
     - _Requirements: 1.1, 1.2, 1.3, 5.1, 5.2_
 
-  - [ ] 2.2 Implement geographic resolution service
+  - [x] 2.2 Implement geographic resolution service
     - Standardize company locations to state-level for StateIO model compatibility
     - Integrate with existing company enrichment and address parsing
     - Add geographic coverage validation and quality gates
     - _Requirements: 1.1, 5.1_
 
-  - [ ] 2.3 Create inflation adjustment service
+  - [x] 2.3 Create inflation adjustment service
     - Implement BEA GDP deflator integration for monetary normalization
     - Support configurable base year adjustment with linear interpolation
     - Add quality flags for extrapolation and missing periods
