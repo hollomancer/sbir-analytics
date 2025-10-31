@@ -67,7 +67,7 @@ Based on analysis of the current codebase, the following tasks represent the hig
   - Ensure each asset has a single, well-defined purpose with clear input/output contracts
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] 2.5 Update job definitions and pipeline orchestration
+- [x] 2.5 Update job definitions and pipeline orchestration
   - Consolidate job definitions in src/assets/jobs/ to use consolidated assets
   - Create clear asset groups that reflect logical pipeline stages
   - Simplify asset dependency management through consistent patterns

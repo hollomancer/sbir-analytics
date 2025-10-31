@@ -53,7 +53,7 @@ except ImportError:
 
 class StatisticalReporter:
     """Orchestrator for generating statistical reports across pipeline modules.
-    
+
     Integrates with existing performance monitoring utilities and provides
     comprehensive reporting capabilities for pipeline runs.
     """
@@ -73,61 +73,63 @@ class StatisticalReporter:
         """
         self.output_dir = output_dir or Path("reports/statistical")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.config = config or {}
         self.metrics_collector = metrics_collector or MetricsCollector()
-        
+
         # CI/CD context detection
         self.ci_context = self._detect_ci_context()
-        
+
         logger.info(f"Statistical reporter initialized with output dir: {self.output_dir}")
         if self.ci_context:
             logger.info(f"CI/CD context detected: {self.ci_context.get('provider', 'unknown')}")
 
     def _detect_ci_context(self) -> Optional[Dict[str, Any]]:
         """Detect CI/CD environment context.
-        
+
         Returns:
             Dictionary with CI context information or None if not in CI
         """
         ci_context = {}
-        
+
         # GitHub Actions
         if os.getenv("GITHUB_ACTIONS"):
-            ci_context.update({
-                "provider": "github_actions",
-                "repository": os.getenv("GITHUB_REPOSITORY"),
-                "ref": os.getenv("GITHUB_REF"),
-                "sha": os.getenv("GITHUB_SHA"),
-                "run_id": os.getenv("GITHUB_RUN_ID"),
-                "workflow": os.getenv("GITHUB_WORKFLOW"),
-                "is_pr": os.getenv("GITHUB_EVENT_NAME") == "pull_request",
-                "pr_number": os.getenv("GITHUB_PR_NUMBER"),
-            })
-        
+            ci_context.update(
+                {
+                    "provider": "github_actions",
+                    "repository": os.getenv("GITHUB_REPOSITORY"),
+                    "ref": os.getenv("GITHUB_REF"),
+                    "sha": os.getenv("GITHUB_SHA"),
+                    "run_id": os.getenv("GITHUB_RUN_ID"),
+                    "workflow": os.getenv("GITHUB_WORKFLOW"),
+                    "is_pr": os.getenv("GITHUB_EVENT_NAME") == "pull_request",
+                    "pr_number": os.getenv("GITHUB_PR_NUMBER"),
+                }
+            )
+
         # Add other CI providers as needed
         elif os.getenv("CI"):
             ci_context["provider"] = "unknown_ci"
             ci_context["detected"] = True
-        
+
         return ci_context if ci_context else None
 
     def generate_reports(self, run_context: Dict[str, Any]) -> ReportCollection:
         """Generate comprehensive statistical reports for a pipeline run.
-        
+
         Args:
             run_context: Context information including run_id, modules, etc.
-            
+
         Returns:
             ReportCollection with all generated report artifacts
         """
         run_id = run_context.get("run_id", f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-        
+
         logger.info(f"Generating comprehensive statistical reports for run {run_id}")
-        
+
         # Collect pipeline metrics
         pipeline_metrics = self._collect_pipeline_metrics(run_id, run_context)
-        
+
         # Generate report collection
         collection = ReportCollection(
             collection_id=f"{run_id}_reports",
@@ -136,16 +138,16 @@ class StatisticalReporter:
             output_directory=self.output_dir,
             ci_context=self.ci_context,
         )
-        
+
         # Generate all report formats
         artifacts = self._generate_all_formats(pipeline_metrics, collection)
         collection.artifacts = artifacts
         collection.calculate_totals()
-        
+
         # Handle CI/CD integration
         if self.ci_context and self.config.get("ci", {}).get("upload_artifacts", True):
             self._handle_ci_integration(collection)
-        
+
         logger.info(f"Generated {len(artifacts)} report artifacts for run {run_id}")
         return collection
 
@@ -180,7 +182,7 @@ class StatisticalReporter:
             start_time = datetime.fromtimestamp(start_time)
         if isinstance(end_time, (int, float)):
             end_time = datetime.fromtimestamp(end_time)
-        
+
         execution_time = end_time - start_time
 
         # Calculate record processing metrics
@@ -188,7 +190,7 @@ class StatisticalReporter:
         records_out = metrics_data.get("records_out", records_in)
         records_processed = metrics_data.get("records_processed", records_out)
         records_failed = metrics_data.get("records_failed", 0)
-        
+
         # Calculate success rate
         total_input = max(records_in, records_processed + records_failed)
         success_rate = records_processed / total_input if total_input > 0 else 0.0
@@ -666,21 +668,23 @@ class StatisticalReporter:
         logger.info(f"Generated all report formats: {list(paths.keys())}")
         return paths
 
-    def _collect_pipeline_metrics(self, run_id: str, run_context: Dict[str, Any]) -> PipelineMetrics:
+    def _collect_pipeline_metrics(
+        self, run_id: str, run_context: Dict[str, Any]
+    ) -> PipelineMetrics:
         """Collect comprehensive pipeline metrics from various sources.
-        
+
         Args:
             run_id: Pipeline run identifier
             run_context: Context information for the run
-            
+
         Returns:
             PipelineMetrics instance with aggregated data
         """
         logger.info(f"Collecting pipeline metrics for run {run_id}")
-        
+
         # Get performance metrics from performance monitor
         perf_report = performance_monitor.get_performance_report()
-        
+
         # Calculate overall timing
         start_time = run_context.get("start_time", datetime.now())
         end_time = run_context.get("end_time", datetime.now())
@@ -688,14 +692,14 @@ class StatisticalReporter:
             start_time = datetime.fromtimestamp(start_time)
         if isinstance(end_time, (int, float)):
             end_time = datetime.fromtimestamp(end_time)
-        
+
         duration = end_time - start_time
-        
+
         # Aggregate module metrics
         module_metrics = {}
         total_records = 0
         total_processed = 0
-        
+
         for module_name, module_data in run_context.get("modules", {}).items():
             module_metric = self.generate_module_report(
                 module_name=module_name,
@@ -706,22 +710,24 @@ class StatisticalReporter:
             module_metrics[module_name] = module_metric
             total_records += module_metric.records_in
             total_processed += module_metric.records_processed
-        
+
         # Calculate overall success rate
         overall_success_rate = total_processed / total_records if total_records > 0 else 0.0
-        
+
         # Create performance metrics
         performance_metrics = PerformanceMetrics(
             start_time=start_time,
             end_time=end_time,
             duration=duration,
-            records_per_second=total_processed / duration.total_seconds() if duration.total_seconds() > 0 else 0.0,
+            records_per_second=total_processed / duration.total_seconds()
+            if duration.total_seconds() > 0
+            else 0.0,
             peak_memory_mb=perf_report.get("overall", {}).get("max_peak_memory_mb", 0.0),
             average_memory_mb=0.0,  # Would need to calculate from detailed metrics
             total_retries=0,  # Would need to collect from modules
             failed_operations=sum(m.records_failed for m in module_metrics.values()),
         )
-        
+
         # Create pipeline metrics
         pipeline_metrics = PipelineMetrics(
             run_id=run_id,
@@ -738,24 +744,24 @@ class StatisticalReporter:
             transition_metrics=run_context.get("transition_metrics"),
             ecosystem_metrics=run_context.get("ecosystem_metrics"),
         )
-        
+
         return pipeline_metrics
 
     def _generate_all_formats(
         self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
     ) -> List[ReportArtifact]:
         """Generate reports in all configured formats.
-        
+
         Args:
             pipeline_metrics: Pipeline metrics to report on
             collection: Report collection to populate
-            
+
         Returns:
             List of generated report artifacts
         """
         artifacts = []
         enabled_formats = self.config.get("output_formats", ["html", "json", "markdown"])
-        
+
         for format_name in enabled_formats:
             try:
                 format_enum = ReportFormat(format_name)
@@ -765,24 +771,24 @@ class StatisticalReporter:
             except ValueError:
                 logger.warning(f"Unknown report format: {format_name}")
                 continue
-        
+
         return artifacts
 
     def _generate_format_artifact(
         self, pipeline_metrics: PipelineMetrics, format: ReportFormat, collection: ReportCollection
     ) -> Optional[ReportArtifact]:
         """Generate a single report artifact in the specified format.
-        
+
         Args:
             pipeline_metrics: Pipeline metrics to report on
             format: Report format to generate
             collection: Report collection context
-            
+
         Returns:
             ReportArtifact if successful, None otherwise
         """
         start_time = datetime.now()
-        
+
         try:
             if format == ReportFormat.JSON:
                 file_path = self._generate_json_artifact(pipeline_metrics, collection)
@@ -795,13 +801,13 @@ class StatisticalReporter:
             else:
                 logger.warning(f"Unsupported format: {format}")
                 return None
-            
+
             # Calculate file size
             file_size = file_path.stat().st_size if file_path.exists() else 0
-            
+
             # Calculate generation time
             generation_time = (datetime.now() - start_time).total_seconds()
-            
+
             artifact = ReportArtifact(
                 format=format,
                 file_path=file_path,
@@ -811,52 +817,60 @@ class StatisticalReporter:
                 contains_interactive_elements=(format == ReportFormat.HTML),
                 contains_visualizations=(format in [ReportFormat.HTML, ReportFormat.EXECUTIVE]),
             )
-            
+
             logger.info(f"Generated {format.value} report: {file_path} ({file_size} bytes)")
             return artifact
-            
+
         except Exception as e:
             logger.error(f"Failed to generate {format.value} report: {e}")
             return None
 
-    def _generate_json_artifact(self, pipeline_metrics: PipelineMetrics, collection: ReportCollection) -> Path:
+    def _generate_json_artifact(
+        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
+    ) -> Path:
         """Generate JSON report artifact."""
         output_file = self.output_dir / f"{collection.collection_id}.json"
-        
+
         with open(output_file, "w") as f:
             json.dump(pipeline_metrics.model_dump(), f, indent=2, default=str)
-        
+
         return output_file
 
-    def _generate_html_artifact(self, pipeline_metrics: PipelineMetrics, collection: ReportCollection) -> Path:
+    def _generate_html_artifact(
+        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
+    ) -> Path:
         """Generate HTML report artifact."""
         output_file = self.output_dir / f"{collection.collection_id}.html"
-        
+
         if PLOTLY_AVAILABLE:
             return self._generate_plotly_html(pipeline_metrics, output_file)
         else:
             return self._generate_simple_html_artifact(pipeline_metrics, output_file)
 
-    def _generate_markdown_artifact(self, pipeline_metrics: PipelineMetrics, collection: ReportCollection) -> Path:
+    def _generate_markdown_artifact(
+        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
+    ) -> Path:
         """Generate Markdown report artifact."""
         output_file = self.output_dir / f"{collection.collection_id}_summary.md"
-        
+
         markdown_content = self._create_markdown_content(pipeline_metrics)
-        
+
         with open(output_file, "w") as f:
             f.write(markdown_content)
-        
+
         return output_file
 
-    def _generate_executive_artifact(self, pipeline_metrics: PipelineMetrics, collection: ReportCollection) -> Path:
+    def _generate_executive_artifact(
+        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
+    ) -> Path:
         """Generate executive summary artifact."""
         output_file = self.output_dir / f"{collection.collection_id}_executive.json"
-        
+
         executive_summary = self._create_executive_summary(pipeline_metrics)
-        
+
         with open(output_file, "w") as f:
             json.dump(executive_summary.model_dump(), f, indent=2, default=str)
-        
+
         return output_file
 
     def _create_markdown_content(self, pipeline_metrics: PipelineMetrics) -> str:
@@ -878,7 +892,7 @@ class StatisticalReporter:
 | Peak Memory Usage | {pipeline_metrics.performance_metrics.peak_memory_mb:.1f} MB |
 
 """
-        
+
         # Add module summaries
         if pipeline_metrics.module_metrics:
             content += "## Module Reports\n\n"
@@ -887,13 +901,15 @@ class StatisticalReporter:
                 content += f"- **Records:** {module.records_processed:,} / {module.records_in:,}\n"
                 content += f"- **Success Rate:** {module.success_rate:.1%}\n"
                 content += f"- **Duration:** {module.execution_time.total_seconds():.2f}s\n"
-                content += f"- **Throughput:** {module.throughput_records_per_second:.0f} records/sec\n"
-                
+                content += (
+                    f"- **Throughput:** {module.throughput_records_per_second:.0f} records/sec\n"
+                )
+
                 if module.enrichment_coverage is not None:
                     content += f"- **Enrichment Coverage:** {module.enrichment_coverage:.1%}\n"
-                
+
                 content += "\n"
-        
+
         return content
 
     def _create_executive_summary(self, pipeline_metrics: PipelineMetrics) -> ExecutiveSummary:
@@ -902,13 +918,13 @@ class StatisticalReporter:
         total_funding = 0.0  # Would need to be calculated from actual data
         companies_tracked = 0  # Would need to be calculated from actual data
         patents_linked = 0  # Would need to be calculated from actual data
-        
+
         # Extract from ecosystem metrics if available
         if pipeline_metrics.ecosystem_metrics:
             total_funding = pipeline_metrics.ecosystem_metrics.get("total_funding_analyzed", 0.0)
             companies_tracked = pipeline_metrics.ecosystem_metrics.get("companies_tracked", 0)
             patents_linked = pipeline_metrics.ecosystem_metrics.get("patents_linked", 0)
-        
+
         return ExecutiveSummary(
             summary_id=f"{pipeline_metrics.run_id}_executive",
             run_id=pipeline_metrics.run_id,
@@ -920,8 +936,11 @@ class StatisticalReporter:
             kpis={
                 "overall_success_rate": pipeline_metrics.overall_success_rate,
                 "processing_throughput": pipeline_metrics.performance_metrics.records_per_second,
-                "data_quality_score": sum(pipeline_metrics.quality_scores.values()) / len(pipeline_metrics.quality_scores) if pipeline_metrics.quality_scores else 0.0,
-            }
+                "data_quality_score": sum(pipeline_metrics.quality_scores.values())
+                / len(pipeline_metrics.quality_scores)
+                if pipeline_metrics.quality_scores
+                else 0.0,
+            },
         )
 
     def _generate_plotly_html(self, pipeline_metrics: PipelineMetrics, output_file: Path) -> Path:
@@ -959,7 +978,9 @@ class StatisticalReporter:
             )
 
             # Throughput
-            throughputs = [m.throughput_records_per_second for m in pipeline_metrics.module_metrics.values()]
+            throughputs = [
+                m.throughput_records_per_second for m in pipeline_metrics.module_metrics.values()
+            ]
             fig.add_trace(
                 go.Bar(
                     x=modules,
@@ -1006,7 +1027,9 @@ class StatisticalReporter:
         fig.write_html(output_file)
         return output_file
 
-    def _generate_simple_html_artifact(self, pipeline_metrics: PipelineMetrics, output_file: Path) -> Path:
+    def _generate_simple_html_artifact(
+        self, pipeline_metrics: PipelineMetrics, output_file: Path
+    ) -> Path:
         """Generate simple HTML report when Plotly is unavailable."""
         html = f"""
         <!DOCTYPE html>
@@ -1065,28 +1088,27 @@ class StatisticalReporter:
 
     def _handle_ci_integration(self, collection: ReportCollection) -> None:
         """Handle CI/CD integration tasks.
-        
+
         Args:
             collection: Report collection to integrate with CI/CD
         """
         if not self.ci_context:
             return
-        
+
         logger.info("Handling CI/CD integration for statistical reports")
-        
+
         # Generate PR comment if in PR context
-        if (self.ci_context.get("is_pr") and 
-            self.config.get("ci", {}).get("post_pr_comments", True)):
+        if self.ci_context.get("is_pr") and self.config.get("ci", {}).get("post_pr_comments", True):
             self._generate_pr_comment(collection)
-        
+
         # Mark artifacts as uploaded (actual upload would be handled by CI workflow)
         collection.artifacts_uploaded = True
-        
+
         logger.info("CI/CD integration completed")
 
     def _generate_pr_comment(self, collection: ReportCollection) -> None:
         """Generate PR comment with statistical summary.
-        
+
         Args:
             collection: Report collection to summarize
         """
@@ -1095,20 +1117,22 @@ class StatisticalReporter:
         if not markdown_artifact:
             logger.warning("No markdown artifact found for PR comment")
             return
-        
+
         # Read markdown content
         with open(markdown_artifact.file_path, "r") as f:
             markdown_content = f.read()
-        
+
         # Truncate if too long
         max_length = self.config.get("markdown", {}).get("max_length", 2000)
         if len(markdown_content) > max_length:
             markdown_content = markdown_content[:max_length] + "\n\n... (truncated)"
-        
+
         # Add artifact links
         markdown_content += "\n\n## Report Artifacts\n\n"
         for artifact in collection.artifacts:
-            markdown_content += f"- [{artifact.format.value.upper()} Report]({artifact.file_path})\n"
-        
+            markdown_content += (
+                f"- [{artifact.format.value.upper()} Report]({artifact.file_path})\n"
+            )
+
         collection.pr_comment_generated = True
         logger.info("PR comment content generated")
