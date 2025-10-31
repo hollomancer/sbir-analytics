@@ -139,17 +139,7 @@ services:
       - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
       - NEO4J_server_memory_heap_initial__size=${NEO4J_server_memory_heap_initial__size:-512M}
       - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-256M}
-      # Performance optimizations for testing environments
-      - NEO4J_server_db_checkpoint_interval_time=${NEO4J_server_db_checkpoint_interval_time:-30s}
-      - NEO4J_server_db_checkpoint_interval_tx=${NEO4J_server_db_checkpoint_interval_tx:-1000}
-      - NEO4J_server_logs_debug_level=${NEO4J_LOG_LEVEL:-INFO}
-      - NEO4J_server_logs_query_enabled=${NEO4J_server_logs_query_enabled:-false}
-      # Connection pool settings
-      - NEO4J_server_bolt_thread_pool_min_size=${NEO4J_server_bolt_thread_pool_min_size:-1}
-      - NEO4J_server_bolt_thread_pool_max_size=${NEO4J_server_bolt_thread_pool_max_size:-4}
-      # Staging-specific memory hints
-      - NEO4J_dbms_memory_heap_max__size=${NEO4J_dbms_memory_heap_max__size:-1G}
-      - NEO4J_dbms_memory_pagecache_size=${NEO4J_dbms_memory_pagecache_size:-512M}
+      - NEO4J_db_logs_query_enabled=${NEO4J_db_logs_query_enabled:-OFF}
     ports:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
@@ -173,7 +163,6 @@ services:
       - dev
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/test}
-      - NEO4J_dbms_logs_debug_level=${NEO4J_LOG_LEVEL:-INFO}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
     volumes:
       # Development bind mounts for persistent local development
@@ -200,8 +189,7 @@ services:
       - NEO4J_server_memory_heap_max__size=1G
       - NEO4J_server_memory_heap_initial__size=512M
       - NEO4J_server_memory_pagecache_size=256M
-      - NEO4J_server_logs_debug_level=WARN
-      - NEO4J_server_logs_query_enabled=false
+      - NEO4J_db_logs_query_enabled=OFF
     ports:
       - "${NEO4J_E2E_HTTP_PORT:-7475}:7474"
       - "${NEO4J_E2E_BOLT_PORT:-7688}:7687"
@@ -231,8 +219,7 @@ services:
       - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-256M}
       - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
       - NEO4J_server_memory_heap_initial__size=512M
-      - NEO4J_server_logs_debug_level=WARN
-      - NEO4J_server_logs_query_enabled=false
+      - NEO4J_db_logs_query_enabled=OFF
     volumes:
       - neo4j_data_ci:/data
       - neo4j_logs_ci:/logs
