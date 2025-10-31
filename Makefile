@@ -5,6 +5,7 @@
 #
 # Usage:
 #   make help
+#   make docker-check        # Check if Docker is running
 #   make docker-build
 #   make docker-up-dev
 #   make docker-up-prod
@@ -17,6 +18,9 @@
 #
 # Override defaults with environment variables, for example:
 #   make docker-build IMAGE_NAME=myregistry/myimage:tag
+#
+# Enable verbose output:
+#   make docker-test VERBOSE=1
 
 SHELL := /bin/sh
 
@@ -39,6 +43,16 @@ SERVICE ?= dagster-webserver
 # Number of seconds to wait for containers to be healthy before reporting
 STARTUP_TIMEOUT ?= 120
 
+# Verbosity control - set VERBOSE=1 to see detailed command output
+VERBOSE ?= 0
+ifeq ($(VERBOSE),1)
+    VERBOSE_FLAG :=
+    VERBOSE_ECHO := @echo
+else
+    VERBOSE_FLAG := @
+    VERBOSE_ECHO := @
+endif
+
 .PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-down docker-rebuild docker-test docker-e2e docker-logs docker-exec docker-push env-check
 
 help:
@@ -51,6 +65,7 @@ help:
 	@printf "  make docker-up-prod       Start production stack (profile: prod)\n"
 	@printf "  make docker-up-cet-staging Start CET staging stack (profile: cet-staging)\n"
 	@printf "  make docker-up-tools      Start tools container (profile: tools)\n"
+	@printf "  make docker-check         Check if Docker is running\n"
 	@printf "  make docker-down          Stop all services and remove volumes\n"
 	@printf "  make docker-rebuild       Rebuild images and restart dev stack\n\n"
 	@printf "Testing Targets:\n"
@@ -59,7 +74,8 @@ help:
 	@printf "  make docker-e2e-minimal   Run minimal E2E tests (fastest)\n"
 	@printf "  make docker-e2e-standard  Run standard E2E tests\n"
 	@printf "  make docker-e2e-large     Run large dataset E2E tests\n"
-	@printf "  make docker-e2e-clean     Clean up E2E test environment\n\n"
+	@printf "  make docker-e2e-clean     Clean up E2E test environment\n"
+	@printf "  make docker-test VERBOSE=1 Enable verbose command output\n\n"
 	@printf "Pipeline Targets:\n"
 	@printf "  make cet-pipeline-dev     Run CET pipeline on dev stack\n"
 	@printf "  make transition-mvp-run   Run Transition Detection MVP locally\n"
@@ -83,11 +99,11 @@ help:
 
 docker-build:
 	@echo "🔨 Building Docker image: $(IMAGE_NAME)"
-	@DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+	$(VERBOSE_FLAG)DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
 
 docker-buildx:
 	@echo "🔨 Building Docker image with buildx (multi-platform)"
-	@docker buildx build --load -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+	$(VERBOSE_FLAG)docker buildx build --load -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
 
 # ---------------------------
 # Environment targets (profile-based)
@@ -95,28 +111,52 @@ docker-buildx:
 
 docker-up-dev: env-check
 	@echo "🚀 Starting development stack (profile: dev)"
-	@$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) up -d --build
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) up -d --build
 	@echo "⏳ Waiting up to $(STARTUP_TIMEOUT)s for services to become healthy..."
-	@$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) ps
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) ps
 
 docker-up-prod: env-check
 	@echo "🚀 Starting production stack (profile: prod)"
-	@$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) up -d --build
-	@$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) ps
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) up -d --build
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) ps
 
 docker-up-cet-staging: env-check
 	@echo "🚀 Starting CET staging stack (profile: cet-staging)"
-	@$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) up -d --build
-	@$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) ps
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) up -d --build
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) ps
 
 docker-up-tools: env-check
 	@echo "🚀 Starting tools container (profile: tools)"
-	@$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) up -d --build
-	@$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) ps
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) up -d --build
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) ps
 
 docker-down:
 	@echo "🛑 Stopping all services and removing volumes"
-	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down --remove-orphans --volumes
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		echo "✅ Services stopped and cleaned up successfully"; \
+	else \
+		echo "⚠️  Service cleanup completed with warnings (exit code: $$status)"; \
+		echo "💡 This may be normal if no services were running"; \
+	fi
+
+docker-check:
+	@echo "🔍 Checking Docker availability..."
+	@if command -v docker >/dev/null 2>&1; then \
+		if docker info >/dev/null 2>&1; then \
+			echo "✅ Docker is running and accessible"; \
+			docker --version; \
+			docker compose version; \
+		else \
+			echo "❌ Docker daemon is not running"; \
+			echo "💡 Start Docker Desktop or run: open -a Docker"; \
+			exit 1; \
+		fi \
+	else \
+		echo "❌ Docker is not installed"; \
+		exit 1; \
+	fi
 
 docker-rebuild: docker-down docker-build docker-up-dev
 	@echo "🔄 Rebuilt and restarted dev stack"
@@ -136,25 +176,45 @@ cet-pipeline-dev: env-check docker-up-dev
 
 docker-test: env-check
 	@echo "🧪 Running containerized tests (profile: ci-test)"
-	@$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) up --abort-on-container-exit --build; \
+	@echo "📦 Building and starting test containers..."
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) up --abort-on-container-exit --build; \
 	status=$$?; \
 	echo "🧹 Tearing down test containers..."; \
-	$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
+	if [ $$status -eq 0 ]; then \
+		echo "✅ Tests passed!"; \
+	else \
+		echo "❌ Tests failed with exit code $$status"; \
+		echo "💡 Check logs with: make docker-logs SERVICE=test-runner"; \
+	fi; \
 	exit $$status
 
 docker-e2e: env-check
 	@echo "🧪 Running E2E tests (profile: e2e)"
-	@$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) up --build --abort-on-container-exit; \
+	@echo "🏗️  Building and starting E2E environment..."
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) up --build --abort-on-container-exit; \
 	status=$$?; \
 	echo "📊 E2E tests completed with exit code: $$status"; \
-	echo "🔍 Keeping containers running for artifact inspection..."; \
+	if [ $$status -eq 0 ]; then \
+		echo "✅ E2E tests passed!"; \
+		echo "🔍 Containers kept running for artifact inspection"; \
+	else \
+		echo "❌ E2E tests failed"; \
+	fi; \
+	echo "💡 Use 'make docker-logs SERVICE=e2e-orchestrator' to view logs"; \
 	echo "💡 Use 'make docker-e2e-clean' to clean up when done"; \
 	exit $$status
 
 docker-e2e-clean:
 	@echo "🧹 Cleaning up E2E test environment and volumes"
-	@$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) down --remove-orphans --volumes
-	@echo "✅ E2E environment cleaned up"
+	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
+	status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		echo "✅ E2E environment cleaned up successfully"; \
+	else \
+		echo "⚠️  E2E cleanup completed with warnings (exit code: $$status)"; \
+		echo "💡 This may be normal if no E2E containers were running"; \
+	fi
 
 # E2E test scenarios with different configurations
 docker-e2e-minimal: env-check
@@ -338,7 +398,7 @@ show-profiles:
 # Convenience aliases and phony targets
 # ---------------------------
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-up-tools docker-down docker-rebuild docker-test docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs docker-exec docker-push env-check cet-pipeline-dev transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import neo4j-up neo4j-down neo4j-reset neo4j-check neo4j-backup neo4j-restore migrate-compose validate-compose benchmark-transition-detection show-profiles
+.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-up-tools docker-check docker-down docker-rebuild docker-test docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs docker-exec docker-push env-check cet-pipeline-dev transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import neo4j-up neo4j-down neo4j-reset neo4j-check neo4j-backup neo4j-restore migrate-compose validate-compose benchmark-transition-detection show-profiles
 
 # Note: This Makefile uses the consolidated Docker Compose configuration
 # with profile-based service management. Key features:
