@@ -320,7 +320,7 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
 
 @asset(
     name="raw_contracts",
-    group_name="transformation",
+    group_name="ingestion",
     compute_kind="python",
     description=(
         "Extract SBIR-relevant USAspending transactions from removable storage and persist "
@@ -457,7 +457,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
 @asset(
     name="validated_contracts_sample",
-    group_name="transformation",
+    group_name="validation",
     compute_kind="pandas",
     description=(
         "Load or create a sample of federal contracts for transition detection. "
@@ -591,7 +591,7 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
 
 @asset(
     name="enriched_vendor_resolution",
-    group_name="transformation",
+    group_name="enrichment",
     compute_kind="pandas",
     description=(
         "Resolve contract vendors to SBIR recipients using UEI/DUNS exact matching and fuzzy name fallback. "
@@ -1309,7 +1309,7 @@ def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheck
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if passed else '\u2717'} contracts_sample quality: "
+            f"{'✓' if passed else '✗'} contracts_sample quality: "
             f"action_date={date_cov:.2%} (min {min_date_cov:.2%}), "
             f"any_identifier={ident_cov:.2%} (min {min_ident_cov:.2%}), "
             f"sample_size={total} (min {min_size}, max {max_size})"
@@ -1349,7 +1349,7 @@ def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetChe
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if passed else '\u2717'} vendor_resolution: "
+            f"{'✓' if passed else '✗'} vendor_resolution: "
             f"resolution_rate={res_rate:.2%} (min {min_rate:.2%})"
         ),
         metadata={
@@ -1403,7 +1403,7 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if passed else '\u2717'} transition_scores_v1 quality: "
+            f"{'✓' if passed else '✗'} transition_scores_v1 quality: "
             f"missing={len(missing)}, invalid_scores={invalid_scores}, empty_signals={empty_signals}"
         ),
         metadata={
@@ -1494,7 +1494,7 @@ def transition_analytics_quality_check(context) -> AssetCheckResult:
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if passed else '\u2717'} transition_analytics: "
+            f"{'✓' if passed else '✗'} transition_analytics: "
             f"award_rate={a_rate:.2%} (den={a_den}, min {min_award_rate:.2%}), "
             f"company_rate={c_rate:.2%} (den={c_den}, min {min_company_rate:.2%})"
         ),
@@ -1560,7 +1560,7 @@ def transition_evidence_quality_check(context) -> AssetCheckResult:
         passed=complete,
         severity=AssetCheckSeverity.ERROR if not complete else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if complete else '\u2717'} evidence completeness: "
+            f"{'✓' if complete else '✗'} evidence completeness: "
             f"{ev_rows}/{num_above} candidates at≥{threshold}"
         ),
         metadata={
@@ -1650,7 +1650,7 @@ def transition_detections_quality_check(
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=(
-            f"{'\u2713' if passed else '\u2717'} transition_detections quality: "
+            f"{'✓' if passed else '✗'} transition_detections quality: "
             f"missing_cols={len(missing)}, score_out_of_bounds={out_of_bounds}, "
             f"valid_rate={valid_rate:.2%} (min {min_valid_rate:.2%}), "
             f"highconf_rate={highconf_rate:.2%} (min {min_highconf_rate:.2%}, "
@@ -1674,7 +1674,9 @@ def transition_detections_quality_check(
 
 @asset(
     name="loaded_transitions",
-    description="Load transition detections as Transition nodes in Neo4j (Task 13.3-13.5)",
+    group_name="loading",
+    compute_kind="neo4j",
+    description="Load transition detections as Transition nodes in Neo4j.",
 )
 def loaded_transitions(
     context,
@@ -1775,7 +1777,7 @@ def transition_node_count_check(
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description="✗ No transition detections to verify",
+            description="✘ No transition detections to verify",
             metadata={"expected_nodes": 0, "error": "empty_input"},
         )
 
@@ -1805,7 +1807,7 @@ def transition_node_count_check(
             passed=passed,
             severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
             description=(
-                f"{'\u2713' if passed else '\u2717'} Transition nodes: "
+                f"{'✓' if passed else '✗'} Transition nodes: "
                 f"loaded={actual_count}, expected={expected_count}, "
                 f"rate={success_rate:.1%} (min {TRANSITION_LOAD_SUCCESS_THRESHOLD:.1%})"
             ),
@@ -1822,7 +1824,7 @@ def transition_node_count_check(
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description=f"'✗ Verification failed: {e}",
+            description=f"'✘ Verification failed: {e}'",
             metadata={"error": str(e)},
         )
     finally:
@@ -1832,7 +1834,9 @@ def transition_node_count_check(
 
 @asset(
     name="loaded_transition_relationships",
-    description="Create transition relationships in Neo4j (Task 14.1-14.8)",
+    group_name="loading",
+    compute_kind="neo4j",
+    description="Create transition relationships in Neo4j.",
 )
 def loaded_transition_relationships(
     context,
@@ -1977,7 +1981,7 @@ def transition_relationships_check(
             passed=passed,
             severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
             description=(
-                f"{'\u2713' if passed else '\u2717'} Transition relationships: "
+                f"{'✓' if passed else '✗'} Transition relationships: "
                 f"TRANSITIONED_TO={tt_count} ({tt_rate:.1%} expected), "
                 f"RESULTED_IN={ri_count}, ENABLED_BY={eb_count}, INVOLVES_TECHNOLOGY={it_count}"
             ),
@@ -1996,7 +2000,7 @@ def transition_relationships_check(
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description=f"'✗ Verification failed: {e}",
+            description=f"'✘ Verification failed: {e}'",
             metadata={"error": str(e)},
         )
     finally:
@@ -2006,7 +2010,9 @@ def transition_relationships_check(
 
 @asset(
     name="loaded_transition_profiles",
-    description="Create company transition profile nodes in Neo4j (Task 15)",
+    group_name="loading",
+    compute_kind="neo4j",
+    description="Create company transition profile nodes in Neo4j.",
 )
 def loaded_transition_profiles(
     context,
@@ -2074,7 +2080,7 @@ def loaded_transition_profiles(
         stats["duration_seconds"] = duration
 
         context.log.info(
-            f"✓ Created {stats.get('profiles_created', 0)} profiles in {duration:.1f}s"
+            f"\u2713 Created {stats.get('profiles_created', 0)} profiles in {duration:.1f}s"
         )
 
         metadata = {
