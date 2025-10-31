@@ -53,13 +53,35 @@ class NAICSEnricher:
             df = pd.read_parquet(cache)
             # reconstruct maps
             for _, row in df.iterrows():
-                key_type = row["key_type"]
-                key = row["key"]
-                naics = set(row["naics_candidates"] or [])
-                if key_type == "award":
-                    self.award_map[key] = naics
-                else:
-                    self.recipient_map[key] = naics
+                    key_type = row["key_type"]
+                    key = row["key"]
+                    raw = row["naics_candidates"]
+                    naics = set()
+                    if raw is None:
+                        naics = set()
+                    else:
+                        # handle lists, tuples, numpy arrays, and JSON strings
+                        try:
+                            if isinstance(raw, (list, tuple, set)):
+                                naics = set(raw)
+                            else:
+                                # numpy arrays have .tolist()
+                                if hasattr(raw, "tolist"):
+                                    naics = set(raw.tolist())
+                                else:
+                                    # fallback: try to parse as JSON string
+                                    try:
+                                        parsed = json.loads(raw)
+                                        if isinstance(parsed, (list, tuple)):
+                                            naics = set(parsed)
+                                    except Exception:
+                                        naics = set()
+                        except Exception:
+                            naics = set()
+                    if key_type == "award":
+                        self.award_map[key] = naics
+                    else:
+                        self.recipient_map[key] = naics
             return
 
         zip_path = Path(self.config.zip_path)
@@ -122,13 +144,35 @@ class NAICSEnricher:
                 award_id = t
                 break
 
-        # find naics candidates
+        # find naics candidates and normalize/filter
         naics = set()
         for m in NAICS_RE.finditer(line):
-            code = m.group(1)
-            # filter out probable years
-            if 1900 <= int(code) <= 2099:
+            code_raw = m.group(1)
+            # skip tokens that parse oddly
+            try:
+                code_int = int(code_raw)
+            except ValueError:
                 continue
+
+            # filter out probable years
+            if 1900 <= code_int <= 2099:
+                continue
+
+            # normalize: drop leading zeros (store as string)
+            code = str(code_int)
+
+            # NAICS codes are hierarchical 2-6 digits. Apply conservative filters:
+            # - 2-digit codes should be >= 11 (valid sector codes start at 11)
+            # - 3-6 digit codes should be >= 100 (avoid tiny numeric artifacts)
+            if len(code) == 2 and code_int < 11:
+                continue
+            if len(code) >= 3 and code_int < 100:
+                continue
+
+            # upper bound sanity (avoid extremely large tokens)
+            if code_int > 999999:
+                continue
+
             naics.add(code)
 
         if not naics:

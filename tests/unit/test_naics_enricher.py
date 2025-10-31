@@ -1,8 +1,34 @@
 import os
+import importlib.util
+import sys
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
-from src.enrichers.naics_enricher import NAICSEnricher, NAICSEnricherConfig
+
+def _find_naics_path():
+    p = Path(__file__).resolve().parent
+    root = None
+    while p != p.parent:
+        candidate = p / "src" / "enrichers" / "naics_enricher.py"
+        if candidate.exists():
+            root = candidate
+            break
+        p = p.parent
+    if root is None:
+        # fallback to expected path relative to repo root
+        root = Path.cwd() / "src" / "enrichers" / "naics_enricher.py"
+    return root
+
+
+def _load_naics_module():
+    NAICS_MODULE_PATH = _find_naics_path()
+    spec = importlib.util.spec_from_file_location("naics_enricher_mod", str(NAICS_MODULE_PATH))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-subset_20251006.zip")
@@ -11,6 +37,10 @@ USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-sub
 def test_build_index_sampled(tmp_path):
     if not os.path.exists(USASPENDING_ZIP):
         pytest.skip("usaspending zip not present")
+
+    naics_mod = _load_naics_module()
+    NAICSEnricher = naics_mod.NAICSEnricher
+    NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
     cfg = NAICSEnricherConfig(zip_path=USASPENDING_ZIP, cache_path=str(cache), sample_only=True, max_files=2, max_lines_per_file=200)
@@ -25,6 +55,10 @@ def test_build_index_sampled(tmp_path):
 def test_enrich_awards_with_index(tmp_path):
     if not os.path.exists(USASPENDING_ZIP):
         pytest.skip("usaspending zip not present")
+
+    naics_mod = _load_naics_module()
+    NAICSEnricher = naics_mod.NAICSEnricher
+    NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
     cfg = NAICSEnricherConfig(zip_path=USASPENDING_ZIP, cache_path=str(cache), sample_only=True, max_files=2, max_lines_per_file=200)
