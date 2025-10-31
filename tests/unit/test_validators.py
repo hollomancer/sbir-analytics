@@ -3,7 +3,7 @@
 import pandas as pd
 
 from src.models import QualitySeverity
-from src.validators.quality_checks import (
+from src.quality.checks import (
     check_completeness,
     check_uniqueness,
     check_value_ranges,

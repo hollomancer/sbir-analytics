@@ -11,7 +11,7 @@ from dagster import (
 from loguru import logger
 
 from ..models.quality import QualitySeverity
-from ..validators.quality_checks import validate_sbir_awards
+from ..quality.checks import validate_sbir_awards
 
 
 @asset(

@@ -2,13 +2,14 @@
 """
 Docker Compose Configuration Migration Script
 
-This script helps migrate from the old fragmented Docker Compose files to the new
-consolidated configuration. It provides validation, backup, and migration utilities.
+⚠️  MIGRATION COMPLETE: This script was used to migrate from fragmented Docker Compose
+files to the consolidated configuration. The migration is now complete and the old
+fragmented files have been removed.
+
+The script now serves as a validation tool for the consolidated docker-compose.yml file.
 
 Usage:
     python scripts/docker/migrate_compose_configs.py --validate
-    python scripts/docker/migrate_compose_configs.py --backup
-    python scripts/docker/migrate_compose_configs.py --migrate
     python scripts/docker/migrate_compose_configs.py --test-profiles
 """
 
@@ -38,8 +39,8 @@ class ComposeConfigMigrator:
             "docker/neo4j.compose.override.yml"
         ]
 
-        # New consolidated file
-        self.consolidated_file = "docker-compose.consolidated.yml"
+        # New consolidated file (now renamed to docker-compose.yml)
+        self.consolidated_file = "docker-compose.yml"
 
         # Profile mappings from old files to new profiles
         self.profile_mappings = {

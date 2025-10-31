@@ -14,6 +14,7 @@ from dagster import (
 from . import assets
 from .assets import (
     cet_assets,
+    fiscal_assets,
     sbir_ingestion,
     sbir_usaspending_enrichment,
     transition_assets,
@@ -31,6 +32,7 @@ from .assets.jobs.transition_job import (
 all_assets = load_assets_from_modules(
     [
         assets,
+        fiscal_assets,
         sbir_ingestion,
         usaspending_ingestion,
         sbir_usaspending_enrichment,
@@ -41,6 +43,7 @@ all_assets = load_assets_from_modules(
 )
 all_asset_checks = load_asset_checks_from_modules(
     [
+        fiscal_assets,
         sbir_ingestion,
         uspto_assets,
         cet_assets,

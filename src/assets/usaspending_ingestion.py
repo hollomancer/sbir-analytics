@@ -32,7 +32,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     config = get_config()
 
     # Use removable media path
-    dump_path = Path("/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip")
+    dump_path = Path("/Volumes/X10 Pro/projects/usaspending-db_20251006.zip")
 
     context.log.info(
         "Starting USAspending recipient_lookup extraction",
@@ -97,7 +97,7 @@ def raw_usaspending_transactions(context: AssetExecutionContext) -> Output[pd.Da
     config = get_config()
 
     # Use removable media path
-    dump_path = Path("/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip")
+    dump_path = Path("/Volumes/X10 Pro/projects/usaspending-db_20251006.zip")
 
     context.log.info(
         "Starting USAspending transaction_normalized extraction",

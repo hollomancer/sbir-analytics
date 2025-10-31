@@ -1,6 +1,7 @@
 """Data validation and quality checking module."""
 
-from .quality_checks import (
+# Re-export quality functions from the consolidated quality package for backward compatibility
+from ..quality.checks import (
     check_completeness,
     check_uniqueness,
     check_value_ranges,

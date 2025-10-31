@@ -1,14 +1,19 @@
-"""Quality validators and helpers for SBIR ETL.
+"""Quality utilities for SBIR ETL.
 
-This package exposes validators and helpers for USPTO data quality checks.
-Currently includes:
-- ValidatorResult: dataclass holding results
-- validate_rf_id_uniqueness: file-based rf_id uniqueness validator
-- validate_rf_id_uniqueness_from_iterator: iterator-based validator
-- iter_rows_from_path: streaming row iterator for supported file types
-- main_validate_rf_id_uniqueness: convenience entrypoint for quick runs
+This package provides comprehensive quality management utilities including:
+- USPTO data validators and helpers
+- Quality baseline management and regression detection
+- Interactive quality dashboards and reporting
+- General data quality checks and validation functions
+
+Modules:
+- uspto_validators: USPTO-specific data quality validation
+- baseline: Quality baseline management for regression detection
+- dashboard: Interactive quality dashboards and reporting
+- checks: General data quality validation functions
 """
 
+# USPTO validators
 from .uspto_validators import (
     USPTODataQualityValidator,
     USPTOValidationConfig,
@@ -23,7 +28,31 @@ from .uspto_validators import (
     validate_rf_id_uniqueness_from_iterator,
 )
 
+# Quality baseline management
+from .baseline import (
+    QualityBaseline,
+    BaselineComparison,
+    QualityBaselineManager,
+)
+
+# Quality dashboards
+from .dashboard import (
+    DashboardMetrics,
+    QualityDashboard,
+)
+
+# General quality checks
+from .checks import (
+    check_completeness,
+    check_data_types,
+    check_date_formats,
+    check_range_constraints,
+    check_uniqueness,
+    validate_quality_report,
+)
+
 __all__ = [
+    # USPTO validators
     "ValidatorResult",
     "validate_rf_id_uniqueness",
     "validate_rf_id_uniqueness_from_iterator",
@@ -35,4 +64,18 @@ __all__ = [
     "main_validate_rf_id_uniqueness",
     "USPTOValidationConfig",
     "USPTODataQualityValidator",
+    # Quality baseline management
+    "QualityBaseline",
+    "BaselineComparison",
+    "QualityBaselineManager",
+    # Quality dashboards
+    "DashboardMetrics",
+    "QualityDashboard",
+    # General quality checks
+    "check_completeness",
+    "check_data_types",
+    "check_date_formats",
+    "check_range_constraints",
+    "check_uniqueness",
+    "validate_quality_report",
 ]

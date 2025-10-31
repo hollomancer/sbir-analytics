@@ -460,7 +460,7 @@ class DuckDBUSAspendingExtractor:
 
 
 def extract_usaspending_from_config(
-    data_dir: Path | None = None, dump_filename: str = "usaspending-db-subset_20251006.zip"
+    data_dir: Path | None = None, dump_filename: str = "usaspending-db_20251006.zip"
 ) -> DuckDBUSAspendingExtractor:
     """Create USAspending extractor using configuration settings.
 

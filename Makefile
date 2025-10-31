@@ -74,8 +74,7 @@ help:
 	@printf "  make neo4j-down           Stop Neo4j and remove volumes\n"
 	@printf "  make neo4j-reset          Reset Neo4j with fresh volumes\n"
 	@printf "  make neo4j-check          Check Neo4j health\n\n"
-	@printf "Migration Targets:\n"
-	@printf "  make migrate-compose      Migrate from old compose files to consolidated\n"
+	@printf "Validation Targets:\n"
 	@printf "  make validate-compose     Validate consolidated compose configuration\n\n"
 
 # ---------------------------
@@ -341,11 +340,11 @@ show-profiles:
 
 .PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-up-tools docker-down docker-rebuild docker-test docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs docker-exec docker-push env-check cet-pipeline-dev transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import neo4j-up neo4j-down neo4j-reset neo4j-check neo4j-backup neo4j-restore migrate-compose validate-compose benchmark-transition-detection show-profiles
 
-# Migration note: This Makefile replaces the previous version with consolidated
-# Docker Compose configuration using profiles. Key changes:
-# - All compose commands now use --profile flags instead of multiple files
-# - Eliminated duplicate compose file variables (COMPOSE_DEV, COMPOSE_TEST, etc.)
+# Note: This Makefile uses the consolidated Docker Compose configuration
+# with profile-based service management. Key features:
+# - All environments use --profile flags with a single docker-compose.yml
+# - Eliminated duplicate compose file variables and fragmentation
 # - Standardized service names across all profiles
-# - Added migration and validation targets
+# - Added validation targets for compose configuration
 # - Improved help documentation with profile information
 # - Maintained backward compatibility for all existing make targets

@@ -396,7 +396,7 @@ See **docs/transition/mvp.md** for full documentation, scoring signals, and trou
 
 Deployment
 - Containerization guide: docs/deployment/containerization.md
-- Staging Compose overlay: docker-compose.cet-staging.yml (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
+- Staging profile: `docker compose --profile cet-staging up` (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
 - Neo4j server guide: docs/neo4j/server.md
 
 This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
@@ -750,10 +750,10 @@ sbir-etl/
 │   ├── cet-pipeline-ci.yml          # CET pipeline validation
 │   └── secret-scan.yml
 │
-├── docker/                      # Docker Compose configurations
-│   ├── docker-compose.dev.yml      # Development stack with bind mounts
-│   ├── docker-compose.test.yml     # Test runner environment
-│   └── docker-compose.e2e.yml      # E2E testing (MacBook Air optimized)
+├── docker/                      # Docker utilities and configurations
+│   ├── entrypoint.sh              # Container entrypoint script
+│   ├── healthcheck.sh             # Health check script
+│   └── ...                        # Additional Docker utilities
 │
 ├── .kiro/                       # Kiro specifications (active spec system)
 │   ├── specs/                   # Specification-driven development
