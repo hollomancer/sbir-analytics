@@ -274,6 +274,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Skip evidence completeness gate",
     )
+    p.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Simple gate check mode: only check contracts_sample and vendor_resolution gates from summary JSON",
+    )
     return p.parse_args(argv)
 
 
