@@ -187,9 +187,10 @@ docker-rebuild: docker-down docker-build docker-up-dev ## Rebuild the image and 
 
 .PHONY: docker-logs
 docker-logs: ## Tail logs for SERVICE (default dagster-webserver)
-	@set -euo pipefail; \
-	 $(call info,Tailing logs for service: $(SERVICE)); \
-	 $(call run,$(COMPOSE) logs -f --tail=200 $(SERVICE))
+	@set -euo pipefail
+	$(call info,Tailing logs for service: $(SERVICE))
+	$(call print-cmd,$(COMPOSE) logs -f --tail=200 $(SERVICE))
+	@$(COMPOSE) logs -f --tail=200 $(SERVICE)
 
 .PHONY: docker-exec
 docker-exec: ## Execute CMD (default sh) in SERVICE

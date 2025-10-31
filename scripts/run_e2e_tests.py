@@ -16,6 +16,7 @@ Scenarios:
 """
 
 import argparse
+import importlib
 import os
 import sys
 import time
@@ -106,6 +107,16 @@ def check_macbook_air_resources() -> bool:
     return True
 
 
+def _is_pytest_timeout_available() -> bool:
+    """Return True if pytest-timeout plugin is installed."""
+
+    try:
+        importlib.import_module("pytest_timeout")
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
 def run_e2e_tests(scenario: str, timeout: int) -> int:
     """Run E2E tests for the specified scenario."""
     config = get_test_config(scenario)
@@ -125,13 +136,24 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
 
     # Build pytest command
     pytest_args = [
-        "python", "-m", "pytest",
+        "python",
+        "-m",
+        "pytest",
         "tests/e2e/",
         "-v",
         "--tb=short",
-        f"--timeout={timeout}",
-        "--timeout-method=thread",
     ]
+
+    if _is_pytest_timeout_available():
+        pytest_args.extend([
+            f"--timeout={timeout}",
+            "--timeout-method=thread",
+        ])
+    else:
+        print(
+            "⚠️  pytest-timeout plugin not found; skipping --timeout flags. "
+            "Install pytest-timeout to re-enable per-test timeouts."
+        )
 
     # Add test markers if specified
     if config["test_markers"]:
