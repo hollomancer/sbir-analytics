@@ -115,9 +115,12 @@ class TaxImpactEstimate:
 
 #### StateIO Model Interface
 - **Purpose**: Abstract interface for state-level input-output economic models
-- **Adapter Pattern**: Support multiple model implementations (IMPLAN, RIMS II, custom)
+- **Implementation**: Hybrid approach using rpy2 to call EPA's [USEEIO](https://github.com/USEPA/useeior) and [StateIO](https://github.com/USEPA/stateior) R packages
+- **Adapter Pattern**: Abstract `EconomicModelInterface` with `RStateIOAdapter` implementation via rpy2
 - **Model Outputs**: Wage impacts, proprietor income, gross operating surplus, tax/production impacts
 - **Caching**: Model result caching for performance, versioned cache invalidation
+- **Data Conversion**: Pandas DataFrames ↔ R data.frames with automatic type coercion
+- **Dependencies**: R runtime with rpy2 Python package and EPA model packages
 
 ### Tax Calculation Components
 
@@ -221,6 +224,10 @@ class EconomicImpact:
     gross_operating_surplus: Decimal
     tax_production_impact: Decimal
     model_version: str
+    # StateIO/USEEIO model outputs (via rpy2 adapter)
+    model_source: str = "StateIO"  # StateIO or USEEIO
+    model_package_version: str
+    adapter_type: str = "RStateIOAdapter"
 ```
 
 ### Output Data Structures

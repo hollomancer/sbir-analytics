@@ -1,0 +1,136 @@
+# NAICS-to-BEA Sector Mappings
+# Fallback mappings for common SBIR NAICS codes when official BEA crosswalk is unavailable
+# These mappings use BEA 2017 input-output sector classifications
+
+mappings:
+  # Computer Systems Design and Related Services (Primary SBIR sector)
+  541511:  # Custom Computer Programming Services
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  541512:  # Computer Systems Design Services
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  541513:  # Computer Facilities Management Services
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  5415:  # Computer Systems Design and Related Services (4-digit)
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.85
+    
+  # Scientific Research and Development Services
+  541711:  # Research and Development in Biotechnology
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  541712:  # Research and Development in the Physical, Engineering, and Life Sciences
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  541713:  # Research and Development in Nanotechnology
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  541720:  # Research and Development in the Social Sciences and Humanities
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.90
+    
+  5417:  # Scientific Research and Development Services (4-digit)
+    primary_sector: "540000/US"
+    allocation_weight: 1.0
+    confidence: 0.85
+    
+  # Aerospace Product and Parts Manufacturing
+  336411:  # Aircraft Manufacturing
+    primary_sector: "336411/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  336412:  # Aircraft Engine and Engine Parts Manufacturing
+    primary_sector: "336412/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  336413:  # Other Aircraft Parts and Auxiliary Equipment Manufacturing
+    primary_sector: "336413/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  336414:  # Guided Missile and Space Vehicle Manufacturing
+    primary_sector: "336414/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  3364:  # Aerospace Product and Parts Manufacturing (4-digit)
+    primary_sector: "336411/US"
+    allocation_weight: 0.40
+    confidence: 0.80
+    secondary_sectors:
+      - sector: "336412/US"
+        weight: 0.30
+      - sector: "336413/US"
+        weight: 0.20
+      - sector: "336414/US"
+        weight: 0.10
+
+  # Pharmaceutical and Medicine Manufacturing
+  325411:  # Medicinal and Botanical Manufacturing
+    primary_sector: "325411/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  325412:  # Pharmaceutical Preparation Manufacturing
+    primary_sector: "325412/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  325413:  # In-Vitro Diagnostic Substance Manufacturing
+    primary_sector: "325413/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  # Semiconductor and Other Electronic Component Manufacturing
+  334413:  # Semiconductor and Related Device Manufacturing
+    primary_sector: "334413/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+    
+  # Navigation, Measuring, Electromedical, and Control Instruments Manufacturing
+  334511:  # Navigational, Measuring, Electromedical, and Control Instruments Manufacturing
+    primary_sector: "334511/US"
+    allocation_weight: 1.0
+    confidence: 0.95
+
+# Hierarchical fallback rules (when exact match not found)
+fallback_rules:
+  # Try 6-digit → 5-digit → 4-digit → 3-digit → 2-digit
+  enable_hierarchical: true
+  
+  # Default sector if no mapping found
+  default_sector: "540000/US"  # R&D and related services
+  default_confidence: 0.30
+  
+  # Sector category defaults (3-4 digit NAICS)
+  category_defaults:
+    "51": "540000/US"      # Information
+    "52": "540000/US"      # Finance and Insurance
+    "54": "540000/US"      # Professional, Scientific, and Technical Services
+    "32": "336411/US"      # Manufacturing - Other
+    "33": "336411/US"      # Manufacturing - Computer & Electronic
+
+# Versioning
+version: "2017"
+effective_date: "2017-01-01"
+source: "Estimated mapping for SBIR common NAICS codes"
+notes: "These are estimated mappings. For production use, reference official BEA NAICS-to-IO crosswalk."
+

@@ -363,8 +363,17 @@ fiscal_analysis:
   # Base analysis parameters
   base_year: 2023
   inflation_source: "bea_gdp_deflator"
-  naics_crosswalk_version: "2022"
+  naics_crosswalk_version: "2017"
   stateio_model_version: "v2.1"
+  
+  # NAICS-to-BEA sector mapping configuration
+  naics_to_bea:
+    crosswalk_version: "2017"
+    crosswalk_path: "data/reference/bea/naics_to_bea_crosswalk_2017.csv"
+    fallback_path: "config/fiscal/naics_bea_mappings.yaml"
+    min_confidence_threshold: 0.50
+    enable_weighted_allocation: true
+    hierarchical_fallback: true  # 6→4→3→2 digit
   
   # Tax calculation parameters
   tax_parameters:

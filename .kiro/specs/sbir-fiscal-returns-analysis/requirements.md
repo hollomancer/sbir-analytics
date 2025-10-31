@@ -43,7 +43,7 @@ The SBIR Fiscal Returns Analysis feature enables computation of federal fiscal r
 2. WHERE weighted mappings exist, THE Fiscal_Returns_System SHALL apply proportional allocations across multiple BEA sectors
 3. WHEN aggregating economic shocks, THE Fiscal_Returns_System SHALL compute state-by-IO-sector-by-fiscal-year totals
 4. THE Fiscal_Returns_System SHALL preserve award lineage through all transformation stages
-5. WHEN computing multiplier effects, THE Fiscal_Returns_System SHALL use StateIO model outputs or configured adapter interfaces
+5. WHEN computing multiplier effects, THE Fiscal_Returns_System SHALL use StateIO model outputs via rpy2 adapter calling EPA's USEEIO/StateIO R packages
 
 ### Requirement 3
 
