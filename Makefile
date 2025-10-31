@@ -1,410 +1,325 @@
-# Makefile - Consolidated Container build / dev / test helpers for sbir-etl
-#
-# This Makefile has been updated to use the consolidated Docker Compose configuration
-# with profile-based service management, eliminating duplication and standardizing patterns.
-#
-# Usage:
-#   make help
-#   make docker-check        # Check if Docker is running
-#   make docker-build
-#   make docker-up-dev
-#   make docker-up-prod
-#   make docker-up-cet-staging
-#   make docker-down
-#   make docker-test
-#   make docker-e2e
-#   make docker-logs SERVICE=app
-#   make docker-exec SERVICE=app CMD="sh"
-#
-# Override defaults with environment variables, for example:
-#   make docker-build IMAGE_NAME=myregistry/myimage:tag
-#
-# Enable verbose output:
-#   make docker-test VERBOSE=1
+# SBIR ETL consolidated Makefile (rebuilt 2025-10-31)
+# ----------------------------------------------------
+# Goals of this rebuild
+#   * Always show the commands being executed (unless QUIET=1)
+#   * Give friendly, colourised status messages for each major step
+#   * Keep the commands that the team actually relies on today
+#   * Remain shell-agnostic (POSIX /bin/bash) and avoid external helpers
+#   * Provide easily discoverable help via `make help`
 
-SHELL := /bin/sh
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+MAKEFLAGS += --warn-undefined-variables
 
-# Configurable variables (can be overridden on the make command line)
-IMAGE_NAME ?= sbir-etl:latest
-DOCKER_REGISTRY ?=
-DOCKER_TAG ?= latest
-BUILD_CONTEXT ?= .
-DOCKERFILE ?= Dockerfile
+# -----------------------------------------------------------------------------
+# Configuration (overridable)                                                     
+# -----------------------------------------------------------------------------
 
-# Consolidated compose file with profile-based configuration
-COMPOSE_FILE ?= docker-compose.yml
+IMAGE_NAME        ?= sbir-etl:latest
+DOCKER_REGISTRY   ?=
+DOCKER_TAG        ?= latest
+BUILD_CONTEXT     ?= .
+DOCKERFILE        ?= Dockerfile
+COMPOSE_FILE      ?= docker-compose.yml
+DOCKER_COMPOSE    ?= docker compose
+SERVICE           ?= dagster-webserver
+STARTUP_TIMEOUT   ?= 120
+QUIET             ?= 0
 
-# Compose command (supports 'docker compose' or 'docker-compose' depending on environment)
-DOCKER_COMPOSE ?= docker compose
+COMPOSE := $(DOCKER_COMPOSE) -f $(COMPOSE_FILE)
 
-# Default service to tail logs or exec into
-SERVICE ?= dagster-webserver
+# -----------------------------------------------------------------------------
+# Colours + helpers                                                              
+# -----------------------------------------------------------------------------
 
-# Number of seconds to wait for containers to be healthy before reporting
-STARTUP_TIMEOUT ?= 120
+RESET  := \033[0m
+BLUE   := \033[34m
+GREEN  := \033[32m
+YELLOW := \033[33m
+RED    := \033[31m
+GRAY   := \033[90m
 
-# Verbosity control - set VERBOSE=1 to see detailed command output
-VERBOSE ?= 0
-ifeq ($(VERBOSE),1)
-    VERBOSE_FLAG :=
-    VERBOSE_ECHO := @echo
-else
-    VERBOSE_FLAG := @
-    VERBOSE_ECHO := @
-endif
+info = if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) %s\n" "$(1)"; fi
+success = if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "$(1)"; fi
+warn = if [ "$(QUIET)" != "1" ]; then printf "$(YELLOW)⚠$(RESET) %s\n" "$(1)"; fi
+error = if [ "$(QUIET)" != "1" ]; then printf "$(RED)✖$(RESET) %s\n" "$(1)"; fi
+print-cmd = if [ "$(QUIET)" != "1" ]; then printf "$(GRAY)$$ %s$(RESET)\n" "$(strip $(1))"; fi
 
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-down docker-rebuild docker-test docker-e2e docker-logs docker-exec docker-push env-check
+define run
+	@if [ "$(QUIET)" != "1" ]; then printf "$(GRAY)$$ %s$(RESET)\n" "$(strip $(1))"; fi
+	@set -euo pipefail; $(1)
+endef
 
-help:
-	@printf "\nMakefile targets for consolidated container workflow\n\n"
-	@printf "Build Targets:\n"
-	@printf "  make docker-build         Build image locally (multi-stage Dockerfile)\n"
-	@printf "  make docker-buildx        Build with buildx (multi-platform support)\n\n"
-	@printf "Environment Targets:\n"
-	@printf "  make docker-up-dev        Start development stack (profile: dev)\n"
-	@printf "  make docker-up-prod       Start production stack (profile: prod)\n"
-	@printf "  make docker-up-cet-staging Start CET staging stack (profile: cet-staging)\n"
-	@printf "  make docker-up-tools      Start tools container (profile: tools)\n"
-	@printf "  make docker-check         Check if Docker is running\n"
-	@printf "  make docker-down          Stop all services and remove volumes\n"
-	@printf "  make docker-rebuild       Rebuild images and restart dev stack\n\n"
-	@printf "Testing Targets:\n"
-	@printf "  make docker-test          Run containerized tests (profile: ci-test)\n"
-	@printf "  make docker-e2e           Run E2E tests (profile: e2e)\n"
-	@printf "  make docker-e2e-minimal   Run minimal E2E tests (fastest)\n"
-	@printf "  make docker-e2e-standard  Run standard E2E tests\n"
-	@printf "  make docker-e2e-large     Run large dataset E2E tests\n"
-	@printf "  make docker-e2e-clean     Clean up E2E test environment\n"
-	@printf "  make docker-test VERBOSE=1 Enable verbose command output\n\n"
-	@printf "Pipeline Targets:\n"
-	@printf "  make cet-pipeline-dev     Run CET pipeline on dev stack\n"
-	@printf "  make transition-mvp-run   Run Transition Detection MVP locally\n"
-	@printf "  make transition-mvp-clean Clean Transition MVP artifacts\n\n"
-	@printf "Utility Targets:\n"
-	@printf "  make docker-logs          Tail logs for service (SERVICE=%s)\n" "$(SERVICE)"
-	@printf "  make docker-exec          Exec into running container (SERVICE=%s)\n" "$(SERVICE)"
-	@printf "  make docker-push          Tag and push image to registry\n"
-	@printf "  make env-check            Verify .env exists and configuration\n\n"
-	@printf "Neo4j Targets:\n"
-	@printf "  make neo4j-up             Start standalone Neo4j (profile: neo4j-standalone)\n"
-	@printf "  make neo4j-down           Stop Neo4j and remove volumes\n"
-	@printf "  make neo4j-reset          Reset Neo4j with fresh volumes\n"
-	@printf "  make neo4j-check          Check Neo4j health\n\n"
-	@printf "Validation Targets:\n"
-	@printf "  make validate-compose     Validate consolidated compose configuration\n\n"
+# -----------------------------------------------------------------------------
+# Help                                                                           
+# -----------------------------------------------------------------------------
 
-# ---------------------------
-# Build targets
-# ---------------------------
+.PHONY: help
+help: ## Show this help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nAvailable targets\n------------------\n"} \
+	     /^[a-zA-Z0-9_.-]+:.*##/ {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}' \
+	     $(MAKEFILE_LIST)
 
-docker-build:
-	@echo "🔨 Building Docker image: $(IMAGE_NAME)"
-	$(VERBOSE_FLAG)DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+# -----------------------------------------------------------------------------
+# Safety checks                                                                  
+# -----------------------------------------------------------------------------
 
-docker-buildx:
-	@echo "🔨 Building Docker image with buildx (multi-platform)"
-	$(VERBOSE_FLAG)docker buildx build --load -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT)
+.PHONY: env-check
+env-check: ## Ensure a local .env file is present
+	@set -euo pipefail; \
+	 if [ ! -f .env ]; then \
+	   printf "$(RED)✖$(RESET) .env file not found. Copy .env.example → .env and update credentials.\n"; \
+	   exit 1; \
+	 else \
+	   printf "$(GREEN)✔$(RESET) .env found\n"; \
+	 fi
 
-# ---------------------------
-# Environment targets (profile-based)
-# ---------------------------
+.PHONY: docker-check
+docker-check: ## Verify Docker CLI and daemon availability
+	@set -euo pipefail; \
+	 if ! command -v docker >/dev/null 2>&1; then \
+	   printf "$(RED)✖$(RESET) Docker CLI not found. Install Docker Desktop from https://www.docker.com/products/docker-desktop\n"; \
+	   exit 1; \
+	 fi; \
+	 printf "$(BLUE)➤$(RESET) Docker CLI detected: %s\n" "$$(docker --version)"; \
+	 if docker info >/dev/null 2>&1; then \
+	   printf "$(GREEN)✔$(RESET) Docker daemon is running and accessible\n"; \
+	   if docker compose version >/dev/null 2>&1; then \
+	     printf "$(GREEN)✔$(RESET) docker compose available\n"; \
+	   else \
+	     printf "$(YELLOW)⚠$(RESET) docker compose plugin not detected\n"; \
+	   fi; \
+	 else \
+	   printf "$(RED)✖$(RESET) Docker daemon is not running or not accessible\n"; \
+	   printf "$(YELLOW)⚠$(RESET) Start Docker Desktop or run: open -a Docker\n"; \
+	   exit 1; \
+	 fi
 
-docker-up-dev: env-check
-	@echo "🚀 Starting development stack (profile: dev)"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) up -d --build
-	@echo "⏳ Waiting up to $(STARTUP_TIMEOUT)s for services to become healthy..."
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) ps
+.PHONY: docker-check-install
+docker-check-install: ## Quick check for Docker CLI only
+	@set -euo pipefail; \
+	 if command -v docker >/dev/null 2>&1; then \
+	   printf "$(GREEN)✔$(RESET) Docker CLI detected: %s\n" "$$(docker --version)"; \
+	 else \
+	   printf "$(RED)✖$(RESET) Docker CLI not found\n"; \
+	   exit 1; \
+	 fi
 
-docker-up-prod: env-check
-	@echo "🚀 Starting production stack (profile: prod)"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) up -d --build
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile prod -f $(COMPOSE_FILE) ps
+# -----------------------------------------------------------------------------
+# Build + publish                                                                
+# -----------------------------------------------------------------------------
 
-docker-up-cet-staging: env-check
-	@echo "🚀 Starting CET staging stack (profile: cet-staging)"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) up -d --build
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile cet-staging -f $(COMPOSE_FILE) ps
+.PHONY: docker-build
+docker-build: ## Build the application Docker image (BuildKit)
+	@$(call info,Building Docker image $(IMAGE_NAME))
+	$(call run,DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT))
+	@$(call success,Image $(IMAGE_NAME) ready)
 
-docker-up-tools: env-check
-	@echo "🚀 Starting tools container (profile: tools)"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) up -d --build
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile tools -f $(COMPOSE_FILE) ps
+.PHONY: docker-buildx
+docker-buildx: ## Build the image using docker buildx (multi-platform)
+	@$(call info,Building Docker image with buildx: $(IMAGE_NAME))
+	$(call run,docker buildx build --load -t $(IMAGE_NAME) -f $(DOCKERFILE) $(BUILD_CONTEXT))
+	@$(call success,Image $(IMAGE_NAME) built via buildx)
 
-docker-down:
-	@echo "🛑 Stopping all services and removing volumes"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
-	status=$$?; \
-	if [ $$status -eq 0 ]; then \
-		echo "✅ Services stopped and cleaned up successfully"; \
-	else \
-		echo "⚠️  Service cleanup completed with warnings (exit code: $$status)"; \
-		echo "💡 This may be normal if no services were running"; \
+.PHONY: docker-push
+docker-push: docker-build ## Push the tagged image to DOCKER_REGISTRY (set DOCKER_REGISTRY first)
+	@if [ -z "$(DOCKER_REGISTRY)" ]; then \
+	  printf "$(RED)✖$(RESET) DOCKER_REGISTRY is not set. Usage: make docker-push DOCKER_REGISTRY=ghcr.io/myorg\n"; \
+	  exit 1; \
 	fi
+	@set -euo pipefail; \
+	 TARGET="$(DOCKER_REGISTRY)/$${IMAGE_NAME%%:*}:$(DOCKER_TAG)"; \
+	 printf "$(BLUE)➤$(RESET) Tagging image $(IMAGE_NAME) → %s\n" "$$TARGET"; \
+	 docker tag $(IMAGE_NAME) "$$TARGET"; \
+	 printf "$(BLUE)➤$(RESET) Pushing %s\n" "$$TARGET"; \
+	 docker push "$$TARGET"
 
-docker-check:
-	@echo "🔍 Checking Docker availability..."
-	@if command -v docker >/dev/null 2>&1; then \
-		if docker info >/dev/null 2>&1; then \
-			echo "✅ Docker is running and accessible"; \
-			docker --version; \
-			docker compose version; \
-		else \
-			echo "❌ Docker daemon is not running"; \
-			echo "💡 Start Docker Desktop or run: open -a Docker"; \
-			exit 1; \
-		fi \
-	else \
-		echo "❌ Docker is not installed"; \
-		exit 1; \
-	fi
+# -----------------------------------------------------------------------------
+# Environment lifecycle                                                            
+# -----------------------------------------------------------------------------
 
-docker-rebuild: docker-down docker-build docker-up-dev
-	@echo "🔄 Rebuilt and restarted dev stack"
+.PHONY: docker-up-dev
+docker-up-dev: env-check ## Start the development stack (profile=dev)
+	@$(call info,Starting development stack (profile: dev))
+	$(call run,$(COMPOSE) --profile dev up -d --build)
+	$(call run,$(COMPOSE) --profile dev ps)
+	@$(call success,Development stack ready)
 
-# ---------------------------
-# Pipeline execution targets
-# ---------------------------
+.PHONY: docker-up-prod
+docker-up-prod: env-check ## Start the production stack (profile=prod)
+	@$(call info,Starting production stack (profile: prod))
+	$(call run,$(COMPOSE) --profile prod up -d --build)
+	$(call run,$(COMPOSE) --profile prod ps)
 
-cet-pipeline-dev: env-check docker-up-dev
-	@echo "🔬 Running CET full pipeline job on development stack"
-	@$(DOCKER_COMPOSE) --profile dev -f $(COMPOSE_FILE) run --rm etl-runner-dev -- \
-		poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+.PHONY: docker-up-cet-staging
+docker-up-cet-staging: env-check ## Start CET staging stack (profile=cet-staging)
+	@$(call info,Starting CET staging stack (profile: cet-staging))
+	$(call run,$(COMPOSE) --profile cet-staging up -d --build)
+	$(call run,$(COMPOSE) --profile cet-staging ps)
 
-# ---------------------------
-# Testing targets (profile-based)
-# ---------------------------
+.PHONY: docker-up-tools
+docker-up-tools: env-check ## Start the tools profile (debug helpers)
+	@$(call info,Starting tools container (profile: tools))
+	$(call run,$(COMPOSE) --profile tools up -d --build)
+	$(call run,$(COMPOSE) --profile tools ps)
 
-docker-test: env-check
-	@echo "🧪 Running containerized tests (profile: ci-test)"
-	@echo "📦 Building and starting test containers..."
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) up --abort-on-container-exit --build; \
-	status=$$?; \
-	echo "🧹 Tearing down test containers..."; \
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile ci-test -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
-	if [ $$status -eq 0 ]; then \
-		echo "✅ Tests passed!"; \
-	else \
-		echo "❌ Tests failed with exit code $$status"; \
-		echo "💡 Check logs with: make docker-logs SERVICE=test-runner"; \
-	fi; \
-	exit $$status
+.PHONY: docker-down
+docker-down: ## Stop all services and remove volumes
+	@set -euo pipefail; \
+	 $(call info,Stopping all services and removing volumes); \
+	 $(call print-cmd,$(COMPOSE) down --remove-orphans --volumes); \
+	 STATUS=0; \
+	 if ! $(COMPOSE) down --remove-orphans --volumes; then STATUS=$$?; fi; \
+	 if [ $$STATUS -eq 0 ]; then \
+	   $(call success,Services stopped and cleaned up); \
+	 else \
+	   $(call warn,Cleanup exited with code $$STATUS (this can happen if nothing was running)); \
+	 fi; \
+	 exit $$STATUS
 
-docker-e2e: env-check
-	@echo "🧪 Running E2E tests (profile: e2e)"
-	@echo "🏗️  Building and starting E2E environment..."
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) up --build --abort-on-container-exit; \
-	status=$$?; \
-	echo "📊 E2E tests completed with exit code: $$status"; \
-	if [ $$status -eq 0 ]; then \
-		echo "✅ E2E tests passed!"; \
-		echo "🔍 Containers kept running for artifact inspection"; \
-	else \
-		echo "❌ E2E tests failed"; \
-	fi; \
-	echo "💡 Use 'make docker-logs SERVICE=e2e-orchestrator' to view logs"; \
-	echo "💡 Use 'make docker-e2e-clean' to clean up when done"; \
-	exit $$status
+.PHONY: docker-rebuild
+docker-rebuild: docker-down docker-build docker-up-dev ## Rebuild the image and restart the dev stack
+	@$(call success,Development stack rebuilt and restarted)
 
-docker-e2e-clean:
-	@echo "🧹 Cleaning up E2E test environment and volumes"
-	$(VERBOSE_FLAG)$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) down --remove-orphans --volumes; \
-	status=$$?; \
-	if [ $$status -eq 0 ]; then \
-		echo "✅ E2E environment cleaned up successfully"; \
-	else \
-		echo "⚠️  E2E cleanup completed with warnings (exit code: $$status)"; \
-		echo "💡 This may be normal if no E2E containers were running"; \
-	fi
+# -----------------------------------------------------------------------------
+# Logs & shell access                                                              
+# -----------------------------------------------------------------------------
 
-# E2E test scenarios with different configurations
-docker-e2e-minimal: env-check
-	@echo "🧪 Running minimal E2E tests (fastest)"
+.PHONY: docker-logs
+docker-logs: ## Tail logs for SERVICE (default dagster-webserver)
+	@set -euo pipefail; \
+	 $(call info,Tailing logs for service: $(SERVICE)); \
+	 $(call run,$(COMPOSE) logs -f --tail=200 $(SERVICE))
+
+.PHONY: docker-exec
+docker-exec: ## Execute CMD (default sh) in SERVICE
+	@CMD=$${CMD:-sh}; \
+	 $(call info,Executing in service $(SERVICE): $$CMD); \
+	 $(call run,$(COMPOSE) exec $(SERVICE) sh -c "$$CMD")
+
+# -----------------------------------------------------------------------------
+# Testing & E2E                                                                    
+# -----------------------------------------------------------------------------
+
+.PHONY: docker-test
+docker-test: env-check ## Run containerised CI tests (profile=ci-test)
+	@set -euo pipefail; \
+	 $(call info,Running containerised tests (profile: ci-test)); \
+	 $(call print-cmd,$(COMPOSE) --profile ci-test up --abort-on-container-exit --build); \
+	 STATUS=0; \
+	 if ! $(COMPOSE) --profile ci-test up --abort-on-container-exit --build; then STATUS=$$?; fi; \
+	 $(call print-cmd,$(COMPOSE) --profile ci-test down --remove-orphans --volumes); \
+	 $(COMPOSE) --profile ci-test down --remove-orphans --volumes || true; \
+	 if [ $$STATUS -eq 0 ]; then \
+	   $(call success,Tests passed); \
+	 else \
+	   $(call error,Tests failed (exit $$STATUS)); \
+	   $(call warn,View logs with: make docker-logs SERVICE=test-runner); \
+	 fi; \
+	 exit $$STATUS
+
+.PHONY: docker-e2e
+docker-e2e: env-check ## Run full end-to-end test suite (profile=e2e)
+	@set -euo pipefail; \
+	 $(call info,Running E2E tests (profile: e2e)); \
+	 $(call print-cmd,$(COMPOSE) --profile e2e up --build --abort-on-container-exit); \
+	 STATUS=0; \
+	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit; then STATUS=$$?; fi; \
+	 $(call info,E2E tests completed with exit code $$STATUS); \
+	 if [ $$STATUS -eq 0 ]; then \
+	   $(call success,E2E tests passed – containers left running for inspection); \
+	 else \
+	   $(call error,E2E tests failed); \
+	 fi; \
+	 $(call warn,Use 'make docker-logs SERVICE=e2e-orchestrator' to view orchestrator logs); \
+	 $(call warn,Use 'make docker-e2e-clean' to tear down when finished); \
+	 exit $$STATUS
+
+.PHONY: docker-e2e-clean
+docker-e2e-clean: ## Tear down the E2E environment
+	@set -euo pipefail; \
+	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) Cleaning up E2E test environment\n"; fi; \
+	 printf "$(GRAY)$ %s$(RESET)\n" "$(COMPOSE) --profile e2e down --remove-orphans --volumes"; \
+	 STATUS=0; \
+	 if ! $(COMPOSE) --profile e2e down --remove-orphans --volumes; then STATUS=$$?; fi; \
+	 if [ $$STATUS -eq 0 ]; then \
+	   if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "E2E environment cleaned up successfully"; fi; \
+	 else \
+	   if [ "$(QUIET)" != "1" ]; then printf "$(YELLOW)⚠$(RESET) %s\n" "Cleanup exited with code $$STATUS (likely nothing was running)"; fi; \
+	 fi; \
+	 exit $$STATUS
+
+.PHONY: docker-e2e-minimal
+docker-e2e-minimal: env-check ## Run the minimal (fast) E2E scenario
+	@$(call info,Running minimal E2E scenario)
 	@E2E_TEST_SCENARIO=minimal $(MAKE) docker-e2e
 
-docker-e2e-standard: env-check
-	@echo "🧪 Running standard E2E tests"
+.PHONY: docker-e2e-standard
+docker-e2e-standard: env-check ## Run the standard E2E scenario
+	@$(call info,Running standard E2E scenario)
 	@E2E_TEST_SCENARIO=standard $(MAKE) docker-e2e
 
-docker-e2e-large: env-check
-	@echo "🧪 Running large dataset E2E tests"
+.PHONY: docker-e2e-large
+docker-e2e-large: env-check ## Run the large dataset E2E scenario
+	@$(call info,Running large dataset E2E scenario)
 	@E2E_TEST_SCENARIO=large $(MAKE) docker-e2e
 
-docker-e2e-edge-cases: env-check
-	@echo "🧪 Running edge case E2E tests"
+.PHONY: docker-e2e-edge-cases
+docker-e2e-edge-cases: env-check ## Run the edge-case E2E scenario
+	@$(call info,Running edge-case E2E scenario)
 	@E2E_TEST_SCENARIO=edge-cases $(MAKE) docker-e2e
 
-# Interactive E2E debugging
-docker-e2e-debug: env-check
-	@echo "🔍 Starting E2E environment for interactive debugging"
-	@$(DOCKER_COMPOSE) --profile e2e -f $(COMPOSE_FILE) run --rm e2e-orchestrator sh
+.PHONY: docker-e2e-debug
+docker-e2e-debug: env-check ## Open an interactive shell in the E2E orchestrator
+	@$(call info,Opening interactive shell in e2e orchestrator)
+	$(call run,$(COMPOSE) --profile e2e run --rm e2e-orchestrator sh)
 
-# ---------------------------
-# Neo4j targets (profile-based)
-# ---------------------------
+# -----------------------------------------------------------------------------
+# Neo4j helpers                                                                   
+# -----------------------------------------------------------------------------
 
-neo4j-up: env-check
-	@echo "🗄️  Starting standalone Neo4j (profile: neo4j-standalone)"
-	@$(DOCKER_COMPOSE) --profile neo4j-standalone -f $(COMPOSE_FILE) up -d --build
-	@echo "⏳ Neo4j starting (give it a few seconds to become healthy)"
+.PHONY: neo4j-up
+neo4j-up: env-check ## Start the standalone Neo4j profile
+	$(call info,Starting standalone Neo4j (profile: neo4j-standalone))
+	$(call run,$(COMPOSE) --profile neo4j-standalone up -d --build)
 
-neo4j-down:
-	@echo "🛑 Stopping Neo4j"
-	@$(DOCKER_COMPOSE) --profile neo4j-standalone -f $(COMPOSE_FILE) down --remove-orphans --volumes
+.PHONY: neo4j-down
+neo4j-down: ## Stop the standalone Neo4j profile
+	$(call info,Stopping Neo4j (profile: neo4j-standalone))
+	$(call run,$(COMPOSE) --profile neo4j-standalone down --remove-orphans --volumes)
 
-neo4j-reset: neo4j-down
-	@echo "🔄 Resetting Neo4j with fresh volumes"
-	-@docker volume rm neo4j_data neo4j_logs neo4j_import 2>/dev/null || true
-	@echo "🗄️  Starting fresh Neo4j..."
+.PHONY: neo4j-reset
+neo4j-reset: neo4j-down ## Reset Neo4j with fresh volumes
+	$(call info,Removing Neo4j volumes)
+	-@docker volume rm neo4j_data neo4j_logs neo4j_import >/dev/null 2>&1 || true
+	$(call info,Bringing Neo4j back up)
 	@$(MAKE) neo4j-up
 
-neo4j-check: env-check
-	@echo "🔍 Running Neo4j health check"
-	@$(DOCKER_COMPOSE) --profile neo4j-standalone -f $(COMPOSE_FILE) exec neo4j \
-		cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 \
-		&& echo "✅ Neo4j is healthy" || echo "❌ Neo4j health check failed"
-
-neo4j-backup:
-	@echo "💾 Running Neo4j backup"
-	@mkdir -p $${BACKUP_DIR:-backups/neo4j} || true
-	@BACKUP_DIR=$${BACKUP_DIR:-backups/neo4j} DB_NAME=$${DB_NAME:-neo4j} $${SHELL} scripts/neo4j/backup.sh
-
-neo4j-restore:
-	@if [ -z "$${BACKUP_PATH:-}" ]; then \
-	  echo "❌ Please provide BACKUP_PATH=/path/to/dump to restore"; exit 2; \
-	fi
-	@echo "📥 Restoring Neo4j from $${BACKUP_PATH}"
-	@$${SHELL} scripts/neo4j/restore.sh --backup-path "$${BACKUP_PATH}"
-
-# ---------------------------
-# Logs / exec helpers
-# ---------------------------
-
-docker-logs:
-	@echo "📋 Tailing logs for service: $(SERVICE)"
-	@$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) logs -f --tail=200 $(SERVICE)
-
-docker-exec:
-	@CMD=$${CMD:-sh}; \
-	echo "🔧 Executing in service $(SERVICE): $$CMD"; \
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) exec $(SERVICE) sh -c "$$CMD"
-
-# ---------------------------
-# Registry / publish
-# ---------------------------
-
-docker-push: env-check
-ifndef DOCKER_REGISTRY
-	$(error DOCKER_REGISTRY is not set. Example: DOCKER_REGISTRY=ghcr.io/myorg)
-endif
-	@REPO=$(DOCKER_REGISTRY); \
-	TAG=$(DOCKER_TAG); \
-	TARGET="$${REPO}/$${IMAGE_NAME%%:*}:$${TAG}"; \
-	echo "🏷️  Tagging image $(IMAGE_NAME) -> $$TARGET"; \
-	docker tag $(IMAGE_NAME) $$TARGET; \
-	echo "📤 Pushing $$TARGET"; \
-	docker push $$TARGET
-
-# ---------------------------
-# Transition MVP (local runner)
-# ---------------------------
-
-transition-mvp-run:
-	@echo "🔬 Running Transition Detection MVP locally..."
-	@mkdir -p data/processed reports/validation
-	@poetry run python scripts/transition/transition_mvp_run.py
-
-transition-mvp-clean:
-	@echo "🧹 Cleaning Transition MVP artifacts..."
-	-@rm -f data/processed/vendor_resolution.parquet data/processed/vendor_resolution.ndjson data/processed/vendor_resolution.checks.json
-	-@rm -f data/processed/transitions.parquet data/processed/transitions.ndjson data/processed/transitions.checks.json
-	-@rm -f data/processed/transitions_evidence.ndjson
-	-@rm -f data/processed/contracts_sample.parquet data/processed/contracts_sample.csv data/processed/contracts_sample.checks.json
-	-@rm -f reports/validation/transition_mvp.json
-
-# Transition MVP gated helpers
-transition-mvp-run-gated:
-	@$(MAKE) transition-mvp-run
-	@poetry run python scripts/transition_mvp_gate.py --check-only
-	@echo "✅ Transition MVP gated run succeeded"
-
-transition-audit-export:
-	@echo "📊 Exporting precision audit sample CSV..."
-	@mkdir -p reports/validation
-	@poetry run python scripts/transition/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
-
-transition-audit-import:
-	@if [ -z "$${CSV}" ]; then echo "❌ Provide CSV=path/to/labeled.csv"; exit 2; fi
-	@THRESHOLD=$${THRESHOLD:-0.80}; \
-	poetry run python scripts/transition/transition_precision_audit.py --import-csv "$$CSV" --threshold "$$THRESHOLD"
-
-# ---------------------------
-# Migration and validation targets
-# ---------------------------
-
-migrate-compose:
-	@echo "🔄 Migrating Docker Compose configuration to consolidated format"
-	@python scripts/docker/migrate_compose_configs.py --validate --test-profiles --migrate
-
-validate-compose:
-	@echo "✅ Validating consolidated Docker Compose configuration"
-	@python scripts/docker/migrate_compose_configs.py --validate --test-profiles
-
-# ---------------------------
-# Environment / safety checks
-# ---------------------------
-
-env-check:
-	@if [ ! -f .env ]; then \
-	  echo "❌ .env file not found. Copy .env.example to .env and set required values"; \
-	  echo "   💡 cp .env.example .env"; \
+.PHONY: neo4j-check
+neo4j-check: env-check ## Run the Neo4j health check
+	$(call info,Checking Neo4j health via cypher-shell)
+	@set -euo pipefail; \
+	 if $(COMPOSE) --profile neo4j-standalone exec neo4j \
+	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1; then \
+	   $(call success,Neo4j responded successfully); \
+	 else \
+	   $(call error,Neo4j health check failed); \
 	  exit 1; \
-	else \
-	  echo "✅ .env found"; \
-	fi
+	 fi
 
-# ---------------------------
-# Benchmarks
-# ---------------------------
+# -----------------------------------------------------------------------------
+# Convenience targets                                                              
+# -----------------------------------------------------------------------------
 
-benchmark-transition-detection:
-	@echo "📊 Running transition detection benchmark..."
-	@poetry run python scripts/performance/benchmark_transition_detection.py --save-as-baseline
+## docker-logs SERVICE=name: Tail logs (default SERVICE=dagster-webserver)
+## docker-exec SERVICE=name CMD="sh -lc 'command'": Execute a command inside a container
+## docker-rebuild: Stop everything, rebuild the image, and restart the dev stack
+## docker-check / docker-check-install: Docker diagnostics
+## docker-e2e-* targets: Convenience wrappers around docker-e2e
 
-# ---------------------------
-# Profile information and help
-# ---------------------------
-
-show-profiles:
-	@echo "📋 Available Docker Compose profiles:"
-	@echo "   dev              Development environment with bind mounts and live reload"
-	@echo "   prod             Production environment with named volumes"
-	@echo "   cet-staging      CET staging environment with artifacts and bind mounts"
-	@echo "   ci-test          CI testing environment with ephemeral containers"
-	@echo "   e2e              E2E testing environment optimized for MacBook Air"
-	@echo "   e2e-full         E2E testing with additional DuckDB service"
-	@echo "   neo4j-standalone Standalone Neo4j database for debugging"
-	@echo "   tools            Lightweight tools container for debugging"
-	@echo ""
-	@echo "💡 Usage examples:"
-	@echo "   docker compose --profile dev up --build"
-	@echo "   docker compose --profile prod up --build"
-	@echo "   docker compose --profile cet-staging up --build"
-	@echo "   docker compose --profile ci-test up --build"
-	@echo "   docker compose --profile e2e up --build"
-	@echo ""
-	@echo "🔧 Set COMPOSE_PROFILES in .env to automatically activate profiles"
-
-# ---------------------------
-# Convenience aliases and phony targets
-# ---------------------------
-
-.PHONY: help docker-build docker-buildx docker-up-dev docker-up-prod docker-up-cet-staging docker-up-tools docker-check docker-down docker-rebuild docker-test docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs docker-exec docker-push env-check cet-pipeline-dev transition-mvp-run transition-mvp-clean transition-mvp-run-gated transition-audit-export transition-audit-import neo4j-up neo4j-down neo4j-reset neo4j-check neo4j-backup neo4j-restore migrate-compose validate-compose benchmark-transition-detection show-profiles
-
-# Note: This Makefile uses the consolidated Docker Compose configuration
-# with profile-based service management. Key features:
-# - All environments use --profile flags with a single docker-compose.yml
-# - Eliminated duplicate compose file variables and fragmentation
-# - Standardized service names across all profiles
-# - Added validation targets for compose configuration
-# - Improved help documentation with profile information
-# - Maintained backward compatibility for all existing make targets
+.PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-prod \
+	docker-up-cet-staging docker-up-tools docker-down docker-rebuild docker-test \
+	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
+	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
+	docker-exec env-check docker-check docker-check-install neo4j-up \
+	neo4j-down neo4j-reset neo4j-check
