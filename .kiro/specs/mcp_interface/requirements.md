@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This specification implements Add Model Context Protocol Interface.
+This specification implements a Model Context Protocol (MCP) interface for the SBIR ETL system.
 
 Analysts increasingly rely on AI copilots that speak the Model Context Protocol (MCP) to manage data pipelines, yet SBIR ETL currently exposes only Dagster UI and CLI tooling. Without an MCP server the application cannot be wired into Anthropic Claude Desktop, Cursor, or other MCP-enabled assistants, so:
 
@@ -14,60 +14,69 @@ Providing an MCP server gives every developer a consistent, secure interface tha
 
 ## Glossary
 
-- **MCP**: System component or technology referenced in the implementation
-- **SBIR**: System component or technology referenced in the implementation
-- **ETL**: System component or technology referenced in the implementation
-- **CLI**: System component or technology referenced in the implementation
-- **SDK**: System component or technology referenced in the implementation
-- **JSON**: System component or technology referenced in the implementation
-- **API**: System component or technology referenced in the implementation
-- **src/mcp/server.py**: Code component or file: src/mcp/server.py
-- **mcp**: Code component or file: mcp
-- **config/base.yaml**: Code component or file: config/base.yaml
-- **config/mcp.yaml**: Code component or file: config/mcp.yaml
-- **scripts/docker/mcp-server.sh**: Code component or file: scripts/docker/mcp-server.sh
-- **poetry run sbir-etl-mcp serve**: Code component or file: poetry run sbir-etl-mcp serve
-- **Python MCP server**: Key concept: Python MCP server
-- **Direct Neo4j access**: Key concept: Direct Neo4j access
-- **Authentication & policy layer**: Key concept: Authentication & policy layer
-- **Deployment wrappers**: Key concept: Deployment wrappers
-- **Documentation & onboarding**: Key concept: Documentation & onboarding
+- **MCP_Server**: Python-based Model Context Protocol server implementation
+- **SBIR_ETL_System**: The existing SBIR analytics ETL pipeline system
+- **Dagster_Assets**: Pipeline assets managed by Dagster orchestration
+- **Neo4j_Database**: Graph database storing SBIR analytics data
+- **AI_Copilot**: MCP-enabled AI assistants like Claude Desktop or Cursor
+- **Authentication_Token**: Security token for MCP server access control
+- **Asset_Materialization**: Dagster operation to execute and update pipeline assets
+- **Pipeline_Health**: Status information about ETL pipeline operations and data quality
 
 ## Requirements
 
 ### Requirement 1
 
-**User Story:** As a developer, I want add model context protocol interface, so that analysts increasingly rely on ai copilots that speak the model context protocol (mcp) to manage data pipelines, yet sbir etl currently exposes only dagster ui and cli tooling.
+**User Story:** As an analyst, I want to access SBIR ETL functionality through my AI copilot, so that I can manage data pipelines without leaving my AI workspace.
 
 #### Acceptance Criteria
 
-1. THE System SHALL implement model context protocol interface
-2. THE System SHALL validate the implementation of model context protocol interface
+1. THE MCP_Server SHALL expose SBIR_ETL_System capabilities through Model Context Protocol interface
+2. THE MCP_Server SHALL support connection from AI_Copilot applications
+3. THE MCP_Server SHALL provide structured access to Dagster_Assets without requiring shell access
+4. THE MCP_Server SHALL enforce Authentication_Token validation for all requests
 
 ### Requirement 2
 
-**User Story:** As a developer, I want **Python MCP server** implemented under `src/mcp/server.py` using the `mcp` reference SDK. It exposes capabilities for:, so that support the enhanced functionality described in the proposal.
+**User Story:** As a developer, I want to query Dagster asset information through MCP, so that AI copilots can inspect pipeline state and metadata.
 
 #### Acceptance Criteria
 
-1. THE System SHALL implement **python mcp server** implemented under `src/mcp/server.py` using the `mcp` reference sdk. it exposes capabilities for:
-2. THE System SHALL validate the implementation of **python mcp server** implemented under `src/mcp/server.py` using the `mcp` reference sdk. it exposes capabilities for:
+1. THE MCP_Server SHALL provide resource endpoints for listing Dagster_Assets with metadata
+2. WHEN queried for asset information, THE MCP_Server SHALL return asset status, last materialization timestamp, and upstream dependencies
+3. THE MCP_Server SHALL expose asset execution history and quality metrics
+4. THE MCP_Server SHALL provide configuration snapshots for pipeline inspection
 
 ### Requirement 3
 
-**User Story:** As a developer, I want Listing Dagster assets with metadata (status, last materialization, upstream dependencies), so that support the enhanced functionality described in the proposal.
+**User Story:** As a developer, I want to trigger pipeline operations through MCP, so that AI copilots can execute ETL jobs with proper parameters.
 
 #### Acceptance Criteria
 
-1. THE System SHALL support listing dagster assets with metadata (status, last materialization, upstream dependencies)
-2. THE System SHALL ensure proper operation of listing dagster assets with metadata (status, last materialization, upstream dependencies)
+1. THE MCP_Server SHALL provide action endpoints for triggering Asset_Materialization operations
+2. WHEN receiving materialization requests, THE MCP_Server SHALL validate structured parameters before execution
+3. THE MCP_Server SHALL support triggering database synchronization jobs with appropriate safeguards
+4. THE MCP_Server SHALL return execution status and job identifiers for tracking
 
 ### Requirement 4
 
-**User Story:** As a developer, I want Triggering asset materialization or DB sync jobs with structured parameters, so that support the enhanced functionality described in the proposal.
+**User Story:** As a developer, I want to query Neo4j data through MCP, so that AI copilots can answer SBIR-specific questions from the knowledge graph.
 
 #### Acceptance Criteria
 
-1. THE System SHALL support triggering asset materialization or db sync jobs with structured parameters
-2. THE System SHALL ensure proper operation of triggering asset materialization or db sync jobs with structured parameters
+1. THE MCP_Server SHALL provide action endpoints for executing parameterized Neo4j queries
+2. THE MCP_Server SHALL enforce read-only query restrictions by default for security
+3. WHEN executing queries, THE MCP_Server SHALL return results in structured JSON format
+4. THE MCP_Server SHALL implement query timeouts and result size limits
+
+### Requirement 5
+
+**User Story:** As a system administrator, I want MCP server security controls, so that pipeline access is properly authenticated and audited.
+
+#### Acceptance Criteria
+
+1. THE MCP_Server SHALL implement Authentication_Token validation with configurable policies
+2. THE MCP_Server SHALL enforce rate limiting per Authentication_Token to prevent abuse
+3. THE MCP_Server SHALL log all requests with timestamps, tokens, and actions for audit trails
+4. THE MCP_Server SHALL support both stdio and HTTP transport modes for different deployment scenarios
 
