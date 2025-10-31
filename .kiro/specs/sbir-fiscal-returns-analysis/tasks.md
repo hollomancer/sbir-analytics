@@ -12,6 +12,7 @@
     - Implement hierarchical fallback chain: original → USAspending → SAM.gov → agency defaults → sector fallback
     - Add confidence scoring and quality tracking for NAICS coverage
     - _Requirements: 1.1, 1.2, 1.3, 5.1, 5.2_
+    - Design & requirements: see `.kiro/specs/sbir-fiscal-returns-analysis/design.md` and `.kiro/specs/sbir-fiscal-returns-analysis/requirements.md` for the NAICS enrichment specification and mapped requirements.
 
   - [x] 2.2 Implement geographic resolution service
     - Standardize company locations to state-level for StateIO model compatibility

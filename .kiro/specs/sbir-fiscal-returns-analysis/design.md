@@ -88,6 +88,118 @@ class TaxImpactEstimate:
 - **Fallback Strategy**: Original data → USAspending → SAM.gov → Agency defaults → Sector fallback
 - **Quality Tracking**: Coverage rates, confidence scores, fallback usage metrics
 - **Integration**: Extends existing enrichment patterns with fiscal-specific requirements
+#### NAICS Enrichment Service — Detailed Design
+
+- Purpose: Enrich SBIR awards and recipient records with NAICS codes using a deterministic, auditable fallback chain that preferentially uses local USAspending data under `data/raw/usaspending/`.
+- Produce a canonical `naics_assigned` for each award (and optionally per-recipient), plus metadata (origin, confidence, quality flags, trace) for downstream quality gates and auditing.
+
+Contract (inputs / outputs / errors)
+- Input: iterable of award records (pandas.DataFrame or iterable of dicts) containing:
+    - `award_id` (string/int)
+    - `recipient_unique_id` or `recipient_name` (optional)
+    - `existing_naics` (optional)
+    - `fiscal_year`, `award_date`, `agency` (optional but useful)
+- Output: enriched award records with new fields:
+    - `naics_assigned` (string, nullable) — normalized NAICS (prefer 6-digit padded)
+    - `naics_origin` (string enum)
+    - `naics_confidence` (float 0.0-1.0)
+    - `naics_quality_flags` (list[string] or comma-separated string)
+    - `naics_trace` (json) — list of candidate sources and reasoning
+- Errors: the service should not raise on missing NAICS; instead set `naics_assigned = None` and add `missing` quality flag. Exceptions are reserved for I/O or corrupted index files.
+
+Data sources & formats
+- Primary local source: SBIR awards dataset (the pipeline's input). Can be supplied as a DataFrame.
+- Fallback source (on-disk): `data/raw/usaspending/usaspending-db-subset_20251006.zip` (assumed to contain CSVs or extractable tables). Implementation will:
+    - Inspect the zip to find files matching patterns: `*award*.csv`, `*recipient*.csv`, `*naics*.csv`.
+    - Extract/scan relevant columns (`award_id`, `recipient_id`, `naics`, `naics_code`, `NAICS` etc.).
+    - Build an index mapping `award_identifier -> naics` and `recipient_identifier -> naics`.
+- Optional sources: SAM.gov, internal agency defaults, sector-level fallbacks. These will be integrated where available.
+
+Fallback chain (ordered)
+1. `original` — NAICS present on the input award record and marked verified.
+2. `usaspending_award` — award-level NAICS from USAspending matched by award identifiers.
+3. `usaspending_recipient` — recipient-level NAICS from USAspending matched by recipient unique id or cleaned recipient name.
+4. `sam` — SAM.gov NAICS if available (via existing enrichment in the repo).
+5. `agency_default` — default NAICS mapped from the awarding agency/department.
+6. `sector_fallback` — coarse sector → representative NAICS mapping (low confidence).
+7. `unknown` — no NAICS found; `naics_assigned = None` and `naics_quality_flags` includes `missing`.
+
+Confidence scoring (recommended)
+- `original`: base 0.98 (verified assignments near 1.0)
+- `usaspending_award`: base 0.85; +0.05 if award year matches and NAICS is 6-digit exact
+- `usaspending_recipient`: base 0.7; +0.1 if recipient id match exact and recipient active in award year
+- `sam`: base 0.6
+- `agency_default`: base 0.4
+- `sector_fallback`: base 0.2
+- On ties or multiple candidates: reduce confidence by 0.1 and add `multiple_candidates` flag
+
+Quality flags (non-exclusive)
+- `missing` — no NAICS found
+- `partial_match` — code shorter than 6 digits or truncated
+- `historical_mismatch` — NAICS candidate from a different fiscal year (possible churn)
+- `extrapolated` — derived from sector or agency defaults
+- `multiple_candidates` — ambiguous; recommendations saved in `naics_trace`
+
+Normalization rules
+- NAICS codes normalized to strings of 2-6 digits; prefer storing 6-digit where available. Keep original formatting in `naics_trace`.
+- Strip non-numeric characters and leading zeros as appropriate; do not drop meaningful leading zeros if present in strings.
+
+Storage/schema
+- Enrichment output columns (add to awards table/DataFrame):
+    - `naics_assigned` (VARCHAR/str, NULLABLE)
+    - `naics_origin` (VARCHAR)
+    - `naics_confidence` (FLOAT)
+    - `naics_quality_flags` (JSON / TEXT list)
+    - `naics_trace` (JSON) — optional, contains ordered candidates
+- Persist a local index built from USAspending at `data/processed/usaspending/naics_index.parquet` for fast joins.
+
+API surface (Python)
+- Module: `src/enrichers/naics_enricher.py`
+- Primary class: `NAICSEnricher`
+    - `__init__(self, config: NAICSEnricherConfig)` — config includes `usaspending_path`, `cache_path`, thresholds
+    - `load_usaspending_index(self) -> None` — builds or loads persisted index mapping award/recipient -> naics candidates
+    - `enrich_awards(self, df: pd.DataFrame, chunk_size: int = 100_000) -> pd.DataFrame` — vectorized enrichment
+    - `enrich_record(self, record: Mapping) -> Mapping` — single-record API, useful for debugging
+    - `explain(self, award_id: str) -> dict` — returns `naics_trace` and selection rationale
+- Config knobs:
+    - `usaspending_path` (str): path to zip or extracted folder
+    - `cache_path` (str|None): path to persisted index parquet
+    - `prefer_original` (bool)
+    - `confidence_map` (dict): overrides for base scores
+    - `chunk_size`, `n_workers`
+
+Performance & implementation notes
+- Use DuckDB or Parquet for indexing large USAspending CSVs and fast joins. Creating a compact Parquet index of only identifier -> naics is recommended.
+- For initial implementation use pandas with chunked processing and an in-memory dict/index for small subsets.
+- Persist extracted index to `data/processed/usaspending/naics_index.parquet` to avoid repeated zip scans.
+- Keep the enricher idempotent: do not overwrite higher-confidence assignments unless `force=True`.
+
+Testing plan
+- Unit tests (fast):
+    - `test_enrich_with_original_naics` — original NAICS preserved
+    - `test_fallback_to_usaspending_award` — award-level fallback works
+    - `test_recipient_match` — recipient-level fallback
+    - `test_missing_naics_flagging` — missing NAICS handled gracefully
+    - `test_confidence_and_trace` — correct confidence and trace structure
+- Integration test (small fixture zip): create a tiny CSV set mimicking USAspending files under `tests/fixtures/usaspending_small/` and run end-to-end `enrich_awards`.
+
+Operational assumptions
+- The provided zip `data/raw/usaspending/usaspending-db-subset_20251006.zip` contains useful NAICS-bearing files. If the zip is a Postgres dump rather than CSVs, the implementation will either:
+    - attempt to locate CSVs inside the zip, or
+    - require the user to extract the relevant tables to CSV/Parquet, or
+    - use DuckDB to read SQL dump if feasible.
+- No external network calls required.
+
+Next steps (implementation)
+1. Inspect `data/raw/usaspending/usaspending-db-subset_20251006.zip` and record file layout.
+2. Implement `NAICSEnricher` skeleton and `load_usaspending_index()` to build Parquet index.
+3. Implement `enrich_awards()` with fallback chain and confidence scoring.
+4. Add unit tests and the small integration fixture.
+5. Wire the enricher into the `fiscal_prepared_sbir_awards` asset.
+
+
+Change log
+- 2025-10-31: Initial NAICS enrichment detailed design added.
 
 #### Geographic Resolution Service
 - **Purpose**: Standardize company locations to state-level for StateIO model compatibility

@@ -33,6 +33,21 @@ The SBIR Fiscal Returns Analysis feature enables computation of federal fiscal r
 4. WHEN normalizing monetary values, THE Fiscal_Returns_System SHALL adjust amounts to the configured base year using BEA inflation indices
 5. THE Fiscal_Returns_System SHALL produce tax impact estimates within configured performance thresholds
 
+## NAICS Enrichment Specific Requirements
+
+These requirements capture the functional and quality expectations for the NAICS enrichment component referenced in Requirement 1 and 5.
+
+1. WHEN processing awards, THE NAICS enrichment service SHALL prefer NAICS values present on the original award record (origin=`original`) and preserve them with high confidence.
+2. WHEN USAspending local data is available, THE service SHALL attempt award-level lookup in `data/raw/usaspending/` and use award-level NAICS (origin=`usaspending_award`) before recipient-level fallbacks.
+3. WHEN award-level NAICS are not present, THE service SHALL attempt recipient-level NAICS lookup in USAspending and use origin=`usaspending_recipient`.
+4. IF both award- and recipient-level sources fail, THE service SHALL apply SAM.gov or configured `agency_default` or `sector_fallback` mappings in that order, recording the chosen origin and confidence.
+5. THE service SHALL assign a `naics_confidence` score (0.0-1.0) corresponding to the origin and tie-breaking logic, and include `naics_trace` for auditability.
+6. THE service SHALL persist a compact index (Parquet/DuckDB) derived from `data/raw/usaspending/` at `data/processed/usaspending/naics_index.parquet` for repeatable, performant joins.
+7. THE service SHALL emit quality metrics for coverage (`% awards with assigned NAICS`), fallback usage rates by origin, and counts of `multiple_candidates` or `missing` flags.
+8. WHEN NAICS are missing, THE service SHALL not raise errors; instead flag the award with `naics_quality_flags` containing `missing` and allow downstream quality gates to decide blocking behavior.
+
+These specific requirements map to higher-level acceptance criteria in Requirement 1 and Requirement 5 (data quality and audit trail expectations).
+
 ### Requirement 2
 
 **User Story:** As an economist, I want to map SBIR awards to economic sectors and compute multiplier effects, so that I can estimate induced economic activity.
