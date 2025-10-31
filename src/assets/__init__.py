@@ -51,9 +51,9 @@ __all__: list[str] = [
     "patent_load_success_rate",
     "assignment_load_success_rate",
     "patent_relationship_cardinality",
-    "uspto_ai_extract_to_duckdb",
+    "raw_uspto_ai_extract",
     "uspto_ai_deduplicate",
-    "uspto_ai_human_sample_extraction",
+    "raw_uspto_ai_human_sample_extraction",
     "neo4j_cetarea_nodes",
     "neo4j_award_cet_enrichment",
     "neo4j_company_cet_enrichment",
@@ -162,17 +162,17 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
         "patent_relationship_cardinality",
     ),
     # uspto_ai_extraction_assets (consolidated)
-    "uspto_ai_extract_to_duckdb": (
+    "raw_uspto_ai_extract": (
         "src.assets.uspto_assets",
-        "uspto_ai_extract_to_duckdb",
+        "raw_uspto_ai_extract",
     ),
     "uspto_ai_deduplicate": (
         "src.assets.uspto_assets",
         "uspto_ai_deduplicate",
     ),
-    "uspto_ai_human_sample_extraction": (
+    "raw_uspto_ai_human_sample_extraction": (
         "src.assets.uspto_assets",
-        "uspto_ai_human_sample_extraction",
+        "raw_uspto_ai_human_sample_extraction",
     ),
     # cet_assets (consolidated)
     "neo4j_cetarea_nodes": (

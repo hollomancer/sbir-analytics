@@ -153,7 +153,7 @@ class TestCheckValueRanges:
         assert issues[0].severity == QualitySeverity.LOW
 
 
-class TestValidateSbirAwards:
+class TestValidateAwards:
     """Test comprehensive SBIR awards validation."""
 
     def test_valid_dataset(self):

@@ -26,9 +26,9 @@ STAGE 4: Neo4j Loading
 - Load success checks
 
 STAGE 5: AI Extraction (Optional)
-- AI dataset extraction (`uspto_ai_extract_to_duckdb`)
+- AI dataset extraction (`raw_uspto_ai_extract`)
 - Deduplication (`uspto_ai_deduplicate`)
-- Human sampling (`uspto_ai_human_sample_extraction`)
+- Human sampling (`raw_uspto_ai_human_sample_extraction`)
 
 Notes:
 - All assets use defensive imports and degrade gracefully when dependencies are unavailable
@@ -2205,9 +2205,9 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
         "Produce a deduplicated table of USPTO AI predictions keyed by grant_doc_num. "
         "Keeps the most recent extracted_at or highest row_index."
     ),
-    ins={"uspto_ai_extract_to_duckdb": AssetIn()},
+    ins={"raw_uspto_ai_extract": AssetIn()},
 )
-def uspto_ai_deduplicate(context, uspto_ai_extract_to_duckdb) -> dict[str, object]:
+def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
 
@@ -2859,14 +2859,6 @@ def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
 
 
 # ============================================================================
-# Asset Aliases for Backward Compatibility
-# ============================================================================
-
-# Aliases for assets expected by __init__.py and other modules
-uspto_ai_extract_to_duckdb = raw_uspto_ai_extract
-uspto_ai_human_sample_extraction = raw_uspto_ai_human_sample_extraction
-
-# ============================================================================
 # Exported symbols
 # ============================================================================
 
@@ -2908,7 +2900,6 @@ __all__ = [
     "patent_relationship_cardinality",
     # Stage 5: AI Extraction
     "raw_uspto_ai_extract",
-    "uspto_ai_extract_to_duckdb",  # Alias for raw_uspto_ai_extract
     "uspto_ai_deduplicate",
     "raw_uspto_ai_human_sample_extraction",
     # Additional AI assets from consolidated uspto_ai_assets.py

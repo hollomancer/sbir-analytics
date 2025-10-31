@@ -8,6 +8,30 @@
 
 This guide helps developers understand and adapt to the consolidated codebase architecture. The consolidation refactor aims to reduce complexity and eliminate duplication while maintaining all existing functionality.
 
+## Breaking Changes (Final Cleanup)
+
+As of Task 7.3 completion, the following deprecated components have been permanently removed:
+
+### Removed Models
+- **`SbirAward`**: The deprecated compatibility wrapper has been removed. Use `Award.from_sbir_csv()` or `Award` with field aliases instead.
+
+### Removed Asset Aliases
+- **`uspto_ai_extract_to_duckdb`**: Use `raw_uspto_ai_extract` instead
+- **`uspto_ai_human_sample_extraction`**: Use `raw_uspto_ai_human_sample_extraction` instead
+
+### Migration Required
+If your code still references these removed items, update as follows:
+
+```python
+# Old (broken)
+from src.models.sbir_award import SbirAward
+from src.assets import uspto_ai_extract_to_duckdb, uspto_ai_human_sample_extraction
+
+# New
+from src.models import Award
+from src.assets import raw_uspto_ai_extract, raw_uspto_ai_human_sample_extraction
+```
+
 ## Migration Timeline
 
 ### Phase 1: Foundation (Weeks 1-2)

@@ -8,8 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class Award(BaseModel):
     """Unified SBIR/STTR award data model.
 
-    Consolidates Award and SbirAward models into a single comprehensive model that
-    supports both general SBIR award data and SBIR.gov CSV format.
+    Supports both general SBIR award data and SBIR.gov CSV format.
 
     Features:
     - Company identifiers (UEI, DUNS, CAGE)

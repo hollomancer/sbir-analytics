@@ -403,7 +403,7 @@ class TestValidatePhaseProgramConsistency:
         assert result is None
 
 
-class TestValidateSbirAwardRecord:
+class TestValidateAwardRecord:
     """Test validation of a single SBIR award record."""
 
     def test_valid_record(self):
@@ -443,7 +443,7 @@ class TestValidateSbirAwardRecord:
         assert len(issues) > 0
 
 
-class TestValidateSbirAwards:
+class TestValidateAwards:
     """Test validation of SBIR awards DataFrame."""
 
     def test_validate_empty_dataframe(self):
