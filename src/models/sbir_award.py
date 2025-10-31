@@ -1,158 +1,119 @@
-"""Pydantic model for SBIR award data from SBIR.gov CSV."""
+"""Pydantic model for SBIR award data from SBIR.gov CSV.
+
+NOTE: This module provides SbirAward as a compatibility wrapper around the
+consolidated Award model. New code should use Award.from_sbir_csv() or Award
+directly with field aliases. SbirAward is maintained for backward compatibility.
+"""
 
 from datetime import date
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .award import Award
 
 
 class SbirAward(BaseModel):
     """
-    Complete SBIR/STTR award data model matching SBIR.gov CSV format.
-
-    Represents a single SBIR or STTR award with 42 fields including company
-    identification, award details, timeline, personnel, and business classifications.
+    DEPRECATED: Use Award.from_sbir_csv() or Award with field aliases instead.
+    
+    Compatibility wrapper for SBIR.gov CSV format that uses the consolidated Award model.
+    
+    This class maintains backward compatibility with existing code that uses SbirAward.
+    It converts SBIR.gov format fields to Award format internally.
+    
+    For new code, prefer:
+        award = Award.from_sbir_csv(data)
+    or:
+        award = Award(**data, company="...")  # Uses alias="company"
     """
 
-    # Company Identification (7 fields)
-    company: str = Field(..., description="Company name receiving the award")
-    address1: str | None = Field(None, description="Primary address line")
-    address2: str | None = Field(None, description="Secondary address line")
-    city: str | None = Field(None, description="City")
-    state: str | None = Field(None, description="State (2-letter code)")
-    zip: str | None = Field(None, description="ZIP code (5 or 9 digits)")
-    company_website: str | None = Field(None, description="Company website URL")
-    number_employees: int | None = Field(None, description="Number of employees")
+    _award: Award | None = None  # Internal consolidated Award instance
 
-    # Award Details (7 fields)
-    award_title: str = Field(..., description="Title of the award project")
-    abstract: str | None = Field(None, description="Project abstract/description")
-    agency: str = Field(..., description="Federal agency (NSF, DOD, DOE, HHS, NASA, etc.)")
-    branch: str | None = Field(None, description="Agency branch/division")
-    phase: str = Field(..., description="Phase I, Phase II, or Phase III")
-    program: str = Field(..., description="SBIR or STTR")
-    topic_code: str | None = Field(None, description="Topic code from solicitation")
+    def __init__(self, **data: Any) -> None:
+        """Initialize SbirAward from SBIR.gov format data, converting to Award internally."""
+        # Convert SBIR format to Award format
+        award_data = Award.from_sbir_csv(data).model_dump()
+        # Store as Award instance
+        object.__setattr__(self, "_award", Award(**award_data))
+        # For backward compatibility, allow attribute access via SBIR field names
+        super().__init__(**{})  # Initialize with empty dict, we use _award internally
 
-    # Financial (2 fields)
-    award_amount: float = Field(..., description="Award amount in USD", gt=0)
-    award_year: int = Field(..., description="Year of award", ge=1983, le=2026)
+    def __getattribute__(self, name: str) -> Any:
+        """Delegate attribute access to internal Award instance with SBIR field name mapping."""
+        if name == "_award" or name.startswith("__") or name in ["model_dump", "model_dump_json", "model_validate"]:
+            return super().__getattribute__(name)
+        
+        # Map SBIR field names to Award field names
+        field_map = {
+            "company": "company_name",
+            "uei": "company_uei",
+            "duns": "company_duns",
+            "city": "company_city",
+            "state": "company_state",
+            "zip": "company_zip",
+            "hubzone_owned": "is_hubzone",
+            "woman_owned": "is_woman_owned",
+            "socially_and_economically_disadvantaged": "is_socially_disadvantaged",
+            "number_employees": "number_of_employees",
+            "pi_name": "principal_investigator",
+            "ri_name": "research_institution",
+        }
+        
+        award_field = field_map.get(name, name)
+        award = super().__getattribute__("_award")
+        if award_field in award.model_fields:
+            return getattr(award, award_field)
+        # Fall back to Award attributes
+        return getattr(award, name, None)
 
-    # Timeline/Dates (5 fields)
-    proposal_award_date: date | None = Field(None, description="Date proposal was awarded")
-    contract_end_date: date | None = Field(None, description="Contract end date")
-    solicitation_close_date: date | None = Field(None, description="Solicitation closing date")
-    proposal_receipt_date: date | None = Field(None, description="Date proposal was received")
-    date_of_notification: date | None = Field(None, description="Date company was notified")
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Dump model as dict in SBIR.gov format."""
+        award = self._award
+        if award is None:
+            return {}
+        
+        # Convert Award format back to SBIR format
+        data = award.model_dump()
+        reverse_map = {
+            "company_name": "company",
+            "company_uei": "uei",
+            "company_duns": "duns",
+            "company_city": "city",
+            "company_state": "state",
+            "company_zip": "zip",
+            "is_hubzone": "hubzone_owned",
+            "is_woman_owned": "woman_owned",
+            "is_socially_disadvantaged": "socially_and_economically_disadvantaged",
+            "number_of_employees": "number_employees",
+            "principal_investigator": "pi_name",
+            "research_institution": "ri_name",
+        }
+        
+        sbir_data = {}
+        for award_key, sbir_key in reverse_map.items():
+            if award_key in data:
+                sbir_data[sbir_key] = data[award_key]
+        
+        # Copy fields that are the same
+        for key in ["award_title", "abstract", "agency", "branch", "phase", "program",
+                    "award_amount", "award_year", "proposal_award_date", "contract_end_date",
+                    "contract", "agency_tracking_number", "solicitation_number",
+                    "contact_name", "contact_title", "contact_phone", "contact_email",
+                    "pi_title", "pi_phone", "pi_email", "ri_poc_name", "ri_poc_phone",
+                    "solicitation_close_date", "proposal_receipt_date", "date_of_notification",
+                    "solicitation_year", "topic_code", "company_website", "address1", "address2"]:
+            if key in data:
+                sbir_data[key] = data[key]
+        
+        return sbir_data
 
-    # Tracking/Identifiers (4 fields)
-    agency_tracking_number: str = Field(..., description="Agency's internal tracking number")
-    contract: str = Field(..., description="Contract number/ID")
-    solicitation_number: str | None = Field(None, description="Solicitation number")
-    solicitation_year: int | None = Field(
-        None, description="Year of solicitation", ge=1983, le=2026
-    )
-
-    # Company Identifiers (2 fields)
-    uei: str | None = Field(None, description="Unique Entity Identifier (12 alphanumeric)")
-    duns: str | None = Field(None, description="DUNS number (9 digits)")
-
-    # Business Classifications (3 fields)
-    hubzone_owned: bool | None = Field(None, description="HUBZone owned business")
-    socially_and_economically_disadvantaged: bool | None = Field(
-        None, description="Socially and economically disadvantaged business"
-    )
-    woman_owned: bool | None = Field(None, description="Woman-owned business")
-
-    # Contact Person (4 fields)
-    contact_name: str | None = Field(None, description="Primary contact name")
-    contact_title: str | None = Field(None, description="Contact title/position")
-    contact_phone: str | None = Field(None, description="Contact phone number")
-    contact_email: str | None = Field(None, description="Contact email address")
-
-    # Principal Investigator (4 fields)
-    pi_name: str | None = Field(None, description="Principal Investigator name")
-    pi_title: str | None = Field(None, description="PI title/position")
-    pi_phone: str | None = Field(None, description="PI phone number")
-    pi_email: str | None = Field(None, description="PI email address")
-
-    # Research Institution (3 fields)
-    ri_name: str | None = Field(None, description="Research Institution name")
-    ri_poc_name: str | None = Field(None, description="RI Point of Contact name")
-    ri_poc_phone: str | None = Field(None, description="RI POC phone number")
-
-    # Validators
-    @field_validator("phase")
-    @classmethod
-    def validate_phase(cls, v: str) -> str:
-        """Validate phase is one of the allowed values."""
-        if v not in ["Phase I", "Phase II", "Phase III"]:
-            raise ValueError(f"Phase must be 'Phase I', 'Phase II', or 'Phase III', got '{v}'")
-        return v
-
-    @field_validator("program")
-    @classmethod
-    def validate_program(cls, v: str) -> str:
-        """Validate program is SBIR or STTR."""
-        if v.upper() not in ["SBIR", "STTR"]:
-            raise ValueError(f"Program must be 'SBIR' or 'STTR', got '{v}'")
-        return v.upper()
-
-    @field_validator("state")
-    @classmethod
-    def validate_state(cls, v: str | None) -> str | None:
-        """Validate state is 2-letter code if provided."""
-        if v and len(v) != 2:
-            raise ValueError(f"State must be 2-letter code, got '{v}'")
-        return v.upper() if v else v
-
-    @field_validator("zip")
-    @classmethod
-    def validate_zip(cls, v: str | None) -> str | None:
-        """Validate ZIP code format if provided.
-
-        Accepts a 5-digit ZIP or a 9-digit ZIP+4. For validation this strips any
-        non-digit characters and ensures exactly 5 or 9 digits remain. The
-        original formatting is preserved when the input is valid.
-        """
-        if v:
-            digits = "".join(ch for ch in v if ch.isdigit())
-            if len(digits) not in (5, 9):
-                raise ValueError(
-                    f"ZIP must contain 5 or 9 digits after removing separators, got '{v}'"
-                )
-        return v
-
-    @field_validator("uei")
-    @classmethod
-    def validate_uei(cls, v: str | None) -> str | None:
-        """Validate UEI format if provided (12 alphanumeric characters)."""
-        if v and len(v) != 12:
-            raise ValueError(f"UEI must be 12 characters, got '{v}' ({len(v)} chars)")
-        return v.upper() if v else v
-
-    @field_validator("duns")
-    @classmethod
-    def validate_duns(cls, v: str | None) -> str | None:
-        """Validate DUNS format if provided (9 digits)."""
-        if v and (len(v) != 9 or not v.isdigit()):
-            raise ValueError(f"DUNS must be 9 digits, got '{v}'")
-        return v
-
-    @field_validator("contract_end_date")
-    @classmethod
-    def validate_contract_end_date(cls, v: date | None, info) -> date | None:
-        """Validate contract end date is after award date if both present."""
-        if v and "proposal_award_date" in info.data:
-            award_date = info.data["proposal_award_date"]
-            if award_date and v < award_date:
-                raise ValueError(
-                    f"Contract end date ({v}) cannot be before award date ({award_date})"
-                )
-        return v
-
+    # Validators (delegated to Award, but kept for backward compatibility)
     model_config = ConfigDict(
         validate_assignment=True,
         str_strip_whitespace=True,
         json_encoders={date: lambda v: v.isoformat()},
+        arbitrary_types_allowed=True,  # Allow Award type
     )
 
 
