@@ -223,9 +223,9 @@ docker-test: env-check ## Run containerised CI tests (profile=ci-test)
 docker-e2e: env-check ## Run full end-to-end test suite (profile=e2e)
 	@set -euo pipefail; \
 	 $(call info,Running E2E tests (profile: e2e)); \
-	 $(call print-cmd,$(COMPOSE) --profile e2e up --build --abort-on-container-exit); \
+	 $(call print-cmd,$(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit; then STATUS=$$?; fi; \
+	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator; then STATUS=$$?; fi; \
 	 $(call info,E2E tests completed with exit code $$STATUS); \
 	 if [ $$STATUS -eq 0 ]; then \
 	   $(call success,E2E tests passed – containers left running for inspection); \

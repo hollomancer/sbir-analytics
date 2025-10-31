@@ -24,6 +24,7 @@ env/
 
 # Data files
 data/
+reports/
 *.csv
 *.db
 *.duckdb
