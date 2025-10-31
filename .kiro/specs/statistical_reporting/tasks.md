@@ -24,20 +24,20 @@
   - Support environment variable overrides for CI/CD integration
   - _Requirements: 3.4, 5.1, 5.3_
 
-- [ ] 2. Implement module-specific analyzers
+- [-] 2. Implement module-specific analyzers
   - Create analyzer classes for each pipeline module
   - Implement metrics collection and analysis logic
   - Add module-specific insight generation
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 2.1 Create SBIR enrichment analyzer
+- [x] 2.1 Create SBIR enrichment analyzer
   - Implement `SbirEnrichmentAnalyzer` class in `src/utils/reporting/analyzers/sbir_analyzer.py`
   - Calculate match rates by enrichment source (USAspending, SAM.gov, fuzzy matching)
   - Generate coverage metrics for each enriched field (NAICS, company info, etc.)
   - Create before/after comparison of data completeness
   - _Requirements: 2.1, 2.2_
 
-- [ ] 2.2 Create patent analysis analyzer
+- [x] 2.2 Create patent analysis analyzer
   - Implement `PatentAnalysisAnalyzer` class in `src/utils/reporting/analyzers/patent_analyzer.py`
   - Calculate validation pass/fail rates for patent data
   - Generate loading statistics (nodes created, relationships established)
