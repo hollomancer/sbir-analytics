@@ -29,6 +29,7 @@ from ..config.loader import get_config
 from ..enrichers.usaspending_api_client import USAspendingAPIClient
 from ..models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+from ..utils.enrichment_metrics import EnrichmentMetricsCollector
 
 
 class EnrichmentRefreshConfig(Config):
@@ -155,9 +156,10 @@ def usaspending_refresh_batch(
     if batch_size is None:
         batch_size = refresh_config.batch_size
 
-    # Initialize API client and freshness store
+    # Initialize API client, freshness store, and metrics collector
     api_client = USAspendingAPIClient()
     store = FreshnessStore()
+    metrics_collector = EnrichmentMetricsCollector()
 
     # Identify award ID and identifier columns
     award_id_col = None
@@ -232,6 +234,9 @@ def usaspending_refresh_batch(
                 freshness_record=freshness_record,
             )
 
+            # Record API call for metrics
+            metrics_collector.record_api_call(source, error=not result["success"])
+
             # Update freshness ledger
             update_freshness_ledger(
                 store=store,
@@ -256,6 +261,9 @@ def usaspending_refresh_batch(
             logger.error(f"Failed to refresh award {award_id}: {e}")
             stats["failed"] += 1
             stats["errors"].append(f"{award_id}: {str(e)}")
+            
+            # Record API error
+            metrics_collector.record_api_call(source, error=True)
 
             # Update freshness record with failure
             update_freshness_ledger(
@@ -277,6 +285,13 @@ def usaspending_refresh_batch(
         f"Refresh complete: {stats['success']} success, "
         f"{stats['unchanged']} unchanged, {stats['failed']} failed"
     )
+
+    # Emit freshness metrics
+    try:
+        metrics_path = metrics_collector.emit_metrics(source)
+        context.log.info(f"Emitted freshness metrics to {metrics_path}")
+    except Exception as e:
+        logger.warning(f"Failed to emit metrics: {e}")
 
     return stats
 

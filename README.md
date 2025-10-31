@@ -499,6 +499,7 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 - **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
 - **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
 - **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
+- **Iterative Enrichment Refresh**: Automatic freshness tracking and refresh for enrichment data (see [Iterative Enrichment](#iterative-enrichment-refresh))
 
 #### Quality Gates
 
@@ -520,6 +521,40 @@ loading:
 - `enrichment_quality_regression_check` — Compare to baseline
 - `patent_load_success_rate` — Verify Neo4j load success
 - `assignment_load_success_rate` — Verify relationship creation
+
+### Iterative Enrichment Refresh
+
+**Status**: ✅ **IMPLEMENTED** - USAspending API refresh operational (Phase 1)
+
+The iterative enrichment refresh system automatically keeps enrichment data current by periodically refreshing stale records from external APIs. This ensures data freshness without requiring full pipeline re-runs.
+
+**Key Features**:
+- **Automatic Refresh**: Sensor-driven refresh after bulk enrichment completes
+- **Delta Detection**: Skips API calls when data is unchanged (payload hash comparison)
+- **Freshness Tracking**: Tracks last attempt, last success, payload hash, and status per award/source
+- **Checkpoint/Resume**: Interrupted runs can resume from last checkpoint
+- **Metrics**: Coverage, success rate, staleness rate, and error rate tracking
+- **CLI Tools**: Manual refresh via `scripts/refresh_enrichment.py`
+
+**Phase 1**: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView) will be evaluated in Phase 2+.
+
+**Documentation**: See [`docs/enrichment/usaspending-iterative-refresh.md`](docs/enrichment/usaspending-iterative-refresh.md) for detailed workflow, configuration, and troubleshooting.
+
+**Quick Start**:
+```bash
+# List stale awards
+python scripts/refresh_enrichment.py list-stale --source usaspending
+
+# Refresh stale awards
+python scripts/refresh_enrichment.py refresh-usaspending --stale-only
+
+# View freshness statistics
+python scripts/refresh_enrichment.py stats --source usaspending
+```
+
+**Configuration**: `config/base.yaml` → `enrichment_refresh.usaspending`
+
+**Metrics**: `reports/metrics/enrichment_freshness.json`
 
 ## Quick Start
 
