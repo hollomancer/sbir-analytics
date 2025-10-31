@@ -1,5 +1,14 @@
 from typing import Optional
-from dagster import asset
+try:
+    from dagster import asset
+except Exception:
+    # allow running tests where dagster isn't installed; provide a no-op decorator
+    def asset(fn=None, **kwargs):
+        if fn is None:
+            def _wrap(f):
+                return f
+            return _wrap
+        return fn
 
 import json
 from pathlib import Path

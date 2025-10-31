@@ -44,6 +44,18 @@ class NAICSEnricher:
         self.config = config
         self.award_map: Dict[str, Set[str]] = {}
         self.recipient_map: Dict[str, Set[str]] = {}
+        # optional canonical NAICS set (loaded from data/reference/naics_codes.txt if present)
+        self.valid_naics_set: Set[str] = set()
+        ref = Path("data/reference/naics_codes.txt")
+        if ref.exists():
+            try:
+                for line in ref.read_text().splitlines():
+                    s = line.strip()
+                    if s:
+                        self.valid_naics_set.add(s)
+            except Exception:
+                # ignore failures reading the optional reference list
+                self.valid_naics_set = set()
 
     def load_usaspending_index(self, force: bool = False) -> None:
         cache = Path(self.config.cache_path)
@@ -115,12 +127,39 @@ class NAICSEnricher:
                     logger.exception("Failed to process %s", member)
 
         # persist compact index as parquet
+        def _valid_naics(code: str) -> bool:
+            try:
+                ci = int(code)
+            except Exception:
+                return False
+            # must be 2-6 digits
+            if ci < 0:
+                return False
+            l = len(str(ci))
+            if l < 2 or l > 6:
+                return False
+            # conservative filters
+            if l == 2 and ci < 11:
+                return False
+            if l >= 3 and ci < 100:
+                return False
+            return True
+
         rows = []
         for k, s in self.award_map.items():
-            rows.append({"key_type": "award", "key": str(k), "naics_candidates": list(s)})
+            filtered = sorted([c for c in s if _valid_naics(str(c))])
+            if not filtered:
+                continue
+            rows.append({"key_type": "award", "key": str(k), "naics_candidates": filtered})
         for k, s in self.recipient_map.items():
-            rows.append({"key_type": "recipient", "key": str(k), "naics_candidates": list(s)})
+            filtered = sorted([c for c in s if _valid_naics(str(c))])
+            if not filtered:
+                continue
+            rows.append({"key_type": "recipient", "key": str(k), "naics_candidates": filtered})
+
         df = pd.DataFrame(rows)
+        # ensure deterministic ordering
+        df = df.sort_values(["key_type", "key"]).reset_index(drop=True)
         df.to_parquet(cache, index=False)
         logger.info("Persisted NAICS index to %s (rows=%d)", cache, len(df))
 

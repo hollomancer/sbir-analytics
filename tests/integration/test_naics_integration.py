@@ -24,11 +24,14 @@ def _load_naics_module():
 
 
 PARQUET_PATH = Path("data/processed/usaspending/naics_index.parquet")
+FIXTURE_PATH = Path("tests/fixtures/naics_index_fixture.parquet")
 
 
 def test_index_and_enrich_roundtrip():
-    if not PARQUET_PATH.exists():
-        pytest.skip("naics index parquet not present; run sample builder first")
+    # prefer a committed fixture to make this test hermetic in CI
+    path = FIXTURE_PATH if FIXTURE_PATH.exists() else PARQUET_PATH
+    if not path.exists():
+        pytest.skip("naics index parquet not present; run sample builder or generate fixture first")
 
     naics_mod = _load_naics_module()
     NAICSEnricher = naics_mod.NAICSEnricher
@@ -36,7 +39,7 @@ def test_index_and_enrich_roundtrip():
 
     # instantiate enricher pointing at existing parquet (use cache_path)
     cfg = NAICSEnricherConfig(zip_path="data/raw/usaspending/usaspending-db-subset_20251006.zip",
-                              cache_path=str(PARQUET_PATH), sample_only=True)
+                              cache_path=str(path), sample_only=True)
     enr = NAICSEnricher(cfg)
     enr.load_usaspending_index(force=False)
 
