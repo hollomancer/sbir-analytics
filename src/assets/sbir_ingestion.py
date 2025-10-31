@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 from dagster import (
+    AssetCheckExecutionContext,
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
@@ -194,7 +195,9 @@ def validated_sbir_awards(
 
     # Filter to passing records (no ERROR issues)
     error_rows = {
-        issue.row_index for issue in quality_report.issues if issue.severity.value == "ERROR"
+        issue.row_index
+        for issue in quality_report.issues
+        if issue.severity.value == "ERROR" and issue.row_index is not None
     }
 
     validated_df = raw_sbir_awards[~raw_sbir_awards.index.isin(error_rows)].copy()
@@ -320,7 +323,7 @@ def sbir_validation_report(
     description="Verify SBIR data quality meets threshold",
 )
 def sbir_data_quality_check(
-    context: AssetExecutionContext,
+    context: AssetCheckExecutionContext,
     validated_sbir_awards: pd.DataFrame,
     raw_sbir_awards: pd.DataFrame,
 ) -> AssetCheckResult:
