@@ -181,13 +181,13 @@ Based on analysis of the current codebase, the following tasks represent the hig
   - Remove the separate uspto_ai_assets.py file once fully consolidated
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] 8.2 Finalize asset import consolidation
+- [x] 8.2 Finalize asset import consolidation
   - Update all import statements throughout the codebase to use consolidated asset modules
   - Remove references to deprecated asset files in tests and other modules
   - Ensure all asset checks and job definitions use the consolidated asset names
   - _Requirements: 8.2, 8.3_
 
-- [ ] 8.3 Clean up remaining asset file artifacts
+- [x] 8.3 Clean up remaining asset file artifacts
   - Remove any remaining .pyc files from deprecated asset modules
   - Clean up test files that reference old asset module names
   - Update any remaining documentation that references deprecated asset files
