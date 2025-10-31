@@ -18,6 +18,7 @@ Fallback chain:
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -44,14 +45,24 @@ class NAICSEnrichmentResult:
 class FiscalNAICSEnricher:
     """NAICS enrichment service for fiscal returns analysis."""
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        api_client: Any | None = None,
+    ):
         """Initialize the NAICS enricher.
         
         Args:
             config: Optional configuration override
+            api_client: Optional USAspending API client for live API lookups
+                        (falls back to API if DataFrame lookups fail)
         """
         self.config = config or get_config().fiscal_analysis
         self.quality_thresholds = self.config.quality_thresholds
+        self.api_client = api_client
+        
+        # Cache for API responses to avoid duplicate calls during batch processing
+        self._api_cache: dict[str, dict[str, Any]] = {}
 
         # Agency default NAICS mappings
         self.agency_defaults = {
@@ -200,7 +211,159 @@ class FiscalNAICSEnricher:
 
         return None
 
-    def enrich_from_usaspending(self, award_row: pd.Series, usaspending_df: pd.DataFrame) -> NAICSEnrichmentResult | None:
+    async def _enrich_from_api_uei(self, uei: str, award_id: str | None = None) -> NAICSEnrichmentResult | None:
+        """Enrich NAICS using USAspending API by UEI.
+        
+        Args:
+            uei: Unique Entity Identifier
+            award_id: Optional award ID for freshness tracking
+            
+        Returns:
+            NAICS enrichment result or None
+        """
+        if not self.api_client:
+            return None
+        
+        # Check cache first
+        cache_key = f"uei:{uei}"
+        if cache_key in self._api_cache:
+            cached = self._api_cache[cache_key]
+            naics_code = self.normalize_naics_code(cached.get("naics_code"))
+            if naics_code:
+                return NAICSEnrichmentResult(
+                    naics_code=naics_code,
+                    confidence=0.90,
+                    source="usaspending_api_uei",
+                    method="api_uei_lookup",
+                    timestamp=datetime.now(),
+                    metadata={"uei": uei, "cached": True}
+                )
+        
+        try:
+            # Call API
+            result = await self.api_client.enrich_award(
+                award_id=award_id or f"TEMP-{uei}",
+                uei=uei,
+            )
+            
+            if result.get("success") and result.get("payload"):
+                payload = result["payload"]
+                naics_code = None
+                
+                # Extract NAICS from various possible fields
+                for field in ["naics_code", "recipient_naics", "primary_naics"]:
+                    if field in payload and payload[field]:
+                        naics_code = self.normalize_naics_code(str(payload[field]))
+                        if naics_code:
+                            break
+                
+                if naics_code:
+                    # Cache the response
+                    self._api_cache[cache_key] = {
+                        "naics_code": naics_code,
+                        "payload": payload,
+                        "payload_hash": result.get("payload_hash"),
+                    }
+                    
+                    # Update freshness ledger
+                    if award_id:
+                        from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+                        store = FreshnessStore()
+                        update_freshness_ledger(
+                            store=store,
+                            award_id=award_id,
+                            source="usaspending",
+                            success=True,
+                            payload_hash=result.get("payload_hash"),
+                            metadata=result.get("metadata", {}),
+                        )
+                    
+                    return NAICSEnrichmentResult(
+                        naics_code=naics_code,
+                        confidence=0.90,
+                        source="usaspending_api_uei",
+                        method="api_uei_lookup",
+                        timestamp=datetime.now(),
+                        metadata={"uei": uei, "api_success": True}
+                    )
+        except Exception as e:
+            logger.warning(f"API lookup by UEI failed for {uei}: {e}")
+            if award_id:
+                from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
+                store = FreshnessStore()
+                update_freshness_ledger(
+                    store=store,
+                    award_id=award_id,
+                    source="usaspending",
+                    success=False,
+                    error_message=str(e),
+                )
+        
+        return None
+
+    async def _enrich_from_api_duns(self, duns: str, award_id: str | None = None) -> NAICSEnrichmentResult | None:
+        """Enrich NAICS using USAspending API by DUNS.
+        
+        Args:
+            duns: DUNS number
+            award_id: Optional award ID for freshness tracking
+            
+        Returns:
+            NAICS enrichment result or None
+        """
+        if not self.api_client:
+            return None
+        
+        # Check cache first
+        cache_key = f"duns:{duns}"
+        if cache_key in self._api_cache:
+            cached = self._api_cache[cache_key]
+            naics_code = self.normalize_naics_code(cached.get("naics_code"))
+            if naics_code:
+                return NAICSEnrichmentResult(
+                    naics_code=naics_code,
+                    confidence=0.85,
+                    source="usaspending_api_duns",
+                    method="api_duns_lookup",
+                    timestamp=datetime.now(),
+                    metadata={"duns": duns, "cached": True}
+                )
+        
+        try:
+            # Call API
+            recipient = await self.api_client.get_recipient_by_duns(duns)
+            
+            if recipient:
+                naics_code = None
+                
+                # Extract NAICS from various possible fields
+                for field in ["naics_code", "recipient_naics", "primary_naics"]:
+                    if field in recipient and recipient[field]:
+                        naics_code = self.normalize_naics_code(str(recipient[field]))
+                        if naics_code:
+                            break
+                
+                if naics_code:
+                    # Cache the response
+                    self._api_cache[cache_key] = {
+                        "naics_code": naics_code,
+                        "recipient": recipient,
+                    }
+                    
+                    return NAICSEnrichmentResult(
+                        naics_code=naics_code,
+                        confidence=0.85,
+                        source="usaspending_api_duns",
+                        method="api_duns_lookup",
+                        timestamp=datetime.now(),
+                        metadata={"duns": duns, "api_success": True}
+                    )
+        except Exception as e:
+            logger.warning(f"API lookup by DUNS failed for {duns}: {e}")
+        
+        return None
+
+    def enrich_from_usaspending(self, award_row: pd.Series, usaspending_df: pd.DataFrame | None = None) -> NAICSEnrichmentResult | None:
         """Enrich NAICS from USAspending data.
         
         Args:
