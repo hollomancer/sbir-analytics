@@ -12,7 +12,7 @@ Use `.kiro/specs/` for all development work:
 
 <!-- SPECIFICATION SYSTEM:END -->
 
-## Project: SBIR ETL Pipeline
+## Project: SBIR Analytics
 
 Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
 

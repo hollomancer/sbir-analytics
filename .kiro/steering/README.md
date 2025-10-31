@@ -1,6 +1,6 @@
 # Steering Documents Guide
 
-This directory contains agent steering documents that provide architectural guidance, patterns, and standards for the SBIR ETL Pipeline project.
+This directory contains agent steering documents that provide architectural guidance, patterns, and standards for the SBIR analytics project.
 
 ## Document Overview
 
@@ -102,9 +102,3 @@ quick-reference.md (Quick Lookup)
 2. Keep cross-references updated
 3. Update this README if document purposes change
 4. Ensure `quick-reference.md` stays current
-
-## Historical Context
-
-These steering documents were created during the migration from OpenSpec to Kiro specifications. They preserve essential architectural patterns and technical guidance from the original OpenSpec specifications while organizing them for better agent guidance and developer reference.
-
-For historical OpenSpec content, see `archive/openspec/` (read-only reference only).

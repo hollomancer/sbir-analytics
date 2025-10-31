@@ -1,6 +1,6 @@
 # Product Overview
 
-## SBIR ETL Pipeline
+## SBIR analytics
 
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into a Neo4j graph database for analysis and visualization.
 

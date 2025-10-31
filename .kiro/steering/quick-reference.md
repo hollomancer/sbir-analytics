@@ -1,6 +1,6 @@
 # Quick Reference
 
-Fast lookup for common patterns, configurations, and code snippets used in the SBIR ETL Pipeline.
+Fast lookup for common patterns, configurations, and code snippets used in the SBIR analytics repository.
 
 Note: Values shown here are illustrative. The single source of truth for configuration and defaults is `configuration-patterns.md` and `config/base.yaml`.
 

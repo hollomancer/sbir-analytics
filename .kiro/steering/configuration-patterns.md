@@ -1,6 +1,6 @@
 # Configuration Patterns
 
-This document centralizes all configuration examples and patterns used throughout the SBIR ETL Pipeline project.
+This document centralizes all configuration examples and patterns used throughout the SBIR analytics project.
 
 ## Configuration Architecture
 
