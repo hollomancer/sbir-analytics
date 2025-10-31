@@ -134,6 +134,10 @@ dmypy.json
 
 # Data files
 data/
+!data/reference/*.csv
+!data/reference/*.xlsx
+!data/reference/*.xls
+!data/reference/*.txt
 logs/
 *.db
 *.duckdb
