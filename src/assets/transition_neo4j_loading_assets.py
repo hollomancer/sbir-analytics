@@ -156,10 +156,10 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
 
 
 @asset(
-    name="neo4j_transitions",
+    name="loaded_transitions",
     description="Load transition detections as Transition nodes in Neo4j (Task 13.3-13.5)",
 )
-def neo4j_transitions(
+def loaded_transitions(
     context,
     transition_detections: pd.DataFrame,
 ) -> Output[Dict[str, Any]]:
@@ -240,7 +240,7 @@ def neo4j_transitions(
 
 
 @asset_check(
-    asset="neo4j_transitions",
+    asset="loaded_transitions",
     description="Verify transition node load success rate (Task 13.6)",
 )
 def transition_node_count_check(
@@ -314,10 +314,10 @@ def transition_node_count_check(
 
 
 @asset(
-    name="neo4j_transition_relationships",
+    name="loaded_transition_relationships",
     description="Create transition relationships in Neo4j (Task 14.1-14.7, 14.8)",
 )
-def neo4j_transition_relationships(
+def loaded_transition_relationships(
     context,
     neo4j_transitions: Dict[str, Any],
     transition_detections: pd.DataFrame,
@@ -399,7 +399,7 @@ def neo4j_transition_relationships(
 
 
 @asset_check(
-    asset="neo4j_transition_relationships",
+    asset="loaded_transition_relationships",
     description="Verify transition relationships were created (Task 14.8)",
 )
 def transition_relationships_check(
@@ -488,10 +488,10 @@ def transition_relationships_check(
 
 
 @asset(
-    name="neo4j_transition_profiles",
+    name="loaded_transition_profiles",
     description="Create company transition profile nodes in Neo4j (Task 15)",
 )
-def neo4j_transition_profiles(
+def loaded_transition_profiles(
     context,
     neo4j_transition_relationships: Dict[str, Any],
     transition_detections: pd.DataFrame,

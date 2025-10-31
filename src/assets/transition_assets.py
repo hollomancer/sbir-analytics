@@ -165,15 +165,15 @@ def _env_bool(key: str, default: bool) -> bool:
 
 
 @asset(
-    name="contracts_ingestion",
-    group_name="transition",
+    name="raw_contracts",
+    group_name="transformation",
     compute_kind="python",
     description=(
         "Extract SBIR-relevant USAspending transactions from removable storage and persist "
         "them to Parquet for downstream transition detection."
     ),
 )
-def contracts_ingestion(context) -> Output[pd.DataFrame]:
+def raw_contracts(context) -> Output[pd.DataFrame]:
     output_path = Path(
         os.getenv(
             "SBIR_ETL__TRANSITION__CONTRACTS__OUTPUT_PATH",
@@ -302,8 +302,8 @@ def contracts_ingestion(context) -> Output[pd.DataFrame]:
 
 
 @asset(
-    name="contracts_sample",
-    group_name="transition",
+    name="validated_contracts_sample",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Load or create a sample of federal contracts for transition detection. "
@@ -311,7 +311,7 @@ def contracts_ingestion(context) -> Output[pd.DataFrame]:
         "Writes checks JSON with coverage metrics."
     ),
 )
-def contracts_sample(context) -> Output[pd.DataFrame]:
+def validated_contracts_sample(context) -> Output[pd.DataFrame]:
     contracts_parquet = Path(
         os.getenv(
             "SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH",
@@ -436,15 +436,15 @@ def contracts_sample(context) -> Output[pd.DataFrame]:
 
 
 @asset(
-    name="vendor_resolution",
-    group_name="transition",
+    name="enriched_vendor_resolution",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Resolve contract vendors to SBIR recipients using UEI/DUNS exact matching and fuzzy name fallback. "
         "Outputs a mapping table and a checks JSON."
     ),
 )
-def vendor_resolution(
+def enriched_vendor_resolution(
     context,
     contracts_sample: pd.DataFrame,
     enriched_sbir_awards: pd.DataFrame,
@@ -540,15 +540,15 @@ def vendor_resolution(
 
 
 @asset(
-    name="transition_scores_v1",
-    group_name="transition",
+    name="transformed_transition_scores",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Compute initial award↔contract transition candidates with a simple rule-based score. "
         "Combines vendor_resolution with award lookups; caps candidates per award."
     ),
 )
-def transition_scores_v1(
+def transformed_transition_scores(
     context,
     vendor_resolution: pd.DataFrame,
     contracts_sample: pd.DataFrame,
@@ -775,15 +775,15 @@ def transition_scores_v1(
 
 
 @asset(
-    name="transition_evidence_v1",
-    group_name="transition",
+    name="transformed_transition_evidence",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Emit structured evidence for each transition candidate. "
         "Writes NDJSON under data/processed/transitions_evidence.ndjson."
     ),
 )
-def transition_evidence_v1(
+def transformed_transition_evidence(
     context,
     transition_scores_v1: pd.DataFrame,
     contracts_sample: pd.DataFrame,
@@ -901,7 +901,7 @@ def transition_evidence_v1(
                     and (any_id_cov >= id_min)
                     and (size_ok if enforce_size else True)
                 )
-                summary["gates"]["contracts_sample"] = {
+                summary["gates"]["validated_contracts_sample"] = {
                     "passed": passed,
                     "action_date_coverage": date_cov,
                     "any_identifier_coverage": any_id_cov,
@@ -928,7 +928,7 @@ def transition_evidence_v1(
                     vr = json.load(fh)
                 res_rate = float(vr.get("stats", {}).get("resolution_rate", 0.0))
                 min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
-                summary["gates"]["vendor_resolution"] = {
+                summary["gates"]["enriched_vendor_resolution"] = {
                     "passed": res_rate >= min_rate,
                     "resolution_rate": res_rate,
                     "threshold": min_rate,
@@ -980,15 +980,15 @@ def transition_evidence_v1(
 
 
 @asset(
-    name="transition_detections",
-    group_name="transition",
+    name="transformed_transition_detections",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Consolidated transition detections derived from transition_scores_v1. "
         "Writes parquet and logs basic metrics."
     ),
 )
-def transition_detections(
+def transformed_transition_detections(
     context,
     transition_scores_v1: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
@@ -1043,15 +1043,15 @@ def transition_detections(
 
 
 @asset(
-    name="transition_analytics",
-    group_name="transition",
+    name="transformed_transition_analytics",
+    group_name="transformation",
     compute_kind="pandas",
     description=(
         "Compute dual-perspective transition analytics (award/company rates, phase, agency) "
         "and emit a checks JSON for gating."
     ),
 )
-def transition_analytics(
+def transformed_transition_analytics(
     context,
     enriched_sbir_awards: pd.DataFrame,
     transition_scores_v1: pd.DataFrame,
@@ -1142,7 +1142,7 @@ except Exception:  # pragma: no cover
 
 
 @asset_check(
-    asset="contracts_sample",
+    asset="validated_contracts_sample",
     description="Contracts sample thresholds: action_date ≥ 0.90, any identifier ≥ 0.60, sample size within configured range",
 )
 def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheckResult:
@@ -1201,7 +1201,7 @@ def contracts_sample_quality_check(contracts_sample: pd.DataFrame) -> AssetCheck
 
 
 @asset_check(
-    asset="vendor_resolution",
+    asset="enriched_vendor_resolution",
     description="Vendor resolution rate meets minimum threshold (default 60%)",
 )
 def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetCheckResult:
@@ -1230,7 +1230,7 @@ def vendor_resolution_quality_check(vendor_resolution: pd.DataFrame) -> AssetChe
 
 
 @asset_check(
-    asset="transition_scores_v1",
+    asset="transformed_transition_scores",
     description="Transition scores quality: schema fields, score bounds [0,1], and non-empty signals",
 )
 def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> AssetCheckResult:
@@ -1283,7 +1283,7 @@ def transition_scores_quality_check(transition_scores_v1: pd.DataFrame) -> Asset
 
 
 @asset_check(
-    asset="transition_analytics",
+    asset="transformed_transition_analytics",
     description="Sanity checks for transition analytics: positive denominators and 0≤rates≤1 (optional min-rate thresholds via env).",
 )
 def transition_analytics_quality_check(context) -> AssetCheckResult:
@@ -1381,7 +1381,7 @@ def transition_analytics_quality_check(context) -> AssetCheckResult:
 
 
 @asset_check(
-    asset="transition_evidence_v1",
+    asset="transformed_transition_evidence",
     description="Evidence completeness for candidates with score ≥ configured threshold",
 )
 def transition_evidence_quality_check(context) -> AssetCheckResult:
@@ -1440,7 +1440,7 @@ def transition_evidence_quality_check(context) -> AssetCheckResult:
 
 
 @asset_check(
-    asset="transition_detections",
+    asset="transformed_transition_detections",
     description=(
         "Transition detections quality: required columns present, score bounds [0,1], "
         "and minimum valid/high-confidence rates."

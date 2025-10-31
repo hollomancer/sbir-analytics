@@ -18,10 +18,10 @@ from ..extractors.usaspending import DuckDBUSAspendingExtractor
 
 @asset(
     description="USAspending recipient lookup table loaded into DuckDB",
-    group_name="usaspending_ingestion",
+    group_name="extraction",
     compute_kind="duckdb",
 )
-def usaspending_recipient_lookup(context: AssetExecutionContext) -> Output[pd.DataFrame]:
+def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     """
     Load USAspending recipient_lookup table from COPY dump.
 
@@ -46,7 +46,7 @@ def usaspending_recipient_lookup(context: AssetExecutionContext) -> Output[pd.Da
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
 
     # Import dump
-    table_name = "usaspending_recipient_lookup"
+    table_name = "raw_usaspending_recipients"
     success = extractor.import_postgres_dump(dump_path, table_name)
 
     if not success:
@@ -83,10 +83,10 @@ def usaspending_recipient_lookup(context: AssetExecutionContext) -> Output[pd.Da
 
 @asset(
     description="USAspending transaction normalized table loaded into DuckDB",
-    group_name="usaspending_ingestion",
+    group_name="extraction",
     compute_kind="duckdb",
 )
-def usaspending_transaction_normalized(context: AssetExecutionContext) -> Output[pd.DataFrame]:
+def raw_usaspending_transactions(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     """
     Load USAspending transaction_normalized table from COPY dump.
 
@@ -111,7 +111,7 @@ def usaspending_transaction_normalized(context: AssetExecutionContext) -> Output
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
 
     # Import dump
-    table_name = "usaspending_transaction_normalized"
+    table_name = "raw_usaspending_transactions"
     success = extractor.import_postgres_dump(dump_path, table_name)
 
     if not success:
@@ -148,7 +148,7 @@ def usaspending_transaction_normalized(context: AssetExecutionContext) -> Output
 
 @asset(
     description="USAspending dump profiling report",
-    group_name="usaspending_ingestion",
+    group_name="extraction",
     compute_kind="profiling",
 )
 def usaspending_profile_report(context: AssetExecutionContext) -> Output[dict[str, Any]]:

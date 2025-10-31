@@ -7,7 +7,7 @@ Based on analysis of the current codebase, the following tasks represent the hig
 - [x] **P1: Consolidate USPTO asset files** (Task 2.1) - Multiple USPTO-related asset files can be merged
 - [x] **P2: Consolidate Pydantic data models** (Task 3.1) - Award and SbirAward models have significant overlap
 - [x] **P3: Consolidate Docker Compose configurations** (Task 4.1) - Multiple compose files with duplicate configurations
-- [ ] **P4: Standardize asset naming conventions** (Task 2.4) - Inconsistent naming patterns across asset files
+- [x] **P4: Standardize asset naming conventions** (Task 2.4) - Inconsistent naming patterns across asset files
 
 ## 1. Foundation Infrastructure Setup (COMPLETED)
 

@@ -50,7 +50,7 @@ except Exception:  # pragma: no cover
 
 
 @asset_check(
-    asset="cet_taxonomy",
+    asset="raw_cet_taxonomy",
     description="CET taxonomy completeness and schema validity based on companion checks JSON",
 )
 def cet_taxonomy_completeness_check(context) -> AssetCheckResult:
@@ -97,7 +97,7 @@ def cet_taxonomy_completeness_check(context) -> AssetCheckResult:
 
 
 @asset_check(
-    asset="cet_award_classifications",
+    asset="enriched_cet_award_classifications",
     description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
 )
 def cet_award_classifications_quality_check(context) -> AssetCheckResult:
@@ -183,7 +183,7 @@ def cet_award_classifications_quality_check(context) -> AssetCheckResult:
 
 
 @asset_check(
-    asset="cet_company_profiles",
+    asset="transformed_cet_company_profiles",
     description="Company CET profiles successfully generated (basic sanity from checks JSON)",
 )
 def cet_company_profiles_check(context) -> AssetCheckResult:
@@ -371,7 +371,7 @@ def save_dataframe_parquet(df: pd.DataFrame, dest: Path, index: bool = False) ->
 
 
 @asset(
-    name="cet_taxonomy",
+    name="raw_cet_taxonomy",
     key_prefix=["ml"],
     description=(
         "Load CET taxonomy from `config/cet/taxonomy.yaml`, validate via Pydantic, "
@@ -379,7 +379,7 @@ def save_dataframe_parquet(df: pd.DataFrame, dest: Path, index: bool = False) ->
         "for automated asset checks."
     ),
 )
-def cet_taxonomy() -> Output:
+def raw_cet_taxonomy() -> Output:
     """
     Dagster asset that materializes the CET taxonomy as a Parquet file and writes
     lightweight completeness checks to a companion JSON file.
@@ -451,7 +451,7 @@ def cet_taxonomy() -> Output:
 
 
 @asset(
-    name="cet_award_classifications",
+    name="enriched_cet_award_classifications",
     key_prefix=["ml"],
     description=(
         "Batch classify SBIR awards with the trained CET classifier, extract evidence "
@@ -459,7 +459,7 @@ def cet_taxonomy() -> Output:
         "and emit a companion checks JSON for automated validation."
     ),
 )
-def cet_award_classifications() -> Output:
+def enriched_cet_award_classifications() -> Output:
     """
     Dagster asset to perform batch CET classification over enriched award records.
 
@@ -815,14 +815,14 @@ def cet_award_classifications() -> Output:
 
 
 @asset(
-    name="cet_patent_classifications",
+    name="enriched_cet_patent_classifications",
     key_prefix=["ml"],
     description=(
         "Batch classify patents with a trained Patent CET classifier, persist results to "
         "`data/processed/cet_patent_classifications.parquet` and emit a companion checks JSON."
     ),
 )
-def cet_patent_classifications() -> Output:
+def enriched_cet_patent_classifications() -> Output:
     """
     Dagster asset to perform batch CET classification over patent title records.
 
@@ -1499,11 +1499,11 @@ def cet_award_training_dataset() -> Output:
 
 
 @asset(
-    name="cet_analytics",
+    name="transformed_cet_analytics",
     key_prefix=["ml"],
     description="Compute CET analytics (coverage and specialization) and emit alerts.",
 )
-def cet_analytics() -> Output:
+def transformed_cet_analytics() -> Output:
     """
     Compute portfolio-level CET analytics:
       - Award coverage rate: fraction of awards with a primary CET
@@ -1611,7 +1611,7 @@ def cet_analytics() -> Output:
     # Alerts
     alerts = {}
     if AlertCollector is not None:
-        collector = AlertCollector(asset_name="cet_analytics")
+        collector = AlertCollector(asset_name="transformed_cet_analytics")
         # Check coverage_rate against configured match rate threshold
         collector.check_match_rate(coverage_rate, metric_name="cet_award_coverage_rate")
         alerts = collector.to_dict()
@@ -1649,11 +1649,11 @@ def cet_analytics() -> Output:
 
 
 @asset(
-    name="cet_human_sampling",
+    name="raw_cet_human_sampling",
     key_prefix=["ml"],
     description="Generate a human-annotation sample from award classifications (balanced by CET where possible).",
 )
-def cet_human_sampling() -> Output:
+def raw_cet_human_sampling() -> Output:
     """
     Produce a small, human-readable sample for annotation.
 
@@ -1820,11 +1820,11 @@ def cet_human_sampling() -> Output:
 
 
 @asset(
-    name="cet_iaa_report",
+    name="validated_cet_iaa_report",
     key_prefix=["ml"],
     description="Compute inter-annotator agreement (IAA) for CET labels from human annotations.",
 )
-def cet_iaa_report() -> Output:
+def validated_cet_iaa_report() -> Output:
     """
     Compute inter-annotator agreement (Cohen's kappa and percent agreement) for CET labels.
 
@@ -1980,11 +1980,11 @@ def cet_iaa_report() -> Output:
 
 
 @asset(
-    name="cet_analytics_aggregates",
+    name="transformed_cet_analytics_aggregates",
     key_prefix=["ml"],
     description="Produce CET analytics dashboards (coverage by year and specialization distribution) and alert on regression vs baseline.",
 )
-def cet_analytics_aggregates() -> Output:
+def transformed_cet_analytics_aggregates() -> Output:
     """
     Create CET analytics dashboards and a regression alert vs a baseline:
       - Coverage by year from cet_award_classifications (derived from classified_at year)
@@ -2162,7 +2162,7 @@ def cet_analytics_aggregates() -> Output:
     # Regression alert vs baseline
     alerts = {}
     if AlertCollector is not None:
-        collector = AlertCollector(asset_name="cet_analytics_aggregates")
+        collector = AlertCollector(asset_name="transformed_cet_analytics_aggregates")
         baseline_min = None
         try:
             if baseline_path.exists():
@@ -2213,7 +2213,7 @@ def cet_analytics_aggregates() -> Output:
 
 
 @asset(
-    name="cet_drift_detection",
+    name="validated_cet_drift_detection",
     key_prefix=["ml"],
     description=(
         "Detect distributional drift for CET classifications and model scores by "
@@ -2221,7 +2221,7 @@ def cet_analytics_aggregates() -> Output:
         "writes a small report to `reports/alerts` and `reports/benchmarks`."
     ),
 )
-def cet_drift_detection() -> Output:
+def validated_cet_drift_detection() -> Output:
     """
     Model drift detection asset for CET classification outputs.
 
@@ -2534,7 +2534,7 @@ def cet_drift_detection() -> Output:
     # Optionally log alerts via AlertCollector if available (best-effort)
     if AlertCollector is not None and Alert is not None and AlertSeverity is not None:
         try:
-            collector = AlertCollector(asset_name="cet_drift_detection")
+            collector = AlertCollector(asset_name="validated_cet_drift_detection")
             for a in alerts_payload.get("alerts", []):
                 sev = AlertSeverity.WARNING if a["severity"] == "WARNING" else AlertSeverity.FAILURE
                 alert = Alert(
@@ -2563,7 +2563,7 @@ def cet_drift_detection() -> Output:
 
 
 @asset(
-    name="cet_company_profiles",
+    name="transformed_cet_company_profiles",
     key_prefix=["ml"],
     description=(
         "Aggregate award-level CET classifications into company-level CET profiles, "
@@ -2571,7 +2571,7 @@ def cet_drift_detection() -> Output:
         "fallback) and emit a companion checks JSON for automated validation."
     ),
 )
-def cet_company_profiles() -> Output:
+def transformed_cet_company_profiles() -> Output:
     """
     Dagster asset to perform company-level aggregation of CET classifications.
 

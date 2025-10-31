@@ -51,13 +51,13 @@ DEFAULT_DUCKDB_TABLE = os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB_TABLE", "uspto
 
 
 @asset(
-    name="uspto_ai_ingest",
+    name="raw_uspto_ai_predictions",
     description=(
         "Ingest the USPTO AI NDJSON predictions into a local SQLite cache. "
         "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
     ),
 )
-def uspto_ai_ingest(context: AssetExecutionContext) -> Dict[str, object]:
+def raw_uspto_ai_predictions(context: AssetExecutionContext) -> Dict[str, object]:
     """
     Dagster asset that ingests the raw USPTO AI NDJSON into the SQLite cache.
 
@@ -262,10 +262,10 @@ def uspto_ai_ingest(context: AssetExecutionContext) -> Dict[str, object]:
 
 
 @asset(
-    name="uspto_ai_cache_stats",
+    name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI local cache (count).",
 )
-def uspto_ai_cache_stats(context: AssetExecutionContext) -> Dict[str, Optional[int]]:
+def validated_uspto_ai_cache_stats(context: AssetExecutionContext) -> Dict[str, Optional[int]]:
     """
     Inspect the SQLite cache and return a small dict with the number of cached predictions.
 
@@ -308,13 +308,13 @@ def uspto_ai_cache_stats(context: AssetExecutionContext) -> Dict[str, Optional[i
 
 
 @asset(
-    name="uspto_ai_human_sample",
+    name="raw_uspto_ai_human_sample",
     description=(
         "Produce a sampled NDJSON of USPTO AI predictions intended for human evaluation. "
         "Writes the sample to `data/processed/uspto_ai_human_sample.ndjson` (or path configured via op_config)."
     ),
 )
-def uspto_ai_human_sample(context: AssetExecutionContext) -> str:
+def raw_uspto_ai_human_sample(context: AssetExecutionContext) -> str:
     """
     Produce a human evaluation sample.
 
@@ -441,13 +441,13 @@ def uspto_ai_human_sample(context: AssetExecutionContext) -> str:
 
 
 @asset(
-    name="uspto_ai_patent_join",
+    name="enriched_uspto_ai_patent_join",
     description=(
         "Join USPTO AI predictions (cached) to transformed patent records for validation "
         "and produce a summary checks JSON and an NDJSON of matches."
     ),
 )
-def uspto_ai_patent_join(context: AssetExecutionContext) -> Dict[str, object]:
+def enriched_uspto_ai_patent_join(context: AssetExecutionContext) -> Dict[str, object]:
     """
     Asset that links cached USPTO AI predictions to transformed patents for downstream
     validation and agreement analysis.

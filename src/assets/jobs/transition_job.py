@@ -6,10 +6,10 @@ from dagster import AssetSelection, define_asset_job
 transition_mvp_job = define_asset_job(
     name="transition_mvp_job",
     selection=AssetSelection.keys(
-        "contracts_sample",
-        "vendor_resolution", 
-        "transition_scores_v1",
-        "transition_evidence_v1"
+        "validated_contracts_sample",
+        "enriched_vendor_resolution", 
+        "transformed_transition_scores",
+        "transformed_transition_evidence"
     ),
     description="Transition detection MVP chain: contracts → vendor resolution → scoring → evidence",
 )
@@ -17,7 +17,7 @@ transition_mvp_job = define_asset_job(
 # Define full transition pipeline job (includes analytics and Neo4j loading)
 transition_full_job = define_asset_job(
     name="transition_full_job", 
-    selection=AssetSelection.groups("transition"),
+    selection=AssetSelection.groups("transformation"),
     description="Complete transition detection pipeline with analytics and Neo4j loading",
 )
 
@@ -25,8 +25,8 @@ transition_full_job = define_asset_job(
 transition_analytics_job = define_asset_job(
     name="transition_analytics_job",
     selection=AssetSelection.keys(
-        "transition_detections",
-        "transition_analytics"
+        "transformed_transition_detections",
+        "transformed_transition_analytics"
     ),
     description="Transition analytics: detections → dual-perspective analytics",
 )

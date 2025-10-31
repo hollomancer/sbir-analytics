@@ -254,7 +254,7 @@ def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 100
 # -------------------------
 @asset(
     description="Discover raw USPTO assignment files",
-    group_name="uspto",
+    group_name="extraction",
 )
 def raw_uspto_assignments(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
@@ -266,7 +266,7 @@ def raw_uspto_assignments(context: AssetExecutionContext) -> list[str]:
 
 @asset(
     description="Discover raw USPTO assignee files",
-    group_name="uspto",
+    group_name="extraction",
 )
 def raw_uspto_assignees(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
@@ -278,7 +278,7 @@ def raw_uspto_assignees(context: AssetExecutionContext) -> list[str]:
 
 @asset(
     description="Discover raw USPTO assignor files",
-    group_name="uspto",
+    group_name="extraction",
 )
 def raw_uspto_assignors(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
@@ -290,7 +290,7 @@ def raw_uspto_assignors(context: AssetExecutionContext) -> list[str]:
 
 @asset(
     description="Discover raw USPTO documentid files",
-    group_name="uspto",
+    group_name="extraction",
 )
 def raw_uspto_documentids(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
@@ -302,7 +302,7 @@ def raw_uspto_documentids(context: AssetExecutionContext) -> list[str]:
 
 @asset(
     description="Discover raw USPTO conveyance files",
-    group_name="uspto",
+    group_name="extraction",
 )
 def raw_uspto_conveyances(context: AssetExecutionContext) -> list[str]:
     input_dir = _get_input_dir(context)
@@ -317,7 +317,7 @@ def raw_uspto_conveyances(context: AssetExecutionContext) -> list[str]:
 # -------------------------
 @asset(
     description="Attempt to parse a small sample of each discovered assignment file",
-    group_name="uspto",
+    group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignments")},
 )
 def parsed_uspto_assignments(
@@ -344,10 +344,10 @@ def parsed_uspto_assignments(
 
 @asset(
     description="Attempt to parse a small sample of each discovered assignee file",
-    group_name="uspto",
+    group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )
-def parsed_uspto_assignees(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignees(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignee files to parse")
@@ -366,10 +366,10 @@ def parsed_uspto_assignees(context: AssetExecutionContext, raw_files: list[str])
 
 @asset(
     description="Attempt to parse a small sample of each discovered assignor file",
-    group_name="uspto",
+    group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )
-def parsed_uspto_assignors(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignors(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignor files to parse")
@@ -388,7 +388,7 @@ def parsed_uspto_assignors(context: AssetExecutionContext, raw_files: list[str])
 
 @asset(
     description="Attempt to parse a small sample of each discovered documentid file",
-    group_name="uspto",
+    group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_documentids")},
 )
 def parsed_uspto_documentids(
@@ -412,7 +412,7 @@ def parsed_uspto_documentids(
 
 @asset(
     description="Attempt to parse a small sample of each discovered conveyance file",
-    group_name="uspto",
+    group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_conveyances")},
 )
 def parsed_uspto_conveyances(
@@ -508,13 +508,13 @@ uspto_assignees_parsing_check = asset_check(
     asset=parsed_uspto_assignees,
     description="Verify each discovered assignee file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignees")},
-)(_make_parsing_check("raw_uspto_assignees", "parsed_uspto_assignees"))
+)(_make_parsing_check("raw_uspto_assignees", "validated_uspto_assignees"))
 
 uspto_assignors_parsing_check = asset_check(
     asset=parsed_uspto_assignors,
     description="Verify each discovered assignor file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignors")},
-)(_make_parsing_check("raw_uspto_assignors", "parsed_uspto_assignors"))
+)(_make_parsing_check("raw_uspto_assignors", "validated_uspto_assignors"))
 
 uspto_documentids_parsing_check = asset_check(
     asset=parsed_uspto_documentids,
@@ -557,7 +557,7 @@ def _extract_table_results(report: Dict[str, Any], table: str) -> Dict[str, Dict
 
 @asset(
     description="Validate USPTO assignment-related tables for data quality and integrity",
-    group_name="uspto",
+    group_name="extraction",
     ins={
         "assignment_files": AssetIn("raw_uspto_assignments"),
         "assignee_files": AssetIn("raw_uspto_assignees"),
@@ -1034,7 +1034,7 @@ def _load_assignments_file(path: str | None) -> Iterable[Dict[str, Any]]:
 
 @asset(
     description="Transform USPTO assignments into normalized PatentAssignment models",
-    group_name="uspto",
+    group_name="extraction",
     ins={
         "assignment_files": AssetIn("raw_uspto_assignments"),
         "assignee_files": AssetIn("raw_uspto_assignees"),
@@ -1141,7 +1141,7 @@ def transformed_patent_assignments(
 
 @asset(
     description="Aggregate transformed assignments into patent-centric records",
-    group_name="uspto",
+    group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patents(
@@ -1213,7 +1213,7 @@ def transformed_patents(
 
 @asset(
     description="Derive patent entity dimension (assignees + assignors)",
-    group_name="uspto",
+    group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patent_entities(
@@ -1432,7 +1432,7 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> Dict[str, Any]:
         "create_constraints": bool,
     },
 )
-def neo4j_patents(context) -> Dict[str, Any]:
+def loaded_patents(context) -> Dict[str, Any]:
     """Phase 1 Step 2: Load Patent nodes into Neo4j.
 
     Reads transformed patent documents and creates Patent nodes with:
@@ -1533,7 +1533,7 @@ def neo4j_patents(context) -> Dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patent_assignments"],
 )
-def neo4j_patent_assignments(context) -> Dict[str, Any]:
+def loaded_patent_assignments(context) -> Dict[str, Any]:
     """Phase 1 Step 1: Load PatentAssignment nodes into Neo4j.
 
     Reads transformed patent assignments and creates PatentAssignment nodes with:
@@ -1627,9 +1627,9 @@ def neo4j_patent_assignments(context) -> Dict[str, Any]:
 @asset(
     description="Load PatentEntity nodes and create relationships in Neo4j",
     group_name="uspto_loading",
-    deps=["neo4j_patients", "neo4j_patent_assignments", "transformed_patent_entities"],
+    deps=["neo4j_patients", "loaded_patent_assignments", "transformed_patent_entities"],
 )
-def neo4j_patent_entities(context) -> Dict[str, Any]:
+def loaded_patent_entities(context) -> Dict[str, Any]:
     """Phase 2 & 3: Load PatentEntity nodes and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
@@ -1730,9 +1730,9 @@ def neo4j_patent_entities(context) -> Dict[str, Any]:
 @asset(
     description="Create all relationships between patent nodes in Neo4j",
     group_name="uspto_loading",
-    deps=["neo4j_patents", "neo4j_patent_assignments", "neo4j_patent_entities"],
+    deps=["loaded_patents", "loaded_patent_assignments", "loaded_patent_entities"],
 )
-def neo4j_patent_relationships(
+def loaded_patent_relationships(
     context,
     neo4j_patents: Dict[str, Any],
     neo4j_patent_assignments: Dict[str, Any],
@@ -1983,10 +1983,10 @@ def patent_relationship_cardinality(
 
 
 __all__ = [
-    "neo4j_patents",
-    "neo4j_patent_assignments",
-    "neo4j_patent_entities",
-    "neo4j_patent_relationships",
+    "loaded_patents",
+    "loaded_patent_assignments",
+    "loaded_patent_entities",
+    "loaded_patent_relationships",
     "patent_load_success_rate",
     "assignment_load_success_rate",
     "patent_relationship_cardinality",
@@ -2027,13 +2027,13 @@ def _batch_to_dataframe(batch: List[Dict]):
 
 
 @asset(
-    name="uspto_ai_extract_to_duckdb",
+    name="raw_uspto_ai_extract",
     description=(
         "Stream-extract USPTO AI predictions from raw files into a DuckDB canonical table. "
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def uspto_ai_extract_to_duckdb(context) -> Dict[str, object]:
+def raw_uspto_ai_extract(context) -> Dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -2230,7 +2230,7 @@ def uspto_ai_extract_to_duckdb(context) -> Dict[str, object]:
         "Produce a deduplicated table of USPTO AI predictions keyed by grant_doc_num. "
         "Keeps the most recent extracted_at or highest row_index."
     ),
-    ins={"uspto_ai_extract_to_duckdb": AssetIn()},
+    ins={"raw_uspto_ai_extract": AssetIn()},
 )
 def uspto_ai_deduplicate(
     context, uspto_ai_extract_to_duckdb
@@ -2326,13 +2326,13 @@ def uspto_ai_deduplicate(
 
 
 @asset(
-    name="uspto_ai_human_sample_extraction",
+    name="raw_uspto_ai_human_sample_extraction",
     description=(
         "Sample predictions from the (deduplicated) DuckDB table and write NDJSON for human evaluation."
     ),
     ins={"uspto_ai_deduplicate": AssetIn()},
 )
-def uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
+def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     """
     Implements Task 11.3 (human sampling) using DuckDB ORDER BY RANDOM() LIMIT N.
 
@@ -2374,8 +2374,8 @@ __all__ = [
     "raw_uspto_documentids",
     "raw_uspto_conveyances",
     "parsed_uspto_assignments",
-    "parsed_uspto_assignees",
-    "parsed_uspto_assignors",
+    "validated_uspto_assignees",
+    "validated_uspto_assignors",
     "parsed_uspto_documentids",
     "parsed_uspto_conveyances",
     "uspto_assignments_parsing_check",
@@ -2395,15 +2395,15 @@ __all__ = [
     "uspto_transformation_success_check",
     "uspto_company_linkage_check",
     # Stage 4: Neo4j Loading
-    "neo4j_patents",
-    "neo4j_patent_assignments",
-    "neo4j_patent_entities",
-    "neo4j_patent_relationships",
+    "loaded_patents",
+    "loaded_patent_assignments",
+    "loaded_patent_entities",
+    "loaded_patent_relationships",
     "patent_load_success_rate",
     "assignment_load_success_rate",
     "patent_relationship_cardinality",
     # Stage 5: AI Extraction
-    "uspto_ai_extract_to_duckdb",
+    "raw_uspto_ai_extract",
     "uspto_ai_deduplicate",
-    "uspto_ai_human_sample_extraction",
+    "raw_uspto_ai_human_sample_extraction",
 ]

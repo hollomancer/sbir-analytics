@@ -25,7 +25,7 @@ from ..validators.sbir_awards import validate_sbir_awards
 
 @asset(
     description="Raw SBIR awards extracted from CSV via DuckDB",
-    group_name="sbir_ingestion",
+    group_name="extraction",
     compute_kind="duckdb",
 )
 def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
@@ -163,7 +163,7 @@ def enrichment_completeness_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 
 @asset(
     description="Validated SBIR awards (passed quality checks)",
-    group_name="sbir_ingestion",
+    group_name="extraction",
     compute_kind="pandas",
 )
 def validated_sbir_awards(
@@ -227,7 +227,7 @@ def validated_sbir_awards(
 
 @asset(
     description="SBIR data quality validation report",
-    group_name="sbir_ingestion",
+    group_name="extraction",
     compute_kind="validation",
 )
 def sbir_validation_report(
