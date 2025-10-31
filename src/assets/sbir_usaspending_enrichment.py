@@ -249,7 +249,45 @@ def _enrich_chunked(
             enable_progress_tracking=config.enrichment.performance.enable_progress_tracking,
         )
 
-        enriched_df, metrics = enricher.process_to_dataframe()
+        # Process chunks with progress logging to Dagster UI
+        enriched_chunks = []
+        all_metrics = []
+        for chunk_num, (enriched_chunk, chunk_metrics) in enumerate(enricher.process_all_chunks(), 1):
+            enriched_chunks.append(enriched_chunk)
+            all_metrics.append(chunk_metrics)
+            # Log progress to Dagster UI after each chunk
+            progress = enricher.progress
+            context.log.info(
+                f"Enrichment progress: {progress.percent_complete:.1f}% "
+                f"({progress.records_processed}/{progress.total_records} records, "
+                f"{progress.chunks_processed}/{progress.total_chunks} chunks, "
+                f"~{progress.estimated_remaining_seconds/60:.0f} min remaining)",
+                extra={
+                    "percent_complete": round(progress.percent_complete, 2),
+                    "records_processed": progress.records_processed,
+                    "total_records": progress.total_records,
+                    "chunks_processed": progress.chunks_processed,
+                    "total_chunks": progress.total_chunks,
+                    "estimated_remaining_minutes": round(progress.estimated_remaining_seconds / 60, 1),
+                },
+            )
+
+        # Combine chunks and aggregate metrics
+        enriched_df = pd.concat(enriched_chunks, ignore_index=True)
+        
+        # Aggregate final metrics
+        total_duration = sum(m.get("duration_seconds", 0) for m in all_metrics)
+        total_matched = sum(m.get("records_matched", 0) for m in all_metrics)
+        total_records = len(enriched_df)
+        overall_match_rate = total_matched / total_records if total_records > 0 else 0
+        
+        metrics = {
+            "total_records": total_records,
+            "total_chunks": len(all_metrics),
+            "overall_match_rate": overall_match_rate,
+            "total_duration_seconds": total_duration,
+            "chunks": all_metrics,
+        }
 
         context.log.info(
             f"Chunked enrichment complete: {metrics['total_records']} records, "

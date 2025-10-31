@@ -1,27 +1,35 @@
 # Implementation Plan
 
+**Phase 1: USAspending API only.** Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+.
+
 - [x] 1.1 Inventory every external enrichment API referenced in repo docs/config (SBIR.gov, USAspending, SAM.gov, NIH RePORTER, PatentsView, etc.) and document their release cadence + throttling limits.
   - Notes: Implemented `openspec/changes/add-iterative-api-enrichment/inventory.md` and populated `openspec/changes/add-iterative-api-enrichment/providers.json`. Added `scripts/openspec/fetch_provider_docs.py` to automatically fetch and annotate provider docs (rate-limit headers, auth hints, delta support). Ran the discovery locally and updated `providers.json` with initial findings; follow-up verification of exact quotas/auth details is noted in the inventory.
 
-- [ ] 1.2 Add an `enrichment_refresh` section to `config/base.yaml` (and dev/prod overrides) with per-source cadence, batch size, and concurrency knobs.
+- [x] 1.2 Add an `enrichment_refresh` section to `config/base.yaml` (and dev/prod overrides) with per-source cadence, batch size, and concurrency knobs.
+  - Notes: Added `enrichment_refresh.usaspending` section to `config/base.yaml` with USAspending-specific configuration. Phase 1 focus note included in config comments.
 
-- [ ] 1.3 Define SLA defaults (max staleness days per source) and expose them through `src/config/schemas.py` so they are validated at load time.
+- [x] 1.3 Define SLA defaults (max staleness days per source) and expose them through `src/config/schemas.py` so they are validated at load time.
+  - Notes: Created `EnrichmentSourceConfig` and `EnrichmentRefreshConfig` models in `src/config/schemas.py`. Added to `PipelineConfig` with Phase 1 note.
 
-- [ ] 2.1 Extend `src/models/enrichment.py` (or add a new module) with data classes for `EnrichmentFreshnessRecord` capturing `award_id`, `source`, `last_attempt_at`, `last_success_at`, `payload_hash`, and `status`.
+- [x] 2.1 Extend `src/models/enrichment.py` (or add a new module) with data classes for `EnrichmentFreshnessRecord` capturing `award_id`, `source`, `last_attempt_at`, `last_success_at`, `payload_hash`, and `status`.
+  - Notes: Created `src/models/enrichment.py` with `EnrichmentFreshnessRecord` dataclass, `EnrichmentFreshnessRecordModel` Pydantic model, `EnrichmentStatus` enum, and `EnrichmentDeltaEvent` for delta tracking.
 
 - [ ] 2.2 Update enrichment outputs to persist per-source freshness rows to DuckDB/Parquet (`data/derived/enrichment_freshness.parquet`) and to Neo4j properties.
 
 - [ ] 2.3 Add migration/utility to backfill freshness metadata for existing enriched awards after the first iterative run.
 
-- [ ] 3.1 Implement async clients for SBIR.gov, NIH RePORTER, and PatentsView plus upgrade the SAM.gov and USAspending clients to share a common base (httpx + tenacity backoff, structured logging, instrumentation).
+- [ ] 3.1 Implement USAspending API client with async requests (httpx + tenacity backoff, structured logging, instrumentation).
+  - Phase 1: USAspending only. Other API clients (SBIR.gov, SAM.gov, NIH RePORTER, PatentsView) will be implemented in Phase 2+.
 
-- [ ] 3.2 Capture source-specific delta identifiers (e.g., USAspending `modification_number`, SAM.gov `lastModifiedDate`, NIH `PROJECT_NUMBER`, PatentsView `patent_date`) and compute deterministic payload hashes for comparison.
+- [ ] 3.2 Capture USAspending delta identifiers (`modification_number`, `action_date`, `last_modified_date`) and compute deterministic payload hashes for comparison.
+  - Phase 1: USAspending only. Other sources will be handled in Phase 2+.
 
 - [ ] 3.3 Store per-source cursors/ETags in `data/state/enrichment_refresh_state.json` (or similar) and ensure the connectors honor If-Modified-Since / pagination tokens where available.
 
 - [ ] 3.4 Add contract/unit tests for each client covering rate-limit handling, retry, and delta skip behavior (mock responses, recorded fixtures).
 
-- [ ] 4.1 Create `src/assets/iterative_enrichment.py` defining Dagster assets/ops plus `iterative_enrichment_refresh_job` that partitions work by source + cohort.
+- [ ] 4.1 Create `src/assets/usaspending_iterative_enrichment.py` defining Dagster assets/ops plus `usaspending_iterative_enrichment_job` that partitions work by award cohort.
+  - Phase 1: USAspending only. Generic multi-source orchestrator will be created in Phase 2+.
 
 - [ ] 4.2 Add a Dagster sensor that triggers the job nightly once bulk enrichment assets are healthy and injects the proper partitions.
 
@@ -31,7 +39,8 @@
 
 - [ ] 5.1 Extend the pipeline metrics framework to emit per-source freshness coverage (% within SLA, attempts, success rate) and log to `artifacts/metrics`.
 
-- [ ] 5.2 Create integration tests that simulate at least one iterative cycle per source (using fixtures) to ensure freshness metadata, delta detection, and resume flows behave as expected.
+- [ ] 5.2 Create integration tests that simulate at least one USAspending iterative cycle (using fixtures) to ensure freshness metadata, delta detection, and resume flows behave as expected.
+  - Phase 1: USAspending only. Multi-source tests will be added in Phase 2+.
 
 - [ ] 5.3 Document the iterative workflow, credential requirements, and troubleshooting steps in `docs/enrichment/iterative-refresh.md` and update `README.md`/`CONTRIBUTING.md` references.
 

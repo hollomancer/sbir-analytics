@@ -131,6 +131,72 @@ class EnrichmentConfig(BaseModel):
     )
 
 
+class EnrichmentSourceConfig(BaseModel):
+    """Configuration for a single enrichment source's iterative refresh settings."""
+
+    cadence_days: int = Field(
+        default=1, ge=1, description="Number of days between refresh cycles"
+    )
+    sla_staleness_days: int = Field(
+        default=1, ge=1, description="Maximum age in days before considered stale"
+    )
+    batch_size: int = Field(
+        default=100, ge=1, le=1000, description="Number of records per batch"
+    )
+    max_concurrent_requests: int = Field(
+        default=5, ge=1, le=20, description="Maximum concurrent API requests"
+    )
+    rate_limit_per_minute: int = Field(
+        default=120, ge=1, description="API rate limit (requests per minute)"
+    )
+    enable_delta_detection: bool = Field(
+        default=True, description="Enable payload hash-based delta detection"
+    )
+    hash_algorithm: str = Field(
+        default="sha256", description="Hash algorithm for payload hashing"
+    )
+    retry_attempts: int = Field(default=3, ge=0, description="Number of retry attempts")
+    retry_backoff_seconds: float = Field(
+        default=2.0, ge=0.0, description="Initial retry backoff delay in seconds"
+    )
+    retry_backoff_multiplier: float = Field(
+        default=2.0, ge=1.0, description="Exponential backoff multiplier"
+    )
+    timeout_seconds: int = Field(
+        default=30, ge=1, description="Request timeout in seconds"
+    )
+    connection_timeout_seconds: int = Field(
+        default=10, ge=1, description="Connection timeout in seconds"
+    )
+    checkpoint_interval: int = Field(
+        default=50, ge=1, description="Save checkpoint every N records"
+    )
+    state_file: str = Field(
+        default="data/state/enrichment_refresh_state.json",
+        description="Path to state file",
+    )
+    enable_metrics: bool = Field(
+        default=True, description="Enable metrics collection"
+    )
+    metrics_file: str = Field(
+        default="reports/metrics/enrichment_freshness.json",
+        description="Path to metrics output file",
+    )
+
+
+class EnrichmentRefreshConfig(BaseModel):
+    """Configuration for iterative enrichment refresh across all sources.
+    
+    Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) 
+    will be evaluated in Phase 2+.
+    """
+
+    usaspending: EnrichmentSourceConfig = Field(
+        default_factory=EnrichmentSourceConfig,
+        description="USAspending API refresh configuration",
+    )
+
+
 class Neo4jConfig(BaseModel):
     """Configuration for Neo4j database connection."""
 
@@ -638,6 +704,10 @@ class PipelineConfig(BaseModel):
 
     data_quality: DataQualityConfig = Field(default_factory=DataQualityConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
+    enrichment_refresh: EnrichmentRefreshConfig = Field(
+        default_factory=EnrichmentRefreshConfig,
+        description="Iterative enrichment refresh configuration",
+    )
     neo4j: Neo4jConfig = Field(default_factory=Neo4jConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
