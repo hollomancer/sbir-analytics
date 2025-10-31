@@ -146,21 +146,24 @@
     - _Requirements: 1.5, 6.5_
     - Implementation: All fiscal assets use `performance_monitor.monitor_block()`, config in `config/base.yaml::fiscal_analysis.performance`
 
-- [ ]* 9. Create comprehensive test suite
-  - [ ]* 9.1 Write unit tests for core calculation logic
+- [x] 9. Create comprehensive test suite
+  - [x] 9.1 Write unit tests for core calculation logic
     - Test NAICS enrichment and BEA sector mapping functions
     - Test inflation adjustment and economic shock aggregation
     - Test tax calculation and ROI computation methods
     - _Requirements: All requirements validation_
+    - Implementation: `tests/unit/transformers/test_fiscal_*.py` (5 test files covering all transformers)
 
-  - [ ]* 9.2 Write integration tests for asset pipeline
+  - [x] 9.2 Write integration tests for asset pipeline
     - Test end-to-end pipeline execution with synthetic data
     - Test asset dependency resolution and quality gate enforcement
     - Test performance within configured thresholds
     - _Requirements: Pipeline integration validation_
+    - Implementation: `tests/integration/test_fiscal_assets_integration.py`, `test_fiscal_pipeline_integration.py`
 
-  - [ ]* 9.3 Create validation tests against reference implementation
+  - [x] 9.3 Create validation tests against reference implementation
     - Reproduce results from R-based reference implementation
     - Validate sensitivity analysis and uncertainty quantification methods
     - Test boundary conditions and edge cases
     - _Requirements: Economic validation_
+    - Implementation: `tests/validation/test_fiscal_reference_validation.py` (includes boundary conditions, reasonableness checks, numerical stability)
