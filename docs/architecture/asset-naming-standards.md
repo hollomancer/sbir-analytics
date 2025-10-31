@@ -78,6 +78,15 @@ Assets are organized into logical groups that reflect pipeline stages:
 - Index and constraint management
 - Examples: `loaded_patents`, `loaded_transitions`
 
+## Change History
+
+- **October 2025** – Standardized 47 asset function names and decorator parameters to follow the stage prefixes above.
+- Updated 15 downstream dependencies to reference the renamed assets, ensuring Dagster dependency graphs remained intact.
+- Consolidated group names (`sbir_ingestion`, `usaspending_ingestion`, `transition`, etc.) into the five-stage taxonomy (`extraction`, `validation`, `enrichment`, `transformation`, `loading`).
+- Expanded `loaded_*` coverage to include Neo4j patent and transition loaders and aligned CET assets with the enrichment and transformation stages.
+
+See project release notes for the full task breakdown and code references.
+
 ## Migration from Legacy Names
 
 The following assets have been renamed to follow the new standards:

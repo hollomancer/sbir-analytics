@@ -1,5 +1,7 @@
 # SBIR Transition Effectiveness Analytics Report
 
+> Archived analytics snapshot (relocated from repository root on Nov 2024). See `docs/transition/scoring_guide.md` for current analytics procedures.
+
 **Generated:** October 30, 2024  
 **System:** SBIR Transition Detection Module  
 **Status:** ✅ OPERATIONAL

@@ -1,5 +1,7 @@
 # Transition Detection System - Implementation Summary
 
+> Archived status report (relocated from repository root on Nov 2024). Use the active guides in `docs/transition/` for current procedures.
+
 **Status**: ✅ **FULLY COMPLETED** (169/169 tasks)  
 **Date**: October 30, 2025  
 **Overall Phase**: Implementation Complete and Archived

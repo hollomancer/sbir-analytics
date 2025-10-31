@@ -5,14 +5,13 @@ nav:
   - Home: docs/index.md
   - Getting Started: README.md
   - Architecture:
-      - Overview: docs/architecture/overview.md
-      - Components: docs/architecture/components.md
-      - Diagrams: docs/architecture/diagrams/
+      - Shared Tech Stack: docs/architecture/shared-tech-stack.md
+      - Asset Naming Standards: docs/architecture/asset-naming-standards.md
+      - Consolidation Guide: docs/architecture/consolidation-refactor-plan.md
   - Data Sources:
       - SBIR: docs/data/sbir.md
       - USAspending: docs/data/usaspending.md
       - Patents: docs/data/patents.md
-  - How-to Guides: docs/how-to/
   - References:
       - Config: docs/references/config.md
       - CLI: docs/references/cli.md
@@ -21,7 +20,7 @@ nav:
       - Containerization: docs/guides/containerization.md
       - Quality Assurance: docs/guides/quality-assurance.md
   - Decisions: docs/decisions/
-  - Performance: docs/performance/benchmarks.md
+  - Performance: docs/performance/pipeline-benchmarks.md
 theme:
   name: material
   features:

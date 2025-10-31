@@ -2,6 +2,13 @@
 
 This document describes the lightweight CET patent classifier components, feature extraction, training flow, evaluation, and Dagster assets. It also documents the award-level ApplicabilityModel architecture and its key hyperparameters used by the award classification asset.
 
+## Exploration Summary
+
+- ✅ October 26, 2025 exploration delivered a production-ready classifier with 232/232 tests passing and >85% coverage.
+- ✅ Three packaged artifacts are maintained as appendices: a quick reference, comprehensive analysis, and CLI/API checklists.
+- ✅ 21 CET categories, taxonomy versioning, and configuration guidance consolidated here for sbir-etl engineers.
+- 📎 For the deep-dive reports—including diagrams, architecture walkthroughs, and training notes—see `docs/ml/cet_classifier_appendix.md`.
+
 ## Award ApplicabilityModel (Awards)
 
 The award classifier is a multi-label text classification pipeline that predicts applicability to CET areas from award text (title, abstract, keywords). It is implemented in `src/ml/models/cet_classifier.py` as `ApplicabilityModel` and configured via `config/cet/classification.yaml`. Core architecture:

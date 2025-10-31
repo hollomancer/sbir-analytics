@@ -1,4 +1,460 @@
-# SBIR CET Classifier: Comprehensive Analysis Report
+---
+Type: Reference
+Owner: ml@project
+Last-Reviewed: 2025-10-26
+Status: archived
+---
+
+# CET Classifier Appendix
+
+> Aggregated quick reference, in-depth analysis, and exploration summary from the 2025 CET classifier investigation.
+
+## Appendix A – Quick Reference
+
+### SBIR CET Classifier - Quick Reference Guide
+
+#### Overview at a Glance
+
+**Project**: Production-ready ML system for classifying SBIR awards against 21 Critical and Emerging Technology areas
+
+**Status**: ✅ Production Ready | **Tests**: 232/232 passing | **Coverage**: >85% | **Performance**: All SLAs exceeded
+
+---
+
+#### Architecture Diagram
+
+```
+SBIR Awards Data
+       ↓
+┌──────────────────────────────────────────────────┐
+│  1. DATA INGESTION (bootstrap.py)                │
+│     - CSV validation & normalization             │
+│     - Agency code mapping                        │
+│     - State/date standardization                 │
+└──────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────┐
+│  2. ENRICHMENT (enrichment.py, lazy)             │
+│     - NIH API integration (no auth required)     │
+│     - SQLite cache (90% hit rate)                │
+│     - Fallback handling                          │
+└──────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────┐
+│  3. CLASSIFICATION (applicability.py)            │
+│     ┌─ TF-IDF Vectorization (trigrams)          │
+│     ├─ Feature Selection (chi-squared)          │
+│     ├─ Logistic Regression (balanced weights)   │
+│     └─ Probability Calibration (sigmoid)        │
+│                                                  │
+│     Output: 0-100 score + confidence band       │
+└──────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────┐
+│  4. EVIDENCE EXTRACTION (evidence.py)            │
+│     - spaCy sentence extraction                 │
+│     - CET keyword matching                      │
+│     - 50-word excerpt generation                │
+│     - Source location tracking                  │
+└──────────────────────────────────────────────────┘
+       ↓
+┌──────────────────────────────────────────────────┐
+│  5. STORAGE (Parquet format)                    │
+│     - awards.parquet                            │
+│     - assessments.parquet                       │
+│     - taxonomy.parquet                          │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+#### Classification Pipeline
+
+```
+Award Text
+    ↓
+TF-IDF (50k → 20k features)
+    ├─ Unigrams: individual terms
+    ├─ Bigrams: 2-word phrases
+    └─ Trigrams: 3-word technical combinations
+    ↓
+Feature Selection (Chi-squared)
+    └─ Reduces noise, improves performance
+    ↓
+Logistic Regression
+    ├─ Balanced class weights
+    ├─ Multi-core processing
+    └─ Returns probability per CET category
+    ↓
+Probability Calibration
+    └─ Sigmoid method (3-fold CV)
+    ↓
+Score Conversion (0-100)
+    ├─ High: 70-100
+    ├─ Medium: 40-69
+    └─ Low: 0-39
+```
+
+---
+
+#### Key Statistics
+
+| Metric | Value | Target |
+|--------|-------|--------|
+| **Success Rate** | 97.9% | ≥95% ✅ |
+| **Per-Award Latency** | 0.17ms | ≤500ms ✅ |
+| **Portfolio Summary** | <1 min | ≤3 min ✅ |
+| **Award Drill-down** | <5 min | ≤5 min ✅ |
+| **Export (50k awards)** | <5 min | ≤10 min ✅ |
+| **Throughput** | 5,979 rec/s | Baseline |
+| **Test Pass Rate** | 100% (232/232) | ≥95% ✅ |
+
+---
+
+#### CET Categories (21 Total)
+
+```
+CORE TECHNOLOGIES
+├─ Artificial Intelligence
+├─ Quantum Computing
+│  └─ Quantum Sensing (child)
+├─ Hypersonics
+├─ Advanced Materials
+│  └─ Thermal Protection (child)
+├─ Semiconductors & Microelectronics
+├─ Advanced Communications (5G/6G)
+├─ Autonomous Systems
+└─ Space Technology
+
+ENERGY & ENVIRONMENT
+├─ Energy Storage
+├─ Renewable Energy
+└─ Environmental Technology
+
+BIOLOGY & MEDICINE
+├─ Biotechnology
+└─ Medical Devices
+
+DEFENSE & SECURITY
+├─ Cybersecurity
+├─ Directed Energy
+├─ Hypersonics (also here)
+└─ Human-Machine Interface
+
+DATA & ANALYTICS
+├─ Data Analytics & Visualization
+
+MANUFACTURING
+└─ Advanced Manufacturing
+
+UNCATEGORIZED
+└─ None / Uncategorized
+```
+
+---
+
+#### Configuration Files (YAML)
+
+##### taxonomy.yaml
+```yaml
+# 21 CET categories with definitions and keywords
+categories:
+  - id: artificial_intelligence
+    name: Artificial Intelligence
+    definition: "AI and machine learning technologies..."
+    keywords:
+      - artificial intelligence
+      - machine learning
+      - neural networks
+      - deep learning
+```
+
+##### classification.yaml
+```yaml
+# ML model hyperparameters
+vectorizer:
+  ngram_range: [1, 3]      # Trigrams
+  max_features: 50000
+  min_df: 2
+  max_df: 0.95
+
+feature_selection:
+  method: chi2
+  k: 20000
+
+classifier:
+  max_iter: 500
+  solver: lbfgs
+  n_jobs: -1               # Multi-core
+
+scoring:
+  bands:
+    high: {min: 70, max: 100}
+    medium: {min: 40, max: 69}
+    low: {min: 0, max: 39}
+```
+
+##### enrichment.yaml
+```yaml
+# External API integration and mappings
+nih_matcher:
+  amount_tolerance_min: 0.9
+  amount_tolerance_max: 1.1
+  similarity_threshold: 0.5
+
+topic_domains:
+  AI: Artificial Intelligence
+  BC: Biological/Chemical
+  BT: Biotechnology
+  # ... 15 more NSF topic codes
+```
+
+---
+
+#### Data Models (Pydantic Schemas)
+
+##### Award (Input)
+```python
+class Award:
+    award_id: str
+    agency: str              # "DOD", "NSF", "NIH"
+    abstract: str|None
+    keywords: list[str]
+    phase: Literal["I", "II", "III", "Other"]
+    firm_name: str
+    award_amount: float
+    award_date: date
+```
+
+##### ApplicabilityAssessment (Output)
+```python
+class ApplicabilityAssessment:
+    award_id: str
+    primary_cet_id: str      # "artificial_intelligence"
+    score: int               # 0-100
+    classification: str      # "High", "Medium", "Low"
+    supporting_cet_ids: list[str]     # Top 3
+    evidence_statements: list[EvidenceStatement]
+    assessed_at: datetime
+```
+
+##### EvidenceStatement (Supporting Details)
+```python
+class EvidenceStatement:
+    excerpt: str             # ≤50 words
+    source_location: str     # "abstract", "keywords", etc
+    rationale_tag: str       # Why this relates to CET
+```
+
+---
+
+#### Core Source Files
+
+| File | Purpose | Key Classes |
+|------|---------|------------|
+| `models/applicability.py` | ML classification pipeline | `ApplicabilityModel`, `ApplicabilityScore` |
+| `models/enhanced_vectorization.py` | CET-aware text processing | `CETAwareTfidfVectorizer` |
+| `features/summary.py` | Portfolio analytics | `SummaryService` |
+| `features/awards.py` | Award listing/filtering | `AwardsService` |
+| `features/enrichment.py` | Lazy enrichment orchestration | `EnrichmentOrchestrator` |
+| `features/evidence.py` | Evidence extraction | `extract_evidence_sentences()` |
+| `data/bootstrap.py` | CSV data ingestion | `load_bootstrap_csv()` |
+| `common/schemas.py` | Data models | `Award`, `ApplicabilityAssessment` |
+| `common/yaml_config.py` | Configuration loading | `load_taxonomy_config()`, etc |
+| `evaluation/reviewer_agreement.py` | Quality metrics | `ReviewerAgreementEvaluator` |
+
+---
+
+#### API Endpoints
+
+```bash
+# Health check
+GET /health
+→ {"status": "ok"}
+
+# Portfolio summary
+GET /applicability/summary?fiscal_year_start=2023&fiscal_year_end=2025&cet_area=artificial_intelligence
+→ Aggregated CET portfolio with counts, funding, top awards
+
+# Award list
+GET /applicability/awards?fiscal_year_start=2023&fiscal_year_end=2025&page=1
+→ Paginated award list with CET classifications
+
+# Award detail
+GET /applicability/awards/{award_id}
+→ Award + assessment with evidence statements
+
+# Create export
+POST /applicability/exports
+→ Trigger background export job
+
+# Export status
+GET /applicability/exports/{export_id}
+→ Export progress and download link
+```
+
+---
+
+#### CLI Commands
+
+```bash
+# Portfolio summary
+python -m sbir_cet_classifier.cli.app summary \
+  --fiscal-year-start 2023 --fiscal-year-end 2025
+
+# Award listing
+python -m sbir_cet_classifier.cli.app awards list \
+  --fiscal-year-start 2023 --fiscal-year-end 2025 \
+  --cet-areas artificial_intelligence --page 1
+
+# Export data
+python -m sbir_cet_classifier.cli.app export \
+  --fiscal-year-start 2023 --fiscal-year-end 2025 \
+  --format csv --output-file awards.csv
+
+# Enrichment
+python -m sbir_cet_classifier.cli.app enrichment enrich \
+  --fiscal-year 2024 --max-workers 4
+```
+
+---
+
+#### Testing
+
+```bash
+# All tests
+pytest tests/ -v
+→ 232/232 passing
+
+# Unit tests only
+pytest tests/unit/ -v
+→ 130 tests
+
+# Integration tests
+pytest tests/integration/ -v
+→ 27 tests
+
+# Contract tests
+pytest tests/contract/ -v
+→ 5 tests
+
+# With coverage
+pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
+```
+
+---
+
+#### Integration Checklist
+
+- [ ] Read CET_CLASSIFIER_ANALYSIS.md (this document's companion)
+- [ ] Review source code: models/applicability.py
+- [ ] Review data models: common/schemas.py
+- [ ] Review service pattern: features/summary.py
+- [ ] Review configuration system: common/yaml_config.py
+- [ ] Review configuration files: config/{taxonomy,classification,enrichment}.yaml
+- [ ] Run sample classification workflow
+- [ ] Design integration architecture (standalone vs embedded)
+- [ ] Define interface contracts
+- [ ] Plan configuration sharing
+- [ ] Implement integration module
+- [ ] Write integration tests
+- [ ] Validate with real data
+- [ ] Document integration patterns
+
+---
+
+#### Performance Optimizations
+
+**Applied in Phase O**:
+- Agency name normalization: +25% data recovery
+- Batch validation with pandas vectorization: +40% recovery
+- N-gram features (trigrams): Better technical phrase capture
+- Feature selection (50k → 20k features): Reduced overfitting
+- Class weight balancing: Better minority category handling
+- Parallel scoring: 2-4x faster with multi-core
+
+**Result**: 5,979 records/second throughput, 0.17ms per-award latency
+
+---
+
+#### Design Patterns Used
+
+1. **Service Layer Pattern** - Isolate business logic from I/O
+2. **Repository Pattern** - Abstract storage operations
+3. **Registry Pattern** - Manage global service configuration
+4. **Strategy Pattern** - Pluggable enrichment strategies
+5. **Dependency Injection** - Testable, decoupled components
+6. **Configuration Management** - Externalized YAML configs
+7. **Lazy Loading** - On-demand enrichment with caching
+
+---
+
+#### Dependencies
+
+```
+pandas>=2.2              # Data processing
+scikit-learn>=1.4        # ML pipeline
+spacy>=3.7               # NLP
+pydantic>=2.5            # Data validation
+typer>=0.12              # CLI
+fastapi>=0.110           # Web API
+pyarrow>=15.0            # Parquet storage
+httpx>=0.27              # HTTP client
+pyyaml>=6.0              # YAML config
+tenacity>=8.2.0          # Retry logic
+```
+
+---
+
+#### Environment Variables
+
+```bash
+SBIR_RAW_DIR=data/raw                    # Input data location
+SBIR_PROCESSED_DIR=data/processed        # Output location
+SBIR_ARTIFACTS_DIR=artifacts             # Telemetry storage
+SBIR_BATCH_SIZE=100                      # Batch processing size
+SBIR_MAX_WORKERS=4                       # Parallel workers
+```
+
+---
+
+#### Key Learnings for Integration
+
+1. **Externalize Configuration**: Use YAML files, not code constants
+2. **Type Everything**: Comprehensive type hints improve maintainability
+3. **Test Pyramid**: Unit → Integration → Contract tests
+4. **Lazy Enrichment**: On-demand processing with caching > upfront enrichment
+5. **Graceful Degradation**: Continue without enrichment, not fail
+6. **Service Orientation**: Dependency injection for testability
+7. **Evidence Tracking**: Always include rationale for classifications
+8. **Performance First**: Profile and optimize early
+
+---
+
+#### Support Resources
+
+- **Main Docs**: README.md, DEVELOPMENT.md, STATUS.md
+- **Configuration**: config/README.md
+- **Source Code**: /src/sbir_cet_classifier/
+- **Tests**: /tests/ (232 tests, good examples)
+- **Historical Analysis**: /docs/archive/ (20+ reports)
+
+---
+
+#### Next Steps
+
+1. **Review** this quick reference guide (5 min)
+2. **Read** CET_CLASSIFIER_ANALYSIS.md (30-60 min)
+3. **Study** key source files in sbir-cet-classifier
+4. **Run** sample classification workflow
+5. **Plan** integration approach
+6. **Design** interface contracts
+7. **Implement** integration module
+8. **Validate** with full SBIR dataset
+
+## Appendix B – Comprehensive Analysis
+
+### SBIR CET Classifier: Comprehensive Analysis Report
 
 **Date**: October 2025
 **Project Status**: Production Ready
@@ -6,7 +462,7 @@
 
 ---
 
-## Executive Summary
+#### Executive Summary
 
 The SBIR CET Classifier is a production-ready ML-based system for classifying Small Business Innovation Research (SBIR) awards against 20 Critical and Emerging Technology (CET) areas. The project demonstrates sophisticated architecture patterns, comprehensive test coverage (232/232 tests passing), and achieves exceptional performance (97.9% success rate, 5,979 records/second).
 
@@ -19,9 +475,9 @@ The SBIR CET Classifier is a production-ready ML-based system for classifying Sm
 
 ---
 
-## 1. Project Structure & Architecture
+#### 1. Project Structure & Architecture
 
-### Directory Organization
+##### Directory Organization
 ```
 sbir-cet-classifier/
 ├── src/sbir_cet_classifier/
@@ -62,7 +518,7 @@ sbir-cet-classifier/
     └── archive/             # 20+ historical reports
 ```
 
-### Tech Stack
+##### Tech Stack
 | Component | Technology | Notes |
 |-----------|-----------|-------|
 | **Language** | Python 3.11+ | Type hints throughout |
@@ -77,9 +533,9 @@ sbir-cet-classifier/
 
 ---
 
-## 2. ML Model Architecture & Approach
+#### 2. ML Model Architecture & Approach
 
-### Classification Pipeline
+##### Classification Pipeline
 
 ```
 Award Text
@@ -110,7 +566,7 @@ Award Text
 Award × CET Score + Confidence Band
 ```
 
-### Model Configuration (config/classification.yaml)
+##### Model Configuration (config/classification.yaml)
 
 ```yaml
 vectorizer:
@@ -144,7 +600,7 @@ scoring:
   max_supporting: 3        # Supporting CET areas
 ```
 
-### Key Implementation Details
+##### Key Implementation Details
 
 **ApplicabilityModel class** (`models/applicability.py`):
 - Wraps scikit-learn pipeline with optimizations
@@ -161,9 +617,9 @@ scoring:
 
 ---
 
-## 3. Critical and Emerging Technology Taxonomy
+#### 3. Critical and Emerging Technology Taxonomy
 
-### Structure (config/taxonomy.yaml)
+##### Structure (config/taxonomy.yaml)
 
 **21 Categories** organized with definitions, keywords, and optional parent relationships:
 
@@ -191,7 +647,7 @@ scoring:
 
 Each category includes 5-10 domain-specific keywords for matching.
 
-### Taxonomy Schema
+##### Taxonomy Schema
 
 ```python
 class CETArea(BaseModel):
@@ -207,9 +663,9 @@ class CETArea(BaseModel):
 
 ---
 
-## 4. Data Pipeline & Feature Engineering
+#### 4. Data Pipeline & Feature Engineering
 
-### Data Flow Architecture
+##### Data Flow Architecture
 
 ```
 Input CSV (SBIR.gov data)
@@ -244,7 +700,7 @@ Input CSV (SBIR.gov data)
     - taxonomy.parquet
 ```
 
-### Key Data Classes
+##### Key Data Classes
 
 **Award** (canonical schema):
 ```python
@@ -289,7 +745,7 @@ class EvidenceStatement(BaseModel):
     rationale_tag: str       # Why this relates to CET
 ```
 
-### Feature Engineering Patterns
+##### Feature Engineering Patterns
 
 **Text Vectorization**:
 - TF-IDF with trigrams captures multi-word technical concepts
@@ -312,9 +768,9 @@ class EvidenceStatement(BaseModel):
 
 ---
 
-## 5. Data Enrichment & Integration
+#### 5. Data Enrichment & Integration
 
-### Enrichment Strategy
+##### Enrichment Strategy
 
 The project uses **lazy, on-demand enrichment** with fallback handling:
 
@@ -332,7 +788,7 @@ Check SQLite Cache
         └─ Failure → Log, continue without enrichment
 ```
 
-### Enrichment Configuration (enrichment.yaml)
+##### Enrichment Configuration (enrichment.yaml)
 
 **NIH Matcher Parameters**:
 ```yaml
@@ -377,7 +833,7 @@ agency_focus:
   NIH: biomedical research and healthcare innovation
 ```
 
-### External API Integration
+##### External API Integration
 
 **NIH API** (Primary):
 - No authentication required
@@ -396,7 +852,7 @@ agency_focus:
 - NSF API (authentication required)
 - Public APIs insufficient without keys
 
-### Enrichment Metrics
+##### Enrichment Metrics
 
 ```python
 class EnrichmentMetrics:
@@ -410,9 +866,9 @@ class EnrichmentMetrics:
 
 ---
 
-## 6. Model Training & Evaluation
+#### 6. Model Training & Evaluation
 
-### Training Approach
+##### Training Approach
 
 **Training Data Source**: Bootstrap CSV with 1,000+ annotated awards
 
@@ -438,7 +894,7 @@ model.fit(examples)  # TF-IDF → Feature Selection → LogReg → Calibration
 score = model.score(award)  # Returns ApplicabilityScore
 ```
 
-### Evaluation Metrics
+##### Evaluation Metrics
 
 **Performance Metrics** (on 997 sample awards):
 - Success Rate: 97.9% (210k/214k)
@@ -464,7 +920,7 @@ class AgreementMetrics:
     confusion_matrix: dict     # Category confusion analysis
 ```
 
-### Validation Framework
+##### Validation Framework
 
 **Test Coverage**: 232/232 tests passing
 - Unit tests: 130 (component-level)
@@ -484,9 +940,9 @@ class AgreementMetrics:
 
 ---
 
-## 7. Inference & Production Workflows
+#### 7. Inference & Production Workflows
 
-### Scoring Workflow
+##### Scoring Workflow
 
 ```python
 # 1. Load award
@@ -521,7 +977,7 @@ assessment = ApplicabilityAssessment(
 storage.write_assessment(assessment)
 ```
 
-### CLI Interface
+##### CLI Interface
 
 ```bash
 # Portfolio summary
@@ -545,7 +1001,7 @@ python -m sbir_cet_classifier.cli.app enrichment enrich \
   --fiscal-year 2024 --max-workers 4
 ```
 
-### REST API Endpoints
+##### REST API Endpoints
 
 ```bash
 # Health check
@@ -582,9 +1038,9 @@ GET /applicability/exports/{export_id}
 
 ---
 
-## 8. Configuration & Customization
+#### 8. Configuration & Customization
 
-### Externalized Configuration System
+##### Externalized Configuration System
 
 Three YAML files manage all non-code parameters:
 
@@ -610,7 +1066,7 @@ Three YAML files manage all non-code parameters:
 - Phase keywords
 - Organization name suffixes
 
-### Validation
+##### Validation
 
 ```bash
 python validate_config.py
@@ -621,7 +1077,7 @@ python validate_config.py
 # ✅ All configuration files are valid!
 ```
 
-### Environment Variables
+##### Environment Variables
 
 ```bash
 export SBIR_RAW_DIR=data/raw
@@ -633,9 +1089,9 @@ export SBIR_MAX_WORKERS=4
 
 ---
 
-## 9. Design Patterns & Best Practices
+#### 9. Design Patterns & Best Practices
 
-### Software Architecture Patterns
+##### Software Architecture Patterns
 
 **Service Layer Pattern**:
 ```python
@@ -679,7 +1135,7 @@ class FallbackEnricher(EnrichmentStrategy):
     def enrich(self, award: Award) -> EnrichedAward: ...
 ```
 
-### Code Quality Standards
+##### Code Quality Standards
 
 - **Type hints**: Comprehensive throughout
 - **Docstrings**: Module, class, and function-level documentation
@@ -688,7 +1144,7 @@ class FallbackEnricher(EnrichmentStrategy):
 - **Code style**: ruff formatting, PEP 8 compliant
 - **Pre-commit hooks**: Automatic linting and formatting
 
-### Performance Optimizations
+##### Performance Optimizations
 
 **Phase O Optimization Achievements**:
 - Agency normalization: +25% data recovery
@@ -706,9 +1162,9 @@ class FallbackEnricher(EnrichmentStrategy):
 
 ---
 
-## 10. Integration Points & Dependencies
+#### 10. Integration Points & Dependencies
 
-### External Dependencies
+##### External Dependencies
 
 ```toml
 [dependencies]
@@ -726,7 +1182,7 @@ pyyaml>=6.0              # YAML config
 tenacity>=8.2.0          # Retry logic
 ```
 
-### Integration with SBIR ETL
+##### Integration with SBIR ETL
 
 **Proposed Integration Points for sbir-etl**:
 
@@ -757,9 +1213,9 @@ tenacity>=8.2.0          # Retry logic
 
 ---
 
-## 11. Key Learnings & Best Practices
+#### 11. Key Learnings & Best Practices
 
-### ML Optimization Insights
+##### ML Optimization Insights
 
 1. **Class Imbalance Handling**
    - Balanced class weights more effective than oversampling
@@ -781,7 +1237,7 @@ tenacity>=8.2.0          # Retry logic
    - SQLite cache eliminates 90% of API calls (lazy enrichment)
    - Multi-core scoring 2-4x faster than single-threaded
 
-### Configuration Management Best Practices
+##### Configuration Management Best Practices
 
 1. **External Configuration First**
    - YAML files > code constants
@@ -798,7 +1254,7 @@ tenacity>=8.2.0          # Retry logic
    - Migration path for breaking changes
    - Comprehensive validation before use
 
-### Testing Insights
+##### Testing Insights
 
 1. **Test Pyramid**
    - 130 unit tests (fast, isolated)
@@ -818,7 +1274,7 @@ tenacity>=8.2.0          # Retry logic
    - Use realistic data (100-award sample dataset)
    - Multi-agency processing tested
 
-### Documentation Excellence
+##### Documentation Excellence
 
 1. **Three-Tier Documentation**
    - **README.md**: What it does, quick start (5-10 min read)
@@ -833,9 +1289,9 @@ tenacity>=8.2.0          # Retry logic
 
 ---
 
-## 12. Critical Implementation Details for CET Module
+#### 12. Critical Implementation Details for CET Module
 
-### Must-Have Components
+##### Must-Have Components
 
 1. **Taxonomy System** ✅
    - 21 CET categories with keywords
@@ -872,7 +1328,7 @@ tenacity>=8.2.0          # Retry logic
    - Environment variable overrides
    - Zero hard-coded values
 
-### Nice-to-Have Enhancements
+##### Nice-to-Have Enhancements
 
 1. **Advanced ML**
    - Transformer models (BERT, RoBERTa) vs current logistic regression
@@ -896,9 +1352,9 @@ tenacity>=8.2.0          # Retry logic
 
 ---
 
-## 13. Summary & Recommendations
+#### 13. Summary & Recommendations
 
-### Project Strengths
+##### Project Strengths
 
 - ✅ **Production-ready code** with comprehensive testing
 - ✅ **Well-architected** with clear separation of concerns
@@ -907,7 +1363,7 @@ tenacity>=8.2.0          # Retry logic
 - ✅ **Externalized configuration** for flexibility without code changes
 - ✅ **Rich evaluation framework** for quality assurance
 
-### Recommended Integration Approach
+##### Recommended Integration Approach
 
 1. **Phase 1: Knowledge Transfer** (1-2 days)
    - Study this analysis document
@@ -929,7 +1385,7 @@ tenacity>=8.2.0          # Retry logic
    - Expert review of classifications
    - Documentation and training
 
-### Key Files to Reference
+##### Key Files to Reference
 
 **For Understanding Architecture**:
 - `/src/sbir_cet_classifier/models/applicability.py` - ML core
@@ -950,7 +1406,7 @@ tenacity>=8.2.0          # Retry logic
 
 ---
 
-## Appendix A: Critical and Emerging Technology Categories
+#### Appendix A: Critical and Emerging Technology Categories
 
 | ID | Name | Key Technologies |
 |----|------|-----------------|
@@ -975,3 +1431,252 @@ tenacity>=8.2.0          # Retry logic
 | 19 | Advanced Manufacturing | Additive manufacturing, robotics |
 | 20 | Biotechnology | Genomics, synthetic biology, gene editing |
 | 21 | None / Uncategorized | Awards not fitting CET categories |
+
+## Appendix C – Exploration Summary
+
+```text
+SBIR CET CLASSIFIER EXPLORATION - SUMMARY
+==========================================
+
+Date: October 26, 2025
+Status: COMPLETE
+
+ANALYSIS DELIVERABLE
+====================
+Location: /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_ANALYSIS.md
+Size: 30KB
+Format: Comprehensive markdown document
+
+DOCUMENT CONTENTS
+=================
+
+The analysis provides a complete guide covering 13 major sections:
+
+1. PROJECT STRUCTURE & ARCHITECTURE
+   - Directory organization
+   - Tech stack overview
+   - Module responsibilities
+
+2. ML MODEL ARCHITECTURE & APPROACH
+   - Classification pipeline (TF-IDF → Feature Selection → LogReg → Calibration)
+   - Model configuration details
+   - Implementation patterns
+
+3. CRITICAL AND EMERGING TECHNOLOGY TAXONOMY
+   - 21 CET categories with definitions
+   - Keyword mappings
+   - Hierarchical structure
+
+4. DATA PIPELINE & FEATURE ENGINEERING
+   - Data flow architecture
+   - Canonical schemas (Award, Assessment, Evidence)
+   - Feature engineering patterns
+   - Data quality optimizations
+
+5. DATA ENRICHMENT & INTEGRATION
+   - NIH API integration (primary)
+   - Lazy, on-demand enrichment strategy
+   - Configuration parameters
+   - External API evaluation results
+
+6. MODEL TRAINING & EVALUATION
+   - Training approach and data sources
+   - Performance metrics (97.9% success, 0.17ms latency)
+   - Validation framework (232/232 tests)
+   - Agreement metrics for quality assurance
+
+7. INFERENCE & PRODUCTION WORKFLOWS
+   - Scoring workflow with code examples
+   - CLI command reference
+   - REST API endpoints
+
+8. CONFIGURATION & CUSTOMIZATION
+   - Three-tier YAML configuration system
+   - Validation procedures
+   - Environment variable reference
+
+9. DESIGN PATTERNS & BEST PRACTICES
+   - Software architecture patterns (Service, Repository, Registry, Strategy)
+   - Code quality standards
+   - Performance optimization techniques
+
+10. INTEGRATION POINTS & DEPENDENCIES
+    - External dependencies (pandas, scikit-learn, spacy, fastapi)
+    - Proposed integration approach with sbir-etl
+    - Data sharing strategies
+
+11. KEY LEARNINGS & BEST PRACTICES
+    - ML optimization insights
+    - Configuration management patterns
+    - Testing strategies
+    - Documentation approaches
+
+12. CRITICAL IMPLEMENTATION DETAILS
+    - Must-have components (all implemented)
+    - Nice-to-have enhancements
+    - Readiness assessment
+
+13. SUMMARY & RECOMMENDATIONS
+    - Project strengths
+    - Integration roadmap
+    - Key files for reference
+
+APPENDIX: Complete CET Categories Table
+- All 21 categories with key technologies
+
+KEY FINDINGS
+============
+
+Project Status:
+- ✅ Production Ready
+- ✅ All 74 tasks completed
+- ✅ 232/232 tests passing (>85% coverage)
+- ✅ All SLA targets exceeded
+
+ML Model:
+- Type: TF-IDF + Logistic Regression + Probability Calibration
+- Features: Trigrams with chi-squared selection (20k best features)
+- Performance: 97.9% success rate, 0.17ms per-award latency
+- Confidence: 3-band classification (High/Medium/Low)
+
+Architecture Highlights:
+- Externalized YAML configuration (3 files)
+- Lazy enrichment with NIH API integration
+- Evidence extraction with spaCy
+- Service-oriented design with dependency injection
+- Comprehensive error handling and graceful degradation
+
+Integration Ready:
+- Clear module boundaries
+- Well-documented interfaces
+- Testable design patterns
+- Flexible configuration system
+
+RECOMMENDATIONS FOR SBIR-ETL
+=============================
+
+Immediate Actions:
+1. Review CET_CLASSIFIER_ANALYSIS.md (30-60 min read)
+2. Study key source files:
+   - models/applicability.py (ML core)
+   - common/schemas.py (data models)
+   - features/summary.py (service pattern)
+   - config/taxonomy.yaml (domain knowledge)
+
+Integration Approach:
+1. Decide on module architecture (standalone vs embedded)
+2. Define interface contracts (input/output schemas)
+3. Plan configuration sharing strategy
+4. Adapt classifier to sbir-etl data pipeline
+5. Write integration tests
+
+Timeline Estimate:
+- Knowledge transfer: 1-2 days
+- Planning: 3-5 days
+- Implementation: 2-3 weeks
+- Validation: 1-2 weeks
+
+KEY ARTIFACTS ANALYZED
+=======================
+
+Source Project: /Users/conradhollomon/projects/sbir-cet-classifier/
+
+Core Documentation:
+- README.md (9,278 bytes) - Quick start & overview
+- DEVELOPMENT.md (11,946 bytes) - Developer guide
+- STATUS.md (10,148 bytes) - Detailed status report
+- DOCS.md (2,000 bytes) - Documentation index
+
+Configuration:
+- config/taxonomy.yaml - 21 CET categories
+- config/classification.yaml - Model hyperparameters
+- config/enrichment.yaml - API & domain mappings
+- config/README.md - Configuration documentation
+
+Source Code (15 key modules analyzed):
+- models/applicability.py - ML classification core
+- models/enhanced_vectorization.py - CET-aware TF-IDF
+- features/summary.py - Portfolio analytics service
+- features/awards.py - Award listing service
+- features/enrichment.py - Lazy enrichment orchestration
+- features/evidence.py - Evidence extraction
+- data/bootstrap.py - CSV data ingestion
+- data/ingest.py - SBIR.gov pipeline utilities
+- data/batch_validation.py - Data quality checks
+- common/schemas.py - Pydantic data models
+- evaluation/reviewer_agreement.py - Quality metrics
+- api/router.py - FastAPI routes
+- cli/app.py - Typer CLI interface
+
+Testing:
+- 130 unit tests (component-level)
+- 27 integration tests (end-to-end workflows)
+- 5 contract tests (API validation)
+
+FILES PROVIDED
+===============
+
+Primary Deliverable:
+✓ /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_ANALYSIS.md (30KB)
+  - Comprehensive guide to SBIR CET Classifier project
+  - 13 major sections + appendix
+  - Code examples and configuration details
+  - Integration recommendations
+
+This Analysis File:
+✓ /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_EXPLORATION_SUMMARY.txt
+
+ANALYSIS METHODOLOGY
+====================
+
+1. Directory Structure Exploration
+   - Listed all files and directories
+   - Identified module organization
+   - Mapped dependencies
+
+2. Documentation Review
+   - Read README.md, DEVELOPMENT.md, STATUS.md
+   - Reviewed configuration guide
+   - Examined historical reports
+
+3. Configuration Analysis
+   - Parsed taxonomy.yaml (21 categories)
+   - Analyzed classification.yaml (model parameters)
+   - Reviewed enrichment.yaml (API configuration)
+
+4. Source Code Examination
+   - Studied ML model architecture (applicability.py)
+   - Analyzed data pipeline (bootstrap, ingest)
+   - Reviewed service patterns (summary, awards)
+   - Examined enrichment strategies
+   - Analyzed NLP integration (evidence.py)
+   - Reviewed API/CLI interfaces
+
+5. Testing Architecture Review
+   - Examined unit test patterns
+   - Reviewed integration test workflows
+   - Analyzed test coverage metrics
+
+6. Performance Analysis
+   - Collected performance metrics
+   - Analyzed optimization techniques
+   - Documented SLA compliance
+
+NEXT STEPS
+==========
+
+For SBIR-ETL Team:
+
+1. Read CET_CLASSIFIER_ANALYSIS.md thoroughly
+2. Identify specific integration points needed
+3. Review sbir-cet-classifier source code directly
+4. Schedule knowledge transfer session
+5. Create integration specification
+6. Begin implementation phase
+
+Contact sbir-cet-classifier maintainers for:
+- Clarification on specific implementation details
+- Performance tuning guidance
+- Custom configuration examples
+- Integration support
+```

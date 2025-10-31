@@ -50,6 +50,61 @@ make docker-e2e-debug
 make docker-e2e-clean
 ```
 
+## Testing Quick Reference
+
+```bash
+# Unit tests
+pytest tests/unit/ -v
+
+# Integration tests
+pytest tests/integration/ -v
+
+# E2E scenarios (containers)
+make docker-e2e-minimal      # < 2 min (MacBook Air optimized)
+make docker-e2e-standard     # 5-8 min (full validation)
+make docker-e2e-large        # 8-10 min (performance focus)
+make docker-e2e-edge-cases   # 3-5 min (robustness cases)
+make docker-e2e-debug        # Interactive debugging
+
+# Direct script fallback
+python scripts/run_e2e_tests.py --scenario minimal
+python scripts/run_e2e_tests.py --scenario standard
+python scripts/run_e2e_tests.py --scenario large
+python scripts/run_e2e_tests.py --scenario edge-cases
+
+# Container tests
+make docker-test
+```
+
+## Coverage & Performance Targets
+
+- **Coverage goal**: ≥80% (CI enforces via coverage reports)
+- **Current snapshot**: 29+ tests across unit, integration, and E2E suites
+- **E2E standard scenario**: <10 minutes end-to-end
+- **Memory ceiling**: <8GB to remain MacBook Air friendly
+- **Match rate quality gate**: ≥70% during enrichment validation
+- **Neo4j load success rate**: ≥99% across loading assets
+
+## Testing Strategy
+
+- **Unit tests** – Component-level validation lives in `tests/unit/`
+- **Integration tests** – Multi-component checks in `tests/integration/`
+- **End-to-end tests** – Containerized scenarios under `tests/e2e/`
+- **Performance tests** – Benchmarks and regression detection exercises
+
+## CI/CD Integration
+
+- `container-ci.yml` runs the containerized suites in GitHub Actions
+- `neo4j-smoke.yml` validates graph connectivity and schema expectations
+- `performance-regression-check.yml` compares benchmark artifacts and alerts on drift
+- Artifacts (logs, coverage, metrics) publish to `reports/` and the CI UI for inspection
+
+## Contributing to Tests
+
+- Add new fixtures under `tests/fixtures/` or generate scenario files with helper scripts
+- Extend coverage by mirroring real workflows—prefer Dagster asset entry points when possible
+- Update documentation in this guide when test commands or targets change
+
 ## Test Scenarios
 
 ### Minimal Scenario

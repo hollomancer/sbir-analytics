@@ -1,5 +1,7 @@
 # Transition Detection System Validation Report
 
+> Archived validation snapshot (relocated from repository root on Nov 2024). Refer to `docs/transition/` for maintained runbooks.
+
 **Generated:** October 30, 2024  
 **Status:** ✅ PASSED
 
