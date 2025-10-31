@@ -165,7 +165,7 @@ LOAD_SUCCESS_THRESHOLD = float(
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
-def _get_input_dir(context: AssetExecutionContext) -> Path:
+def _get_input_dir(context) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
     """
@@ -256,7 +256,7 @@ def _attempt_parse_sample(fp: str, sample_limit: int = 10, chunk_size: int = 100
     description="Discover raw USPTO assignment files",
     group_name="extraction",
 )
-def raw_uspto_assignments(context: AssetExecutionContext) -> list[str]:
+def raw_uspto_assignments(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignment files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignment")
@@ -268,7 +268,7 @@ def raw_uspto_assignments(context: AssetExecutionContext) -> list[str]:
     description="Discover raw USPTO assignee files",
     group_name="extraction",
 )
-def raw_uspto_assignees(context: AssetExecutionContext) -> list[str]:
+def raw_uspto_assignees(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignee files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignee")
@@ -280,7 +280,7 @@ def raw_uspto_assignees(context: AssetExecutionContext) -> list[str]:
     description="Discover raw USPTO assignor files",
     group_name="extraction",
 )
-def raw_uspto_assignors(context: AssetExecutionContext) -> list[str]:
+def raw_uspto_assignors(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignor files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignor")
@@ -292,7 +292,7 @@ def raw_uspto_assignors(context: AssetExecutionContext) -> list[str]:
     description="Discover raw USPTO documentid files",
     group_name="extraction",
 )
-def raw_uspto_documentids(context: AssetExecutionContext) -> list[str]:
+def raw_uspto_documentids(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering documentid files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "documentid")
@@ -304,7 +304,7 @@ def raw_uspto_documentids(context: AssetExecutionContext) -> list[str]:
     description="Discover raw USPTO conveyance files",
     group_name="extraction",
 )
-def raw_uspto_conveyances(context: AssetExecutionContext) -> list[str]:
+def raw_uspto_conveyances(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering conveyance files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "conveyance")
@@ -321,7 +321,7 @@ def raw_uspto_conveyances(context: AssetExecutionContext) -> list[str]:
     ins={"raw_files": AssetIn("raw_uspto_assignments")},
 )
 def parsed_uspto_assignments(
-    context: AssetExecutionContext, raw_files: list[str]
+    context, raw_files: list[str]
 ) -> dict[str, dict]:
     """
     For each discovered raw assignment file, parse a small sample and return per-file summaries.
@@ -347,7 +347,7 @@ def parsed_uspto_assignments(
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )
-def validated_uspto_assignees(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignees(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignee files to parse")
@@ -369,7 +369,7 @@ def validated_uspto_assignees(context: AssetExecutionContext, raw_files: list[st
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )
-def validated_uspto_assignors(context: AssetExecutionContext, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignors(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignor files to parse")
@@ -392,7 +392,7 @@ def validated_uspto_assignors(context: AssetExecutionContext, raw_files: list[st
     ins={"raw_files": AssetIn("raw_uspto_documentids")},
 )
 def parsed_uspto_documentids(
-    context: AssetExecutionContext, raw_files: list[str]
+    context, raw_files: list[str]
 ) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
@@ -416,7 +416,7 @@ def parsed_uspto_documentids(
     ins={"raw_files": AssetIn("raw_uspto_conveyances")},
 )
 def parsed_uspto_conveyances(
-    context: AssetExecutionContext, raw_files: list[str]
+    context, raw_files: list[str]
 ) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
@@ -447,7 +447,7 @@ def _make_parsing_check(
     """
 
     def _check(
-        context: AssetExecutionContext, parsed: dict[str, dict], raw_files: list[str]
+        context, parsed: dict[str, dict], raw_files: list[str]
     ) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []
@@ -505,13 +505,13 @@ uspto_assignments_parsing_check = asset_check(
 )(_make_parsing_check("raw_uspto_assignments", "parsed_uspto_assignments"))
 
 uspto_assignees_parsing_check = asset_check(
-    asset=parsed_uspto_assignees,
+    asset=validated_uspto_assignees,
     description="Verify each discovered assignee file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )(_make_parsing_check("raw_uspto_assignees", "validated_uspto_assignees"))
 
 uspto_assignors_parsing_check = asset_check(
-    asset=parsed_uspto_assignors,
+    asset=validated_uspto_assignors,
     description="Verify each discovered assignor file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )(_make_parsing_check("raw_uspto_assignors", "validated_uspto_assignors"))
@@ -1878,7 +1878,7 @@ def loaded_patent_relationships(
 
 
 @asset_check(
-    asset=neo4j_patents,
+    asset=loaded_patents,
     description="Verify patent load success rate meets minimum threshold",
 )
 def patent_load_success_rate(
@@ -1911,7 +1911,7 @@ def patent_load_success_rate(
 
 
 @asset_check(
-    asset=neo4j_patent_assignments,
+    asset=loaded_patent_assignments,
     description="Verify assignment load success rate meets minimum threshold",
 )
 def assignment_load_success_rate(
@@ -1944,7 +1944,7 @@ def assignment_load_success_rate(
 
 
 @asset_check(
-    asset=neo4j_patent_relationships,
+    asset=loaded_patent_relationships,
     description="Sanity check relationship cardinality",
 )
 def patent_relationship_cardinality(
@@ -2230,7 +2230,7 @@ def raw_uspto_ai_extract(context) -> Dict[str, object]:
         "Produce a deduplicated table of USPTO AI predictions keyed by grant_doc_num. "
         "Keeps the most recent extracted_at or highest row_index."
     ),
-    ins={"raw_uspto_ai_extract": AssetIn()},
+    ins={"uspto_ai_extract_to_duckdb": AssetIn()},
 )
 def uspto_ai_deduplicate(
     context, uspto_ai_extract_to_duckdb
@@ -2363,6 +2363,460 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
 
 
 # ============================================================================
+# Additional AI Assets (Consolidated from uspto_ai_assets.py)
+# ============================================================================
+
+@asset(
+    name="raw_uspto_ai_predictions",
+    description=(
+        "Ingest the USPTO AI NDJSON predictions into a local DuckDB cache. "
+        "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
+    ),
+)
+def raw_uspto_ai_predictions(context) -> Dict[str, object]:
+    """
+    Dagster asset that ingests the raw USPTO AI NDJSON into the DuckDB cache.
+
+    Behavior:
+    - Resolves input NDJSON path from op config `raw_ndjson` if present, else uses DEFAULT_RAW_NDJSON.
+    - Resolves cache DB path from op config `duckdb` if present, else uses DEFAULT_DUCKDB.
+    - Uses streaming ingest with resume/checkpoint behavior.
+    - Writes a companion checks JSON containing keys: ok, ingested, skipped, errors, cache_count, raw_ndjson, duckdb.
+    """
+    # Default paths (can be overridden via op_config)
+    DEFAULT_RAW_NDJSON = Path(
+        os.environ.get("SBIR_ETL__USPTO_AI__RAW_NDJSON", "data/raw/uspto_ai_predictions.ndjson")
+    )
+    DEFAULT_RAW_DTA_DIR = Path(os.environ.get("SBIR_ETL__USPTO_AI__RAW_DTA_DIR", "data/raw/USPTO"))
+    DEFAULT_DUCKDB = Path(os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB", "data/processed/uspto_ai.duckdb"))
+    DEFAULT_DUCKDB_TABLE = os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB_TABLE", "uspto_ai_predictions")
+    
+    raw_ndjson = (
+        Path(context.op_config.get("raw_ndjson"))
+        if getattr(context, "op_config", None) and context.op_config.get("raw_ndjson")
+        else DEFAULT_RAW_NDJSON
+    )
+    duckdb_path = (
+        Path(context.op_config.get("duckdb"))
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb")
+        else DEFAULT_DUCKDB
+    )
+    duckdb_table = (
+        context.op_config.get("duckdb_table")
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb_table")
+        else DEFAULT_DUCKDB_TABLE
+    )
+    processed_dir = (
+        Path(context.op_config.get("processed_dir"))
+        if getattr(context, "op_config", None) and context.op_config.get("processed_dir")
+        else Path("data/processed")
+    )
+    checks_path = processed_dir / "uspto_ai_ingest.checks.json"
+    batch_size = (
+        int(context.op_config.get("batch_size"))
+        if getattr(context, "op_config", None) and context.op_config.get("batch_size")
+        else 1000
+    )
+
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
+    # Look for DTA files first in configured directory
+    dta_dir = (
+        Path(context.op_config.get("raw_dta_dir"))
+        if getattr(context, "op_config", None) and context.op_config.get("raw_dta_dir")
+        else DEFAULT_RAW_DTA_DIR
+    )
+    dta_files = sorted([p for p in dta_dir.glob("*.dta")]) if dta_dir.exists() else []
+
+    result_summary = {"ok": False, "ingested": 0, "skipped": 0, "errors": 0, "source_type": None, "sources": []}
+
+    try:
+        import duckdb  # type: ignore
+        import pandas as pd  # type: ignore
+    except Exception as exc:
+        logger.exception("duckdb and pandas are required for USPTO AI ingest: %s", exc)
+        result_summary = {"ok": False, "ingested": 0, "skipped": 0, "errors": 1, "reason": "missing_dependency"}
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(result_summary, fh, indent=2)
+        return result_summary
+
+    if dta_files:
+        # Ingest DTA files into DuckDB
+        total_ingested = 0
+        total_skipped = 0
+        total_errors = 0
+        
+        try:
+            con = duckdb.connect(database=str(duckdb_path), read_only=False)
+            
+            for dfp in dta_files:
+                context.log.info("Ingesting DTA to DuckDB", extra={"file": str(dfp), "duckdb": str(duckdb_path), "table": duckdb_table})
+                try:
+                    # Read DTA file in chunks
+                    df = pd.read_stata(dfp, chunksize=batch_size)
+                    for chunk in df:
+                        if total_ingested == 0:
+                            # Create table on first chunk
+                            con.execute(f"CREATE OR REPLACE TABLE {duckdb_table} AS SELECT * FROM chunk LIMIT 0")
+                        con.register("chunk_data", chunk)
+                        con.execute(f"INSERT INTO {duckdb_table} SELECT * FROM chunk_data")
+                        total_ingested += len(chunk)
+                    result_summary["sources"].append(str(dfp))
+                except Exception as exc:
+                    context.log.exception("DTA ingest failed for %s: %s", str(dfp), exc)
+                    total_errors += 1
+            
+            con.close()
+        except Exception as exc:
+            logger.exception("Failed to connect to DuckDB: %s", exc)
+            total_errors += 1
+
+        result_summary.update({
+            "ok": total_errors == 0,
+            "ingested": total_ingested,
+            "skipped": total_skipped,
+            "errors": total_errors,
+            "source_type": "dta"
+        })
+    else:
+        # Fall back to NDJSON input
+        if not raw_ndjson.exists():
+            context.log.warning("No DTA files and NDJSON not found: %s", raw_ndjson)
+            result_summary = {"ok": False, "ingested": 0, "skipped": 0, "errors": 0, "reason": "raw_missing"}
+        else:
+            try:
+                con = duckdb.connect(database=str(duckdb_path), read_only=False)
+                ingested = 0
+                errors = 0
+                batch = []
+                
+                with raw_ndjson.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        if not line.strip():
+                            continue
+                        try:
+                            obj = json.loads(line)
+                            batch.append(obj)
+                            if len(batch) >= batch_size:
+                                df = pd.DataFrame(batch)
+                                if ingested == 0:
+                                    con.execute(f"CREATE OR REPLACE TABLE {duckdb_table} AS SELECT * FROM df LIMIT 0")
+                                con.register("batch_data", df)
+                                con.execute(f"INSERT INTO {duckdb_table} SELECT * FROM batch_data")
+                                ingested += len(df)
+                                batch = []
+                        except Exception:
+                            errors += 1
+                            continue
+                
+                # Final batch
+                if batch:
+                    try:
+                        df = pd.DataFrame(batch)
+                        con.register("final_batch", df)
+                        con.execute(f"INSERT INTO {duckdb_table} SELECT * FROM final_batch")
+                        ingested += len(df)
+                    except Exception:
+                        errors += 1
+                
+                con.close()
+                result_summary = {
+                    "ok": errors == 0,
+                    "ingested": ingested,
+                    "skipped": 0,
+                    "errors": errors,
+                    "source_type": "ndjson",
+                    "sources": [str(raw_ndjson)]
+                }
+            except Exception as exc:
+                logger.exception("Unexpected error during NDJSON ingest: %s", exc)
+                result_summary = {"ok": False, "ingested": 0, "skipped": 0, "errors": 1, "reason": str(exc)}
+
+    # Write checks JSON
+    checks = {
+        "ok": bool(result_summary.get("ok", False)),
+        "ingested": int(result_summary.get("ingested", 0)),
+        "skipped": int(result_summary.get("skipped", 0)),
+        "errors": int(result_summary.get("errors", 0)),
+        "source_type": result_summary.get("source_type"),
+        "sources": result_summary.get("sources", []),
+        "duckdb": str(duckdb_path),
+        "duckdb_table": str(duckdb_table),
+    }
+    with open(checks_path, "w", encoding="utf-8") as fh:
+        json.dump(checks, fh, indent=2)
+
+    context.log.info("USPTO AI ingest completed", extra={"checks_path": str(checks_path), "checks": checks})
+    return checks
+
+
+@asset(
+    name="validated_uspto_ai_cache_stats",
+    description="Return quick statistics about the USPTO AI DuckDB cache (count).",
+)
+def validated_uspto_ai_cache_stats(context) -> Dict[str, Optional[int]]:
+    """
+    Inspect the DuckDB cache and return a small dict with the number of cached predictions.
+    """
+    DEFAULT_DUCKDB = Path(os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB", "data/processed/uspto_ai.duckdb"))
+    DEFAULT_DUCKDB_TABLE = os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB_TABLE", "uspto_ai_predictions")
+    
+    duckdb_path = (
+        Path(context.op_config.get("duckdb"))
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb")
+        else DEFAULT_DUCKDB
+    )
+    table = (
+        context.op_config.get("duckdb_table")
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb_table")
+        else DEFAULT_DUCKDB_TABLE
+    )
+
+    try:
+        import duckdb  # type: ignore
+    except Exception:
+        context.log.warning("duckdb is unavailable; cannot compute cache stats")
+        return {"cache_count": None, "duckdb": str(duckdb_path)}
+
+    try:
+        con = duckdb.connect(database=str(duckdb_path), read_only=True)
+        try:
+            df = con.execute(f"SELECT COUNT(*) AS cnt FROM {table}").fetchdf()
+            count = int(df["cnt"].iloc[0]) if not df.empty else 0
+        except Exception:
+            context.log.exception("Error while counting DuckDB table %s", table)
+            count = None
+        finally:
+            con.close()
+        
+        return {
+            "cache_count": int(count) if count is not None else None,
+            "duckdb": str(duckdb_path),
+            "duckdb_table": table
+        }
+    except Exception:
+        context.log.exception("Failed to open DuckDB at %s", duckdb_path)
+        return {"cache_count": None, "duckdb": str(duckdb_path)}
+
+
+@asset(
+    name="raw_uspto_ai_human_sample",
+    description=(
+        "Produce a sampled NDJSON of USPTO AI predictions intended for human evaluation. "
+        "Writes the sample to `data/processed/uspto_ai_human_sample.ndjson` (or path configured via op_config)."
+    ),
+)
+def raw_uspto_ai_human_sample(context) -> str:
+    """
+    Produce a human evaluation sample from the DuckDB cache.
+    """
+    DEFAULT_DUCKDB = Path(os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB", "data/processed/uspto_ai.duckdb"))
+    DEFAULT_DUCKDB_TABLE = os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB_TABLE", "uspto_ai_predictions")
+    DEFAULT_SAMPLE_PATH = Path("data/processed/uspto_ai_human_sample.ndjson")
+    
+    duckdb_path = (
+        Path(context.op_config.get("duckdb"))
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb")
+        else DEFAULT_DUCKDB
+    )
+    table = (
+        context.op_config.get("duckdb_table")
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb_table")
+        else DEFAULT_DUCKDB_TABLE
+    )
+    sample_n = (
+        int(context.op_config.get("sample_n"))
+        if getattr(context, "op_config", None) and context.op_config.get("sample_n")
+        else 100
+    )
+    output_path = (
+        Path(context.op_config.get("output_path"))
+        if getattr(context, "op_config", None) and context.op_config.get("output_path")
+        else DEFAULT_SAMPLE_PATH
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        import duckdb  # type: ignore
+    except Exception:
+        context.log.warning("duckdb unavailable; cannot sample")
+        with output_path.open("w", encoding="utf-8") as fh:
+            fh.write("")
+        return str(output_path)
+
+    try:
+        con = duckdb.connect(database=str(duckdb_path), read_only=True)
+        try:
+            df = con.execute(f"SELECT * FROM {table} ORDER BY RANDOM() LIMIT {sample_n}").fetchdf()
+        except Exception:
+            context.log.warning("Failed to query DuckDB table %s for sampling", table)
+            df = None
+        finally:
+            con.close()
+
+        if df is None or df.empty:
+            with output_path.open("w", encoding="utf-8") as fh:
+                fh.write("")
+            context.log.warning("No sample returned from DuckDB; wrote empty sample")
+            return str(output_path)
+
+        # Serialize rows to NDJSON
+        with output_path.open("w", encoding="utf-8") as fh:
+            for rec in df.to_dict(orient="records"):
+                grant = rec.get("grant_doc_num") or rec.get("grant_number") or rec.get("patent_id")
+                out = {"grant_doc_num": grant, "prediction": rec}
+                fh.write(json.dumps(out) + "\n")
+
+        context.log.info("Wrote human-eval sample", extra={"output_path": str(output_path), "n": len(df)})
+        return str(output_path)
+    except Exception:
+        context.log.exception("Sampling from DuckDB failed")
+        with output_path.open("w", encoding="utf-8") as fh:
+            fh.write("")
+        return str(output_path)
+
+
+@asset(
+    name="enriched_uspto_ai_patent_join",
+    description=(
+        "Join USPTO AI predictions (cached) to transformed patent records for validation "
+        "and produce a summary checks JSON and an NDJSON of matches."
+    ),
+)
+def enriched_uspto_ai_patent_join(context) -> Dict[str, object]:
+    """
+    Asset that links cached USPTO AI predictions to transformed patents for downstream
+    validation and agreement analysis.
+    """
+    DEFAULT_DUCKDB = Path(os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB", "data/processed/uspto_ai.duckdb"))
+    DEFAULT_DUCKDB_TABLE = os.environ.get("SBIR_ETL__USPTO_AI__DUCKDB_TABLE", "uspto_ai_predictions")
+    
+    processed_dir = Path("data/processed")
+    output_matches = processed_dir / "uspto_ai_patent_matches.ndjson"
+    checks_path = processed_dir / "uspto_ai_patent_join.checks.json"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load patent records
+    patents: List[Dict] = []
+    patents_parquet = Path("data/processed/transformed_patents.parquet")
+    patents_ndjson = Path("data/processed/transformed_patents.ndjson")
+    
+    try:
+        if patents_parquet.exists():
+            import pandas as pd
+            df = pd.read_parquet(patents_parquet)
+            patents = df.to_dict(orient="records")
+        elif patents_ndjson.exists():
+            with patents_ndjson.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        try:
+                            patents.append(json.loads(line))
+                        except Exception:
+                            continue
+        else:
+            # minimal sample for CI
+            patents = [
+                {"patent_id": "sample_p1", "grant_doc_num": "US1234567B2", "title": "ML for imaging"},
+                {"patent_id": "sample_p2", "grant_doc_num": "US7654321B2", "title": "Quantum error correction"},
+            ]
+            context.log.warning("No transformed patents found; running on a small sample")
+    except Exception:
+        context.log.exception("Failed to load transformed patents; aborting join")
+        checks = {"ok": False, "reason": "load_error", "num_patents": 0}
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return checks
+
+    # Query DuckDB to join predictions to patents
+    duckdb_path = (
+        Path(context.op_config.get("duckdb"))
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb")
+        else DEFAULT_DUCKDB
+    )
+    table = (
+        context.op_config.get("duckdb_table")
+        if getattr(context, "op_config", None) and context.op_config.get("duckdb_table")
+        else DEFAULT_DUCKDB_TABLE
+    )
+
+    try:
+        import duckdb  # type: ignore
+    except Exception:
+        msg = "duckdb unavailable; cannot perform patent join"
+        context.log.warning(msg)
+        checks = {"ok": False, "reason": "duckdb_unavailable", "message": msg}
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return checks
+
+    try:
+        con = duckdb.connect(database=str(duckdb_path), read_only=True)
+        matched = 0
+        total = len(patents)
+        
+        with output_matches.open("w", encoding="utf-8") as outf:
+            for p in patents:
+                # attempt to find a matching grant id
+                candidate_ids = [
+                    p.get("grant_doc_num"), p.get("grant_number"), p.get("grant_docnum"),
+                    p.get("patent_id"), p.get("publication_number"), p.get("doc_num"),
+                ]
+                candidate_ids = [str(x).strip() for x in candidate_ids if x]
+                found_row = None
+                
+                for gid in candidate_ids:
+                    for col in ("grant_doc_num", "grant_number", "grant_docnum", "patent_id", "publication_number", "doc_num"):
+                        try:
+                            df = con.execute(f"SELECT * FROM {table} WHERE {col} = ? LIMIT 1", (gid,)).fetchdf()
+                            if df is not None and not df.empty:
+                                found_row = df.to_dict(orient="records")[0]
+                                break
+                        except Exception:
+                            continue
+                    if found_row is not None:
+                        break
+                
+                if found_row is not None:
+                    matched += 1
+                    out_obj = {"patent": p, "uspto_prediction": found_row}
+                    outf.write(json.dumps(out_obj) + "\n")
+
+        checks = {
+            "ok": True,
+            "num_patents": total,
+            "num_matched": matched,
+            "match_rate": round(matched / total, 4) if total > 0 else 0.0,
+            "matches_path": str(output_matches),
+        }
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        
+        context.log.info("USPTO AI patent join complete", extra=checks)
+        return checks
+    except Exception:
+        context.log.exception("Patent join failed")
+        checks = {"ok": False, "reason": "join_failed", "num_patents": len(patents)}
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        return checks
+    finally:
+        try:
+            con.close()
+        except Exception:
+            pass
+
+
+# ============================================================================
+# Asset Aliases for Backward Compatibility
+# ============================================================================
+
+# Aliases for assets expected by __init__.py and other modules
+uspto_ai_extract_to_duckdb = raw_uspto_ai_extract
+uspto_ai_human_sample_extraction = raw_uspto_ai_human_sample_extraction
+
+# ============================================================================
 # Exported symbols
 # ============================================================================
 
@@ -2404,6 +2858,13 @@ __all__ = [
     "patent_relationship_cardinality",
     # Stage 5: AI Extraction
     "raw_uspto_ai_extract",
+    "uspto_ai_extract_to_duckdb",  # Alias for raw_uspto_ai_extract
     "uspto_ai_deduplicate",
     "raw_uspto_ai_human_sample_extraction",
+    "uspto_ai_human_sample_extraction",  # Alias for raw_uspto_ai_human_sample_extraction
+    # Additional AI assets from consolidated uspto_ai_assets.py
+    "raw_uspto_ai_predictions",
+    "validated_uspto_ai_cache_stats",
+    "raw_uspto_ai_human_sample",
+    "enriched_uspto_ai_patent_join",
 ]

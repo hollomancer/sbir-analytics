@@ -196,13 +196,13 @@ _lazy_mapping: Dict[str, Tuple[str, str]] = {
         "neo4j_company_cet_relationships",
     ),
     # transition_assets
-    "contracts_ingestion": ("src.assets.transition_assets", "contracts_ingestion"),
-    "contracts_sample": ("src.assets.transition_assets", "contracts_sample"),
-    "vendor_resolution": ("src.assets.transition_assets", "vendor_resolution"),
-    "transition_scores_v1": ("src.assets.transition_assets", "transition_scores_v1"),
-    "transition_evidence_v1": ("src.assets.transition_assets", "transition_evidence_v1"),
-    "transition_detections": ("src.assets.transition_assets", "transition_detections"),
-    "transition_analytics": ("src.assets.transition_assets", "transition_analytics"),
+    "contracts_ingestion": ("src.assets.transition_assets", "raw_contracts"),
+    "contracts_sample": ("src.assets.transition_assets", "validated_contracts_sample"),
+    "vendor_resolution": ("src.assets.transition_assets", "enriched_vendor_resolution"),
+    "transition_scores_v1": ("src.assets.transition_assets", "transformed_transition_scores"),
+    "transition_evidence_v1": ("src.assets.transition_assets", "transformed_transition_evidence"),
+    "transition_detections": ("src.assets.transition_assets", "transformed_transition_detections"),
+    "transition_analytics": ("src.assets.transition_assets", "transformed_transition_analytics"),
     # transition asset checks
     "contracts_sample_quality_check": (
         "src.assets.transition_assets",

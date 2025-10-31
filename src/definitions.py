@@ -16,8 +16,6 @@ from .assets import (
     usaspending_ingestion,
     sbir_usaspending_enrichment,
     uspto_assets,
-    uspto_validation_assets,
-    uspto_transformation_assets,
     cet_assets,
     transition_assets,
 )
@@ -32,8 +30,6 @@ all_assets = load_assets_from_modules(
         usaspending_ingestion,
         sbir_usaspending_enrichment,
         uspto_assets,
-        uspto_validation_assets,
-        uspto_transformation_assets,
         cet_assets,
         transition_assets,
     ]
@@ -42,8 +38,6 @@ all_asset_checks = load_asset_checks_from_modules(
     [
         sbir_ingestion,
         uspto_assets,
-        uspto_validation_assets,
-        uspto_transformation_assets,
         cet_assets,
         transition_assets,
     ]
