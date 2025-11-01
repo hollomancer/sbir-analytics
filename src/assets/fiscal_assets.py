@@ -723,7 +723,7 @@ def fiscal_geographic_resolution_check(fiscal_prepared_sbir_awards: pd.DataFrame
     resolved_awards = fiscal_prepared_sbir_awards.get("resolved_state", pd.Series()).notna().sum()
     resolution_rate = resolved_awards / total_awards if total_awards > 0 else 0.0
 
-    passed = resolution_rate >= min_resolution_rate
+    passed = bool(resolution_rate >= min_resolution_rate)  # Convert numpy bool to Python bool
 
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
@@ -819,7 +819,7 @@ def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) 
 
     success_rate = adjusted_awards / total_awards if total_awards > 0 else 0.0
 
-    passed = success_rate >= min_success_rate
+    passed = bool(success_rate >= min_success_rate)  # Convert numpy bool to Python bool
 
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
@@ -1136,16 +1136,23 @@ def uncertainty_analysis(
         )
 
     # Convert to DataFrame
+    from decimal import Decimal as Dec
+    
+    def get_ci_value(level: float, index: int) -> float:
+        """Get confidence interval value safely."""
+        ci_tuple = uncertainty_result.confidence_intervals.get(level, (Dec("0"), Dec("0")))
+        return float(ci_tuple[index])
+    
     uncertainty_df = pd.DataFrame(
         [
             {
                 "min_estimate": float(uncertainty_result.min_estimate),
                 "mean_estimate": float(uncertainty_result.mean_estimate),
                 "max_estimate": float(uncertainty_result.max_estimate),
-                "confidence_90_low": float(uncertainty_result.confidence_intervals.get(0.90, (Decimal("0"), Decimal("0")))[0]),
-                "confidence_90_high": float(uncertainty_result.confidence_intervals.get(0.90, (Decimal("0"), Decimal("0")))[1]),
-                "confidence_95_low": float(uncertainty_result.confidence_intervals.get(0.95, (Decimal("0"), Decimal("0")))[0]),
-                "confidence_95_high": float(uncertainty_result.confidence_intervals.get(0.95, (Decimal("0"), Decimal("0")))[1]),
+                "confidence_90_low": get_ci_value(0.90, 0),
+                "confidence_90_high": get_ci_value(0.90, 1),
+                "confidence_95_low": get_ci_value(0.95, 0),
+                "confidence_95_high": get_ci_value(0.95, 1),
                 "high_uncertainty": quantifier.flag_high_uncertainty(uncertainty_result),
             }
         ]

@@ -292,10 +292,17 @@ class FiscalParameterSweep:
         Returns:
             DataFrame with scenario parameters
         """
-        sweep_config = self.sensitivity_config.get("parameter_sweep", {})
-        method = sweep_config.get("method", "monte_carlo")
-        num_scenarios = sweep_config.get("num_scenarios", 1000)
-        random_seed = sweep_config.get("random_seed", 42)
+        # Handle both Pydantic model and dict
+        if hasattr(self.sensitivity_config, "parameter_sweep"):
+            sweep_config = self.sensitivity_config.parameter_sweep
+            if hasattr(sweep_config, "__dict__"):
+                sweep_config = sweep_config.__dict__
+        else:
+            sweep_config = self.sensitivity_config.get("parameter_sweep", {})
+        
+        method = sweep_config.get("method", "monte_carlo") if isinstance(sweep_config, dict) else getattr(sweep_config, "method", "monte_carlo")
+        num_scenarios = sweep_config.get("num_scenarios", 1000) if isinstance(sweep_config, dict) else getattr(sweep_config, "num_scenarios", 1000)
+        random_seed = sweep_config.get("random_seed", 42) if isinstance(sweep_config, dict) else getattr(sweep_config, "random_seed", 42)
 
         if method == "monte_carlo":
             scenarios = self.generate_monte_carlo_scenarios(num_scenarios, random_seed)

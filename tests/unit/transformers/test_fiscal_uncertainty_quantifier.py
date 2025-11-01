@@ -98,8 +98,9 @@ class TestFiscalUncertaintyQuantifier:
         empty_df = pd.DataFrame()
         result = quantifier.quantify_uncertainty(empty_df, target_column="total_tax_receipt")
 
-        assert result.is_valid is False
+        # UncertaintyResult doesn't have is_valid - check quality_flags instead
         assert "empty_dataframe" in result.quality_flags
+        assert result.min_estimate == Decimal("0")
 
     def test_quantify_uncertainty_missing_target(self, quantifier, sample_scenario_results_df):
         """Test uncertainty quantification with missing target column."""
@@ -107,8 +108,9 @@ class TestFiscalUncertaintyQuantifier:
             sample_scenario_results_df, target_column="nonexistent_column"
         )
 
-        assert result.is_valid is False
+        # UncertaintyResult doesn't have is_valid - check quality_flags instead
         assert "missing_target_column" in result.quality_flags
+        assert result.min_estimate == Decimal("0")
 
     def test_flag_high_uncertainty(self, quantifier):
         """Test high uncertainty flagging."""

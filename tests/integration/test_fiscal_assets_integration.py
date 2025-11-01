@@ -83,7 +83,7 @@ def sample_impacts():
 class TestFiscalDataPreparationAssets:
     """Test fiscal data preparation assets."""
 
-    @patch("src.assets.fiscal_assets.resolve_award_geography")
+    @patch("src.enrichers.geographic_resolver.resolve_award_geography")
     def test_fiscal_prepared_sbir_awards(
         self, mock_resolve, sample_fiscal_naics_enriched
     ):

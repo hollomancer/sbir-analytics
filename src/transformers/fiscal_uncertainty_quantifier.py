@@ -62,8 +62,14 @@ class FiscalUncertaintyQuantifier:
             Dictionary mapping confidence level to (low, high) interval
         """
         if confidence_levels is None:
-            ci_config = self.sensitivity_config.get("confidence_intervals", {})
-            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99])
+            # Handle both Pydantic model and dict
+            if hasattr(self.sensitivity_config, "confidence_intervals"):
+                ci_config = self.sensitivity_config.confidence_intervals
+                if hasattr(ci_config, "__dict__"):
+                    ci_config = ci_config.__dict__
+            else:
+                ci_config = self.sensitivity_config.get("confidence_intervals", {})
+            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99]) if isinstance(ci_config, dict) else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
 
         if estimates.empty:
             return {level: (Decimal("0"), Decimal("0")) for level in confidence_levels}
@@ -100,8 +106,14 @@ class FiscalUncertaintyQuantifier:
             Dictionary mapping confidence level to (low, high) interval
         """
         if confidence_levels is None:
-            ci_config = self.sensitivity_config.get("confidence_intervals", {})
-            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99])
+            # Handle both Pydantic model and dict
+            if hasattr(self.sensitivity_config, "confidence_intervals"):
+                ci_config = self.sensitivity_config.confidence_intervals
+                if hasattr(ci_config, "__dict__"):
+                    ci_config = ci_config.__dict__
+            else:
+                ci_config = self.sensitivity_config.get("confidence_intervals", {})
+            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99]) if isinstance(ci_config, dict) else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
 
         if estimates.empty:
             return {level: (Decimal("0"), Decimal("0")) for level in confidence_levels}
@@ -232,11 +244,18 @@ class FiscalUncertaintyQuantifier:
         max_estimate = Decimal(str(estimates.max()))
 
         # Compute confidence intervals
-        ci_config = self.sensitivity_config.get("confidence_intervals", {})
-        method = ci_config.get("method", "percentile")
+        # Handle both Pydantic model and dict
+        if hasattr(self.sensitivity_config, "confidence_intervals"):
+            ci_config = self.sensitivity_config.confidence_intervals
+            if hasattr(ci_config, "__dict__"):
+                ci_config = ci_config.__dict__
+        else:
+            ci_config = self.sensitivity_config.get("confidence_intervals", {})
+        
+        method = ci_config.get("method", "percentile") if isinstance(ci_config, dict) else getattr(ci_config, "method", "percentile")
 
         if method == "bootstrap":
-            bootstrap_samples = ci_config.get("bootstrap_samples", 1000)
+            bootstrap_samples = ci_config.get("bootstrap_samples", 1000) if isinstance(ci_config, dict) else getattr(ci_config, "bootstrap_samples", 1000)
             confidence_intervals = self.compute_bootstrap_confidence_intervals(
                 estimates, confidence_levels=confidence_levels, num_samples=bootstrap_samples
             )
