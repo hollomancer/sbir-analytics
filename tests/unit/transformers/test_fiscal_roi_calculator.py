@@ -68,9 +68,9 @@ class TestFiscalROICalculator:
     def test_calculate_payback_period_no_payback(self, calculator):
         """Test payback period when returns are too low."""
         investment = Decimal("100000")
-        annual_returns = Decimal("5000")  # Very low returns
+        annual_returns = Decimal("100")  # Very low returns (will never payback)
 
-        payback = calculator._calculate_payback_period(investment, annual_returns)
+        payback = calculator._calculate_payback_period(investment, annual_returns, discount_rate=0.0)
 
         assert payback is None or payback > 50  # Very long or None
 

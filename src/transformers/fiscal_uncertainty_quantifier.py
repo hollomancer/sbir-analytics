@@ -202,7 +202,7 @@ class FiscalUncertaintyQuantifier:
         Returns:
             UncertaintyResult with min/mean/max, confidence intervals, sensitivity indices
         """
-        if scenario_results_df.empty:
+        if scenario_results_df is None or scenario_results_df.empty:
             logger.warning("Empty scenario results DataFrame provided to uncertainty quantifier")
             return UncertaintyResult(
                 min_estimate=Decimal("0"),

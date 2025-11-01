@@ -60,7 +60,13 @@ class FiscalParameterSweep:
         Returns:
             Dictionary of parameter name to ParameterRange
         """
-        uncertainty_params = self.sensitivity_config.get("uncertainty_parameters", {})
+        # Handle both dict and Pydantic model
+        if hasattr(self.sensitivity_config, "uncertainty_parameters"):
+            uncertainty_params = self.sensitivity_config.uncertainty_parameters
+            if hasattr(uncertainty_params, "__dict__"):
+                uncertainty_params = uncertainty_params.__dict__
+        else:
+            uncertainty_params = self.sensitivity_config.get("uncertainty_parameters", {})
 
         ranges = {}
 
@@ -296,7 +302,12 @@ class FiscalParameterSweep:
         elif method == "latin_hypercube":
             scenarios = self.generate_latin_hypercube_scenarios(num_scenarios, random_seed)
         elif method == "grid_search":
-            points_per_dim = int(np.ceil(num_scenarios ** (1.0 / len(self._get_parameter_ranges()))))
+            ranges = self._get_parameter_ranges()
+            num_params = len(ranges)
+            if num_params > 0:
+                points_per_dim = int(np.ceil(num_scenarios ** (1.0 / num_params)))
+            else:
+                points_per_dim = 3  # Default
             scenarios = self.generate_grid_search_scenarios(points_per_dim)
         else:
             logger.warning(f"Unknown method {method}, defaulting to monte_carlo")

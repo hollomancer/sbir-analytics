@@ -735,9 +735,9 @@ def fiscal_geographic_resolution_check(fiscal_prepared_sbir_awards: pd.DataFrame
     metadata = {
         "resolution_rate": f"{resolution_rate:.1%}",
         "threshold": f"{min_resolution_rate:.1%}",
-        "total_awards": total_awards,
-        "resolved_awards": resolved_awards,
-        "unresolved_awards": total_awards - resolved_awards,
+        "total_awards": int(total_awards),
+        "resolved_awards": int(resolved_awards),
+        "unresolved_awards": int(total_awards - resolved_awards),
     }
 
     return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)
@@ -831,9 +831,9 @@ def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) 
     metadata = {
         "success_rate": f"{success_rate:.1%}",
         "threshold": f"{min_success_rate:.1%}",
-        "total_awards": total_awards,
-        "adjusted_awards": adjusted_awards,
-        "unadjusted_awards": total_awards - adjusted_awards,
+        "total_awards": int(total_awards),
+        "adjusted_awards": int(adjusted_awards),
+        "unadjusted_awards": int(total_awards - adjusted_awards),
     }
 
     return AssetCheckResult(passed=passed, severity=severity, description=description, metadata=metadata)

@@ -110,6 +110,9 @@ class FiscalROICalculator:
             cumulative_pv += pv_this_year
             if cumulative_pv >= investment:
                 return float(year)
+            # Prevent infinite loop - check if we're converging
+            if year > 10 and cumulative_pv < investment * Decimal("0.1"):
+                return None  # Not converging, unlikely to payback
 
         return None  # Payback not achieved within 100 years
 

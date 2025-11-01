@@ -105,14 +105,18 @@ class FiscalComponentCalculator:
             result_df["component_vs_production_diff"] = (
                 result_df["production_impact"] - result_df["component_total"]
             )
-            result_df["component_vs_production_pct"] = (
-                (
-                    result_df["component_vs_production_diff"]
-                    / result_df["production_impact"]
-                    * Decimal("100")
-                )
-                if result_df["production_impact"] != 0
-                else Decimal("0")
+            # Use vectorized operations instead of conditional Series comparison
+            result_df["component_vs_production_pct"] = result_df.apply(
+                lambda row: (
+                    (
+                        row["component_vs_production_diff"]
+                        / row["production_impact"]
+                        * Decimal("100")
+                    )
+                    if row["production_impact"] != Decimal("0")
+                    else Decimal("0")
+                ),
+                axis=1,
             )
 
         # Validate each row
@@ -171,11 +175,13 @@ class FiscalComponentCalculator:
             return False
 
         # If production_impact available, check components sum to reasonable proportion
-        if "production_impact" in row and row["production_impact"] > 0:
-            component_pct = row.get("component_vs_production_pct", Decimal("0"))
-            # Components should be within 50-150% of production (allows for taxes, etc.)
-            if abs(component_pct) > 50:
-                return False
+        if "production_impact" in row:
+            production = row.get("production_impact", Decimal("0"))
+            if production > Decimal("0"):
+                component_pct = row.get("component_vs_production_pct", Decimal("0"))
+                # Components should be within 50-150% of production (allows for taxes, etc.)
+                if abs(float(component_pct)) > 50:
+                    return False
 
         return True
 
