@@ -98,6 +98,8 @@ pytest --cov=src
 ```bash
 poetry run dagster dev                    # Start Dagster UI
 dagster job execute -f src/definitions.py -j sbir_ingestion_job
+dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job      # Fiscal ROI analysis (core)
+dagster job execute -f src/definitions.py -j fiscal_returns_full_job     # Fiscal ROI with sensitivity
 ```
 
 ### Neo4j Operations
@@ -118,6 +120,7 @@ make neo4j-reset   # Fresh instance
 | Neo4j constraint violations | Check for duplicate data | [neo4j-patterns.md](neo4j-patterns.md) |
 | Memory issues | Reduce chunk_size | [pipeline-orchestration.md](pipeline-orchestration.md) |
 | Asset dependency errors | Check asset function signatures | [pipeline-orchestration.md](pipeline-orchestration.md) |
+| Fiscal analysis R errors | Check R/rpy2 installation and StateIO package | [configuration-patterns.md](configuration-patterns.md) |
 
 ### Performance Issues
 

@@ -33,8 +33,8 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 ```
 src/
   extractors/           # SBIR.gov CSV, USAspending dump, USPTO patents
-  enrichers/            # Fuzzy matching, chunked processing, spill-to-disk
-  transformers/         # Business logic, normalization
+  enrichers/            # Fuzzy matching, chunked processing, spill-to-disk (includes fiscal enrichers)
+  transformers/         # Business logic, normalization (includes fiscal transformers)
   loaders/              # Neo4j (idempotent MERGE, relationships)
   assets/               # Dagster asset definitions
   utils/performance_*.py # Alerts, baselines, monitoring
@@ -101,6 +101,7 @@ make docker-test        # Run tests in container
 **Modify CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
 **Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=src`
 **Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`
+**Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
 
 ## References
 

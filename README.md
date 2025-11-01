@@ -226,6 +226,100 @@ poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% co
 - Neo4j graph schema implemented with full relationship modeling
 - Archived in `.kiro/specs/archive/completed-features/transition_detection/`
 
+## Fiscal Returns Analysis System
+
+### What is Fiscal Returns Analysis?
+
+The **Fiscal Returns Analysis System** calculates the return on investment (ROI) of SBIR program funding by estimating federal tax receipts generated from economic impacts. It uses economic input-output modeling to trace how SBIR investments flow through the economy and generate taxable economic activity.
+
+**Key Question**: *What is the fiscal return to the federal government from SBIR investments?*
+
+**Answer**: Quantitative ROI metrics with confidence intervals, showing dollars of federal tax receipts per dollar of SBIR investment.
+
+### How It Works
+
+The system uses a multi-stage economic modeling approach:
+
+1. **Data Preparation** - Enrich SBIR awards with NAICS codes, geographic data, and inflation adjustments
+2. **Economic Modeling** - Map NAICS to BEA sectors, aggregate economic shocks, compute impacts via StateIO/USEEIO
+3. **Tax Calculation** - Extract wage/income components, estimate federal tax receipts using tax rates
+4. **ROI Analysis** - Calculate net present value, ROI ratios, and payback periods
+5. **Sensitivity Analysis** - Parameter sweeps and uncertainty quantification with confidence intervals
+6. **Audit Trail** - Complete lineage tracking from source awards to final estimates
+
+### Key Capabilities
+
+- **Economic Impact Modeling**: Integration with StateIO/USEEIO models via R interface
+- **Comprehensive Tax Estimation**: Federal income, payroll, and corporate tax calculations
+- **Sensitivity Analysis**: Monte Carlo parameter sweeps with uncertainty quantification
+- **Geographic Resolution**: State-level economic impact modeling
+- **Quality Gates**: Configurable thresholds for NAICS coverage, confidence scores, and mapping rates
+- **Audit Trails**: Complete parameter and transformation tracking for reproducibility
+
+### Performance
+
+- **Pipeline Assets**: 13 Dagster assets with 7 quality checks
+- **Processing Speed**: Optimized for large-scale SBIR datasets
+- **Quality Thresholds**: ≥85% NAICS coverage, ≥90% BEA sector mapping
+- **Confidence Scoring**: Hierarchical fallback with evidence tracking
+
+### Data Assets
+
+After fiscal returns analysis pipeline:
+
+- **fiscal_return_summary.parquet** - ROI metrics and tax estimates by award
+- **sensitivity_scenarios.parquet** - Parameter sweep results with confidence intervals
+- **uncertainty_analysis.json** - Statistical uncertainty quantification
+- **comprehensive_fiscal_report.json** - Complete analysis with all metrics
+- **audit_trail.json** - Parameter lineage and transformation history
+
+### Quick Start
+
+```bash
+# Run MVP fiscal analysis (core functionality)
+poetry run dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
+
+# Run full analysis with sensitivity analysis
+poetry run dagster job execute -f src/definitions.py -j fiscal_returns_full_job
+
+# Or: Run from Dagster UI
+dagster dev
+# Then select and materialize "fiscal_returns_full_job"
+```
+
+**Expected Output** (15–45 minutes depending on dataset size):
+- All fiscal analysis assets materialized ✅
+- ROI calculations with confidence intervals
+- Sensitivity analysis with parameter sweeps
+- Complete audit trail and quality metrics
+
+### Configuration
+
+**Key Settings**:
+```bash
+# Base analysis year
+export SBIR_ETL__FISCAL_ANALYSIS__BASE_YEAR=2023
+
+# Quality thresholds
+export SBIR_ETL__FISCAL_ANALYSIS__QUALITY_THRESHOLDS__NAICS_COVERAGE_RATE=0.85
+export SBIR_ETL__FISCAL_ANALYSIS__QUALITY_THRESHOLDS__BEA_SECTOR_MAPPING_RATE=0.90
+
+# Economic modeling parameters
+export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__DISCOUNT_RATE=0.03
+export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__ANALYSIS_PERIOD_YEARS=10
+```
+
+### Implementation Status
+
+**Fiscal Returns Analysis**: ✅ **FULLY COMPLETED** (November 2025)
+
+- Complete economic modeling pipeline with StateIO/USEEIO integration
+- Federal tax estimation with comprehensive rate structures
+- Sensitivity analysis and uncertainty quantification
+- 13 Dagster assets with full quality gate coverage
+- Comprehensive test suite (10 test files covering unit, integration, validation)
+- Archived in `.kiro/specs/archive/sbir-fiscal-returns-analysis/`
+
 ### Statistical Reporting System
 
 **Status**: 🚧 **IN DEVELOPMENT** - Core infrastructure implemented, module analyzers in progress

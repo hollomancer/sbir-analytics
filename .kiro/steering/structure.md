@@ -10,8 +10,8 @@ src/
 ├── config/                 # Configuration management and schemas
 ├── extractors/             # Stage 1: Data extraction from various sources
 ├── validators/             # Stage 2: Schema validation and data quality checks
-├── enrichers/              # Stage 3: External enrichment and fuzzy matching
-├── transformers/           # Stage 4: Business logic and graph preparation
+├── enrichers/              # Stage 3: External enrichment and fuzzy matching (includes fiscal enrichers)
+├── transformers/           # Stage 4: Business logic and graph preparation (includes fiscal transformers)
 ├── loaders/                # Stage 5: Neo4j loading and relationship creation
 ├── models/                 # Pydantic data models and type definitions
 ├── utils/                  # Shared utilities (logging, metrics, performance)

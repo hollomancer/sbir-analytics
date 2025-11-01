@@ -20,6 +20,7 @@ The federal government provides vast amounts of data on innovation and governmen
 - **Neo4j graph database**: Patent chains, award relationships, technology transition tracking
 - **Quality gates**: Configurable thresholds enforce data quality throughout the pipeline
 - **CET (Critical and Emerging Technologies) classification**: Automated classification of SBIR awards into CET areas
+- **Fiscal returns analysis**: Economic impact modeling and ROI calculation for SBIR program evaluation
 
 ### Data Sources
 
@@ -29,7 +30,7 @@ The federal government provides vast amounts of data on innovation and governmen
 
 ### Business Value
 
-Enables analysis of technology transition from research to commercialization, patent ownership patterns, and the effectiveness of government innovation funding programs.
+Enables analysis of technology transition from research to commercialization, patent ownership patterns, and the effectiveness of government innovation funding programs. The fiscal returns analysis capability provides quantitative ROI assessment of SBIR investments through economic impact modeling and federal tax receipt estimation.
 
 ## Related Documents
 

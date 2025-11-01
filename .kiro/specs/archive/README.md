@@ -1,74 +1,42 @@
-# Kiro Specifications Archive
+# Archived Specifications
 
-This directory contains completed Kiro specifications that are no longer actively developed but preserved for historical reference and audit purposes.
+This directory contains completed specifications that have been fully implemented and integrated into the codebase.
 
-## Archive Structure
+## Completed Specifications
 
+### SBIR Fiscal Returns Analysis (sbir-fiscal-returns-analysis/)
+**Completed:** November 2025  
+**Status:** ✅ Fully Implemented
+
+A comprehensive fiscal returns analysis system that calculates the return on investment (ROI) of SBIR program funding by estimating federal tax receipts generated from economic impacts.
+
+**Key Features:**
+- Multi-stage ETL pipeline with data preparation, economic modeling, and tax calculation
+- Integration with StateIO/USEEIO economic models via R interface
+- Sensitivity analysis and uncertainty quantification
+- Comprehensive audit trails and quality gates
+- 13 Dagster assets with full test coverage
+
+**Implementation Highlights:**
+- Complete pipeline: `src/assets/fiscal_assets.py` (13 assets, 7 asset checks)
+- Core transformers: `src/transformers/fiscal_*.py` (6 components)
+- Data enrichers: `src/enrichers/fiscal_*.py` (3 services)
+- Job definitions: `src/assets/jobs/fiscal_returns_job.py` (3 variants)
+- Test coverage: 10 test files (unit, integration, validation)
+- Configuration: `config/base.yaml` fiscal_analysis section
+
+**Usage:**
+```bash
+# Run MVP pipeline (core functionality)
+dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
+
+# Run full pipeline with sensitivity analysis
+dagster job execute -f src/definitions.py -j fiscal_returns_full_job
 ```
-archive/
-├── completed-migrations/     # Migration and transition projects
-├── deprecated-features/      # Features that were removed or replaced
-├── completed-features/       # Successfully implemented features
-└── README.md                # This file
-```
 
-## Archived Specifications
+**Documentation:**
+- Requirements: Comprehensive EARS-compliant requirements with 9 user stories
+- Design: Detailed architecture with economic modeling approach
+- Implementation: Complete task breakdown with all 9 major tasks completed
 
-### Completed Migrations
-
-#### openspec-to-kiro-migration (Completed: 2025-10-30)
-- **Purpose**: Migrated project from OpenSpec to Kiro specification system
-- **Status**: ✅ Completed successfully
-- **Results**: 8 OpenSpec changes + 9 specs → 13 Kiro specifications
-- **Impact**: Established Kiro as the project's specification system
-- **Migration ID**: migration_20251030_152650
-- **Location**: `completed-migrations/openspec-to-kiro-migration/`
-- **Completion Record**: See `COMPLETION_RECORD.md` for detailed results and artifacts
-
-### Completed Features
-
-#### transition_detection (Completed: 2025-10-30)
-- **Purpose**: SBIR Transition Detection Module for technology commercialization analysis
-- **Status**: ✅ Fully completed (169/169 tasks)
-- **Results**: Multi-signal detection engine, vendor resolution, Neo4j integration, dual-perspective analytics
-- **Impact**: Enables comprehensive SBIR program effectiveness measurement and technology transfer tracking
-- **Performance**: ≥10K detections/minute, ≥85% precision, ≥70% recall, 90%+ vendor match rate
-- **Location**: `completed-features/transition_detection/`
-- **Completion Record**: See `COMPLETION_RECORD.md` for detailed implementation results and validation metrics
-
-## Archive Guidelines
-
-### When to Archive
-
-Archive specs when they are:
-- ✅ **Completed**: All requirements implemented and validated
-- 🚫 **Deprecated**: Feature removed or replaced
-- 📦 **Consolidated**: Merged into other specifications
-- 🔄 **Migrated**: Transitioned to new system or approach
-
-### Archive Process
-
-1. **Complete Implementation**: Ensure all tasks are finished
-2. **Create Completion Record**: Document results and impact
-3. **Move to Archive**: Place in appropriate archive subdirectory
-4. **Update Index**: Add entry to this README
-5. **Commit Changes**: Check in archive with completion notes
-
-### Accessing Archived Specs
-
-Archived specifications are:
-- **Read-only**: For reference and audit purposes
-- **Preserved**: Complete with all original documentation
-- **Traceable**: Linked to implementation and outcomes
-- **Searchable**: Indexed for easy discovery
-
-Use archived specs for:
-- Understanding past decisions and rationale
-- Learning from previous implementation approaches
-- Auditing completed work and outcomes
-- Reference for similar future projects
-
-## Active Development
-
-For active development, use specifications in `.kiro/specs/` (parent directory).
-See `docs/development/kiro-workflow-guide.md` for current workflow guidance.
+This specification demonstrates the full spec-driven development workflow from requirements gathering through design to complete implementation and testing.
