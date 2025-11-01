@@ -1225,7 +1225,7 @@ def fiscal_returns_report(
     )
 
     metadata = {
-        "report_generated_at": MetadataValue.timestamp(pd.Timestamp.now()),
+        "report_generated_at": MetadataValue.timestamp(pd.Timestamp.now(tz="UTC")),
         "base_year": config.fiscal_analysis.base_year,
         "model_version": config.fiscal_analysis.stateio_model_version,
         "preview": MetadataValue.md(report_df.to_markdown()) if not report_df.empty else "No report",
