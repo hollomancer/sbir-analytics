@@ -608,6 +608,12 @@ To enable automated regression detection against a baseline, initialize the CET 
 
 Once the baseline is created, the performance/regression job will compare current runs to the saved baseline and surface alerts when thresholds are exceeded. The baseline file is retained by CI artifacts and can be updated with the `--force` or `--set-thresholds` flags as needed.
 
+### Research & References
+
+**Classifier-Related Research:**
+- **Bayesian Mixture-of-Experts**: [Bayesian Mixture-of-Experts: Towards Making LLMs Know What They Don't Know](https://www.arxiv.org/abs/2509.23830) - Research on improving calibration and uncertainty estimation in classifier routing mechanisms
+- **PaECTER**: [PaECTER - Patent Embeddings using Citation-informed TransformERs](https://huggingface.co/mpi-inno-comp/paecter) - Patent similarity model for semantic search and patent analysis tasks
+
 A robust ETL (Extract, Transform, Load) pipeline for processing SBIR (Small Business Innovation Research) program data into Neo4j graph database.
 
 ### Why This Project?
@@ -1039,6 +1045,18 @@ All new development should use the Kiro specification system in `.kiro/specs/`.
 - Centralize performance monitoring and metrics collection
 
 See [Consolidation Refactor Plan](docs/architecture/consolidation-refactor-plan.md) and [Migration Guide](docs/architecture/consolidation-migration-guide.md) for details.
+
+## Acknowledgments
+
+This project makes use of and is grateful for the following open-source tools and research:
+
+### Economic Modeling
+- **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
+- **[USEEIOR](https://github.com/USEPA/useeior)** - Environmentally-extended input-output model builder by USEPA
+
+### Classifier Research & Tools
+- **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation in classifier routing by Albus Yizhuo Li
+- **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute for Innovation and Competition
 
 ## License
 
