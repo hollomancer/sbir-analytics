@@ -67,21 +67,21 @@
     - _Requirements: 1.1, 6.3_
 
   - [ ] 6.2 Add comprehensive E2E test scenarios
-    - Create new test classes for standard, large, and edge-case scenarios
-    - Extend existing pipeline validation with Neo4j graph verification
+    - Create new test classes for standard, large, and edge-case scenarios in `tests/e2e/test_e2e_scenarios.py`
+    - Integrate TestDataManager with scenario-based test execution
     - Add performance metrics validation to existing test framework
     - _Requirements: 1.1, 1.3, 1.4, 4.1, 4.2, 4.3, 4.4_
 
   - [ ] 6.3 Implement performance test scenario
-    - Add performance test class that uses larger datasets from existing fixtures
-    - Integrate with existing resource monitoring in `tests/test_enrichment_pipeline.py`
+    - Add performance test class that uses larger datasets from TestDataManager
+    - Integrate ResourceMonitor with performance testing
     - Add MacBook Air specific resource threshold validation
     - _Requirements: 1.2, 4.5_
 
   - [ ] 6.4 Build edge case test scenario
-    - Create edge case test class using existing fixture infrastructure
+    - Create edge case test class using TestDataManager for edge case data
     - Extend existing error handling tests with E2E validation
-    - Add robustness validation using existing test data patterns
+    - Add robustness validation using synthetic edge case data
     - _Requirements: 1.5, 6.2_
 
 - [ ] 7. Enhance integration with existing pipeline
@@ -116,7 +116,20 @@
   - Add resource usage optimization recommendations
   - _Requirements: 1.2, 4.5_
 
-- [ ] 10. Create comprehensive documentation
+- [ ] 10. Integrate existing components and create comprehensive test suite
+  - [ ] 10.1 Create integrated E2E test suite
+    - Integrate TestDataManager, ResourceMonitor, and PipelineValidator into unified test suite
+    - Create `tests/e2e/test_e2e_scenarios.py` that uses all scenario types (minimal, standard, large, edge-cases)
+    - Add scenario-based test execution that leverages existing CLI and Docker infrastructure
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+
+  - [ ] 10.2 Enhance existing test integration
+    - Update `tests/e2e/test_dagster_enrichment_pipeline.py` to use TestDataManager and ResourceMonitor
+    - Add scenario markers to existing tests for proper test selection
+    - Integrate validation reporting with existing test infrastructure
+    - _Requirements: 6.1, 6.3_
+
+- [ ] 11. Create comprehensive documentation
   - Write developer guide for running E2E tests locally
   - Create troubleshooting guide for common E2E test failures
   - Add integration documentation for CI/CD pipelines

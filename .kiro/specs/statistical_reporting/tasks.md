@@ -63,33 +63,6 @@
   - Add interactive visualizations using existing Plotly infrastructure
   - _Requirements: 3.1, 3.2, 3.3_
 
-## Implementation Plan for Tasks 3.1-3.3
-
-### Phase 1: Create Core Infrastructure
-- Create `src/utils/reporting/formats/` directory
-- Implement `BaseReportProcessor` class with common functionality
-- Add processor registry for dynamic loading
-
-### Phase 2: HTML Processor (3.1)
-- Implement `HtmlReportProcessor` with Plotly integration
-- Create interactive charts for pipeline metrics
-- Add drill-down capabilities and fallback HTML
-
-### Phase 3: JSON Processor (3.2)
-- Implement `JsonReportProcessor` for machine-readable output
-- Add schema validation and proper serialization
-- Ensure comprehensive data coverage
-
-### Phase 4: Markdown Processor (3.3)
-- Implement `MarkdownProcessor` for concise summaries
-- Add PR-friendly formatting and artifact links
-- Include quality indicators and key highlights
-
-### Implementation Steps:
-1. **3.1 HTML Processor**: Base class + HTML processor with Plotly charts
-2. **3.2 JSON Processor**: Machine-readable JSON serialization
-3. **3.3 Markdown Processor**: Concise PR-friendly summaries
-
 - [x] 3.1 Create HTML report processor
   - Create `src/utils/reporting/formats/` directory structure
   - Implement `BaseReportProcessor` class in `src/utils/reporting/formats/base.py`
@@ -110,8 +83,7 @@
   - Include key metrics highlights and quality change indicators
   - Add links to detailed HTML and JSON reports
 
-
-- [ ] 4. Implement insight engine and automated analysis
+- [x] 4. Implement insight engine and automated analysis
   - Create automated insight generation and anomaly detection
   - Implement quality recommendation system
   - Add success story identification logic
@@ -122,6 +94,7 @@
   - Add anomaly detection for quality drops and performance outliers
   - Implement threshold violation detection with severity levels
   - Create automated recommendation generation based on detected issues
+  - Integrate with existing StatisticalReporter class
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
 - [ ]* 4.2 Implement success story identification
@@ -170,25 +143,25 @@
   - Integrate with existing performance monitoring infrastructure
   - _Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [x] 6.1 Update SBIR enrichment assets
+- [ ] 6.1 Update SBIR enrichment assets
   - Modify SBIR enrichment assets to collect enrichment statistics
   - Add hooks to trigger SBIR analyzer after enrichment completion
   - Integrate with existing performance monitoring decorators
   - _Requirements: 2.1, 2.2_
 
-- [x] 6.2 Update patent analysis assets
+- [ ] 6.2 Update patent analysis assets
   - Modify patent loading assets to collect validation and loading statistics
   - Add hooks to trigger patent analyzer after analysis completion
   - Collect Neo4j loading metrics (nodes, relationships created)
   - _Requirements: 2.1, 2.2_
 
-- [x] 6.3 Update CET classification assets
+- [ ] 6.3 Update CET classification assets
   - Modify CET classification assets to collect classification statistics
   - Add hooks to trigger CET analyzer after classification completion
   - Collect confidence score distributions and coverage metrics
   - _Requirements: 2.1, 2.2_
 
-- [x] 6.4 Update transition detection assets
+- [ ] 6.4 Update transition detection assets
   - Modify transition detection assets to collect analysis statistics
   - Add hooks to trigger transition analyzer after detection completion
   - Collect success rate and commercialization pattern data
@@ -220,4 +193,3 @@
   - Test PR comment generation in different scenarios
   - Verify report links and accessibility in CI environment
   - _Requirements: 5.1, 5.2, 5.3_
-
