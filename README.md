@@ -14,6 +14,27 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
 
 The codebase is now significantly more maintainable with reduced duplication, clearer organization, and consistent patterns throughout.
 
+## CLI Interface
+
+The SBIR CLI provides a rich command-line interface for monitoring and operating the pipeline:
+
+```bash
+# Install and verify
+poetry install
+sbir-cli --help
+
+# Check pipeline status
+sbir-cli status summary
+
+# View metrics
+sbir-cli metrics latest
+
+# Start interactive dashboard
+sbir-cli dashboard start
+```
+
+See [CLI Reference Guide](docs/cli/README.md) for complete documentation.
+
 ## Documentation Map
 - Specs (Kiro): `.kiro/specs/` (Active) | `.kiro/specs/archive/` (Completed)
 - User/Developer Docs: `docs/` (see `docs/index.md`)

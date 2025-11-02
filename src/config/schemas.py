@@ -610,6 +610,41 @@ class SensitivityConfig(BaseModel):
         return out
 
 
+class CLIConfig(BaseModel):
+    """Configuration for CLI interface settings."""
+
+    # Display settings
+    theme: str = Field(default="default", description="CLI theme (default, dark, light)")
+    progress_refresh_rate: float = Field(default=0.1, description="Progress bar refresh rate in seconds")
+    dashboard_refresh_rate: int = Field(default=10, description="Dashboard auto-refresh interval in seconds")
+
+    # Output settings
+    max_table_rows: int = Field(default=50, description="Maximum rows to display in tables")
+    truncate_long_text: bool = Field(default=True, description="Truncate long text in displays")
+    show_timestamps: bool = Field(default=True, description="Show timestamps in output")
+
+    # Performance settings
+    api_timeout_seconds: int = Field(default=30, description="API request timeout")
+    max_concurrent_operations: int = Field(default=4, description="Maximum concurrent operations")
+    cache_metrics_seconds: int = Field(default=60, description="Metrics cache TTL in seconds")
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v: str) -> str:
+        """Validate theme value."""
+        if v not in ["default", "dark", "light"]:
+            raise ValueError("Theme must be 'default', 'dark', or 'light'")
+        return v
+
+    @field_validator("progress_refresh_rate", "dashboard_refresh_rate")
+    @classmethod
+    def validate_refresh_rate(cls, v: float | int) -> float | int:
+        """Validate refresh rate is positive."""
+        if v <= 0:
+            raise ValueError("Refresh rate must be positive")
+        return v
+
+
 class FiscalAnalysisConfig(BaseModel):
     """Configuration for SBIR fiscal returns analysis."""
 
@@ -717,6 +752,7 @@ class PipelineConfig(BaseModel):
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
     statistical_reporting: StatisticalReportingConfig = Field(default_factory=StatisticalReportingConfig)
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
+    cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
 
     model_config = ConfigDict(
         validate_assignment=True,

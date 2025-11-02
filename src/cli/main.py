@@ -12,6 +12,8 @@ import typer
 from rich.console import Console
 from loguru import logger
 
+from .display.errors import CLIError, handle_error
+
 # Initialize Typer app
 app = typer.Typer(
     name="sbir-cli",
@@ -52,25 +54,33 @@ def main(
 
     Provides commands for pipeline operations, status monitoring, and metrics.
     """
-    # Setup logging
-    setup_logging(verbose=verbose)
+    try:
+        # Setup logging
+        setup_logging(verbose=verbose)
 
-    # Store context in typer context for commands
-    from .context import CommandContext
+        # Store context in typer context for commands
+        from .context import CommandContext
 
-    ctx.obj = CommandContext.create()
+        ctx.obj = CommandContext.create()
 
-    if ctx.invoked_subcommand is None:
-        # Show help if no command provided
-        console.print(app.info.help)
-        raise typer.Exit(code=0)
+        if ctx.invoked_subcommand is None:
+            # Show help if no command provided
+            console.print(app.info.help)
+            raise typer.Exit(code=0)
+
+    except Exception as e:
+        handle_error(e, exit_code=2)  # Config errors use exit code 2
+        raise
 
 
 # Register commands
-from .commands import metrics, status
+from .commands import dashboard, enrich, ingest, metrics, status
 
 status.register_command(app)
 metrics.register_command(app)
+ingest.register_command(app)
+enrich.register_command(app)
+dashboard.register_command(app)
 
 
 if __name__ == "__main__":
