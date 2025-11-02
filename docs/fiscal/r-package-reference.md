@@ -28,53 +28,75 @@ remotes::install_github("USEPA/useeior")
 
 USEEIOR builds and uses national-level environmentally-extended input-output models, incorporating environmental data for comprehensive impact analysis.
 
-## Expected API Patterns
+## Actual API Functions
 
-Based on typical input-output modeling patterns, these packages likely provide functions to:
+### StateIO (`stateior`) Functions
 
-1. **Load/Create Models**: Build or load state-specific or national models
-2. **Apply Shocks**: Input spending shocks by sector and location
-3. **Compute Multipliers**: Calculate direct, indirect, and induced effects
-4. **Extract Impacts**: Retrieve wage, income, tax, and production impacts
+Key functions discovered from package exploration:
 
-### Typical Function Structure
+#### Model Building
+- `buildFullTwoRegionIOTable(state, year, iolevel, specs)` - Build two-region IO table for a state
+- `buildStateUseModel(year, specs)` - Build state use model for all states
+- `buildStateSupplyModel(year, specs)` - Build state supply model
+- `buildTwoRegionUseModel(state, year, iolevel, specs)` - Build two-region use model
 
-For StateIO (state-level analysis):
+#### Value Added Data
+- `getStateGVA(state, year, specs)` - Get Gross Value Added data
+- `getStateEmpCompensation(state, year, specs)` - Get employee compensation (wages)
+- `getStateGOS(state, year, specs)` - Get Gross Operating Surplus
+- `getStateTax(state, year, specs)` - Get tax data
+
+#### Data Loading
+- `loadStateIODataFile(filename, ver)` - Load StateIO data from Data Commons or local directory
+
+### USEEIOR (`useeior`) Functions
+
+Key functions discovered from package exploration:
+
+#### Model Building
+- `buildModel(modelname, configpaths)` - Build EEIO model
+- `buildTwoRegionModels(modelname, configpaths, validate, year)` - Build models for all 50 states
+- `buildIOModel(modelname, configpaths)` - Build IO model (economic components only)
+
+#### Impact Calculation
+- `calculateEEIOModel(model, perspective, demand, location, ...)` - Calculate impacts with demand vector
+  - Returns list with `N` (LCI), `L` (requirements), `H_r` (DIRECT impacts), `H_l` (FINAL impacts)
+- `formatDemandVector(model, demand)` - Format demand vector for use with calculateEEIOModel
+
+#### Model Information
+- `seeAvailableModels()` - List available model specifications
+
+### Integration Pattern
+
+**Recommended approach**: Use USEEIOR's `buildTwoRegionModels()` which integrates StateIO internally:
+
 ```r
-# Expected pattern (actual function names may vary):
+library(useeior)
 library(stateior)
 
-# Build or load state model
-model <- loadStateModel(state = "CA", year = 2023)
+# Build state models (integrates StateIO)
+state_models <- buildTwoRegionModels("USEEIO2012", year = 2023)
 
-# Apply spending shock
-shocks <- data.frame(
-  sector = c("11", "21"),
-  amount = c(1000000, 500000),
-  state = "CA"
+# Get state-specific model
+ca_model <- state_models[["CA"]]
+
+# Create demand vector from shocks
+demand <- formatDemandVector(ca_model, shocks_df)
+
+# Calculate impacts
+impacts <- calculateEEIOModel(
+  model = ca_model,
+  perspective = "DIRECT",
+  demand = demand,
+  location = "CA"
 )
 
-# Compute impacts
-impacts <- computeImpacts(model, shocks)
-# Returns: wage_impact, income_impact, tax_impact, production_impact, etc.
-```
+# Extract production impacts from N matrix
+production_impacts <- impacts$N
 
-For USEEIOR (national-level analysis):
-```r
-# Expected pattern:
-library(useeior)
-
-# Load national model
-model <- loadUSEEIOModel(year = 2023)
-
-# Apply shocks (national-level, no state dimension)
-shocks <- data.frame(
-  sector = c("11", "21"),
-  amount = c(1000000, 500000)
-)
-
-# Compute impacts
-impacts <- computeImpacts(model, shocks)
+# Get value added components from StateIO
+va <- getStateGVA(state = "CA", year = 2023, specs = specs)
+wages <- getStateEmpCompensation(state = "CA", year = 2023, specs = specs)
 ```
 
 ## Input Data Format
@@ -248,10 +270,45 @@ ro.r('options(show.error.messages = TRUE)')  # Show error messages
 - USEEIO Project: https://github.com/USEPA/USEEIO
 - rpy2 Documentation: https://rpy2.github.io/
 
-## Notes
+## Implementation Details
 
-- Actual function names and APIs should be verified by examining package documentation or source code
-- Model versions may affect function signatures
-- Some functions may require additional parameters (e.g., year, model type)
-- Environmental extensions in USEEIOR add additional output dimensions
+### Function Discovery
+
+The actual functions were discovered by:
+1. Running `names(getNamespace("stateior"))` in R to list all exported functions
+2. Running `names(getNamespace("useeior"))` in R to list all exported functions  
+3. Examining function help with `help(function_name)` in R
+4. Testing with sample data
+
+### BEA Sector Code Format
+
+- **Summary level**: 2-digit codes like "11", "21", "22"
+- **Detail level**: 3-digit codes with optional location suffix
+- StateIO expects numeric codes at Summary level for most functions
+- USEEIOR models may use different sector coding schemes depending on model version
+
+### Model Versions
+
+Available USEEIOR models (from `seeAvailableModels()`):
+- `USEEIO2012` - 2012 base model
+- `USEEIOv2.0.1-411` - Version 2.0.1 with 411 sectors
+- `USEEIOv2.3-GHG` - Version 2.3 with GHG focus
+- `USEEIOv2.3-s-GHG-19` - State-level version
+
+### Impact Component Extraction
+
+USEEIOR's `calculateEEIOModel()` primarily returns environmental impacts. Economic components (wages, income, taxes) need to be extracted from:
+1. Production impacts from `N` matrix (commodity outputs)
+2. Value added ratios from StateIO functions (`getStateGVA`, `getStateEmpCompensation`)
+3. Model metadata or separate value added tables
+
+See `docs/fiscal/useeior-api-reference.md` and `docs/fiscal/stateio-api-reference.md` for detailed API documentation.
+
+## References
+
+- **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`
+- **USEEIOR API Reference**: `docs/fiscal/useeior-api-reference.md`
+- StateIO GitHub: https://github.com/USEPA/stateio
+- USEEIOR GitHub: https://github.com/USEPA/useeior
+- rpy2 Documentation: https://rpy2.github.io/
 

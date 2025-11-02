@@ -330,6 +330,10 @@ export SBIR_ETL__FISCAL_ANALYSIS__STATEIO_MODEL_VERSION=v2.1
 
 For fiscal returns analysis with StateIO/USEEIOR economic models:
 
+**R Package Repositories:**
+- **StateIO**: https://github.com/USEPA/stateior
+- **USEEIOR**: https://github.com/USEPA/useeior
+
 1. **Install R**:
    ```bash
    # macOS
@@ -349,7 +353,7 @@ For fiscal returns analysis with StateIO/USEEIOR economic models:
 3. **Install R packages** (in R console):
    ```r
    install.packages("remotes")
-   remotes::install_github("USEPA/stateio")
+   remotes::install_github("USEPA/stateior")
    remotes::install_github("USEPA/useeior")
    ```
 
@@ -710,6 +714,7 @@ python scripts/refresh_enrichment.py stats --source usaspending
 - **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
   - Install R: https://www.r-project.org/
   - Install rpy2: `poetry install --extras r`
+  - R packages: [StateIO](https://github.com/USEPA/stateior) | [USEEIOR](https://github.com/USEPA/useeior)
   - Install R packages: See [R Package Installation](#r-package-installation) below
 
 ### Container Development (Recommended)
