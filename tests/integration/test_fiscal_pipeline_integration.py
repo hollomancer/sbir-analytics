@@ -158,7 +158,7 @@ class TestFiscalPipelineIntegration:
     @patch("src.enrichers.inflation_adjuster.adjust_awards_for_inflation")
     @patch("src.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
     @patch("src.transformers.fiscal_shock_aggregator.FiscalShockAggregator.aggregate_shocks_to_dataframe")
-    @patch("src.transformers.r_stateio_adapter.RStateIOAdapter.compute_impacts")
+    @patch("src.transformers.r_stateio_adapter.RStateIOAdapter._compute_impacts_r")
     @patch("src.transformers.r_stateio_adapter.RStateIOAdapter.is_available")
     def test_end_to_end_pipeline(
         self,
@@ -275,12 +275,17 @@ class TestFiscalPipelineIntegration:
                     "proprietor_income_impact": shock_amt * Decimal("0.2"),
                     "gross_operating_surplus": shock_amt * Decimal("0.2"),
                     "consumption_impact": shock_amt * Decimal("0.1"),
+                    "tax_impact": shock_amt * Decimal("0.15"),
                     "production_impact": shock_amt * Decimal("2.0"),
-                    "model_version": "StateIO_v2.1",
+                    "model_version": "v2.1",
+                    "confidence": Decimal("0.85"),
+                    "quality_flags": "r_computation",
                 })
             return pd.DataFrame(impacts_data)
         
         # Update mock to use side_effect so it generates impacts dynamically
+        # Note: The adapter now uses _compute_impacts_r internally, but we mock compute_impacts
+        # for the integration test since that's what the asset calls
         mock_compute_impacts.side_effect = compute_impacts_side_effect
         
         impacts_result = fiscal_assets.economic_impacts(context, shocks_df_result)

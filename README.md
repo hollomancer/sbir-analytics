@@ -321,7 +321,45 @@ export SBIR_ETL__FISCAL_ANALYSIS__QUALITY_THRESHOLDS__BEA_SECTOR_MAPPING_RATE=0.
 # Economic modeling parameters
 export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__DISCOUNT_RATE=0.03
 export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__ANALYSIS_PERIOD_YEARS=10
+
+# StateIO model version
+export SBIR_ETL__FISCAL_ANALYSIS__STATEIO_MODEL_VERSION=v2.1
 ```
+
+### R Package Installation
+
+For fiscal returns analysis with StateIO/USEEIOR economic models:
+
+1. **Install R**:
+   ```bash
+   # macOS
+   brew install r
+   
+   # Linux
+   sudo apt-get update && sudo apt-get install r-base
+   
+   # Windows: Download from https://cran.r-project.org/bin/windows/base/
+   ```
+
+2. **Install Python rpy2**:
+   ```bash
+   poetry install --extras r
+   ```
+
+3. **Install R packages** (in R console):
+   ```r
+   install.packages("remotes")
+   remotes::install_github("USEPA/stateio")
+   remotes::install_github("USEPA/useeior")
+   ```
+
+4. **Validate installation**:
+   ```bash
+   python scripts/validate_r_adapter.py check-installation
+   python scripts/validate_r_adapter.py test-adapter
+   ```
+
+See `docs/fiscal/r-package-reference.md` for detailed documentation and troubleshooting.
 
 ### Implementation Status
 
@@ -669,6 +707,10 @@ python scripts/refresh_enrichment.py stats --source usaspending
 - **Poetry**: For dependency management
 - **Docker**: For containerized development
 - **Neo4j**: 5.x (provided via Docker Compose)
+- **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
+  - Install R: https://www.r-project.org/
+  - Install rpy2: `poetry install --extras r`
+  - Install R packages: See [R Package Installation](#r-package-installation) below
 
 ### Container Development (Recommended)
 

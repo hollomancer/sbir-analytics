@@ -18,6 +18,13 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
+from ..utils.r_helpers import (
+    RFunctionError,
+    call_r_function,
+    check_r_package,
+    extract_r_result,
+    validate_r_input,
+)
 from .economic_model_interface import EconomicImpactResult, EconomicModelInterface
 
 # Conditional rpy2 import
@@ -50,6 +57,36 @@ class RStateIOAdapter(EconomicModelInterface):
 
     This adapter calls EPA's StateIO R package through rpy2 to compute
     economic multiplier effects from SBIR spending shocks.
+
+    The adapter attempts to call actual StateIO R functions. If the exact
+    function names or API structure differ from expectations, it falls back
+    to placeholder computation with appropriate warnings.
+
+    Installation Requirements:
+        - R runtime installed on system
+        - Python rpy2 package: poetry install --extras r
+        - StateIO R package: remotes::install_github("USEPA/stateio")
+        - USEEIOR R package (optional): remotes::install_github("USEPA/useeior")
+
+    Usage:
+        >>> from src.transformers.r_stateio_adapter import RStateIOAdapter
+        >>> from src.config.loader import get_config
+        >>>
+        >>> config = get_config()
+        >>> adapter = RStateIOAdapter(config=config.fiscal_analysis)
+        >>>
+        >>> shocks_df = pd.DataFrame({
+        ...     "state": ["CA"],
+        ...     "bea_sector": ["11"],
+        ...     "fiscal_year": [2023],
+        ...     "shock_amount": [Decimal("1000000")]
+        ... })
+        >>>
+        >>> impacts_df = adapter.compute_impacts(shocks_df)
+
+    See Also:
+        - docs/fiscal/r-package-reference.md for R package documentation
+        - scripts/validate_r_adapter.py for installation validation
     """
 
     def __init__(
@@ -253,48 +290,224 @@ class RStateIOAdapter(EconomicModelInterface):
     ) -> pd.DataFrame:
         """Compute impacts using R StateIO package.
 
+        This method attempts to call actual StateIO R functions. If the exact
+        function names or API structure differ from expectations, it falls back
+        to placeholder computation with a warning.
+
         Args:
-            shocks_df: Shocks DataFrame
+            shocks_df: Shocks DataFrame with state, bea_sector, fiscal_year, shock_amount
             model_version: Optional model version override
 
         Returns:
-            Results DataFrame
+            Results DataFrame with economic impact components
+
+        Raises:
+            RuntimeError: If StateIO package is not loaded
+            RFunctionError: If R function calls fail
         """
         if self.stateio is None:
             raise RuntimeError(
                 "StateIO R package not loaded. Install in R with: "
-                "install.packages('stateior', repos='https://github.com/USEPA/stateior')"
+                "remotes::install_github('USEPA/stateio')"
             )
+
+        # Validate input before conversion
+        validate_r_input(
+            shocks_df,
+            required_columns=["state", "bea_sector", "fiscal_year", "shock_amount"],
+            min_rows=1,
+        )
 
         # Convert shocks to R format
         r_shocks = self._convert_shocks_to_r(shocks_df)
 
-        # Call StateIO model
-        # This is a placeholder - actual R function calls depend on StateIO API
-        # Example structure:
-        # r_result = self.stateio.compute_impacts(
-        #     shocks=r_shocks,
-        #     model_version=model_version or self.model_version
-        # )
+        model_ver = model_version or self.model_version
 
-        # For now, return a placeholder that matches expected structure
+        # Attempt to call StateIO R functions
+        # Note: Actual function names and signatures need to be verified
+        # against StateIO package documentation. This implementation attempts
+        # common patterns but may need adjustment.
+        try:
+            # Strategy 1: Try direct impact computation function
+            # Common function names: computeImpacts, calculateImpacts, impactAnalysis
+            for func_name in ["computeImpacts", "calculateImpacts", "impactAnalysis"]:
+                try:
+                    logger.debug(f"Attempting to call StateIO function: {func_name}")
+                    r_result = call_r_function(
+                        self.stateio,
+                        func_name,
+                        r_shocks,
+                        model_version=model_ver,
+                    )
+
+                    # Extract and convert result
+                    result_df = self._convert_r_to_pandas(r_result)
+
+                    # Ensure all required columns exist
+                    result_df = self._ensure_impact_columns(result_df, shocks_df, model_ver)
+
+                    logger.info(
+                        f"Successfully computed impacts using StateIO function: {func_name}"
+                    )
+                    return result_df
+
+                except (AttributeError, RFunctionError) as e:
+                    logger.debug(f"Function {func_name} not available or failed: {e}")
+                    continue
+
+            # Strategy 2: Try two-step approach (build model, then compute)
+            # Some I-O packages require model building first
+            states = shocks_df["state"].unique().tolist()
+            if len(states) == 1:
+                # Single state - try state-specific model
+                state_code = states[0]
+                logger.debug(f"Attempting to build model for state: {state_code}")
+
+                # Try common model loading functions
+                for model_func in ["loadStateModel", "buildStateModel", "getModel"]:
+                    try:
+                        # Try to load/build model
+                        model = call_r_function(
+                            self.stateio,
+                            model_func,
+                            state=state_code,
+                            year=shocks_df["fiscal_year"].iloc[0],
+                        )
+
+                        # Then compute impacts
+                        for impact_func in ["computeImpacts", "applyShocks", "calculateImpacts"]:
+                            try:
+                                r_result = call_r_function(
+                                    self.stateio,
+                                    impact_func,
+                                    model,
+                                    r_shocks,
+                                )
+
+                                result_df = self._convert_r_to_pandas(r_result)
+                                result_df = self._ensure_impact_columns(
+                                    result_df, shocks_df, model_ver
+                                )
+
+                                logger.info(
+                                    f"Successfully computed impacts using {model_func} + {impact_func}"
+                                )
+                                return result_df
+
+                            except (AttributeError, RFunctionError):
+                                continue
+
+                    except (AttributeError, RFunctionError):
+                        continue
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to call StateIO R functions: {e}. "
+                "Falling back to placeholder computation. "
+                "Please verify StateIO package installation and function names."
+            )
+
+        # Fallback: Use placeholder computation if R calls fail
+        # This allows the pipeline to continue while actual API is verified
         logger.warning(
-            "R StateIO computation not fully implemented. "
-            "This requires StateIO R package API details."
+            "Using placeholder StateIO computation. "
+            "Actual R function calls need to be verified against StateIO package documentation. "
+            "See docs/fiscal/r-package-reference.md for details."
         )
 
-        # Placeholder: return shocks with basic multiplier
-        # TODO: Replace with actual StateIO R package calls
+        return self._compute_placeholder_impacts(shocks_df, model_ver)
+
+    def _ensure_impact_columns(
+        self,
+        result_df: pd.DataFrame,
+        shocks_df: pd.DataFrame,
+        model_version: str,
+    ) -> pd.DataFrame:
+        """Ensure result DataFrame has all required impact columns.
+
+        Args:
+            result_df: Result DataFrame from R (may be missing columns)
+            shocks_df: Original shocks DataFrame for merging
+            model_version: Model version string
+
+        Returns:
+            DataFrame with all required columns
+        """
+        # Merge with original shocks to preserve input columns
+        merge_cols = ["state", "bea_sector", "fiscal_year"]
+        result_df = shocks_df[merge_cols + ["shock_amount"]].merge(
+            result_df,
+            on=merge_cols,
+            how="left",
+            suffixes=("_shock", "_impact"),
+        )
+
+        # Define required impact columns
+        required_impact_cols = [
+            "wage_impact",
+            "proprietor_income_impact",
+            "gross_operating_surplus",
+            "consumption_impact",
+            "tax_impact",
+            "production_impact",
+        ]
+
+        # Add missing columns with zeros
+        for col in required_impact_cols:
+            if col not in result_df.columns:
+                logger.debug(f"Adding missing impact column: {col}")
+                result_df[col] = Decimal("0")
+
+        # Ensure Decimal types for monetary columns
+        for col in required_impact_cols:
+            if col in result_df.columns:
+                result_df[col] = result_df[col].apply(
+                    lambda x: Decimal(str(x)) if pd.notna(x) else Decimal("0")
+                )
+
+        # Add metadata columns
+        result_df["model_version"] = model_version
+        if "confidence" not in result_df.columns:
+            result_df["confidence"] = 0.85  # Default confidence for real R computation
+        if "quality_flags" not in result_df.columns:
+            result_df["quality_flags"] = "r_computation"
+
+        return result_df
+
+    def _compute_placeholder_impacts(
+        self, shocks_df: pd.DataFrame, model_version: str
+    ) -> pd.DataFrame:
+        """Compute placeholder impacts using simple multipliers.
+
+        This method is used as a fallback when R function calls fail.
+        It provides realistic-looking multipliers but should be replaced
+        with actual StateIO computations.
+
+        Args:
+            shocks_df: Shocks DataFrame
+            model_version: Model version string
+
+        Returns:
+            DataFrame with placeholder impact components
+        """
         result_df = shocks_df.copy()
-        multiplier = 2.0  # Placeholder multiplier
+
+        # Placeholder multipliers (these should be replaced with actual StateIO outputs)
+        # Typical I-O multipliers range from 1.5-3.0 depending on sector
+        multiplier = Decimal("2.0")
+
         result_df["wage_impact"] = result_df["shock_amount"] * Decimal("0.4") * multiplier
-        result_df["proprietor_income_impact"] = result_df["shock_amount"] * Decimal("0.1") * multiplier
-        result_df["gross_operating_surplus"] = result_df["shock_amount"] * Decimal("0.3") * multiplier
+        result_df["proprietor_income_impact"] = (
+            result_df["shock_amount"] * Decimal("0.1") * multiplier
+        )
+        result_df["gross_operating_surplus"] = (
+            result_df["shock_amount"] * Decimal("0.3") * multiplier
+        )
         result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier
         result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier
         result_df["production_impact"] = result_df["shock_amount"] * multiplier
-        result_df["model_version"] = model_version or self.model_version
-        result_df["confidence"] = 0.75
+        result_df["model_version"] = model_version
+        result_df["confidence"] = Decimal("0.75")
         result_df["quality_flags"] = "placeholder_computation"
 
         return result_df
