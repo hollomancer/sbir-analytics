@@ -306,9 +306,26 @@ else
 fi
 ```
 
+## Testing
+
+See [CLI Testing Guide](TESTING.md) for comprehensive testing instructions.
+
+Quick test:
+```bash
+# Validation script
+poetry run python scripts/test_cli.py
+
+# Unit tests
+poetry run pytest tests/unit/cli/ -v
+
+# Integration tests
+poetry run pytest tests/integration/cli/ -v
+```
+
 ## See Also
 
 - Main project README: `README.md`
 - Configuration reference: `config/base.yaml`
 - Dagster documentation: `QUICK_START.md`
+- CLI Testing Guide: `docs/cli/TESTING.md`
 
