@@ -1,8 +1,19 @@
 # Project Structure & Organization
 
+## 🎉 Consolidated Architecture (2025-01-01)
+
+The project has undergone major consolidation to eliminate code duplication and improve maintainability. The architecture now follows a streamlined modular ETL design with clear separation of concerns:
+
+**Key Consolidation Achievements:**
+- ✅ **Asset Consolidation**: USPTO assets unified into single file (`src/assets/uspto_assets.py`)
+- ✅ **Configuration Consolidation**: Hierarchical PipelineConfig with 16+ consolidated schemas
+- ✅ **Model Consolidation**: Unified Award model replaces separate implementations
+- ✅ **Docker Consolidation**: Single profile-based docker-compose.yml
+- ✅ **Utility Consolidation**: Performance monitoring and utilities streamlined
+
 ## Source Code Architecture
 
-The project follows a modular ETL architecture with clear separation of concerns:
+The project follows a consolidated modular ETL architecture with clear separation of concerns:
 
 ```
 src/
@@ -29,21 +40,26 @@ src/
 4. **Transform**: Business logic, deduplication, graph preparation
 5. **Load**: Neo4j batch loading with relationship creation
 
-### Dagster Asset Organization
-- **Assets**: Located in `src/assets/` with clear naming conventions
+### Consolidated Dagster Asset Organization
+- **Unified Assets**: Major consolidation completed - USPTO assets in single file (`src/assets/uspto_assets.py`)
+- **Consistent Naming**: Standardized prefixes (raw_, validated_, enriched_, transformed_, loaded_)
 - **Jobs**: Defined in `src/assets/jobs/` for pipeline orchestration
 - **Asset Checks**: Co-located with assets for quality validation
 - **Groups**: Assets organized by functional area (sbir_ingestion, cet_pipeline, etc.)
 
-### Configuration Management
-- **Pydantic Schemas**: Type-safe configuration in `src/config/schemas.py`
+### Consolidated Configuration Management
+- **Hierarchical Schema**: Single PipelineConfig with 16+ consolidated schemas in `src/config/schemas.py`
+- **Type Safety**: Complete Pydantic validation with custom validators
 - **YAML Files**: Environment-specific configs in `config/` directory
-- **Environment Overrides**: `SBIR_ETL__SECTION__KEY` format for runtime configuration
+- **Environment Overrides**: Standardized `SBIR_ETL__SECTION__KEY` format for runtime configuration
+- **No Duplication**: All configuration patterns unified and documented
 
-### Data Models
-- **Pydantic Models**: All data structures use Pydantic for validation
+### Unified Data Models
+- **Consolidated Models**: Award model replaces separate SbirAward implementations
+- **Pydantic Validation**: All data structures use Pydantic for validation
 - **Field Validation**: Custom validators for business rules (UEI format, date ranges)
 - **Type Safety**: Strict typing throughout with MyPy enforcement
+- **Consistent Patterns**: Standardized model structure across all domains
 
 ## Directory Conventions
 

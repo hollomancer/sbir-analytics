@@ -1,5 +1,13 @@
 # Technology Stack & Build System
 
+## 🎉 Consolidated Architecture (2025-01-01)
+
+The technology stack has been streamlined through major consolidation efforts:
+- ✅ **Single Docker Compose**: Profile-based configuration replaces multiple files
+- ✅ **Unified Configuration**: Hierarchical PipelineConfig with standardized patterns
+- ✅ **Consolidated Assets**: Single files replace multiple scattered implementations
+- ✅ **Streamlined Build**: Optimized Docker build process and dependency management
+
 ## Core Technologies
 
 ### Language & Runtime
@@ -35,10 +43,10 @@ poetry install
 # Activate virtual environment
 poetry shell
 
-# Start local services (Neo4j)
+# Start local services (Neo4j) - Consolidated Docker Compose
 make neo4j-up
-# or
-docker-compose up -d neo4j
+# or use profile-based configuration
+docker-compose --profile dev up -d neo4j
 ```
 
 ### Code Quality

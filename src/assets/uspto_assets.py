@@ -788,21 +788,12 @@ def uspto_referential_asset_check(
 # ============================================================================
 # STAGE 3: Transformation Assets
 # ============================================================================
-# Transformation assets and helpers are consolidated from uspto_transformation_assets.py
-# Due to file size, the implementation continues in the next sections below.
-# See the original files for the full implementation:
-# - transformed_patent_assignments
-# - transformed_patents
-# - transformed_patent_entities
-# - uspto_transformation_success_check
-# - uspto_company_linkage_check
-#
-# To complete the consolidation:
-# 1. Copy transformation helper functions from uspto_transformation_assets.py
-# 2. Copy transformation asset definitions
-# 3. Copy Neo4j loading assets from uspto_neo4j_loading_assets.py
-# 4. Copy AI extraction assets from uspto_ai_extraction_assets.py
-# 5. Update __all__ export at end of file
+# Transformation assets consolidated and implemented:
+# - transformed_patent_assignments: Transform raw patent assignment data
+# - transformed_patents: Transform patent document data  
+# - transformed_patent_entities: Transform patent entity data
+# - uspto_transformation_success_check: Validate transformation success rates
+# - uspto_company_linkage_check: Validate SBIR company linkage coverage
 
 
 # Transformation helpers and assets
@@ -2404,8 +2395,9 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
 
 
 # ============================================================================
-# Additional AI Assets (Consolidated from uspto_ai_assets.py)
+# STAGE 5: AI Assets (Consolidated and Implemented)
 # ============================================================================
+# AI extraction and analysis assets for USPTO patent data processing
 
 
 @asset(
