@@ -103,8 +103,8 @@ services:
 
 compose:
   base_file: "docker-compose.yml"
-  dev_overlay: "docker/docker-compose.dev.yml"
-  test_overlay: "docker/docker-compose.test.yml"
+  # Note: The consolidated docker-compose.yml uses profile-based configuration.
+  # Use --profile dev, --profile ci-test, etc. instead of overlay files.
   # When using docker compose v2, depends_on.condition: service_healthy is supported.
   use_service_health_condition: true
 
@@ -123,7 +123,7 @@ ci:
   # CI-specific knobs used by workflows or helper scripts.
   workflow_file: ".github/workflows/container-ci.yml"
   build_script: "scripts/ci/build_container.sh"
-  test_compose: "docker/docker-compose.test.yml"
+  test_profile: "ci-test"  # Use --profile ci-test with consolidated docker-compose.yml
   smoke_test_cmd: "dagster --version"
   # When publishing to GHCR/GCR/ACR, set registry.host and repository_prefix via CI pipeline secrets.
 

@@ -94,10 +94,12 @@ The project supports running inside Docker Compose for local development, CI, an
 
 - Override precedence: environment variables (highest) > `.env` (local overrides) > YAML config files (`config/*.yaml`).
 - Do not store secrets in YAML or in the repository. Use environment variables, `.env` (local and gitignored), or mounted secret files (e.g., `/run/secrets/NEO4J_PASSWORD`) for secret values.
-- Reference the provided Compose overlays:
+- The consolidated `docker-compose.yml` uses profile-based configuration:
   - Base compose: `docker-compose.yml`
-  - Dev overlay (bind-mounts, hot-reload): `docker/docker-compose.dev.yml`
-  - Test overlay (ephemeral services for CI): `docker/docker-compose.test.yml`
+  - Development: `docker compose --profile dev up --build` (bind-mounts, hot-reload)
+  - CI Testing: `docker compose --profile ci-test up --build` (ephemeral services)
+  - Production: `docker compose --profile prod up --build`
+  - Other profiles: `e2e`, `cet-staging`, `neo4j-standalone`, `tools`
 - Use the Makefile helpers rather than raw compose commands:
   - `make docker-build` — build the image locally
   - `make docker-up-dev` — start the dev stack (bind mounts, watch/reload)

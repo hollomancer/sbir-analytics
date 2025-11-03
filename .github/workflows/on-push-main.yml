@@ -233,15 +233,15 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: |
           set -eux
-          # Use compose overlay to bring up ephemeral neo4j + app (app configured to run pytest)
-          docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build neo4j app
+          # Use profile-based compose to bring up ephemeral neo4j + app (app configured to run pytest)
+          docker compose --profile ci-test up --abort-on-container-exit --build neo4j app
         timeout-minutes: 30
 
       - name: Tear down test compose (cleanup)
         if: always()
         run: |
           set -eux
-          docker compose -f docker-compose.yml -f docker/docker-compose.test.yml down --remove-orphans --volumes || true
+          docker compose --profile ci-test down --remove-orphans --volumes || true
 
       - name: Upload logs on failure
         if: failure()
@@ -420,7 +420,7 @@ jobs:
       - name: Start development compose stack (dev profile)
         run: |
           set -eux
-          docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.dev.yml --profile dev up -d --build
+          docker compose --env-file .env --profile dev up -d --build
 
       - name: Wait for Neo4j bolt port
         run: |
@@ -436,7 +436,7 @@ jobs:
           done
           if ! nc -z localhost 7687; then
             echo "Neo4j did not become available on bolt port 7687"
-            docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.dev.yml --profile dev ps || true
+            docker compose --env-file .env --profile dev ps || true
             docker logs $(docker ps --filter "name=sbir-neo4j" --format '{{.Names}}' | head -n 1) || true
             exit 1
           fi
@@ -479,7 +479,7 @@ jobs:
         if: always()
         run: |
           set -eux
-          docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.dev.yml --profile dev down --remove-orphans || true
+          docker compose --env-file .env --profile dev down --remove-orphans || true
           echo "Compose stack torn down"
 
       - name: Success note
@@ -490,7 +490,7 @@ jobs:
         if: failure()
         run: |
           echo "Job failed — gathering diagnostic information"
-          docker compose --env-file .env -f docker-compose.yml -f docker/docker-compose.dev.yml --profile dev ps || true
+          docker compose --env-file .env --profile dev ps || true
           echo "Recent container logs (if available):"
           for name in $(docker ps --format '{{.Names}}'); do
             echo "==== logs: $name ===="
@@ -766,7 +766,7 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-reports
           path: |

@@ -147,7 +147,7 @@ healthcheck:
   timeout: 5s
   retries: 12
 ```
-- In CI, the `docker/docker-compose.test.yml` already depends on Neo4j being healthy before running `pytest`. Ensure CI injects Neo4j credentials via secrets when running compose.
+- In CI, the consolidated `docker-compose.yml` with `--profile ci-test` already depends on Neo4j being healthy before running `pytest`. Ensure CI injects Neo4j credentials via secrets when running compose.
 
 Security recommendations
 - Never commit secrets into the repo. Use `.env` (gitignored) for local dev and secret injection mechanisms for CI.
@@ -177,7 +177,7 @@ Operational notes & best practices
 - Regularly test restore procedures in a staging environment to ensure backups are valid.
 
 CI considerations
-- The repo's container CI builds an app image and uses `docker/docker-compose.test.yml` to start an ephemeral Neo4j. Ensure the CI workflow injects `NEO4J_USER` and `NEO4J_PASSWORD` via secrets and that credential rotation does not break CI runs.
+- The repo's container CI builds an app image and uses `docker compose --profile ci-test` (from the consolidated `docker-compose.yml`) to start an ephemeral Neo4j. Ensure the CI workflow injects `NEO4J_USER` and `NEO4J_PASSWORD` via secrets and that credential rotation does not break CI runs.
 - If you add a `neo4j` CI smoke job, prefer to run it in an isolated runner with ephemeral resources and short timeouts.
 
 Where to look in the repo
