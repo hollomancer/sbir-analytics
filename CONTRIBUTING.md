@@ -16,7 +16,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.11
 - Poetry for dependency management
 - Docker and Docker Compose (for running Neo4j locally)
 - Git

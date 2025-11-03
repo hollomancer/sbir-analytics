@@ -11,7 +11,7 @@ The technology stack has been streamlined through major consolidation efforts:
 ## Core Technologies
 
 ### Language & Runtime
-- **Python 3.11+** (supports up to 3.12)
+- **Python 3.11**
 - **Poetry** for dependency management and packaging
 
 ### Key Frameworks & Libraries
