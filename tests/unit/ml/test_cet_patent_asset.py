@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.assets.cet_assets import cet_patent_classifications
+from src.assets.cet_assets import enriched_cet_patent_classifications
 from src.ml.models.dummy_pipeline import DummyPipeline
 
 
@@ -133,7 +133,7 @@ def test_cet_patent_asset_writes_placeholder_when_model_missing(tmp_path, monkey
         model_path.unlink()
 
     # Execute asset
-    out = cet_patent_classifications()
+    out = enriched_cet_patent_classifications()
 
     # Validate checks JSON indicates missing model and contains correct counts
     checks = _read_patent_checks(tmp_path)
@@ -197,7 +197,7 @@ def test_cet_patent_asset_classifies_with_synthetic_model(tmp_path, monkeypatch)
         pickle.dump(model_data, fh)
 
     # Execute asset (should load model artifact and classify)
-    out = cet_patent_classifications()
+    out = enriched_cet_patent_classifications()
 
     # Validate checks JSON
     checks = _read_patent_checks(tmp_path)

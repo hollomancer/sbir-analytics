@@ -9,7 +9,6 @@ from dagster import (
     define_asset_job,
     load_asset_checks_from_modules,
     load_assets_from_modules,
-    load_sensors_from_modules,
 )
 
 from . import assets
@@ -106,10 +105,10 @@ cet_drift_schedule = ScheduleDefinition(
     description="Daily CET drift detection and alerting",
 )
 
-# Load sensors
-from .assets import sensors
+# Load sensors directly
+from .assets.sensors import usaspending_refresh_sensor
 
-all_sensors = load_sensors_from_modules([sensors])
+all_sensors = [usaspending_refresh_sensor]
 
 # Create the definitions object
 defs = Definitions(
