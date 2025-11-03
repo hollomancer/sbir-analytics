@@ -1,41 +1,40 @@
-name: Static Analysis
+name: On Commit
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+    branches-ignore: []
+    # Run on any commit to any branch
 
 jobs:
-  lint-and-scan:
+  static-analysis:
     name: Lint and Scan
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
-    - name: Configure Poetry
-      run: |
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
-    - name: Install dependencies
-      run: poetry install --no-interaction
-    - name: Run Ruff linter
-      run: poetry run ruff check src tests
-    - name: Run Ruff formatter check
-      run: poetry run ruff format --check src tests
-    - name: Run MyPy type checker
-      run: poetry run mypy src
-    - name: Run Bandit security linter
-      run: |
-        poetry add --group dev bandit
-        poetry run bandit -r src -c pyproject.toml
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Run Ruff linter
+        run: poetry run ruff check src tests
+      - name: Run Ruff formatter check
+        run: poetry run ruff format --check src tests
+      - name: Run MyPy type checker
+        run: poetry run mypy src
+      - name: Run Bandit security linter
+        run: |
+          poetry add --group dev bandit
+          poetry run bandit -r src -c pyproject.toml
 
   secret-scan:
     name: Secret Scan
@@ -111,3 +110,32 @@ jobs:
             detect-secrets-output.json
             .secrets.baseline
           if-no-files-found: ignore
+
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+      - name: Run markdownlint-cli2
+        run: markdownlint-cli2 "**/*.md" --config .markdownlint.yaml
+
+  docs-link-check:
+    name: Docs Link Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Lychee Link Checker
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: --verbose --no-progress --accept 200,429 '**/*.md' '**/*.yaml'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

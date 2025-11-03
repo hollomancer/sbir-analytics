@@ -1,0 +1,1018 @@
+name: On Pull Request
+
+on:
+  pull_request:
+    branches-ignore: []
+    # Run on any PR to any branch
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      performance: ${{ steps.filter.outputs.performance }}
+      cet: ${{ steps.filter.outputs.cet }}
+      transition: ${{ steps.filter.outputs.transition }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            performance:
+              - 'src/enrichers/**'
+              - 'src/assets/**'
+              - 'src/utils/performance_monitor.py'
+              - 'src/extractors/**'
+              - 'scripts/benchmark_enrichment.py'
+              - 'scripts/detect_performance_regression.py'
+              - 'config/base.yaml'
+            cet:
+              - 'src/**'
+              - 'tests/**'
+              - 'pyproject.toml'
+              - 'poetry.lock'
+            transition:
+              - 'src/assets/transition_assets.py'
+              - 'tests/integration/test_transition_mvp_chain.py'
+              - 'tests/unit/transition/test_transition_signals_and_boosts.py'
+              - 'docs/transition/**'
+              - 'Makefile'
+              - '.github/workflows/**'
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: none
+          NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 40s
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Neo4j
+        run: |
+          echo "Waiting for Neo4j to be ready..."
+          until curl -s -f -o /dev/null "http://localhost:7474"; do
+            echo "Neo4j not ready, sleeping..."
+            sleep 5
+          done
+          echo "Neo4j is ready!"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run taxonomy completeness checks
+        run: |
+          echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
+          # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
+          poetry run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json || true
+
+      - name: Evaluate taxonomy checks
+        run: |
+          set -e
+          PYFILE=$(mktemp)
+          cat > "$PYFILE" << 'PY'
+          import json, sys
+          p = 'data/processed/cet_taxonomy_checks.json'
+          try:
+              with open(p, 'r', encoding='utf-8') as fh:
+                  data = json.load(fh)
+          except Exception:
+              print(f'Checks file not found at {p}; skipping taxonomy evaluation.')
+              sys.exit(0)
+          comp = data.get('completeness', {}) or {}
+          missing_required = bool(comp.get('missing_required_fields', False))
+          mk = comp.get('areas_missing_keywords_count')
+          if mk is None:
+              ak = comp.get('areas_missing_keywords') or []
+              mk = len(ak)
+          total = comp.get('total_areas') or data.get('cet_count') or 0
+          issues = missing_required or (mk > 0) or (total != 21)
+          if issues:
+              print(f'CET taxonomy checks failed: missing_required={missing_required} missing_keywords={mk} total={total}')
+              sys.exit(1)
+          print('CET taxonomy checks passed.')
+          PY
+          python "$PYFILE"
+          rm -f "$PYFILE"
+
+      - name: Run tests
+        run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  ml-unit-tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ matrix.python-version }}-mltests-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Install duckdb and pyreadstat
+        run: |
+          # Ensure pip is up-to-date inside the poetry environment and install required ML runtime deps
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+
+      - name: Verify pandas, duckdb, and pyreadstat installed
+        run: |
+          poetry run python - <<'PY'
+          import pandas, sys
+          try:
+              import duckdb
+              import pyreadstat
+              print("pandas", pandas.__version__)
+              print("duckdb", duckdb.__version__)
+              print("pyreadstat", pyreadstat.__version__)
+          except Exception as e:
+              # Print diagnostics to help CI debugging and exit non-zero so failures are visible
+              print("Dependency verification failed:", e)
+              raise
+          PY
+
+      - name: Run ML unit tests
+        run: poetry run pytest tests/unit/ml -q
+
+  container-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU (optional for multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare .env for CI
+        run: |
+          set -eux
+          cp .env.example .env
+          # Replace placeholders with repository secrets (ensure secrets exist)
+          if [ -n "${{ secrets.NEO4J_PASSWORD }}" ]; then
+            sed -i "s|NEO4J_PASSWORD=change_me|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|g" .env || true  # pragma: allowlist secret
+          fi
+          if [ -n "${{ secrets.NEO4J_USER }}" ]; then
+            sed -i "s|NEO4J_USER=neo4j|NEO4J_USER=${{ secrets.NEO4J_USER }}|g" .env || true
+          fi
+          echo ".env prepared (sensitive values taken from repo secrets)"
+
+      - name: Build image and load into Docker daemon
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: sbir-etl:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Show built image
+        run: docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}' | rg "sbir-etl" || true
+
+      - name: Smoke test entrypoint
+        run: |
+          set -eux
+          echo "Running smoke test: validate image entrypoint responds to 'dagster --version'"
+          # Validate the built image can execute the dagster CLI. The image tag matches the one we built above.
+          docker run --rm "sbir-etl:ci-${{ github.sha }}" dagster --version
+
+      - name: Start test compose and run pytest
+        env:
+          # Provide the GITHUB_SHA used in the test compose overlay variable
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -eux
+          # Use compose overlay to bring up ephemeral neo4j + app (app configured to run pytest)
+          docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build neo4j app
+        timeout-minutes: 30
+
+      - name: Tear down test compose (cleanup)
+        if: always()
+        run: |
+          set -eux
+          docker compose -f docker-compose.yml -f docker/docker-compose.test.yml down --remove-orphans --volumes || true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-compose-logs
+          path: |
+            logs
+            reports || true
+
+  performance-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: detect-changes
+    if: needs.detect-changes.outputs.performance == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Cache baseline benchmark
+        uses: actions/cache@v3
+        with:
+          path: reports/benchmarks/baseline.json
+          key: benchmark-baseline-main
+          restore-keys: |
+            benchmark-baseline-
+
+      - name: Check if baseline exists
+        id: baseline_check
+        run: |
+          if [ -f "reports/benchmarks/baseline.json" ]; then
+            echo "baseline_exists=true" >> $GITHUB_OUTPUT
+            echo "✓ Baseline found"
+          else
+            echo "baseline_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠ No baseline found - this is first run or cache miss"
+          fi
+
+      - name: Run Performance Regression Detection
+        id: regression
+        continue-on-error: true
+        run: |
+          mkdir -p reports/benchmarks
+          python scripts/detect_performance_regression.py \
+            --sample-size 500 \
+            --output-json /tmp/regression.json \
+            --output-markdown /tmp/report.md \
+            --output-html /tmp/report.html \
+            --output-github-comment /tmp/pr_comment.md \
+            --fail-on-regression
+
+      - name: Generate summary for first run
+        if: steps.baseline_check.outputs.baseline_exists == 'false'
+        run: |
+          echo "## 📊 Performance Benchmark - Baseline Established" >> /tmp/pr_comment.md
+          echo "" >> /tmp/pr_comment.md
+          echo "This is the first performance run. Baseline has been established." >> /tmp/pr_comment.md
+          echo "" >> /tmp/pr_comment.md
+          if [ -f "/tmp/regression.json" ]; then
+            echo "**Current Metrics:**" >> /tmp/pr_comment.md
+            echo "" >> /tmp/pr_comment.md
+            jq '.current_metrics | to_entries | .[] | "- **\(.key):** \(.value)"' /tmp/regression.json >> /tmp/pr_comment.md
+          fi
+
+      - name: Create baseline if needed
+        if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
+        run: |
+          python scripts/benchmark_enrichment.py \
+            --sample-size 500 \
+            --save-as-baseline
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-reports
+          path: |
+            /tmp/regression.json
+            /tmp/report.md
+            /tmp/report.html
+          retention-days: 30
+
+      - name: Parse regression results
+        id: parse_results
+        if: always()
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            SEVERITY=$(jq -r '.severity // "UNKNOWN"' /tmp/regression.json)
+            DURATION_DELTA=$(jq -r '.duration_delta_percent // 0' /tmp/regression.json)
+            MEMORY_DELTA=$(jq -r '.memory_delta_percent // 0' /tmp/regression.json)
+            MATCH_RATE=$(jq -r '.match_rate // 0' /tmp/regression.json)
+            echo "severity=$SEVERITY" >> $GITHUB_OUTPUT
+            echo "duration_delta=$DURATION_DELTA" >> $GITHUB_OUTPUT
+            echo "memory_delta=$MEMORY_DELTA" >> $GITHUB_OUTPUT
+            echo "match_rate=$MATCH_RATE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set check status - Success
+        if: steps.regression.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Performance Check',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: '✓ Performance Check Passed',
+                summary: 'No performance regressions detected',
+                text: 'All performance metrics are within acceptable thresholds'
+              }
+            });
+
+      - name: Set check status - Failure
+        if: steps.regression.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Performance Check',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: 'failure',
+              output: {
+                title: '❌ Performance Check Failed',
+                summary: 'Performance regression detected',
+                text: 'Review the PR comment and artifacts for detailed regression analysis'
+              }
+            });
+
+      - name: Comment on PR with Results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            let comment_body = '';
+
+            // Try to read generated comment
+            if (fs.existsSync('/tmp/pr_comment.md')) {
+              comment_body = fs.readFileSync('/tmp/pr_comment.md', 'utf8');
+            } else {
+              comment_body = '## ⚠️ Performance Check\n\nNo report generated. Please check the workflow logs.';
+            }
+
+            // Add alert summary if regression detected
+            if (fs.existsSync('/tmp/regression.json')) {
+              const results = JSON.parse(fs.readFileSync('/tmp/regression.json', 'utf8'));
+              if (results.severity === 'FAILURE' || results.severity === 'WARNING') {
+                comment_body += '\n\n## 🚨 Performance Alerts\n\n';
+                if (results.issues && results.issues.length > 0) {
+                  results.issues.forEach(issue => {
+                    comment_body += `- **${issue.alert_type}:** ${issue.message}\n`;
+                  });
+                }
+              }
+            }
+
+            // Add link to artifacts
+            comment_body += '\n\n---\n\n';
+            comment_body += '**📎 Artifacts:** [View Performance Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n';
+
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment_body
+            });
+
+      - name: Fail if FAILURE severity detected
+        if: steps.regression.outcome == 'failure'
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            SEVERITY=$(jq -r '.severity' /tmp/regression.json)
+            if [ "$SEVERITY" = "FAILURE" ]; then
+              echo "❌ Performance regression FAILURE detected"
+              echo ""
+              echo "## Alert Summary"
+              jq '.issues' /tmp/regression.json
+              echo ""
+              echo "Regression thresholds exceeded. Please review and address before merging."
+              exit 1
+            fi
+          fi
+
+      - name: Print regression report
+        if: always()
+        run: |
+          if [ -f "/tmp/regression.json" ]; then
+            echo "## Regression Detection Summary"
+            echo ""
+            jq '.' /tmp/regression.json
+          fi
+
+  cet-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/password
+        options: >-
+          --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # Neo4j connection for CET assets
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: password
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "poetry"
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: Configure Poetry (no virtualenv in CI)
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-ansi
+
+      - name: Prepare tiny fixtures and CET configs
+        run: |
+          set -eux
+          # Minimal CET taxonomy/config to satisfy assets
+          mkdir -p config/cet
+          cat > config/cet/taxonomy.yaml << 'YAML'
+          version: "TEST-2025Q1"
+          last_updated: "2025-01-01"
+          cet_areas:
+            - cet_id: artificial_intelligence
+              name: Artificial Intelligence
+              definition: AI and ML technologies
+              keywords: ["machine learning", "neural network"]
+              parent_cet_id: null
+            - cet_id: quantum_information_science
+              name: Quantum Information Science
+              definition: Quantum computing and algorithms
+              keywords: ["quantum", "qubit", "entanglement"]
+              parent_cet_id: null
+          YAML
+
+          cat > config/cet/classification.yaml << 'YAML'
+          model_version: vtest
+          created_date: "2025-01-01"
+          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
+          batch: {size: 256}
+          evidence: {max_statements: 2, excerpt_max_words: 40}
+          YAML
+
+          # Minimal enriched awards so the award classifier has input rows
+          mkdir -p data/processed
+          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          {"award_id":"award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
+          {"award_id":"award_002","title":"Quantum sensor","abstract":"Research on qubit coherence and entanglement for sensors.","keywords":["quantum","qubit"]}
+          NDJSON
+
+      - name: Wait for Neo4j service health
+        run: |
+          set -eux
+          # Additional wait to ensure service is reachable over TCP
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends netcat-openbsd
+          timeout 120s bash -c 'until nc -z localhost 7687; do echo "Waiting for Neo4j on 7687..."; sleep 5; done'
+          echo "Neo4j is reachable."
+
+      - name: Execute CET full pipeline job
+        env:
+          # Allow assets to write outputs to default directories
+          SBIR_ETL__CET__NEO4J_OUTPUT_DIR: data/loaded/neo4j
+        run: |
+          set -eux
+          # Synchronous job execution against definitions.py
+          poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+
+      - name: List produced artifacts
+        if: always()
+        run: |
+          set -eux
+          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
+
+      - name: Upload CET artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cet-pipeline-artifacts
+          retention-days: 14
+          path: |
+            data/processed/cet_*.parquet
+            data/processed/cet_*.json
+            data/processed/cet_*.*      # include any future fallback extensions
+            data/processed/*.checks.json
+            data/loaded/neo4j/*.checks.json
+          if-no-files-found: warn
+
+  neo4j-cet-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cet == 'true'
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/password
+        options: >-
+          --health-cmd="bash -lc 'echo \"RETURN 1\" | cypher-shell -a bolt://localhost:7687 -u neo4j -p password || exit 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      # Neo4j connection for smoke script
+      NEO4J_URI: "bolt://localhost:7687"
+      NEO4J_USERNAME: "neo4j"
+      NEO4J_PASSWORD: "password"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "poetry"
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: Configure Poetry (no venv in CI)
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-ansi
+
+      - name: Prepare minimal CET configs and tiny input
+        run: |
+          set -eux
+          mkdir -p config/cet data/processed
+
+          cat > config/cet/taxonomy.yaml << 'YAML'
+          version: "TEST-2025Q1"
+          last_updated: "2025-01-01"
+          cet_areas:
+            - cet_id: artificial_intelligence
+              name: Artificial Intelligence
+              definition: AI and ML technologies
+              keywords: ["machine learning", "neural network"]
+              parent_cet_id: null
+          YAML
+
+          cat > config/cet/classification.yaml << 'YAML'
+          model_version: "vtest"
+          created_date: "2025-01-01"
+          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
+          batch: {size: 64}
+          evidence: {max_statements: 2, excerpt_max_words: 40}
+          tfidf:
+            min_df: 1
+            max_df: 1.0
+            ngram_range: [1, 2]
+            keyword_boost_factor: 2.0
+          feature_selection: {enabled: false}
+          calibration: {method: "sigmoid", cv: 2}
+          YAML
+
+          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          {"award_id":"smoke_award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
+          NDJSON
+
+      - name: Wait for Neo4j service readiness
+        run: |
+          set -eux
+          # Basic TCP readiness check for bolt port
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends netcat-openbsd
+          timeout 120s bash -c 'until nc -z localhost 7687; do echo "Waiting for Neo4j on 7687..."; sleep 5; done'
+          echo "Neo4j is reachable on 7687."
+
+      - name: CET smoke script (constraints, nodes, enrichments, relationships, assertions)
+        env:
+          NEO4J_URI: ${{ env.NEO4J_URI }}
+          NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
+        run: |
+          set -eux
+          poetry run python - << 'PY'
+          import os
+          from src.loaders.neo4j_client import Neo4jClient, Neo4jConfig
+          from src.loaders.cet_loader import CETLoader, CETLoaderConfig
+
+          uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+          user = os.environ.get("NEO4J_USERNAME", "neo4j")
+          pwd = os.environ.get("NEO4J_PASSWORD", "password")
+
+          client = Neo4jClient(Neo4jConfig(uri=uri, username=user, password=pwd))
+          loader = CETLoader(client, CETLoaderConfig(batch_size=50))
+
+          # Ensure constraints and indexes
+          loader.create_constraints()
+          loader.create_indexes()
+
+          # Upsert CETArea node
+          areas = [{
+              "cet_id": "artificial_intelligence",
+              "name": "Artificial Intelligence",
+              "taxonomy_version": "TEST-2025Q1",
+              "keywords": ["machine learning", "neural network"],
+          }]
+          m_areas = loader.load_cet_areas(areas)
+          assert (m_areas.errors or 0) == 0, f"Errors loading CET areas: {m_areas.errors}"
+
+          # Upsert Award enrichment (creates Award node if absent)
+          enrich_award = [{
+              "award_id": "smoke_award_001",
+              "cet_primary_id": "artificial_intelligence",
+              "cet_primary_score": 92.5,
+              "cet_supporting_ids": [],
+              "cet_taxonomy_version": "TEST-2025Q1",
+              "cet_model_version": "vtest",
+          }]
+          m_award = loader.upsert_award_cet_enrichment(enrich_award)
+          assert (m_award.errors or 0) == 0, f"Errors upserting award enrichment: {m_award.errors}"
+
+          # Create Award -> CETArea relationship
+          rel_rows = [{
+              "award_id": "smoke_award_001",
+              "primary_cet": "artificial_intelligence",
+              "primary_score": 92.5,
+              "classified_at": "2025-01-01T00:00:00Z",
+              "taxonomy_version": "TEST-2025Q1",
+          }]
+          m_rel = loader.create_award_cet_relationships(rel_rows)
+          assert (m_rel.errors or 0) == 0, f"Errors creating Award->CET relationships: {m_rel.errors}"
+
+          # Upsert Company enrichment and create Company -> CET relationship
+          enrich_company = [{
+              "uei": "UEI-SMOKE",
+              "cet_dominant_id": "artificial_intelligence",
+              "cet_dominant_score": 88.0,
+              "cet_specialization_score": 0.9,
+              "cet_areas": ["artificial_intelligence"],
+              "cet_taxonomy_version": "TEST-2025Q1",
+          }]
+          m_company = loader.upsert_company_cet_enrichment(enrich_company, key_property="uei")
+          assert (m_company.errors or 0) == 0, f"Errors upserting company enrichment: {m_company.errors}"
+
+          comp_rel_rows = [{
+              "uei": "UEI-SMOKE",
+              "cet_dominant_id": "artificial_intelligence",
+              "cet_dominant_score": 88.0,
+              "cet_specialization_score": 0.9,
+              "cet_taxonomy_version": "TEST-2025Q1",
+          }]
+          m_comp_rel = loader.create_company_cet_relationships(
+              comp_rel_rows, rel_type="SPECIALIZES_IN", key_property="uei"
+          )
+          assert (m_comp_rel.errors or 0) == 0, f"Errors creating Company->CET relationships: {m_comp_rel.errors}"
+
+          # Assertions via cypher
+          with client.session() as session:
+              # Award enrichment presence
+              rec = session.run(
+                  "MATCH (a:Award {award_id:$aid}) RETURN a.cet_primary_id AS pid, a.cet_taxonomy_version AS v",
+                  aid="smoke_award_001",
+              ).single()
+              assert rec and rec["pid"] == "artificial_intelligence", "Award enrichment missing or incorrect"
+
+              # Award -> CET relationship exists
+              rel_count = session.run(
+                  "MATCH (:Award {award_id:$aid})-[:APPLICABLE_TO]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
+                  aid="smoke_award_001", cid="artificial_intelligence"
+              ).single()["c"]
+              assert rel_count == 1, f"Expected 1 APPLICABLE_TO, found {rel_count}"
+
+              # Company -> CET relationship exists
+              comp_rel_count = session.run(
+                  "MATCH (:Company {uei:$uei})-[:SPECIALIZES_IN]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
+                  uei="UEI-SMOKE", cid="artificial_intelligence"
+              ).single()["c"]
+              assert comp_rel_count == 1, f"Expected 1 SPECIALIZES_IN, found {comp_rel_count}"
+
+          print("CET smoke completed successfully.")
+          client.close()
+          PY
+
+      - name: Success note
+        if: ${{ success() }}
+        run: echo "Neo4j CET smoke workflow succeeded"
+
+  transition-mvp:
+    name: Run Transition MVP (shim) and gate on validation summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: detect-changes
+    if: needs.detect-changes.outputs.transition == 'true'
+    permissions:
+      contents: read
+
+    concurrency:
+      group: transition-mvp-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+
+      - name: Install project dependencies (Poetry)
+        run: |
+          poetry --version
+          poetry install --no-interaction --no-ansi
+
+      - name: Run Transition MVP (shim)
+        run: |
+          make transition-mvp-run
+
+      - name: Export precision audit sample (CSV)
+        run: |
+          poetry run python scripts/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
+
+      - name: Upload precision audit sample
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transition-mvp-precision-audit-sample
+          path: reports/validation/vendor_resolution_audit_sample.csv
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Gate on validation summary
+        id: gate
+        run: |
+          set -euo pipefail
+          SUMMARY="reports/validation/transition_mvp.json"
+          if [ ! -f "${SUMMARY}" ]; then
+            echo "::error file=${SUMMARY}::Validation summary not found. Make sure the MVP run produced reports/validation/transition_mvp.json"
+            exit 2
+          fi
+
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          summary_path = Path("reports/validation/transition_mvp.json")
+          data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+          gates = data.get("gates", {})
+          cs = gates.get("contracts_sample", {})
+          vr = gates.get("vendor_resolution", {})
+
+          cs_pass = bool(cs.get("passed", False))
+          vr_pass = bool(vr.get("passed", False))
+
+          print("Transition MVP validation summary:")
+          print(json.dumps(data, indent=2))
+
+          failures = []
+          if not cs_pass:
+              failures.append("contracts_sample coverage gate failed")
+          if not vr_pass:
+              failures.append("vendor_resolution rate gate failed")
+
+          if failures:
+              for f in failures:
+                  print(f"::error::{f}")
+              sys.exit(1)
+          else:
+              print("All gates passed.")
+          PY
+
+      - name: Gate on evidence completeness
+        run: |
+          set -euo pipefail
+          EV="data/processed/transitions_evidence.checks.json"
+          if [ ! -f "${EV}" ]; then
+            echo "::error file=${EV}::Evidence checks JSON not found. Ensure transition_evidence_v1 ran."
+            exit 2
+          fi
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          p = Path("data/processed/transitions_evidence.checks.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+          comp = (data.get("completeness") or {})
+          complete = bool(comp.get("complete", False))
+          print("Evidence checks:", json.dumps(comp, indent=2))
+          if not complete:
+              th = comp.get("threshold")
+              ca = comp.get("candidates_above_threshold")
+              er = comp.get("evidence_rows_for_above_threshold")
+              print(f"::error::Evidence completeness gate failed: {er}/{ca} candidates at ≥{th}")
+              sys.exit(1)
+          print("Evidence completeness gate passed.")
+          PY
+
+      - name: Gate on analytics checks
+        run: |
+          set -euo pipefail
+          AC="data/processed/transition_analytics.checks.json"
+          if [ ! -f "${AC}" ]; then
+            echo "::error file=${AC}::Analytics checks JSON not found. Ensure transition_analytics ran."
+            exit 2
+          fi
+          python - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          p = Path("data/processed/transition_analytics.checks.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+
+          award = data.get("award_transition_rate") or {}
+          company = data.get("company_transition_rate") or {}
+          a_den = int(award.get("denominator") or 0)
+          c_den = int(company.get("denominator") or 0)
+          a_rate = float(award.get("rate") or 0.0)
+          c_rate = float(company.get("rate") or 0.0)
+
+          # Basic sanity checks
+          denom_ok = (a_den > 0) and (c_den > 0)
+          rate_bounds_ok = (0.0 <= a_rate <= 1.0) and (0.0 <= c_rate <= 1.0)
+
+          # Optional minimum thresholds from env
+          def _env_float(key, default):
+              try:
+                  return float(os.environ.get(key, str(default)))
+              except Exception:
+                  return default
+
+          min_award_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE", 0.0)
+          min_company_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", 0.0)
+          min_ok = (a_rate >= min_award_rate) and (c_rate >= min_company_rate)
+
+          print("Analytics checks:", json.dumps({
+              "award": {"denominator": a_den, "rate": a_rate, "min_rate": min_award_rate},
+              "company": {"denominator": c_den, "rate": c_rate, "min_rate": min_company_rate},
+              "sanity": {"denominators_positive": denom_ok, "rates_within_0_1": rate_bounds_ok},
+          }, indent=2))
+
+          if not denom_ok:
+              print("::error::Analytics gate failed: zero denominators (award or company).")
+              sys.exit(1)
+          if not rate_bounds_ok:
+              print("::error::Analytics gate failed: rates outside [0,1].")
+              sys.exit(1)
+          if not min_ok:
+              print(f"::error::Analytics gate failed: rates below minimums "
+                    f"(award: {a_rate:.2%} < {min_award_rate:.2%} "
+                    f"or company: {c_rate:.2%} < {min_company_rate:.2%}).")
+              sys.exit(1)
+
+          print("Analytics checks gate passed.")
+          PY
+
+      - name: Upload validation summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transition-mvp-validation
+          path: |
+            reports/validation/transition_mvp.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload processed artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transition-mvp-artifacts
+          path: |
+            data/processed/vendor_resolution.*
+            data/processed/transitions.*
+            data/processed/transitions_evidence.*
+            data/processed/transition_analytics.*
+            data/processed/contracts_sample.*
+          if-no-files-found: warn
+          retention-days: 7
+
