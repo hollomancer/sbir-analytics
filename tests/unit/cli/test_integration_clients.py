@@ -123,7 +123,7 @@ class TestNeo4jClient:
         config.neo4j = Mock()
         config.neo4j.uri = "bolt://localhost:7687"
         config.neo4j.username = "neo4j"
-        config.neo4j.password = "password"
+        config.neo4j.password = "password"  # pragma: allowlist secret
         config.neo4j.database = "neo4j"
         return config
 

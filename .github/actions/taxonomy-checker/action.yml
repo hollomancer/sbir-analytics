@@ -136,11 +136,11 @@ runs:
 
 The CET taxonomy completeness checks reported issues that require attention. Summary:
 
-\`\`\`json
+` + '```json' + `
 ${{ steps.evaluate.outputs.summary }}
-\`\`\`
+` + '```' + `
 
-Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
+Please review the taxonomy at ` + '`config/cet/taxonomy.yaml`' + ` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
 
 Artifacts: the checks JSON has been uploaded by the CI job for inspection.`;
           if (!pr) {

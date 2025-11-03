@@ -164,7 +164,7 @@ loading:
     #   NEO4J_DATABASE=neo4j                 (optional, defaults to 'neo4j')
     uri_env_var: "NEO4J_URI"
     user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD"
+    password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
     database: "${NEO4J_DATABASE:-neo4j}"    # Optional override via environment variable
     output_dir: "data/loaded/neo4j"
     load_success_threshold: 0.995

@@ -354,8 +354,8 @@ Each signal contains:
     "confidence": 0.99,
     "details": {
       "match_method": "UEI",
-      "award_uei": "ABC123DEF456",
-      "contract_uei": "ABC123DEF456",
+      "award_uei": "ABC123DEF456",  # pragma: allowlist secret
+      "contract_uei": "ABC123DEF456",  # pragma: allowlist secret
       "match_score": 0.10,
       "vendor_match_signal_score": 0.01,
       "note": "Definitive UEI match confirms same vendor"

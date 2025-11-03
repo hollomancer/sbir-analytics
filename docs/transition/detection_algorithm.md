@@ -289,8 +289,8 @@ final_score = base_score + (
   "vendor_match": {
     "method": "UEI",
     "confidence": 0.99,
-    "award_uei": "ABC123DEF456",
-    "contract_uei": "ABC123DEF456"
+    "award_uei": "ABC123DEF456",  # pragma: allowlist secret
+    "contract_uei": "ABC123DEF456"  # pragma: allowlist secret
   },
   "contract_details": {
     "piid": "FA1234-20-C-0001",

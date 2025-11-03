@@ -57,7 +57,7 @@ def sample_recipient_response():
     return {
         "recipient_id": "12345",
         "recipient_name": "Test Company Inc.",
-        "recipient_uei": "ABC123DEF456",
+        "recipient_uei": "ABC123DEF456",  # pragma: allowlist secret
         "recipient_duns": "123456789",
         "recipient_cage": "1A2B3",
         "naics_code": "541511",

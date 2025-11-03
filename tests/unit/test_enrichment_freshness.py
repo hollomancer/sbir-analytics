@@ -32,7 +32,7 @@ def sample_freshness_record():
         source="usaspending",
         last_attempt_at=datetime.now(),
         last_success_at=datetime.now(),
-        payload_hash="abc123def456",
+        payload_hash="abc123def456",  # pragma: allowlist secret
         status=EnrichmentStatus.SUCCESS,
         attempt_count=1,
         success_count=1,
