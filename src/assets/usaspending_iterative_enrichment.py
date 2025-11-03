@@ -4,8 +4,6 @@ Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, e
 will be evaluated in Phase 2+.
 """
 
-from __future__ import annotations
-
 import asyncio
 from pathlib import Path
 from typing import Any
@@ -17,6 +15,7 @@ from dagster import (
     AssetExecutionContext,
     Config,
     MetadataValue,
+    OpExecutionContext,
     Output,
     asset,
     asset_check,
@@ -132,11 +131,10 @@ def stale_usaspending_awards(
 
 
 @op(
-    config_schema=EnrichmentRefreshConfig,
     description="Refresh USAspending enrichment for a batch of awards",
 )
 def usaspending_refresh_batch(
-    context: AssetExecutionContext,
+    context: OpExecutionContext,
     stale_awards_batch: pd.DataFrame,
 ) -> dict[str, Any]:
     """Refresh USAspending enrichment for a batch of awards.

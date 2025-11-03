@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.assets.cet_assets import cet_award_classifications
+from src.assets.cet_assets import enriched_cet_award_classifications
 from src.ml.models.dummy_pipeline import DummyPipeline
 
 
@@ -137,7 +137,7 @@ def test_cet_award_asset_writes_placeholder_when_model_missing(tmp_path, monkeyp
         model_path.unlink()
 
     # Execute asset
-    out = cet_award_classifications()
+    out = enriched_cet_award_classifications()
 
     # Validate checks JSON indicates missing model and contains correct counts
     checks = _read_checks(tmp_path)
@@ -230,7 +230,7 @@ def test_cet_award_asset_classifies_with_synthetic_model(tmp_path, monkeypatch):
         pickle.dump(model_data, fh)
 
     # Execute asset (should load model artifact and classify)
-    out = cet_award_classifications()
+    out = enriched_cet_award_classifications()
 
     # Validate checks JSON
     checks = _read_checks(tmp_path)
