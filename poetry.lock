@@ -4680,4 +4680,4 @@ r = ["rpy2"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "e803452b26fe682b1b602efeec967bb9723e9b859a2887e20a36d484ccb3449e"
+content-hash = "c0781381288e7cec3152a919e164536cc9bba21efb470ab1992fe73f69c95f48"
