@@ -17,21 +17,25 @@ An **evidence bundle** is a comprehensive audit trail that documents how and why
 ## Why Evidence Bundles Matter
 
 ### 1. Auditability
+
 - Justify detection decisions to stakeholders
 - Trace logic from raw data through scoring
 - Enable reproducibility and debugging
 
 ### 2. Quality Control
+
 - Identify systematic scoring errors
 - Validate signal calculations
 - Flag anomalies for investigation
 
 ### 3. Decision Support
+
 - Help analysts evaluate transition quality
 - Prioritize high-confidence detections
 - Identify borderline cases needing manual review
 
 ### 4. Improvement
+
 - Analyze patterns in false positives/negatives
 - Guide algorithm tuning
 - Inform threshold adjustments
@@ -120,6 +124,7 @@ summary: str
 #### Signals Object
 
 Each signal contains:
+
 ```yaml
 <signal_name>:
   enabled: bool
@@ -164,7 +169,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `match_type`: "same_agency" | "cross_service" | "different_dept" | "unknown"
 - `award_agency`: Full name of award agency
 - `award_agency_code`: Numeric agency code
@@ -174,7 +180,8 @@ Each signal contains:
 - `same_department`: Boolean or null, true if same department but different agency
 - `agency_score`: Numeric contribution to final score
 
-**Interpretation**:
+### Interpretation
+
 - `same_agency: true` → Strong signal (0.0625 contribution)
 - `same_department: true` → Moderate signal (0.03125 contribution)
 - `same_agency: false, same_department: false` → Weak signal (0.0125 contribution)
@@ -201,7 +208,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `award_completion_date`: ISO date when Phase II ended
 - `contract_start_date`: ISO date when contract began
 - `days_between_award_and_contract`: Integer days (can be negative if contract pre-dates award)
@@ -211,7 +219,8 @@ Each signal contains:
 - `timing_score`: Contribution to final score
 - `note`: Explanation of timing window match
 
-**Interpretation**:
+### Interpretation
+
 - `days_between_award_and_contract < 90` → Strong signal (0.20 contribution)
 - `90 ≤ days < 365` → Moderate signal (0.15 contribution)
 - `365 ≤ days < 730` → Weak signal (0.10 contribution)
@@ -235,13 +244,15 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `competition_type`: "SOLE_SOURCE" | "LIMITED" | "FULL_AND_OPEN" | "UNKNOWN"
 - `usaspending_code`: Original code from USAspending (FULL, NONE, LIMITED, etc.)
 - `competition_score`: Contribution to final score
 - `note`: Human interpretation
 
-**Interpretation**:
+### Interpretation
+
 - `competition_type: SOLE_SOURCE` → Strong signal (0.04 contribution)
 - `competition_type: LIMITED` → Moderate signal (0.02 contribution)
 - `competition_type: FULL_AND_OPEN` → No signal (0.0)
@@ -272,7 +283,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `patents_found`: Integer count of patents associated with award
 - `patent_ids`: List of patent identifiers (US numbers or publication numbers)
 - `has_patent_bonus`: Contribution if patents exist (0.05)
@@ -286,7 +298,8 @@ Each signal contains:
 - `patent_signal_score`: Weighted contribution to final score
 - `note`: Explanation of patent findings
 
-**Interpretation**:
+### Interpretation
+
 - `patents_found > 0 AND pre_contract_patents > 0 AND max_topic_similarity ≥ 0.7` → Strong patent signal
 - `patents_found > 0 AND pre_contract_patents == 0` → Weak patent signal
 - `patents_found == 0` → No patent signal
@@ -313,7 +326,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `award_cet`: CET area from SBIR award classification (explicit)
 - `contract_cet`: CET area inferred from contract description (algorithmic)
 - `cet_inference_method`: "keyword_matching" | "ml_classifier" | "manual" | "none"
@@ -323,7 +337,8 @@ Each signal contains:
 - `cet_signal_score`: Weighted contribution to final score (0.005)
 - `note`: Explanation of CET matching
 
-**Interpretation**:
+### Interpretation
+
 - `cet_match_type: exact_match` → Moderate signal (0.005 contribution)
 - `cet_match_type: partial_match` → Weak signal (0.0)
 - `cet_match_type: no_match` → No signal (0.0)
@@ -349,7 +364,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `match_method`: "UEI" | "CAGE" | "DUNS" | "FUZZY_NAME" | "NONE"
 - `award_uei`: Award recipient's UEI (if available)
 - `contract_uei`: Contract vendor's UEI (if available)
@@ -365,7 +381,8 @@ Each signal contains:
 - `confidence`: Confidence in this match (0.99 for UEI, varies for fuzzy)
 - `note`: Explanation of vendor matching
 
-**Interpretation**:
+### Interpretation
+
 - `match_method: UEI` → Definitive match (confidence: 0.99)
 - `match_method: CAGE` → Very strong match (confidence: 0.95)
 - `match_method: DUNS` → Strong match (confidence: 0.90)
@@ -402,7 +419,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `piid`: Contract identifier (Procurement Instrument Identifier)
 - `parent_piid`: Parent contract if this is task order/child
 - `agency`: Full agency name
@@ -453,7 +471,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `award_id`: SBIR award identifier
 - `phase`: "I" | "II" | "IIB" | "III"
 - `program`: "SBIR" | "STTR"
@@ -508,7 +527,8 @@ Each signal contains:
 }
 ```
 
-**Fields**:
+### Fields
+
 - `completeness`: "PASS" | "FAIL" (all required fields present)
 - `completeness_details`: Details of field validation
 - `score_valid`: Boolean (likelihood_score in [0.0, 1.0])
@@ -638,7 +658,8 @@ Each signal contains:
 }
 ```
 
-**Analysis**:
+### Analysis
+
 - **Likelihood Score (0.8275)**: Base (0.15) + Agency (0.0625) + Timing (0.20) + Competition (0.04) + Patent (0.012) + CET (0.005) + Vendor (0.01) = 0.8275
 - **Confidence**: LIKELY (0.8275 ≥ 0.65, < 0.85)
 - **Key Indicators**:
@@ -759,7 +780,8 @@ Each signal contains:
 }
 ```
 
-**Analysis**:
+### Analysis
+
 - **Likelihood Score (0.5825)**: Base (0.15) + Agency (0.0625) + Timing (0.15) + Competition (0.0) + Patent (0.0) + CET (0.0) + Vendor (0.0032) = 0.5825
 - **Confidence**: POSSIBLE (0.5825 < 0.65)
 - **Key Indicators**:
@@ -782,14 +804,15 @@ Each signal contains:
 
 Evidence bundles are persisted as newline-delimited JSON:
 
-```
+```text
 {"transition_id": "trans_a1b2c3d4e5f6", "award_id": "SBIR-001", ...}
 {"transition_id": "trans_b2c3d4e5f6a7", "award_id": "SBIR-042", ...}
 ```
 
 **File**: `data/processed/transitions_evidence.ndjson`
 
-**Advantages**:
+### Advantages
+
 - One JSON object per line (streamable)
 - Efficient for large datasets
 - Easy to parse line-by-line
@@ -806,7 +829,8 @@ RETURN t.evidence_bundle
 
 **Storage Location**: `TRANSITIONED_TO.evidence_bundle` (JSON string)
 
-**Advantages**:
+### Advantages
+
 - Queryable as relationship properties
 - Linked to both award and contract nodes
 - Supports graph traversal
@@ -855,24 +879,30 @@ def verify_score_calculation(bundle: dict) -> bool:
 ### Usage Examples
 
 ```python
-# Load evidence bundle
+
+## Load evidence bundle
+
 import json
 import pandas as pd
 
-# Load from NDJSON
+## Load from NDJSON
+
 with open('data/processed/transitions_evidence.ndjson') as f:
     bundles = [json.loads(line) for line in f]
 
-# Filter by confidence
+## Filter by confidence
+
 likely_bundles = [b for b in bundles if b['confidence'] in ['LIKELY', 'HIGH']]
 
-# Extract signals for analysis
+## Extract signals for analysis
+
 agency_scores = [
     b['signals']['agency_continuity']['score_contribution']
     for b in bundles
 ]
 
-# Find all HIGH confidence transitions with patent backing
+## Find all HIGH confidence transitions with patent backing
+
 high_confidence_patent_backed = [
     b for b in bundles
     if b['confidence'] == 'HIGH' and 
@@ -886,11 +916,16 @@ high_confidence_patent_backed = [
 
 **Cause**: Rounding errors or scoring logic mismatch
 
-**Solution**:
+### Solution
+
 ```python
-# Check detailed breakdown
+
+## Check detailed breakdown
+
 bundle['validation']['signal_scores_detail']
-# Should show base_score + signals_total = expected_score
+
+## Should show base_score + signals_total = expected_score
+
 ```
 
 ### Issue: Missing Signal Information

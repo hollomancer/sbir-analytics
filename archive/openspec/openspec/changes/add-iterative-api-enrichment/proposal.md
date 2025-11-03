@@ -26,6 +26,7 @@
   - Document API credentials, throttling, retry expectations, and the iterative workflow in `docs/enrichment/iterative-refresh.md`.
 
 ### Additional External API Targets
+
 - **OpenCorporates REST API**: Company registries, officers, and beneficial ownership data (~200M entities). Useful for validating SBIR company status, corporate events, and officer history. Supports incremental queries via `updated_at` filters and company search endpoints.
 - **SEC EDGAR / Company Facts API**: Provides filing metadata, SIC, and financial metrics for public SBIR alumni; change detection via filing accession numbers. Helps flag commercialization milestones and revenue growth.
 - **DLA CAGE / Business Identification Search (BIS)**: Delivers CAGE codes, facility locations, and defense-specific compliance data; complements SAM.gov for manufacturing footprint and vendor eligibility checks.
@@ -37,10 +38,12 @@
 ## Impact
 
 ### Affected Specs
+
 - **data-enrichment**: Add requirements covering iterative refresh cadences, per-source TTL tracking, and source-payload diffing.
 - **pipeline-orchestration**: Add requirements for the Dagster job/sensor, resumable checkpoints, and rate-limit aware partitioning.
 
 ### Affected Code
+
 - `src/enrichers/`: Add API-specific clients (`sbir_gov_client.py`, `nih_reporter_client.py`, `patentsview_client.py`) plus shared iterative orchestrator.
 - `src/assets/iterative_enrichment.py`: New Dagster assets/job wiring iterative refresh into the main graph.
 - `src/models/enrichment.py`: Extend models with freshness metadata, payload hashes, and per-source run bookkeeping.
@@ -49,10 +52,12 @@
 - `docs/enrichment/iterative-refresh.md`: Operator guide for credentials, scheduling, and recovery.
 
 ### Data Volume & Performance Considerations
+
 - Expect ~70K active SBIR companies and 200K awards needing refresh coverage; each source has different release sizes (USAspending daily mods ~50K, SAM.gov UEI updates ~5K/day, NIH RePORTER weekly updates ~1K projects, PatentsView weekly patents ~5K records).
 - The scheduler must cap concurrent requests to stay under published quotas (SAM.gov 60/minute per API key, USAspending 120/minute, NIH 25/minute, PatentsView 10/minute) while still closing freshness gaps within 24h.
 - Persisting source payload hashes avoids reloading unchanged data and keeps nightly API volume under 250K calls across all sources.
 
 ### Dependencies
+
 - Add **httpx** for async API clients and connection pooling.
 - Add **tenacity** (or reuse existing backoff helpers if introduced elsewhere) for exponential backoff and jittered retries.

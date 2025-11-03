@@ -3,6 +3,7 @@
 This document is an inventory and quick reference for evaluating web-search and meta-search providers for the project's enrichment needs. It captures high-level licensing, authentication, acceptable-use considerations, and an initial recommendation for throttling/release-cadence checks. This is a research artifact: each "verification" entry should be validated against authoritative provider docs and recorded in an authoritative registry (see `openspec/providers.json`).
 
 Goals for task 1.1
+
 - Identify each candidate provider's licensing and acceptable-use constraints.
 - Determine the auth model and how secrets / credentials are provisioned.
 - Capture any published rate limits or, where missing, record a conservative recommended default to use for initial integration.
@@ -10,6 +11,7 @@ Goals for task 1.1
 - List next steps to obtain definitive values (doc links, account requests, test keys).
 
 Providers covered
+
 - SearXNG (self-hosted meta-search)
 - Tavily (hosted search / enterprise vendor)
 - Brave Search API
@@ -31,6 +33,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
 ---
 
 ## SearXNG (meta-search / self-hosted)
+
 - Purpose
   - Aggregates results from many search engines and provides a privacy-respecting meta-search. Useful for reproducible, privacy-preserving enrichment and for air-gapped or self-hosted deployments.
 - License / Hosting
@@ -50,6 +53,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
   - Confirm which upstream sources you plan to use and review their ToS.
 
 ## Tavily (vendor / hosted)
+
 - Purpose
   - Commercial search/enrichment API (vendor-specific features).
 - License / Hosting
@@ -65,6 +69,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
   - Evaluate cost per 1k queries.
 
 ## Brave Search API
+
 - Purpose
   - Search API from Brave; returns search results with privacy focus.
 - License / Hosting
@@ -79,6 +84,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
   - Request developer access / API key and the official rate-limit and pricing docs.
 
 ## Google Programmable Search (Custom Search JSON API)
+
 - Purpose
   - Google’s custom search API for programmably running queries against configured search engines (supporting site-limited or web-wide queries depending on config).
 - License / Hosting
@@ -94,6 +100,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
   - Consult Google Custom Search docs and pricing pages to obtain current quotas and costs.
 
 ## Perplexica (semantic / vector search)
+
 - Purpose
   - Provides semantic search/embedding-based results — good for entity disambiguation and contextual enrichment.
 - License / Hosting
@@ -110,6 +117,7 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
 ---
 
 ## Cross-provider considerations (applies to all)
+
 1. **Respect Upstream Terms**
    - Many search providers have explicit prohibitions on scraping or caching. Use official APIs when available and respect headers like `Retry-After` and `robots.txt` when proxies are used.
 2. **Conservative Defaults for Initial Integration**
@@ -126,7 +134,9 @@ Detailed per-provider notes, verification checklist, and initial recommended saf
 ---
 
 ## Verification checklist (what to do next per provider)
+
 For each provider listed above:
+
 - [ ] Retrieve and save the provider's authoritative API documentation URL(s) (API reference, rate-limit docs, ToS).
 - [ ] Obtain test credentials (API key) for hosted providers or spin up a local instance for self-hosted options.
 - [ ] Validate published rate limits (including time window: per second/minute/hour) and record exact headers/behavior.
@@ -135,6 +145,7 @@ For each provider listed above:
 - [ ] Capture costs (per 1k queries) for hosted providers and estimate projected monthly cost for nightly refresh at target volumes.
 
 Suggested initial safe configuration (for benchmarking only)
+
 - Concurrency: 1–2 concurrent requests per provider for initial tests.
 - Throttle default: 1 request/sec per provider unless vendor docs specify higher allowance.
 - Global orchestration: use a per-provider token bucket to enforce provider-level quotas and avoid throttling spikes when running parallel cohorts.
@@ -142,7 +153,9 @@ Suggested initial safe configuration (for benchmarking only)
 ---
 
 ## Representative prompts (for benchmarking)
+
 Create a curated suite of prompts covering:
+
 - Company profile: "Give a short (2–3 sentence) summary of COMPANY_NAME including founding year, core product, and recent news."
 - Principal Investigator (PI) bio: "List PI_NAME affiliation, current role, and three recent research keywords or publications."
 - Award transition signal: "Has COMPANY_NAME announced a commercialization or spin-out related to AWARD_TOPIC since YEAR?"
@@ -154,6 +167,7 @@ Store the prompt suite in `openspec/changes/evaluate-web-search-enrichment/promp
 ---
 
 ## Deliverables for task 1.1 completion
+
 - This inventory file (`search_providers.md`) committed to openspec (done).
 - `providers.json` or equivalent authoritative mapping updated with discovered doc links and initial findings (use the automated discovery script to assist).
 - A short PR checklist for verifying each provider (obtain docs, test keys, record rate-limits) — add results to `providers.json` and move provider `verification.status` to `verified`.
@@ -161,6 +175,7 @@ Store the prompt suite in `openspec/changes/evaluate-web-search-enrichment/promp
 ---
 
 If you want, I can:
+
 - Produce `openspec/changes/evaluate-web-search-enrichment/providers.json` analogous to the iterative API change and run an automated discovery pass against the documented `docs_url` values (like the other script did), or
 - Start implementing provider adapter scaffolds (`src/search_providers/`) to instrument basic search calls in a controlled benchmarking harness.
 

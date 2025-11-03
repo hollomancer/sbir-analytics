@@ -73,13 +73,16 @@ The Statistical Reporter integrates with existing system components:
 #### 1. Statistical Reporter (`src/utils/statistical_reporter.py`)
 
 **Purpose**: Main orchestrator for report generation
-**Responsibilities**:
+
+### Responsibilities
+
 - Coordinate data collection from pipeline components
 - Orchestrate report generation across multiple formats
 - Manage report storage and artifact creation
 - Handle CI/CD integration
 
-**Interface**:
+### Interface
+
 ```python
 class StatisticalReporter:
     def __init__(self, config: StatisticalReportingConfig)
@@ -91,13 +94,16 @@ class StatisticalReporter:
 #### 2. Module Analyzers (`src/utils/reporting/analyzers/`)
 
 **Purpose**: Generate module-specific statistical analysis
-**Components**:
+
+### Components
+
 - `SbirEnrichmentAnalyzer`: SBIR enrichment metrics and coverage analysis
 - `PatentAnalysisAnalyzer`: Patent validation and loading statistics
 - `CetClassificationAnalyzer`: CET classification performance metrics
 - `TransitionDetectionAnalyzer`: Technology transition analysis results
 
-**Interface**:
+### Interface
+
 ```python
 class ModuleAnalyzer(ABC):
     @abstractmethod
@@ -111,13 +117,16 @@ class ModuleAnalyzer(ABC):
 #### 3. Insight Engine (`src/utils/reporting/insights.py`)
 
 **Purpose**: Generate automated insights and recommendations
-**Responsibilities**:
+
+### Responsibilities
+
 - Detect anomalies and threshold violations
 - Generate actionable recommendations
 - Identify success stories and notable outcomes
 - Perform trend analysis and comparative assessment
 
-**Interface**:
+### Interface
+
 ```python
 class InsightEngine:
     def detect_anomalies(self, metrics: PipelineMetrics) -> List[Anomaly]
@@ -129,13 +138,16 @@ class InsightEngine:
 #### 4. Format Processors (`src/utils/reporting/formats/`)
 
 **Purpose**: Generate reports in different output formats
-**Components**:
+
+### Components
+
 - `HtmlReportProcessor`: Interactive HTML reports with Plotly visualizations
 - `JsonReportProcessor`: Machine-readable JSON reports
 - `MarkdownProcessor`: Concise summaries for documentation and PR comments
 - `ExecutiveDashboardProcessor`: High-level dashboards for stakeholders
 
-**Interface**:
+### Interface
+
 ```python
 class ReportProcessor(ABC):
     @abstractmethod
@@ -327,41 +339,50 @@ statistical_reporting:
 Support runtime configuration through environment variables:
 
 ```bash
-# Enable/disable reporting
+
+## Enable/disable reporting
+
 export SBIR_ETL__STATISTICAL_REPORTING__GENERATION__ENABLED=true
 
-# Configure output formats
+## Configure output formats
+
 export SBIR_ETL__STATISTICAL_REPORTING__FORMATS__HTML__INCLUDE_INTERACTIVE_CHARTS=false
 
-# CI/CD settings
+## CI/CD settings
+
 export SBIR_ETL__STATISTICAL_REPORTING__CICD__GITHUB_ACTIONS__ENABLED=true
 export SBIR_ETL__STATISTICAL_REPORTING__CICD__GITHUB_ACTIONS__UPLOAD_ARTIFACTS=true
 
-# Quality thresholds
+## Quality thresholds
+
 export SBIR_ETL__STATISTICAL_REPORTING__QUALITY_THRESHOLDS__DATA_COMPLETENESS_WARNING=0.95
 ```
 
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
+
 - Implement `StatisticalReporter` main class
 - Create basic data models and interfaces
 - Implement JSON report processor
 - Add basic configuration support
 
 ### Phase 2: Module Analyzers
+
 - Implement SBIR enrichment analyzer
 - Implement patent analysis analyzer
 - Add module-specific metrics collection
 - Create basic insight generation
 
 ### Phase 3: Advanced Reporting
+
 - Implement HTML report processor with visualizations
 - Add Markdown processor for CI/CD integration
 - Implement executive dashboard processor
 - Add comprehensive insight engine
 
 ### Phase 4: Integration and Polish
+
 - Integrate with GitHub Actions workflows
 - Add historical comparison capabilities
 - Implement comprehensive error handling
@@ -370,16 +391,19 @@ export SBIR_ETL__STATISTICAL_REPORTING__QUALITY_THRESHOLDS__DATA_COMPLETENESS_WA
 ## Security Considerations
 
 ### Data Privacy
+
 - Ensure no personally identifiable information included in reports
 - Sanitize company names and sensitive identifiers in public reports
 - Implement data masking for confidential metrics
 
 ### Access Control
+
 - Restrict access to detailed reports based on user roles
 - Implement secure artifact storage with appropriate permissions
 - Ensure PR comments only include non-sensitive summary information
 
 ### Output Validation
+
 - Validate all generated content for potential security issues
 - Sanitize user inputs in report templates
 - Implement content security policies for HTML reports
@@ -387,18 +411,21 @@ export SBIR_ETL__STATISTICAL_REPORTING__QUALITY_THRESHOLDS__DATA_COMPLETENESS_WA
 ## Performance Considerations
 
 ### Optimization Strategies
+
 - **Lazy Loading**: Generate report sections on-demand
 - **Caching**: Cache expensive calculations and visualizations
 - **Parallel Processing**: Generate multiple report formats concurrently
 - **Incremental Updates**: Only regenerate changed sections when possible
 
 ### Resource Management
+
 - **Memory Limits**: Implement streaming for large datasets
 - **Disk Usage**: Automatic cleanup of old report artifacts
 - **CPU Usage**: Limit concurrent report generation processes
 - **Network**: Optimize artifact uploads and API calls
 
 ### Scalability
+
 - **Horizontal Scaling**: Support distributed report generation
 - **Load Balancing**: Distribute report generation across available resources
 - **Queue Management**: Handle multiple report requests efficiently

@@ -5,12 +5,15 @@ This directory contains the configuration files for the SBIR ETL pipeline. The s
 ## Configuration Layers
 
 ### 1. Base Configuration (`base.yaml`)
+
 Contains default settings that are version controlled and shared across all environments. These provide sensible defaults for production use.
 
 ### 2. Environment Overrides (`dev.yaml`, `prod.yaml`)
+
 Environment-specific settings that override base configuration. These files contain settings that differ between development, staging, and production environments.
 
 ### 3. Environment Variables
+
 Runtime overrides using environment variables with the pattern `SBIR_ETL__SECTION__KEY=value`. These take highest precedence and are useful for secrets and deployment-specific settings.
 
 ## Configuration Structure
@@ -39,7 +42,8 @@ extraction:
     database_name: "usaspending"
     import_chunk_size: 50000
 
-# ... additional sections
+## ... additional sections
+
 ```
 
 ## Environment Variable Overrides
@@ -47,13 +51,17 @@ extraction:
 Environment variables override YAML configuration using double underscores to separate nested keys:
 
 ```bash
-# Override Neo4j URI
+
+## Override Neo4j URI
+
 export SBIR_ETL__NEO4J__URI_ENV_VAR="neo4j://localhost:7687"
 
-# Override data quality threshold
+## Override data quality threshold
+
 export SBIR_ETL__DATA_QUALITY__COMPLETENESS__COMPANY_NAME=0.90
 
-# Override logging level
+## Override logging level
+
 export SBIR_ETL__LOGGING__LEVEL="DEBUG"
 ```
 
@@ -71,10 +79,12 @@ Configuration is validated using Pydantic models in `src/config/schemas.py`. Thi
 ```python
 from src.config.loader import get_config
 
-# Get validated configuration
+## Get validated configuration
+
 config = get_config()
 
-# Access configuration values
+## Access configuration values
+
 neo4j_uri = os.getenv(config.neo4j.uri_env_var)
 batch_size = config.neo4j.batch_size
 quality_threshold = config.data_quality.completeness["company_name"]
@@ -109,12 +119,14 @@ The project supports running inside Docker Compose for local development, CI, an
 - Entrypoint scripts (`sbir-etl/scripts/docker/entrypoint.sh`) will attempt to load `.env` and `/run/secrets/*` and will wait for dependencies (Neo4j, Dagster web) before starting services — the entrypoint provides a robust fallback even when `depends_on.condition` is not supported by the environment.
 
 Recommended workflow (local)
+
 1. Copy `.env.example` -> `.env` and set local test credentials (do not commit `.env`)
 2. Build the image: `make docker-build`
 3. Start dev stack: `make docker-up-dev` (or run compose with dev overlay)
 4. Run ad-hoc commands inside the image via `docker compose run --rm etl-runner -- <cmd>` or use `make docker-exec`
 
 CI guidance
+
 - CI should build the image (using Buildx/cache), run `docker/docker-compose.test.yml` to execute tests inside the built image, and only push artifacts to a registry when tests pass. See `scripts/ci/build_container.sh` and `.github/workflows/container-ci.yml` for examples.
 
 ## Validation

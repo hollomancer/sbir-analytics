@@ -12,7 +12,7 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
 
 ### High-Level Flow
 
-```
+```text
 ┌─────────────────────┐
 │  SBIR Awards        │
 │  Federal Contracts  │
@@ -102,7 +102,8 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
 
 **Purpose**: Efficiently identify potential contract matches for each award using time windows.
 
-**Filters**:
+### Filters
+
 - Vendor matches (via resolution)
 - Time window: contracts within 0-24 months after award completion (configurable)
 - Contract must have valid start date and recipient information
@@ -117,12 +118,14 @@ The algorithm combines six independent signals, each with configurable weights s
 
 **Logic**: Federal agencies that award SBIR contracts often have related procurement needs.
 
-**Scoring**:
+### Scoring
+
 - Same agency: +0.25 bonus × 0.25 weight = **+0.0625**
 - Cross-service (same department): +0.125 bonus × 0.25 weight = **+0.03125**
 - Different department: +0.05 bonus × 0.25 weight = **+0.00125**
 
-**Example**:
+### Example
+
 - Award: NSF (National Science Foundation)
 - Contract: NSF procurement → Same agency → High score contribution
 - Award: DOD → Contract: Navy → Same department → Moderate score contribution
@@ -139,7 +142,8 @@ The algorithm combines six independent signals, each with configurable weights s
 - 366-730 days: 0.50× multiplier → **+0.10**
 - Beyond 730 days: 0.0 (outside window)
 
-**Configurable Parameters**:
+### Configurable Parameters
+
 - `timing_window`: Min/max days (default: 0-730)
 - Multiplier curves per preset (high_precision: 12mo, broad_discovery: 36mo)
 
@@ -149,14 +153,16 @@ The algorithm combines six independent signals, each with configurable weights s
 
 **Logic**: Sole source and limited competition contracts indicate targeted, vendor-specific procurement (prior relationship signal).
 
-**Scoring**:
+### Scoring
+
 - Sole source: +0.20 bonus × 0.20 weight = **+0.04**
 - Limited competition: +0.10 bonus × 0.20 weight = **+0.02**
 - Full and open: 0.0 (any vendor can bid)
 
 **Data Source**: USAspending `extent_competed` field
 
-**Mapping**:
+### Mapping
+
 - Full/open: FULL, FSS, A&A, CDO codes
 - Sole source: NONE, NDO codes
 - Limited: LIMITED, RESTRICTED patterns
@@ -165,15 +171,17 @@ The algorithm combines six independent signals, each with configurable weights s
 
 **Logic**: Patent activity indicates technology maturity and commercialization readiness.
 
-**Components**:
+### Components
+
 - **Has patent bonus**: +0.05 (award has ≥1 associated patent)
 - **Pre-contract bonus**: +0.03 (patent filed before contract start)
 - **Topic match bonus**: +0.02 (patent abstract similarity ≥ 0.7 to contract description)
 
 **Topic Similarity**: TF-IDF cosine similarity between patent abstract and contract description.
 
-**Scoring**:
-```
+### Scoring
+
+```text
 patent_score = (has_patent × 0.05 + 
                 pre_contract × 0.03 + 
                 topic_match × 0.02) × 0.15 (weight)
@@ -185,7 +193,8 @@ patent_score = (has_patent × 0.05 +
 
 **Logic**: Technology area consistency between award and contract indicates sustained technology focus.
 
-**Scoring**:
+### Scoring
+
 - Same CET area: +0.05 bonus × 0.10 weight = **+0.005**
 - Different CET area: 0.0
 
@@ -216,8 +225,9 @@ patent_score = (has_patent × 0.05 +
 
 **Base Score**: 0.15 (minimum baseline)
 
-**Final Score Calculation**:
-```
+### Final Score Calculation
+
+```text
 final_score = base_score + (
     agency_score + 
     timing_score + 
@@ -319,12 +329,14 @@ final_score = base_score + (
 - Time window: 48 months
 - Use case: Scientific exploration
 
-**Phase II Focus**
+### Phase II Focus
+
 - Optimized for Phase II awards
 - Weights emphasis on timing and competition signals
 - Use case: Phase II program analysis
 
-**CET Focused**
+### CET Focused
+
 - CET alignment weight increased to 0.20
 - Other weights reduced proportionally
 - Use case: Critical technology analysis
@@ -332,15 +344,19 @@ final_score = base_score + (
 ### Environment Variables
 
 ```bash
-# Scoring thresholds
+
+## Scoring thresholds
+
 SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.85
 SBIR_ETL__TRANSITION__DETECTION__LIKELY_CONFIDENCE_THRESHOLD=0.65
 
-# Timing window (days)
+## Timing window (days)
+
 SBIR_ETL__TRANSITION__DETECTION__MIN_DAYS=0
 SBIR_ETL__TRANSITION__DETECTION__MAX_DAYS=730
 
-# Signal weights (must sum to 1.0)
+## Signal weights (must sum to 1.0)
+
 SBIR_ETL__TRANSITION__DETECTION__AGENCY_WEIGHT=0.25
 SBIR_ETL__TRANSITION__DETECTION__TIMING_WEIGHT=0.20
 SBIR_ETL__TRANSITION__DETECTION__COMPETITION_WEIGHT=0.20
@@ -364,7 +380,8 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 2. Detection success rate ≥ 99% (pipeline completeness)
 3. Manual spot-check precision ≥ 80% for score ≥ 0.80
 
-**Production Gates**:
+### Production Gates
+
 1. Precision per confidence band meets targets
 2. Evidence bundle completeness 100%
 3. No ERROR severity issues in checks JSON
@@ -373,7 +390,8 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 
 ### Input Data
 
-**Award**:
+### Award
+
 - Award ID: `SBIR-2020-PHASE-II-123`
 - Recipient: Acme AI Inc.
 - UEI: `ABC123DEF456`
@@ -382,7 +400,8 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 - CET area: AI & Machine Learning
 - Topic: "Advanced neural network optimization for defense applications"
 
-**Contract**:
+### Contract
+
 - Contract ID: `FA1234-20-C-0001`
 - Vendor: Acme AI Inc.
 - UEI: `ABC123DEF456`
@@ -391,7 +410,8 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 - Competition type: Limited
 - Description: "AI-powered threat detection system"
 
-**Patents**:
+### Patents
+
 - Patent 1: Filed 2021-05-15 (pre-completion), "Neural network optimization"
 - Patent 2: Filed 2021-08-01 (pre-contract), "Defense application framework"
 

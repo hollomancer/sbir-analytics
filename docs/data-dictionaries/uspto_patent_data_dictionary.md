@@ -182,11 +182,13 @@ Once loaded into Neo4j, these fields support the following relationship patterns
 ## Usage in SBIR Pipeline
 
 ### Extraction (Stage 1)
+
 - **Input**: Raw USPTO CSV/Stata files from `data/raw/uspto/`
 - **Output**: `PatentAssignment` Pydantic models with normalized fields
 - **Config**: `config/base.yaml` → `extraction.uspto.*`
 
 ### Transformation (Stage 4)
+
 - **Input**: Raw `PatentAssignment` models
 - **Output**: Normalized, validated, deduplicated records ready for Neo4j
 - **Key Functions**:
@@ -196,6 +198,7 @@ Once loaded into Neo4j, these fields support the following relationship patterns
 - **Config**: `config/base.yaml` → `transformation.patent_*`
 
 ### Loading (Stage 5)
+
 - **Input**: Transformed assignments from `data/transformed/uspto/`
 - **Output**: Neo4j graph nodes and relationships
 - **Nodes Created**: Patent, PatentAssignment, PatentEntity

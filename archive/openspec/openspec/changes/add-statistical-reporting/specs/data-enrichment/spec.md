@@ -3,9 +3,11 @@
 ## ADDED Requirements
 
 ### Requirement: Enrichment Statistical Reporting
+
 The system SHALL generate detailed statistical reports for enrichment operations, showing coverage, match rates, source breakdown, and before/after comparisons.
 
 #### Scenario: SBIR enrichment statistics
+
 - **WHEN** SBIR enrichment completes
 - **THEN** a module-specific report SHALL be generated with:
   - Total awards processed
@@ -17,6 +19,7 @@ The system SHALL generate detailed statistical reports for enrichment operations
 - **AND** the report SHALL be available in JSON, HTML, and Markdown formats
 
 #### Scenario: Patent analysis statistics
+
 - **WHEN** patent analysis completes
 - **THEN** a module-specific report SHALL be generated with:
   - Patents processed and validated
@@ -27,6 +30,7 @@ The system SHALL generate detailed statistical reports for enrichment operations
 - **AND** include visualizations of patent network statistics
 
 #### Scenario: Transition classifier statistics
+
 - **WHEN** transition detection completes
 - **THEN** a module-specific report SHALL be generated with:
   - Classification distribution (transition types detected)
@@ -36,6 +40,7 @@ The system SHALL generate detailed statistical reports for enrichment operations
 - **AND** include trend analysis if historical runs exist
 
 #### Scenario: CET classifier statistics
+
 - **WHEN** CET classification completes
 - **THEN** a module-specific report SHALL be generated with:
   - Technology category distribution
@@ -45,9 +50,11 @@ The system SHALL generate detailed statistical reports for enrichment operations
 - **AND** include category co-occurrence analysis
 
 ### Requirement: Changes Made Tracking
+
 The system SHALL track and report all changes made to the base dataset during enrichment and transformation.
 
 #### Scenario: Before/after comparison
+
 - **WHEN** enrichment modifies records
 - **THEN** the system SHALL generate a changes summary showing:
   - Fields added (count and examples)
@@ -57,6 +64,7 @@ The system SHALL track and report all changes made to the base dataset during en
 - **AND** provide sample comparisons for manual review
 
 #### Scenario: Field modification tracking
+
 - **WHEN** enrichment updates existing fields
 - **THEN** the report SHALL track:
   - Number of fields modified
@@ -66,9 +74,11 @@ The system SHALL track and report all changes made to the base dataset during en
 - **AND** flag significant changes for manual verification
 
 ### Requirement: Enrichment Quality Insights
+
 The system SHALL generate automated insights about enrichment quality and provide actionable recommendations.
 
 #### Scenario: Match rate insights
+
 - **WHEN** match rate falls below expected thresholds
 - **THEN** the system SHALL recommend:
   - Reviewing matching logic for common failure patterns
@@ -77,6 +87,7 @@ The system SHALL generate automated insights about enrichment quality and provid
 - **AND** provide examples of unmatched records for debugging
 
 #### Scenario: Enrichment coverage insights
+
 - **WHEN** critical fields have low enrichment coverage
 - **THEN** the system SHALL alert with:
   - Which fields are under-enriched

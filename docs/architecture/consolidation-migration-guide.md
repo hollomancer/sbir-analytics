@@ -13,21 +13,27 @@ This guide helps developers understand and adapt to the consolidated codebase ar
 As of Task 7.3 completion, the following deprecated components have been permanently removed:
 
 ### Removed Models
+
 - **`SbirAward`**: The deprecated compatibility wrapper has been removed. Use `Award.from_sbir_csv()` or `Award` with field aliases instead.
 
 ### Removed Asset Aliases
+
 - **`uspto_ai_extract_to_duckdb`**: Use `raw_uspto_ai_extract` instead
 - **`uspto_ai_human_sample_extraction`**: Use `raw_uspto_ai_human_sample_extraction` instead
 
 ### Migration Required
+
 If your code still references these removed items, update as follows:
 
 ```python
-# Old (broken)
+
+## Old (broken)
+
 from src.models.sbir_award import SbirAward
 from src.assets import uspto_ai_extract_to_duckdb, uspto_ai_human_sample_extraction
 
-# New
+## New
+
 from src.models import Award
 from src.assets import raw_uspto_ai_extract, raw_uspto_ai_human_sample_extraction
 ```
@@ -35,22 +41,26 @@ from src.assets import raw_uspto_ai_extract, raw_uspto_ai_human_sample_extractio
 ## Migration Timeline
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - **Configuration System**: Migrate to unified configuration loading
 - **Performance Monitoring**: Adopt centralized monitoring
 - **Testing Framework**: Update test patterns
 - **Error Handling**: Use unified error handling
 
 ### Phase 2: Asset Consolidation (Weeks 3-4)
+
 - **Asset Definitions**: Migrate to consolidated assets
 - **Asset Dependencies**: Update dependency references
 - **Asset Monitoring**: Adopt unified monitoring patterns
 
 ### Phase 3: Models and Utilities (Weeks 5-6)
+
 - **Data Models**: Migrate to consolidated models
 - **Utility Functions**: Use centralized utilities
 - **Validation Logic**: Adopt unified validation
 
 ### Phase 4: Final Migration (Weeks 7-8)
+
 - **Testing Updates**: Complete test migration
 - **Documentation**: Update all documentation
 - **Cleanup**: Remove deprecated code
@@ -59,24 +69,32 @@ from src.assets import raw_uspto_ai_extract, raw_uspto_ai_human_sample_extractio
 
 ### Configuration Loading
 
-**Before (Current)**:
+### Before (Current)
+
 ```python
-# Multiple configuration patterns
+
+## Multiple configuration patterns
+
 from src.config.loader import load_config
 from src.config.schemas import SBIRConfig, USPTOConfig
 
-# Different loading approaches
+## Different loading approaches
+
 sbir_config = load_config("sbir", SBIRConfig)
 uspto_config = load_config("uspto", USPTOConfig)
 ```
 
-**After (Consolidated)**:
+### After (Consolidated)
+
 ```python
-# Unified configuration system
+
+## Unified configuration system
+
 from src.core.config.loader import load_config
 from src.core.config.schemas import PipelineConfig
 
-# Single configuration with hierarchical access
+## Single configuration with hierarchical access
+
 config = load_config("pipeline", PipelineConfig)
 sbir_settings = config.sbir
 uspto_settings = config.uspto
@@ -84,9 +102,12 @@ uspto_settings = config.uspto
 
 ### Asset Definitions
 
-**Before (Current)**:
+### Before (Current)
+
 ```python
-# Multiple similar assets
+
+## Multiple similar assets
+
 @asset(group_name="sbir_ingestion")
 def raw_sbir_awards(context: AssetExecutionContext) -> pd.DataFrame:
     # SBIR-specific logic
@@ -98,9 +119,12 @@ def usaspending_extraction(context: AssetExecutionContext) -> pd.DataFrame:
     pass
 ```
 
-**After (Consolidated)**:
+### After (Consolidated)
+
 ```python
-# Consolidated assets with unified patterns
+
+## Consolidated assets with unified patterns
+
 from src.core.assets.base_asset import ConsolidatedAsset
 
 @asset(group_name="ingestion")
@@ -115,9 +139,12 @@ def data_ingestion(
 
 ### Performance Monitoring
 
-**Before (Current)**:
+### Before (Current)
+
 ```python
-# Scattered monitoring code
+
+## Scattered monitoring code
+
 import time
 from src.utils.performance_monitor import PerformanceMonitor
 
@@ -134,9 +161,12 @@ def my_function():
     return result
 ```
 
-**After (Consolidated)**:
+### After (Consolidated)
+
 ```python
-# Unified monitoring system
+
+## Unified monitoring system
+
 from src.core.monitoring.metrics import UnifiedPerformanceMonitor
 
 def my_function():
@@ -151,9 +181,12 @@ def my_function():
 
 ### Data Models
 
-**Before (Current)**:
+### Before (Current)
+
 ```python
-# Duplicate model definitions
+
+## Duplicate model definitions
+
 from pydantic import BaseModel
 
 class SBIRAward(BaseModel):
@@ -169,9 +202,12 @@ class USPTOPatent(BaseModel):
     # Similar validation patterns
 ```
 
-**After (Consolidated)**:
+### After (Consolidated)
+
 ```python
-# Hierarchical model structure
+
+## Hierarchical model structure
+
 from src.core.models.base import BaseDataModel
 
 class Award(BaseDataModel):
@@ -191,9 +227,12 @@ class Patent(BaseDataModel):
 
 ### Testing Patterns
 
-**Before (Current)**:
+### Before (Current)
+
 ```python
-# Different test setup patterns
+
+## Different test setup patterns
+
 import pytest
 from unittest.mock import Mock
 
@@ -207,9 +246,12 @@ class TestSBIRIngestion:
         pass
 ```
 
-**After (Consolidated)**:
+### After (Consolidated)
+
 ```python
-# Unified testing framework
+
+## Unified testing framework
+
 import pytest
 from src.tests.helpers.database import DatabaseTestHelper
 from src.tests.fixtures.configs import pipeline_config
@@ -255,14 +297,16 @@ class TestDataIngestion:
 
 ### 1. Configuration Access Pattern
 
-**Old Pattern**:
+### Old Pattern
+
 ```python
 from src.config.loader import load_config
 config = load_config("module_specific", ModuleConfig)
 setting = config.specific_setting
 ```
 
-**New Pattern**:
+### New Pattern
+
 ```python
 from src.core.config.loader import load_config
 config = load_config("pipeline", PipelineConfig)
@@ -271,7 +315,8 @@ setting = config.module.specific_setting
 
 ### 2. Asset Definition Pattern
 
-**Old Pattern**:
+### Old Pattern
+
 ```python
 @asset(group_name="module_specific")
 def module_asset(context):
@@ -279,7 +324,8 @@ def module_asset(context):
     pass
 ```
 
-**New Pattern**:
+### New Pattern
+
 ```python
 @asset(group_name="consolidated_group")
 def consolidated_asset(context, config: PipelineConfig):
@@ -289,7 +335,8 @@ def consolidated_asset(context, config: PipelineConfig):
 
 ### 3. Validation Pattern
 
-**Old Pattern**:
+### Old Pattern
+
 ```python
 def validate_data(data, config):
     # Custom validation logic
@@ -298,7 +345,8 @@ def validate_data(data, config):
     return issues
 ```
 
-**New Pattern**:
+### New Pattern
+
 ```python
 from src.shared.validation.base import BaseValidator
 
@@ -308,15 +356,19 @@ report = validator.validate(data)
 
 ### 4. Database Client Pattern
 
-**Old Pattern**:
+### Old Pattern
+
 ```python
 from neo4j import GraphDatabase
 
 driver = GraphDatabase.driver(uri, auth=(user, password))
-# Manual session management
+
+## Manual session management
+
 ```
 
-**New Pattern**:
+### New Pattern
+
 ```python
 from src.shared.database.neo4j_client import Neo4jClient
 
@@ -333,7 +385,9 @@ with client.session() as session:
 During the migration period, compatibility layers will be provided:
 
 ```python
-# src/legacy/compatibility.py
+
+## src/legacy/compatibility.py
+
 from src.core.config.loader import load_config as new_load_config
 from src.core.config.schemas import PipelineConfig
 
@@ -355,7 +409,9 @@ def load_config(module_name: str, config_class):
 ### Migration Utilities
 
 ```python
-# src/migration/helpers.py
+
+## src/migration/helpers.py
+
 class MigrationHelper:
     """Tools to assist with codebase migration."""
     
@@ -381,7 +437,8 @@ class MigrationHelper:
 
 ### Example Test Migration
 
-**Before**:
+### Before
+
 ```python
 class TestSBIRValidation:
     def setup_method(self):
@@ -394,7 +451,8 @@ class TestSBIRValidation:
         assert len(issues) == 0
 ```
 
-**After**:
+### After
+
 ```python
 class TestDataValidation:
     def test_award_validation(self, pipeline_config, test_data_manager):
@@ -416,7 +474,9 @@ class TestDataValidation:
 ### Migration Validation
 
 ```python
-# Validation script to check migration completeness
+
+## Validation script to check migration completeness
+
 def validate_migration():
     """Check if migration is complete and successful."""
     checks = [
@@ -432,16 +492,19 @@ def validate_migration():
 ## Support and Resources
 
 ### Documentation
+
 - [Consolidation Refactor Plan](consolidation-refactor-plan.md)
 - [Design Patterns Gap Analysis](DESIGN_PATTERNS_GAP_ANALYSIS.md)
 - [Shared Tech Stack Architecture](shared-tech-stack.md)
 
 ### Migration Support
+
 - Weekly migration office hours
 - Slack channel: #consolidation-migration
 - Migration validation tools and scripts
 
 ### Code Review Guidelines
+
 - All PRs during migration period require architecture review
 - Migration checklist must be completed
 - Backward compatibility must be maintained

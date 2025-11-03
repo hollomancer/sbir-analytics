@@ -20,7 +20,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing AI algorithms, tools, and applications for defense/commercial use.
 
-**Contract Examples**:
+### Contract Examples
+
 - "AI-powered threat detection system"
 - "Machine learning model for anomaly detection"
 - "Deep learning framework for image classification"
@@ -37,7 +38,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing advanced computing platforms, architectures, and applications.
 
-**Contract Examples**:
+### Contract Examples
+
 - "High-performance computing optimization"
 - "Edge computing platform development"
 - "Quantum algorithm research"
@@ -54,7 +56,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies advancing biological and genetic technologies.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Gene editing platform development"
 - "Synthetic biology manufacturing process"
 - "Protein engineering and optimization"
@@ -71,7 +74,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing advanced manufacturing processes and materials.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Additive manufacturing for aerospace"
 - "Advanced composite material development"
 - "Digital twin for manufacturing optimization"
@@ -88,7 +92,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies advancing quantum technology research and development.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Quantum computing algorithm development"
 - "Quantum error correction research"
 - "Quantum sensing system development"
@@ -105,7 +110,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing biodefense and biosecurity solutions.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Pandemic preparedness system"
 - "Pathogen detection and diagnostics"
 - "Vaccine development platform"
@@ -122,7 +128,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing advanced semiconductor and microelectronics technologies.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Advanced semiconductor design"
 - "Photonic integrated circuits"
 - "Wide bandgap semiconductor development"
@@ -139,7 +146,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing hypersonic technologies and systems.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Hypersonic vehicle design and development"
 - "Hypersonic propulsion system"
 - "Thermal management for hypersonic flight"
@@ -156,7 +164,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing space technologies and systems.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Satellite system development"
 - "Launch vehicle technology"
 - "Autonomous orbital operations"
@@ -173,7 +182,8 @@ The following 10 critical and emerging technologies are supported:
 
 **SBIR Focus**: Companies developing climate and environmental solutions.
 
-**Contract Examples**:
+### Contract Examples
+
 - "Carbon capture and storage technology"
 - "Climate resilience planning system"
 - "Environmental monitoring platform"
@@ -188,14 +198,16 @@ The following 10 critical and emerging technologies are supported:
 
 SBIR awards are classified into CET areas by program managers at the time of award. This classification reflects the research focus and expected outcomes of the funded work.
 
-**Data Fields**:
+### Data Fields
+
 - `cet_area`: Primary CET classification (string)
 - `cet_code`: Optional numeric or alphabetic CET code
 - `technology_area`: Alternative field name for CET classification
 - `focus_area`: Alternative field name for CET classification
 
-**Example Awards**:
-```
+### Example Awards
+
+```text
 Award ID: SBIR-2020-PHASE-II-001
 Title: "Advanced Neural Network Optimization for Defense Applications"
 CET Area: "AI & Machine Learning"
@@ -221,17 +233,21 @@ from src.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 award_cet = extractor.extract_award_cet(award_record)
-# Returns: "AI & Machine Learning"
+
+## Returns: "AI & Machine Learning"
+
 ```
 
-**Logic**:
+### Logic
+
 1. Check `cet_area` field (primary)
 2. Check `cet_code` field (secondary)
 3. Check `technology_area` field (tertiary)
 4. Check `focus_area` field (quaternary)
 5. Return None if no field found
 
-**Data Availability**:
+### Data Availability
+
 - ~95% of Phase II awards have explicit CET classification
 - ~85% of Phase I awards have CET classification
 - Civilian agency awards more likely to have CET data than legacy awards
@@ -261,10 +277,12 @@ from src.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 cet_area, confidence = extractor.infer_contract_cet(contract_description)
-# Returns: ("AI & Machine Learning", 0.92)
+
+## Returns: ("AI & Machine Learning", 0.92)
+
 ```
 
-**Algorithm Steps**:
+### Algorithm Steps
 
 1. **Tokenize Description**
    - Split contract description into sentences
@@ -287,11 +305,12 @@ cet_area, confidence = extractor.infer_contract_cet(contract_description)
 
 ### Example Inferences
 
-```
+```text
 Contract Description: "Development of AI-powered anomaly detection system 
   using deep neural networks for threat identification"
   
 Keywords Found:
+
   - AI, Machine Learning: 2 hits
   - Advanced Computing: 0 hits
   - Quantum: 0 hits
@@ -299,11 +318,12 @@ Keywords Found:
 Inferred CET: "AI & Machine Learning" (confidence: 0.92)
 ```
 
-```
+```text
 Contract Description: "Advanced materials development including composites 
   and ceramics for aerospace applications"
   
 Keywords Found:
+
   - Advanced Manufacturing: 2 hits
   - Hypersonics: 0 hits
   - Space: 1 hit (aerospace)
@@ -311,11 +331,12 @@ Keywords Found:
 Inferred CET: "Advanced Manufacturing" (confidence: 0.75)
 ```
 
-```
+```text
 Contract Description: "Research into novel computational approaches and 
   optimization techniques"
   
 Keywords Found:
+
   - Advanced Computing: 1 hit (computational)
   - AI & Machine Learning: 0 hits
   
@@ -362,24 +383,30 @@ from src.transition.features.cet_analyzer import CETSignalExtractor
 
 extractor = CETSignalExtractor()
 
-# Calculate alignment
+## Calculate alignment
+
 alignment_score = extractor.calculate_alignment(
     award_cet="AI & Machine Learning",
     contract_cet="AI & Machine Learning"
 )
-# Returns: 1.0 (exact match)
 
-# With inference
+## Returns: 1.0 (exact match)
+
+## With inference
+
 contract_description = "AI-powered threat detection system"
 contract_cet, confidence = extractor.infer_contract_cet(contract_description)
 alignment_score = extractor.calculate_alignment(
     award_cet="AI & Machine Learning",
     contract_cet=contract_cet  # Inferred
 )
-# Returns: (1.0, 0.92) - exact match with 92% inference confidence
+
+## Returns: (1.0, 0.92) - exact match with 92% inference confidence
+
 ```
 
-**Implementation**:
+### Implementation
+
 ```python
 def calculate_alignment(award_cet, contract_cet):
     """Calculate CET alignment between award and contract."""
@@ -403,7 +430,7 @@ def calculate_alignment(award_cet, contract_cet):
 
 ### Examples
 
-```
+```text
 Award CET: "AI & Machine Learning"
 Contract CET (inferred): "AI & Machine Learning"
 Alignment: 1.0 (exact match)
@@ -433,7 +460,7 @@ CET alignment is one of six scoring signals in the transition detection algorith
 
 ### Scoring Formula
 
-```
+```text
 cet_alignment_score = alignment_type_bonus × weight
 
 where:
@@ -449,10 +476,11 @@ Examples:
 
 The CET alignment signal contributes to the overall transition likelihood score:
 
-```
+```text
 likelihood_score = base_score + Σ(signal_contributions)
 
 where signals include:
+
   - Agency continuity: max 0.0625
   - Timing proximity: max 0.20
   - Competition type: max 0.04
@@ -466,20 +494,24 @@ Total possible score: 0.15 (base) + 0.53 = 0.68
 
 ### Example Transition
 
-```
+```text
 Award: NSF Phase II, "AI for materials discovery"
+
   - CET: AI & Machine Learning
 
 Contract: "Machine learning system for material optimization"
+
   - Inferred CET: AI & Machine Learning (confidence: 0.88)
 
 CET Alignment Calculation:
+
   - Match Type: Exact match
   - Alignment Bonus: 0.05
   - Weight: 0.10
   - CET Score: 0.05 × 0.10 = 0.005
 
 Overall Transition Score:
+
   - Base: 0.15
   - Agency: 0.0625 (same agency)
   - Timing: 0.20 (45 days)
@@ -518,6 +550,7 @@ cet_inference:
   # CET keyword lists
   keywords:
     ai_ml:
+
       - "artificial intelligence"
       - "machine learning"
       - "neural network"
@@ -527,6 +560,7 @@ cet_inference:
       - "AI"
       
     advanced_computing:
+
       - "quantum computing"
       - "quantum algorithm"
       - "high-performance computing"
@@ -539,13 +573,17 @@ cet_inference:
 ### Environment Variable Overrides
 
 ```bash
-# Enable/disable CET alignment
+
+## Enable/disable CET alignment
+
 export SBIR_ETL__TRANSITION__CET_ALIGNMENT__ENABLED=true
 
-# Override CET weight (0.0-1.0)
+## Override CET weight (0.0-1.0)
+
 export SBIR_ETL__TRANSITION__CET_ALIGNMENT__WEIGHT=0.15
 
-# Override inference threshold
+## Override inference threshold
+
 export SBIR_ETL__TRANSITION__CET_INFERENCE__MIN_CONFIDENCE=0.30
 ```
 
@@ -558,6 +596,7 @@ cet_inference:
   keywords:
     ai_ml:
       # Add custom keywords
+
       - "transformer architecture"
       - "attention mechanism"
       - "foundation model"
@@ -575,43 +614,55 @@ cet_inference:
 from src.transition.features.cet_analyzer import CETSignalExtractor
 from src.transition.detection.scoring import TransitionScorer
 
-# Initialize
+## Initialize
+
 extractor = CETSignalExtractor()
 scorer = TransitionScorer(config)
 
-# Award data
+## Award data
+
 award = {
     "award_id": "SBIR-2020-II-001",
     "cet_area": "AI & Machine Learning",
     "topic": "Federated learning for distributed inference"
 }
 
-# Contract data
+## Contract data
+
 contract = {
     "contract_id": "FA1234-20-C-0001",
     "description": "Development of AI-powered threat detection using neural networks"
 }
 
-# Extract award CET
+## Extract award CET
+
 award_cet = extractor.extract_award_cet(award)
-# Result: "AI & Machine Learning"
 
-# Infer contract CET
+## Result: "AI & Machine Learning"
+
+## Infer contract CET
+
 contract_cet, confidence = extractor.infer_contract_cet(contract['description'])
-# Result: ("AI & Machine Learning", 0.92)
 
-# Calculate alignment
+## Result: ("AI & Machine Learning", 0.92)
+
+## Calculate alignment
+
 alignment = extractor.calculate_alignment(award_cet, contract_cet)
-# Result: 1.0 (exact match)
 
-# Extract CET signal
+## Result: 1.0 (exact match)
+
+## Extract CET signal
+
 cet_signal = extractor.extract_signal(
     award_cet=award_cet,
     contract_cet=contract_cet
 )
-# Result: CETSignal with score=0.005
 
-# Use in overall transition score
+## Result: CETSignal with score=0.005
+
+## Use in overall transition score
+
 signals = {
     "agency_continuity": 0.0625,
     "timing_proximity": 0.20,
@@ -622,52 +673,72 @@ signals = {
 }
 
 score = scorer.compute_final_score(signals)
-# Result: 0.7825 → LIKELY confidence
+
+## Result: 0.7825 → LIKELY confidence
+
 ```
 
 ### Example 2: CET Mismatch
 
 ```python
-# Award: Quantum Computing
+
+## Award: Quantum Computing
+
 award_cet = "Quantum Computing"
 
-# Contract: Advanced Manufacturing
+## Contract: Advanced Manufacturing
+
 contract_description = "Advanced composite materials for aerospace applications"
 contract_cet, confidence = extractor.infer_contract_cet(contract_description)
-# Result: ("Advanced Manufacturing", 0.75)
 
-# Calculate alignment
+## Result: ("Advanced Manufacturing", 0.75)
+
+## Calculate alignment
+
 alignment = extractor.calculate_alignment(award_cet, contract_cet)
-# Result: 0.0 (no match)
 
-# Extract CET signal
+## Result: 0.0 (no match)
+
+## Extract CET signal
+
 cet_signal = extractor.extract_signal(
     award_cet=award_cet,
     contract_cet=contract_cet
 )
-# Result: CETSignal with score=0.0 (no alignment)
+
+## Result: CETSignal with score=0.0 (no alignment)
+
 ```
 
 ### Example 3: Missing CET Data
 
 ```python
-# Award without CET classification
+
+## Award without CET classification
+
 award_cet = None
 
-# Even if contract has inferred CET
+## Even if contract has inferred CET
+
 contract_cet, confidence = extractor.infer_contract_cet(contract_description)
-# Result: ("AI & Machine Learning", 0.85)
 
-# Calculate alignment
+## Result: ("AI & Machine Learning", 0.85)
+
+## Calculate alignment
+
 alignment = extractor.calculate_alignment(award_cet, contract_cet)
-# Result: 0.0 (missing award CET)
 
-# Extract CET signal
+## Result: 0.0 (missing award CET)
+
+## Extract CET signal
+
 cet_signal = extractor.extract_signal(
     award_cet=award_cet,
     contract_cet=contract_cet
 )
-# Result: CETSignal with score=0.0 (cannot determine)
+
+## Result: CETSignal with score=0.0 (cannot determine)
+
 ```
 
 ---
@@ -683,15 +754,30 @@ from src.transition.analysis.analytics import TransitionAnalytics
 
 analytics = TransitionAnalytics(transitions_df, awards_df)
 
-# Calculate transition rates by CET area
+## Calculate transition rates by CET area
+
 cet_rates = analytics.compute_transition_rates_by_cet_area()
-# Result:
-#   CET Area                    | Award Count | Transitions | Rate
-#   ─────────────────────────────────────────────────────────────
-#   AI & Machine Learning       | 250         | 85          | 34%
-#   Advanced Manufacturing      | 180         | 45          | 25%
-#   Quantum Computing           | 120         | 18          | 15%
-#   ... etc
+
+## Result:
+
+
+##   CET Area                    | Award Count | Transitions | Rate
+
+
+##   ─────────────────────────────────────────────────────────────
+
+
+##   AI & Machine Learning       | 250         | 85          | 34%
+
+
+##   Advanced Manufacturing      | 180         | 45          | 25%
+
+
+##   Quantum Computing           | 120         | 18          | 15%
+
+
+##   ... etc
+
 ```
 
 ### Patent-Backed Transitions by CET Area
@@ -699,14 +785,28 @@ cet_rates = analytics.compute_transition_rates_by_cet_area()
 Analyze which CET areas show strongest patent-backed commercialization:
 
 ```python
-# Calculate patent-backed transition rates by CET area
+
+## Calculate patent-backed transition rates by CET area
+
 patent_rates = analytics.compute_patent_backed_transition_rates_by_cet_area()
-# Result:
-#   CET Area              | Total Trans | Patent-Backed | %
-#   ────────────────────────────────────────────────────
-#   AI & Machine Learning | 85          | 42            | 49%
-#   Quantum Computing     | 18          | 12            | 67%
-#   Advanced Manufacturing| 45          | 15            | 33%
+
+## Result:
+
+
+##   CET Area              | Total Trans | Patent-Backed | %
+
+
+##   ────────────────────────────────────────────────────
+
+
+##   AI & Machine Learning | 85          | 42            | 49%
+
+
+##   Quantum Computing     | 18          | 12            | 67%
+
+
+##   Advanced Manufacturing| 45          | 15            | 33%
+
 ```
 
 ### Time-to-Transition Analysis by CET Area
@@ -714,14 +814,28 @@ patent_rates = analytics.compute_patent_backed_transition_rates_by_cet_area()
 See how quickly commercialization occurs in each CET area:
 
 ```python
-# Calculate average time to transition by CET area
+
+## Calculate average time to transition by CET area
+
 times = analytics.compute_avg_time_to_transition_by_cet_area()
-# Result:
-#   CET Area              | Avg Days | P50 Days | P90 Days
-#   ─────────────────────────────────────────────────────
-#   Advanced Manufacturing| 245      | 180      | 540
-#   AI & Machine Learning | 285      | 240      | 720
-#   Quantum Computing     | 420      | 365      | 900
+
+## Result:
+
+
+##   CET Area              | Avg Days | P50 Days | P90 Days
+
+
+##   ─────────────────────────────────────────────────────
+
+
+##   Advanced Manufacturing| 245      | 180      | 540
+
+
+##   AI & Machine Learning | 285      | 240      | 720
+
+
+##   Quantum Computing     | 420      | 365      | 900
+
 ```
 
 ---
@@ -731,13 +845,18 @@ times = analytics.compute_avg_time_to_transition_by_cet_area()
 ### Neo4j Cypher Examples
 
 ```cypher
-# Find all HIGH confidence transitions in AI & ML
+
+## Find all HIGH confidence transitions in AI & ML
+
 MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea {name: "AI & Machine Learning"})
+
       -[]->(t:Transition {confidence: "HIGH"})
+
 RETURN a.award_id, a.topic, t.likelihood_score
 ORDER BY t.likelihood_score DESC
 
-# Transition rate by CET area
+## Transition rate by CET area
+
 MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 WITH cet.name as cet_area,
@@ -749,10 +868,13 @@ RETURN cet_area,
        round(100.0 * transitions / total_awards) as transition_rate_percent
 ORDER BY transition_rate_percent DESC
 
-# Patent-backed transitions by CET area
+## Patent-backed transitions by CET area
+
 MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
+
       -[:ENABLED_BY]->(p:Patent)
+
 WITH cet.name as cet_area,
      count(DISTINCT t) as patent_backed_transitions,
      count(DISTINCT t) FILTER (WHERE p IS NOT NULL) as patent_backed
@@ -813,12 +935,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Symptoms**: Few transitions show CET alignment; most show "no match"
 
-**Causes**:
+### Causes
+
 1. Missing CET data in awards (~5% of awards)
 2. Poor contract CET inference (generic descriptions)
 3. CET areas don't align between award and contract
 
-**Solutions**:
+### Solutions
+
 1. Check award CET coverage: `awards['cet_area'].isna().sum()`
 2. Review inferred CET confidences: analyze distribution
 3. Expand keyword lists for underperforming CET areas
@@ -828,12 +952,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Symptoms**: Contracts assigned to wrong CET areas
 
-**Causes**:
+### Causes
+
 1. Keywords too generic (e.g., "technology", "optimization")
 2. Contract descriptions lack specific CET terminology
 3. Keywords match unrelated concepts
 
-**Solutions**:
+### Solutions
+
 1. Review low-confidence inferences manually
 2. Add more specific keywords to CET lists
 3. Increase minimum confidence threshold (0.30 → 0.50)
@@ -843,12 +969,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Symptoms**: All contract inferences have confidence ≥0.9 (unrealistic)
 
-**Causes**:
+### Causes
+
 1. Keyword lists have too much overlap
 2. Keywords too common and unspecific
 3. Calculation method too permissive
 
-**Solutions**:
+### Solutions
+
 1. Review and consolidate keyword lists
 2. Use more specific technical terms
 3. Consider semantic similarity in future versions
@@ -858,12 +986,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Symptoms**: Some contracts in a CET area not detected
 
-**Causes**:
+### Causes
+
 1. Contracts use domain-specific terminology
 2. Keywords don't cover all possible phrasings
 3. Contracts use acronyms not in keyword lists
 
-**Solutions**:
+### Solutions
+
 1. Expand keyword lists with common variations
 2. Add acronyms: "AI", "ML", "NLP", "CV", etc.
 3. Include vendor/product names when relevant
@@ -905,12 +1035,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Goal**: Replace keyword matching with trained ML classifier for better accuracy
 
-**Approach**:
+### Approach
+
 1. Collect labeled training data (500-1000 contracts with true CET areas)
 2. Train text classification model (logistic regression, SVM, or neural network)
 3. Deploy for contract CET inference
 
-**Expected Benefits**:
+### Expected Benefits
+
 - Higher accuracy for non-obvious contracts
 - Handle semantic similarity better
 - Reduce false positives from keyword overlap
@@ -919,12 +1051,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Goal**: Allow contracts to belong to multiple CET areas
 
-**Approach**:
+### Approach
+
 1. Return top-3 CET areas with confidence scores
 2. Link transitions to multiple CET nodes in Neo4j
 3. Aggregate transition rates across CET combinations
 
-**Expected Benefits**:
+### Expected Benefits
+
 - Better represent interdisciplinary contracts
 - Richer analysis of technology intersections
 
@@ -932,12 +1066,14 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 
 **Goal**: Update CET classifications as new contracts become available
 
-**Approach**:
+### Approach
+
 1. Stream contract data
 2. Infer CET area on receipt
 3. Update Neo4j graph immediately
 
-**Expected Benefits**:
+### Expected Benefits
+
 - Near-real-time CET analysis
 - Faster insights for program managers
 

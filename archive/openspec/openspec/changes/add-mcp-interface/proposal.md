@@ -27,9 +27,11 @@ Providing an MCP server gives every developer a consistent, secure interface tha
 ## Impact
 
 ### Affected Specs
+
 - **mcp-interface** *(new)*: Formalizes requirements for the MCP server, supported resources/actions, auth, and observability.
 
 ### Affected Code
+
 - `pyproject.toml`: add `mcp>=0.1.0`, `fastapi` (for optional HTTP transport), and `uvicorn` dependencies.
 - `src/mcp/`: new package containing `server.py`, `auth.py`, `resources/`, `actions/`, and `clients/dagster.py` / `clients/neo4j.py` helpers.
 - `scripts/docker/mcp-server.sh`: container entrypoint.
@@ -38,15 +40,18 @@ Providing an MCP server gives every developer a consistent, secure interface tha
 - GitHub Actions update to run MCP unit tests + linting.
 
 ### Dependencies
+
 - `mcp` reference Python SDK.
 - `fastapi` + `uvicorn` for hosting the MCP server over HTTP/WebSocket.
 - Optional `redis` dependency (Docker profile) if rate-limiting/backoff needs durable state.
 
 ### Risks & Mitigations
+
 - **Unauthorized access**: require explicit API tokens and document network boundaries; add integration tests that reject missing/invalid tokens.
 - **Long-running Dagster jobs**: enforce concurrency + timeout when triggering runs via MCP; surface job IDs so callers can poll later.
 - **Spec drift**: add contract tests verifying each MCP tool/resource returns JSON that conforms to documented schemas.
 
 ### Out of Scope
+
 - Full RBAC or multi-tenant policy engine (single tenant with token-based auth is sufficient initially).
 - Conversational agent logic; MCP server only exposes tools/resources for external copilots.

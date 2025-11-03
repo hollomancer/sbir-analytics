@@ -1,7 +1,9 @@
 # Iterative API Enrichment — External API Inventory
+
 This document inventories the external APIs referenced (or commonly used) for enrichment in the repository and captures the metadata needed for designing an iterative (delta-based) enrichment strategy. This is intended to satisfy task 1.1: "Inventory every external enrichment API referenced in repo docs/config and document their release cadence + throttling limits."
 
 For each API below I give:
+
 - Purpose / common enrichment use-cases in the project
 - Auth model (what we need to configure)
 - Release cadence or data freshness guidance (what to expect)
@@ -16,6 +18,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 1) SBIR.gov (Awards Data)
+
 - Purpose
   - Primary source of SBIR award records. Used for initial ingestion and periodic refresh of award-level fields (title, abstract, agency, solicitation, award amount).
 - Auth model
@@ -38,6 +41,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 2) USAspending (USASpending.gov)
+
 - Purpose
   - Transaction and recipient enrichment (award-level reconciliation, NAICS, place-of-performance, transaction history).
 - Auth model
@@ -61,6 +65,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 3) SAM.gov
+
 - Purpose
   - Awardee matching and entity-level enrichment (CAGE codes, registration metadata).
 - Auth model
@@ -82,6 +87,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 4) NIH RePORTER / NIH APIs
+
 - Purpose
   - Enrich awards with NIH-related data (project abstracts, investigators, funding activity for NIH-relevant awards).
 - Auth model
@@ -102,6 +108,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 5) PatentsView
+
 - Purpose
   - Enrich organizations with patent activity and dates; used for technology transfer signals.
 - Auth model
@@ -122,6 +129,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 6) OpenCorporates
+
 - Purpose
   - Company registry lookup for normalized company metadata, jurisdictions, corporate identifiers.
 - Auth model
@@ -143,6 +151,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 7) SEC EDGAR
+
 - Purpose
   - Financial filings & company disclosures; relevant for public company enrichment and timeline events.
 - Auth model
@@ -163,6 +172,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 8) DLA / CAGE / BIS (Defense & CAGE registries)
+
 - Purpose
   - Entity identifiers (CAGE codes) and export control data (BIS), useful for defense contracting enrichment and vendor validation.
 - Auth model
@@ -183,6 +193,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 9) ORCID
+
 - Purpose
   - Author / investigator identifier resolution (PI affiliation and publication links).
 - Auth model
@@ -203,6 +214,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 10) OpenAlex
+
 - Purpose
   - Scholarly metadata (authors, works, institutions); alternative to CrossRef and OpenAlex is popular for open academic metadata enrichment.
 - Auth model
@@ -223,6 +235,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## 11) OpenFEC
+
 - Purpose
   - Campaign / PAC / political contributor data; relevant for political funding enrichment.
 - Auth model
@@ -243,6 +256,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## Generic integration guidance (applies to all connectors)
+
 1. Authentication & secrets
    - Add per-source config keys in `config/base.yaml` (or `config/docker.yaml` for container defaults):
      - api_key / client_id / client_secret / oauth settings / base_url / rate_limit_hint.
@@ -285,6 +299,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## Task 1.1 — Immediate next actions checklist (what to do to complete the inventory)
+
 - [ ] For each API above, retrieve and link the authoritative provider documentation pages (API reference, rate limits, auth).
 - [ ] For each API, obtain a test API key or identify test endpoints (for SAM.gov, OpenCorporates, OpenFEC, etc.).
 - [ ] Populate `config/base.yaml` with `enrichment_refresh` placeholders for each source (cadence, default batch_size, concurrency_hint).
@@ -295,6 +310,7 @@ Where public documentation or quota numbers are unclear, I mark that clearly and
 ---
 
 ## Notes for reviewers / owners
+
 - This file intentionally focuses on the integration-relevant qualities of each API (delta signals, auth, rate limits) rather than detailed API parameter lists — the latter should be collected from the official provider docs and recorded in `openspec/providers.json`.
 - Wherever specific quotas and headers are needed (for example, `Retry-After` semantics or exact `If-Modified-Since` support), fetch the provider docs and update this inventory with exact values.
 - For the next implementation steps, I recommend starting with NIH, SAM.gov, USAspending, and PatentsView connectors (these are already referenced in the repo and provide the highest immediate enrichment value). Add more connectors only after a validated iterative refresh pattern is in place.

@@ -38,21 +38,25 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 ## Migration Timeline
 
 ### Phase 1: Foundation (Weeks 1-2) ✅
+
 - [x] Create migration specification
 - [x] Update documentation references
 - [x] Establish Kiro spec structure
 
 ### Phase 2: Content Migration (Weeks 3-4) 🔄
+
 - [ ] Migrate active OpenSpec changes to Kiro specs
 - [ ] Consolidate OpenSpec specifications
 - [ ] Validate migrated content
 
 ### Phase 3: Workflow Transition (Weeks 5-6) ⏳
+
 - [ ] Update development workflows
 - [ ] Archive OpenSpec content
 - [ ] Complete documentation updates
 
 ### Phase 4: Cutover (Weeks 7-8) ⏳
+
 - [ ] Disable OpenSpec tooling
 - [ ] Final validation and testing
 - [ ] Developer training and support
@@ -61,13 +65,15 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
 ### During Migration Period
 
-**For New Work:**
+### For New Work:
+
 - ✅ **Use Kiro specs** for new features and capabilities
 - ✅ Create specs in `.kiro/specs/[feature-name]/`
 - ✅ Follow EARS patterns for requirements
 - ✅ Reference existing architecture documents
 
-**For Existing OpenSpec Work:**
+### For Existing OpenSpec Work:
+
 - ⚠️ **Continue with OpenSpec** for active changes until migrated
 - ⚠️ Check migration status before starting new OpenSpec changes
 - ⚠️ Coordinate with migration team for change priorities
@@ -76,6 +82,7 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
 1. **Create spec directory**: `.kiro/specs/[feature-name]/`
 2. **Write requirements.md**:
+
    ```markdown
    # Requirements Document
    
@@ -83,19 +90,23 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
    [Context and problem statement]
    
    ## Glossary
+
    - **Term**: Definition
    
    ## Requirements
    
    ### Requirement 1
+
    **User Story:** As a [user], I want [goal], so that [benefit].
    
    #### Acceptance Criteria
+
    1. THE system SHALL [specific behavior]
    2. THE system SHALL [specific behavior]
    ```
 
 3. **Write tasks.md**:
+
    ```markdown
    # Implementation Plan
    
@@ -107,6 +118,7 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
    ```
 
 4. **Write design.md** (if needed):
+
    ```markdown
    # Design Document
    
@@ -119,56 +131,74 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
 ### EARS Pattern Examples
 
-**Good EARS Patterns:**
+### Good EARS Patterns:
+
 - "THE system SHALL validate user input before processing"
 - "THE API SHALL return results within 200ms for 95% of requests"
 - "THE database SHALL maintain referential integrity across all tables"
 
-**Convert from OpenSpec:**
+### Convert from OpenSpec:
+
 - OpenSpec: "Add user authentication"
 - Kiro: "THE system SHALL authenticate users using JWT tokens"
 
 ## Migration Support
 
 ### Resources
+
 - **Migration Spec**: [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md)
 - **Consolidation Plan**: [Codebase Consolidation Refactor Plan](consolidation-refactor-plan.md)
 - **Architecture Docs**: [Shared Tech Stack](shared-tech-stack.md)
 
 ### Getting Help
+
 - **Migration Questions**: Check migration spec or ask development team
 - **Kiro Spec Format**: Reference existing specs in `.kiro/specs/`
 - **EARS Patterns**: See requirements examples in migrated specs
 
 ### Common Migration Patterns
 
-**Converting Proposals to Requirements:**
+### Converting Proposals to Requirements:
+
 ```markdown
-# OpenSpec proposal.md
+
+## OpenSpec proposal.md
+
+
 ## Why
+
 Need to improve API performance
 
 ## What Changes
+
 - Add caching layer
 - Optimize database queries
 
-# Kiro requirements.md
+## Kiro requirements.md
+
+
 ### Requirement 1
+
 **User Story:** As an API consumer, I want fast response times, so that my application performs well.
 
 #### Acceptance Criteria
+
 1. THE API SHALL implement caching for frequently accessed data
 2. THE API SHALL optimize database queries to reduce response time
 3. THE API SHALL return results within 200ms for 95% of requests
 ```
 
-**Converting Tasks:**
+### Converting Tasks:
+
 ```markdown
-# OpenSpec tasks.md
+
+## OpenSpec tasks.md
+
 - [ ] 1.1 Add Redis caching
 - [ ] 1.2 Optimize SQL queries
 
-# Kiro tasks.md
+## Kiro tasks.md
+
 - [ ] 1.1 Implement Redis caching layer
   - Set up Redis connection
   - Add cache middleware
@@ -183,6 +213,7 @@ Need to improve API performance
 ## Quality Assurance
 
 ### Validation Checklist
+
 - [ ] All requirements follow EARS patterns
 - [ ] User stories include clear acceptance criteria
 - [ ] Tasks reference specific requirements
@@ -190,6 +221,7 @@ Need to improve API performance
 - [ ] All migrated content passes Kiro validation
 
 ### Testing Migration
+
 - [ ] Verify no OpenSpec content is lost
 - [ ] Validate Kiro specs are executable
 - [ ] Test new development workflow
@@ -198,12 +230,14 @@ Need to improve API performance
 ## Post-Migration
 
 ### After Cutover
+
 - **OpenSpec Content**: Archived in `archive/openspec/` for historical reference
 - **New Development**: All new work uses Kiro specs exclusively
 - **Documentation**: Updated to reference Kiro system only
 - **Tooling**: OpenSpec commands disabled to prevent confusion
 
 ### Ongoing Maintenance
+
 - Regular review of Kiro specs for accuracy
 - Updates to requirements as features evolve
 - Continuous improvement of EARS patterns

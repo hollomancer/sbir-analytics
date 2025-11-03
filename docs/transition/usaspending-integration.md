@@ -68,10 +68,13 @@ This document captures the initial integration of USAspending data for the SBIR 
 ## Usage Notes
 
 - Run the extractor via:
-  ```
+
+  ```text
   poetry run python scripts/extract_federal_contracts.py --subset \
+
       --output /Volumes/X10\ Pro/projects/sbir-etl-data/contracts_test_sample.parquet
   ```
+
   Adjust `--full` and `--output` paths as needed. Ensure removable storage remains mounted (`/Volumes/X10 Pro`).
 
 - The generated Parquet dataset lives on external storage to conserve internal disk space. Downstream processes must read from the same volume.

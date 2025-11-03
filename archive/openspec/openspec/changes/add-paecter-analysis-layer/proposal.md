@@ -1,9 +1,11 @@
-## Why
+#Why
+
 We want a robust, explainable, and retrieval-friendly analysis layer that complements our existing CET-based patent and award classifiers. PaECTER provides high-quality patent embeddings that enable semantic search, prior-art style similarity, cohort cohesion checks, and award↔patent cross-linking to improve discovery, validation, and downstream analytics.
 
 We will use Hugging Face’s hosted Inference API by default (no local GPU required) to accelerate adoption. As a later option, we will support Hugging Face Inference Endpoints for dedicated capacity and tighter performance SLOs.
 
 ## What Changes
+
 - Add a PaECTER-powered analysis layer that is strictly additive to current classifiers (no breaking behavioral changes):
   - Compute dense embeddings for patents and awards using `mpi-inno-comp/paecter` via Hugging Face Inference API.
   - Produce award↔patent semantic similarity pairs (top-k with thresholds).
@@ -102,6 +104,7 @@ We will use Hugging Face’s hosted Inference API by default (no local GPU requi
   - Record `model_id` and pinned `revision` in artifacts for reproducibility
 
 ## Impact
+
 - Affected specs:
   - `data-enrichment`: ADDED requirements for remote PaECTER embedding generation, semantic similarity, and classifier cohesion analysis
   - `data-validation`: ADDED requirements for embedding coverage gates, similarity distribution drift checks, and cohesion thresholds

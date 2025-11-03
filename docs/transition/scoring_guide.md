@@ -21,7 +21,8 @@ Every transition starts with a configurable base score (default: **0.15**). This
 
 **Why**: Prevents low-signal transitions from scoring 0.0; allows weak-but-consistent evidence patterns to reach LIKELY confidence.
 
-**Adjustment**: 
+### Adjustment
+
 - Increase base score (0.20) if you want more transitions to pass thresholds
 - Decrease base score (0.10) if you want higher precision with fewer detections
 
@@ -29,11 +30,12 @@ Every transition starts with a configurable base score (default: **0.15**). This
 
 Each signal contributes to the final score via a two-step process:
 
-```
+```text
 Signal Score = Signal Bonus × Signal Weight
 ```
 
-**Example**:
+### Example
+
 - Agency continuity bonus: 0.25 (same agency matched)
 - Agency continuity weight: 0.25
 - Agency contribution: 0.25 × 0.25 = 0.0625
@@ -58,7 +60,7 @@ Weights represent the relative importance of each signal and must sum to 1.0:
 
 ### 1. Agency Continuity Signal (Weight: 0.25)
 
-**Scoring Table**:
+### Scoring Table
 
 | Match Type | Bonus | Score | Interpretation |
 |-----------|-------|-------|---|
@@ -67,7 +69,7 @@ Weights represent the relative importance of each signal and must sum to 1.0:
 | Different Department | 0.05 | 0.0125 | Different executive departments (e.g., DoD vs. NSF) |
 | No Match | 0.0 | 0.0 | No agency information or no match |
 
-**Example Scenarios**:
+### Example Scenarios
 
 ```yaml
 Scenario 1: NSF Award → NSF Contract
@@ -92,7 +94,7 @@ Scenario 3: NSF Award → DoD Contract
   Interpretation: Weak indicator; unlikely same program
 ```
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -104,14 +106,15 @@ scoring:
     different_dept_bonus: 0.05
 ```
 
-**Tuning**:
+### Tuning
+
 - **Increase weight to 0.35** if agency alignment is strong indicator in your data
 - **Decrease weight to 0.15** if awards/contracts cross agencies frequently but still represent same program
 - **Disable (weight: 0.0)** for cross-agency program analysis
 
 ### 2. Timing Proximity Signal (Weight: 0.20)
 
-**Scoring by Window**:
+### Scoring by Window
 
 | Days After Completion | Window | Score | Interpretation |
 |---|---|---|---|
@@ -121,7 +124,7 @@ scoring:
 | 731+ | Beyond window | 0.0 × 0.20 = 0.0 | Outside default window (no contribution) |
 | <0 | Pre-award | 0.0 | Contract before award (anomaly, zero score) |
 
-**Example Scenarios**:
+### Example Scenarios
 
 ```yaml
 Scenario 1: Fast Commercialization
@@ -153,7 +156,7 @@ Scenario 4: Beyond Window
   Interpretation: Outside commercialization window; no credit
 ```
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -161,45 +164,71 @@ scoring:
     enabled: true
     weight: 0.20
     windows:
+
       - range: [0, 90]
+
         score: 1.0
+
       - range: [91, 365]
+
         score: 0.75
+
       - range: [366, 730]
+
         score: 0.50
     beyond_window_penalty: 0.0
 ```
 
-**Tuning**:
+### Tuning
 
 ```yaml
-# For faster commercialization (e.g., Phase IIB focus)
+
+## For faster commercialization (e.g., Phase IIB focus)
+
 windows:
+
   - range: [0, 60]
+
     score: 1.0
+
   - range: [61, 180]
+
     score: 0.75
+
   - range: [181, 365]
-    score: 0.50
-# Reduces score contribution for contracts beyond 1 year
 
-# For delayed commercialization (e.g., deep tech)
+    score: 0.50
+
+## Reduces score contribution for contracts beyond 1 year
+
+## For delayed commercialization (e.g., deep tech)
+
 windows:
-  - range: [0, 180]
-    score: 1.0
-  - range: [181, 730]
-    score: 0.75
-  - range: [731, 1095]
-    score: 0.50
-# Extends window to 3 years; still gives credit at low score
 
-# Increase weight to 0.30 if timing is strong differentiator
-# Decrease weight to 0.10 if timing varies widely in your domain
+  - range: [0, 180]
+
+    score: 1.0
+
+  - range: [181, 730]
+
+    score: 0.75
+
+  - range: [731, 1095]
+
+    score: 0.50
+
+## Extends window to 3 years; still gives credit at low score
+
+## Increase weight to 0.30 if timing is strong differentiator
+
+
+## Decrease weight to 0.10 if timing varies widely in your domain
+
 ```
 
 ### 3. Competition Type Signal (Weight: 0.20)
 
-**Scoring Table**:
+### Scoring Table
 
 | Competition Type | Bonus | Score | Interpretation |
 |---|---|---|---|
@@ -208,7 +237,7 @@ windows:
 | Full and Open | 0.0 | 0.0 | Unlimited vendor eligibility (no signal) |
 | Unknown/Not Specified | 0.0 | 0.0 | No competition data (no contribution) |
 
-**Competition Type Mapping**:
+### Competition Type Mapping
 
 | USAspending Code | Interpretation |
 |---|---|
@@ -217,7 +246,7 @@ windows:
 | LIMITED, RESTRICTED, COMPETITIVE | Limited Competition |
 | NULL | Unknown |
 
-**Example Scenarios**:
+### Example Scenarios
 
 ```yaml
 Scenario 1: Sole Source Procurement
@@ -239,7 +268,7 @@ Scenario 3: Full and Open
   Interpretation: No signal; any vendor could have won based on competition
 ```
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -250,30 +279,39 @@ scoring:
     limited_bonus: 0.10
 ```
 
-**Tuning**:
+### Tuning
 
 ```yaml
-# Increase weight to 0.30 if sole source contracts are strong indicator
-#   (e.g., specialized DoD procurement)
+
+## Increase weight to 0.30 if sole source contracts are strong indicator
+
+
+##   (e.g., specialized DoD procurement)
+
 weight: 0.30
 
-# Decrease weight to 0.10 if competition type unreliable in your data
-#   (e.g., incomplete or inconsistent coding)
+## Decrease weight to 0.10 if competition type unreliable in your data
+
+
+##   (e.g., incomplete or inconsistent coding)
+
 weight: 0.10
 
-# Disable entirely for R&D contracts (where competition type less relevant)
+## Disable entirely for R&D contracts (where competition type less relevant)
+
 enabled: false
 weight: 0.0
 ```
 
-**Caveats**:
+### Caveats
+
 - Sole source doesn't always indicate commercialization; may indicate sole qualified vendor for unrelated work
 - Limited competition may reflect small business set-asides rather than vendor relationships
 - Full and open competitions can still represent commercialization (winning vendor is still SBIR recipient)
 
 ### 4. Patent Signal (Weight: 0.15)
 
-**Scoring Components**:
+### Scoring Components
 
 | Component | Bonus | Weight | Score |
 |---|---|---|---|
@@ -282,7 +320,7 @@ weight: 0.0
 | Topic Match (≥0.7) | 0.02 | 0.15 | 0.003 |
 | No Patents | 0.0 | 0.15 | 0.0 |
 
-**Example Scenarios**:
+### Example Scenarios
 
 ```yaml
 Scenario 1: Patent-Backed Transition
@@ -291,9 +329,11 @@ Scenario 1: Patent-Backed Transition
     Pre-Contract Patents: 2 (both filed before contract start)
     Topic Similarity: 0.82 (patent abstract vs. contract description)
   Bonuses:
+
     - Has patents: +0.05
     - Pre-contract: +0.03
     - Topic match: +0.02
+
   Total Bonus: 0.10
   Score: 0.10 × 0.15 = 0.015
   Interpretation: Strong evidence of technology commercialization
@@ -304,9 +344,11 @@ Scenario 2: Patents Filed After Contract
     Filing Date: 6 months after contract start
     Topic Similarity: 0.65 (below 0.7 threshold)
   Bonuses:
+
     - Has patents: +0.05
     - Pre-contract: +0.0 (filed after contract)
     - Topic match: +0.0 (below threshold)
+
   Total Bonus: 0.05
   Score: 0.05 × 0.15 = 0.0075
   Interpretation: Patent activity, but weak timing signal
@@ -315,26 +357,30 @@ Scenario 3: No Patents
   Metrics:
     Patents Filed: 0
   Bonuses:
+
     - Has patents: +0.0
+
   Total Bonus: 0.0
   Score: 0.0 × 0.15 = 0.0
   Interpretation: No patent signal (common in service contracts)
 ```
 
-**Topic Similarity Calculation**:
+### Topic Similarity Calculation
 
 TF-IDF Cosine Similarity between:
+
 - Patent abstract (or patent title + abstract)
 - Contract description (or contract statement of work)
 
-```
+```text
 Similarity Score = Cosine(TF-IDF(patent), TF-IDF(contract))
 Range: 0.0 (completely different) to 1.0 (identical)
 Threshold: 0.7 (≥0.7 considered "topic match")
 ```
 
-**Example**:
-```
+### Example
+
+```text
 Patent Abstract: "Neural network-based object detection system 
   optimized for edge computing devices using quantization techniques"
   
@@ -346,7 +392,7 @@ Similarity Score: 0.78 (≥0.7 threshold)
 → Topic match bonus applied
 ```
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -359,27 +405,31 @@ scoring:
     topic_similarity_threshold: 0.7
 ```
 
-**Tuning**:
+### Tuning
 
 ```yaml
-# For technology-heavy transitions (hardware, deep tech)
+
+## For technology-heavy transitions (hardware, deep tech)
+
 weight: 0.25  # Increase weight; patents more relevant
 pre_contract_bonus: 0.05  # Increase bonus; pre-patent filing stronger signal
 topic_similarity_threshold: 0.75  # Stricter similarity threshold
 
-# For service-based transitions (consulting, integration)
+## For service-based transitions (consulting, integration)
+
 weight: 0.05  # Decrease weight; patents less relevant
 pre_contract_bonus: 0.01  # Lower bonus
 topic_similarity_threshold: 0.6  # Looser similarity threshold
 
-# For research contracts (where patents expected)
+## For research contracts (where patents expected)
+
 weight: 0.30  # Heavy weight; patents expected output
 has_patent_bonus: 0.10  # Higher bonus for patent presence
 ```
 
 ### 5. CET Alignment Signal (Weight: 0.10)
 
-**Scoring Table**:
+### Scoring Table
 
 | Match Type | Bonus | Score | Interpretation |
 |---|---|---|---|
@@ -400,7 +450,7 @@ has_patent_bonus: 0.10  # Higher bonus for patent presence
 9. **Space Systems**: Satellite systems, autonomous spacecraft, space infrastructure
 10. **Climate Resilience**: Climate adaptation, decarbonization, environmental monitoring
 
-**Example Scenarios**:
+### Example Scenarios
 
 ```yaml
 Scenario 1: CET Alignment
@@ -434,11 +484,11 @@ Scenario 3: Missing CET Data
   Interpretation: Insufficient data; no contribution
 ```
 
-**CET Inference Algorithm**:
+### CET Inference Algorithm
 
 Uses keyword matching on contract description:
 
-```
+```text
 1. Tokenize and normalize contract description
 2. Search for keyword patterns per CET area
 3. Count keyword hits per area
@@ -446,9 +496,9 @@ Uses keyword matching on contract description:
 5. Return highest-scoring CET with confidence
 ```
 
-**Keyword Examples**:
+### Keyword Examples
 
-```
+```text
 AI & Machine Learning: "machine learning", "neural network", "deep learning", 
   "NLP", "computer vision", "model", "inference", "AI", "artificial intelligence"
   
@@ -462,7 +512,7 @@ Microelectronics: "semiconductor", "chip", "photonics", "wafer", "transistor",
   "circuit", "microchip", "nanotechnology"
 ```
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -472,16 +522,20 @@ scoring:
     same_cet_bonus: 0.05
 ```
 
-**Tuning**:
+### Tuning
 
 ```yaml
-# For CET-focused analysis (critical tech areas)
+
+## For CET-focused analysis (critical tech areas)
+
 weight: 0.25  # Increase to 25%; CET alignment primary signal
 
-# Reduce weight if CET data unreliable
+## Reduce weight if CET data unreliable
+
 weight: 0.05  # Lower to 5%; minimal contribution
 
-# Disable if CET inference low confidence
+## Disable if CET inference low confidence
+
 enabled: false
 ```
 
@@ -499,9 +553,9 @@ enabled: false
 
 **Method**: TF-IDF cosine similarity between award description and contract description
 
-**Example**:
+### Example
 
-```
+```text
 Award Description: "Machine learning models for predictive maintenance 
   of industrial equipment using vibration sensors"
 
@@ -513,17 +567,19 @@ Bonus: 0.02 (falls in 0.6–0.8 range)
 Contribution: 0.02 × 0.0 = 0.0 (weight is 0, disabled)
 ```
 
-**Why Disabled**:
+### Why Disabled
+
 - Award and contract descriptions often generic; high baseline similarity
 - Low precision without careful tuning
 - Better signals (timing, agency) more reliable
 
-**Enable Only If**:
+### Enable Only If
+
 - You have high-quality, detailed descriptions
 - You have ground truth to validate precision
 - You're doing exploratory/broad discovery analysis
 
-**Configuration**:
+### Configuration
 
 ```yaml
 scoring:
@@ -537,7 +593,7 @@ scoring:
 
 ### Formula
 
-```
+```text
 final_score = base_score + Σ(signal_score)
 
 where signal_score = bonus × weight for each enabled signal
@@ -547,7 +603,8 @@ where signal_score = bonus × weight for each enabled signal
 
 **Scenario**: SBIR award → federal contract
 
-**Inputs**:
+### Inputs
+
 - Base score: 0.15
 - Agency continuity: Same agency → bonus 0.25, weight 0.25
 - Timing: 60 days → window score 1.0, weight 0.20
@@ -556,8 +613,9 @@ where signal_score = bonus × weight for each enabled signal
 - CET: Different areas → bonus 0.0, weight 0.10
 - Text similarity: Disabled → bonus 0.0, weight 0.0
 
-**Calculation**:
-```
+### Calculation
+
+```text
 Agency contribution: 0.25 × 0.25 = 0.0625
 Timing contribution: 1.0 × 0.20 = 0.20
 Competition contribution: 0.20 × 0.20 = 0.04
@@ -619,9 +677,13 @@ scoring:
   timing_proximity:
     weight: 0.25
     windows:
+
       - range: [0, 180]
+
         score: 1.0
+
       - range: [181, 365]
+
         score: 0.5
   competition_type:
     weight: 0.20
@@ -676,9 +738,13 @@ scoring:
   timing_proximity:
     weight: 0.20
     windows:
+
       - range: [0, 365]
+
         score: 1.0
+
       - range: [366, 1095]
+
         score: 0.5
   competition_type:
     weight: 0.20
@@ -728,6 +794,7 @@ confidence_thresholds:
 ### Tuning for Different Award Types
 
 #### Phase I Awards
+
 - Shorter time windows (0-12 months)
 - Lower patent signal weight (patents unlikely this early)
 - Higher agency weight (continuity stronger indicator)
@@ -743,15 +810,19 @@ scoring:
 ```
 
 #### Phase II Awards
+
 - Standard configuration (0-24 months)
 - Medium patent signal weight
 - Balanced signals
 
 ```yaml
-# Use balanced preset
+
+## Use balanced preset
+
 ```
 
-#### Phase IIB Awards
+###Phase IIB Awards
+
 - Shorter time windows (0-18 months, commercialization push)
 - High patent signal weight (typically patented)
 - Increased competition weight (targeted procurement)
@@ -769,6 +840,7 @@ scoring:
 ### Tuning for Different Sectors
 
 #### Defense/DoD Contracts
+
 - High agency weight (same-agency very strong signal)
 - High competition type weight (sole source common and meaningful)
 - Shorter time windows (faster commercialization)
@@ -784,6 +856,7 @@ timing_window:
 ```
 
 #### Civilian/NSF Contracts
+
 - Moderate agency weight (broader agency landscape)
 - Lower competition weight (full and open more common)
 - Longer time windows (slower commercialization)
@@ -799,6 +872,7 @@ timing_window:
 ```
 
 #### Technology-Focused (AI, QC, Biotech)
+
 - High patent signal weight (patents expected)
 - High CET alignment weight
 - High base score (more likely to commercialize)
@@ -828,7 +902,7 @@ scoring:
 
 After applying scoring configuration:
 
-```
+```text
 Metric                  Target    Action if Below
 ─────────────────────────────────────────────────
 HIGH precision          ≥85%      Increase thresholds
@@ -843,12 +917,14 @@ Avg score               0.60-0.75 Increase base score
 
 ### Problem: Too Many POSSIBLE Detections
 
-**Symptoms**:
+### Symptoms
+
 - Most scores fall below 0.65
 - Few HIGH or LIKELY detections
 - Difficult to interpret results
 
-**Solutions**:
+### Solutions
+
 1. **Increase base score**: 0.15 → 0.20
 2. **Increase signal bonuses**: e.g., same_agency_bonus 0.25 → 0.35
 3. **Decrease confidence thresholds**: likely 0.65 → 0.55
@@ -856,12 +932,14 @@ Avg score               0.60-0.75 Increase base score
 
 ### Problem: Too Few Detections
 
-**Symptoms**:
+### Symptoms
+
 - Most scores above 0.85
 - Almost all HIGH confidence
 - Missed obvious transitions
 
-**Solutions**:
+### Solutions
+
 1. **Decrease base score**: 0.15 → 0.10
 2. **Decrease signal weights**: Normalize to ensure diversity
 3. **Extend timing window**: 730 days → 1095 days
@@ -869,23 +947,27 @@ Avg score               0.60-0.75 Increase base score
 
 ### Problem: Inconsistent Scores Across Agencies
 
-**Symptoms**:
+### Symptoms
+
 - DoD contracts consistently score higher
 - NSF contracts consistently score lower
 - Agency bias apparent
 
-**Solutions**:
+### Solutions
+
 1. **Lower agency continuity weight**: 0.25 → 0.15
 2. **Create agency-specific configs**: Different thresholds per agency
 3. **Review signal bonuses**: Are they agency-specific?
 
 ### Problem: Precision Too Low (Many False Positives)
 
-**Symptoms**:
+### Symptoms
+
 - Manual review shows <70% of HIGH confidence are valid
 - Random-seeming detections
 
-**Solutions**:
+### Solutions
+
 1. **Increase confidence thresholds**: high 0.85 → 0.90
 2. **Reduce base score**: 0.15 → 0.10
 3. **Reduce signal weights for noisy signals**: Disable text similarity
@@ -895,21 +977,26 @@ Avg score               0.60-0.75 Increase base score
 ## Environment Variables
 
 ```bash
-# Override base score
+
+## Override base score
+
 SBIR_ETL__TRANSITION__DETECTION__BASE_SCORE=0.20
 
-# Override confidence thresholds
+## Override confidence thresholds
+
 SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.88
 SBIR_ETL__TRANSITION__DETECTION__LIKELY_CONFIDENCE_THRESHOLD=0.70
 
-# Override signal weights (must sum to 1.0)
+## Override signal weights (must sum to 1.0)
+
 SBIR_ETL__TRANSITION__DETECTION__AGENCY_WEIGHT=0.30
 SBIR_ETL__TRANSITION__DETECTION__TIMING_WEIGHT=0.20
 SBIR_ETL__TRANSITION__DETECTION__COMPETITION_WEIGHT=0.20
 SBIR_ETL__TRANSITION__DETECTION__PATENT_WEIGHT=0.15
 SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 
-# Override timing window
+## Override timing window
+
 SBIR_ETL__TRANSITION__DETECTION__MIN_DAYS=0
 SBIR_ETL__TRANSITION__DETECTION__MAX_DAYS=730
 ```

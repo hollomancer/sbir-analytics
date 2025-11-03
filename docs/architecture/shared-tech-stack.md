@@ -16,6 +16,7 @@ The sbir-etl project leverages a highly reusable tech stack where **85% of depen
 These libraries are already installed and used across all modules:
 
 ### Data Processing & Manipulation
+
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **pandas** | 2.2.0+ | CSV/Stata parsing, data transformation, chunked streaming | All (SBIR, USPTO, CET) |
@@ -25,47 +26,55 @@ These libraries are already installed and used across all modules:
 **Key Insight**: pandas supports Stata (.dta) format out-of-box via `read_stata()`, eliminating need for separate Stata library.
 
 ### Orchestration & Workflow
+
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **dagster** | 1.7.0+ | Asset-based orchestration, dependency management, scheduling | All |
 | **dagster-webserver** | 1.7.0+ | UI for monitoring, asset visualization, job execution | All |
 
-**Shared Patterns**:
+### Shared Patterns
+
 - Asset-based design (`@asset` decorator)
 - Dependency injection via asset parameters
 - Asset checks for data quality validation
 - Partitioned assets for incremental processing
 
 ### Storage & Database
+
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **neo4j** | 5.20.0+ | Graph database driver, Cypher queries, relationship management | All |
 | **duckdb** | 1.0.0+ | In-memory SQL analytics for large datasets | SBIR, USPTO (optional for CET) |
 
-**Shared Patterns**:
+### Shared Patterns
+
 - Batch Neo4j writes (1K nodes/transaction)
 - MERGE operations for idempotent upserts
 - Index creation before bulk loads
 - Relationship property storage for metadata
 
 ### Logging & Observability
+
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **loguru** | 0.7.0+ | Structured logging with context, JSON output | All |
 | **rich** | 13.7.0+ | Terminal UI, progress bars, formatted tables | All (CLI/reporting) |
 
-**Shared Patterns**:
+### Shared Patterns
+
 - Structured logging with `logger.bind()`
 - Context managers for stage tracking
 - Performance metrics logging (throughput, duration)
 
 ### CLI & User Interface
+
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **typer** | 0.12.0+ | CLI commands, parameter validation | All |
 | **rich** | 13.7.0+ | Formatted CLI output, progress bars | All |
 
 ### Development Tools (Already Shared)
+
 | Library | Version | Purpose | Applied To |
 |---------|---------|---------|------------|
 | **pytest** | 8.0.0+ | Unit/integration/e2e testing | All modules |
@@ -82,20 +91,25 @@ These libraries are already installed and used across all modules:
 These libraries need to be added for new features:
 
 ### ML & NLP (CET Classification Only)
+
 | Library | Version | Purpose | Installation |
 |---------|---------|---------|-------------|
 | **scikit-learn** | ≥1.4.0 | TF-IDF, Logistic Regression, feature selection, calibration | `poetry add scikit-learn>=1.4` |
 | **spacy** | ≥3.7.0 | Sentence segmentation, evidence extraction | `poetry add spacy>=3.7` |
 | **en_core_web_sm** | Latest | English NLP model for spaCy | `python -m spacy download en_core_web_sm` |
 
-**Why Not Shared with Other Modules?**
+### Why Not Shared with Other Modules?
+
 - SBIR and USPTO ETL don't require ML classification
 - spaCy is 100MB+ download (only needed for CET evidence extraction)
 - Keeps other modules lightweight
 
-**Conditional Loading Pattern**:
+### Conditional Loading Pattern
+
 ```python
-# src/ml/models/cet_classifier.py
+
+## src/ml/models/cet_classifier.py
+
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
@@ -106,13 +120,15 @@ except ImportError:
 ```
 
 ### Text Processing (Already Available in Dev)
+
 | Library | Version | Purpose | Current Status |
 |---------|---------|---------|----------------|
 | **rapidfuzz** | 2.16.0+ | Fuzzy string matching for entity resolution | Dev dependency → Promote to main |
 
 **Action Required**: Move `rapidfuzz` from `[tool.poetry.group.dev.dependencies]` to `[tool.poetry.dependencies]`
 
-**Usage Across Modules**:
+### Usage Across Modules
+
 - **SBIR**: Company name matching
 - **USPTO**: Assignee/assignor entity deduplication
 - **CET**: Company-award linkage validation
@@ -126,7 +142,8 @@ except ImportError:
 **Shared Pattern**: Three-layer YAML → Pydantic → Environment Variables
 
 **File Structure** (all modules use this):
-```
+
+```text
 config/
 ├── base.yaml                    # Shared base configuration
 ├── dev.yaml / staging.yaml / prod.yaml
@@ -141,9 +158,12 @@ config/
 └── README.md
 ```
 
-**Shared Loader Pattern**:
+### Shared Loader Pattern
+
 ```python
-# src/config/loader.py (used by all modules)
+
+## src/config/loader.py (used by all modules)
+
 from functools import lru_cache
 from pathlib import Path
 import yaml
@@ -169,13 +189,17 @@ def load_config(config_name: str, config_class: type[BaseModel]) -> BaseModel:
 ```
 
 **Environment Variable Convention** (all modules):
+
 ```bash
-# Shared infrastructure
+
+## Shared infrastructure
+
 export SBIR_ETL_ENV=prod
 export SBIR_ETL_NEO4J_URI=bolt://localhost:7687
 export SBIR_ETL_LOG_LEVEL=INFO
 
-# Module-specific overrides
+## Module-specific overrides
+
 export SBIR_ETL_SBIR__CHUNK_SIZE=5000
 export SBIR_ETL_USPTO__CHUNK_SIZE=10000
 export SBIR_ETL_CET__CONFIDENCE_HIGH_MIN=75
@@ -183,9 +207,12 @@ export SBIR_ETL_CET__CONFIDENCE_HIGH_MIN=75
 
 ### 3.2 Pydantic Data Models
 
-**Shared Base Models**:
+### Shared Base Models
+
 ```python
-# src/models/base.py (used by all modules)
+
+## src/models/base.py (used by all modules)
+
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional
@@ -211,21 +238,26 @@ class BaseConfig(BaseModel):
     )
 ```
 
-**Module-Specific Models Extend Base**:
+### Module-Specific Models Extend Base
+
 ```python
-# SBIR Award
+
+## SBIR Award
+
 class Award(BaseEntity):
     award_id: str
     firm_name: str
     award_amount: float
 
-# USPTO Patent
+## USPTO Patent
+
 class Patent(BaseEntity):
     grant_doc_num: str
     title: str
     grant_date: date
 
-# CET Classification
+## CET Classification
+
 class CETClassification(BaseEntity):
     award_id: str
     primary_cet_id: str
@@ -234,9 +266,12 @@ class CETClassification(BaseEntity):
 
 ### 3.3 Dagster Asset Patterns
 
-**Shared Asset Structure**:
+### Shared Asset Structure
+
 ```python
-# All modules follow this pattern
+
+## All modules follow this pattern
+
 from dagster import asset, AssetExecutionContext, AssetCheckResult, asset_check
 
 @asset(
@@ -271,24 +306,32 @@ def my_asset_quality_check(my_asset: pd.DataFrame) -> AssetCheckResult:
     )
 ```
 
-**Shared Asset Grouping**:
+### Shared Asset Grouping
+
 ```python
-# src/assets/__init__.py
+
+## src/assets/__init__.py
+
 from dagster import load_assets_from_modules
 from . import sbir_assets, uspto_assets, cet_assets
 
 all_assets = [
+
     *load_assets_from_modules([sbir_assets]),
     *load_assets_from_modules([uspto_assets]),
     *load_assets_from_modules([cet_assets])
+
 ]
 ```
 
 ### 3.4 Neo4j Loader Patterns
 
-**Shared Base Loader**:
+### Shared Base Loader
+
 ```python
-# src/loaders/base_loader.py (used by all modules)
+
+## src/loaders/base_loader.py (used by all modules)
+
 from neo4j import GraphDatabase, Session
 from typing import List, Dict, Any
 from contextlib import contextmanager
@@ -329,21 +372,26 @@ class BaseNeo4jLoader:
             session.run(query)
 ```
 
-**Module-Specific Loaders Extend Base**:
+### Module-Specific Loaders Extend Base
+
 ```python
-# SBIR Loader
+
+## SBIR Loader
+
 class SBIRAwardLoader(BaseNeo4jLoader):
     def load_awards(self, awards: List[Dict]):
         self.create_index("Award", "award_id")
         self.batch_write(MERGE_AWARD_QUERY, awards)
 
-# USPTO Loader
+## USPTO Loader
+
 class PatentLoader(BaseNeo4jLoader):
     def load_patents(self, patents: List[Dict]):
         self.create_index("Patent", "grant_doc_num")
         self.batch_write(MERGE_PATENT_QUERY, patents)
 
-# CET Loader
+## CET Loader
+
 class CETLoader(BaseNeo4jLoader):
     def load_cet_areas(self, cet_areas: List[Dict]):
         self.create_index("CETArea", "cet_id")
@@ -352,9 +400,12 @@ class CETLoader(BaseNeo4jLoader):
 
 ### 3.5 Data Quality Validation Framework
 
-**Shared Validator Base**:
+### Shared Validator Base
+
 ```python
-# src/quality/base_validator.py (used by all modules)
+
+## src/quality/base_validator.py (used by all modules)
+
 from dataclasses import dataclass
 from typing import List, Callable
 import pandas as pd
@@ -410,23 +461,28 @@ class BaseValidator:
         )
 ```
 
-**Module-Specific Validators**:
+### Module-Specific Validators
+
 ```python
-# SBIR validator
+
+## SBIR validator
+
 class SBIRAwardValidator(BaseValidator):
     def __init__(self, config: SBIRConfig):
         super().__init__(config)
         self.register_check(self.validate_award_amount)
         self.register_check(self.validate_award_id_unique)
 
-# USPTO validator
+## USPTO validator
+
 class USPTOPatentValidator(BaseValidator):
     def __init__(self, config: USPTOConfig):
         super().__init__(config)
         self.register_check(self.validate_rf_id_unique)
         self.register_check(self.validate_referential_integrity)
 
-# CET validator
+## CET validator
+
 class CETClassificationValidator(BaseValidator):
     def __init__(self, config: CETConfig):
         super().__init__(config)
@@ -436,9 +492,12 @@ class CETClassificationValidator(BaseValidator):
 
 ### 3.6 Logging & Monitoring Patterns
 
-**Shared Logging Configuration**:
+### Shared Logging Configuration
+
 ```python
-# src/logging_config.py (used by all modules)
+
+## src/logging_config.py (used by all modules)
+
 from loguru import logger
 import sys
 import json
@@ -469,23 +528,31 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = None):
         )
 ```
 
-**Module-Specific Context**:
+### Module-Specific Context
+
 ```python
-# SBIR module
+
+## SBIR module
+
 logger = logger.bind(module="sbir-ingestion")
 
-# USPTO module
+## USPTO module
+
 logger = logger.bind(module="uspto-patent")
 
-# CET module
+## CET module
+
 logger = logger.bind(module="cet-classification")
 ```
 
 ### 3.7 Testing Infrastructure
 
-**Shared Test Fixtures**:
+### Shared Test Fixtures
+
 ```python
-# tests/conftest.py (shared across all test modules)
+
+## tests/conftest.py (shared across all test modules)
+
 import pytest
 from neo4j import GraphDatabase
 from testcontainers.neo4j import Neo4jContainer
@@ -521,9 +588,12 @@ def sample_cet_taxonomy():
     return yaml.safe_load(Path("tests/fixtures/sample_taxonomy.yaml").read_text())
 ```
 
-**Shared Test Utilities**:
+### Shared Test Utilities
+
 ```python
-# tests/utils.py (used by all test modules)
+
+## tests/utils.py (used by all test modules)
+
 import pandas as pd
 from typing import Any, Dict, List
 
@@ -554,16 +624,19 @@ def generate_test_data(entity_type: str, count: int) -> List[Dict[str, Any]]:
 These components are intentionally module-specific:
 
 ### SBIR Module Only
+
 - **SAM.gov API client**: SBIR-specific enrichment
 - **SBIR award schema**: Domain-specific fields
 - **Award phase logic**: Phase I/II/III-specific business rules
 
 ### USPTO Module Only
+
 - **Stata file readers**: USPTO-specific .dta format handling
 - **Patent assignment logic**: rf_id relationship management
 - **Conveyance text parsing**: Patent-specific field extraction
 
 ### CET Module Only
+
 - **ML models** (TF-IDF, LogReg): Classification algorithms
 - **spaCy NLP**: Evidence extraction (sentence segmentation)
 - **CET taxonomy**: 21-category NSTC framework
@@ -574,6 +647,7 @@ These components are intentionally module-specific:
 ## 5. Dependency Installation Strategy
 
 ### Current State (pyproject.toml)
+
 ```toml
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
@@ -589,9 +663,12 @@ rich = "^13.7.0"
 ```
 
 ### Recommended Updates
+
 ```toml
 [tool.poetry.dependencies]
-# Core (no changes)
+
+## Core (no changes)
+
 python = ">=3.11,<3.12"
 dagster = "^1.7.0"
 pandas = "^2.2.0"
@@ -603,10 +680,12 @@ pyyaml = "^6.0.0"
 typer = "^0.12.0"
 rich = "^13.7.0"
 
-# NEW: Promote from dev to main (used by all modules)
+## NEW: Promote from dev to main (used by all modules)
+
 rapidfuzz = "^2.16.0"
 
-# NEW: ML stack for CET classification (optional extras)
+## NEW: ML stack for CET classification (optional extras)
+
 scikit-learn = {version = "^1.4.0", optional = true}
 spacy = {version = "^3.7.0", optional = true}
 
@@ -620,21 +699,29 @@ black = "^24.0.0"
 ruff = "^0.5.0"
 mypy = "^1.8.0"
 bandit = "^1.7.0"
-# rapidfuzz moved to main dependencies
+
+## rapidfuzz moved to main dependencies
+
 ```
 
 ### Installation Commands
+
 ```bash
-# Base installation (SBIR + USPTO modules)
+
+## Base installation (SBIR + USPTO modules)
+
 poetry install
 
-# With ML capabilities (adds CET classification)
+## With ML capabilities (adds CET classification)
+
 poetry install --extras ml
 
-# Download spaCy model (if using ML extras)
+## Download spaCy model (if using ML extras)
+
 poetry run python -m spacy download en_core_web_sm
 
-# Development installation (includes testing tools)
+## Development installation (includes testing tools)
+
 poetry install --with dev
 ```
 
@@ -669,6 +756,7 @@ poetry install --with dev
 | ML models | ❌ | - | - | ✓ | CET classification |
 
 ### Reusability Metrics
+
 - **Shared Dependencies**: 10 / 12 (83%)
 - **Shared Patterns**: 7 / 7 (100%)
 - **Shared Infrastructure Code**: ~2,000 LOC (estimated 90% reuse)
@@ -681,7 +769,8 @@ poetry install --with dev
 ### 7.1 Directory Structure for Shared Code (Post-Consolidation)
 
 **Current Structure** (to be refactored):
-```
+
+```text
 src/
 ├── extractors/              # Stage 1: Data extraction
 ├── validators/              # Stage 2: Schema validation
@@ -694,8 +783,9 @@ src/
 └── utils/                   # Shared utilities
 ```
 
-**Target Consolidated Structure**:
-```
+### Target Consolidated Structure
+
+```text
 src/
 ├── core/                    # Consolidated core functionality
 │   ├── assets/             # Unified asset definitions
@@ -741,29 +831,37 @@ src/
     └── scenarios/          # Test scenarios
 ```
 
-**Migration Benefits**:
+### Migration Benefits
+
 - **Reduced Duplication**: 30-60% reduction in duplicate code
 - **Consistent Patterns**: Unified approaches across all components
 - **Better Organization**: Clear separation of concerns
 - **Easier Maintenance**: Centralized shared functionality
 
 ### 7.2 Import Conventions
+
 ```python
-# Shared infrastructure (always available)
+
+## Shared infrastructure (always available)
+
 from src.common.config import load_config
 from src.common.quality import BaseValidator, QualityReport
 from src.loaders.base_loader import BaseNeo4jLoader
 from src.models.base import BaseEntity
 
-# Module-specific (only import what you need)
+## Module-specific (only import what you need)
+
 from src.sbir.enrichment import SAMGovClient
 from src.uspto.extractors import StataExtractor
 from src.ml.models import CETClassifier  # Requires ml extras
 ```
 
 ### 7.3 Configuration Naming Conventions
+
 ```yaml
-# config/base.yaml (shared settings)
+
+## config/base.yaml (shared settings)
+
 neo4j:
   uri: bolt://localhost:7687
   batch_size: 1000
@@ -772,17 +870,20 @@ logging:
   level: INFO
   dir: logs/
 
-# config/sbir/ingestion.yaml (module-specific)
+## config/sbir/ingestion.yaml (module-specific)
+
 sbir:
   chunk_size: 5000
   sam_gov_api_key: ${SAM_GOV_API_KEY}
 
-# config/uspto/extraction.yaml (module-specific)
+## config/uspto/extraction.yaml (module-specific)
+
 uspto:
   chunk_size: 10000
   handle_missing_dates: true
 
-# config/cet/classification.yaml (module-specific)
+## config/cet/classification.yaml (module-specific)
+
 cet:
   confidence_thresholds:
     high: 70
@@ -794,9 +895,13 @@ cet:
 ## 8. Future Standardization Opportunities
 
 ### 8.1 Shared Entity Resolution Framework
+
 Currently each module has custom fuzzy matching logic. Consider:
+
 ```python
-# src/common/entity_resolution.py
+
+## src/common/entity_resolution.py
+
 from rapidfuzz import fuzz
 from typing import List, Tuple
 
@@ -821,9 +926,13 @@ class EntityResolver:
 **Benefit**: Consistency across SBIR company matching, USPTO entity deduplication, and CET validation.
 
 ### 8.2 Shared Caching Layer
+
 Consider SQLite-based caching for all modules:
+
 ```python
-# src/common/cache.py
+
+## src/common/cache.py
+
 import sqlite3
 from functools import wraps
 
@@ -847,15 +956,20 @@ class CacheManager:
         return wrapper
 ```
 
-**Usage**:
+### Usage
+
 - SBIR: Cache SAM.gov API responses
 - USPTO: Cache patent lookups
 - CET: Cache classification results
 
 ### 8.3 Shared Evaluation Framework
+
 Extend CET evaluation framework to all modules:
+
 ```python
-# src/common/evaluation.py
+
+## src/common/evaluation.py
+
 class EvaluationFramework:
     """Shared evaluation across all pipelines."""
 
@@ -882,17 +996,20 @@ class EvaluationFramework:
 ## 9. Key Takeaways
 
 ### ✅ Strengths
+
 1. **High Reusability**: 85% of dependencies shared across modules
 2. **Consistent Patterns**: Configuration, logging, validation, loading patterns are standardized
 3. **Modular Design**: Clear separation between shared infrastructure and module-specific logic
 4. **Optional ML**: ML dependencies isolated with `poetry extras` - other modules remain lightweight
 
 ### ⚠️ Risks
+
 1. **Dependency Bloat**: Adding scikit-learn + spaCy increases installation size by ~500MB
 2. **Version Conflicts**: Ensure pandas/pydantic versions compatible across all module needs
 3. **Coupling Risk**: Shared base classes can create tight coupling if not carefully designed
 
 ### 🎯 Recommendations
+
 1. **Promote rapidfuzz to main dependencies** (used by all modules)
 2. **Use optional extras for ML stack** (keeps base installation lean)
 3. **Document shared patterns in code comments** (improve discoverability)

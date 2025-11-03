@@ -11,6 +11,7 @@ poetry run python scripts/test_cli.py
 ```
 
 This validates:
+
 - ✓ All CLI modules can be imported
 - ✓ CommandContext can be created with real clients
 - ✓ CLI app structure is correct
@@ -23,16 +24,20 @@ This validates:
 Test commands directly:
 
 ```bash
-# Test help
+
+## Test help
+
 poetry run sbir-cli --help
 poetry run sbir-cli status --help
 poetry run sbir-cli metrics --help
 
-# Test status commands (will work if Dagster/Neo4j available)
+## Test status commands (will work if Dagster/Neo4j available)
+
 poetry run sbir-cli status summary
 poetry run sbir-cli status assets --group sbir_ingestion
 
-# Test with dry-run (safe, no execution)
+## Test with dry-run (safe, no execution)
+
 poetry run sbir-cli ingest run --dry-run
 ```
 
@@ -41,13 +46,17 @@ poetry run sbir-cli ingest run --dry-run
 Run unit tests (some tests require mocking adjustments):
 
 ```bash
-# Test display components (most reliable)
+
+## Test display components (most reliable)
+
 poetry run pytest tests/unit/cli/test_display.py -v
 
-# Test integration clients (requires mocking)
+## Test integration clients (requires mocking)
+
 poetry run pytest tests/unit/cli/test_integration_clients.py -v
 
-# Test commands
+## Test commands
+
 poetry run pytest tests/unit/cli/test_commands.py -v
 ```
 
@@ -63,18 +72,21 @@ poetry run pytest tests/integration/cli/test_cli_integration.py -v
 
 ### What's Tested
 
-**Unit Tests (`tests/unit/cli/`)**:
+### Unit Tests (`tests/unit/cli/`)
+
 - ✅ Display components (progress tracker, metrics, status displays)
 - ✅ Integration clients with mocked services (DagsterClient, Neo4jClient, MetricsCollector)
 - ✅ Command structure and registration
 - ✅ Context creation
 
-**Integration Tests (`tests/integration/cli/`)**:
+### Integration Tests (`tests/integration/cli/`)
+
 - ✅ End-to-end command execution with CliRunner
 - ✅ Error handling
 - ✅ Exit codes
 
-**Validation Script (`scripts/test_cli.py`)**:
+### Validation Script (`scripts/test_cli.py`)
+
 - ✅ Module imports
 - ✅ Context creation with real clients
 - ✅ Display component instantiation
@@ -112,7 +124,9 @@ def test_asset_status(mock_instance):
 Many commands support `--dry-run`:
 
 ```bash
-# Safe to run without services
+
+## Safe to run without services
+
 poetry run sbir-cli ingest run --dry-run
 ```
 
@@ -121,10 +135,14 @@ poetry run sbir-cli ingest run --dry-run
 Tests should run in CI with mocked services:
 
 ```yaml
-# Example GitHub Actions step
+
+## Example GitHub Actions step
+
 - name: Test CLI
+
   run: |
     poetry run pytest tests/unit/cli/ tests/integration/cli/ \
+
       --cov=src/cli \
       --cov-report=xml
 ```
@@ -134,6 +152,7 @@ Tests should run in CI with mocked services:
 ### Import Errors
 
 If imports fail:
+
 ```bash
 poetry install
 poetry run python -c "from src.cli.main import app; print('OK')"
@@ -142,6 +161,7 @@ poetry run python -c "from src.cli.main import app; print('OK')"
 ### Mocking Failures
 
 If mocks don't work:
+
 - Verify import paths match actual module structure
 - Use `patch.object` for instance methods
 - Check that patches are applied before imports
@@ -149,6 +169,7 @@ If mocks don't work:
 ### Context Creation Errors
 
 If `CommandContext.create()` fails:
+
 - Check that `get_config()` works
 - Verify Dagster definitions can be loaded (may fail if Dagster API unavailable, which is OK for tests)
 - Use `--verbose` flag for detailed error messages

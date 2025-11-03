@@ -2,3 +2,11 @@ default: true
 MD013: false  # line length
 MD033: false  # inline HTML allowed
 MD041: false  # first-line heading not required in all docs
+
+# Exclude archive and generated files from linting
+ignoreGlobs:
+  - "**/archive/**/*.md"
+  - "**/.kiro/specs/archive/**/*.md"
+  - "reports/**/*.md"  # Generated reports
+  - "**/node_modules/**/*.md"
+  - "**/.git/**/*.md"

@@ -8,7 +8,7 @@ The Rich CLI Interface provides a comprehensive command-line interface for the S
 
 ### Component Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLI Application                          │
 ├─────────────────────────────────────────────────────────────────┤
@@ -33,7 +33,7 @@ The Rich CLI Interface provides a comprehensive command-line interface for the S
 
 ### Data Flow
 
-```
+```text
 User Command Input
     ↓
 Command Parsing (Typer)
@@ -51,12 +51,14 @@ Result Display (Rich Console)
 
 ### 1. CLI Application Structure
 
-**Main Application (`src/cli/main.py`)**
+### Main Application (`src/cli/main.py`)
+
 - Typer app instance with command registration
 - Global configuration and error handling
 - Consistent styling and theming
 
-**Command Interface Pattern**
+### Command Interface Pattern
+
 ```python
 @dataclass
 class CommandContext:
@@ -68,66 +70,78 @@ class CommandContext:
 
 ### 2. Command Modules
 
-**Ingest Command (`src/cli/commands/ingest.py`)**
+### Ingest Command (`src/cli/commands/ingest.py`)
+
 - Triggers data extraction and loading operations
 - Supports asset group targeting and dry-run mode
 - Real-time progress tracking for long operations
 
-**Enrich Command (`src/cli/commands/enrich.py`)**
+### Enrich Command (`src/cli/commands/enrich.py`)
+
 - Executes enrichment workflows with source selection
 - Batch processing with progress visualization
 - Success rate monitoring and reporting
 
-**Status Command (`src/cli/commands/status.py`)**
+### Status Command (`src/cli/commands/status.py`)
+
 - Asset materialization status display
 - Neo4j health and connection testing
 - Quality gate violation reporting
 
-**Metrics Command (`src/cli/commands/metrics.py`)**
+### Metrics Command (`src/cli/commands/metrics.py`)
+
 - Performance metrics collection and display
 - Time-range filtering and export capabilities
 - Resource utilization statistics
 
-**Dashboard Command (`src/cli/commands/dashboard.py`)**
+### Dashboard Command (`src/cli/commands/dashboard.py`)
+
 - Interactive real-time monitoring interface
 - Keyboard navigation and hotkey support
 - Auto-refresh with configurable intervals
 
 ### 3. Display Components
 
-**Progress Tracker (`src/cli/display/progress.py`)**
+### Progress Tracker (`src/cli/display/progress.py`)
+
 - Rich Progress integration with custom columns
 - Multi-task progress support for parallel operations
 - Error handling and graceful termination
 
-**Metrics Display (`src/cli/display/metrics.py`)**
+### Metrics Display (`src/cli/display/metrics.py`)
+
 - Formatted tables and charts for metrics data
 - Color-coded indicators for thresholds
 - Export functionality for data analysis
 
-**Status Display (`src/cli/display/status.py`)**
+### Status Display (`src/cli/display/status.py`)
+
 - Asset status visualization with icons
 - Health indicators and warning highlights
 - Summary statistics formatting
 
-**Dashboard Layout (`src/cli/display/dashboard.py`)**
+### Dashboard Layout (`src/cli/display/dashboard.py`)
+
 - Live updating terminal interface
 - Panel-based layout with Rich Layout
 - Keyboard event handling for interactivity
 
 ### 4. Integration Layer
 
-**Dagster Client (`src/cli/integration/dagster_client.py`)**
+### Dagster Client (`src/cli/integration/dagster_client.py`)
+
 - Dagster GraphQL API integration
 - Asset execution and monitoring
 - Run tracking and status queries
 
-**Neo4j Client (`src/cli/integration/neo4j_client.py`)**
+### Neo4j Client (`src/cli/integration/neo4j_client.py`)
+
 - Database health monitoring
 - Statistics collection for dashboard
 - Connection validation and testing
 
-**Metrics Collector (`src/cli/integration/metrics_collector.py`)**
+### Metrics Collector (`src/cli/integration/metrics_collector.py`)
+
 - Performance data aggregation
 - Historical metrics retrieval
 - Real-time monitoring support
@@ -135,6 +149,7 @@ class CommandContext:
 ## Data Models
 
 ### Command Options Model
+
 ```python
 @dataclass
 class IngestOptions:
@@ -158,6 +173,7 @@ class MetricsOptions:
 ```
 
 ### Display Models
+
 ```python
 @dataclass
 class AssetStatus:
@@ -179,12 +195,14 @@ class PipelineMetrics:
 ## Error Handling
 
 ### Error Categories
+
 - **Configuration Errors**: Invalid YAML, missing credentials
 - **Connection Errors**: Neo4j, Dagster API unavailable
 - **Execution Errors**: Asset failures, timeout issues
 - **User Input Errors**: Invalid commands, missing arguments
 
 ### Error Display Strategy
+
 - Rich-formatted error messages with context
 - Suggested fixes and troubleshooting steps
 - Exit codes for scripting integration
@@ -193,18 +211,21 @@ class PipelineMetrics:
 ## Testing Strategy
 
 ### Unit Testing
+
 - Command parsing and validation logic
 - Display component formatting and layout
 - Integration client mocking and error handling
 - Configuration loading and validation
 
 ### Integration Testing
+
 - End-to-end command execution with test data
 - Dagster API integration with test instances
 - Neo4j connectivity and query testing
 - Progress tracking with simulated operations
 
 ### User Experience Testing
+
 - CLI usability and help text clarity
 - Progress bar accuracy and responsiveness
 - Dashboard layout and keyboard navigation
@@ -213,12 +234,14 @@ class PipelineMetrics:
 ## Performance Considerations
 
 ### Responsive Design
+
 - Async operations for non-blocking UI updates
 - Efficient data polling with configurable intervals
 - Memory-conscious display updates for large datasets
 - Graceful degradation for slow connections
 
 ### Resource Management
+
 - Connection pooling for database clients
 - Caching for frequently accessed metrics
 - Lazy loading for dashboard components
@@ -227,12 +250,14 @@ class PipelineMetrics:
 ## Security Considerations
 
 ### Credential Management
+
 - Environment variable integration for secrets
 - No credential storage in CLI history
 - Secure connection handling for APIs
 - Configuration validation for security settings
 
 ### Input Validation
+
 - Command argument sanitization
 - Path traversal prevention for file operations
 - SQL injection prevention for query parameters
@@ -241,12 +266,14 @@ class PipelineMetrics:
 ## Configuration Integration
 
 ### YAML Configuration Support
+
 - Reuse existing PipelineConfig structure
 - Environment variable override support
 - Profile-based configuration selection
 - Validation with clear error messages
 
 ### CLI-Specific Settings
+
 ```yaml
 cli:
   # Display settings
@@ -268,12 +295,14 @@ cli:
 ## Deployment and Distribution
 
 ### Installation Method
+
 - Poetry-based installation as development dependency
 - Entry point configuration for `sbir-cli` command
 - Optional system-wide installation support
 - Docker container integration for containerized workflows
 
 ### Cross-Platform Support
+
 - Windows, macOS, and Linux compatibility
 - Terminal capability detection and adaptation
 - Unicode and color support detection

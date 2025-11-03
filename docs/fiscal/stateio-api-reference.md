@@ -17,7 +17,8 @@ This document provides reference information for the StateIO (`stateior`) R pack
 
 Build a full two-region IO table for specified state and rest of US for a given year.
 
-**Parameters**:
+### Parameters
+
 - `state`: Two-letter state code (e.g., "CA", "NY")
 - `year`: Year of interest (numeric)
 - `iolevel`: BEA sector level - currently only "Summary" (can be "Detail" or "Sector" in future)
@@ -35,7 +36,8 @@ Build a full two-region IO table for specified state and rest of US for a given 
 - Commodity and industry outputs
 - Other regionalized components
 
-**Example**:
+### Example
+
 ```r
 ca_io <- buildFullTwoRegionIOTable(
   state = "CA",
@@ -49,7 +51,8 @@ ca_io <- buildFullTwoRegionIOTable(
 
 Build a state use model for all 52 states/regions (including DC and Overseas).
 
-**Parameters**:
+### Parameters
+
 - `year`: Year of interest
 - `specs`: Model specifications
 
@@ -115,7 +118,8 @@ Get state employment by BEA Summary sector for a specific state.
 
 Load StateIO data file from Data Commons or local data directory.
 
-**Parameters**:
+### Parameters
+
 - `filename`: Filename string (e.g., "State_Summary_Use_2017")
 - `ver`: Optional version string (default NULL, can be "v0.1.0")
 
@@ -146,7 +150,9 @@ Format Full Use table from StateIO format to USEEIOR format.
 ### Step 1: Build State Two-Region Model
 
 ```r
-# Build full two-region IO table for California, 2023
+
+## Build full two-region IO table for California, 2023
+
 ca_model <- buildFullTwoRegionIOTable(
   state = "CA",
   year = 2023,
@@ -158,10 +164,13 @@ ca_model <- buildFullTwoRegionIOTable(
 ### Step 2: Get Value Added Components
 
 ```r
-# Get Gross Value Added (includes wages, proprietor income, GOS, taxes)
+
+## Get Gross Value Added (includes wages, proprietor income, GOS, taxes)
+
 ca_gva <- getStateGVA(state = "CA", year = 2023, specs = specs)
 
-# Or get components separately
+## Or get components separately
+
 wages <- getStateEmpCompensation(state = "CA", year = 2023, specs = specs)
 gos <- getStateGOS(state = "CA", year = 2023, specs = specs)
 taxes <- getStateTax(state = "CA", year = 2023, specs = specs)
@@ -170,19 +179,25 @@ taxes <- getStateTax(state = "CA", year = 2023, specs = specs)
 ### Step 3: Apply Shocks and Calculate Impacts
 
 StateIO creates the IO tables, but impact calculation typically requires:
+
 1. Convert StateIO tables to USEEIOR format (if using USEEIOR)
 2. Build USEEIOR model from StateIO tables
 3. Use `calculateEEIOModel()` with demand vectors
 
 OR use StateIO tables directly with matrix multiplication:
+
 ```r
-# Get Leontief inverse from assembled IO tables
+
+## Get Leontief inverse from assembled IO tables
+
 L <- solve(I - A)  # Where A is technical coefficients matrix
 
-# Apply demand shock
+## Apply demand shock
+
 production_impact <- L %*% demand_vector
 
-# Extract value added components
+## Extract value added components
+
 wage_impact <- wages_ratio %*% production_impact
 gos_impact <- gos_ratio %*% production_impact
 tax_impact <- taxes_ratio %*% production_impact
@@ -193,6 +208,7 @@ tax_impact <- taxes_ratio %*% production_impact
 StateIO uses BEA sector codes at Summary level (15 sectors) or Detail level (71 sectors).
 
 Common formats:
+
 - Summary: "11", "21", "22", etc. (2-digit codes)
 - With location: "11/CA", "21/CA" (for two-region models)
 - Full format: May include "/US" suffix
@@ -222,25 +238,29 @@ Common formats:
 
 ## Key Exported Functions (102 total)
 
-**Model Building**:
+### Model Building
+
 - `buildFullTwoRegionIOTable()` - Primary function for state IO tables
 - `buildStateUseModel()` - Build use models for all states
 - `buildStateSupplyModel()` - Build supply models for all states
 - `buildTwoRegionUseModel()` - Build two-region use model
 - `assembleTwoRegionIO()` - Assemble complete IO tables
 
-**Value Added/Economic Data**:
+### Value Added/Economic Data
+
 - `getStateGVA()` - Gross Value Added
 - `getStateEmpCompensation()` - Employee compensation (wages)
 - `getStateGOS()` - Gross Operating Surplus
 - `getStateTax()` - Tax data
 - `getStateEmploymentTable()` - Employment data
 
-**Data Loading**:
+### Data Loading
+
 - `loadStateIODataFile()` - Load from Data Commons or local
 - `loadDatafromUSEEIOR()` - Load USEEIOR data
 
-**Formatting**:
+### Formatting
+
 - `formatMakeFromStateToUSEEIO()` - Format Make tables
 - `formatFullUseFromStateToUSEEIO()` - Format Use tables
 

@@ -11,6 +11,7 @@ This document outlines the comprehensive consolidation and refactoring strategy 
 ## Current State Analysis
 
 The current codebase exhibits several patterns indicating organic growth:
+
 - **Asset Proliferation**: 12+ asset files with overlapping responsibilities
 - **Configuration Fragmentation**: Multiple configuration patterns across modules
 - **Utility Duplication**: Similar functions scattered across different modules
@@ -21,7 +22,7 @@ The current codebase exhibits several patterns indicating organic growth:
 
 ### Consolidated Directory Structure
 
-```
+```text
 src/
 ├── core/                    # Consolidated core functionality
 │   ├── assets/             # Unified asset definitions
@@ -95,7 +96,8 @@ src/
 **Current State**: 12+ asset files with overlapping responsibilities
 **Target**: 4-6 consolidated assets with clear separation of concerns
 
-**Consolidation Strategy**:
+### Consolidation Strategy
+
 - Merge similar assets (raw_sbir_awards, usaspending_extraction → ingestion_assets)
 - Create unified asset base class with monitoring and error handling
 - Establish consistent asset naming convention
@@ -106,7 +108,8 @@ src/
 **Current State**: Multiple configuration patterns across modules
 **Target**: Single hierarchical Pydantic model with consistent loading
 
-**Unification Strategy**:
+### Unification Strategy
+
 - Consolidate all configuration schemas into unified hierarchy
 - Standardize SBIR_ETL__ environment variable prefix
 - Implement single configuration loader with validation
@@ -117,7 +120,8 @@ src/
 **Current State**: Different test patterns and setup approaches
 **Target**: Unified testing infrastructure with consistent patterns
 
-**Framework Strategy**:
+### Framework Strategy
+
 - Standardize test fixtures and utilities across all test types
 - Consolidate duplicate test setup code into reusable components
 - Establish consistent mocking patterns for external dependencies
@@ -128,7 +132,8 @@ src/
 **Current State**: Performance tracking code scattered across assets
 **Target**: Centralized performance monitoring system
 
-**Monitoring Strategy**:
+### Monitoring Strategy
+
 - Consolidate scattered performance tracking into unified system
 - Provide consistent metrics collection across all pipeline stages
 - Eliminate duplicate memory and timing measurement code
@@ -139,7 +144,8 @@ src/
 **Current State**: Similar Pydantic models with duplicate field definitions
 **Target**: Hierarchical model structure reflecting data relationships
 
-**Model Strategy**:
+### Model Strategy
+
 - Merge similar models and eliminate duplicate field definitions
 - Create hierarchical structure reflecting data relationships
 - Consolidate validation logic into reusable validator functions
@@ -148,24 +154,28 @@ src/
 ## Migration Strategy
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - Establish unified configuration system
 - Create consolidated performance monitoring
 - Set up unified testing framework
 - Implement error handling infrastructure
 
 ### Phase 2: Asset Consolidation (Weeks 3-4)
+
 - Merge similar assets with backward compatibility
 - Consolidate asset execution patterns
 - Unify asset metadata and monitoring
 - Update asset dependencies and relationships
 
 ### Phase 3: Model and Utility Consolidation (Weeks 5-6)
+
 - Merge duplicate data models
 - Consolidate utility functions
 - Unify validation logic
 - Streamline database clients
 
 ### Phase 4: Testing and Documentation (Weeks 7-8)
+
 - Migrate all tests to unified framework
 - Update documentation and developer guides
 - Performance optimization and validation
@@ -174,12 +184,14 @@ src/
 ## Quality Assurance
 
 ### Code Quality Enforcement
+
 - Architectural compliance validation
 - Duplicate code detection and prevention
 - Import organization and dependency management
 - Performance regression detection
 
 ### Quality Metrics Targets
+
 - Code duplication reduction: 30-60%
 - Test coverage maintenance: ≥85%
 - Performance benchmark compliance
@@ -188,16 +200,19 @@ src/
 ## Expected Benefits
 
 ### Developer Productivity
+
 - **Reduced Complexity**: 30-40% reduction in pipeline definition complexity
 - **Faster Onboarding**: Unified patterns and documentation
 - **Easier Maintenance**: Consolidated code with clear separation of concerns
 
 ### Code Quality
+
 - **Reduced Duplication**: 30-60% reduction in duplicate code
 - **Consistent Patterns**: Unified approaches across all components
 - **Better Testing**: Comprehensive test coverage with consistent patterns
 
 ### Performance
+
 - **Monitoring**: Centralized performance tracking and alerting
 - **Optimization**: Unified performance optimization opportunities
 - **Resource Usage**: Better resource utilization through consolidation
@@ -205,12 +220,14 @@ src/
 ## Risk Mitigation
 
 ### Backward Compatibility
+
 - Wrapper functions for deprecated APIs
 - Configuration migration utilities
 - Asset name aliasing during transition
 - Gradual deprecation warnings
 
 ### Migration Support
+
 - Automated migration tools
 - Validation utilities for successful migration
 - Rollback procedures for critical issues

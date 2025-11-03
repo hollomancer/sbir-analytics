@@ -8,7 +8,8 @@ The fastest way to verify CLI functionality:
 poetry run python scripts/test_cli.py
 ```
 
-**What it tests:**
+### What it tests:
+
 - All modules import successfully
 - CommandContext can be created
 - CLI app structure is correct
@@ -21,16 +22,20 @@ poetry run python scripts/test_cli.py
 Test commands directly (works even without services):
 
 ```bash
-# Help commands (always work)
+
+## Help commands (always work)
+
 poetry run sbir-cli --help
 poetry run sbir-cli status --help
 poetry run sbir-cli metrics --help
 
-# Dry-run commands (safe, no execution)
+## Dry-run commands (safe, no execution)
+
 poetry run sbir-cli ingest run --dry-run
 poetry run sbir-cli ingest run --groups sbir_ingestion --dry-run
 
-# Status commands (will show errors if services unavailable, but structure works)
+## Status commands (will show errors if services unavailable, but structure works)
+
 poetry run sbir-cli status summary
 poetry run sbir-cli status assets
 poetry run sbir-cli status neo4j --detailed
@@ -88,6 +93,7 @@ poetry run sbir-cli ingest run --dry-run
 ### Option 2: Mock in Tests
 
 See `tests/unit/cli/test_integration_clients.py` for examples of mocking:
+
 - DagsterClient responses
 - Neo4jClient health checks  
 - MetricsCollector data
@@ -103,6 +109,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 ## What's Working
 
 ✅ **Fully Functional**:
+
 - All CLI commands implement correctly
 - Rich UI components render properly
 - Progress tracking works
@@ -110,6 +117,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 - Configuration integration works
 
 ⚠️ **Test Refinement Needed**:
+
 - Some unit tests need mock adjustments (not functionality issues)
 - Service integration tests need real or better-mocked services
 
@@ -124,6 +132,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 ## Summary
 
 The CLI is **fully implemented and functional**. Test failures are primarily related to:
+
 - Mocking strategies that need refinement
 - Missing service dependencies for full integration tests
 

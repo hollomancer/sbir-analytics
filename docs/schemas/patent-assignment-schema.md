@@ -4,7 +4,8 @@
 
 The USPTO maintains patent assignment data across five interdependent Stata tables linked via the `rf_id` (reel/frame identifier). This document provides detailed schema documentation for each table, relationships, and integration with the SBIR ETL pipeline.
 
-**Data Volume:**
+### Data Volume:
+
 - `assignment.dta`: 780MB (~5-7M records) - Core assignment records
 - `documentid.dta`: 1.6GB (~5-7M records) - Patent document metadata
 - `assignee.dta`: 892MB (~8-10M records) - Assignment recipients
@@ -18,6 +19,7 @@ The USPTO maintains patent assignment data across five interdependent Stata tabl
 ## 1. Core Assignment Table (`assignment.dta`)
 
 ### Purpose
+
 Records patent assignment transactions, including correspondent information, reel/frame locations, and raw conveyance description text.
 
 ### Schema
@@ -56,6 +58,7 @@ Records patent assignment transactions, including correspondent information, ree
 ## 2. Patent Document Table (`documentid.dta`)
 
 ### Purpose
+
 Contains patent metadata linked to assignments, including title, patent numbers (application, publication, grant), and filing dates.
 
 ### Schema
@@ -97,6 +100,7 @@ Contains patent metadata linked to assignments, including title, patent numbers 
 ### SBIR Linkage Strategy
 
 The `grant_doc_num` field enables direct linking to SBIR awards:
+
 1. SBIR awards database may include patent numbers in free-text fields
 2. Exact match: patent.grant_doc_num == sbir_award.patent_number
 3. Fuzzy match: Similarity threshold ≥0.80 on grant_doc_num + title
@@ -107,6 +111,7 @@ The `grant_doc_num` field enables direct linking to SBIR awards:
 ## 3. Patent Assignee Table (`assignee.dta`)
 
 ### Purpose
+
 Records the recipients of patent rights in assignments (companies, individuals, universities).
 
 ### Schema
@@ -144,6 +149,7 @@ Records the recipients of patent rights in assignments (companies, individuals, 
 ### SBIR Company Linkage
 
 Assignee records enable matching to SBIR companies:
+
 1. Exact match: Normalized ee_name == normalized SBIR_company_name
 2. Fuzzy match: ee_name similarity ≥0.85 against SBIR companies
 3. Address-based match: Postal code + state match (when full address unavailable)
@@ -154,6 +160,7 @@ Assignee records enable matching to SBIR companies:
 ## 4. Patent Assignor Table (`assignor.dta`)
 
 ### Purpose
+
 Records the originators of patent rights in assignments (often inventors, universities, or parent companies).
 
 ### Schema
@@ -193,6 +200,7 @@ Records the originators of patent rights in assignments (often inventors, univer
 ## 5. Conveyance Type Table (`assignment_conveyance.dta`)
 
 ### Purpose
+
 Classifies the type of assignment transaction (assignment, license, security interest, merger, etc.).
 
 ### Schema
@@ -226,7 +234,7 @@ Classifies the type of assignment transaction (assignment, license, security int
 
 ## 6. Relationship Diagram
 
-```
+```text
                     ┌──────────────────────┐
                     │   ASSIGNMENT (PK)    │
                     ├──────────────────────┤
@@ -287,7 +295,9 @@ ASSIGNEE.ee_name          ┌─ SBIR_COMPANY.legal_name
 ### Proposed Node Types
 
 ```python
-# Patent Information
+
+## Patent Information
+
 Patent {
     grant_doc_num,      # Primary identifier for SBIR linkage
     title,              # Patent title
@@ -299,7 +309,8 @@ Patent {
     source_table: "documentid"  # Lineage
 }
 
-# Assignment Transaction
+## Assignment Transaction
+
 PatentAssignment {
     rf_id,              # Primary identifier (reel/frame)
     reel_no,
@@ -311,7 +322,8 @@ PatentAssignment {
     correspondent_name, # from assignment.cname
 }
 
-# Assignment Participant (Assignee or Assignor)
+## Assignment Participant (Assignee or Assignor)
+
 PatentEntity {
     name,               # Normalized entity name
     address,            # Parsed/standardized address

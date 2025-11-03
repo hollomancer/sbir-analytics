@@ -1,51 +1,66 @@
 # data-extraction Specification
 
 ## Purpose
+
 TBD - created by archiving change add-initial-architecture. Update Purpose after archive.
+
 ## Requirements
+
+
 ### Requirement: Multi-Source Data Extraction
+
 The system SHALL support extracting data from multiple sources including CSV files, APIs, and database exports.
 
 #### Scenario: CSV file extraction
+
 - **WHEN** a CSV file path is provided
 - **THEN** the system SHALL download or read the file
 - **AND** the file SHALL be parsed into a structured format (e.g., pandas DataFrame)
 
 #### Scenario: File download with retry
+
 - **WHEN** a remote file download fails
 - **THEN** the system SHALL retry with exponential backoff
 - **AND** after max retries, the extraction SHALL fail with a clear error message
 
 ### Requirement: Raw Data Storage
+
 The system SHALL store extracted raw data in a designated directory for reproducibility and debugging.
 
 #### Scenario: Raw data persistence
+
 - **WHEN** data is extracted
 - **THEN** it SHALL be written to `data/raw/` directory
 - **AND** the filename SHALL include a timestamp or source identifier
 - **AND** the raw data SHALL be preserved for the duration of the pipeline run
 
 ### Requirement: Extraction Metadata
+
 The system SHALL capture and log metadata about extraction including record count, source, and timestamp.
 
 #### Scenario: Extraction logging
+
 - **WHEN** extraction completes
 - **THEN** the system SHALL log the source name, record count, and extraction timestamp
 - **AND** any errors or warnings SHALL be logged with context
 
 ### Requirement: Chunked Processing Support
+
 The system SHALL support chunked processing for large files that exceed memory limits.
 
 #### Scenario: Large file chunked extraction
+
 - **WHEN** a file exceeds a configured size threshold
 - **THEN** the system SHALL process the file in chunks
 - **AND** each chunk SHALL be validated and processed independently
 - **AND** memory usage SHALL remain within acceptable limits
 
 ### Requirement: SBIR CSV Data Extraction with DuckDB
+
 The system SHALL extract SBIR award data from CSV files using DuckDB for efficient columnar storage and SQL-based querying, following the SBIR.gov format with 42 columns and support for 500K+ records.
 
 #### Scenario: SBIR CSV import to DuckDB
+
 - **GIVEN** a CSV file at `data/raw/sbir/awards_data.csv`
 - **WHEN** the SBIR extractor is invoked
 - **THEN** the system SHALL import the CSV into a DuckDB table using DuckDBClient.import_csv()
@@ -55,6 +70,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** extraction metadata SHALL include import duration and row count
 
 #### Scenario: Query-based extraction from DuckDB
+
 - **GIVEN** SBIR CSV data imported to DuckDB table
 - **WHEN** extract_all() is called
 - **THEN** the system SHALL execute "SELECT * FROM sbir_awards"
@@ -62,6 +78,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** memory usage SHALL be ~60% lower than direct CSV read (due to columnar storage)
 
 #### Scenario: CSV column validation
+
 - **GIVEN** a SBIR CSV file
 - **WHEN** the file is opened
 - **THEN** the system SHALL verify all 42 expected columns are present
@@ -69,6 +86,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** if extra columns are present, the system SHALL log a warning but continue processing
 
 #### Scenario: Data type conversion
+
 - **GIVEN** raw CSV string data
 - **WHEN** records are parsed
 - **THEN** date fields (Proposal Award Date, Contract End Date, Solicitation dates) SHALL be parsed to datetime objects
@@ -78,6 +96,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** parsing errors SHALL be logged with row number and field name
 
 #### Scenario: Missing value handling
+
 - **GIVEN** CSV records with empty fields
 - **WHEN** the extractor processes the data
 - **THEN** empty strings SHALL be converted to None for optional fields
@@ -85,6 +104,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** the record SHALL still be extracted for downstream validation
 
 #### Scenario: Filtered extraction with SQL
+
 - **GIVEN** SBIR data imported to DuckDB
 - **WHEN** extract_by_year(2020, 2025) is called
 - **THEN** the system SHALL execute SQL: "SELECT * FROM sbir_awards WHERE \"Award Year\" BETWEEN 2020 AND 2025"
@@ -92,6 +112,7 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** extraction SHALL be faster than loading full dataset then filtering
 
 #### Scenario: Large file chunked processing with DuckDB
+
 - **GIVEN** DuckDB table with 533,598 records
 - **WHEN** the extractor is configured with batch_size=10000
 - **THEN** the system SHALL use fetch_df_chunk(10000) to iterate
@@ -100,9 +121,11 @@ The system SHALL extract SBIR award data from CSV files using DuckDB for efficie
 - **AND** total memory usage SHALL remain under 1GB (vs 2GB with direct CSV read)
 
 ### Requirement: SBIR Data Model
+
 The system SHALL provide a Pydantic model representing SBIR award structure with comprehensive field validation.
 
 #### Scenario: SbirAward model instantiation
+
 - **GIVEN** a dictionary of SBIR award data
 - **WHEN** SbirAward.model_validate(data) is called
 - **THEN** the model SHALL validate required fields (Company, Award Title, Agency, Phase, Program, Award Year, Award Amount)
@@ -110,6 +133,7 @@ The system SHALL provide a Pydantic model representing SBIR award structure with
 - **AND** validation errors SHALL include field names and constraints
 
 #### Scenario: Field groups in model
+
 - **GIVEN** an SbirAward model instance
 - **THEN** it SHALL have company identification fields: company, uei, duns, address1, address2, city, state, zip, company_website, number_employees
 - **AND** it SHALL have award details: award_title, abstract, agency, branch, phase, program, topic_code
@@ -120,9 +144,11 @@ The system SHALL provide a Pydantic model representing SBIR award structure with
 - **AND** it SHALL have business classification fields: hubzone_owned, socially_economically_disadvantaged, woman_owned
 
 ### Requirement: DuckDB-Based Data Quality Analysis
+
 The system SHALL provide SQL-based data quality analysis capabilities using DuckDB for fast aggregations and pattern detection.
 
 #### Scenario: Null value analysis
+
 - **GIVEN** SBIR data in DuckDB
 - **WHEN** analyze_missing_values() is called
 - **THEN** the system SHALL execute SQL to count nulls per column
@@ -130,6 +156,7 @@ The system SHALL provide SQL-based data quality analysis capabilities using Duck
 - **AND** analysis SHALL complete in < 1 second
 
 #### Scenario: Duplicate detection with SQL
+
 - **GIVEN** SBIR data in DuckDB
 - **WHEN** analyze_duplicates() is called
 - **THEN** the system SHALL execute: "SELECT Contract, COUNT(*) as count FROM sbir_awards GROUP BY Contract HAVING COUNT(*) > 1"
@@ -137,6 +164,7 @@ The system SHALL provide SQL-based data quality analysis capabilities using Duck
 - **AND** results SHALL include phase breakdown for each duplicate
 
 #### Scenario: Award amount statistics
+
 - **GIVEN** SBIR data in DuckDB
 - **WHEN** analyze_award_amounts() is called
 - **THEN** the system SHALL compute min, max, avg, median, percentiles using SQL
@@ -144,9 +172,11 @@ The system SHALL provide SQL-based data quality analysis capabilities using Duck
 - **AND** analysis SHALL complete in < 1 second for 533K records
 
 ### Requirement: Extraction Metadata for SBIR
+
 The system SHALL capture detailed metadata about SBIR CSV extraction and DuckDB import for observability and quality tracking.
 
 #### Scenario: SBIR extraction metadata with DuckDB stats
+
 - **WHEN** SBIR CSV extraction completes
 - **THEN** metadata SHALL include source file path
 - **AND** metadata SHALL include file size in bytes
@@ -159,15 +189,18 @@ The system SHALL capture detailed metadata about SBIR CSV extraction and DuckDB 
 - **AND** metadata SHALL include any warnings (missing columns, import errors)
 
 #### Scenario: Column mapping documentation
+
 - **GIVEN** SBIR CSV extraction
 - **THEN** the extractor SHALL document the mapping between CSV column names and model field names
 - **AND** this mapping SHALL be logged at INFO level on first extraction
 - **AND** the mapping SHALL handle column name variations (quotes, spaces, case differences)
 
 ### Requirement: SBIR-Specific Validation
+
 The system SHALL validate SBIR award data against business rules and data quality constraints.
 
 #### Scenario: Required field validation
+
 - **GIVEN** an extracted SBIR award
 - **WHEN** validation is performed
 - **THEN** Company SHALL be non-empty string
@@ -180,6 +213,7 @@ The system SHALL validate SBIR award data against business rules and data qualit
 - **AND** missing required fields SHALL generate QualityIssue with severity ERROR
 
 #### Scenario: Format validation
+
 - **GIVEN** an extracted SBIR award with optional identification fields
 - **WHEN** format validation is performed
 - **THEN** if UEI is present, it SHALL be 12 alphanumeric characters
@@ -191,6 +225,7 @@ The system SHALL validate SBIR award data against business rules and data qualit
 - **AND** format violations SHALL generate QualityIssue with severity WARNING
 
 #### Scenario: Business logic validation
+
 - **GIVEN** an SBIR award with date fields
 - **WHEN** business logic validation is performed
 - **THEN** if both Proposal Award Date and Contract End Date are present, Award Date SHALL be ≤ End Date
@@ -198,6 +233,7 @@ The system SHALL validate SBIR award data against business rules and data qualit
 - **AND** logic violations SHALL generate QualityIssue with severity WARNING
 
 #### Scenario: Validation summary report
+
 - **GIVEN** a batch of 533,598 SBIR awards
 - **WHEN** validation completes
 - **THEN** a QualityReport SHALL be generated
@@ -210,9 +246,11 @@ The system SHALL validate SBIR award data against business rules and data qualit
 - **AND** the report SHALL be written to data/validated/sbir_validation_report.json
 
 ### Requirement: Dagster SBIR Ingestion Assets
+
 The system SHALL provide Dagster assets for orchestrating SBIR data extraction and validation.
 
 #### Scenario: raw_sbir_awards asset
+
 - **WHEN** raw_sbir_awards asset is materialized
 - **THEN** it SHALL call SbirCsvExtractor with configured CSV path
 - **AND** it SHALL log extraction metadata (record count, duration)
@@ -220,6 +258,7 @@ The system SHALL provide Dagster assets for orchestrating SBIR data extraction a
 - **AND** it SHALL be in asset group "sbir_ingestion"
 
 #### Scenario: validated_sbir_awards asset
+
 - **GIVEN** raw_sbir_awards asset is materialized
 - **WHEN** validated_sbir_awards asset is materialized
 - **THEN** it SHALL depend on raw_sbir_awards
@@ -229,6 +268,7 @@ The system SHALL provide Dagster assets for orchestrating SBIR data extraction a
 - **AND** it SHALL return DataFrame with validated records only
 
 #### Scenario: sbir_validation_report asset
+
 - **GIVEN** raw_sbir_awards asset is materialized
 - **WHEN** sbir_validation_report asset is materialized
 - **THEN** it SHALL depend on raw_sbir_awards
@@ -237,6 +277,7 @@ The system SHALL provide Dagster assets for orchestrating SBIR data extraction a
 - **AND** it SHALL return QualityReport object
 
 #### Scenario: sbir_data_quality_check asset check
+
 - **GIVEN** validated_sbir_awards asset is materialized
 - **AND** pass_rate_threshold is configured in config/base.yaml (default: 0.95)
 - **WHEN** the asset check runs
@@ -247,23 +288,28 @@ The system SHALL provide Dagster assets for orchestrating SBIR data extraction a
 - **AND** the check SHALL prevent downstream assets from running if failed
 
 ### Requirement: Offline USAspending Dump Profiling
+
 The system SHALL support staging and profiling the compressed USAspending Postgres subset directly from the removable media before it is ingested into DuckDB/Postgres.
 
 #### Scenario: Stage removable-drive snapshot
+
 - **WHEN** the "X10 Pro" drive containing `usaspending-db-subset_20251006.zip` is mounted at `/Volumes/X10 Pro`
 - **THEN** the operator validates the archive **in place** (no local copy), recording size, SHA256 checksum, snapshot date, and canonical path in `reports/usaspending_subset_profile.md`
 - **AND** the staging step fails with an actionable error if the drive is missing, read-only, or the checksum check fails.
 
 #### Scenario: Profile dump without full restore
+
 - **WHEN** the mounted archive is available at `/Volumes/X10 Pro/usaspending-db-subset_20251006.zip`
 - **THEN** running `poetry run profile_usaspending_dump --input /Volumes/X10\ Pro/usaspending-db-subset_20251006.zip`
 - **AND** the command streams the archive through `pg_restore --list` or DuckDB `postgres_scanner`
 - **AND** outputs machine-readable table metadata (table name, row count estimate, primary key fields, key columns) plus a Markdown summary saved to `reports/usaspending_subset_profile.md`.
 
 ### Requirement: USAspending Snapshot Availability Gate
+
 The system SHALL verify that a profiled USAspending snapshot is available before any ETL asset that depends on USAspending data executes.
 
 #### Scenario: Gate enrichment asset on profiling metadata
+
 - **WHEN** Dagster materializes an asset that needs USAspending data (e.g., `usaspending_awards_raw`)
 - **THEN** it checks for a fresh profiling artifact (<30 days old) with the expected filename `usaspending-db-subset_20251006.zip` and path reference `/Volumes/X10 Pro/...`
 - **AND** if the artifact is missing, stale, or references a different checksum, the asset fails fast with guidance to rerun the profiling command after staging the removable-drive snapshot.

@@ -5,6 +5,7 @@ This module extracts federal contract data from USAspending.gov PostgreSQL datab
 ## Overview
 
 The `ContractExtractor` processes the `transaction_normalized` table from USAspending dumps, filtering for:
+
 1. **Contract transactions only** (type codes 'A' and 'B')
 2. **SBIR vendor matches** (by UEI, DUNS, or company name)
 
@@ -20,6 +21,7 @@ The `ContractExtractor` processes the `transaction_normalized` table from USAspe
 ### Transaction Types
 
 The `type` field (column 4, index 3) in transaction_normalized:
+
 - `'A'` - Contract (procurement) ✓ **WE EXTRACT THIS**
 - `'B'` - IDV Contract (Indefinite Delivery Vehicle) ✓ **WE EXTRACT THIS**
 - `'C'` - Grant (NOT a contract)
@@ -64,16 +66,21 @@ See [ADR-001: Allow Negative Obligation Amounts](../../docs/decisions/ADR-001-ne
 ### Working with Deobligations
 
 ```python
-# Example: Get all contract activity (including deobligations)
+
+## Example: Get all contract activity (including deobligations)
+
 all_contracts = extractor.extract_from_dump(...)
 
-# Example: Filter positive obligations only
+## Example: Filter positive obligations only
+
 positive_contracts = [c for c in contracts if not c.is_deobligation]
 
-# Example: Calculate net contract value
+## Example: Calculate net contract value
+
 net_value = sum(c.obligation_amount for c in contracts)
 
-# Example: Get contract count regardless of modifications
+## Example: Get contract count regardless of modifications
+
 contract_count = len(contracts)
 ```
 
@@ -85,13 +92,15 @@ contract_count = len(contracts)
 from pathlib import Path
 from src.extractors.contract_extractor import ContractExtractor
 
-# Initialize with vendor filters
+## Initialize with vendor filters
+
 extractor = ContractExtractor(
     vendor_filter_file=Path("sbir_vendor_filters.json"),
     batch_size=10000
 )
 
-# Extract from dump
+## Extract from dump
+
 num_contracts = extractor.extract_from_dump(
     dump_dir=Path("/path/to/pruned_data_store_api_dump"),
     output_file=Path("contracts.parquet"),
@@ -114,6 +123,7 @@ print(f"Extracted {num_contracts} contracts")
 ## Performance
 
 On external SSD (USB 3.0):
+
 - **Processing speed**: ~100,000 records/second
 - **Subset (17GB)**: ~2-3 minutes for full extraction
 - **Full database (200GB)**: ~30-40 minutes (estimated)
@@ -121,6 +131,7 @@ On external SSD (USB 3.0):
 ## Output Format
 
 Parquet file with columns:
+
 - contract_id (str)
 - agency (str)
 - sub_agency (str)
@@ -139,29 +150,36 @@ Parquet file with columns:
 ## Known Limitations
 
 ### 1. **Mixed Transaction Types**
+
 The `transaction_normalized` table contains **BOTH** procurement contracts AND assistance/grants, even though they share the same type codes ('A', 'B'). This means:
+
 - Type 'A' = Both procurement contracts AND assistance agreements
 - Type 'B' = Both IDV contracts AND cooperative agreements
 
 **Impact**: Procurement-specific fields (CAGE code, extent_competed) are **NOT present** in assistance records. The data structure varies depending on whether it's a true procurement contract or an assistance transaction.
 
 ### 2. **CAGE codes**
+
 Not available in the `transaction_normalized` table. CAGE codes exist in procurement-specific tables but are not included in this mixed transaction table.
 
 **Workaround**: Using UEI (column 96) as primary vendor identifier, which is more universal.
 
 ### 3. **Competition type (extent_competed)**
+
 Not available in `transaction_normalized` for assistance records. Competition type is procurement-specific and only exists for true procurement contracts.
 
 **Workaround**: Defaulting to `CompetitionType.OTHER` for all records. Future work could join with procurement-specific tables to get this field.
 
 ### 4. **Modification chains**
+
 Not linking modifications to base contracts. Each transaction is treated independently.
 
 **Future Work**: Could aggregate by PIID to calculate net contract values across all modifications.
 
 ### 5. **Data Quality**
+
 Some records have:
+
 - PII masking (individual recipients)
 - Missing or null fields
 - Inconsistent vendor identifier formats

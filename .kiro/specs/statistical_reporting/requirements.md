@@ -31,11 +31,13 @@ This specification implements comprehensive statistical reporting for pipeline r
 5. THE Statistical_Reporter SHALL include trend analysis showing changes in the SBIR ecosystem over time
 
 #### Scenario: Pipeline impact assessment
+
 - **WHEN** a complete pipeline run finishes execution
 - **THEN** the Statistical_Reporter generates an impact report within 30 seconds
 - **AND** the report demonstrates the value of data processing through key metrics and insights
 
 #### Scenario: Ecosystem analysis reporting
+
 - **WHEN** viewing the statistical report
 - **THEN** stakeholders can see technology transition success rates across different sectors
 - **AND** the report shows patent commercialization patterns and funding effectiveness
@@ -54,12 +56,14 @@ This specification implements comprehensive statistical reporting for pipeline r
 5. THE Statistical_Reporter SHALL aggregate module reports into a unified pipeline report
 
 #### Scenario: SBIR enrichment reporting
+
 - **WHEN** SBIR enrichment completes
 - **THEN** the Statistical_Reporter generates a report showing match rates by enrichment source
 - **AND** the report shows coverage metrics for each enriched field
 - **AND** the report includes before/after comparison of data completeness
 
 #### Scenario: Patent analysis reporting
+
 - **WHEN** patent analysis completes
 - **THEN** the Statistical_Reporter generates a report showing validation pass/fail rates
 - **AND** the report shows loading statistics including nodes and relationships created
@@ -77,12 +81,14 @@ This specification implements comprehensive statistical reporting for pipeline r
 4. THE Statistical_Reporter SHALL store all report formats in configurable output directories
 
 #### Scenario: HTML report generation
+
 - **WHEN** generating an HTML report
 - **THEN** the report includes interactive charts and graphs using existing Plotly infrastructure
 - **AND** the report is viewable in any modern web browser
 - **AND** the report includes drill-down capabilities for detailed metrics
 
 #### Scenario: CI/PR integration
+
 - **WHEN** a pipeline runs in CI context
 - **THEN** the Statistical_Reporter generates a Markdown summary suitable for PR comments
 - **AND** the summary highlights key quality metrics and changes from baseline
@@ -100,12 +106,14 @@ This specification implements comprehensive statistical reporting for pipeline r
 4. THE Statistical_Reporter SHALL suggest actionable next steps for identified issues
 
 #### Scenario: Quality threshold violations
+
 - **WHEN** data quality metrics fall below configured thresholds
 - **THEN** the Statistical_Reporter generates alerts with ERROR or WARNING severity
 - **AND** the alerts include specific recommendations for addressing the issues
 - **AND** the alerts reference the specific records or data sources causing problems
 
 #### Scenario: Performance anomaly detection
+
 - **WHEN** pipeline performance deviates significantly from historical baselines
 - **THEN** the Statistical_Reporter flags the anomaly in the report
 - **AND** provides analysis of potential causes such as data volume changes or resource constraints
@@ -122,12 +130,14 @@ This specification implements comprehensive statistical reporting for pipeline r
 4. THE Statistical_Reporter SHALL enable comparison of current run metrics against historical baselines
 
 #### Scenario: GitHub Actions integration
+
 - **WHEN** a pipeline runs in GitHub Actions
 - **THEN** statistical reports are uploaded as workflow artifacts with 30-day retention
 - **AND** a Markdown summary is posted as a PR comment if running in PR context
 - **AND** artifacts are organized by run timestamp and pipeline type
 
 #### Scenario: Historical comparison
+
 - **WHEN** generating statistical reports
 - **THEN** the Statistical_Reporter compares current metrics against previous runs
 - **AND** highlights significant changes in quality or performance metrics
@@ -146,12 +156,14 @@ This specification implements comprehensive statistical reporting for pipeline r
 5. THE Statistical_Reporter SHALL generate visualizations suitable for executive presentations and stakeholder communications
 
 #### Scenario: Executive dashboard generation
+
 - **WHEN** generating executive summary reports
 - **THEN** the Statistical_Reporter produces a dashboard showing key performance indicators
 - **AND** the dashboard includes metrics such as total funding analyzed, companies tracked, and patents linked
 - **AND** the dashboard highlights top-performing sectors and agencies by innovation outcomes
 
 #### Scenario: Success story identification
+
 - **WHEN** analyzing pipeline results
 - **THEN** the Statistical_Reporter identifies companies with successful technology transitions from SBIR to commercial markets
 - **AND** the report highlights patent portfolios that demonstrate clear innovation pathways

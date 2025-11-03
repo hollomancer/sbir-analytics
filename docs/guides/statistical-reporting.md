@@ -4,7 +4,8 @@
 
 The Statistical Reporting System provides comprehensive, multi-format reports for SBIR ETL pipeline runs, enabling data-driven decisions, quality tracking, and transparent pipeline behavior.
 
-**Current Implementation Status**:
+### Current Implementation Status
+
 - ✅ **Core Infrastructure**: Complete with `StatisticalReporter` class, data models, and configuration
 - ✅ **Multi-format Output**: HTML (with Plotly), JSON, Markdown, and Executive dashboard generation
 - ✅ **CI/CD Integration**: GitHub Actions artifact upload and PR comment generation
@@ -39,10 +40,12 @@ from datetime import datetime, timedelta
 from src.utils.statistical_reporter import StatisticalReporter
 from src.models.quality import DataHygieneMetrics, ChangesSummary
 
-# Initialize reporter
+## Initialize reporter
+
 reporter = StatisticalReporter()
 
-# Generate module report
+## Generate module report
+
 module_report = reporter.generate_module_report(
     module_name="sbir_enrichment",
     run_id="run_20251030_143022",
@@ -57,7 +60,8 @@ module_report = reporter.generate_module_report(
     }
 )
 
-# Generate comprehensive reports for pipeline run
+## Generate comprehensive reports for pipeline run
+
 run_context = {
     "run_id": "run_20251030_143022",
     "pipeline_name": "sbir-etl",
@@ -72,7 +76,8 @@ run_context = {
     }
 }
 
-# Generate all report formats
+## Generate all report formats
+
 report_collection = reporter.generate_reports(run_context)
 print(f"Generated {len(report_collection.artifacts)} report artifacts")
 for artifact in report_collection.artifacts:
@@ -84,7 +89,9 @@ for artifact in report_collection.artifacts:
 #### SBIR Enrichment Reports
 
 ```python
-# SBIR enrichment metrics
+
+## SBIR enrichment metrics
+
 sbir_report = reporter.generate_module_report(
     module_name="sbir_enrichment",
     run_id=run_id,
@@ -104,10 +111,12 @@ sbir_report = reporter.generate_module_report(
 )
 ```
 
-#### Patent Analysis Reports
+###Patent Analysis Reports
 
 ```python
-# Patent analysis metrics
+
+## Patent analysis metrics
+
 patent_report = reporter.generate_module_report(
     module_name="patent_analysis",
     run_id=run_id,
@@ -129,10 +138,12 @@ patent_report = reporter.generate_module_report(
 ```python
 from src.utils.statistical_reporter import StatisticalReporter
 
-# Initialize reporter with executive reporting enabled
+## Initialize reporter with executive reporting enabled
+
 reporter = StatisticalReporter()
 
-# Generate executive summary with success stories
+## Generate executive summary with success stories
+
 executive_report = reporter.generate_executive_summary(
     run_id="run_20251030_143022",
     pipeline_metrics=pipeline_metrics,
@@ -140,17 +151,20 @@ executive_report = reporter.generate_executive_summary(
     include_roi_analysis=True
 )
 
-# Generate executive dashboard
+## Generate executive dashboard
+
 dashboard = reporter.generate_executive_dashboard(
     executive_report,
     focus_areas=["impact", "quality", "trends"]
 )
 ```
 
-#### Success Story Identification
+###Success Story Identification
 
 ```python
-# Identify high-impact transitions for success stories
+
+## Identify high-impact transitions for success stories
+
 success_stories = reporter.identify_success_stories(
     transition_results=transition_data,
     min_impact_threshold=0.8,
@@ -158,7 +172,8 @@ success_stories = reporter.identify_success_stories(
     include_multi_phase_funding=True
 )
 
-# Generate success story narratives
+## Generate success story narratives
+
 for story in success_stories:
     print(f"Company: {story.company_name}")
     print(f"Technology: {story.technology_area}")
@@ -166,10 +181,12 @@ for story in success_stories:
     print(f"Commercialization Path: {story.pathway_description}")
 ```
 
-#### Program Effectiveness Metrics
+###Program Effectiveness Metrics
 
 ```python
-# Calculate program effectiveness metrics
+
+## Calculate program effectiveness metrics
+
 effectiveness_metrics = reporter.calculate_program_effectiveness(
     awards_data=awards_data,
     contracts_data=contracts_data,
@@ -186,7 +203,9 @@ print(f"Technology Transfer Success: {effectiveness_metrics.tech_transfer_rate}"
 ### Basic Configuration
 
 ```yaml
-# config/base.yaml
+
+## config/base.yaml
+
 statistical_reporting:
   # Output configuration
   output_directory: "reports/statistical"
@@ -223,13 +242,17 @@ statistical_reporting:
 ### Environment Overrides
 
 ```bash
-# Override output directory
+
+## Override output directory
+
 export SBIR_ETL__STATISTICAL_REPORTING__OUTPUT_DIRECTORY="custom/reports"
 
-# Disable insights
+## Disable insights
+
 export SBIR_ETL__STATISTICAL_REPORTING__INSIGHTS__ENABLED=false
 
-# Change quality threshold
+## Change quality threshold
+
 export SBIR_ETL__STATISTICAL_REPORTING__INSIGHTS__QUALITY_THRESHOLD=0.90
 ```
 
@@ -238,6 +261,7 @@ export SBIR_ETL__STATISTICAL_REPORTING__INSIGHTS__QUALITY_THRESHOLD=0.90
 ### HTML Reports
 
 Interactive reports include:
+
 - **Executive Summary**: Key metrics and insights at a glance
 - **Data Quality Dashboard**: Clean/dirty ratios, validation results
 - **Module Performance**: Individual pipeline stage analysis
@@ -247,6 +271,7 @@ Interactive reports include:
 ### Executive Dashboards
 
 High-level stakeholder reports include:
+
 - **Impact Metrics**: Total funding analyzed, companies tracked, patents linked
 - **Success Stories**: High-impact technology transitions and commercialization examples
 - **Program Effectiveness**: Funding ROI, commercialization rates, sector performance
@@ -256,6 +281,7 @@ High-level stakeholder reports include:
 ### JSON Reports
 
 Machine-readable structure:
+
 ```json
 {
   "report_id": "run_20251030_143022_20251030_143500",
@@ -278,7 +304,9 @@ Machine-readable structure:
 ### Markdown Summaries
 
 PR-friendly format:
+
 ```markdown
+
 ## Pipeline Statistical Report
 
 **Run ID**: run_20251030_143022  
@@ -286,15 +314,18 @@ PR-friendly format:
 **Records Processed**: 150,000
 
 ### Data Quality
+
 - **Clean Records**: 142,500 (95.0%)
 - **Validation Pass Rate**: 95.0% ✅
 
 ### Module Performance
+
 - **SBIR Enrichment**: 50,000 records, 95% success rate
 - **Patent Analysis**: 25,000 records, 98% validation pass rate
 - **CET Classification**: 50,000 records, 92% coverage
 
 ### Insights
+
 - ✅ All quality thresholds met
 - ⚠️ SBIR enrichment rate below target (95% vs 97% target)
 ```
@@ -306,8 +337,11 @@ PR-friendly format:
 Reports are automatically generated in CI workflows:
 
 ```yaml
-# .github/workflows/ci.yml
+
+## .github/workflows/ci.yml
+
 - name: Generate Statistical Reports
+
   run: |
     python -c "
     from src.utils.statistical_reporter import StatisticalReporter
@@ -316,6 +350,7 @@ Reports are automatically generated in CI workflows:
     "
 
 - name: Upload Report Artifacts
+
   uses: actions/upload-artifact@v3
   with:
     name: statistical-reports-${{ github.run_id }}
@@ -340,7 +375,9 @@ The system automatically generates recommendations based on metrics:
 ### Example Insights
 
 ```python
-# Quality threshold violation
+
+## Quality threshold violation
+
 InsightRecommendation(
     type="quality_threshold_violation",
     severity="ERROR",
@@ -350,7 +387,8 @@ InsightRecommendation(
     affected_records=4000
 )
 
-# Performance anomaly
+## Performance anomaly
+
 InsightRecommendation(
     type="performance_anomaly",
     severity="WARNING", 
@@ -388,16 +426,19 @@ InsightRecommendation(
 
 ### Common Issues
 
-**Missing Plotly Visualizations**:
+### Missing Plotly Visualizations
+
 - Install plotly: `pip install plotly`
 - Or disable: `SBIR_ETL__STATISTICAL_REPORTING__HTML__ENABLE_PLOTLY=false`
 
-**Large Report Files**:
+### Large Report Files
+
 - Reduce verbosity: `verbosity_level: "minimal"`
 - Disable raw data: `include_raw_data: false`
 - Increase retention: `retention_days: 7`
 
-**Slow Report Generation**:
+### Slow Report Generation
+
 - Disable complex visualizations for large datasets
 - Use sampling for visualization data
 - Generate reports asynchronously
@@ -405,6 +446,7 @@ InsightRecommendation(
 ### Performance Optimization
 
 For large datasets (>100K records):
+
 - Use sampling for visualization data
 - Generate reports in background processes
 - Consider report caching for repeated access

@@ -58,10 +58,12 @@ This document maps the remaining design patterns from `openspec/project.md` that
 - ❌ Missing fallback chain (API → fuzzy → agency default → sector fallback)
 - ❌ Missing enrichment source tracking
 
-**Required Implementation:**
+### Required Implementation:
 
 ```python
-# src/enrichers/hierarchical.py (NEW FILE)
+
+## src/enrichers/hierarchical.py (NEW FILE)
+
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -100,11 +102,13 @@ def enrich_naics_hierarchical(
     5. Proximity filtering (confidence: varies)
     6. Agency defaults (confidence: 0.50)
     7. Sector fallback (confidence: 0.30)
+
     """
     # Implementation needed
 ```
 
-**Files to Create:**
+### Files to Create:
+
 - `src/enrichers/hierarchical.py` - Hierarchical enrichment logic
 - `src/enrichers/sam_gov_client.py` - SAM.gov API client
 - `src/enrichers/usaspending_client.py` - USAspending API client
@@ -125,10 +129,12 @@ def enrich_naics_hierarchical(
 - ❌ Missing dynamic threshold adjustment based on enrichment confidence
 - ❌ Missing threshold profiles for different data sources
 
-**Required Enhancement:**
+### Required Enhancement:
 
 ```yaml
-# config/base.yaml (ENHANCEMENT)
+
+## config/base.yaml (ENHANCEMENT)
+
 data_quality:
   sbir_awards:
     # ... existing config ...
@@ -147,7 +153,8 @@ data_quality:
         manual_review_required: true
 ```
 
-**Files to Modify:**
+### Files to Modify:
+
 - `config/base.yaml` - Add threshold profiles
 - `src/config/schemas.py` - Add ThresholdProfile schema
 - `src/validators/quality.py` - Add confidence-based validation
@@ -165,10 +172,12 @@ data_quality:
 - ❌ No CLI application exists
 - ❌ Current interaction is Python-based or Dagster UI only
 
-**Required Implementation:**
+### Required Implementation:
 
 ```python
-# src/cli/app.py (NEW FILE)
+
+## src/cli/app.py (NEW FILE)
+
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
@@ -213,7 +222,8 @@ def metrics(run_id: str):
     pass
 ```
 
-**Files to Create:**
+### Files to Create:
+
 - `src/cli/__init__.py`
 - `src/cli/app.py` - Main Typer application
 - `src/cli/commands/ingest.py` - Ingest command
@@ -222,9 +232,12 @@ def metrics(run_id: str):
 - `src/cli/commands/metrics.py` - Metrics viewer
 - `tests/unit/test_cli.py` - CLI unit tests
 
-**Dependencies to Add:**
+### Dependencies to Add:
+
 ```toml
-# pyproject.toml
+
+## pyproject.toml
+
 [tool.poetry.dependencies]
 typer = "^0.9.0"
 rich = "^13.7.0"
@@ -241,10 +254,12 @@ rich = "^13.7.0"
 - ❌ No confidence scoring system
 - ❌ No manual review interface
 
-**Required Implementation:**
+### Required Implementation:
 
 ```python
-# src/models/evidence.py (NEW FILE)
+
+## src/models/evidence.py (NEW FILE)
+
 from dataclasses import dataclass
 from typing import List, Any
 from datetime import datetime
@@ -276,7 +291,8 @@ class EnrichmentResult:
         return sum(e.confidence for e in self.evidence) / len(self.evidence)
 ```
 
-**Neo4j Schema Enhancement:**
+### Neo4j Schema Enhancement:
+
 ```cypher
 // Store evidence in relationship properties
 CREATE (a:Award {award_id: "12345"})
@@ -292,16 +308,21 @@ CREATE (a)-[r:AWARDED_TO {
 }]->(c)
 ```
 
-**CLI Command:**
+### CLI Command:
+
 ```bash
-# Review low-confidence enrichments
+
+## Review low-confidence enrichments
+
 python -m src.cli.app review-low-confidence --threshold 0.70
 
-# Export evidence for manual review
+## Export evidence for manual review
+
 python -m src.cli.app export-evidence --output evidence_review.csv
 ```
 
-**Files to Create:**
+### Files to Create:
+
 - `src/models/evidence.py` - MatchEvidence and EnrichmentResult models
 - `src/enrichers/evidence_tracker.py` - Evidence collection utilities
 - `src/cli/commands/review.py` - Manual review CLI
@@ -322,10 +343,12 @@ python -m src.cli.app export-evidence --output evidence_review.csv
 - ❌ Missing metrics dashboard CLI commands
 - ❌ Missing historical trend analysis
 
-**Required Enhancement:**
+### Required Enhancement:
 
 ```python
-# src/utils/metrics.py (ENHANCEMENT)
+
+## src/utils/metrics.py (ENHANCEMENT)
+
 @dataclass
 class EnrichmentMetrics:
     """Detailed enrichment metrics."""
@@ -362,9 +385,12 @@ class MetricsCollector:
         # Implementation needed
 ```
 
-**CLI Commands:**
+### CLI Commands:
+
 ```python
-# src/cli/commands/metrics.py (NEW)
+
+## src/cli/commands/metrics.py (NEW)
+
 @app.command()
 def dashboard(
     run_id: Optional[str] = None,
@@ -385,7 +411,8 @@ def trends(days: int = 30):
     pass
 ```
 
-**Files to Modify/Create:**
+### Files to Modify/Create:
+
 - `src/utils/metrics.py` - Add EnrichmentMetrics and ErrorMetrics
 - `src/cli/commands/metrics.py` - Metrics dashboard CLI
 - `src/cli/commands/trends.py` - Historical trend analysis
@@ -439,7 +466,8 @@ def trends(days: int = 30):
 
 ### OpenSpec Workflow Recommendation
 
-**Option 1: Incremental Changes (Recommended)**
+### Option 1: Incremental Changes (Recommended)
+
 - Complete `add-initial-architecture` and archive it
 - Create separate OpenSpec changes for each pattern:
   - `add-rich-cli`
@@ -448,7 +476,8 @@ def trends(days: int = 30):
   - `add-evidence-tracking`
   - `enhance-quality-thresholds`
 
-**Option 2: Extended Architecture Phase**
+### Option 2: Extended Architecture Phase
+
 - Keep `add-initial-architecture` open
 - Add remaining patterns as new tasks in tasks.md
 - Archive when all 10 patterns complete
@@ -460,18 +489,22 @@ def trends(days: int = 30):
 ## Next Steps
 
 ### Immediate Actions
+
 1. **Archive `add-initial-architecture`** (91.3% complete, pending environment setup)
 2. **Begin Codebase Consolidation Refactor** - Address architectural debt before adding new patterns
 3. **Create `/openspec propose codebase-consolidation-refactor`** - Implement consolidation plan
 
 ### Post-Consolidation Pattern Implementation
+
 4. **Create `/openspec propose add-rich-cli`** - Start with CLI for immediate UX value
 5. **Implement Rich CLI pattern** (3-5 days)
 6. **Create `/openspec propose add-hierarchical-enrichment`**
 7. **Continue pattern-by-pattern implementation**
 
 ### Consolidation Integration
+
 The remaining design patterns should be implemented **after** the codebase consolidation refactor to:
+
 - Leverage the unified configuration system for pattern-specific settings
 - Use consolidated asset framework for new pattern implementations
 - Benefit from unified testing framework for pattern validation
@@ -479,7 +512,8 @@ The remaining design patterns should be implemented **after** the codebase conso
 
 This approach ensures new patterns are built on a solid, consolidated foundation rather than adding to the current architectural complexity.
 
-**Recommended Sequence**:
+### Recommended Sequence
+
 1. Complete codebase consolidation refactor (6-8 weeks)
 2. Implement remaining design patterns on consolidated architecture (4-6 weeks)
 3. Total estimated effort: 10-14 weeks for complete architectural modernization

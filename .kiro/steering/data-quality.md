@@ -26,18 +26,21 @@ The system implements comprehensive data quality validation at every pipeline st
 ## Implementation Patterns
 
 ### Schema Validation
+
 - Required columns present
 - Correct data types
 - Primary key uniqueness
 - Value range validation
 
 ### Data Quality Checks
+
 - Completeness percentage calculation
 - Duplicate detection and reporting
 - Value range validation
 - Cross-reference consistency
 
 ### Quality Reporting
+
 - Detailed quality reports with issue type, severity, affected record counts
 - Sample IDs for manual investigation
 - Coverage metrics for key fields
@@ -56,12 +59,14 @@ Quality thresholds and validation rules are configured in YAML. See **[configura
 ## Best Practices
 
 ### Quality Framework Design
+
 - **Configurable thresholds**: All quality rules externalized to configuration
 - **Severity-based actions**: Different responses based on issue severity
 - **Comprehensive reporting**: Detailed quality reports with actionable information
 - **Historical tracking**: Quality trends over time for regression detection
 
 ### Quality Validation Strategy
+
 - **Early validation**: Catch issues as early as possible in the pipeline
 - **Incremental validation**: Validate data at each pipeline stage
 - **Contextual validation**: Different validation rules for different data types

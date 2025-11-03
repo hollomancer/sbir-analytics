@@ -1,10 +1,12 @@
-## 0. Prepare and Validate Change
+#0. Prepare and Validate Change
+
 - [ ] 0.1 Read proposal and design for this change (PaECTER analysis layer).
 - [ ] 0.2 Create/verify change directory and spec deltas are present and formatted (ADDED requirements, scenarios).
 - [ ] 0.3 Run OpenSpec strict validation for this change ID and fix issues.
 - [ ] 0.4 Confirm no conflicting active changes (naming, overlapping assets).
 
 ## 1. Configuration (YAML + ENV)
+
 - [ ] 1.1 Add `paecter.*` configuration block to config/base.yaml with defaults:
   - [ ] provider: `huggingface` (default), `local` (explicit fallback only)
   - [ ] endpoint.type: `inference_api` (default), `endpoint` (later option)
@@ -42,6 +44,7 @@
 - [ ] 1.4 Document all keys and env overrides in README/docs.
 
 ## 2. Remote Inference Client (Hugging Face Inference API default)
+
 - [ ] 2.1 Implement a thin client wrapper for remote embedding calls:
   - [ ] Accept a list of texts; split into batches of `remote.batch.size`.
   - [ ] Inject auth from `auth.token_env` (Bearer token).
@@ -56,6 +59,7 @@
 - [ ] 2.3 Record and return metadata per run (for artifacts): provider, endpoint.type, endpoint host (not full URL), model_id, model_revision (if available), client versions.
 
 ## 3. Text Construction Utilities
+
 - [ ] 3.1 Implement text builder for awards:
   - [ ] Concatenate configured `text.award_fields` in order with separator " — ".
   - [ ] Skip missing fields; trim whitespace; preserve casing.
@@ -64,6 +68,7 @@
 - [ ] 3.3 Enforce token truncation via remote model tokenizer by specifying `max_length` if supported; otherwise ensure safe client behavior.
 
 ## 4. Patent Embeddings Asset (remote)
+
 - [ ] 4.1 Create Dagster asset `paecter_embeddings_patents`.
 - [ ] 4.2 Inputs: transformed patents (title, abstract if present).
 - [ ] 4.3 Use text builder to produce inputs; route to remote inference client in batches.
@@ -80,6 +85,7 @@
 - [ ] 4.6 Attach Dagster metadata: counts, coverage, latency stats, retries, throughput (texts/sec).
 
 ## 5. Award Embeddings Asset (remote)
+
 - [ ] 5.1 Create Dagster asset `paecter_embeddings_awards`.
 - [ ] 5.2 Inputs: enriched awards (`solicitation_title`, `abstract`).
 - [ ] 5.3 Use remote inference client with batched requests, throttling, retries.
@@ -94,6 +100,7 @@
 - [ ] 5.5 Emit checks JSON analogous to patents; attach Dagster metadata.
 
 ## 6. Award ↔ Patent Similarity Asset
+
 - [ ] 6.1 Create Dagster asset `paecter_award_patent_similarity`.
 - [ ] 6.2 Load embeddings parquet for awards and patents; L2-normalize vectors.
 - [ ] 6.3 Compute cosine similarity:
@@ -107,6 +114,7 @@
 - [ ] 6.6 Emit checks JSON (ok, total_pairs, kept_pairs, backend, top_k, min_score, stats: mean/p50/p90, reason?); attach Dagster metadata.
 
 ## 7. Classifier Cohesion Metrics Asset
+
 - [ ] 7.1 Create Dagster asset `paecter_classifier_cohesion_metrics`.
 - [ ] 7.2 Inputs: CET labels + embeddings (awards and/or patents).
 - [ ] 7.3 For each class:
@@ -119,6 +127,7 @@
 - [ ] 7.6 Gate: fail with ERROR if share < `validation.cohesion.min_share`.
 
 ## 8. Asset Checks and Validation Gates
+
 - [ ] 8.1 Add asset checks for embedding coverage:
   - [ ] Patents coverage ≥ 0.98
   - [ ] Awards coverage ≥ 0.95
@@ -129,6 +138,7 @@
 - [ ] 8.4 On any ERROR gate failure, block downstream similarity consumption and optional Neo4j loader.
 
 ## 9. Optional Neo4j Loader
+
 - [ ] 9.1 Create Dagster asset `neo4j_award_patent_similarity` (skipped unless `enable_neo4j_edges=true`).
 - [ ] 9.2 Ingest only `threshold_pass=true` rows; MERGE (Award)-[:SIMILAR_TO {method:"paecter"}]->(Patent).
 - [ ] 9.3 Update properties: score, rank, computed_at, model, revision, last_updated; no vectors in Neo4j.
@@ -137,6 +147,7 @@
 - [ ] 9.6 Fail if skip_rate > 1% (configurable); batch writes with retries; attach loader metrics and checks JSON.
 
 ## 10. Performance, Baselines, and Alerts
+
 - [ ] 10.1 Instrument assets with telemetry:
   - [ ] Embeddings (remote): latency distribution, retries, throughput (texts/sec).
   - [ ] Similarity: throughput, memory footprint (where applicable).
@@ -148,6 +159,7 @@
 - [ ] 10.4 CI mode: sample to ≤ 2k items to target < 5 min runtime (toggleable via env).
 
 ## 11. Tests
+
 - [ ] 11.1 Unit: text builder (field selection, separator, trimming).
 - [ ] 11.2 Unit: remote client batching, QPS throttle, retry backoff, timeout behavior (stub responses).
 - [ ] 11.3 Unit: cache behavior (if enabled) with SHA256 keys; duplicate avoidance.
@@ -159,6 +171,7 @@
 - [ ] 11.9 Performance smoke: ensure telemetry captured; CI sampling respected; no excessive runtime.
 
 ## 12. Documentation
+
 - [ ] 12.1 Add `docs/data/paecter.md`:
   - [ ] Model overview; licensing; usage patterns; limits; calibration approach.
   - [ ] Remote inference specifics; rate limits; retries; data handling.
@@ -169,12 +182,14 @@
 - [ ] 12.4 Update README with new assets and how to enable/disable.
 
 ## 13. Security & Governance
+
 - [ ] 13.1 Ensure token via environment variable; no secrets in code or logs.
 - [ ] 13.2 Redact all payloads from logs and errors; log only hashed IDs or counts.
 - [ ] 13.3 Record model_id and model_revision in outputs for reproducibility.
 - [ ] 13.4 Confirm policy approval for sending text to Hugging Face (already approved).
 
 ## 14. Inference Endpoint (Later Option)
+
 - [ ] 14.1 Extend client to support `endpoint.type=endpoint` with `endpoint.url`.
 - [ ] 14.2 Implement a readiness check that verifies endpoint health and (if available) model revision.
 - [ ] 14.3 Add configuration for endpoint-specific batch sizes/QPS based on capacity.
@@ -182,11 +197,13 @@
 - [ ] 14.5 Document when to prefer Endpoints (throughput, stability, cost predictability).
 
 ## 15. Orchestration & CI
+
 - [ ] 15.1 Register new Dagster assets; integrate with lazy import mapping.
 - [ ] 15.2 Ensure materialization plan includes embeddings → similarity → metrics; Neo4j loader stays disabled in CI.
 - [ ] 15.3 Add CI secrets management guideline for HF token if needed (avoid real network calls in tests; prefer stubs).
 
 ## 16. Rollout & Safety
+
 - [ ] 16.1 Default `provider=huggingface`, `endpoint.type=inference_api`, `enable_neo4j_edges=false`.
 - [ ] 16.2 Deploy to dev; validate coverage/quality gates; set baselines.
 - [ ] 16.3 Deploy to staging; monitor latency, retries, and costs; tune batch/QPS.
@@ -194,6 +211,7 @@
 - [ ] 16.5 Document rollback plan (disable assets; prune edges if needed).
 
 ## 17. Acceptance Criteria
+
 - [ ] 17.1 Patents embedding coverage ≥ 0.98; awards embedding coverage ≥ 0.95.
 - [ ] 17.2 Similarity checks: negatives mean ≤ 0.30 (ERROR otherwise); heuristic positives mean ≥ 0.55 (WARN default).
 - [ ] 17.3 Cohesion: share of classes meeting margin ≥ 0.05 is ≥ 0.70 with size ≥ 50.

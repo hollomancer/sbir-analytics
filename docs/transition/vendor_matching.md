@@ -22,35 +22,41 @@ Vendor matching is the process of identifying which federal contracts were award
 
 **Matching**: Exact string comparison (case-insensitive).
 
-**Data Fields**:
+### Data Fields
+
 - SBIR: Award recipient UEI (typically in `recipient_uei` or similar field)
 - Contract: Contractor UEI (typically in `vendor_uei` or `contractor_uei` field)
 
-**Example**:
-```
+### Example
+
+```text
 SBIR Award Recipient UEI: ABC123DEF456
 Federal Contract Vendor UEI: ABC123DEF456
 → MATCH (confidence: 0.99)
 ```
 
-**Advantages**:
+### Advantages
+
 - Standard federal identifier
 - Guaranteed unique (no duplicates within same entity)
 - Available in modern data (2021+)
 - Deterministic matching (no ambiguity)
 
-**Disadvantages**:
+### Disadvantages
+
 - Legacy data (pre-2021) may lack UEI
 - Some fields may have incomplete/corrupted UEI values
 - Company transitions/acquisitions may change UEI
 
-**Coverage**:
+### Coverage
+
 - **SBIR Data**: ~99% of Phase II awards have valid UEI
 - **Federal Contracts**: ~90% of recent contracts have valid UEI
 
 **When to Use**: Primary method; always check UEI first.
 
-**Implementation**:
+### Implementation
+
 ```python
 def resolve_by_uei(sbir_recipient_uei: str, contract_uei: str) -> bool:
     """Check if UEIs match exactly."""
@@ -71,36 +77,42 @@ def resolve_by_uei(sbir_recipient_uei: str, contract_uei: str) -> bool:
 
 **Matching**: Exact string comparison.
 
-**Data Fields**:
+### Data Fields
+
 - SBIR: Recipient CAGE code (may be in `cage_code` or `defense_identifier` field)
 - Contract: Contractor CAGE code (typically in `contractor_cage` field)
 
-**Example**:
-```
+### Example
+
+```text
 SBIR Award Recipient CAGE: 1A2B3
 Federal Contract Vendor CAGE: 1A2B3
 → MATCH (confidence: 0.95)
 ```
 
-**Advantages**:
+### Advantages
+
 - High confidence for defense contracts
 - Relatively stable over time
 - Available for most defense-focused companies
 
-**Disadvantages**:
+### Disadvantages
+
 - Only applicable to DoD contracts (~30% of federal contracts)
 - Not used by civilian agencies (NSF, NIH, NOAA, etc.)
 - May not be present for commercial companies
 - Less standardized than UEI
 
-**Coverage**:
+### Coverage
+
 - **SBIR DoD Data**: ~60% have valid CAGE code
 - **Federal DoD Contracts**: ~80% have valid CAGE code
 - **Civilian Data**: ~5% have CAGE codes
 
 **When to Use**: Secondary method for DoD contracts when UEI not available.
 
-**Implementation**:
+### Implementation
+
 ```python
 def resolve_by_cage(sbir_cage: str, contract_cage: str) -> bool:
     """Check if CAGE codes match exactly."""
@@ -121,36 +133,42 @@ def resolve_by_cage(sbir_cage: str, contract_cage: str) -> bool:
 
 **Matching**: Exact string comparison (9 digits).
 
-**Data Fields**:
+### Data Fields
+
 - SBIR: Recipient DUNS number (may be in `duns_number` or `recipient_duns` field)
 - Contract: Contractor DUNS (typically in `vendor_duns` field)
 
-**Example**:
-```
+### Example
+
+```text
 SBIR Award Recipient DUNS: 123456789
 Federal Contract Vendor DUNS: 123456789
 → MATCH (confidence: 0.90)
 ```
 
-**Advantages**:
+### Advantages
+
 - Widely available in legacy data (pre-2021)
 - Publicly searchable via Dun & Bradstreet
 - Covers all sectors
 
-**Disadvantages**:
+### Disadvantages
+
 - Declining usage (being replaced by UEI)
 - Can match parent companies, not just subsidiaries
 - May become stale if not renewed
 - Availability inconsistent across data sources
 
-**Coverage**:
+### Coverage
+
 - **SBIR Legacy Data**: ~70% have valid DUNS
 - **Federal Legacy Contracts**: ~60% have valid DUNS
 - **Recent Data**: ~20% still use DUNS
 
 **When to Use**: Tertiary method for legacy data when UEI/CAGE not available.
 
-**Implementation**:
+### Implementation
+
 ```python
 def resolve_by_duns(sbir_duns: str, contract_duns: str) -> bool:
     """Check if DUNS numbers match exactly."""
@@ -172,7 +190,7 @@ def resolve_by_duns(sbir_duns: str, contract_duns: str) -> bool:
 
 **Algorithm**: RapidFuzz `token_set_ratio` with configurable thresholds.
 
-**Matching Process**:
+### Matching Process
 
 1. **Normalization**:
    - Convert to uppercase
@@ -190,20 +208,24 @@ def resolve_by_duns(sbir_duns: str, contract_duns: str) -> bool:
    - **Primary threshold**: 0.85 (high confidence, ~80% reliable)
    - **Secondary threshold**: 0.70 (exploratory, ~60% reliable)
 
-**Data Fields**:
+### Data Fields
+
 - SBIR: Recipient company name
 - Contract: Contractor company name
 
-**Example 1: High Confidence**:
-```
+### Example 1: High Confidence
+
+```text
 SBIR Award Recipient: "Acme Artificial Intelligence Inc."
 Federal Contract Vendor: "Acme AI Inc."
 
 Normalized:
+
 - SBIR: "ACME ARTIFICIAL INTELLIGENCE INC"
 - Contract: "ACME AI INC"
 
 Token Sets:
+
 - SBIR: {ACME, ARTIFICIAL, INTELLIGENCE, INC}
 - Contract: {ACME, AI, INC}
 
@@ -211,16 +233,19 @@ Similarity (token_set_ratio): 0.88 (≥0.85 threshold)
 → MATCH (confidence: 0.80)
 ```
 
-**Example 2: Secondary Match**:
-```
+### Example 2: Secondary Match
+
+```text
 SBIR Award Recipient: "Acme AI LLC"
 Federal Contract Vendor: "Acme Artificial Intelligence Limited Liability"
 
 Normalized:
+
 - SBIR: "ACME AI LLC"
 - Contract: "ACME ARTIFICIAL INTELLIGENCE LIMITED LIABILITY"
 
 Token Sets:
+
 - SBIR: {ACME, AI, LLC}
 - Contract: {ACME, ARTIFICIAL, INTELLIGENCE, LIMITED, LIABILITY}
 
@@ -228,12 +253,14 @@ Similarity (token_set_ratio): 0.72 (≥0.70 threshold)
 → POSSIBLE MATCH (confidence: 0.65)
 ```
 
-**Example 3: No Match**:
-```
+### Example 3: No Match
+
+```text
 SBIR Award Recipient: "Acme AI"
 Federal Contract Vendor: "Beta Computing"
 
 Normalized:
+
 - SBIR: "ACME AI"
 - Contract: "BETA COMPUTING"
 
@@ -241,35 +268,43 @@ Similarity (token_set_ratio): 0.22 (<0.70 threshold)
 → NO MATCH
 ```
 
-**Advantages**:
+### Advantages
+
 - Handles name variations (acronyms, legal suffixes, spelling variations)
 - Fallback when identifiers not available
 - Flexible threshold configuration
 
-**Disadvantages**:
+### Disadvantages
+
 - High false positive rate at low thresholds (~15% at 0.70)
 - False negatives for companies with different trading names
 - Computationally expensive for large datasets (O(n²) worst case)
 - Requires manual validation for exploratory use
 
-**Coverage**:
+### Coverage
+
 - **Fuzzy Primary (0.85)**: ~10–15% of awards without identifiers
 - **Fuzzy Secondary (0.70)**: ~30–40% of awards without identifiers
 
 **When to Use**: Last resort when UEI/CAGE/DUNS not available; requires manual verification.
 
-**Tuning**:
+### Tuning
+
 ```python
-# More conservative (higher precision, lower recall)
+
+## More conservative (higher precision, lower recall)
+
 primary_threshold: 0.88
 secondary_threshold: 0.75
 
-# More permissive (lower precision, higher recall)
+## More permissive (lower precision, higher recall)
+
 primary_threshold: 0.80
 secondary_threshold: 0.65
 ```
 
-**Implementation**:
+### Implementation
+
 ```python
 from rapidfuzz import fuzz
 
@@ -326,7 +361,7 @@ def normalize_name(name: str) -> str:
 
 The vendor resolver uses a **priority cascade**: try highest-confidence methods first, fall back to lower-confidence methods if no match found.
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │ Award Recipient & Contract Vendor           │
 └─────────────────┬───────────────────────────┘
@@ -369,7 +404,8 @@ The vendor resolver uses a **priority cascade**: try highest-confidence methods 
 
 **Input**: SBIR award recipient with identifiers (UEI, CAGE, DUNS, name) and list of federal contracts.
 
-**Process**:
+### Process
+
 1. For each award recipient
 2. For each federal contract
 3. Try UEI match → If match, record (UEI, 0.99) and move to next contract
@@ -387,10 +423,11 @@ The vendor resolver uses a **priority cascade**: try highest-confidence methods 
 
 An award recipient may match multiple contracts (common scenario):
 
-```
+```text
 Award: Acme AI Inc. (UEI: ABC123DEF456)
 
 Contracts Found:
+
 1. Contract 1: UEI ABC123DEF456 (match, confidence 0.99)
 2. Contract 2: UEI ABC123DEF456 (match, confidence 0.99)
 3. Contract 3: Different UEI, but CAGE match (match, confidence 0.95)
@@ -431,6 +468,7 @@ vendor_resolution:
   
   # Common legal suffixes to strip
   legal_suffixes:
+
     - "Inc"
     - "LLC"
     - "Ltd"
@@ -443,6 +481,7 @@ vendor_resolution:
   
   # Common abbreviations
   abbreviations:
+
     - ["Artificial Intelligence", "AI"]
     - ["Software Development", "Software"]
     - ["Research and Development", "R&D"]
@@ -450,6 +489,7 @@ vendor_resolution:
   
   # Exclusion patterns (for filtering false matches)
   exclusions:
+
     - "Generic Inc"
     - "Technology Solutions"  # Too generic
 ```
@@ -457,15 +497,19 @@ vendor_resolution:
 ### Environment Variable Overrides
 
 ```bash
-# Thresholds
+
+## Thresholds
+
 export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_PRIMARY_THRESHOLD=0.85
 export SBIR_ETL__VENDOR_RESOLUTION__FUZZY_SECONDARY_THRESHOLD=0.70
 
-# Methods (disable/enable)
+## Methods (disable/enable)
+
 export SBIR_ETL__VENDOR_RESOLUTION__USE_FUZZY_NAME=true
 export SBIR_ETL__VENDOR_RESOLUTION__REQUIRE_UEI=false
 
-# Performance
+## Performance
+
 export SBIR_ETL__VENDOR_RESOLUTION__BATCH_SIZE=1000
 export SBIR_ETL__VENDOR_RESOLUTION__CACHE_ENABLED=true
 ```
@@ -479,10 +523,12 @@ export SBIR_ETL__VENDOR_RESOLUTION__CACHE_ENABLED=true
 ```python
 from src.transition.features.vendor_resolver import VendorResolver
 
-# Initialize
+## Initialize
+
 resolver = VendorResolver(config=resolution_config)
 
-# Add award recipients
+## Add award recipients
+
 resolver.add_award_recipient(
     recipient_id="SBIR-AWARD-123",
     uei="ABC123DEF456",
@@ -491,10 +537,12 @@ resolver.add_award_recipient(
     name="Acme AI Inc."
 )
 
-# Resolve against contracts
+## Resolve against contracts
+
 matches = resolver.resolve_batch(contracts_df, match_type="all")
 
-# Query results
+## Query results
+
 for award_id, contract_id, match_info in matches:
     print(f"Award {award_id} → Contract {contract_id}")
     print(f"  Match type: {match_info['match_type']}")
@@ -505,7 +553,7 @@ for award_id, contract_id, match_info in matches:
 
 Resolutions are persisted in a cross-walk table:
 
-```
+```text
 vendor_resolution.parquet
 ├── award_recipient_id: str
 ├── contractor_id: str
@@ -522,8 +570,9 @@ vendor_resolution.parquet
 └── resolution_date: datetime
 ```
 
-**Example**:
-```
+### Example
+
+```text
 award_recipient_id  contractor_id  match_type  confidence  award_uei        contractor_uei
 ─────────────────────────────────────────────────────────────────────────────────────────
 SBIR-2020-1         CONTRACT-001   UEI         0.99        ABC123DEF456     ABC123DEF456
@@ -539,19 +588,24 @@ For large datasets (6.7M+ contracts), vendor resolution can be slow. Use caching
 ```python
 from src.transition.performance.contract_analytics import VendorResolutionCache
 
-# Initialize cache
+## Initialize cache
+
 cache = VendorResolutionCache(ttl_hours=24)
 
-# Resolve with caching
+## Resolve with caching
+
 matches = resolver.resolve_batch(
     contracts_df,
     use_cache=True,
     cache_backend=cache
 )
 
-# Monitor cache performance
+## Monitor cache performance
+
 print(cache.get_stats())
-# Output: {'hits': 1250, 'misses': 350, 'hit_rate': 0.78}
+
+## Output: {'hits': 1250, 'misses': 350, 'hit_rate': 0.78}
+
 ```
 
 ---
@@ -562,23 +616,23 @@ print(cache.get_stats())
 
 **Resolution Rate**: Percentage of SBIR awards that match at least one contract.
 
-```
+```text
 Resolution Rate = (Awards with ≥1 match) / (Total awards) × 100%
 Target: ≥80%
 ```
 
 **Identifier Coverage** (percentage of awards with each identifier):
 
-```
+```text
 UEI Coverage: ~99% (Phase II awards)
 CAGE Coverage: ~60% (DoD-focused awards)
 DUNS Coverage: ~70% (legacy data)
 Name Available: 100%
 ```
 
-**Match Type Distribution**:
+### Match Type Distribution
 
-```
+```text
 UEI matches: ~70% (highest confidence)
 CAGE matches: ~5%
 DUNS matches: ~10%
@@ -591,7 +645,7 @@ No match: ~20%
 
 **Manual Validation**: Review 50 random matches per confidence level.
 
-```
+```text
 Confidence Level  Typical Precision  Sample Size  Validation Method
 ──────────────────────────────────────────────────────────────────
 UEI               >99%               10 samples   Check SAM.gov
@@ -601,7 +655,8 @@ Fuzzy Primary     ~85%               15 samples   Manual company research
 Fuzzy Secondary   ~60%               15 samples   Manual verification
 ```
 
-**Validation Process**:
+### Validation Process
+
 1. Sample 50 random matches
 2. Per each match, verify:
    - Is this the same company?
@@ -615,23 +670,27 @@ Fuzzy Secondary   ~60%               15 samples   Manual verification
 
 ### Issue 1: Low Coverage (<80% resolution rate)
 
-**Symptoms**:
+### Symptoms
+
 - Many awards with no contract matches
 - Lots of "no match" results
 
-**Causes**:
+### Causes
+
 - Awards and contracts from different time periods
 - Vendor name variations not captured by fuzzy matching
 - Missing identifier data in contracts
 
-**Solutions**:
+### Solutions
+
 1. **Check data sources**: Ensure SBIR and contract data overlap in time
 2. **Increase fuzzy thresholds**: Lower primary/secondary thresholds
 3. **Enable secondary fuzzy**: Ensure `fuzzy_secondary` enabled
 4. **Investigate data quality**: Sample awards/contracts to verify identifier availability
 5. **Consider acquisition/rebranding**: Some companies may have changed names
 
-**Example Fix**:
+### Example Fix
+
 ```yaml
 fuzzy_matching:
   primary_threshold: 0.80  # was 0.85
@@ -640,30 +699,35 @@ fuzzy_matching:
 
 ### Issue 2: High False Positive Rate (>20% incorrect matches)
 
-**Symptoms**:
+### Symptoms
+
 - Manual validation shows many incorrect matches
 - Fuzzy matches especially problematic
 - Fuzzy Secondary matches almost all wrong
 
-**Causes**:
+### Causes
+
 - Thresholds too low (catching false positives)
 - Common company names (e.g., "Tech Solutions Inc")
 - Abbreviations causing spurious matches
 
-**Solutions**:
+### Solutions
+
 1. **Increase fuzzy thresholds**: More strict matching
 2. **Disable fuzzy secondary**: If too many false positives
 3. **Add exclusion patterns**: Exclude generic names
 4. **Manual review list**: Build manual exception list
 5. **Stricter identifier matching**: Require UEI/CAGE when possible
 
-**Example Fix**:
+### Example Fix
+
 ```yaml
 fuzzy_matching:
   primary_threshold: 0.90  # was 0.85
   secondary_threshold: 0.75  # was 0.70
 
 exclusions:
+
   - "Tech Inc"
   - "Solutions LLC"
   - "Consulting Group"
@@ -671,26 +735,32 @@ exclusions:
 
 ### Issue 3: Missing Identifiers in Contracts
 
-**Symptoms**:
+### Symptoms
+
 - Contract data lacks UEI/CAGE/DUNS
 - Forced to rely on fuzzy name matching
 - Low precision results
 
-**Causes**:
+### Causes
+
 - Data source doesn't capture identifiers
 - Legacy contracts predate identifier systems
 - Data extraction/transformation issues
 
-**Solutions**:
+### Solutions
+
 1. **Enrich contract data**: Add UEI via SAM.gov lookup
 2. **Use alternative data sources**: Try different contract databases
 3. **Accept lower precision**: Fuzzy matching is best available
 4. **Manual resolution**: For critical contracts, resolve manually
 5. **Use parent company UEI**: If subsidiary info not available
 
-**Example Enrichment**:
+### Example Enrichment
+
 ```python
-# Lookup UEI via SAM.gov API
+
+## Lookup UEI via SAM.gov API
+
 from src.extractors.sam_api import SAMClient
 
 sam = SAMClient()
@@ -702,26 +772,30 @@ for idx, contract in contracts_df.iterrows():
 
 ### Issue 4: Acquisition/Rebranding Breaks Matches
 
-**Symptoms**:
+### Symptoms
+
 - Award matched to vendor A
 - Vendor A acquired by vendor B
 - Contracts now under vendor B name
 - Matches break post-acquisition
 
-**Causes**:
+### Causes
+
 - Company legal name changes
 - Acquisition changes UEI
 - Merger creates new entity
 
-**Solutions**:
+### Solutions
+
 1. **Track aliases**: Maintain company name history
 2. **Use parent/subsidiary mapping**: Link entities across transactions
 3. **Manual verification**: Review acquisition history
 4. **Cross-walk updates**: Update identifiers in resolution table
 5. **Consider temporal matching**: Use acquisition dates to guide matching
 
-**Example**:
-```
+### Example
+
+```text
 Pre-Acquisition:
   Award: Acme AI Inc. (UEI: ABC123)
   Contracts: Acme AI Inc. (UEI: ABC123)
@@ -782,7 +856,8 @@ Solution: Add acquisition record
 
 ### Throughput
 
-**Typical Performance**:
+### Typical Performance
+
 - UEI/CAGE/DUNS exact matching: ~100,000 matches/second
 - Fuzzy name matching: ~1,000 matches/second
 - Full resolution (mixed methods): ~5,000–10,000 matches/second

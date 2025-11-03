@@ -1,6 +1,7 @@
 # Implementation Tasks
 
 ## 1. Data Models for Reporting
+
 - [x] 1.1 Add `StatisticalReport` model to `src/models/quality.py`
 - [x] 1.2 Add `ModuleReport` model (base class for module-specific reports)
 - [x] 1.3 Add `InsightRecommendation` model for automated insights
@@ -8,6 +9,7 @@
 - [x] 1.5 Add `ChangesSummary` model (before/after comparisons)
 
 ## 2. Statistical Reporter Utility
+
 - [x] 2.1 Create `src/utils/statistical_reporter.py`
 - [x] 2.2 Implement `StatisticalReporter` class with report generation methods
 - [x] 2.3 Add HTML report generation (reusing Plotly infrastructure)
@@ -16,6 +18,7 @@
 - [x] 2.6 Add unified report aggregation across modules
 
 ## 3. Module-Specific Report Generators
+
 - [ ] 3.1 SBIR Enrichment Reporter:
   - [ ] 3.1.1 Match rate statistics (exact, fuzzy, unmatched)
   - [ ] 3.1.2 Enrichment source breakdown (USAspending, SAM.gov, etc.)
@@ -35,6 +38,7 @@
   - [ ] 3.4.3 Coverage metrics
 
 ## 4. Data Hygiene Metrics
+
 - [ ] 4.1 Implement clean vs dirty data split calculation
 - [ ] 4.2 Add validation pass rate tracking
 - [ ] 4.3 Add data quality score aggregation
@@ -42,6 +46,7 @@
 - [ ] 4.5 Add threshold compliance checks
 
 ## 5. Changes Made Tracking
+
 - [ ] 5.1 Implement before/after dataset comparison
 - [ ] 5.2 Track enrichment coverage (% records enriched)
 - [ ] 5.3 Track field modification counts
@@ -49,6 +54,7 @@
 - [ ] 5.5 Add change impact metrics
 
 ## 6. Insights Generation
+
 - [ ] 6.1 Implement automated quality recommendations
 - [ ] 6.2 Add anomaly detection (quality drops, outliers)
 - [ ] 6.3 Add quality trend analysis (improving/degrading)
@@ -56,6 +62,7 @@
 - [ ] 6.5 Generate actionable next steps
 
 ## 7. Integration with Dagster Assets
+
 - [ ] 7.1 Update `sbir_usaspending_enrichment` asset to generate reports
 - [ ] 7.2 Update patent loading assets to generate reports
 - [ ] 7.3 Update transition classifier assets to generate reports
@@ -63,6 +70,7 @@
 - [ ] 7.5 Add report metadata to asset materializations
 
 ## 8. CI Workflow Integration
+
 - [ ] 8.1 Update `.github/workflows/ci.yml`:
   - [ ] 8.1.1 Add report generation step after tests
   - [ ] 8.1.2 Upload reports as artifacts
@@ -74,6 +82,7 @@
 - [ ] 8.3 Add report retention policy (30 days)
 
 ## 9. Extend Quality Dashboard
+
 - [ ] 9.1 Update `src/utils/quality_dashboard.py`:
   - [ ] 9.1.1 Add module-specific dashboard sections
   - [ ] 9.1.2 Add data hygiene visualizations
@@ -82,6 +91,7 @@
 - [ ] 9.2 Add unified dashboard aggregating all modules
 
 ## 10. Configuration
+
 - [ ] 10.1 Add report configuration to `config/base.yaml`:
   - [ ] 10.1.1 Report output formats (html, json, markdown)
   - [ ] 10.1.2 Report verbosity levels
@@ -89,12 +99,14 @@
 - [ ] 10.2 Add report output directory configuration
 
 ## 11. Documentation
+
 - [ ] 11.1 Document report structure and contents in README
 - [ ] 11.2 Add examples of generated reports
 - [ ] 11.3 Document CI artifact locations
 - [ ] 11.4 Add report interpretation guide
 
 ## 12. Testing
+
 - [ ] 12.1 Unit tests for report generators
 - [ ] 12.2 Integration tests for CI report generation
 - [ ] 12.3 Test report artifact uploads
@@ -102,6 +114,7 @@
 - [ ] 12.5 Validate report formats (HTML, JSON, Markdown)
 
 ## 13. Validation
+
 - [ ] 13.1 Run `openspec validate add-statistical-reporting --strict`
 - [ ] 13.2 Fix any validation errors
 - [ ] 13.3 Confirm all tasks completed

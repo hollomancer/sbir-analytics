@@ -10,7 +10,7 @@ The design is strictly additive to existing CET classification systems, using Hu
 
 ### High-Level Pipeline Flow
 
-```
+```text
 Documents (Patents/Awards)
     ↓
 Stage 1: Bayesian Classification Routing
@@ -24,19 +24,22 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 ### Dagster Assets (Additive)
 
-**Core PaECTER Assets:**
+### Core PaECTER Assets:
+
 - `paecter_embeddings_patents` → `data/processed/paecter_embeddings_patents.parquet`
 - `paecter_embeddings_awards` → `data/processed/paecter_embeddings_awards.parquet`
 - `paecter_award_patent_similarity` → `data/processed/paecter_award_patent_similarity.parquet`
 - `paecter_quality_metrics` → `data/processed/paecter_quality_metrics.json`
 
-**Bayesian MoE Assets:**
+### Bayesian MoE Assets:
+
 - `bayesian_classification_routing` → `data/processed/bayesian_classifications.parquet`
 - `bayesian_similarity_routing` → `data/processed/bayesian_similarities.parquet`
 - `bayesian_embedding_routing` → `data/processed/bayesian_embeddings.parquet`
 - `uncertainty_calibration_metrics` → `data/processed/uncertainty_calibration.json`
 
-**Integration Assets:**
+### Integration Assets:
+
 - `neo4j_bayesian_similarity_edges` (optional; off by default)
 - `paecter_performance_baselines` → `reports/benchmarks/paecter_bayesian.json`
 
@@ -44,14 +47,16 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 The system implements experts as **LoRA (Low-Rank Adaptation) adapters** rather than separate full models, providing several key advantages:
 
-**Benefits of LoRA Experts:**
+### Benefits of LoRA Experts:
+
 - **Memory Efficiency**: Share base model weights, only store small adapter matrices
 - **Fast Switching**: Rapid adapter loading/unloading for dynamic expert selection  
 - **Training Efficiency**: Fine-tune only adapter parameters, not full model weights
 - **Modular Design**: Easy to add/remove domain-specific experts
 - **Cost Effective**: Minimal storage and compute overhead per expert
 
-**LoRA Expert Categories:**
+### LoRA Expert Categories:
+
 - **Technology Domain Experts**: Biotech_LoRA, AI_LoRA, Defense_LoRA, Energy_LoRA
 - **Document Type Experts**: Patent_LoRA, SBIR_Award_LoRA, Abstract_LoRA
 - **Task-Specific Experts**: Classification_LoRA, Similarity_LoRA, Embedding_LoRA
@@ -60,8 +65,10 @@ The system implements experts as **LoRA (Low-Rank Adaptation) adapters** rather 
 ### Three-Stage Bayesian Routing Architecture
 
 #### Stage 1: Classification Routing (LoRA-based Experts)
+
 ```python
 BayesianClassificationRouter:
+
   - Input: Raw document text (patents/awards)
   - Expert Pool: {CET_LoRA, CPC_LoRA, Biotech_LoRA, AI_LoRA, Defense_LoRA, Base_Model}
   - Implementation: LoRA adapters on base classification model
@@ -71,8 +78,10 @@ BayesianClassificationRouter:
 ```
 
 #### Stage 2: Similarity Routing (LoRA-based Experts)
+
 ```python
 BayesianSimilarityRouter:
+
   - Input: Document pairs + technology categories
   - Expert Pool: {Intra_Category_LoRA, Cross_Category_LoRA, Temporal_LoRA, Content_LoRA}
   - Implementation: LoRA adapters on base similarity computation model
@@ -82,8 +91,10 @@ BayesianSimilarityRouter:
 ```
 
 #### Stage 3: Embedding Routing (LoRA-based PaECTER Experts)
+
 ```python
 BayesianEmbeddingRouter:
+
   - Input: Documents + categories + similarity patterns
   - Expert Pool: {Biotech_PaECTER_LoRA, AI_PaECTER_LoRA, Defense_PaECTER_LoRA, Base_PaECTER}
   - Implementation: LoRA adapters on base PaECTER model
@@ -97,6 +108,7 @@ BayesianEmbeddingRouter:
 ### Core Components
 
 #### 1. Bayesian Router Framework
+
 ```python
 class BayesianRouter(ABC):
     def __init__(self, expert_pool: ExpertPool, uncertainty_head: UncertaintyHead)
@@ -106,6 +118,7 @@ class BayesianRouter(ABC):
 ```
 
 #### 2. LoRA Expert Pool Management
+
 ```python
 class LoRAExpertPool:
     def __init__(self, base_model: nn.Module, lora_configs: Dict[str, LoRAConfig])
@@ -118,6 +131,7 @@ class LoRAExpertPool:
 ```
 
 #### 3. Uncertainty Quantification
+
 ```python
 class UncertaintyHead:
     def __init__(self, calibration_method: str = "platt_scaling")
@@ -128,6 +142,7 @@ class UncertaintyHead:
 ```
 
 #### 4. LoRA-Enhanced PaECTER Integration Layer
+
 ```python
 class LoRAPaECTERClient:
     def __init__(self, config: PaECTERConfig, lora_expert_pool: LoRAExpertPool)
@@ -141,6 +156,7 @@ class LoRAPaECTERClient:
 ### Interface Contracts
 
 #### Routing Decision Interface
+
 ```python
 @dataclass
 class RoutingDecision:
@@ -153,6 +169,7 @@ class RoutingDecision:
 ```
 
 #### Uncertainty Metrics Interface
+
 ```python
 @dataclass
 class UncertaintyMetrics:
@@ -168,6 +185,7 @@ class UncertaintyMetrics:
 ### Core Data Schemas
 
 #### Bayesian Classification Output
+
 ```python
 @dataclass
 class BayesianClassification:
@@ -182,6 +200,7 @@ class BayesianClassification:
 ```
 
 #### Bayesian Similarity Output
+
 ```python
 @dataclass
 class BayesianSimilarity:
@@ -197,6 +216,7 @@ class BayesianSimilarity:
 ```
 
 #### Bayesian Embedding Output
+
 ```python
 @dataclass
 class BayesianEmbedding:
@@ -213,7 +233,8 @@ class BayesianEmbedding:
 ### Parquet Schema Definitions
 
 #### bayesian_classifications.parquet
-```
+
+```text
 document_id: string
 document_type: string
 expert_id: string
@@ -230,7 +251,8 @@ model_version: string
 ```
 
 #### bayesian_similarities.parquet
-```
+
+```text
 source_doc_id: string
 target_doc_id: string
 expert_id: string
@@ -245,7 +267,8 @@ similarity_timestamp: timestamp
 ```
 
 #### bayesian_embeddings.parquet
-```
+
+```text
 document_id: string
 expert_id: string
 embedding: array<double>
@@ -262,6 +285,7 @@ model_version: string
 ### Uncertainty-Based Error Management
 
 #### 1. High Uncertainty Detection
+
 ```python
 class UncertaintyErrorHandler:
     def handle_high_uncertainty(self, uncertainty: float, threshold: float):
@@ -274,6 +298,7 @@ class UncertaintyErrorHandler:
 ```
 
 #### 2. Expert Routing Failures
+
 ```python
 class RoutingErrorHandler:
     def handle_routing_failure(self, routing_error: RoutingError):
@@ -283,6 +308,7 @@ class RoutingErrorHandler:
 ```
 
 #### 3. Calibration Drift Detection
+
 ```python
 class CalibrationMonitor:
     def detect_calibration_drift(self, current_ece: float, baseline_ece: float):
@@ -294,16 +320,19 @@ class CalibrationMonitor:
 ### Quality Gates and Validation
 
 #### 1. Uncertainty Calibration Gates
+
 - ECE threshold: < 0.1 for production deployment
 - Confidence interval coverage: > 90% empirical coverage
 - Uncertainty correlation: Pearson r > 0.7 with actual errors
 
 #### 2. Expert Performance Gates  
+
 - Individual expert accuracy: > 85% on validation set
 - Routing accuracy: > 90% expert selection correctness
 - Uncertainty quality: Brier score < 0.2
 
 #### 3. System Integration Gates
+
 - End-to-end pipeline success rate: > 95%
 - Neo4j loading success rate: > 99%
 - Performance regression: < 20% latency increase
@@ -313,6 +342,7 @@ class CalibrationMonitor:
 ### Unit Testing
 
 #### 1. Bayesian Router Components
+
 ```python
 def test_bayesian_classification_router():
     # Test variational inference routing
@@ -327,6 +357,7 @@ def test_uncertainty_head():
 ```
 
 #### 2. Expert Pool Management
+
 ```python
 def test_expert_pool():
     # Test expert addition/removal
@@ -338,6 +369,7 @@ def test_expert_pool():
 ### Integration Testing
 
 #### 1. End-to-End Pipeline Testing
+
 ```python
 def test_bayesian_pipeline_integration():
     # Test classification → similarity → embedding flow
@@ -347,6 +379,7 @@ def test_bayesian_pipeline_integration():
 ```
 
 #### 2. Uncertainty Calibration Testing
+
 ```python
 def test_uncertainty_calibration():
     # Test ECE computation on validation data
@@ -358,12 +391,14 @@ def test_uncertainty_calibration():
 ### Performance Testing
 
 #### 1. Scalability Testing
+
 - Test with 100K+ patents and awards
 - Measure routing overhead vs. accuracy gains
 - Test expert pool scaling behavior
 - Validate memory usage with uncertainty computation
 
 #### 2. Uncertainty Quality Testing
+
 - Validate calibration on held-out test sets
 - Test uncertainty quality across different domains
 - Measure human review reduction effectiveness

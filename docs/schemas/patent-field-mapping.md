@@ -10,7 +10,8 @@
 
 This document provides a comprehensive field-by-field mapping from USPTO patent assignment Stata tables to the Neo4j graph schema. Use this guide during ETL implementation to ensure accurate data transformation.
 
-**Key Principles**:
+### Key Principles
+
 - One-to-one field mappings where possible
 - Composite fields split into separate properties
 - Derived fields computed during transformation
@@ -51,7 +52,8 @@ This document provides a comprehensive field-by-field mapping from USPTO patent 
 | pgpub_date | datetime64 | publication_date | ISO 8601 | No | Grant date; ~0% in current sample |
 | pgpub_country | string | publication_country | String | No | Country code (usually "US") |
 
-**Handling Sparse Fields**:
+### Handling Sparse Fields
+
 - If `pgpub_date` NULL: use `appno_date` as proxy
 - If both NULL: set `timeline_confidence = "LOW"`
 
@@ -116,10 +118,12 @@ This document provides a comprehensive field-by-field mapping from USPTO patent 
 | caddress_3 | assignment | correspondent_address_line3 | String | No | Optional address extension |
 | caddress_4 | assignment | correspondent_address_country | String | No | International address |
 
-**Address Parsing**:
-```
+### Address Parsing
+
+```text
 Combined: caddress_1 + caddress_2 + caddress_3 + caddress_4
 Parsed into:
+
 - correspondent_address (full string)
 - correspondent_city (extracted from line 2)
 - correspondent_state (extracted from line 2)
@@ -168,6 +172,7 @@ Parsed into:
 | ee_country | country | Direct | No | Country code |
 
 **Entity ID Calculation** (for deduplication):
+
 ```python
 entity_id = hash(normalized_name + "|" + country + "|" + state + "|" + postcode)
 ```
@@ -185,6 +190,7 @@ entity_id = hash(normalized_name + "|" + country + "|" + state + "|" + postcode)
 | ack_dt | acknowledgment_date | Direct | No | Rarely used (~0% in modern data) |
 
 **Entity ID Calculation** (for deduplication):
+
 ```python
 entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 ```
@@ -228,7 +234,8 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 | grant_doc_num | (query parameter) | Match via rf_id join |
 | (derived) exec_date | exec_date | Inherited from assignment |
 
-**Relationship Properties**:
+### Relationship Properties
+
 ```cypher
 {
   position_in_batch: <integer>,        // 1, 2, 3, ... if batch
@@ -251,7 +258,8 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 | assignment.exec_date | effective_date | When rights transferred |
 | convey_type | convey_type | Inherited property |
 
-**Relationship Properties**:
+### Relationship Properties
+
 ```cypher
 {
   assignment_role: <string>,           // "PRIMARY_ASSIGNEE", "CO_ASSIGNEE"
@@ -273,7 +281,8 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 | assignor.exec_dt | exec_date | When assignor signed |
 | (inferred) | originator_role | "INVENTOR", "EMPLOYER", etc. |
 
-**Relationship Properties**:
+### Relationship Properties
+
 ```cypher
 {
   originator_role: <string>,           // "INVENTOR", "EMPLOYER", "PRIOR_OWNER"
@@ -295,7 +304,8 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 | (derived) | linkage_method | "exact_grant_num", "fuzzy_match", "manual" |
 | (derived) | confidence_score | 0.95, 0.80, 0.70, etc. |
 
-**Relationship Properties**:
+### Relationship Properties
+
 ```cypher
 {
   linkage_method: <string>,            // How the link was created
@@ -316,7 +326,8 @@ entity_id = hash(normalized_name + "|INDIVIDUAL|" + state_if_available)
 | Company.company_id | Company (via entity resolution) | Fuzzy match PatentEntity.sbir_company_id |
 | PatentEntity | Patent (via ASSIGNED_TO chain) | Trace ownership chain |
 
-**Relationship Properties**:
+### Relationship Properties
+
 ```cypher
 {
   acquisition_date: <datetime>,        // When acquired
@@ -340,11 +351,13 @@ def normalize_name(name: str) -> str:
     Normalize entity names for matching.
 
     Steps:
+
     1. Uppercase
     2. Remove trailing punctuation (,.;:)
     3. Remove leading/trailing whitespace
     4. Collapse multiple spaces to single
     5. Remove special characters except &, -, /
+
     """
     if not name:
         return ""
@@ -374,9 +387,11 @@ def parse_date(date_val) -> Optional[datetime]:
     Parse date from various formats.
 
     Handles:
+
     - datetime64[ns] (pandas)
     - ISO 8601 strings
     - Common date formats (MM/DD/YYYY, YYYY-MM-DD)
+
     """
     if pd.isna(date_val):
         return None
@@ -470,9 +485,11 @@ def compute_entity_id(
     Compute deduplication key for PatentEntity.
 
     Combines normalized name with geographic key to handle:
+
     - Company name variations
     - Multiple offices of same company
     - International entities
+
     """
     normalized = normalize_name(name)
 
@@ -609,19 +626,22 @@ def validate_entity(entity: dict) -> List[str]:
 
 ## 8. Implementation Checklist
 
-**Before Loading**:
+### Before Loading
+
 - [ ] Confirm Stata file formats (Stata 117/118)
 - [ ] Validate rf_id cardinality across tables
 - [ ] Test name normalization on sample names
 - [ ] Test date parsing on sample dates
 
-**During Loading**:
+### During Loading
+
 - [ ] Implement chunked reading (10K records)
 - [ ] Log all validation errors
 - [ ] Count NULL rates per field
 - [ ] Track deduplication metrics for PatentEntity
 
-**After Loading**:
+### After Loading
+
 - [ ] Verify all constraints created
 - [ ] Run quality metrics report
 - [ ] Test cross-graph queries

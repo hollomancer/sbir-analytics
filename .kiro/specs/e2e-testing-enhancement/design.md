@@ -50,6 +50,7 @@ graph TB
 ### Component Architecture
 
 #### 1. E2E Test CLI
+
 - **Purpose**: Single entry point for running E2E tests with scenario selection
 - **Location**: `scripts/run_e2e_tests.py` (enhances existing `scripts/run_e2e_tests.py`)
 - **Responsibilities**:
@@ -60,6 +61,7 @@ graph TB
   - Integrate with existing `make docker-test` workflow
 
 #### 2. Dockerized Test Environment
+
 - **Purpose**: Isolated, reproducible test environment optimized for MacBook Air
 - **Configuration**: Enhances existing `docker/docker-compose.test.yml` with E2E-specific optimizations
 - **Components**:
@@ -70,6 +72,7 @@ graph TB
 - **Resource Constraints**: 8GB total memory limit, 2-minute startup timeout
 
 #### 3. Test Data Manager
+
 - **Purpose**: Manage test datasets and data lifecycle
 - **Location**: `tests/e2e/data_manager.py`
 - **Responsibilities**:
@@ -79,6 +82,7 @@ graph TB
   - Validate data isolation
 
 #### 4. Pipeline Validator
+
 - **Purpose**: Comprehensive validation of pipeline outputs
 - **Location**: `tests/e2e/pipeline_validator.py`
 - **Responsibilities**:
@@ -88,6 +92,7 @@ graph TB
   - Generate detailed validation reports
 
 #### 5. Resource Monitor
+
 - **Purpose**: Track resource usage during testing
 - **Location**: `tests/e2e/resource_monitor.py`
 - **Responsibilities**:
@@ -108,7 +113,8 @@ class TestDataManager:
     def get_sample_datasets(self) -> Dict[str, Path]
 ```
 
-**Test Scenarios**:
+### Test Scenarios
+
 - `MINIMAL`: Small datasets (100 SBIR, 500 USAspending records) for quick validation under 2 minutes
 - `STANDARD`: Representative datasets (1,000 SBIR, 5,000 USAspending records) for full testing within 5-8 minutes
 - `LARGE`: Larger datasets (10,000 SBIR, 50,000 USAspending records) for performance testing within 8-10 minutes
@@ -124,7 +130,8 @@ class PipelineValidator:
     def generate_validation_report(self) -> TestReport
 ```
 
-**Validation Checks**:
+### Validation Checks
+
 - Record count validation at each stage
 - Schema compliance verification
 - Data quality metrics validation
@@ -208,24 +215,28 @@ class E2ETestResult:
 ### Test Scenarios
 
 #### 1. Smoke Test (MINIMAL scenario)
+
 - **Duration**: < 2 minutes
 - **Data**: 100 SBIR records, 500 USAspending records
 - **Validation**: Basic pipeline execution, minimal graph validation
 - **Use Case**: Quick validation during development
 
 #### 2. Standard E2E Test (STANDARD scenario)
+
 - **Duration**: 5-8 minutes
 - **Data**: 1,000 SBIR records, 5,000 USAspending records, sample USPTO data
 - **Validation**: Full pipeline validation, comprehensive graph checks
 - **Use Case**: Pre-commit validation, CI/CD integration
 
 #### 3. Performance Test (LARGE scenario)
+
 - **Duration**: 8-10 minutes
 - **Data**: 10,000 SBIR records, 50,000 USAspending records
 - **Validation**: Performance metrics, resource usage validation
 - **Use Case**: Performance regression testing
 
 #### 4. Edge Case Test (EDGE_CASES scenario)
+
 - **Duration**: 3-5 minutes
 - **Data**: Datasets with missing fields, invalid formats, edge cases
 - **Validation**: Error handling, data quality validation
@@ -256,24 +267,28 @@ class E2ETestResult:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
+
 - Docker Compose configuration for E2E testing
 - Basic test orchestrator and CLI
 - Test data manager with sample datasets
 - Resource monitoring foundation
 
 ### Phase 2: Pipeline Validation
+
 - Comprehensive pipeline validator
 - Stage-specific validation logic
 - Neo4j graph validation
 - Test reporting infrastructure
 
 ### Phase 3: Advanced Features
+
 - Multiple test scenarios
 - Performance benchmarking
 - Detailed error diagnostics
 - Integration with existing CI/CD
 
 ### Phase 4: Optimization
+
 - Resource usage optimization for MacBook Air
 - Test execution time optimization
 - Enhanced reporting and visualization
@@ -286,21 +301,27 @@ class E2ETestResult:
 The E2E testing environment extends the existing `docker/docker-compose.test.yml` configuration with MacBook Air optimizations:
 
 ```yaml
-# Enhancement to existing docker/docker-compose.test.yml
+
+## Enhancement to existing docker/docker-compose.test.yml
+
 services:
   app:
     # Existing service with E2E test scenario support
     environment:
+
       - E2E_TEST_SCENARIO=${E2E_TEST_SCENARIO:-standard}
       - SBIR_ETL__PIPELINE__CHUNK_SIZE=1000  # Reduced for memory efficiency
+
     mem_limit: 4g  # MacBook Air memory constraint
     
   neo4j:
     # Existing Neo4j service with E2E optimizations
     environment:
+
       - NEO4J_dbms_memory_heap_initial__size=512m
       - NEO4J_dbms_memory_heap_max__size=1g
       - NEO4J_dbms_memory_pagecache_size=256m
+
     mem_limit: 2g  # MacBook Air memory constraint
     healthcheck:
       test: ["CMD-SHELL", "cypher-shell -u neo4j -p ${NEO4J_PASSWORD} 'RETURN 1'"]
@@ -346,7 +367,9 @@ The E2E testing enhancement builds upon existing infrastructure:
 The E2E testing system integrates with the existing configuration framework:
 
 ```python
-# Extends existing config/base.yaml
+
+## Extends existing config/base.yaml
+
 e2e_testing:
   scenarios:
     minimal:

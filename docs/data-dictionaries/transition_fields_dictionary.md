@@ -4,7 +4,8 @@
 
 This data dictionary provides a comprehensive reference for all fields in the transition detection system, organized by entity type. Each field includes its data type, valid values, constraints, examples, and relationships to other fields.
 
-**Format Convention**:
+### Format Convention
+
 - **Field Name**: The exact field name in code/database
 - **Type**: Data type (String, Integer, Float, DateTime, Boolean, List, Object, Enum)
 - **Nullable**: Whether null values are allowed
@@ -405,6 +406,7 @@ Structured evidence justifying a transition detection (nested within Transition)
 ### Signal Evidence (nested objects)
 
 Each signal has nested evidence with:
+
 - `snippet`: 1-line human summary
 - `score_contribution`: Numeric contribution to overall score
 - `details`: Signal-specific structured data
@@ -533,21 +535,25 @@ Represents company-level aggregated statistics.
 ### Enumeration Values
 
 #### Confidence Levels
+
 - `HIGH`: likelihood_score ≥ 0.85
 - `LIKELY`: 0.65 ≤ likelihood_score < 0.85
 - `POSSIBLE`: likelihood_score < 0.65
 
 #### Award Phases
+
 - `PHASE_I`: Phase I award
 - `PHASE_II`: Phase II award
 - `PHASE_IIB`: Phase IIB (fast track) award
 - `PHASE_III`: Phase III (commercialization) award
 
 #### Programs
+
 - `SBIR`: Small Business Innovation Research
 - `STTR`: Small Business Technology Transfer
 
 #### Vendor Match Methods
+
 - `UEI`: Unique Entity Identifier exact match
 - `CAGE`: CAGE code exact match
 - `DUNS`: DUNS number exact match
@@ -555,16 +561,19 @@ Represents company-level aggregated statistics.
 - `NONE`: No match found
 
 #### Competition Types
+
 - `SOLE_SOURCE`: Single vendor competition
 - `LIMITED`: Limited number of eligible vendors
 - `FULL_AND_OPEN`: Open competition
 - `UNKNOWN`: Competition type unknown
 
 #### Company Size
+
 - `SMALL_BUSINESS`: Small business concern
 - `OTHER`: Non-small business
 
 #### CET Areas
+
 - `AI & Machine Learning`
 - `Advanced Computing`
 - `Biotechnology & Advanced Biology`
@@ -577,6 +586,7 @@ Represents company-level aggregated statistics.
 - `Climate Resilience`
 
 #### CET Alignment Types
+
 - `EXACT`: Award CET == Contract CET
 - `PARTIAL`: Related but not identical CET areas
 - `NONE`: Unrelated CET areas
@@ -603,18 +613,21 @@ Represents company-level aggregated statistics.
 ## Field Validation Rules
 
 ### Required Fields (must have non-null value)
+
 - `transition_id`, `award_id`, `contract_id`, `likelihood_score`, `confidence`
 - `award_date`, `completion_date`, `award_amount`
 - `action_date`, `obligated_amount`, `vendor_name`
 - `agency` (award and contract)
 
 ### Optional Fields (null allowed)
+
 - `recipient_uei`, `recipient_duns`, `recipient_cage`
 - `vendor_uei`, `vendor_cage`, `vendor_duns`
 - `cet_area`, `description`
 - Signal scores (if signal disabled)
 
 ### Constrained Fields
+
 - `likelihood_score`: Must be 0.0 to 1.0
 - `confidence`: Must be one of: HIGH, LIKELY, POSSIBLE
 - `award_amount`, `obligated_amount`: Must be ≥ 0
@@ -640,16 +653,19 @@ Represents company-level aggregated statistics.
 ## Data Quality Guidelines
 
 ### Missing Data
+
 - **Acceptable**: ≤5% of optional fields may be null
 - **Warning**: ≥10% missing for required fields
 - **Action**: Investigate and document reasons
 
 ### Out-of-Range Values
+
 - **Likelihood scores** outside [0.0, 1.0]: Invalid
 - **Amounts** negative: Data quality issue
 - **Dates** reversed (end < start): Invalid
 
 ### Consistency Checks
+
 - `completion_date` should be after `award_date`
 - `contract_start_date` should be after `award_completion_date` (usually)
 - `likelihood_score` matches confidence classification
@@ -665,4 +681,5 @@ Represents company-level aggregated statistics.
 - **Neo4j Schema**: `docs/schemas/transition-graph-schema.md`
 - **Configuration**: `config/transition/detection.yaml`
 - **Data Models**: `src/models/transition_models.py`
+
 </parameter>

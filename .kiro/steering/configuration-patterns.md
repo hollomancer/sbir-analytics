@@ -4,7 +4,8 @@ This document centralizes all configuration examples and patterns used throughou
 
 ## 🎉 Consolidated Configuration System (2025-01-01)
 
-**Major consolidation completed:**
+### Major consolidation completed:
+
 - ✅ **Hierarchical PipelineConfig**: Single root configuration model with 16+ consolidated schemas
 - ✅ **Unified Validation**: All configuration uses Pydantic for type safety and validation
 - ✅ **Standardized Overrides**: Consistent `SBIR_ETL__SECTION__KEY` environment variable pattern
@@ -13,7 +14,8 @@ This document centralizes all configuration examples and patterns used throughou
 ## Configuration Architecture
 
 ### Three-Layer Configuration System
-```
+
+```text
 Layer 1: YAML Files (config/)
     ↓
 Layer 2: Pydantic Validation (src/config/schemas.py)
@@ -22,7 +24,8 @@ Layer 3: Runtime Configuration with Environment Overrides
 ```
 
 ### Configuration Files Structure
-```
+
+```text
 config/
 ├── base.yaml              # Default settings (version controlled)
 ├── dev.yaml               # Development overrides
@@ -34,6 +37,7 @@ config/
 ## Data Quality Configuration
 
 ### Quality Thresholds
+
 ```yaml
 data_quality:
   # Completeness requirements (percentage of non-null values)
@@ -70,6 +74,7 @@ data_quality:
 ## Enrichment Configuration
 
 ### Enrichment Sources and Fallback Chain
+
 ```yaml
 enrichment:
   # Source configuration with priority and confidence
@@ -135,6 +140,7 @@ enrichment:
 ## Pipeline Orchestration Configuration
 
 ### Pipeline Processing Configuration
+
 ```yaml
 pipeline:
   # Processing configuration
@@ -150,7 +156,8 @@ pipeline:
     enable_parallel: true
     max_parallel_assets: 4
     
-# Performance tuning
+## Performance tuning
+
 performance:
   batch_size: 1000              # Neo4j batch size
   parallel_threads: 4           # Parallel processing threads
@@ -174,6 +181,7 @@ performance:
 ## Neo4j Configuration
 
 ### Database Connection and Performance
+
 ```yaml
 neo4j:
   # Connection configuration
@@ -206,6 +214,7 @@ neo4j:
 ## CET Classification Configuration
 
 ### CET Taxonomy Configuration
+
 ```yaml
 cet:
   # Taxonomy configuration
@@ -267,8 +276,11 @@ cet:
 ## Environment Variable Overrides
 
 ### Override Format
+
 ```bash
-# Format: SBIR_ETL__SECTION__SUBSECTION__KEY=value
+
+## Format: SBIR_ETL__SECTION__SUBSECTION__KEY=value
+
 export SBIR_ETL__DATA_QUALITY__MAX_DUPLICATE_RATE=0.05
 export SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
 export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
@@ -276,24 +288,31 @@ export SBIR_ETL__PIPELINE__CHUNK_SIZE=5000
 ```
 
 ### Common Environment Overrides
+
 ```bash
-# Database connections
+
+## Database connections
+
 export SBIR_ETL__NEO4J__URI="bolt://production-neo4j:7687"
 export SBIR_ETL__NEO4J__PASSWORD="secure_password"
 
-# API keys
+## API keys
+
 export SBIR_ETL__ENRICHMENT__SAM_GOV_API_KEY="your_api_key"
 
-# Performance tuning
+## Performance tuning
+
 export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 export SBIR_ETL__PERFORMANCE__BATCH_SIZE=2000
 export SBIR_ETL__PERFORMANCE__PARALLEL_THREADS=8
 
-# Quality thresholds
+## Quality thresholds
+
 export SBIR_ETL__DATA_QUALITY__MIN_ENRICHMENT_SUCCESS=0.85
 export SBIR_ETL__ENRICHMENT__MIN_SUCCESS_RATE=0.88
 
-# CET configuration
+## CET configuration
+
 export SBIR_ETL__CET__CLASSIFICATION__MAX_FEATURES=75000
 export SBIR_ETL__CET__SCORING__HIGH_MIN=75
 ```
@@ -334,6 +353,7 @@ Prefer SBIR_ETL overrides in development/CI for clarity and portability; use raw
 ## Configuration Validation
 
 ### Pydantic Schema Example
+
 ```python
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, List
@@ -368,6 +388,7 @@ class PipelineConfig(BaseModel):
 ## Configuration Loading Pattern
 
 ### Configuration Loader
+
 ```python
 import yaml
 import os
@@ -402,6 +423,7 @@ def load_config(env: str = None) -> PipelineConfig:
 ## Best Practices
 
 ### Configuration Management
+
 - **Single source of truth**: Use this document for all configuration examples
 - **Environment-specific**: Use environment files for deployment-specific settings
 - **Secret management**: Never store secrets in YAML files, use environment variables
@@ -409,6 +431,7 @@ def load_config(env: str = None) -> PipelineConfig:
 - **Documentation**: Document all configuration parameters with comments
 
 ### Configuration Updates
+
 - **Update this document first** when adding new configuration patterns
 - **Remove duplicate configuration** from other steering documents
 - **Add references** to this document from other steering documents

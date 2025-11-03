@@ -6,7 +6,7 @@ The system uses Dagster's asset-based design for pipeline orchestration, where e
 
 ## Five-Stage ETL Pipeline
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   EXTRACT   │────▶│   VALIDATE  │────▶│  ENRICH     │────▶│  TRANSFORM  │────▶│    LOAD     │
 │             │     │             │     │             │     │             │     │             │
@@ -25,12 +25,15 @@ The system uses Dagster's asset-based design for pipeline orchestration, where e
 ## Asset Organization
 
 ### Asset Dependencies
+
 - Explicit dependency declarations in function signatures
 - Automatic execution order resolution by Dagster
 - Upstream dependency materialization before asset execution
 
 ### Asset Groups
+
 Assets organized by functional area:
+
 - `sbir_ingestion` - SBIR data extraction and validation
 - `enrichment` - External data enrichment
 - `cet_pipeline` - CET classification
@@ -38,6 +41,7 @@ Assets organized by functional area:
 - `graph_construction` - Neo4j loading and relationship creation
 
 ### Asset Naming Conventions
+
 - Stage prefix: `raw_`, `validated_`, `enriched_`, `transformed_`, `loaded_`
 - Entity type: `sbir_awards`, `companies`, `patents`, `contracts`
 - Clear, descriptive names indicating data state and content
@@ -45,18 +49,21 @@ Assets organized by functional area:
 ## Quality Gates and Asset Checks
 
 ### Asset Check Integration
+
 - Asset checks co-located with assets
 - Quality thresholds enforced at each stage
 - Failed checks block downstream asset execution
 - Quality metrics stored in asset metadata
 
 ### Quality Gate Types
+
 - **Completeness checks**: Required field coverage
 - **Uniqueness checks**: Primary key constraints
 - **Validity checks**: Value range validation
 - **Success rate checks**: Enrichment and processing success rates
 
 ### Blocking Behavior
+
 - ERROR severity issues block downstream processing
 - WARNING severity issues log but allow continuation
 - Quality gate failures visible in Dagster UI with clear reasons
@@ -64,11 +71,13 @@ Assets organized by functional area:
 ## Run Tracking and Metadata
 
 ### Run Context
+
 - Unique run ID generation and tracking
 - Run timestamp and duration recording
 - Run ID accessible to all assets during execution
 
 ### Asset Execution Metadata
+
 - Records processed count
 - Execution duration and throughput
 - Memory usage and performance metrics
@@ -76,6 +85,7 @@ Assets organized by functional area:
 - Error counts and issue summaries
 
 ### Metadata Visibility
+
 - Asset metadata visible in Dagster UI
 - Historical run comparison
 - Performance trend analysis
@@ -84,11 +94,13 @@ Assets organized by functional area:
 ## Processing Modes
 
 ### Full Refresh Mode
+
 - All assets materialized from scratch
 - Existing data replaced completely
 - Clean slate processing for data consistency
 
 ### Incremental Mode
+
 - Only new or modified source data processed
 - Existing processed data preserved
 - Efficient updates for large datasets
@@ -97,18 +109,21 @@ Assets organized by functional area:
 ## Performance Optimization
 
 ### Chunked Processing
+
 - Large datasets divided into configurable chunks
 - Memory-constrained processing support
 - Dynamic chunk size adjustment based on available resources
 - Progress tracking for long-running operations
 
 ### Batch Operations
+
 - Batch writes to Neo4j for performance
 - Configurable batch sizes per operation type
 - Transaction management for data consistency
 - Parallel processing where possible
 
 ### Memory Management
+
 - Memory usage monitoring and alerting
 - Memory pressure detection and response
 - Spill-to-disk strategies for large datasets
@@ -126,18 +141,21 @@ Pipeline processing, performance tuning, and orchestration settings are configur
 ## Error Handling and Recovery
 
 ### Error Context
+
 - Detailed error logging with context
 - Asset execution state preservation
 - Partial result protection (no corruption)
 - Clear error messages and troubleshooting guidance
 
 ### Recovery Strategies
+
 - Automatic retry with exponential backoff
 - Graceful degradation on resource constraints
 - Resume capability for interrupted processing
 - Rollback support for failed transactions
 
 ### Monitoring and Alerting
+
 - Pipeline health monitoring
 - Performance regression detection
 - Quality threshold breach alerts
@@ -146,9 +164,11 @@ Pipeline processing, performance tuning, and orchestration settings are configur
 ## Asset Check Implementation
 
 ### Quality Gate Integration
+
 Asset checks are co-located with assets and enforce quality thresholds at each pipeline stage. Failed checks block downstream asset execution.
 
 ### Completeness Check Pattern
+
 ```python
 @asset_check(asset=validated_sbir_awards)
 def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> AssetCheckResult:
@@ -167,6 +187,7 @@ def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> Asset
 ```
 
 ### Success Rate Check Pattern
+
 ```python
 @asset_check(asset=enriched_sbir_awards)
 def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
@@ -194,14 +215,16 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 
 ### Performance Monitoring Integration
 
-**Asset Execution Metadata:**
+### Asset Execution Metadata:
+
 - Records processed count
 - Execution duration and throughput
 - Memory usage and performance metrics
 - Quality metrics and success rates
 - Error counts and issue summaries
 
-**Performance Metrics Collection:**
+### Performance Metrics Collection:
+
 - Execution time per enrichment source
 - Memory usage during processing
 - Throughput (records/second)
@@ -211,24 +234,28 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 ## Best Practices
 
 ### Asset Design
+
 - Single responsibility per asset
 - Clear input/output contracts
 - Idempotent operations
 - Comprehensive error handling
 
 ### Dependency Management
+
 - Explicit dependency declarations
 - Minimal coupling between assets
 - Clear data contracts between stages
 - Version compatibility considerations
 
 ### Performance Considerations
+
 - Resource-aware processing
 - Configurable performance parameters
 - Memory usage optimization
 - Parallel processing where beneficial
 
 ### Monitoring and Observability
+
 - Comprehensive logging with context
 - Performance metric collection
 - Quality metric tracking

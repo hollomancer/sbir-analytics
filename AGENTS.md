@@ -1,9 +1,11 @@
 <!-- SPECIFICATION SYSTEM:START -->
+
 # AI Agent Instructions
 
-### Using Kiro Specs
+##Using Kiro Specs
 
 Use `.kiro/specs/` for all development work:
+
 - Planning new features or capabilities
 - Architecture changes and design decisions
 - Requirements documentation with EARS patterns
@@ -26,6 +28,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 - ✅ **Consolidated Utils**: Performance monitoring and utilities streamlined
 
 ### Stack
+
 - **Runtime:** Python 3.11+, Docker/Compose (consolidated profile-based)
 - **Data:** Dagster assets (consolidated), DuckDB, Pandas, Neo4j 5.x
 - **Config:** Hierarchical PipelineConfig + YAML (`config/base.yaml`)
@@ -33,6 +36,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 - **Performance:** Consolidated monitoring (`src/utils/performance_monitor.py`)
 
 ### Current State
+
 - Consolidated architecture with 153 Python files in `src/` (well-structured)
 - Configuration system: 33/33 tests passing, 88% coverage
 - Workflows: ci, container-ci, neo4j-smoke, performance-regression-check, secret-scan
@@ -40,7 +44,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 
 ## Key Directories
 
-```
+```text
 src/
   extractors/           # SBIR.gov CSV, USAspending dump, USPTO patents
   enrichers/            # Fuzzy matching, chunked processing, spill-to-disk (includes fiscal enrichers)
@@ -72,6 +76,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 ## Workflows
 
 ### Local (Poetry)
+
 ```bash
 poetry install
 poetry run dagster dev  # http://localhost:3000
@@ -79,6 +84,7 @@ pytest -v --cov=src
 ```
 
 ### Container (Docker)
+
 ```bash
 cp .env.example .env    # Set NEO4J_USER/PASSWORD
 make docker-build
@@ -88,23 +94,23 @@ make docker-test        # Run tests in container
 
 ## Guidelines
 
-**Code Quality:**
+### Code Quality:
 - Format: `black src tests` (line-length: 100)
 - Lint: `ruff check src tests`
 - Type: `mypy src`
 - Security: `bandit -r src`
 
-**Performance:**
+### Performance:
 - Baselines: `reports/benchmarks/baseline.json` (CI-cached)
 - Alerts: `reports/alerts/*.json`
 - Thresholds: `config/base.yaml`
 
-**Testing:**
+### Testing:
 - Coverage: ≥80% (CI enforced)
 - Isolation: Use `tmp_path`, avoid global state
 - Neo4j: Assumes healthy container
 
-**Documentation:**
+### Documentation:
 - User changes → README.md
 - New data sources → `docs/data/`
 - Neo4j changes → `docs/schemas/`

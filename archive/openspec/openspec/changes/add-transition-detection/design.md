@@ -10,21 +10,21 @@ SBIR program stakeholders need to measure **technology transition** - the ultima
 - Track the full innovation lifecycle (Research → Patents → Products → Contracts)
 - Identify which Critical and Emerging Technology areas transition most effectively
 
-**Available Resources:**
+### Available Resources:
 - Production-ready sbir-transition-classifier (66K detections/minute, 99.99% data retention)
 - USAspending.gov federal contracts data (6.7M+ contracts, 14GB+)
 - Proposed USPTO patent ETL (10.5M assignments)
 - Proposed CET classification module (21 technology areas)
 - Existing SBIR award data (252K awards)
 
-**Constraints:**
+### Constraints:
 - Must integrate seamlessly with existing Dagster pipeline
 - Must support both batch and incremental processing
 - Must provide explainable scoring (evidence bundles)
 - Must handle large contract datasets efficiently (14GB+)
 - Must enable graph-based transition pathway queries
 
-**Stakeholders:**
+### Stakeholders:
 - Program managers measuring ROI
 - Policy makers evaluating program effectiveness
 - Researchers studying innovation patterns
@@ -33,6 +33,7 @@ SBIR program stakeholders need to measure **technology transition** - the ultima
 ## Goals / Non-Goals
 
 ### Goals
+
 - Detect transitions from 100% of SBIR awards to follow-on contracts
 - Achieve ≥85% precision for high-confidence detections
 - Achieve ≥70% recall against known Phase III awards
@@ -44,6 +45,7 @@ SBIR program stakeholders need to measure **technology transition** - the ultima
 - Maintain ≥99.9% data retention rate
 
 ### Non-Goals
+
 - Real-time transition detection (batch processing only)
 - Commercial (non-government) contract tracking (focus on federal only)
 - Manual review interface (separate tool)
@@ -56,14 +58,15 @@ SBIR program stakeholders need to measure **technology transition** - the ultima
 
 **Choice:** Rules-based heuristic scoring with configurable weights (defer ML to future phase)
 
-**Rationale:**
+### Rationale:
 - sbir-transition-classifier proves rules-based approach achieves 97.9% data retention
 - Interpretable scoring (explainable to stakeholders)
 - No training data required initially
 - Fast to implement and deploy
 - Can add ML later when sufficient validated data available
 
-**Scoring Algorithm:**
+### Scoring Algorithm:
+
 ```python
 def calculate_transition_score(signals: TransitionSignals) -> float:
     """Calculate likelihood score from multiple signals."""
@@ -115,6 +118,7 @@ def calculate_timing_factor(days_after: int) -> float:
     - 3-12 months: 0.75
     - 12-24 months: 0.5
     - >24 months: 0.0 (outside window)
+
     """
     if days_after < 0:
         return 0.0  # Contract before award completion
@@ -128,7 +132,7 @@ def calculate_timing_factor(days_after: int) -> float:
         return 0.0  # Outside 24-month window
 ```
 
-**Alternatives Considered:**
+### Alternatives Considered:
 - ML classifier (XGBoost, Random Forest): Rejected - requires training data
 - Simple boolean rules: Rejected - too brittle, low recall
 - LLM-based classification: Rejected - cost, latency, non-deterministic
@@ -137,7 +141,8 @@ def calculate_timing_factor(days_after: int) -> float:
 
 **Choice:** Comprehensive JSON evidence stored on Neo4j relationships
 
-**Evidence Bundle Schema:**
+### Evidence Bundle Schema:
+
 ```python
 class EvidenceBundle(BaseModel):
     """Complete evidence for a transition detection."""
@@ -205,14 +210,14 @@ class CETSignals(BaseModel):
     cet_score: float
 ```
 
-**Rationale:**
+### Rationale:
 - Complete audit trail for every detection
 - Supports manual review and validation
 - Enables retroactive recomputation if algorithm changes
 - Interpretable to non-technical stakeholders
 - Stores all context needed for queries
 
-**Alternatives Considered:**
+### Alternatives Considered:
 - Store scoring components only: Rejected - insufficient for validation
 - Separate evidence table: Rejected - complicates queries
 - External blob storage: Rejected - Neo4j JSON properties sufficient
@@ -221,18 +226,26 @@ class CETSignals(BaseModel):
 
 **Choice:** Multi-identifier cross-walk with fallback hierarchy
 
-**Vendor Matching Hierarchy:**
-```
+### Vendor Matching Hierarchy:
+
+```text
 1. UEI (Unique Entity Identifier) - Primary, government-wide
+
    ↓ (if no match)
+
 2. CAGE Code (Commercial and Government Entity) - Defense-specific
+
    ↓ (if no match)
+
 3. DUNS Number (Data Universal Numbering System) - Legacy, being phased out
+
    ↓ (if no match)
+
 4. Normalized Name Match with fuzzy similarity ≥0.90
 ```
 
-**Implementation:**
+### Implementation:
+
 ```python
 class VendorResolver:
     """Resolve vendor identity across SBIR awards and federal contracts."""
@@ -290,14 +303,14 @@ class VendorResolver:
         return None  # No match found
 ```
 
-**Rationale:**
+### Rationale:
 - UEI is government-wide standard (highest confidence)
 - CAGE code specific to defense contractors (high confidence)
 - DUNS being phased out but still present in legacy data
 - Fuzzy name matching catches variations and typos
 - Hierarchical approach maximizes coverage
 
-**Alternatives Considered:**
+### Alternatives Considered:
 - Name-only matching: Rejected - too many false positives
 - UEI-only: Rejected - not all records have UEI yet
 - No fallback: Rejected - misses 20-30% of valid matches
@@ -306,7 +319,8 @@ class VendorResolver:
 
 **Choice:** Transition as first-class node with rich relationships
 
-**Graph Model:**
+### Graph Model:
+
 ```cypher
 // Core transition pattern
 (Award)-[:TRANSITIONED_TO {
@@ -337,7 +351,7 @@ class VendorResolver:
 }]->(TransitionProfile)
 ```
 
-**Node Types:**
+### Node Types:
 - **Transition**: Represents detected commercialization event
   - Properties: transition_id, detection_date, likelihood_score, confidence, evidence_bundle
 - **Contract**: Federal contract awarded after SBIR
@@ -345,14 +359,15 @@ class VendorResolver:
 - **TransitionProfile**: Company-level aggregation
   - Properties: company_id, total_awards, total_transitions, success_rate
 
-**Relationship Types:**
+### Relationship Types:
 - **TRANSITIONED_TO**: Award → Transition (detection metadata)
 - **RESULTED_IN**: Transition → Contract (outcome)
 - **ENABLED_BY**: Transition → Patent (IP backing)
 - **INVOLVES_TECHNOLOGY**: Transition → CETArea (technology tracking)
 - **ACHIEVED**: Company → TransitionProfile (company success metrics)
 
-**Query Examples:**
+### Query Examples:
+
 ```cypher
 // Find high-confidence AI transitions with patents
 MATCH path = (a:Award)-[:APPLICABLE_TO]->(cet:CETArea {name: "Artificial Intelligence"}),
@@ -390,14 +405,14 @@ RETURN
 ORDER BY tp.success_rate DESC
 ```
 
-**Rationale:**
+### Rationale:
 - Transition as node enables rich querying
 - Evidence stored on relationships maintains context
 - CET integration enables technology-specific analytics
 - Company profiles support strategic analysis
 - Graph structure reveals transition pathways
 
-**Alternatives Considered:**
+### Alternatives Considered:
 - Direct Award → Contract relationship: Rejected - loses evidence and scoring
 - Transition as relationship property only: Rejected - limits query capabilities
 - Separate transition database: Rejected - breaks graph connectivity
@@ -406,11 +421,12 @@ ORDER BY tp.success_rate DESC
 
 **Choice:** Track both award-level and company-level metrics
 
-**Critical Insight from sbir-transition-classifier:**
+### Critical Insight from sbir-transition-classifier:
 - **Award-Level**: 69% of awards transition (encouraging)
 - **Company-Level**: Only 7.9% of companies sustain commercialization (challenging)
 
-**Implementation:**
+### Implementation:
+
 ```python
 class TransitionAnalytics:
     """Dual-perspective transition analytics."""
@@ -459,7 +475,7 @@ class TransitionAnalytics:
         ]
 ```
 
-**Rationale:**
+### Rationale:
 - Award-level shows individual success (tactical view)
 - Company-level shows sustained capability (strategic view)
 - CET-level shows technology effectiveness (portfolio view)
@@ -469,7 +485,7 @@ class TransitionAnalytics:
 
 **Choice:** Patents as additional transition signal with multiple roles
 
-**Patent Roles in Transition Detection:**
+### Patent Roles in Transition Detection:
 
 1. **Commercialization Indicator:**
    - Patent filed after SBIR = intent to commercialize
@@ -491,7 +507,8 @@ class TransitionAnalytics:
    - Patent grant lag (days between patent grant and contract award)
    - Informs transition pathway analysis
 
-**Implementation:**
+### Implementation:
+
 ```python
 def extract_patent_signals(
     sbir_award: Award,
@@ -554,7 +571,7 @@ def extract_patent_signals(
 
 **Impact:** Detecting transitions that aren't actually related to SBIR award
 
-**Mitigation:**
+### Mitigation:
 - Use high confidence threshold (≥0.85) for automated acceptance
 - Require manual review for "Likely" detections (0.65-0.84)
 - Include complete evidence bundles for validation
@@ -567,7 +584,7 @@ def extract_patent_signals(
 
 **Impact:** Missing transitions due to company name changes, acquisitions, or identifier gaps
 
-**Mitigation:**
+### Mitigation:
 - Multi-identifier cross-walk (UEI, CAGE, DUNS)
 - Fuzzy name matching (≥0.90 threshold)
 - SAM.gov enrichment provides identifier completeness
@@ -580,7 +597,7 @@ def extract_patent_signals(
 
 **Impact:** 14GB+ contract dataset may strain memory and processing time
 
-**Mitigation:**
+### Mitigation:
 - Chunked processing (100K contracts/batch)
 - DuckDB for analytical queries on large contract dataset
 - Incremental processing (only new contracts since last run)
@@ -593,7 +610,7 @@ def extract_patent_signals(
 
 **Impact:** CET area analytics require CET classification module to be implemented first
 
-**Mitigation:**
+### Mitigation:
 - Design transition detection to work without CET (optional enhancement)
 - Phase 1: Core transition detection (contracts only)
 - Phase 2: Add patent signals
@@ -605,6 +622,7 @@ def extract_patent_signals(
 ## Migration Plan
 
 ### Phase 1: Core Transition Detection (Weeks 1-3)
+
 1. Implement vendor resolution (UEI/CAGE/DUNS cross-walk)
 2. Implement transition scoring algorithm
 3. Create evidence bundle generation
@@ -613,6 +631,7 @@ def extract_patent_signals(
 6. Validate against known Phase III awards
 
 ### Phase 2: Neo4j Integration (Week 4)
+
 1. Create Transition node schema
 2. Create TRANSITIONED_TO, RESULTED_IN relationships
 3. Load transition detections to Neo4j
@@ -620,6 +639,7 @@ def extract_patent_signals(
 5. Implement basic transition queries
 
 ### Phase 3: Patent Integration (Week 5)
+
 1. Integrate with USPTO patent ETL module
 2. Implement patent signal extraction
 3. Add ENABLED_BY relationships (Transition → Patent)
@@ -627,18 +647,21 @@ def extract_patent_signals(
 5. Validate patent topic similarity
 
 ### Phase 4: CET Integration (Week 6)
+
 1. Integrate with CET classification module
 2. Add INVOLVES_TECHNOLOGY relationships (Transition → CETArea)
 3. Implement CET area transition analytics
 4. Generate technology-specific success rate reports
 
 ### Phase 5: Analytics & Reporting (Week 7)
+
 1. Implement dual-perspective analytics (award + company level)
 2. Create transition pathway queries
 3. Generate executive dashboards
 4. Build analyst review interface
 
 ### Phase 6: Validation & Deployment (Week 8)
+
 1. Run full pipeline on production data
 2. Validate precision/recall metrics
 3. Performance benchmarking
@@ -646,6 +669,7 @@ def extract_patent_signals(
 5. Generate initial transition reports
 
 ### Rollback Plan
+
 - Transition detection is additive (no changes to existing awards/contracts)
 - Can disable transition assets via Dagster configuration
 - Neo4j transition data can be deleted without affecting core graph

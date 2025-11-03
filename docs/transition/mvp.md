@@ -14,32 +14,41 @@ This guide walks you through running the Transition Detection MVP locally, revie
 
 **Goal**: Run the MVP end-to-end and validate quality gates.
 
-**Time breakdown**:
+### Time breakdown
+
 - 2 min: Install dependencies
 - 5 min: Verify contracts_sample
 - 10 min: Run MVP pipeline
 - 10 min: Review outputs and quality gates
 - 3 min: Check precision sample
 
-**Steps**:
+### Steps
+
 ```bash
-# 1. Install (if needed)
+
+## 1. Install (if needed)
+
 poetry install
 
-# 2. Verify contracts_sample is valid
+## 2. Verify contracts_sample is valid
+
 poetry run python scripts/validate_contracts_sample.py
 
-# 3. Run MVP
+## 3. Run MVP
+
 make transition-mvp-run
 
-# 4. Review validation summary
+## 4. Review validation summary
+
 cat reports/validation/transition_mvp.json | jq .
 
-# 5. Review 30 quality samples
+## 5. Review 30 quality samples
+
 cat reports/validation/transition_quality_review_sample.json | jq '.[] | select(.score >= 0.80)' | head -15
 ```
 
 After 30 minutes, you'll have:
+
 - ✓ 5,000 validated contracts with action dates
 - ✓ Vendor resolution mappings (70%+ coverage)
 - ✓ Transition candidates scored deterministically
@@ -60,6 +69,7 @@ Artifacts (created under data/processed and reports/validation):
 - reports/validation/transition_mvp.json (summary of counts and gates)
 - reports/validation/transition_quality_review_sample.json (30 synthetic transitions for manual review)
 - reports/validation/transition_quality_review_checklist.json (review instructions)</parameter>
+
 </invoke>
 
 Quality gates (reported and enforced via checks/summary):
@@ -78,6 +88,7 @@ Scoring signals:
 - Agency alignment boost: awarding agency code or normalized name match
 
 Notes:
+
 - Parquet is attempted first; if pyarrow/fastparquet is not available, artifacts fall back to NDJSON in the same directory with .ndjson suffix.
 - Asset checks are available for Dagster environments and are also reflected in the validation summary for the local MVP run.
 
@@ -97,18 +108,24 @@ The repo includes a convenience Make target that runs the assets in-process with
 
 What it does:
 1) Prepare a minimal contracts sample if none exists:
+
    - data/processed/contracts_sample.parquet (or .csv if parquet not available)
    - Two dummy contracts (UEI exact match and fuzzy name match) are created with awarding agency fields for alignment signals.
+
 2) Run assets (in order):
+
    - contracts_sample
    - vendor_resolution
    - transition_scores_v1
    - transition_evidence_v1
+
 3) Write checks and validation summary:
+
    - data/processed/*.checks.json
    - reports/validation/transition_mvp.json
 
 Clean up artifacts:
+
 - make transition-mvp-clean
 
 ## Reviewing results
@@ -123,12 +140,15 @@ Clean up artifacts:
   - data/processed/transitions_evidence.ndjson
 
 Example: View first 5 evidence lines
+
 - head -n 5 data/processed/transitions_evidence.ndjson
 
 Example: Filter evidence for a specific contract_id (requires jq)
+
 - jq -c 'select(.contract_id=="C1")' data/processed/transitions_evidence.ndjson
 
 Validation summary:
+
 - reports/validation/transition_mvp.json
   - Consolidates counts, method breakdown, score stats, and pass/fail for the gates
   - Useful for CI or quick manual checklist
@@ -162,6 +182,7 @@ These are read at runtime; no restart needed for subsequent runs in the same she
 ## Data expectations
 
 Contracts sample schema (minimal):
+
 - contract_id
 - piid
 - fain
@@ -174,6 +195,7 @@ Contracts sample schema (minimal):
 - awarding_agency_name (optional, helps with agency alignment)
 
 Enriched SBIR awards minimal fields leveraged:
+
 - award_id
 - Company
 - UEI

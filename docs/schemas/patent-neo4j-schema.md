@@ -4,7 +4,8 @@
 
 This document specifies the Neo4j graph model for USPTO patent assignments, including node types, relationship types, properties, indexes, and integration with existing SBIR ETL entities (Awards, Companies).
 
-**Design Principles:**
+### Design Principles:
+
 - **Immutability**: Patent data is historical and immutable (append-only)
 - **Temporal Relationships**: Preserve assignment timeline (who → when → whom)
 - **Referential Clarity**: Clear links between patents, assignments, entities, and SBIR context
@@ -49,12 +50,14 @@ Represents a patented invention, identified by USPTO patent numbers.
 })
 ```
 
-**Constraints:**
+### Constraints:
+
 - `grant_doc_num` should be UNIQUE (when present, ~70% of records)
 - `title` must be non-null
 - `appno_date` should be between 1790 and current year
 
-**Indexes:**
+### Indexes:
+
 ```cypher
 CREATE INDEX idx_patent_grant_doc_num
   FOR (p:Patent) ON (p.grant_doc_num);
@@ -114,12 +117,14 @@ Represents a single assignment/transfer transaction. Links Patent to its partici
 })
 ```
 
-**Constraints:**
+### Constraints:
+
 - `rf_id` must be UNIQUE (primary key from USPTO)
 - `convey_type` must be from enum: ASSIGNMENT, LICENSE, SECURITY_INTEREST, MERGER, CORRECTION, etc.
 - `exec_date` should be between 1790 and current year
 
-**Indexes:**
+### Indexes:
+
 ```cypher
 CREATE INDEX idx_assignment_rf_id
   FOR (a:PatentAssignment) ON (a.rf_id);
@@ -175,13 +180,15 @@ Represents any party involved in patent assignments (assignees, assignors). Can 
 })
 ```
 
-**Constraints:**
+### Constraints:
+
 - `name` must be non-null
 - `entity_type` must be "ASSIGNEE" or "ASSIGNOR"
 - `entity_category` must be one of: COMPANY, INDIVIDUAL, UNIVERSITY, GOVERNMENT, OTHER
 - `entity_id` should be UNIQUE (composite key of normalized name + country + postcode)
 
-**Indexes:**
+### Indexes:
+
 ```cypher
 CREATE INDEX idx_entity_name
   FOR (e:PatentEntity) ON (e.name);
@@ -225,7 +232,8 @@ Links a Patent to a PatentAssignment transaction.
 
 **Cardinality**: One Patent can have MULTIPLE ASSIGNED_VIA relationships (assignment chain)
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Find all assignments for a patent
 MATCH (p:Patent {grant_doc_num: "10123456"})-[r:ASSIGNED_VIA]->(a:PatentAssignment)
@@ -255,7 +263,8 @@ Links a PatentAssignment to the recipient PatentEntity (assignee).
 
 **Cardinality**: One PatentAssignment can have MULTIPLE ASSIGNED_TO relationships (co-assignees)
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Find who owns a patent after assignment
 MATCH (a:PatentAssignment)-[r:ASSIGNED_TO]->(e:PatentEntity)
@@ -284,11 +293,14 @@ Links a PatentAssignment to the originator PatentEntity (assignor/inventor).
 
 **Cardinality**: One PatentAssignment can have MULTIPLE ASSIGNED_FROM relationships (multiple inventors)
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Find original inventors of a patent
 MATCH (p:Patent {grant_doc_num: "10123456"})-[:ASSIGNED_VIA]->(a:PatentAssignment)
+
 -[:ASSIGNED_FROM]->(inv:PatentEntity)
+
 WHERE a.exec_date = (
   SELECT MIN(a2.exec_date) FROM PatentAssignment a2
 )
@@ -321,11 +333,14 @@ Links a Patent to an SBIR Award (integration with SBIR pipeline).
 
 **Constraint**: Patent.grant_doc_num should match or fuzzy-match Award.patent_number
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Find all SBIR-funded patents for a company
 MATCH (a:Award)-[:FUNDS]->(c:Company)
+
 -[:RECEIVED_AWARD]->(award:Award)-[:FUNDED_BY]-(p:Patent)
+
 RETURN p.title, p.appno_date, award.amount
 ```
 
@@ -354,7 +369,8 @@ Direct relationship from Company to Patent (current ownership).
 
 **Derivation**: Computed from PatentEntity.sbir_company_id + ASSIGNED_TO chain
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Find patent portfolio of SBIR company
 MATCH (c:Company {sbir_uei: "ABC123"})-[r:OWNS]->(p:Patent)
@@ -383,11 +399,14 @@ Links consecutive PatentAssignments in an ownership chain.
 
 **Cardinality**: Links assignments in temporal order
 
-**Usage Pattern**:
+### Usage Pattern
+
 ```cypher
 // Trace full assignment chain for patent
 MATCH path = (p:Patent)-[:ASSIGNED_VIA]->(a1:PatentAssignment)
+
 -[:CHAIN_OF*]->(an:PatentAssignment)
+
 RETURN path
 ```
 
@@ -398,6 +417,7 @@ RETURN path
 ### 3.1 Award Integration
 
 Existing SBIR schema node `Award`:
+
 ```cypher
 (award:Award {
   award_id: string,
@@ -412,12 +432,14 @@ Existing SBIR schema node `Award`:
 })
 ```
 
-**New Relationship**:
+### New Relationship
+
 ```cypher
 (patent:Patent)-[r:FUNDED_BY]->(award:Award)
 ```
 
 **New Fields on Award** (optional, for performance):
+
 ```cypher
 award.patent_number: string         # Direct reference if known
 award.num_patents: integer          # Count of linked patents
@@ -428,6 +450,7 @@ award.num_patents: integer          # Count of linked patents
 ### 3.2 Company Integration
 
 Existing SBIR schema node `Company`:
+
 ```cypher
 (company:Company {
   company_id: string,
@@ -441,12 +464,14 @@ Existing SBIR schema node `Company`:
 })
 ```
 
-**New Relationship**:
+### New Relationship
+
 ```cypher
 (company:Company)-[r:OWNS]->(patent:Patent)
 ```
 
-**Enhanced PatentEntity**:
+### Enhanced PatentEntity
+
 ```cypher
 (:PatentEntity {
   sbir_company_id: string,          # Points to Company node
@@ -458,7 +483,7 @@ Existing SBIR schema node `Company`:
 
 ## 4. Complete Data Model Diagram
 
-```
+```text
                     ┌─────────────────────────────┐
                     │        :Patent              │
                     ├─────────────────────────────┤
@@ -514,8 +539,10 @@ Find complete chain of ownership for a patent:
 
 ```cypher
 MATCH (p:Patent {grant_doc_num: "10123456"})
+
 -[:ASSIGNED_VIA]->(a:PatentAssignment)
 -[:ASSIGNED_FROM]->(originator:PatentEntity)
+
 ,
 (a)-[:ASSIGNED_TO]->(recipient:PatentEntity)
 RETURN
@@ -571,11 +598,13 @@ Detect M&A activity through patent assignment transfers:
 MATCH (a1:PatentAssignment)-[:ASSIGNED_FROM]->(original:PatentEntity)
 ,
 (a1)-[:ASSIGNED_TO]->(intermediary:PatentEntity)
+
 -[:OWNS]->(c1:Company)
 -[:OWNS]->(p:Patent)
 -[:ASSIGNED_VIA]->(a2:PatentAssignment)
 -[:ASSIGNED_TO]->(acquirer:PatentEntity)
 -[:OWNS]->(c2:Company)
+
 WHERE a1.exec_date < a2.exec_date
   AND a1.convey_type = "ASSIGNMENT"
 RETURN
@@ -677,7 +706,9 @@ ORDER BY assignment_date DESC
 ### Constraints to Enforce
 
 ```cypher
-# Uniqueness Constraints
+
+## Uniqueness Constraints
+
 CREATE CONSTRAINT unique_patent_grant_doc_num
   ON (p:Patent) ASSERT p.grant_doc_num IS UNIQUE;
 
@@ -687,7 +718,8 @@ CREATE CONSTRAINT unique_assignment_rf_id
 CREATE CONSTRAINT unique_entity_id
   ON (e:PatentEntity) ASSERT e.entity_id IS UNIQUE;
 
-# Node Property Constraints (Neo4j 5.0+)
+## Node Property Constraints (Neo4j 5.0+)
+
 CREATE CONSTRAINT patent_title_required
   ON (p:Patent) ASSERT p.title IS NOT NULL;
 

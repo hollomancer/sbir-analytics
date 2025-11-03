@@ -19,23 +19,29 @@ The codebase is now significantly more maintainable with reduced duplication, cl
 The SBIR CLI provides a rich command-line interface for monitoring and operating the pipeline:
 
 ```bash
-# Install and verify
+
+## Install and verify
+
 poetry install
 sbir-cli --help
 
-# Check pipeline status
+## Check pipeline status
+
 sbir-cli status summary
 
-# View metrics
+## View metrics
+
 sbir-cli metrics latest
 
-# Start interactive dashboard
+## Start interactive dashboard
+
 sbir-cli dashboard start
 ```
 
 See [CLI Reference Guide](docs/cli/README.md) for complete documentation.
 
 ## Documentation Map
+
 - Specs (Kiro): `.kiro/specs/` (Active) | `.kiro/specs/archive/` (Completed)
 - User/Developer Docs: `docs/` (see `docs/index.md`)
 - Agent Steering: `.kiro/steering/` (see `.kiro/steering/README.md`)
@@ -100,13 +106,17 @@ After transition detection pipeline:
 ### Quick Start
 
 ```bash
-# Run full transition detection pipeline (all SBIR awards)
+
+## Run full transition detection pipeline (all SBIR awards)
+
 poetry run python -m dagster job execute -f src/definitions.py -j transition_full_job
 
-# Or: Run from Dagster UI
+## Or: Run from Dagster UI
+
 dagster dev
 
-# Then select and materialize "transition_full_job"
+## Then select and materialize "transition_full_job"
+
 ```
 
 **Expected Output** (10–30 minutes on typical hardware):
@@ -118,28 +128,38 @@ dagster dev
 
 ### Configuration
 
-**Quick Setup**:
+### Quick Setup
+
 ```bash
-# Use balanced preset (default)
+
+## Use balanced preset (default)
+
 export SBIR_ETL__TRANSITION__DETECTION__PRESET=balanced
 
-# Or: Use high-precision preset
+## Or: Use high-precision preset
+
 export SBIR_ETL__TRANSITION__DETECTION__PRESET=high_precision
 
-# Or: Use broad-discovery preset
+## Or: Use broad-discovery preset
+
 export SBIR_ETL__TRANSITION__DETECTION__PRESET=broad_discovery
 ```
 
-**Fine-Tuning**:
+### Fine-Tuning
+
 ```bash
-# Override confidence thresholds
+
+## Override confidence thresholds
+
 export SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.88
 export SBIR_ETL__TRANSITION__DETECTION__LIKELY_CONFIDENCE_THRESHOLD=0.70
 
-# Override timing window (days)
+## Override timing window (days)
+
 export SBIR_ETL__TRANSITION__DETECTION__MAX_DAYS=365  # 12 months instead of 24
 
-# Override signal weights (must sum to 1.0)
+## Override signal weights (must sum to 1.0)
+
 export SBIR_ETL__TRANSITION__DETECTION__AGENCY_WEIGHT=0.30
 export SBIR_ETL__TRANSITION__DETECTION__TIMING_WEIGHT=0.20
 export SBIR_ETL__TRANSITION__DETECTION__COMPETITION_WEIGHT=0.20
@@ -158,30 +178,37 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 - 📖 [CET Integration](docs/transition/cet_integration.md) - Technology area alignment
 - 📖 [Data Dictionary](docs/data-dictionaries/transition_fields_dictionary.md) - Field reference
 
-**Quick Reference**:
+### Quick Reference
 - 📋 [MVP Guide](docs/transition/mvp.md) - Minimal viable product
 - 📋 [Configuration Reference](config/transition/README.md) - YAML configuration guide
 
 ### Neo4j Queries
 
-**Find All Transitions for an Award**:
+### Find All Transitions for an Award
+
 ```cypher
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+
   -[:TRANSITIONED_TO]->(t:Transition)
   -[:RESULTED_IN]->(c:Contract)
+
 RETURN a.award_id, c.contract_id, t.likelihood_score, t.confidence
 ORDER BY t.likelihood_score DESC
 ```
 
-**Find Patent-Backed Transitions**:
+### Find Patent-Backed Transitions
+
 ```cypher
 MATCH (t:Transition)-[:ENABLED_BY]->(p:Patent)
+
   -[:RESULTED_IN]->(c:Contract)
+
 WHERE t.confidence IN ["HIGH", "LIKELY"]
 RETURN t.transition_id, p.title, c.piid, t.likelihood_score
 ```
 
-**Transition Effectiveness by CET Area**:
+### Transition Effectiveness by CET Area
+
 ```cypher
 MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
   <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
@@ -196,22 +223,26 @@ ORDER BY effectiveness_percent DESC
 ### Testing
 
 ```bash
-# Run all transition detection tests
+
+## Run all transition detection tests
+
 poetry run pytest tests/unit/test_transition*.py -v
 poetry run pytest tests/integration/test_transition_integration.py -v
 poetry run pytest tests/e2e/test_transition_e2e.py -v
 
-# Run with coverage
+## Run with coverage
+
 poetry run pytest tests/unit/test_transition*.py --cov=src/transition --cov-report=html
 
-# Run specific signal tests
+## Run specific signal tests
+
 poetry run pytest tests/unit/test_transition_scorer.py -v  # 32 tests, 93% coverage
 poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% coverage
 ```
 
 ### Key Files
 
-**Implementation**:
+### Implementation
 - `src/transition/detection/` - Detection pipeline (scoring, evidence, detector)
 - `src/transition/features/` - Feature extraction (vendor resolver, patent analyzer, CET)
 - `src/transition/analysis/` - Analytics (dual-perspective metrics)
@@ -219,12 +250,12 @@ poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% co
 - `src/transition/queries/` - Neo4j queries (pathways, analytics)
 - `src/loaders/transition_loader.py` - Neo4j loading
 
-**Configuration**:
+### Configuration
 - `config/transition/detection.yaml` - Scoring weights, thresholds
 - `config/transition/presets.yaml` - Preset configurations
 - `config/transition/README.md` - Configuration guide
 
-**Data**:
+### Data
 - `data/processed/transitions.parquet` - Detected transitions
 - `data/processed/transitions_evidence.ndjson` - Evidence bundles (JSON per line)
 - `data/processed/vendor_resolution.parquet` - Award→contractor cross-walk
@@ -247,7 +278,7 @@ poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% co
 5. CET alignment (weight: 0.10) - Same technology area
 6. Vendor match (weight: 0.10) - UEI/CAGE/DUNS confidence
 
-**Confidence Bands**:
+### Confidence Bands
 - HIGH: score ≥ 0.85 (high precision, ~85%)
 - LIKELY: score 0.65–0.84 (balanced, ~75% precision)
 - POSSIBLE: score <0.65 (high recall, ~40% precision)
@@ -311,15 +342,21 @@ After fiscal returns analysis pipeline:
 ### Quick Start
 
 ```bash
-# Run MVP fiscal analysis (core functionality)
+
+## Run MVP fiscal analysis (core functionality)
+
 poetry run dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
 
-# Run full analysis with sensitivity analysis
+## Run full analysis with sensitivity analysis
+
 poetry run dagster job execute -f src/definitions.py -j fiscal_returns_full_job
 
-# Or: Run from Dagster UI
+## Or: Run from Dagster UI
+
 dagster dev
-# Then select and materialize "fiscal_returns_full_job"
+
+## Then select and materialize "fiscal_returns_full_job"
+
 ```
 
 **Expected Output** (15–45 minutes depending on dataset size):
@@ -330,20 +367,26 @@ dagster dev
 
 ### Configuration
 
-**Key Settings**:
+### Key Settings
+
 ```bash
-# Base analysis year
+
+## Base analysis year
+
 export SBIR_ETL__FISCAL_ANALYSIS__BASE_YEAR=2023
 
-# Quality thresholds
+## Quality thresholds
+
 export SBIR_ETL__FISCAL_ANALYSIS__QUALITY_THRESHOLDS__NAICS_COVERAGE_RATE=0.85
 export SBIR_ETL__FISCAL_ANALYSIS__QUALITY_THRESHOLDS__BEA_SECTOR_MAPPING_RATE=0.90
 
-# Economic modeling parameters
+## Economic modeling parameters
+
 export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__DISCOUNT_RATE=0.03
 export SBIR_ETL__FISCAL_ANALYSIS__ECONOMIC_MODELING__ANALYSIS_PERIOD_YEARS=10
 
-# StateIO model version
+## StateIO model version
+
 export SBIR_ETL__FISCAL_ANALYSIS__STATEIO_MODEL_VERSION=v2.1
 ```
 
@@ -351,11 +394,12 @@ export SBIR_ETL__FISCAL_ANALYSIS__STATEIO_MODEL_VERSION=v2.1
 
 For fiscal returns analysis with StateIO/USEEIOR economic models:
 
-**R Package Repositories:**
+### R Package Repositories:
 - **StateIO**: https://github.com/USEPA/stateior
 - **USEEIOR**: https://github.com/USEPA/useeior
 
 1. **Install R**:
+
    ```bash
    # macOS
    brew install r
@@ -367,11 +411,13 @@ For fiscal returns analysis with StateIO/USEEIOR economic models:
    ```
 
 2. **Install Python rpy2**:
+
    ```bash
    poetry install --extras r
    ```
 
 3. **Install R packages** (in R console):
+
    ```r
    install.packages("remotes")
    remotes::install_github("USEPA/stateior")
@@ -379,6 +425,7 @@ For fiscal returns analysis with StateIO/USEEIOR economic models:
    ```
 
 4. **Validate installation**:
+
    ```bash
    python scripts/validate_r_adapter.py check-installation
    python scripts/validate_r_adapter.py test-adapter
@@ -403,7 +450,7 @@ See `docs/fiscal/r-package-reference.md` for detailed documentation and troubles
 
 The Statistical Reporting System provides comprehensive, multi-format reports for pipeline runs, enabling data-driven decisions and quality tracking across all pipeline stages.
 
-**Implementation Status**:
+### Implementation Status
 - ✅ Core infrastructure: `StatisticalReporter`, data models, configuration schema
 - ✅ Multi-format report generation: HTML, JSON, Markdown, Executive dashboards  
 - ✅ CI/CD integration: GitHub Actions artifacts, PR comments
@@ -422,12 +469,15 @@ The Statistical Reporting System provides comprehensive, multi-format reports fo
 #### Quick Start
 
 ```python
-# Generate reports for a pipeline run
+
+## Generate reports for a pipeline run
+
 from src.utils.statistical_reporter import StatisticalReporter
 
 reporter = StatisticalReporter()
 
-# Generate comprehensive reports
+## Generate comprehensive reports
+
 run_context = {
     "run_id": "run_20251030_143022",
     "pipeline_name": "sbir-etl",
@@ -435,30 +485,32 @@ run_context = {
 }
 
 report_collection = reporter.generate_reports(run_context)
-# Returns ReportCollection with artifacts for all formats
+
+## Returns ReportCollection with artifacts for all formats
+
 ```
 
-#### Report Types
+###Report Types
 
-**Data Hygiene Metrics**:
+### Data Hygiene Metrics
 - Clean vs dirty data ratios
 - Validation pass/fail rates
 - Quality score distributions
 - Field-level completeness
 
-**Module Reports**:
+### Module Reports
 - **SBIR Enrichment**: Match rates, source breakdown, coverage metrics
 - **Patent Analysis**: Validation results, loading statistics, quality scores
 - **CET Classification**: Technology distribution, detection rates, coverage
 - **Transition Detection**: Classification distribution, confidence scores
 
-**Executive Reports**:
+### Executive Reports
 - **Impact Metrics**: Total funding analyzed, companies tracked, patents linked
 - **Success Stories**: High-impact technology transitions, commercialization examples
 - **Program Effectiveness**: Funding ROI, commercialization rates, sector performance
 - **Comparative Analysis**: Performance against program goals and benchmarks
 
-**Automated Insights**:
+### Automated Insights
 - Quality threshold violations with severity levels
 - Performance anomaly detection and analysis
 - Actionable recommendations for identified issues
@@ -467,7 +519,9 @@ report_collection = reporter.generate_reports(run_context)
 #### Configuration
 
 ```yaml
-# config/base.yaml
+
+## config/base.yaml
+
 statistical_reporting:
   output_formats: ["html", "json", "markdown", "executive"]
   output_directory: "reports/statistical"
@@ -482,9 +536,10 @@ statistical_reporting:
       min_impact_threshold: 0.8
 ```
 
-#### CI/CD Integration
+###CI/CD Integration
 
 Reports are automatically generated in GitHub Actions:
+
 - **Artifacts**: 30-day retention for HTML, JSON, Markdown, and Executive reports
 - **PR Comments**: Markdown summaries with key metrics and changes
 - **Executive Dashboards**: High-level impact metrics and success stories for stakeholders
@@ -497,6 +552,7 @@ See `.kiro/specs/statistical_reporting/` for complete specification and implemen
 The project has successfully migrated from OpenSpec to Kiro for specification-driven development. All active OpenSpec changes have been converted to Kiro specifications.
 
 For ongoing development:
+
 - Use Kiro specifications in `.kiro/specs/` for new features and changes
 - Follow the Kiro workflow for requirements, design, and task management
 - Reference archived OpenSpec content in `archive/openspec/` for historical context only
@@ -508,30 +564,38 @@ For ongoing development:
 ## Transition Detection MVP
 
 **Status**: MVP infrastructure complete. Sample data validated (5,000 contracts, 100% action_date coverage). Ready for quality gate review.</parameter>
+
 </invoke>
 
 ### 30-Minute Quick Start
 
 ```bash
-# 1. Verify contracts sample meets acceptance criteria
+
+## 1. Verify contracts sample meets acceptance criteria
+
 poetry run python scripts/validate_contracts_sample.py
 
-# 2. Run the MVP pipeline (vendor resolution → transition scoring → evidence)
+## 2. Run the MVP pipeline (vendor resolution → transition scoring → evidence)
+
 make transition-mvp-run
 
-# 3. Review validation summary and gates
+## 3. Review validation summary and gates
+
 cat reports/validation/transition_mvp.json | jq .
 
-# 4. Review 30 quality samples for precision assessment
+## 4. Review 30 quality samples for precision assessment
+
 cat reports/validation/transition_quality_review_sample.json | jq '.[] | select(.score >= 0.80)'
 
-# 5. (Optional) Clean artifacts
+## 5. (Optional) Clean artifacts
+
 make transition-mvp-clean
 ```
 
 ### What You Get
 
 After the MVP run:
+
 - ✓ **contracts_sample.parquet** (5,000 records with validated metadata)
 - ✓ **vendor_resolution** mapping (award recipients → federal contracts)
 - ✓ **transition_scores** with deterministic rule-based scoring
@@ -563,6 +627,7 @@ See **docs/transition/mvp.md** for full documentation, scoring signals, and trou
 ## CET (Critical and Emerging Technologies) Pipeline
 
 Deployment
+
 - Containerization guide: docs/deployment/containerization.md
 - Staging profile: `docker compose --profile cet-staging up` (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
 - Neo4j server guide: docs/neo4j/server.md
@@ -573,11 +638,12 @@ This repository includes an end-to-end CET pipeline that classifies SBIR awards 
 
 You can execute the full CET job via Dagster:
 
-```
+```text
 dagster job execute -f src/definitions.py -j cet_full_pipeline_job
 ```
 
 Requirements:
+
 - Neo4j reachable via environment variables:
   - NEO4J_URI (e.g., bolt://localhost:7687)
   - NEO4J_USERNAME
@@ -591,6 +657,7 @@ Alternatively, run from the Dagster UI and select the job “cet_full_pipeline_j
 ### Assets included in the CET pipeline
 
 The job orchestrates these assets in dependency order:
+
 - cet_taxonomy
 - cet_award_classifications
 - cet_company_profiles
@@ -603,9 +670,11 @@ The job orchestrates these assets in dependency order:
 ### Neo4j schema for CET
 
 See the Neo4j schema documentation:
+
 - docs/references/schemas/neo4j.md
 
 CET-specific schema details:
+
 - CETArea node schema and constraints (defined in `src/loaders/cet_loader.py`)
 - Award/Company CET enrichment properties
 - Award → CETArea APPLICABLE_TO relationships
@@ -615,6 +684,7 @@ CET-specific schema details:
 ### CI
 
 A dedicated CI workflow runs a tiny-fixture CET pipeline to catch regressions end-to-end:
+
 - .github/workflows/cet-pipeline-ci.yml
 
 This spins up a Neo4j service, builds minimal CET configs and sample awards, and executes the cet_full_pipeline_job, uploading resulting artifacts (processed outputs and Neo4j checks).
@@ -624,6 +694,7 @@ Performance baseline initialization
 To enable automated regression detection against a baseline, initialize the CET performance baseline from existing processed artifacts. The initializer computes baseline coverage and specialization thresholds and writes them to `reports/benchmarks/baseline.json`. Run the initializer locally or in CI (after producing the processed artifacts) with:
 
     python scripts/init_cet_baseline.py \
+
       --awards-parquet data/processed/cet_award_classifications.parquet \
       --companies-path data/processed/cet_company_profiles.parquet
 
@@ -631,7 +702,7 @@ Once the baseline is created, the performance/regression job will compare curren
 
 ### Research & References
 
-**Classifier-Related Research:**
+### Classifier-Related Research:
 - **Bayesian Mixture-of-Experts**: [Bayesian Mixture-of-Experts: Towards Making LLMs Know What They Don't Know](https://www.arxiv.org/abs/2509.23830) - Research on improving calibration and uncertainty estimation in classifier routing mechanisms
 - **PaECTER**: [PaECTER - Patent Embeddings using Citation-informed TransformERs](https://huggingface.co/mpi-inno-comp/paecter) - Patent similarity model for semantic search and patent analysis tasks
 
@@ -657,10 +728,13 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 4. **Transform**: Business logic and graph-ready entity preparation
 5. **Load**: Write to Neo4j with idempotent operations and relationship chains
 
-```
+```text
 +-----------+      +------------+      +----------+      +-------------+      +--------+
+
 |  Extract  |----->|  Validate  |----->|  Enrich  |----->|  Transform  |----->|  Load  |
+
 +-----------+      +------------+      +----------+      +-------------+      +--------+
+
     |                  |                   |                   |                  |
  (Python/           (Pydantic)         (DuckDB/            (Python/           (Neo4j/
   Pandas)                             Fuzzy-matching)      Pandas)            Cypher)
@@ -675,12 +749,14 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 - **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
 - **Iterative Enrichment Refresh**: Automatic freshness tracking and refresh for enrichment data (see [Iterative Enrichment](#iterative-enrichment-refresh))
 
-#### Quality Gates
+###Quality Gates
 
 Configurable thresholds enforce data quality:
 
 ```yaml
-# config/base.yaml
+
+## config/base.yaml
+
 enrichment:
   match_rate_threshold: 0.70      # Min 70% match rate
 
@@ -691,7 +767,7 @@ loading:
   load_success_threshold: 0.99    # Min 99% load success
 ```
 
-**Asset Checks:**
+### Asset Checks:
 - `enrichment_quality_regression_check` — Compare to baseline
 - `patent_load_success_rate` — Verify Neo4j load success
 - `assignment_load_success_rate` — Verify relationship creation
@@ -702,7 +778,7 @@ loading:
 
 The iterative enrichment refresh system automatically keeps enrichment data current by periodically refreshing stale records from external APIs. This ensures data freshness without requiring full pipeline re-runs.
 
-**Key Features**:
+### Key Features
 - **Automatic Refresh**: Sensor-driven refresh after bulk enrichment completes
 - **Delta Detection**: Skips API calls when data is unchanged (payload hash comparison)
 - **Freshness Tracking**: Tracks last attempt, last success, payload hash, and status per award/source
@@ -714,15 +790,20 @@ The iterative enrichment refresh system automatically keeps enrichment data curr
 
 **Documentation**: See [`docs/enrichment/usaspending-iterative-refresh.md`](docs/enrichment/usaspending-iterative-refresh.md) for detailed workflow, configuration, and troubleshooting.
 
-**Quick Start**:
+### Quick Start
+
 ```bash
-# List stale awards
+
+## List stale awards
+
 python scripts/refresh_enrichment.py list-stale --source usaspending
 
-# Refresh stale awards
+## Refresh stale awards
+
 python scripts/refresh_enrichment.py refresh-usaspending --stale-only
 
-# View freshness statistics
+## View freshness statistics
+
 python scripts/refresh_enrichment.py stats --source usaspending
 ```
 
@@ -749,26 +830,31 @@ python scripts/refresh_enrichment.py stats --source usaspending
 The project provides Docker Compose for a consistent development and testing environment, including comprehensive E2E testing capabilities optimized for MacBook Air development.
 
 1. **Set up environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env: set NEO4J_USER, NEO4J_PASSWORD
    ```
 
 2. **Build and start services:**
+
    ```bash
    make docker-build
    make docker-up-dev
    ```
 
 3. **Run the pipeline:**
+
    Open your browser to [http://localhost:3000](http://localhost:3000) and materialize the assets to run the pipeline.
 
 4. **Run tests in container:**
+
    ```bash
    make docker-test
    ```
 
 5. **Run E2E tests locally:**
+
    ```bash
    # Run comprehensive E2E tests (MacBook Air optimized)
    make docker-e2e-standard
@@ -790,6 +876,7 @@ The project provides Docker Compose for a consistent development and testing env
    ```
 
 6. **View logs:**
+
    ```bash
    make docker-logs SERVICE=dagster-webserver
    ```
@@ -799,6 +886,7 @@ See `docs/deployment/containerization.md` for full details.
 ### Local Development (Alternative)
 
 1. **Clone and install dependencies:**
+
    ```bash
    git clone <repository-url>
    cd sbir-etl
@@ -806,18 +894,21 @@ See `docs/deployment/containerization.md` for full details.
    ```
 
 2. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env with Neo4j credentials and data paths
    ```
 
 3. **Start Dagster UI:**
+
    ```bash
    poetry run dagster dev
    # Open http://localhost:3000 and materialize the assets.
    ```
 
 4. **Run tests:**
+
    ```bash
    pytest -v --cov=src --cov-report=html
    ```
@@ -825,18 +916,21 @@ See `docs/deployment/containerization.md` for full details.
 ## Bulk Data Sources
 
 ### SBIR Awards
+
 - **Source**: [SBIR.gov Awards Database](https://www.sbir.gov/awards)
 - **Format**: CSV with 42 columns
 - **Records**: ~533,000 awards (1983–present)
 - **Update**: Monthly exports available
 
 ### USAspending
+
 - **Source**: PostgreSQL database dump
 - **Size**: 51GB compressed
 - **Purpose**: Award enrichment, transaction tracking, technology transition detection
 - **Coverage**: Federal contract and grant transactions
 
 ### USPTO Patents
+
 - **Source**: [USPTO Patent Assignment Dataset](https://www.uspto.gov/learning-and-resources/patent-assignment-data)
 - **Format**: CSV, Stata (.dta), Parquet
 - **Purpose**: Patent ownership chains, SBIR-funded patent tracking
@@ -845,7 +939,7 @@ See `docs/deployment/containerization.md` for full details.
 
 Configuration uses a unified three-layer system with consolidated schemas:
 
-```
+```text
 config/
 ├── base.yaml          # Defaults (version controlled)
 ├── dev.yaml           # Development overrides
@@ -856,6 +950,7 @@ config/
 ```
 
 The unified configuration system provides:
+
 - **Single hierarchical Pydantic model** for type-safe validation
 - **Standardized SBIR_ETL__ prefix** for all environment variables
 - **Environment-specific overrides** through consistent loading mechanism
@@ -872,34 +967,41 @@ export SBIR_ETL__CORE__DEBUG=true
 ## Testing
 
 ```bash
-# Run all tests
+
+## Run all tests
+
 poetry run pytest
 
-# Run with coverage
+## Run with coverage
+
 poetry run pytest --cov=src --cov-report=html
 
-# Run specific test categories
+## Run specific test categories
+
 poetry run pytest tests/unit/test_config.py -v
 poetry run pytest tests/integration/ -v
 poetry run pytest tests/e2e/ -v
 
-# Container tests
+## Container tests
+
 make docker-test
 
-# E2E tests (containerized - recommended)
+## E2E tests (containerized - recommended)
+
 make docker-e2e-minimal      # Quick smoke test (< 2 min)
 make docker-e2e-standard     # Full validation (5-8 min)
 make docker-e2e-large        # Performance test (8-10 min)
 make docker-e2e-edge-cases   # Robustness test (3-5 min)
 
-# E2E tests (direct script execution - alternative)
+## E2E tests (direct script execution - alternative)
+
 python scripts/run_e2e_tests.py --scenario minimal    # Quick smoke test
 python scripts/run_e2e_tests.py --scenario standard   # Full validation
 python scripts/run_e2e_tests.py --scenario large      # Performance test
 python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 ```
 
-**Test Suite:**
+### Test Suite:
 - 29+ tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
@@ -911,7 +1013,7 @@ python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 
 ## Project Structure
 
-```
+```text
 sbir-etl/
 ├── src/
 │   ├── assets/                 # Dagster asset definitions (pipeline orchestration)
@@ -978,14 +1080,14 @@ sbir-etl/
 
 ## Neo4j Graph Model
 
-**Node Types:**
+### Node Types:
 - `Award` — SBIR/STTR awards with company, agency, phase, amount
 - `Company` — Awardee companies with contact info, location
 - `Patent` — USPTO patents linked to SBIR-funded research
 - `PatentAssignment` — Patent transfer transactions
 - `PatentEntity` — Assignees and assignors (normalized names)
 
-**Relationship Types:**
+### Relationship Types:
 - `RECEIVED` — Company → Award
 - `GENERATED_FROM` — Patent → Award (SBIR-funded patents)
 - `OWNS` — Company → Patent (current ownership)
@@ -994,19 +1096,23 @@ sbir-etl/
 - `ASSIGNED_TO` — PatentAssignment → PatentEntity
 - `CHAIN_OF` — PatentAssignment → PatentAssignment (ownership history)
 
-**Query Examples:**
+### Query Examples:
 
 ```cypher
-# Find all awards for a company
+
+## Find all awards for a company
+
 MATCH (c:Company {name: "Acme Inc"})-[:RECEIVED]->(a:Award)
 RETURN a.title, a.amount, a.phase
 
-# Trace patent ownership chain
+## Trace patent ownership chain
+
 MATCH path = (p:Patent)-[:ASSIGNED_VIA*]->(pa:PatentAssignment)
 WHERE p.grant_doc_num = "7123456"
 RETURN path
 
-# Find SBIR-funded patents with assignments
+## Find SBIR-funded patents with assignments
+
 MATCH (a:Award)<-[:GENERATED_FROM]-(p:Patent)-[:ASSIGNED_VIA]->(pa:PatentAssignment)
 WHERE a.company_name = "Acme Inc"
 RETURN p.title, pa.assignee_name, pa.recorded_date
@@ -1024,7 +1130,7 @@ GitHub Actions workflows:
 | `performance-regression-check.yml` | PRs (enrichment changes) | Benchmark + regression detection |
 | `secret-scan.yml` | Push to main/develop, PRs | Secret leak detection |
 
-**Performance Regression CI:**
+### Performance Regression CI:
 - Runs on enrichment/asset changes
 - Compares to cached baseline (`reports/benchmarks/baseline.json`)
 - Posts PR comment with duration/memory/match_rate deltas
@@ -1072,10 +1178,12 @@ See [Consolidation Refactor Plan](docs/architecture/consolidation-refactor-plan.
 This project makes use of and is grateful for the following open-source tools and research:
 
 ### Economic Modeling
+
 - **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
 - **[USEEIOR](https://github.com/USEPA/useeior)** - Environmentally-extended input-output model builder by USEPA
 
 ### Classifier Research & Tools
+
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation in classifier routing by Albus Yizhuo Li
 - **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute for Innovation and Competition
 

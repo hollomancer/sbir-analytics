@@ -21,6 +21,7 @@ The award classifier is a multi-label text classification pipeline that predicts
 - Batch inference for throughput and memory efficiency
 
 Key hyperparameters (classification.yaml):
+
 - tfidf
   - max_features: int (e.g., 5000)
   - ngram_range: [min_n, max_n] (e.g., [1, 2])
@@ -53,17 +54,20 @@ Key hyperparameters (classification.yaml):
 - model_version: string (e.g., "vtest" or "v1.0.0")
 
 Operational notes:
+
 - Taxonomy version is propagated from `TaxonomyLoader` and stored with outputs.
 - Evidence extraction (if enabled) decorates predictions with rationale/excerpts; not required for model scoring.
 - Scores are derived from calibrated probabilities and can be mapped to High/Medium/Low via `confidence_thresholds`.
 - Batch size trades off memory footprint and throughput during `classify_batch()`.
 
 Outputs (from `cet_award_classifications`):
+
 - `award_id`, `primary_cet`, `primary_score`
 - `supporting_cets`: list of {cet_id, score}
 - `classified_at`, `taxonomy_version`, optional `evidence`
 
 The goals for this stack:
+
 - Keep imports safe in lean environments (no heavy NLP libs at import time).
 - Provide small, deterministic feature helpers suitable for unit tests and CI.
 - Offer an opinionated training/evaluation flow that produces a pickle artifact and metadata.
@@ -118,6 +122,7 @@ The goals for this stack:
 - `application_year` (best-effort parse)
 
 Key functions in `src/ml/features/patent_features.py`:
+
 - `extract_features(record, keywords_map=None) -> PatentFeatureVector`
 - `bag_of_keywords_features(title, keywords) -> dict`
 - `guess_assignee_type(assignee_str) -> str`
@@ -159,6 +164,7 @@ These are designed to be import-safe and deterministic.
   - `features_for_dataframe(df, title_col="title", assignee_col=None) -> (texts, feature_vectors)`
 
 Notes:
+
 - Training can proceed using normalized title-only text, or using extracted features transformed into numeric matrices via `FeatureMatrixBuilder`.
 - For lightweight pipelines (like `DummyPipeline` used in tests), text inputs are sufficient.
 - For production pipelines (sklearn), pass a matrix via `feature_matrix_builder` in `train_from_dataframe`.
@@ -212,6 +218,7 @@ Two options:
     - Companion checks JSON with coverage
 
 Fallback behavior:
+
 - If the artifact or dependencies are missing, the asset produces an empty schema-compatible output and a checks JSON indicating the reason.
 
 ---
@@ -275,6 +282,7 @@ Store evaluation metrics in your artifact metadata by merging them into `config`
 ## Minimal Example (Script)
 
 Outline of a training script using `DummyPipeline` for illustration:
+
 - Load training data into a DataFrame with `title` and `cet_labels`.
 - Create a factory that returns a binary pipeline for each CET ID.
 - Call `train_patent_classifier(...)` to persist the model.

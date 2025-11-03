@@ -8,7 +8,9 @@ This document provides reference information for EPA's StateIO (`stateior`) and 
 
 **Purpose**: State-level input-output economic modeling  
 **Repository**: https://github.com/USEPA/stateior  
-**Installation**:
+
+### Installation
+
 ```r
 install.packages("remotes")
 remotes::install_github("USEPA/stateio")
@@ -20,7 +22,9 @@ StateIO constructs two-region models for a specific state and the rest of the U.
 
 **Purpose**: U.S. Environmentally-Extended Input-Output models  
 **Repository**: https://github.com/USEPA/useeior  
-**Installation**:
+
+### Installation
+
 ```r
 install.packages("remotes")
 remotes::install_github("USEPA/useeior")
@@ -35,18 +39,21 @@ USEEIOR builds and uses national-level environmentally-extended input-output mod
 Key functions discovered from package exploration:
 
 #### Model Building
+
 - `buildFullTwoRegionIOTable(state, year, iolevel, specs)` - Build two-region IO table for a state
 - `buildStateUseModel(year, specs)` - Build state use model for all states
 - `buildStateSupplyModel(year, specs)` - Build state supply model
 - `buildTwoRegionUseModel(state, year, iolevel, specs)` - Build two-region use model
 
 #### Value Added Data
+
 - `getStateGVA(state, year, specs)` - Get Gross Value Added data
 - `getStateEmpCompensation(state, year, specs)` - Get employee compensation (wages)
 - `getStateGOS(state, year, specs)` - Get Gross Operating Surplus
 - `getStateTax(state, year, specs)` - Get tax data
 
 #### Data Loading
+
 - `loadStateIODataFile(filename, ver)` - Load StateIO data from Data Commons or local directory
 
 ### USEEIOR (`useeior`) Functions
@@ -54,16 +61,19 @@ Key functions discovered from package exploration:
 Key functions discovered from package exploration:
 
 #### Model Building
+
 - `buildModel(modelname, configpaths)` - Build EEIO model
 - `buildTwoRegionModels(modelname, configpaths, validate, year)` - Build models for all 50 states
 - `buildIOModel(modelname, configpaths)` - Build IO model (economic components only)
 
 #### Impact Calculation
+
 - `calculateEEIOModel(model, perspective, demand, location, ...)` - Calculate impacts with demand vector
   - Returns list with `N` (LCI), `L` (requirements), `H_r` (DIRECT impacts), `H_l` (FINAL impacts)
 - `formatDemandVector(model, demand)` - Format demand vector for use with calculateEEIOModel
 
 #### Model Information
+
 - `seeAvailableModels()` - List available model specifications
 
 ### Integration Pattern
@@ -74,16 +84,20 @@ Key functions discovered from package exploration:
 library(useeior)
 library(stateior)
 
-# Build state models (integrates StateIO)
+## Build state models (integrates StateIO)
+
 state_models <- buildTwoRegionModels("USEEIO2012", year = 2023)
 
-# Get state-specific model
+## Get state-specific model
+
 ca_model <- state_models[["CA"]]
 
-# Create demand vector from shocks
+## Create demand vector from shocks
+
 demand <- formatDemandVector(ca_model, shocks_df)
 
-# Calculate impacts
+## Calculate impacts
+
 impacts <- calculateEEIOModel(
   model = ca_model,
   perspective = "DIRECT",
@@ -91,10 +105,12 @@ impacts <- calculateEEIOModel(
   location = "CA"
 )
 
-# Extract production impacts from N matrix
+## Extract production impacts from N matrix
+
 production_impacts <- impacts$N
 
-# Get value added components from StateIO
+## Get value added components from StateIO
+
 va <- getStateGVA(state = "CA", year = 2023, specs = specs)
 wages <- getStateEmpCompensation(state = "CA", year = 2023, specs = specs)
 ```
@@ -109,9 +125,12 @@ wages <- getStateEmpCompensation(state = "CA", year = 2023, specs = specs)
 - **Shock Amount**: Spending amount in dollars (inflation-adjusted)
 
 Expected DataFrame structure:
-```
+
+```text
 state | bea_sector | fiscal_year | shock_amount
+
 ------|------------|-------------|--------------
+
 CA    | 11         | 2023        | 1000000
 CA    | 21         | 2023        | 500000
 ```
@@ -119,6 +138,7 @@ CA    | 21         | 2023        | 500000
 ### Output Data Format
 
 Expected impact components:
+
 - `wage_impact`: Wage and salary impacts
 - `proprietor_income_impact`: Proprietor income impacts
 - `gross_operating_surplus`: Business surplus impacts
@@ -137,25 +157,31 @@ import rpy2.robjects as ro
 from rpy2.robjects.packages import importr
 from rpy2.robjects import pandas2ri
 
-# Activate pandas conversion
+## Activate pandas conversion
+
 pandas2ri.activate()
 
-# Load R package
+## Load R package
+
 stateio = importr("stateior")
 
-# Convert pandas DataFrame to R
+## Convert pandas DataFrame to R
+
 r_shocks = pandas2ri.py2rpy(shocks_df)
 
-# Call R function (example - actual function names may vary)
+## Call R function (example - actual function names may vary)
+
 r_result = stateio.compute_impacts(model, r_shocks)
 
-# Convert back to pandas
+## Convert back to pandas
+
 result_df = pandas2ri.rpy2py(r_result)
 ```
 
 ### Error Handling
 
 Common R package errors:
+
 - Package not installed: `Error in library(stateior) : there is no package called 'stateior'`
 - Missing dependencies: Check for required R dependencies
 - Invalid inputs: R functions may throw errors for invalid sector codes or states
@@ -178,12 +204,14 @@ Common R package errors:
 
 #### 1. Install R
 
-**macOS**:
+### macOS
+
 ```bash
 brew install r
 ```
 
-**Linux**:
+### Linux
+
 ```bash
 sudo apt-get update
 sudo apt-get install r-base
@@ -194,32 +222,41 @@ sudo apt-get install r-base
 #### 2. Install R Packages
 
 Start R console and run:
+
 ```r
-# Install remotes if needed
+
+## Install remotes if needed
+
 install.packages("remotes")
 
-# Install StateIO
+## Install StateIO
+
 remotes::install_github("USEPA/stateio")
 
-# Install USEEIOR
+## Install USEEIOR
+
 remotes::install_github("USEPA/useeior")
 
-# Verify installation
+## Verify installation
+
 library(stateior)
 library(useeior)
 ```
 
-#### 3. Install Python rpy2
+###3. Install Python rpy2
 
 ```bash
 poetry install --extras r
-# or
+
+## or
+
 pip install rpy2
 ```
 
-#### 4. Verify Installation
+###4. Verify Installation
 
 Test R integration:
+
 ```python
 from rpy2.robjects.packages import importr
 
@@ -257,6 +294,7 @@ except Exception as e:
 ### Debug Mode
 
 Enable R debug output:
+
 ```python
 import rpy2.robjects as ro
 ro.r('options(warn = 2)')  # Convert warnings to errors
@@ -275,6 +313,7 @@ ro.r('options(show.error.messages = TRUE)')  # Show error messages
 ### Function Discovery
 
 The actual functions were discovered by:
+
 1. Running `names(getNamespace("stateior"))` in R to list all exported functions
 2. Running `names(getNamespace("useeior"))` in R to list all exported functions  
 3. Examining function help with `help(function_name)` in R
@@ -290,6 +329,7 @@ The actual functions were discovered by:
 ### Model Versions
 
 Available USEEIOR models (from `seeAvailableModels()`):
+
 - `USEEIO2012` - 2012 base model
 - `USEEIOv2.0.1-411` - Version 2.0.1 with 411 sectors
 - `USEEIOv2.3-GHG` - Version 2.3 with GHG focus
@@ -298,6 +338,7 @@ Available USEEIOR models (from `seeAvailableModels()`):
 ### Impact Component Extraction
 
 USEEIOR's `calculateEEIOModel()` primarily returns environmental impacts. Economic components (wages, income, taxes) need to be extracted from:
+
 1. Production impacts from `N` matrix (commodity outputs)
 2. Value added ratios from StateIO functions (`getStateGVA`, `getStateEmpCompensation`)
 3. Model metadata or separate value added tables

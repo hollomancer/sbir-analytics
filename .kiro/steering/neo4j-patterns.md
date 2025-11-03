@@ -7,12 +7,14 @@ The system implements comprehensive Neo4j loading patterns for SBIR, patent, and
 ## Node Creation Patterns
 
 ### Upsert Semantics
+
 - Use MERGE for idempotent node creation
 - Support insert or update operations
 - Handle duplicate prevention with unique constraints
 - Maintain data consistency across multiple loads
 
 ### Batch Node Creation
+
 ```cypher
 UNWIND $batch AS row
 MERGE (c:Company {uei: row.uei})
@@ -23,6 +25,7 @@ SET c.name = row.name,
 ```
 
 ### Node Types and Labels
+
 - **Company**: SBIR award recipients with UEI/DUNS identifiers
 - **Award**: SBIR/STTR awards with funding and phase information
 - **Patent**: USPTO patents with grant numbers and metadata
@@ -33,14 +36,18 @@ SET c.name = row.name,
 ## Relationship Creation Patterns
 
 ### Temporal Relationships
+
 Store time-based metadata on relationships:
+
 ```cypher
 (award:Award)-[:AWARDED_TO {award_date: date("2023-01-15")}]->(company:Company)
 (patent:Patent)-[:ASSIGNED_VIA {record_date: date("2023-06-20")}]->(assignment:PatentAssignment)
 ```
 
 ### Confidence-Based Relationships
+
 Include confidence scores and evidence:
+
 ```cypher
 (award:Award)-[:FUNDED {
   confidence: 0.95,
@@ -50,7 +57,9 @@ Include confidence scores and evidence:
 ```
 
 ### Hierarchical Relationships
+
 Support parent-child structures:
+
 ```cypher
 (subcategory:CETArea)-[:SUBCATEGORY_OF]->(parent:CETArea)
 ```
@@ -58,6 +67,7 @@ Support parent-child structures:
 ## Index and Constraint Management
 
 ### Unique Constraints
+
 ```cypher
 CREATE CONSTRAINT unique_company_uei ON (c:Company) ASSERT c.uei IS UNIQUE;
 CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
@@ -66,6 +76,7 @@ CREATE CONSTRAINT unique_assignment_rf_id ON (pa:PatentAssignment) ASSERT pa.rf_
 ```
 
 ### Performance Indexes
+
 ```cypher
 CREATE INDEX idx_company_name ON (c:Company) ON (c.name);
 CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
@@ -74,6 +85,7 @@ CREATE INDEX idx_assignment_date ON (pa:PatentAssignment) ON (pa.record_date);
 ```
 
 ### Full-Text Search Indexes
+
 ```cypher
 CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
 CREATE FULLTEXT INDEX idx_patent_title_fulltext ON (p:Patent) FOR (p.title);
@@ -82,11 +94,13 @@ CREATE FULLTEXT INDEX idx_patent_title_fulltext ON (p:Patent) FOR (p.title);
 ## Transaction Management
 
 ### Batch Processing
+
 - Process data in configurable batches (default: 1,000 records)
 - Commit transactions per batch for memory management
 - Handle transaction failures with rollback and retry
 
 ### Transaction Size Optimization
+
 ```python
 def load_nodes_in_batches(data, batch_size=1000):
     for i in range(0, len(data), batch_size):
@@ -96,6 +110,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ```
 
 ### Error Handling
+
 - Rollback transactions on constraint violations
 - Log detailed error information
 - Continue processing with remaining batches
@@ -104,6 +119,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ## CET Classification Integration
 
 ### Award-CET Relationships
+
 ```cypher
 (award:Award)-[:APPLICABLE_TO {
   score: 85,
@@ -120,6 +136,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ```
 
 ### Company Specialization
+
 ```cypher
 (company:Company)-[:SPECIALIZES_IN {
   award_count: 5,
@@ -135,6 +152,7 @@ def load_nodes_in_batches(data, batch_size=1000):
 ## Patent Assignment Chain Modeling
 
 ### Assignment Relationships
+
 ```cypher
 // Patent to Assignment
 (patent:Patent)-[:ASSIGNED_VIA]->(assignment:PatentAssignment)
@@ -148,11 +166,14 @@ def load_nodes_in_batches(data, batch_size=1000):
 ```
 
 ### Assignment Chain Queries
+
 ```cypher
 // Find complete ownership chain for a patent
 MATCH (p:Patent {grant_doc_num: "5858003"})
+
 -[:ASSIGNED_VIA]->(a:PatentAssignment)
 -[:ASSIGNED_FROM]->(originator:PatentEntity)
+
 ,
 (a)-[:ASSIGNED_TO]->(recipient:PatentEntity)
 RETURN
@@ -166,12 +187,14 @@ ORDER BY a.record_date ASC
 ## Performance Optimization
 
 ### Bulk Loading Strategies
+
 - Use UNWIND for batch operations
 - Create indexes before bulk loading
 - Use MERGE for upsert operations
 - Optimize query patterns for large datasets
 
 ### Query Optimization
+
 - Use EXPLAIN and PROFILE for query analysis
 - Optimize relationship traversals
 - Use appropriate indexes for query patterns
@@ -192,12 +215,14 @@ Performance configuration and memory management details are covered in **[pipeli
 ## Data Quality Constraints
 
 ### Node Property Validation
+
 ```cypher
 CREATE CONSTRAINT award_amount_positive ON (a:Award) ASSERT a.award_amount >= 0;
 CREATE CONSTRAINT patent_title_required ON (p:Patent) ASSERT p.title IS NOT NULL;
 ```
 
 ### Relationship Property Validation
+
 - Confidence scores between 0.0 and 1.0
 - Classification values from predefined set
 - Date values within valid ranges
@@ -206,6 +231,7 @@ CREATE CONSTRAINT patent_title_required ON (p:Patent) ASSERT p.title IS NOT NULL
 ## Common Query Patterns
 
 ### Portfolio Analysis
+
 ```cypher
 // Total funding by CET area
 MATCH (a:Award)-[r:APPLICABLE_TO {primary: true}]->(cet:CETArea)
@@ -219,6 +245,7 @@ ORDER BY total_funding DESC
 ```
 
 ### Technology Transition Analysis
+
 ```cypher
 // Awards that led to patents in same CET area
 MATCH (a:Award)-[:APPLICABLE_TO]->(award_cet:CETArea)
@@ -232,6 +259,7 @@ ORDER BY successful_transitions DESC
 ```
 
 ### Company Specialization Analysis
+
 ```cypher
 // Companies with highest specialization in AI
 MATCH (c:Company)-[s:SPECIALIZES_IN]->(cet:CETArea {cet_id: "artificial_intelligence"})
@@ -248,6 +276,7 @@ LIMIT 20
 ## Incremental Update Patterns
 
 ### Upsert Existing Data
+
 ```cypher
 // Update existing patents with new information
 MERGE (p:Patent {grant_doc_num: $grant_doc_num})
@@ -257,6 +286,7 @@ SET p.title = $title,
 ```
 
 ### Append New Relationships
+
 ```cypher
 // Add new patent assignments
 MATCH (p:Patent {grant_doc_num: $grant_doc_num})
@@ -265,6 +295,7 @@ MERGE (p)-[:ASSIGNED_VIA]->(pa)
 ```
 
 ### Update Current Ownership
+
 ```cypher
 // Update current patent ownership
 MATCH (p:Patent {grant_doc_num: $grant_doc_num})
@@ -278,18 +309,21 @@ CREATE (c)-[:OWNS {as_of_date: $assignment_date}]->(p)
 ## Monitoring and Maintenance
 
 ### Database Statistics
+
 - Monitor node and relationship counts
 - Track index usage and performance
 - Monitor query execution times
 - Alert on constraint violations
 
 ### Data Integrity Checks
+
 - Validate relationship consistency
 - Check for orphaned nodes
 - Verify constraint compliance
 - Monitor data quality metrics
 
 ### Performance Monitoring
+
 - Query performance analysis
 - Index effectiveness monitoring
 - Memory usage tracking

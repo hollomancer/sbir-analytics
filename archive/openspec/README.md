@@ -3,6 +3,7 @@
 This directory contains the complete archived OpenSpec content from the migration to Kiro specifications.
 
 ## Archive Date
+
 2025-10-30 15:26:50
 
 ## Contents
@@ -13,7 +14,7 @@ This directory contains the complete archived OpenSpec content from the migratio
 
 ## Directory Structure
 
-```
+```text
 openspec/
 ├── changes/           # OpenSpec change proposals
 │   ├── archive/       # Previously completed changes
@@ -33,6 +34,7 @@ openspec/
 ## Accessing Archived Content
 
 This archived content is read-only and should be used only for:
+
 - Historical reference
 - Understanding past decisions
 - Audit and compliance purposes
@@ -43,6 +45,7 @@ For active development, use the Kiro specifications in `.kiro/specs/`.
 ## Migration Mapping
 
 See `migration_mapping.json` for detailed traceability between:
+
 - OpenSpec changes → Kiro specs
 - OpenSpec specifications → Consolidated Kiro specs
 - File-level mapping and transformation details

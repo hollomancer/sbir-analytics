@@ -24,27 +24,32 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 ### Initial Setup
 
 1. **Clone the repository:**
+
    ```bash
    git clone <repository-url>
    cd sbir-etl
    ```
 
 2. **Install dependencies with Poetry:**
+
    ```bash
    poetry install
    ```
 
 3. **Activate the virtual environment:**
+
    ```bash
    poetry shell
    ```
 
 4. **Start local services (Neo4j) with Docker Compose:**
+
    ```bash
    docker-compose up -d neo4j
    ```
 
 5. **Verify setup:**
+
    ```bash
    pytest
    black --check .
@@ -72,19 +77,25 @@ git checkout -b feature/your-feature-name
 Before committing, ensure your code passes all quality checks:
 
 ```bash
-# Format code with black
+
+## Format code with black
+
 black .
 
-# Lint with ruff
+## Lint with ruff
+
 ruff check . --fix
 
-# Type check with mypy
+## Type check with mypy
+
 mypy src/
 
-# Run tests with coverage
+## Run tests with coverage
+
 pytest --cov=src --cov-report=term-missing
 
-# Security scan with bandit
+## Security scan with bandit
+
 bandit -r src/
 ```
 
@@ -105,6 +116,7 @@ Then create a pull request on the repository.
 ### Code Formatting
 
 - **Black**: Line length 100, Python 3.11 target
+
   ```bash
   black --line-length 100 .
   ```
@@ -112,11 +124,13 @@ Then create a pull request on the repository.
 ### Linting
 
 - **Ruff**: Configured in `pyproject.toml`
+
   ```bash
   ruff check .
   ```
 
   Key rules:
+
   - Follow PEP 8 style guide
   - Use type hints for all functions
   - No unused imports or variables
@@ -125,11 +139,13 @@ Then create a pull request on the repository.
 ### Type Checking
 
 - **MyPy**: Strict type checking enabled
+
   ```bash
   mypy src/
   ```
 
   Requirements:
+
   - All functions must have type hints
   - No `Any` types without justification
   - Handle Optional types explicitly
@@ -137,6 +153,7 @@ Then create a pull request on the repository.
 ### Security
 
 - **Bandit**: Security linting for Python
+
   ```bash
   bandit -r src/
   ```
@@ -146,6 +163,7 @@ Then create a pull request on the repository.
 - All modules, classes, and functions must have docstrings
 - Use Google-style docstrings
 - Example:
+
   ```python
   def process_data(data: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
       """Process and validate SBIR award data.
@@ -166,7 +184,7 @@ Then create a pull request on the repository.
 
 ### Test Organization
 
-```
+```text
 tests/
 ├── unit/           # Unit tests for individual components
 ├── integration/    # Integration tests for multiple components
@@ -177,6 +195,7 @@ tests/
 ### Writing Tests
 
 1. **Unit Tests**: Test individual functions/methods in isolation
+
    ```python
    def test_validate_awards_completeness():
        awards = [{"award_id": "A001", "agency": "DOD"}]
@@ -185,6 +204,7 @@ tests/
    ```
 
 2. **Integration Tests**: Test component interactions
+
    ```python
    def test_neo4j_batch_upsert(neo4j_client):
        nodes = [{"uei": "UEI001", "name": "Company A"}]
@@ -193,6 +213,7 @@ tests/
    ```
 
 3. **Test Coverage**: Aim for ≥85% code coverage
+
    ```bash
    pytest --cov=src --cov-report=html
    # View coverage report: open htmlcov/index.html
@@ -201,16 +222,21 @@ tests/
 ### Running Tests
 
 ```bash
-# Run all tests
+
+## Run all tests
+
 pytest
 
-# Run specific test file
+## Run specific test file
+
 pytest tests/unit/test_validators.py
 
-# Run with coverage
+## Run with coverage
+
 pytest --cov=src --cov-report=term-missing
 
-# Run tests in parallel
+## Run tests in parallel
+
 pytest -n auto
 ```
 
@@ -252,7 +278,7 @@ When modifying SBIR configuration:
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -302,21 +328,26 @@ failures. Prevents pipeline crashes on transient network issues.
 ### PR Template
 
 ```markdown
+
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] All tests pass locally
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Documentation updated
 - [ ] Tests cover new functionality
@@ -342,7 +373,7 @@ Brief description of changes
 
 ## Project Structure
 
-```
+```text
 sbir-etl/
 ├── src/                    # Source code
 │   ├── assets/            # Dagster asset definitions (pipeline orchestration)

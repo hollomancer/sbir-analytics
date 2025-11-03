@@ -15,6 +15,7 @@ The goal is to enable graph-based analysis and queries to understand relationshi
 ## Tech Stack
 
 ### Core Technologies
+
 - **Python 3.11+**: Primary language for data processing and transformations
 - **Dagster**: Asset-based orchestration and workflow management
 - **Neo4j**: Graph database for storing processed data and relationships
@@ -23,9 +24,11 @@ The goal is to enable graph-based analysis and queries to understand relationshi
 - **neo4j-driver**: Python driver for Neo4j database operations
 
 ### Data Processing
+
 - **DuckDB**: In-memory analytical database for fast querying and enrichment of large datasets, such as the 51GB USAspending database.
 
 ### Development Tools
+
 - **pytest**: Testing framework
 - **black**: Code formatting
 - **ruff**: Fast Python linter
@@ -35,6 +38,7 @@ The goal is to enable graph-based analysis and queries to understand relationshi
 ## Project Conventions
 
 ### Code Style
+
 - **Python Style**: Follow PEP 8 with black formatting (line length: 100)
 - **Type Hints**: Required for all function signatures and public APIs
 - **Naming Conventions**:
@@ -46,7 +50,8 @@ The goal is to enable graph-based analysis and queries to understand relationshi
 ### Architecture Patterns
 
 #### ETL Pipeline Structure
-```
+
+```text
 src/
 ├── extractors/      # Data extraction from sources (APIs, CSVs, dumps)
 ├── transformers/    # Data cleaning, normalization, enrichment
@@ -57,6 +62,7 @@ src/
 ```
 
 #### Key Patterns
+
 - **Asset-Based Design**: Each data entity (companies, patents, awards) is a Dagster asset
 - **Idempotency**: All transformations should be repeatable with same results
 - **Schema Validation**: Use Pydantic models to validate data before loading
@@ -68,7 +74,8 @@ src/
 Following the **Testing Pyramid Structure** pattern from production SBIR projects:
 
 #### Three-Layer Testing Approach
-```
+
+```text
          /\
         /E2E\      End-to-End Tests (~5-10% of tests)
        /------\    - Full pipeline execution
@@ -96,7 +103,7 @@ Following the **Testing Pyramid Structure** pattern from production SBIR project
 - Test idempotency and incremental updates
 - Example: `test_complete_sbir_ingestion_pipeline()`
 
-**Data Quality Tests**
+### Data Quality Tests
 - Dagster asset checks for:
   - Completeness (required fields present)
   - Uniqueness (primary key constraints)
@@ -104,32 +111,38 @@ Following the **Testing Pyramid Structure** pattern from production SBIR project
   - Value ranges (amounts > 0, dates in valid range)
   - Coverage metrics (% of records successfully processed)
 
-**Test Fixtures**
+### Test Fixtures
 - Maintain representative sample datasets for each source
 - Include edge cases (missing data, duplicates, malformed records)
 - Store in `tests/fixtures/` directory
 
-**Coverage Targets**
+### Coverage Targets
 - Overall: ≥85% code coverage
 - Core transformation logic: ≥90%
 - Extractors/Loaders: ≥80%
 - Utilities: ≥95%
 
-**Test Execution**
+### Test Execution
+
 ```bash
-# Run all tests
+
+## Run all tests
+
 pytest tests/
 
-# Run specific layer
+## Run specific layer
+
 pytest tests/unit/
 pytest tests/integration/
 pytest tests/e2e/
 
-# Generate coverage report
+## Generate coverage report
+
 pytest --cov=src --cov-report=html
 ```
 
 ### Git Workflow
+
 - **Branching**: Feature branches from `main` (e.g., `feature/add-patent-extractor`)
 - **Commits**: Conventional commits format (`feat:`, `fix:`, `refactor:`, `docs:`)
 - **Pull Requests**: Required for all changes with automated tests passing
@@ -138,12 +151,14 @@ pytest --cov=src --cov-report=html
 ## Domain Context
 
 ### SBIR/STTR Program Knowledge
+
 - **SBIR**: Small Business Innovation Research program providing phased funding (Phase I: $50-250k, Phase II: $750k-1.5M, Phase III: non-SBIR funded commercialization)
 - **STTR**: Small Business Technology Transfer, similar but requires research institution partnership
 - **Agencies**: Multiple agencies participate (DOD, NIH, NASA, NSF, DOE, etc.)
 - **Solicitations**: Periodic topic releases with specific technology needs
 
 ### Key Data Entities and Relationships
+
 - **Companies** ← awarded ← **Awards** → associated with → **Topics**
 - **Awards** → generate → **Patents**
 - **Principal Investigators** → lead → **Awards** → affiliated with → **Institutions**
@@ -151,6 +166,7 @@ pytest --cov=src --cov-report=html
 - **Companies** → cite → **Patents** → reference → **Prior Art**
 
 ### Data Quality Challenges
+
 - **Inconsistent Naming**: Same company/person referenced with variations
 - **Missing Data**: Incomplete records in government databases
 - **Duplicates**: Same entities appearing multiple times across sources
@@ -160,18 +176,21 @@ pytest --cov=src --cov-report=html
 ## Important Constraints
 
 ### Technical Constraints
+
 - **Data Volume**: Expect 250k+ awards, 2.5M+ relationships
 - **API Rate Limits**: Government APIs may have throttling (respect rate limits)
 - **Memory Limits**: Large CSV files may require chunked processing
 - **Neo4j Resources**: Graph queries must be optimized for performance
 
 ### Data Constraints
+
 - **PII Handling**: Be cautious with personal information about researchers
 - **Data Freshness**: Some sources updated quarterly, others annually
 - **Data Retention**: Historical data must be preserved (append-only where possible)
 - **Licensing**: Respect terms of use for government data sources
 
 ### Business Constraints
+
 - **Reproducibility**: Pipeline runs must be auditable and reproducible
 - **Data Provenance**: Track source and transformation lineage for each data point
 - **Update Cadence**: Support incremental updates without full reprocessing
@@ -184,6 +203,7 @@ pytest --cov=src --cov-report=html
 ## External Dependencies
 
 ### Data Sources
+
 - **SBIR.gov API**: Primary source for award data and company information (initially CSV, will transition to API)
 - **USPTO Bulk Data**: Patent data and citations
 - **USASpending.gov**: Federal spending and contract data (initially CSV, will transition to API)
@@ -192,11 +212,13 @@ pytest --cov=src --cov-report=html
 - **CSV/Excel Exports**: Various one-time data dumps from agencies
 
 ### Services
+
 - **Neo4j Database**: Graph database instance (Aura or self-hosted)
 - **Dagster Cloud** (optional): Hosted orchestration platform
 - **Docker Registry**: For storing container images
 
 ### APIs and Libraries
+
 - **requests**: HTTP client for API calls
 - **neo4j-driver**: Official Neo4j Python driver
 - **dagster**: Orchestration framework
@@ -218,7 +240,7 @@ The following patterns are extracted from production SBIR projects and should be
 
 **Three-Layer Configuration System** for flexibility and type safety:
 
-```
+```text
 Layer 1: YAML Files (config/)
     ↓
 Layer 2: Pydantic Validation (src/config/schemas.py)
@@ -228,8 +250,9 @@ Layer 3: Runtime Configuration with Environment Overrides
 
 #### Implementation Structure
 
-**Directory Layout:**
-```
+### Directory Layout:
+
+```text
 config/
 ├── base.yaml              # Base configuration (checked into git)
 ├── dev.yaml               # Development overrides
@@ -238,7 +261,8 @@ config/
 └── README.md              # Configuration documentation
 ```
 
-**Configuration Schema (src/config/schemas.py):**
+### Configuration Schema (src/config/schemas.py):
+
 ```python
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
@@ -271,7 +295,8 @@ class PipelineConfig(BaseModel):
     log_level: str = Field("INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 ```
 
-**Configuration Loader (src/config/loader.py):**
+### Configuration Loader (src/config/loader.py):
+
 ```python
 import yaml
 import os
@@ -284,6 +309,7 @@ def load_config(env: str = None) -> PipelineConfig:
     """Load and merge configuration files with environment overrides.
 
     Priority order:
+
     1. Environment variables (SBIR_ETL_*)
     2. Environment-specific YAML (config/{env}.yaml)
     3. Base YAML (config/base.yaml)
@@ -332,7 +358,8 @@ def apply_env_overrides(config: dict, prefix: str) -> dict:
     return config
 ```
 
-**Example Configuration (config/base.yaml):**
+### Example Configuration (config/base.yaml):
+
 ```yaml
 data_quality:
   max_duplicate_rate: 0.10        # 10% duplicate tolerance
@@ -357,9 +384,12 @@ enable_incremental: true
 log_level: "INFO"
 ```
 
-**Environment Variable Overrides:**
+### Environment Variable Overrides:
+
 ```bash
-# Override nested configuration values
+
+## Override nested configuration values
+
 export SBIR_ETL_ENV=prod
 export SBIR_ETL__NEO4J_PASSWORD=secret_password
 export SBIR_ETL__DATA_QUALITY__MAX_DUPLICATE_RATE=0.05
@@ -367,7 +397,7 @@ export SBIR_ETL__ENRICHMENT__SAM_GOV_API_KEY=abc123xyz
 export SBIR_ETL__LOG_LEVEL=DEBUG
 ```
 
-**Benefits:**
+### Benefits:
 - Type-safe configuration with Pydantic validation
 - Environment-specific overrides without code changes
 - Secret management via environment variables
@@ -380,7 +410,7 @@ export SBIR_ETL__LOG_LEVEL=DEBUG
 
 **Five-Stage ETL Architecture** with clear separation of concerns:
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   EXTRACT   │────▶│   VALIDATE  │────▶│  ENRICH     │────▶│  TRANSFORM  │────▶│    LOAD     │
 │             │     │             │     │             │     │             │     │             │
@@ -397,23 +427,25 @@ export SBIR_ETL__LOG_LEVEL=DEBUG
 ```
 
 #### Stage 1: Extract
+
 **Purpose:** Download and parse raw data from sources
 **Inputs:** URLs, file paths, API endpoints
 **Outputs:** Raw CSV/JSON files in `data/raw/`
 **Dagster Assets:** `raw_sbir_awards`, `raw_usaspending_contracts`, `raw_patent_data`
 
-**Quality Gates:**
+### Quality Gates:
 - File download success
 - Basic parsing validation
 - Record counts logged
 
 #### Stage 2: Validate
+
 **Purpose:** Schema validation and initial quality checks
 **Inputs:** Raw files from Stage 1
 **Outputs:** Validated data in `data/validated/pass/`, failures in `data/validated/fail/`
 **Dagster Assets:** `validated_sbir_awards`, `validated_contracts`
 
-**Quality Gates:**
+### Quality Gates:
 - Required columns present
 - Data types correct
 - Primary key uniqueness
@@ -422,35 +454,38 @@ export SBIR_ETL__LOG_LEVEL=DEBUG
 - Value range validation
 
 #### Stage 3: Enrich
+
 **Purpose:** Augment data with external sources
 **Inputs:** Validated data from Stage 2
 **Outputs:** Enriched data in `data/enriched/`
 **Dagster Assets:** `enriched_sbir_awards`, `enriched_companies`
 
-**Quality Gates:**
+### Quality Gates:
 - Enrichment success rate (target: ≥90%)
 - API call success/failure tracking
 - Coverage metrics by enrichment source
 
 #### Stage 4: Transform
+
 **Purpose:** Business logic, calculations, standardization
 **Inputs:** Enriched data from Stage 3
 **Outputs:** Graph-ready entities in `data/transformed/`
 **Dagster Assets:** `transformed_companies`, `transformed_awards`, `transformed_patents`
 
-**Quality Gates:**
+### Quality Gates:
 - Business rule validation
 - Referential integrity
 - Completeness checks
 - Transformation success rate
 
 #### Stage 5: Load
+
 **Purpose:** Write to Neo4j with relationships
 **Inputs:** Transformed entities from Stage 4
 **Outputs:** Neo4j nodes and relationships
 **Dagster Assets:** `neo4j_companies`, `neo4j_awards`, `neo4j_patents`
 
-**Quality Gates:**
+### Quality Gates:
 - Load success rate
 - Relationship creation validation
 - Index creation
@@ -458,7 +493,8 @@ export SBIR_ETL__LOG_LEVEL=DEBUG
 
 #### Pipeline Orchestration with Dagster
 
-**Asset Dependencies:**
+### Asset Dependencies:
+
 ```python
 from dagster import asset, AssetExecutionContext
 
@@ -487,10 +523,11 @@ def enriched_sbir_awards(
     # Implementation
     return enriched_df
 
-# ... continue chain
+## ... continue chain
+
 ```
 
-**Benefits:**
+### Benefits:
 - Clear stage boundaries with quality gates
 - Easy debugging (inspect intermediate outputs)
 - Parallel execution where possible
@@ -516,7 +553,8 @@ def enriched_sbir_awards(
 
 #### Quality Check Implementation
 
-**Validation Functions (src/quality/validators.py):**
+### Validation Functions (src/quality/validators.py):
+
 ```python
 from pydantic import BaseModel, field_validator
 from typing import List, Dict, Any
@@ -556,12 +594,14 @@ def validate_sbir_awards(
     """Validate SBIR awards dataset.
 
     Checks:
+
     - Required columns present
     - Data types correct
     - Award amounts valid (> 0)
     - Dates in valid range
     - Duplicate detection
     - Missing value thresholds
+
     """
     issues = []
 
@@ -684,13 +724,14 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 #### Quality Monitoring Dashboard
 
 Track quality metrics over time in Dagster UI:
+
 - Pass rates by stage
 - Issue distribution by type and severity
 - Coverage trends
 - Enrichment success rates
 - Pipeline execution duration
 
-**Benefits:**
+### Benefits:
 - Early detection of data issues
 - Automated quality gates prevent bad data propagation
 - Clear accountability for quality thresholds
@@ -704,7 +745,7 @@ Track quality metrics over time in Dagster UI:
 
 #### Logging Architecture
 
-```
+```text
 Application Code
     ↓
 loguru (structured logging)
@@ -727,11 +768,13 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = None):
     """Configure structured logging with loguru.
 
     Features:
+
     - JSON format for production (machine-readable)
     - Pretty format for development (human-readable)
     - Daily rotating files
     - Context injection for request tracking
     - Structured fields for querying
+
     """
     # Remove default handler
     logger.remove()
@@ -775,7 +818,8 @@ def json_formatter(record: Dict[str, Any]) -> str:
 
     return json.dumps(log_entry) + "\n"
 
-# Context manager for pipeline stage tracking
+## Context manager for pipeline stage tracking
+
 from contextvars import ContextVar
 
 pipeline_stage: ContextVar[str] = ContextVar("pipeline_stage", default="unknown")
@@ -802,36 +846,43 @@ def log_with_context(stage: str, run_id_val: str = None):
     return _context()
 ```
 
-#### Usage Patterns
+###Usage Patterns
 
 ```python
 from loguru import logger
 from src.logging_config import setup_logging, log_with_context
 
-# Initialize logging
+## Initialize logging
+
 setup_logging(log_level="INFO", log_dir=Path("logs"))
 
-# Basic logging
+## Basic logging
+
 logger.info("Starting SBIR ETL pipeline")
 logger.warning("SAM.gov API rate limit approaching", remaining=15, limit=100)
 logger.error("Failed to parse award", award_id="12345", error=str(e))
 
-# Structured logging with context
+## Structured logging with context
+
 logger.bind(
     records_processed=5234,
     naics_coverage=87.3,
     duration_seconds=35.8
 ).info("Processing complete")
 
-# Context manager for stage tracking
+## Context manager for stage tracking
+
 with log_with_context(stage="enrichment", run_id="abc-123"):
     logger.info("Enriching awards with SAM.gov data")
     # All logs in this block automatically include stage="enrichment" and run_id="abc-123"
 
-# Performance logging
+## Performance logging
+
 import time
 start = time.time()
-# ... processing ...
+
+## ... processing ...
+
 logger.bind(
     stage="transform",
     records=len(df),
@@ -839,23 +890,26 @@ logger.bind(
     throughput_per_sec=len(df) / (time.time() - start)
 ).info("Transformation complete")
 
-# Error logging with exception
+## Error logging with exception
+
 try:
     process_awards()
 except Exception as e:
     logger.exception("Award processing failed")  # Automatically includes traceback
 ```
 
-#### Log Output Examples
+###Log Output Examples
 
-**Console (Development):**
-```
+### Console (Development):
+
+```text
 2025-10-25 14:32:15 | INFO     | pipeline.extract:fetch_awards | Starting SBIR ETL pipeline
 2025-10-25 14:32:18 | WARNING  | enrichment:enrich_sam_gov | SAM.gov API rate limit approaching
 2025-10-25 14:32:22 | INFO     | pipeline.transform:normalize | Processing complete
 ```
 
-**JSON (Production):**
+### JSON (Production):
+
 ```json
 {
   "timestamp": "2025-10-25T14:32:22.123456",
@@ -874,19 +928,24 @@ except Exception as e:
 
 #### Log Querying
 
-**Search logs with jq:**
+### Search logs with jq:
+
 ```bash
-# Find all errors in enrichment stage
+
+## Find all errors in enrichment stage
+
 cat logs/sbir-etl_2025-10-25.log | jq 'select(.level == "ERROR" and .stage == "enrichment")'
 
-# Calculate average processing duration
+## Calculate average processing duration
+
 cat logs/sbir-etl_2025-10-25.log | jq -s 'map(select(.duration_seconds)) | map(.duration_seconds) | add / length'
 
-# Count records processed by stage
+## Count records processed by stage
+
 cat logs/sbir-etl_2025-10-25.log | jq -s 'group_by(.stage) | map({stage: .[0].stage, total_records: map(.records_processed // 0) | add})'
 ```
 
-**Benefits:**
+### Benefits:
 - Searchable structured logs
 - Performance metrics tracking
 - Error debugging with context
@@ -901,7 +960,7 @@ cat logs/sbir-etl_2025-10-25.log | jq -s 'group_by(.stage) | map({stage: .[0].st
 
 #### Enrichment Architecture
 
-```
+```text
 Primary Source (Highest Quality)
     ↓ Success? → Continue
     ↓ Fail? → Fallback
@@ -918,7 +977,7 @@ Log Enrichment Path & Confidence Score
 
 #### Example: Company NAICS Code Enrichment
 
-**9-Step Enrichment Workflow:**
+### 9-Step Enrichment Workflow:
 
 ```python
 from typing import Optional, Tuple
@@ -950,6 +1009,7 @@ def enrich_naics_hierarchical(
     """Enrich NAICS code using hierarchical fallback strategy.
 
     Priority:
+
     1. Original SBIR data (if valid)
     2. USAspending.gov API (by UEI/contract ID)
     3. SAM.gov API (by company DUNS/UEI)
@@ -1072,7 +1132,8 @@ class EnrichedAward:
     enrichment_timestamp: datetime
     # ... other fields
 
-# Track enrichment coverage
+## Track enrichment coverage
+
 enrichment_stats = {
     "total_awards": 10000,
     "enrichment_sources": {
@@ -1090,10 +1151,12 @@ enrichment_stats = {
 logger.bind(**enrichment_stats).info("Enrichment complete")
 ```
 
-#### Configuration-Driven Fallback Rules
+###Configuration-Driven Fallback Rules
 
 ```yaml
-# config/enrichment.yaml
+
+## config/enrichment.yaml
+
 enrichment:
   naics:
     enable_original: true
@@ -1119,7 +1182,7 @@ enrichment:
     low: 0.40
 ```
 
-**Benefits:**
+### Benefits:
 - Maximum data coverage (approaching 100%)
 - Transparent data provenance
 - Confidence scoring for downstream filtering
@@ -1135,7 +1198,9 @@ enrichment:
 Already covered in **Configuration Management Architecture** and **Data Quality Framework** sections above. Key pattern:
 
 ```yaml
-# config/quality.yaml
+
+## config/quality.yaml
+
 data_quality:
   completeness:
     award_id: 1.00          # 100% required
@@ -1163,7 +1228,7 @@ data_quality:
     on_info: "log"          # Just log info
 ```
 
-**Benefits:**
+### Benefits:
 - Business users can adjust thresholds
 - A/B test different quality rules
 - Environment-specific standards (dev vs prod)
@@ -1327,20 +1392,25 @@ if __name__ == "__main__":
 #### CLI Usage
 
 ```bash
-# Ingest SBIR awards
+
+## Ingest SBIR awards
+
 python -m src.cli.app ingest --source sbir --year 2024
 
-# Enrich with progress bar
+## Enrich with progress bar
+
 python -m src.cli.app enrich --batch-size 100
 
-# Check pipeline status
+## Check pipeline status
+
 python -m src.cli.app status
 
-# Show data quality report
+## Show data quality report
+
 python -m src.cli.app quality-report --stage enrichment
 ```
 
-**Benefits:**
+### Benefits:
 - Professional user experience
 - Real-time progress visibility
 - Clear error messaging
@@ -1454,7 +1524,9 @@ def match_company_with_evidence(
 #### Store Evidence in Neo4j
 
 ```python
-# Neo4j relationship with evidence metadata
+
+## Neo4j relationship with evidence metadata
+
 CREATE (a:Award {award_id: "12345"})
 CREATE (c:Company {name: "Acme Corp"})
 CREATE (a)-[r:AWARDED_TO {
@@ -1468,7 +1540,7 @@ CREATE (a)-[r:AWARDED_TO {
 }]->(c)
 ```
 
-#### Manual Review Interface
+###Manual Review Interface
 
 ```python
 @app.command()
@@ -1510,7 +1582,7 @@ def review_low_confidence(
         # ... handle decision ...
 ```
 
-**Benefits:**
+### Benefits:
 - Transparency in automated decisions
 - Support for manual review workflows
 - Confidence-based filtering
@@ -1731,7 +1803,8 @@ def enriched_sbir_awards(
 
 #### Metrics Dashboard
 
-**CLI command to view metrics:**
+### CLI command to view metrics:
+
 ```python
 @app.command()
 def metrics(
@@ -1808,7 +1881,7 @@ def metrics(
         console.print(trend_table)
 ```
 
-**Benefits:**
+### Benefits:
 - Historical performance tracking
 - Quality trend analysis
 - Early detection of regressions
@@ -1822,6 +1895,7 @@ def metrics(
 This project incorporates production-proven patterns from three mature SBIR projects:
 
 ✅ **Common Patterns (5)**
+
 1. Configuration Management Architecture - Three-layer YAML + Pydantic + env overrides
 2. Multi-Stage Data Pipeline Design - Five-stage ETL with quality gates
 3. Data Quality Framework - Comprehensive validation with asset checks
@@ -1829,13 +1903,16 @@ This project incorporates production-proven patterns from three mature SBIR proj
 5. Structured Logging Pattern - JSON logs with context and querying
 
 ✅ **From sbir-fiscal-returns (2)**
+
 1. Hierarchical Data Enrichment with Fallbacks - 9-step enrichment chain
 2. Configuration-Driven Quality Thresholds - Externalized quality rules
 
 ✅ **From sbir-transition-classifier (1)**
+
 4. Rich CLI with Progress Tracking - Professional terminal UI
 
 ✅ **From sbir-cet-classifier (2)**
+
 2. Evidence-Based Explainability - Confidence scores + supporting evidence
 4. Comprehensive Evaluation Framework - Metrics tracking and dashboards
 

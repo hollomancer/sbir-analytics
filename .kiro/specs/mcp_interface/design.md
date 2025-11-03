@@ -10,7 +10,7 @@ The design follows MCP specification patterns with resource discovery, action ex
 
 ### High-Level Architecture
 
-```
+```text
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   AI Copilot    │◄──►│   MCP Server    │◄──►│  SBIR ETL Core  │
 │ (Claude/Cursor) │    │                 │    │                 │
@@ -31,7 +31,7 @@ The design follows MCP specification patterns with resource discovery, action ex
 
 ### Component Architecture
 
-```
+```text
 src/mcp/
 ├── server.py           # MCP server implementation & CLI
 ├── auth.py             # Token validation & rate limiting
@@ -51,13 +51,15 @@ src/mcp/
 
 ### MCP Server Core (`server.py`)
 
-**Responsibilities:**
+### Responsibilities:
+
 - MCP protocol implementation (stdio/HTTP transport)
 - Resource and action registration
 - Request routing and response handling
 - Error handling and logging
 
-**Key Interfaces:**
+### Key Interfaces:
+
 ```python
 class MCPServer:
     def __init__(self, config: MCPConfig)
@@ -71,13 +73,15 @@ class MCPServer:
 
 ### Authentication & Authorization (`auth.py`)
 
-**Responsibilities:**
+### Responsibilities:
+
 - Token validation with constant-time comparison
 - Rate limiting per token
 - Audit logging for security events
 - Permission checking for actions
 
-**Key Interfaces:**
+### Key Interfaces:
+
 ```python
 class AuthManager:
     def validate_token(self, token: str) -> AuthResult
@@ -94,7 +98,8 @@ class AuthManager:
 
 **Purpose:** Expose Dagster asset metadata as MCP resources for discovery and inspection.
 
-**Resource Schema:**
+### Resource Schema:
+
 ```python
 @dataclass
 class AssetResource:
@@ -112,7 +117,8 @@ class AssetResource:
 
 **Purpose:** Provide sanitized configuration snapshots for system inspection.
 
-**Resource Schema:**
+### Resource Schema:
+
 ```python
 @dataclass
 class ConfigResource:
@@ -130,7 +136,8 @@ class ConfigResource:
 
 **Purpose:** Trigger Dagster asset materialization with proper parameter validation.
 
-**Action Schema:**
+### Action Schema:
+
 ```python
 @dataclass
 class RunAssetAction:
@@ -152,7 +159,8 @@ class RunAssetResult:
 
 **Purpose:** Provide comprehensive system health information including recent runs and database connectivity.
 
-**Action Schema:**
+### Action Schema:
+
 ```python
 @dataclass
 class PipelineHealthResult:
@@ -169,7 +177,8 @@ class PipelineHealthResult:
 
 **Purpose:** Execute parameterized Cypher queries with security controls and result formatting.
 
-**Action Schema:**
+### Action Schema:
+
 ```python
 @dataclass
 class Neo4jQueryAction:
@@ -192,12 +201,14 @@ class Neo4jQueryResult:
 
 #### Why Both Dagster and Neo4j?
 
-**Dagster Integration:**
+### Dagster Integration:
+
 - **Pipeline Operations**: Dagster manages the ETL pipeline orchestration, asset materialization, and run tracking
 - **Operational Metadata**: Asset status, execution history, dependencies, and quality metrics
 - **Execution Control**: Triggering new pipeline runs, monitoring progress, and managing asset lifecycle
 
-**Neo4j Integration:**
+### Neo4j Integration:
+
 - **Business Data Queries**: Access to the processed SBIR data, company relationships, patent chains, and CET classifications
 - **Graph Analytics**: Complex relationship queries that span companies, awards, patents, and technology areas
 - **Domain Knowledge**: The actual business intelligence that analysts need for SBIR ecosystem analysis
@@ -206,13 +217,15 @@ class Neo4jQueryResult:
 
 #### Dagster Client (`clients/dagster.py`)
 
-**Responsibilities:**
+### Responsibilities:
+
 - GraphQL API communication with Dagster
 - Asset metadata retrieval
 - Run triggering and status monitoring
 - Error handling and retry logic
 
-**Key Methods:**
+### Key Methods:
+
 ```python
 class DagsterClient:
     def list_assets(self) -> List[AssetMetadata]
@@ -225,13 +238,15 @@ class DagsterClient:
 
 #### Neo4j Client (`clients/neo4j.py`)
 
-**Responsibilities:**
+### Responsibilities:
+
 - Neo4j driver management
 - Query execution with timeouts
 - Result formatting and error handling
 - Connection health monitoring
 
-**Key Methods:**
+### Key Methods:
+
 ```python
 class Neo4jClient:
     def execute_query(self, query: str, parameters: Dict) -> QueryResult
@@ -323,7 +338,8 @@ class MCPError:
     message: str
     details: Optional[Dict[str, Any]] = None
     
-# Standard error codes
+## Standard error codes
+
 class ErrorCodes:
     AUTHENTICATION_FAILED = 401
     RATE_LIMIT_EXCEEDED = 429
@@ -417,12 +433,14 @@ class ErrorCodes:
 
 ### Transport Modes
 
-**stdio Mode:**
+### stdio Mode:
+
 - Direct integration with AI copilots
 - Process-based communication
 - Suitable for local development and desktop tools
 
-**HTTP Mode:**
+### HTTP Mode:
+
 - Network-accessible service
 - Load balancer compatible
 - Suitable for server deployments and web integrations
@@ -451,26 +469,31 @@ class ErrorCodes:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
+
 - MCP server framework with stdio transport
 - Basic authentication and configuration loading
 - Dagster and Neo4j client implementations
 
 ### Phase 2: Resource Endpoints
+
 - Asset metadata resources
 - Configuration snapshot resources
 - Resource discovery and enumeration
 
 ### Phase 3: Action Endpoints
+
 - Asset materialization actions
 - Pipeline health actions
 - Neo4j query actions with security controls
 
 ### Phase 4: Production Features
+
 - HTTP transport mode
 - Rate limiting and audit logging
 - Comprehensive error handling and monitoring
 
 ### Phase 5: Advanced Features
+
 - Permission-based action filtering
 - Query result caching
 - Performance optimization and load testing

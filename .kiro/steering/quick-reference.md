@@ -34,6 +34,7 @@ Canonical templates live in `pipeline-orchestration.md#asset-check-implementatio
 ## Neo4j Patterns Quick Reference
 
 ### Node Creation (Upsert)
+
 ```cypher
 UNWIND $batch AS row
 MERGE (c:Company {uei: row.uei})
@@ -43,6 +44,7 @@ SET c.name = row.name,
 ```
 
 ### Relationship with Confidence
+
 ```cypher
 MERGE (a:Award {award_id: $award_id})
 MERGE (c:Company {uei: $uei})
@@ -53,6 +55,7 @@ SET r.confidence = $confidence,
 ```
 
 ### Common Constraints
+
 ```cypher
 CREATE CONSTRAINT unique_company_uei ON (c:Company) ASSERT c.uei IS UNIQUE;
 CREATE CONSTRAINT unique_award_id ON (a:Award) ASSERT a.award_id IS UNIQUE;
@@ -60,6 +63,7 @@ CREATE CONSTRAINT unique_patent_grant_num ON (p:Patent) ASSERT p.grant_doc_num I
 ```
 
 ### Performance Indexes
+
 ```cypher
 CREATE INDEX idx_company_name ON (c:Company) ON (c.name);
 CREATE INDEX idx_award_date ON (a:Award) ON (a.award_date);
@@ -71,6 +75,7 @@ CREATE FULLTEXT INDEX idx_company_name_fulltext ON (c:Company) FOR (c.name);
 Prefer `SBIR_ETL__...` overrides that mirror YAML structure. See details in `configuration-patterns.md#environment-variable-overrides`.
 
 Example:
+
 ```bash
 export SBIR_ETL_ENV=dev
 export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
@@ -80,6 +85,7 @@ export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 ## Common Commands
 
 ### Development Setup
+
 ```bash
 poetry install
 poetry shell
@@ -87,6 +93,7 @@ make neo4j-up
 ```
 
 ### Code Quality
+
 ```bash
 black .
 ruff check . --fix
@@ -95,6 +102,7 @@ pytest --cov=src
 ```
 
 ### Pipeline Execution
+
 ```bash
 poetry run dagster dev                    # Start Dagster UI
 dagster job execute -f src/definitions.py -j sbir_ingestion_job
@@ -103,6 +111,7 @@ dagster job execute -f src/definitions.py -j fiscal_returns_full_job     # Fisca
 ```
 
 ### Neo4j Operations
+
 ```bash
 make neo4j-up      # Start Neo4j
 make neo4j-down    # Stop Neo4j
@@ -135,19 +144,23 @@ make neo4j-reset   # Fresh instance
 
 ### When to Use Which Pattern?
 
-**Need data validation?**
+### Need data validation?
+
 → Use asset checks from [pipeline-orchestration.md](pipeline-orchestration.md)
 → Configure thresholds in [configuration-patterns.md](configuration-patterns.md)
 
-**Need external data enrichment?**
+### Need external data enrichment?
+
 → Use hierarchical enrichment from [enrichment-patterns.md](enrichment-patterns.md)
 → Configure sources in [configuration-patterns.md](configuration-patterns.md)
 
-**Need to load data to Neo4j?**
+### Need to load data to Neo4j?
+
 → Use batch loading patterns from [neo4j-patterns.md](neo4j-patterns.md)
 → Configure connection in [configuration-patterns.md](configuration-patterns.md)
 
-**Need to optimize performance?**
+### Need to optimize performance?
+
 → Use chunked processing from [pipeline-orchestration.md](pipeline-orchestration.md)
 → Configure performance settings in [configuration-patterns.md](configuration-patterns.md)
 

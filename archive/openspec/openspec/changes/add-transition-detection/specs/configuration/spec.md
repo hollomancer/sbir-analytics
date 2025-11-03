@@ -18,6 +18,7 @@ The system SHALL externalize transition detection parameters in YAML format to e
 
 - **WHEN** configuring scoring weights in detection.yaml
 - **THEN** the configuration includes:
+
   ```yaml
   scoring:
     weights:
@@ -36,12 +37,14 @@ The system SHALL externalize transition detection parameters in YAML format to e
       cet_alignment: 0.05
       text_similarity: 0.10  # Optional, if enabled
   ```
+
 - **AND** weights are validated to sum ≤ 1.0
 
 #### Scenario: Define confidence thresholds
 
 - **WHEN** configuring confidence classification thresholds
 - **THEN** the configuration includes:
+
   ```yaml
   thresholds:
     high_confidence: 0.85
@@ -55,6 +58,7 @@ The system SHALL externalize transition detection parameters in YAML format to e
 
 - **WHEN** configuring timing parameters
 - **THEN** the configuration includes:
+
   ```yaml
   timing:
     window_months: 24  # 0-24 months after SBIR completion
@@ -81,6 +85,7 @@ The system SHALL support multiple pre-configured detection presets optimized for
 
 - **WHEN** using "high-precision" preset
 - **THEN** config/transition/presets.yaml includes:
+
   ```yaml
   high_precision:
     description: "Minimize false positives, maximize precision"
@@ -95,12 +100,14 @@ The system SHALL support multiple pre-configured detection presets optimized for
       exclude_possible: true
       require_sole_source_or_patent: true
   ```
+
 - **AND** enables analyst-approved detections only
 
 #### Scenario: Broad-discovery preset
 
 - **WHEN** using "broad-discovery" preset
 - **THEN** the configuration includes:
+
   ```yaml
   broad_discovery:
     description: "Maximize recall, find all potential transitions"
@@ -115,12 +122,14 @@ The system SHALL support multiple pre-configured detection presets optimized for
       exclude_possible: false
       include_cross_agency: true
   ```
+
 - **AND** produces more detections for exploratory analysis
 
 #### Scenario: Balanced preset (default)
 
 - **WHEN** using default "balanced" preset
 - **THEN** the configuration includes:
+
   ```yaml
   balanced:
     description: "Balance precision and recall"
@@ -144,19 +153,28 @@ The system SHALL externalize vendor resolution parameters to enable identifier p
 
 - **WHEN** configuring vendor matching
 - **THEN** the configuration specifies:
+
   ```yaml
   vendor_matching:
     identifier_priority:
+
       - type: "uei"
+
         confidence: 0.99
         enabled: true
+
       - type: "cage"
+
         confidence: 0.95
         enabled: true
+
       - type: "duns"
+
         confidence: 0.90
         enabled: true
+
       - type: "name_fuzzy"
+
         confidence: 0.90  # Threshold for similarity
         enabled: true
   ```
@@ -165,6 +183,7 @@ The system SHALL externalize vendor resolution parameters to enable identifier p
 
 - **WHEN** configuring fuzzy name matching
 - **THEN** the configuration includes:
+
   ```yaml
   vendor_matching:
     name_normalization:
@@ -184,6 +203,7 @@ The system SHALL support optional CET integration with graceful degradation when
 
 - **WHEN** CET classification module is available
 - **THEN** the configuration includes:
+
   ```yaml
   cet_integration:
     enabled: true
@@ -215,6 +235,7 @@ The system SHALL support optional patent integration with configurable signal we
 
 - **WHEN** USPTO patent module is available
 - **THEN** the configuration includes:
+
   ```yaml
   patent_integration:
     enabled: true
@@ -242,6 +263,7 @@ The system SHALL externalize performance tuning parameters for batch processing 
 
 - **WHEN** configuring processing parameters
 - **THEN** the configuration includes:
+
   ```yaml
   performance:
     detection_batch_size: 1000  # Awards processed per batch
@@ -254,6 +276,7 @@ The system SHALL externalize performance tuning parameters for batch processing 
 
 - **WHEN** enabling performance optimizations
 - **THEN** the configuration includes:
+
   ```yaml
   performance:
     caching:
@@ -271,6 +294,7 @@ The system SHALL configure analytics parameters for dual-perspective and CET are
 
 - **WHEN** defining success criteria
 - **THEN** the configuration includes:
+
   ```yaml
   analytics:
     company_success_threshold: 2  # ≥2 transitions = sustained commercialization
@@ -287,6 +311,7 @@ The system SHALL configure analytics parameters for dual-perspective and CET are
 
 - **WHEN** configuring output formats
 - **THEN** the configuration includes:
+
   ```yaml
   analytics:
     reporting:

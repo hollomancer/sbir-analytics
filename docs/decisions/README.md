@@ -9,6 +9,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 ## When to Create an ADR
 
 Create an ADR when making decisions that:
+
 - Have significant impact on system design or data model
 - Are difficult or expensive to reverse
 - Involve tradeoffs between multiple valid approaches

@@ -10,7 +10,7 @@ Kiro is a specification-driven development system that uses structured requireme
 
 Each Kiro specification consists of:
 
-```
+```text
 .kiro/specs/[feature-name]/
 ├── requirements.md    # EARS-formatted requirements with user stories
 ├── design.md         # Technical design and architecture (optional)
@@ -24,21 +24,26 @@ Each Kiro specification consists of:
 The requirements document follows this structure:
 
 ```markdown
-# Requirements Document
+
+## Requirements Document
 
 ## Introduction
+
 [Brief description of the feature/system]
 
 ## Glossary
+
 - **Term**: Definition
 - **System_Name**: System component definition
 
 ## Requirements
 
 ### Requirement 1
+
 **User Story:** As a [role], I want [feature], so that [benefit]
 
 #### Acceptance Criteria
+
 1. THE [System_Name] SHALL [requirement using EARS pattern]
 2. WHEN [condition], THE [System_Name] SHALL [response]
 3. WHILE [state], THE [System_Name] SHALL [behavior]
@@ -59,24 +64,31 @@ Use these EARS (Easy Approach to Requirements Syntax) patterns:
 Include these sections as needed:
 
 ```markdown
-# Design Document
+
+## Design Document
 
 ## Overview
+
 [High-level description]
 
 ## Architecture
+
 [System architecture and components]
 
 ## Components and Interfaces
+
 [Detailed component descriptions]
 
 ## Data Models
+
 [Data structures and schemas]
 
 ## Error Handling
+
 [Error scenarios and responses]
 
 ## Testing Strategy
+
 [Testing approach and coverage]
 ```
 
@@ -85,7 +97,8 @@ Include these sections as needed:
 Structure tasks hierarchically:
 
 ```markdown
-# Implementation Plan
+
+## Implementation Plan
 
 - [ ] 1. Major task category
 - [ ] 1.1 Specific implementation task

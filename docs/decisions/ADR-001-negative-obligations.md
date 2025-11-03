@@ -1,6 +1,7 @@
 # ADR-001: Allow Negative Obligation Amounts in Federal Contracts
 
 ## Status
+
 Accepted (2025-10-28)
 
 ## Context
@@ -10,6 +11,7 @@ During implementation of federal contracts ingestion (Task 5), we discovered tha
 ### Analysis
 
 From USAspending subset database (first 1M transaction records):
+
 - **Frequency**: ~0.03% of all contract transactions (126 out of ~460,535)
 - **Magnitude**: Range from -$1 to -$409,143
 - **Action Types**: Appear in "New", "Continuation", and null action types
@@ -18,6 +20,7 @@ From USAspending subset database (first 1M transaction records):
 ### Business Meaning
 
 Negative obligations in USAspending represent:
+
 1. **Contract Deobligations**: Reducing previously obligated funds
 2. **Contract Modifications**: Downward adjustments to contract value
 3. **Funds Recapture**: Returning unused obligated amounts
@@ -28,7 +31,8 @@ Negative obligations in USAspending represent:
 
 We will **allow negative values** in the `obligation_amount` field and add an `is_deobligation` flag to track them.
 
-**Implementation**:
+### Implementation
+
 ```python
 class FederalContract(BaseModel):
     obligation_amount: Optional[float] = Field(
@@ -44,59 +48,78 @@ class FederalContract(BaseModel):
 ## Alternatives Considered
 
 ### Option 1: Store as Absolute Values
+
 Convert negative to positive, losing sign information.
+
 - **Rejected**: Loses financial accuracy needed for proper accounting
 
 ### Option 2: Store Negative Values (SELECTED)
+
 Allow negative values, add deobligation flag.
+
 - **Selected**: Preserves accurate financial data while flagging for special handling
 
 ### Option 3: Filter Out Negatives
+
 Skip negative obligation records entirely.
+
 - **Rejected**: Loses evidence of vendor-agency contract relationships
 
 ### Option 4: Store Zero for Negatives
+
 Treat deobligations as zero-value contracts.
+
 - **Rejected**: Distorts financial data without clear benefit
 
 ### Option 5: Separate Deobligation Records
+
 Complex schema with base + adjustment amounts.
+
 - **Rejected**: Too complex for current needs, can implement later if needed
 
 ## Consequences
 
 ### Positive
+
 - **Accurate financial representation**: Can calculate true net contract values
 - **Complete audit trail**: All transaction types preserved
 - **Flexible analysis**: Can include/exclude deobligations as needed
 - **Correct vendor relationships**: Deobligations still show active contracts
 
 ### Negative
+
 - **Downstream handling**: Must check `is_deobligation` in analysis code
 - **Aggregation complexity**: Need to decide if/when to include negatives
 - **User confusion**: May need documentation about negative values
 
 ### Neutral
+
 - **Transition detection**: Both approaches work; deobligations are ~0.03% of data
 - **Storage impact**: Minimal - flag adds 1 byte per record
 
 ## Implementation Notes
 
 ### In ContractExtractor
+
 ```python
 obligation_amount = float(obligation_str) if obligation_str else 0.0
 is_deobligation = (obligation_amount < 0)
 ```
 
 ### In Analysis Code
+
 ```python
-# Example: Calculate net contract value
+
+## Example: Calculate net contract value
+
 net_value = sum(c.obligation_amount for c in contracts)
 
-# Example: Count only positive obligations
+## Example: Count only positive obligations
+
 positive_count = sum(1 for c in contracts if not c.is_deobligation)
 
-# Example: Get contract activity regardless of direction
+## Example: Get contract activity regardless of direction
+
 all_activity = [c for c in contracts]  # Includes deobligations
 ```
 

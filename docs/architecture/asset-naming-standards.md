@@ -20,11 +20,12 @@ All assets follow a consistent naming pattern based on their pipeline stage:
 
 ### Asset Name Structure
 
-```
+```text
 {stage_prefix}{entity_type}[_{suffix}]
 ```
 
-**Examples:**
+### Examples:
+
 - `raw_sbir_awards` - Raw SBIR award data
 - `validated_uspto_assignments` - Validated USPTO assignment data
 - `enriched_cet_award_classifications` - CET-enriched award classifications
@@ -51,28 +52,33 @@ Common entity types used across the pipeline:
 Assets are organized into logical groups that reflect pipeline stages:
 
 ### Extraction Group (`extraction`)
+
 - Raw data extraction from CSV files, APIs, and databases
 - File discovery and initial parsing
 - Examples: `raw_sbir_awards`, `raw_uspto_assignments`
 
 ### Validation Group (`validation`)
+
 - Schema validation and data quality checks
 - Duplicate detection and data cleaning
 - Examples: `validated_sbir_awards`, `validated_contracts_sample`
 
 ### Enrichment Group (`enrichment`)
+
 - External API enrichment
 - Fuzzy matching and entity resolution
 - Classification and scoring
 - Examples: `enriched_sbir_awards`, `enriched_cet_award_classifications`
 
 ### Transformation Group (`transformation`)
+
 - Business logic application
 - Data normalization and standardization
 - Relationship preparation
 - Examples: `transformed_patent_assignments`, `transformed_transition_scores`
 
 ### Loading Group (`loading`)
+
 - Database loading operations
 - Relationship creation
 - Index and constraint management
@@ -92,15 +98,18 @@ See project release notes for the full task breakdown and code references.
 The following assets have been renamed to follow the new standards:
 
 ### SBIR Assets
+
 - ✅ `raw_sbir_awards` (no change)
 - ✅ `validated_sbir_awards` (no change)
 - ✅ `enriched_sbir_awards` (no change)
 
 ### USAspending Assets
+
 - `usaspending_recipient_lookup` → `raw_usaspending_recipients`
 - `usaspending_transaction_normalized` → `raw_usaspending_transactions`
 
 ### USPTO Assets
+
 - `parsed_uspto_assignees` → `validated_uspto_assignees`
 - `parsed_uspto_assignors` → `validated_uspto_assignors`
 - `neo4j_patents` → `loaded_patents`
@@ -109,6 +118,7 @@ The following assets have been renamed to follow the new standards:
 - `neo4j_patent_relationships` → `loaded_patent_relationships`
 
 ### CET Assets
+
 - `cet_taxonomy` → `raw_cet_taxonomy`
 - `cet_award_classifications` → `enriched_cet_award_classifications`
 - `cet_patent_classifications` → `enriched_cet_patent_classifications`
@@ -120,6 +130,7 @@ The following assets have been renamed to follow the new standards:
 - `neo4j_company_cet_relationships` → `loaded_company_cet_relationships`
 
 ### Transition Assets
+
 - `contracts_ingestion` → `raw_contracts`
 - `contracts_sample` → `validated_contracts_sample`
 - `vendor_resolution` → `enriched_vendor_resolution`
@@ -132,6 +143,7 @@ The following assets have been renamed to follow the new standards:
 - `neo4j_transition_profiles` → `loaded_transition_profiles`
 
 ### USPTO AI Assets
+
 - `uspto_ai_ingest` → `raw_uspto_ai_predictions`
 - `uspto_ai_cache_stats` → `validated_uspto_ai_cache_stats`
 - `uspto_ai_human_sample` → `raw_uspto_ai_human_sample`
@@ -153,16 +165,19 @@ Legacy group names have been updated to reflect pipeline stages:
 ## Benefits
 
 ### Clarity
+
 - Asset names clearly indicate their position in the pipeline
 - Stage prefixes make data flow obvious
 - Consistent naming reduces cognitive load
 
 ### Maintainability
+
 - Easier to locate assets by pipeline stage
 - Consistent patterns simplify debugging
 - Clear separation of concerns
 
 ### Scalability
+
 - New assets follow established patterns
 - Easy to extend pipeline stages
 - Consistent documentation structure
@@ -191,13 +206,17 @@ When creating new assets:
 The naming standards can be validated using:
 
 ```bash
-# Check for naming consistency
+
+## Check for naming consistency
+
 python scripts/standardize_asset_names.py --dry-run
 
-# Validate asset definitions
+## Validate asset definitions
+
 dagster asset list
 
-# Check group organization
+## Check group organization
+
 dagster asset group list
 ```
 

@@ -14,26 +14,34 @@ Tests are organized in two main directories:
 ### Run All CLI Tests
 
 ```bash
-# Unit tests
+
+## Unit tests
+
 poetry run pytest tests/unit/cli/ -v
 
-# Integration tests
+## Integration tests
+
 poetry run pytest tests/integration/cli/ -v
 
-# All CLI tests with coverage
+## All CLI tests with coverage
+
 poetry run pytest tests/unit/cli/ tests/integration/cli/ --cov=src/cli --cov-report=html
 ```
 
 ### Run Specific Test Files
 
 ```bash
-# Test integration clients
+
+## Test integration clients
+
 poetry run pytest tests/unit/cli/test_integration_clients.py -v
 
-# Test commands
+## Test commands
+
 poetry run pytest tests/unit/cli/test_commands.py -v
 
-# Test display components
+## Test display components
+
 poetry run pytest tests/unit/cli/test_display.py -v
 ```
 
@@ -46,6 +54,7 @@ poetry run python scripts/test_cli.py
 ```
 
 This validates:
+
 - All modules can be imported
 - CommandContext can be created
 - CLI app structure is correct
@@ -65,7 +74,8 @@ poetry run pytest tests/unit/cli/test_integration_clients.py::TestNeo4jClient -v
 poetry run pytest tests/unit/cli/test_integration_clients.py::TestMetricsCollector -v
 ```
 
-**Mocking Strategy:**
+### Mocking Strategy:
+
 - DagsterClient: Mock `defs` and `DagsterInstance`
 - Neo4jClient: Mock `GraphDatabase.driver` and session responses
 - MetricsCollector: Mock file system and JSON loading
@@ -79,7 +89,8 @@ poetry run pytest tests/unit/cli/test_commands.py::TestStatusCommands -v
 poetry run pytest tests/unit/cli/test_commands.py::TestMetricsCommands -v
 ```
 
-**Mocking Strategy:**
+### Mocking Strategy:
+
 - Mock `CommandContext` with all clients
 - Mock client methods to return test data
 - Verify command outputs using Typer's `CliRunner`
@@ -103,7 +114,8 @@ Tests using Typer's `CliRunner` with mocked services:
 poetry run pytest tests/integration/cli/test_cli_integration.py -v
 ```
 
-**Test Scenarios:**
+### Test Scenarios:
+
 - CLI app help output
 - Status commands with mocked clients
 - Metrics commands with sample data
@@ -114,23 +126,29 @@ poetry run pytest tests/integration/cli/test_cli_integration.py -v
 ### Quick Command Tests
 
 ```bash
-# Help
+
+## Help
+
 poetry run sbir-cli --help
 
-# Status commands
+## Status commands
+
 poetry run sbir-cli status summary
 poetry run sbir-cli status assets
 poetry run sbir-cli status neo4j --detailed
 
-# Metrics commands
+## Metrics commands
+
 poetry run sbir-cli metrics latest
 poetry run sbir-cli metrics show --limit 10
 
-# Ingest commands
+## Ingest commands
+
 poetry run sbir-cli ingest run --dry-run
 poetry run sbir-cli ingest run --groups sbir_ingestion --dry-run
 
-# Enrich commands
+## Enrich commands
+
 poetry run sbir-cli enrich stats
 ```
 
@@ -139,17 +157,24 @@ poetry run sbir-cli enrich stats
 For testing with actual Dagster and Neo4j instances:
 
 1. Start services:
+
 ```bash
-# Terminal 1: Start Dagster
+
+## Terminal 1: Start Dagster
+
 poetry run dagster dev -m src.definitions
 
-# Terminal 2: Start Neo4j (if using Docker)
+## Terminal 2: Start Neo4j (if using Docker)
+
 docker compose up neo4j
 ```
 
 2. Run commands:
+
 ```bash
-# Test with real services
+
+## Test with real services
+
 poetry run sbir-cli status summary
 poetry run sbir-cli status neo4j --detailed
 ```
@@ -209,6 +234,7 @@ def test_metrics_table():
 ## Coverage Goals
 
 Target coverage for CLI components:
+
 - **Integration Clients**: ≥85% coverage
 - **Commands**: ≥80% coverage (mocking external dependencies)
 - **Display Components**: ≥80% coverage
@@ -219,8 +245,11 @@ Target coverage for CLI components:
 CLI tests are included in CI:
 
 ```bash
-# Run in CI environment
+
+## Run in CI environment
+
 poetry run pytest tests/unit/cli/ tests/integration/cli/ \
+
   --cov=src/cli \
   --cov-report=xml \
   --cov-report=term-missing
@@ -231,16 +260,20 @@ poetry run pytest tests/unit/cli/ tests/integration/cli/ \
 ### Import Errors
 
 ```bash
-# Ensure dependencies installed
+
+## Ensure dependencies installed
+
 poetry install
 
-# Verify Rich is available
+## Verify Rich is available
+
 poetry run python -c "import rich; print('OK')"
 ```
 
 ### Mock Issues
 
 If mocks aren't working:
+
 - Check import paths match actual module paths
 - Verify mock patches target the correct modules
 - Use `patch.object` for instance methods
@@ -248,6 +281,7 @@ If mocks aren't working:
 ### Typer CliRunner Issues
 
 If `CliRunner` tests fail:
+
 - Ensure `ctx.obj` is set (CommandContext)
 - Verify command registration in `main.py`
 - Check for import errors in command modules

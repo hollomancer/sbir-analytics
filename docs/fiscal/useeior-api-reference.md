@@ -17,13 +17,15 @@ This document provides reference information for the USEEIOR R package based on 
 
 Build an EEIO model with complete components.
 
-**Parameters**:
+### Parameters
+
 - `modelname`: Name of the model from a config file
 - `configpaths`: Optional paths to model configuration files
 
 **Returns**: A list of EEIO model complete components and attributes
 
-**Example**:
+### Example
+
 ```r
 model <- buildModel("USEEIO2012")
 ```
@@ -32,7 +34,8 @@ model <- buildModel("USEEIO2012")
 
 Build two-region models for all 50 states based on a single config reference file.
 
-**Parameters**:
+### Parameters
+
 - `modelname`: Name of the model from a config file
 - `configpaths`: Optional paths to configuration files
 - `validate`: If TRUE, print validation results for each model
@@ -48,7 +51,8 @@ Build two-region models for all 50 states based on a single config reference fil
 
 Calculate total emissions/resources (LCI) and total impacts (LCIA) for an EEIO model.
 
-**Parameters**:
+### Parameters
+
 - `model`: A complete EEIO model (list with USEEIO model components)
 - `perspective`: "DIRECT" or "FINAL"
   - "DIRECT": Results align with sectors where impacts are produced
@@ -67,9 +71,12 @@ Calculate total emissions/resources (LCI) and total impacts (LCIA) for an EEIO m
 - `H_r`: Total impacts (DIRECT perspective)
 - `H_l`: Total impacts (FINAL perspective)
 
-**Example**:
+### Example
+
 ```r
-# Calculate impacts for a demand vector
+
+## Calculate impacts for a demand vector
+
 result <- calculateEEIOModel(
   model = state_model,
   perspective = "DIRECT",
@@ -120,18 +127,24 @@ A USEEIO model object contains:
 
 USEEIOR's `buildTwoRegionModels()` can create state-specific models. These can then be used with `calculateEEIOModel()` using state-specific demand vectors.
 
-**Pattern**:
+### Pattern
+
 ```r
-# Build state models (all states at once)
+
+## Build state models (all states at once)
+
 state_models <- buildTwoRegionModels("USEEIO2012", year = 2023)
 
-# Get California model
+## Get California model
+
 ca_model <- state_models[["CA"]]
 
-# Create demand vector for shocks
+## Create demand vector for shocks
+
 demand <- formatDemandVector(ca_model, shocks_dataframe)
 
-# Calculate impacts
+## Calculate impacts
+
 impacts <- calculateEEIOModel(
   model = ca_model,
   perspective = "DIRECT",
@@ -157,15 +170,18 @@ From `calculateEEIOModel()` results:
 ## Additional Functions
 
 ### Analysis Functions
+
 - `calculateFlowContributiontoImpact()` - Flow contribution analysis
 - `calculateSectorContributiontoImpact()` - Sector contribution analysis
 - `calculateMarginSectorImpacts()` - Margin sector impacts
 
 ### Validation Functions
+
 - `compareFlowTotals()` - Compare flow totals
 - `printValidationResults()` - Print validation results
 
 ### Export Functions
+
 - `writeModeltoXLSX()` - Write model to Excel
 - `writeModelMatrices()` - Write matrices to CSV
 - `writeModelforAPI()` - Write model for API

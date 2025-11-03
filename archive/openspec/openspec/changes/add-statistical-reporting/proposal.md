@@ -3,6 +3,7 @@
 ## Why
 
 Currently, enrichment and analysis runs generate metrics internally but lack comprehensive, user-facing statistical reports. This makes it difficult to:
+
 - Assess data quality and hygiene at a glance
 - Understand what proportion of data is clean vs dirty
 - Track changes made to the base dataset through enrichment/transformation
@@ -35,12 +36,14 @@ Statistical reporting enables data-driven decisions, quality tracking, and trans
 ## Impact
 
 ### Affected Specs
+
 - `data-validation`: Add statistical reporting requirements for validation results
 - `data-enrichment`: Add enrichment coverage and quality reporting
 - `pipeline-orchestration`: Add report generation as pipeline artifacts
 - `runtime-environment`: Add CI integration for report uploads and PR comments
 
 ### Affected Code
+
 - `src/utils/quality_dashboard.py`: Extend with module-specific report generators
 - `src/utils/metrics.py`: Add report-specific metrics collection
 - `src/models/quality.py`: Add report data models (StatisticalReport, ModuleReport, InsightRecommendation)
@@ -50,6 +53,7 @@ Statistical reporting enables data-driven decisions, quality tracking, and trans
 - New: `src/utils/statistical_reporter.py`: Unified report orchestration
 
 ### Benefits
+
 - Transparent pipeline behavior with detailed statistics
 - Data quality tracking and trend analysis
 - Easier debugging via clean/dirty data breakdowns
@@ -57,6 +61,7 @@ Statistical reporting enables data-driven decisions, quality tracking, and trans
 - PR-level quality gates via markdown summaries
 
 ### Risks
+
 - **Report generation overhead**: Could slow down CI runs
   - Mitigation: Generate reports asynchronously, cache intermediate results
 - **Storage of historical reports**: May accumulate large artifacts
@@ -65,5 +70,6 @@ Statistical reporting enables data-driven decisions, quality tracking, and trans
   - Mitigation: Hierarchical reports (summary → details), configurable verbosity
 
 ### Dependencies
+
 - Existing: `plotly`, `pandas`, `pydantic`, `loguru`
 - GitHub Actions: `actions/upload-artifact@v4`, PR comment actions

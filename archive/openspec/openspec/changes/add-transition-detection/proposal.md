@@ -11,6 +11,7 @@ The ultimate measure of SBIR program success is **technology transition** - when
 - **Enable strategic analysis** of which technologies, companies, and agencies achieve successful transition
 
 Without transition detection, stakeholders cannot:
+
 - Identify which SBIR investments led to real-world adoption
 - Understand commercialization patterns and success factors
 - Track the full innovation lifecycle (Research → Patents → Products → Contracts)
@@ -18,7 +19,7 @@ Without transition detection, stakeholders cannot:
 - Validate transition claims with concrete evidence
 - Detect technology transfer and licensing activities via patent assignments
 
-**Critical Insight from sbir-transition-classifier:**
+### Critical Insight from sbir-transition-classifier:
 - **Award-level success**: 69% of awards lead to follow-on work (encouraging)
 - **Company-level success**: Only 7.9% of companies achieve sustained commercialization (challenging)
 - This dual perspective reveals that while individual awards often succeed, building repeatable commercialization capability is rare
@@ -65,11 +66,13 @@ Without transition detection, stakeholders cannot:
 ## Impact
 
 ### Affected Specs
+
 - **data-transformation**: Add transition detection transformation for Awards, Contracts, Patents
 - **data-loading**: Add Transition nodes and transition relationships to Neo4j
 - **configuration**: Add transition detection configuration management
 
 ### Affected Code
+
 - `src/transition/`: New transition detection module
   - `detection/detector.py`: Core transition detection engine
   - `detection/scoring.py`: Multi-signal likelihood scoring
@@ -98,7 +101,8 @@ Without transition detection, stakeholders cannot:
   - `tests/fixtures/`: Sample contracts and known transitions
 
 ### Dependencies
-**New Dependencies:**
+
+### New Dependencies:
 - None! All required libraries already available:
   - pandas, pydantic, pyyaml (already installed)
   - rapidfuzz (promote from dev to main - needed for vendor name matching)
@@ -106,19 +110,20 @@ Without transition detection, stakeholders cannot:
 
 ### Integration Approach
 
-**Embedded Module (Recommended)**:
+### Embedded Module (Recommended)
 - Transition detector runs as Dagster asset within existing pipeline
 - Shares vendor resolution with SBIR enrichment module
 - Direct integration with Award/Patent/Contract transformers
 - No separate database (uses Neo4j graph)
 
-**Advantages**:
+### Advantages
 - Unified data lineage in Dagster
 - Shared vendor cross-walk logic
 - Single Neo4j graph for all relationships
 - Lower operational complexity
 
 ### Data Sources Required
+
 1. **SBIR Awards**: Already in pipeline (252K awards)
 2. **Federal Contracts**: USAspending.gov data (6.7M+ contracts, 14GB+)
    - Currently available as CSV download
@@ -129,6 +134,7 @@ Without transition detection, stakeholders cannot:
    - UEI, CAGE, DUNS cross-walk
 
 ### Performance Considerations
+
 - **Detection Throughput**: 66,728 detections/minute (from sbir-transition-classifier)
 - **Full Pipeline**: <8 hours for complete fiscal year backtest
 - **Memory**: Chunked processing for 14GB+ contract dataset
@@ -136,6 +142,7 @@ Without transition detection, stakeholders cannot:
 - **Evidence Storage**: Evidence bundles stored as JSON on relationships (~2KB each)
 
 ### Data Quality Metrics
+
 - **Data Retention**: 99.99% (from sbir-transition-classifier)
 - **Vendor Match Rate**: Target ≥90% (UEI cross-walk)
 - **Award Coverage**: 100% of awards evaluated
@@ -143,13 +150,16 @@ Without transition detection, stakeholders cannot:
 - **Recall**: ≥70% against known Phase III awards (target)
 
 ### Business Value Metrics
+
 From sbir-transition-classifier analysis:
+
 - **Award-Level Success Rate**: 69.0% (individual transitions)
 - **Company-Level Success Rate**: 7.9% (sustained commercialization)
 - **Phase II Advantage**: 8.2 percentage points higher than Phase I
 - **Patent Enhancement**: TBD - new capability for sbir-etl
 
 ### Key Innovations Beyond sbir-transition-classifier
+
 1. **Patent Integration**: First-class patent tracking as transition signal
 2. **Graph Database**: Neo4j enables complex transition pathway queries
 3. **Multi-Indicator Scoring**: Combines contracts + patents + CET classifications
@@ -162,7 +172,9 @@ From sbir-transition-classifier analysis:
    - Enable strategic investment decisions based on transition data
 
 ### CET-Transition Integration
+
 By combining the proposed CET classification module with transition detection:
+
 - **Technology-Specific Transition Rates**: Calculate success rates for each of 21 CET areas
 - **Portfolio Optimization**: Identify which technologies have highest ROI
 - **Gap Analysis**: Detect CET areas with high funding but low transition
@@ -172,7 +184,8 @@ By combining the proposed CET classification module with transition detection:
   - Do certain technologies take longer to commercialize?
   - Are some CET areas better suited for specific agencies?
 
-**Example Queries Enabled:**
+### Example Queries Enabled:
+
 ```cypher
 // Transition rate by CET area
 MATCH (a:Award)-[:APPLICABLE_TO]->(cet:CETArea)

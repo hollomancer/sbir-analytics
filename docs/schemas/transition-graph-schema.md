@@ -13,11 +13,14 @@ The transition detection graph model represents SBIR awards, federal contracts, 
 
 ### Core Model
 
-```
+```text
 (Award)-[TRANSITIONED_TO]->(Transition)<-[RESULTED_IN]-(Contract)
          |                          |
+
          +--[FUNDED_BY]-->(Company) +--[ENABLED_BY]-->(Patent)
+
          |                          |
+
          +--[INVOLVES_TECHNOLOGY]->(CETArea)
          
 (Company)-[ACHIEVED]->(TransitionProfile)
@@ -32,7 +35,7 @@ Represents an SBIR award.
 
 **Label**: `:Award`
 
-**Properties**:
+### Properties
 
 ```yaml
 award_id: String (UNIQUE, PRIMARY KEY)
@@ -112,16 +115,19 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `award_id` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `award_id` (PRIMARY)
 - `phase` (for phase analysis)
 - `agency` (for agency breakdown)
 - `completion_date` (for time-based queries)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (a:Award {
   award_id: "SBIR-2020-PHASE-II-001",
@@ -145,7 +151,7 @@ Represents a federal contract.
 
 **Label**: `:Contract`
 
-**Properties**:
+### Properties
 
 ```yaml
 contract_id: String (UNIQUE, PRIMARY KEY)
@@ -229,17 +235,20 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `contract_id` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `contract_id` (PRIMARY)
 - `agency` (for agency analysis)
 - `action_date` (for time-based queries)
 - `vendor_uei` (for vendor lookup)
 - `competition_type` (for competition analysis)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (c:Contract {
   contract_id: "FA1234-20-C-0001",
@@ -261,7 +270,7 @@ Represents a detected transition from award to contract.
 
 **Label**: `:Transition`
 
-**Properties**:
+### Properties
 
 ```yaml
 transition_id: String (UNIQUE, PRIMARY KEY)
@@ -319,17 +328,20 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `transition_id` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `transition_id` (PRIMARY)
 - `confidence` (for filtering by confidence)
 - `likelihood_score` (for range queries)
 - `detection_date` (for temporal analysis)
 - `vendor_match_method` (for method distribution)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (t:Transition {
   transition_id: "trans_a1b2c3d4e5f6",
@@ -353,7 +365,7 @@ Represents a company (SBIR recipient or federal contractor).
 
 **Label**: `:Company`
 
-**Properties**:
+### Properties
 
 ```yaml
 company_id: String (UNIQUE, PRIMARY KEY)
@@ -397,18 +409,21 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `company_id` UNIQUE
 - `uei` UNIQUE (where not null)
 - `cage` UNIQUE (where not null)
 - `duns` UNIQUE (where not null)
 
-**Indexes**:
+### Indexes
+
 - `company_id` (PRIMARY)
 - `uei` (for UEI lookup)
 - `name` (for name search, full-text index)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (co:Company {
   company_id: "company_abc123",
@@ -427,7 +442,7 @@ Represents a patent.
 
 **Label**: `:Patent`
 
-**Properties**:
+### Properties
 
 ```yaml
 patent_id: String (UNIQUE, PRIMARY KEY)
@@ -487,15 +502,18 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `patent_id` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `patent_id` (PRIMARY)
 - `filing_date` (for temporal analysis)
 - `assignee` (for assignee lookup)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (p:Patent {
   patent_id: "US10123456B2",
@@ -515,7 +533,7 @@ Represents a Critical & Emerging Technology area.
 
 **Label**: `:CETArea`
 
-**Properties**:
+### Properties
 
 ```yaml
 cet_id: String (UNIQUE, PRIMARY KEY)
@@ -551,15 +569,18 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `cet_id` UNIQUE
 - `name` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `cet_id` (PRIMARY)
 - `name` (for CET lookup)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (cet:CETArea {
   cet_id: "cet_ai_ml",
@@ -577,7 +598,7 @@ Represents company-level transition profile (aggregated metrics).
 
 **Label**: `:TransitionProfile`
 
-**Properties**:
+### Properties
 
 ```yaml
 profile_id: String (UNIQUE, PRIMARY KEY)
@@ -626,16 +647,19 @@ updated_at: DateTime
   # Example: 2024-01-15T10:30:00Z
 ```
 
-**Constraints**:
+### Constraints
+
 - `profile_id` UNIQUE
 
-**Indexes**:
+### Indexes
+
 - `profile_id` (PRIMARY)
 - `company_id` (for company lookup)
 - `success_rate` (for performance ranking)
 - `total_transitions` (for volume analysis)
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 CREATE (tp:TransitionProfile {
   profile_id: "profile_company_abc123",
@@ -659,7 +683,7 @@ Represents award that led to transition detection.
 **Target**: `:Transition`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 award_id: String
@@ -676,20 +700,25 @@ notes: String (nullable)
   # Additional context
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})
 CREATE (a)-[:TRANSITIONED_TO]->(t)
 ```
 
-**Query Examples**:
+### Query Examples
+
 ```cypher
-# Find all transitions from an award
+
+## Find all transitions from an award
+
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})-[:TRANSITIONED_TO]->(t:Transition)
 RETURN t
 
-# Count transitions per award
+## Count transitions per award
+
 MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)
 RETURN a.award_id, count(t) as transition_count
 ORDER BY transition_count DESC
@@ -705,7 +734,7 @@ Represents contract resulting from transition.
 **Target**: `:Contract`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 contract_id: String
@@ -715,23 +744,30 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})
 MATCH (c:Contract {contract_id: "FA1234-20-C-0001"})
 CREATE (t)-[:RESULTED_IN]->(c)
 ```
 
-**Query Examples**:
+### Query Examples
+
 ```cypher
-# Find contract from transition
+
+## Find contract from transition
+
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})-[:RESULTED_IN]->(c:Contract)
 RETURN c
 
-# Award → Transition → Contract pathway
+## Award → Transition → Contract pathway
+
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+
       -[:TRANSITIONED_TO]->(t:Transition)
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN a, t, c
 ```
 
@@ -745,7 +781,7 @@ Represents patents that enabled transition.
 **Target**: `:Patent`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 patent_id: String
@@ -763,20 +799,25 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})
 MATCH (p:Patent {patent_id: "US10123456B2"})
 CREATE (t)-[:ENABLED_BY {patent_topic_similarity: 0.76, pre_contract: true}]->(p)
 ```
 
-**Query Examples**:
+### Query Examples
+
 ```cypher
-# Find patents enabling a transition
+
+## Find patents enabling a transition
+
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})-[:ENABLED_BY]->(p:Patent)
 RETURN p
 
-# Find patent-backed transitions
+## Find patent-backed transitions
+
 MATCH (t:Transition)-[:ENABLED_BY]->(p:Patent)
 WHERE t.confidence IN ["HIGH", "LIKELY"]
 RETURN t, p
@@ -793,7 +834,7 @@ Represents CET area of transition.
 **Target**: `:CETArea`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 cet_area: String
@@ -807,20 +848,25 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})
 MATCH (cet:CETArea {name: "AI & Machine Learning"})
 CREATE (t)-[:INVOLVES_TECHNOLOGY {cet_alignment_type: "EXACT"}]->(cet)
 ```
 
-**Query Examples**:
+### Query Examples
+
 ```cypher
-# Find CET area of transition
+
+## Find CET area of transition
+
 MATCH (t:Transition {transition_id: "trans_a1b2c3d4e5f6"})-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
 RETURN cet
 
-# Transitions by CET area
+## Transitions by CET area
+
 MATCH (t:Transition)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
 RETURN cet.name, count(t) as transition_count
 ORDER BY transition_count DESC
@@ -836,7 +882,7 @@ Represents company that received award.
 **Target**: `:Company`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 recipient_role: String
@@ -847,20 +893,25 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
 MATCH (co:Company {uei: "ABC123DEF456"})
 CREATE (a)-[:FUNDED_BY {recipient_role: "PRIME"}]->(co)
 ```
 
-**Query Examples**:
+### Query Examples
+
 ```cypher
-# Find company that received award
+
+## Find company that received award
+
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})-[:FUNDED_BY]->(co:Company)
 RETURN co
 
-# Companies with multiple awards
+## Companies with multiple awards
+
 MATCH (a:Award)-[:FUNDED_BY]->(co:Company)
 RETURN co.name, count(a) as award_count
 ORDER BY award_count DESC
@@ -876,7 +927,7 @@ Represents company that won contract.
 **Target**: `:Contract`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 vendor_role: String
@@ -887,7 +938,8 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (co:Company {uei: "ABC123DEF456"})
 MATCH (c:Contract {contract_id: "FA1234-20-C-0001"})
@@ -904,7 +956,7 @@ Represents company that filed patent.
 **Target**: `:Patent`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 assignee_type: String
@@ -915,7 +967,8 @@ created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (co:Company {name: "Acme AI Inc."})
 MATCH (p:Patent {patent_id: "US10123456B2"})
@@ -932,14 +985,15 @@ Represents company's transition profile.
 **Target**: `:TransitionProfile`
 **Direction**: Directed (outgoing)
 
-**Properties**:
+### Properties
 
 ```yaml
 created_at: DateTime
   # When relationship created
 ```
 
-**Example Cypher**:
+### Example Cypher
+
 ```cypher
 MATCH (co:Company {company_id: "company_abc123"})
 MATCH (tp:TransitionProfile {profile_id: "profile_company_abc123"})
@@ -953,42 +1007,50 @@ CREATE (co)-[:ACHIEVED]->(tp)
 ### Node Indexes
 
 ```cypher
-# Award indexes
+
+## Award indexes
+
 CREATE INDEX idx_award_id ON :Award(award_id)
 CREATE INDEX idx_award_phase ON :Award(phase)
 CREATE INDEX idx_award_agency ON :Award(agency)
 CREATE INDEX idx_award_completion_date ON :Award(completion_date)
 CREATE INDEX idx_award_cet_area ON :Award(cet_area)
 
-# Contract indexes
+## Contract indexes
+
 CREATE INDEX idx_contract_id ON :Contract(contract_id)
 CREATE INDEX idx_contract_agency ON :Contract(agency)
 CREATE INDEX idx_contract_action_date ON :Contract(action_date)
 CREATE INDEX idx_contract_vendor_uei ON :Contract(vendor_uei)
 CREATE INDEX idx_contract_competition_type ON :Contract(competition_type)
 
-# Transition indexes
+## Transition indexes
+
 CREATE INDEX idx_transition_id ON :Transition(transition_id)
 CREATE INDEX idx_transition_confidence ON :Transition(confidence)
 CREATE INDEX idx_transition_likelihood_score ON :Transition(likelihood_score)
 CREATE INDEX idx_transition_detection_date ON :Transition(detection_date)
 CREATE INDEX idx_transition_vendor_match_method ON :Transition(vendor_match_method)
 
-# Company indexes
+## Company indexes
+
 CREATE INDEX idx_company_id ON :Company(company_id)
 CREATE INDEX idx_company_uei ON :Company(uei)
 CREATE INDEX idx_company_name ON :Company(name)
 
-# Patent indexes
+## Patent indexes
+
 CREATE INDEX idx_patent_id ON :Patent(patent_id)
 CREATE INDEX idx_patent_filing_date ON :Patent(filing_date)
 CREATE INDEX idx_patent_assignee ON :Patent(assignee)
 
-# CETArea indexes
+## CETArea indexes
+
 CREATE INDEX idx_cet_id ON :CETArea(cet_id)
 CREATE INDEX idx_cet_name ON :CETArea(name)
 
-# TransitionProfile indexes
+## TransitionProfile indexes
+
 CREATE INDEX idx_profile_id ON :TransitionProfile(profile_id)
 CREATE INDEX idx_profile_company_id ON :TransitionProfile(company_id)
 CREATE INDEX idx_profile_success_rate ON :TransitionProfile(success_rate)
@@ -998,29 +1060,37 @@ CREATE INDEX idx_profile_total_transitions ON :TransitionProfile(total_transitio
 ### Unique Constraints
 
 ```cypher
-# Award
+
+## Award
+
 CREATE CONSTRAINT award_award_id_unique ON (a:Award) ASSERT a.award_id IS UNIQUE
 
-# Contract
+## Contract
+
 CREATE CONSTRAINT contract_contract_id_unique ON (c:Contract) ASSERT c.contract_id IS UNIQUE
 
-# Transition
+## Transition
+
 CREATE CONSTRAINT transition_transition_id_unique ON (t:Transition) ASSERT t.transition_id IS UNIQUE
 
-# Company
+## Company
+
 CREATE CONSTRAINT company_company_id_unique ON (co:Company) ASSERT co.company_id IS UNIQUE
 CREATE CONSTRAINT company_uei_unique ON (co:Company) ASSERT co.uei IS UNIQUE
 CREATE CONSTRAINT company_cage_unique ON (co:Company) ASSERT co.cage IS UNIQUE
 CREATE CONSTRAINT company_duns_unique ON (co:Company) ASSERT co.duns IS UNIQUE
 
-# Patent
+## Patent
+
 CREATE CONSTRAINT patent_patent_id_unique ON (p:Patent) ASSERT p.patent_id IS UNIQUE
 
-# CETArea
+## CETArea
+
 CREATE CONSTRAINT cet_cet_id_unique ON (cet:CETArea) ASSERT cet.cet_id IS UNIQUE
 CREATE CONSTRAINT cet_name_unique ON (cet:CETArea) ASSERT cet.name IS UNIQUE
 
-# TransitionProfile
+## TransitionProfile
+
 CREATE CONSTRAINT profile_profile_id_unique ON (tp:TransitionProfile) ASSERT tp.profile_id IS UNIQUE
 ```
 
@@ -1031,32 +1101,47 @@ CREATE CONSTRAINT profile_profile_id_unique ON (tp:TransitionProfile) ASSERT tp.
 ### Basic Traversals
 
 ```cypher
-# Award → Transition → Contract pathway
+
+## Award → Transition → Contract pathway
+
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+
       -[:TRANSITIONED_TO]->(t:Transition)
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN a, t, c
 
-# Award → Patent → Transition → Contract
+## Award → Patent → Transition → Contract
+
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+
       -[:FUNDED_BY]->(co:Company)
+
       <-[:FILED]-(p:Patent)
       <-[:ENABLED_BY]-(t:Transition)
+
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN a, co, p, t, c
 
-# Company-level view
+## Company-level view
+
 MATCH (co:Company {uei: "ABC123DEF456"})
       <-[:FUNDED_BY]-(a:Award)
+
       -[:TRANSITIONED_TO]->(t:Transition)
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN co, a, t, c
 
-# Find HIGH confidence transitions
+## Find HIGH confidence transitions
+
 MATCH (t:Transition {confidence: "HIGH"})
       <-[:TRANSITIONED_TO]-(a:Award)
       <-[:FUNDED_BY]-(co:Company)
+
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN co.name, a.topic, c.piid, t.likelihood_score
 ORDER BY t.likelihood_score DESC
 ```
@@ -1064,7 +1149,9 @@ ORDER BY t.likelihood_score DESC
 ### Aggregation Queries
 
 ```cypher
-# Transitions by CET area
+
+## Transitions by CET area
+
 MATCH (t:Transition)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
 RETURN cet.name, 
        count(t) as transition_count,
@@ -1072,10 +1159,13 @@ RETURN cet.name,
        max(t.likelihood_score) as max_score
 ORDER BY transition_count DESC
 
-# Company transition profile summary
+## Company transition profile summary
+
 MATCH (co:Company)
       <-[:FUNDED_BY]-(a:Award)
+
       -[:TRANSITIONED_TO]->(t:Transition)
+
 RETURN co.name,
        count(DISTINCT a) as total_awards,
        count(DISTINCT t) as total_transitions,
@@ -1083,7 +1173,8 @@ RETURN co.name,
 HAVING count(DISTINCT a) > 0
 ORDER BY success_rate_percent DESC
 
-# Transitions by agency
+## Transitions by agency
+
 MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)
 RETURN a.agency_name, 
        count(t) as transitions,
@@ -1095,7 +1186,9 @@ ORDER BY transitions DESC
 ### Pattern Detection
 
 ```cypher
-# Fast-tracked transitions (< 90 days)
+
+## Fast-tracked transitions (< 90 days)
+
 MATCH (t:Transition)-[:RESULTED_IN]->(c:Contract)
       <-[:TRANSITIONED_TO]-(a:Award)
 WHERE (c.action_date - a.completion_date) < 90
@@ -1103,17 +1196,23 @@ AND t.confidence IN ["HIGH", "LIKELY"]
 RETURN a.award_id, a.recipient_name, c.piid, c.obligated_amount
 ORDER BY c.action_date DESC
 
-# Patent-backed transitions
+## Patent-backed transitions
+
 MATCH (t:Transition {confidence: "HIGH"})
+
       -[:ENABLED_BY]->(p:Patent)
       -[:RESULTED_IN]->(c:Contract)
+
 RETURN t.transition_id, p.title, c.piid, p.filing_date
 
-# Multi-contract companies
+## Multi-contract companies
+
 MATCH (co:Company)
       <-[:FUNDED_BY]-(a:Award)
+
       -[:TRANSITIONED_TO]->(t:Transition)
       -[:RESULTED_IN]->(c:Contract)
+
 WHERE a.phase = "PHASE_II"
 WITH co, collect(DISTINCT c.piid) as contracts, count(DISTINCT c) as contract_count
 WHERE contract_count > 1
@@ -1124,7 +1223,9 @@ ORDER BY contract_count DESC
 ### Analysis Queries
 
 ```cypher
-# Transition effectiveness by CET area
+
+## Transition effectiveness by CET area
+
 MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
       <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
 RETURN cet.name,
@@ -1134,7 +1235,8 @@ RETURN cet.name,
        avg(t.likelihood_score) as avg_confidence
 ORDER BY effectiveness_percent DESC
 
-# Time-to-transition analysis
+## Time-to-transition analysis
+
 MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)-[:RESULTED_IN]->(c:Contract)
 WHERE c.action_date > a.completion_date
 RETURN a.agency_name,
@@ -1143,7 +1245,8 @@ RETURN a.agency_name,
        round(percentile(c.action_date - a.completion_date, 0.5)) as median_days
 ORDER BY avg_days_to_transition ASC
 
-# High-value commercialization
+## High-value commercialization
+
 MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)-[:RESULTED_IN]->(c:Contract)
 RETURN a.recipient_name,
        a.award_amount,
@@ -1208,25 +1311,30 @@ SET t.award_id = record.award_id,
 ### Creating Relationships
 
 ```cypher
-# Award → Transition
+
+## Award → Transition
+
 UNWIND $transitions AS t
 MATCH (a:Award {award_id: t.award_id})
 MATCH (tr:Transition {transition_id: t.transition_id})
 MERGE (a)-[:TRANSITIONED_TO]->(tr)
 
-# Transition → Contract
+## Transition → Contract
+
 UNWIND $transitions AS t
 MATCH (tr:Transition {transition_id: t.transition_id})
 MATCH (c:Contract {contract_id: t.contract_id})
 MERGE (tr)-[:RESULTED_IN]->(c)
 
-# Transition → Patent (if applicable)
+## Transition → Patent (if applicable)
+
 UNWIND $enabled_by AS eb
 MATCH (t:Transition {transition_id: eb.transition_id})
 MATCH (p:Patent {patent_id: eb.patent_id})
 MERGE (t)-[:ENABLED_BY {patent_topic_similarity: eb.similarity}]->(p)
 
-# Transition → CETArea
+## Transition → CETArea
+
 UNWIND $cet_links AS cl
 MATCH (t:Transition {transition_id: cl.transition_id})
 MATCH (cet:CETArea {name: cl.cet_name})

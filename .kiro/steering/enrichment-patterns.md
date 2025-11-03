@@ -8,7 +8,7 @@ The system implements a multi-source enrichment strategy with documented fallbac
 
 ### Hierarchical Enrichment Strategy
 
-```
+```text
 Primary Source (Highest Quality)
     ↓ Success? → Continue
     ↓ Fail? → Fallback
@@ -35,7 +35,7 @@ Log Enrichment Path & Confidence Score
 
 ### NAICS Code Enrichment Example
 
-**9-Step Enrichment Workflow:**
+### 9-Step Enrichment Workflow:
 
 1. **Original SBIR data** (confidence: 0.95) - Use if valid
 2. **USAspending.gov API** (confidence: 0.90) - Match by UEI/contract ID
@@ -53,7 +53,8 @@ Log Enrichment Path & Confidence Score
 - Enrichment timestamp
 - Method-specific metadata (similarity scores, API response details)
 
-**Enrichment Result Structure:**
+### Enrichment Result Structure:
+
 ```python
 @dataclass
 class EnrichmentResult:
@@ -68,13 +69,15 @@ class EnrichmentResult:
 
 ### Rate Limiting and API Management
 
-**Rate Limiting:**
+### Rate Limiting:
+
 - Configurable rate limits per API source
 - Exponential backoff for transient failures
 - Batch processing where supported by APIs
 - Request throttling to stay within limits
 
-**Retry Logic:**
+### Retry Logic:
+
 - Transient error detection (503, timeout)
 - Exponential backoff strategy
 - Maximum retry attempts per source
@@ -88,7 +91,8 @@ class EnrichmentResult:
 - API response metadata
 - Validation checks performed
 
-**Manual Review Support:**
+### Manual Review Support:
+
 - Low-confidence enrichments flagged for review
 - Evidence presented for manual validation
 - Accept/reject workflows for questionable matches
@@ -108,12 +112,14 @@ Enrichment sources, fallback rules, and quality thresholds are configured in YAM
 ## Best Practices
 
 ### Enrichment Strategy Design
+
 - **Hierarchical fallback**: Order sources by quality and confidence
 - **Confidence scoring**: Transparent scoring for all enrichment decisions
 - **Evidence tracking**: Maintain audit trail for all enrichment decisions
 - **Quality gates**: Enforce minimum success rates and confidence levels
 
 ### API Management
+
 - **Rate limiting**: Respect API limits and implement backoff strategies
 - **Batch processing**: Optimize API usage with batching where possible
 - **Error handling**: Graceful degradation with fallback sources

@@ -84,22 +84,29 @@ enrichment_refresh:
 Use the `refresh_enrichment.py` script for ad-hoc refreshes:
 
 ```bash
-# Refresh specific awards
+
+## Refresh specific awards
+
 python scripts/refresh_enrichment.py refresh-usaspending --award-ids "AWARD-001,AWARD-002"
 
-# Refresh all stale awards
+## Refresh all stale awards
+
 python scripts/refresh_enrichment.py refresh-usaspending --stale-only
 
-# Refresh awards from 2023
+## Refresh awards from 2023
+
 python scripts/refresh_enrichment.py refresh-usaspending --cohort 2023
 
-# Force refresh (ignores staleness)
+## Force refresh (ignores staleness)
+
 python scripts/refresh_enrichment.py refresh-usaspending --cohort 2023 --force
 
-# List stale awards
+## List stale awards
+
 python scripts/refresh_enrichment.py list-stale --source usaspending
 
-# View freshness statistics
+## View freshness statistics
+
 python scripts/refresh_enrichment.py stats --source usaspending
 ```
 
@@ -136,6 +143,7 @@ Delta detection prevents unnecessary API calls and updates by comparing payload 
 4. If hashes differ, the enrichment is updated (status: `success`, `delta_detected: true`)
 
 This allows the system to:
+
 - Skip API calls for unchanged data (when `enable_delta_detection: true`)
 - Track which awards have actually changed
 - Reduce API load and processing time
@@ -192,6 +200,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 ### No Awards Are Being Refreshed
 
 1. **Check freshness ledger**:
+
    ```bash
    python scripts/refresh_enrichment.py list-stale --source usaspending
    ```
@@ -249,6 +258,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 ### Alerts
 
 Consider setting up alerts for:
+
 - Freshness coverage drops below threshold
 - Success rate drops below threshold
 - Error rate exceeds threshold

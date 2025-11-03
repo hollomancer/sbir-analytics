@@ -69,6 +69,7 @@ The loader accepts flexible inputs but maps them to the following canonical fiel
 - `notes` (optional string)
 
 And wraps them in a `TrainingDataset`:
+
 - `dataset_id` (default is derived from filename + UTC date)
 - `taxonomy_version` (required: e.g., `NSTC-2025Q1`)
 - `created_at` (auto-set)
@@ -93,6 +94,7 @@ By default, the loader tries to resolve columns using the following candidates:
 - `notes`: `notes`, `comments`
 
 You can override detection with an explicit mapping:
+
 - `{"example_id": "award_id", "title": "project_title", "labels": "cet_labels", ...}`
 
 ---
@@ -150,6 +152,7 @@ CSV is also supported with equivalent columns.
 Asset: `cet_award_training_dataset`
 
 Behavior:
+
 - Searches for training data under the input paths listed above (processed first, then raw)
 - Loads via `AwardTrainingLoader`
 - Persists to `data/processed/cet_award_training.parquet` (or NDJSON fallback)
@@ -163,6 +166,7 @@ Behavior:
   - Writes empty output and a checks JSON with `ok=false` and `reason="training_data_missing"`
 
 CI Tips:
+
 - Use path filters to run this asset only when `data/**/cet_award_training.*` changes.
 - Upload the checks JSON as a build artifact for PR feedback.
 
@@ -232,33 +236,39 @@ from pathlib import Path
 from src.ml.config.taxonomy_loader import TaxonomyLoader
 from src.ml.models.trainer import CETModelTrainer
 
-# 1) Load taxonomy and classification config
+## 1) Load taxonomy and classification config
+
 loader = TaxonomyLoader()
 taxonomy = loader.load_taxonomy()
 classification_cfg = loader.load_classification_config()
 cet_areas = list(taxonomy.cet_areas)
 taxonomy_version = taxonomy.version
 
-# 2) Prepare trainer
+## 2) Prepare trainer
+
 trainer = CETModelTrainer(
     cet_areas=cet_areas,
     config=classification_cfg,
     taxonomy_version=taxonomy_version,
 )
 
-# 3) Prepare data
+## 3) Prepare data
+
 X_train, y_train, X_test, y_test = trainer.prepare_data(dataset)
 
-# 4) Train (CV + calibration are configurable inside trainer)
+## 4) Train (CV + calibration are configurable inside trainer)
+
 model = trainer.train(dataset, perform_cv=True, perform_calibration=True)
 
-# 5) Persist model and metrics
+## 5) Persist model and metrics
+
 model_path = Path("artifacts/models/cet_classifier_v1.pkl")
 trainer.save_model(model, model_path)
 print(trainer.generate_report())
 ```
 
 Outputs:
+
 - `artifacts/models/cet_classifier_v1.pkl`
 - `artifacts/models/cet_classifier_v1_metrics.json` (saved by `trainer.save_model` when enabled)
 

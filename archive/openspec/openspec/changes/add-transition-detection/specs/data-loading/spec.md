@@ -149,6 +149,7 @@ The system SHALL enable efficient Cypher queries for transition pathway analysis
 
 - **WHEN** querying for high-confidence AI transitions with patents
 - **THEN** the system executes:
+
   ```cypher
   MATCH path = (a:Award)-[:APPLICABLE_TO]->(cet:CETArea {name: "Artificial Intelligence"}),
                (a)-[:TRANSITIONED_TO {confidence: "High"}]->(t:Transition),
@@ -162,12 +163,14 @@ The system SHALL enable efficient Cypher queries for transition pathway analysis
       c.amount as contract_value
   ORDER BY contract_value DESC
   ```
+
 - **AND** query executes in <2 seconds using indexes
 
 #### Scenario: Calculate transition rate by CET area
 
 - **WHEN** analyzing transition effectiveness by technology
 - **THEN** the system executes:
+
   ```cypher
   MATCH (a:Award)-[:APPLICABLE_TO]->(cet:CETArea)
   OPTIONAL MATCH (a)-[:TRANSITIONED_TO]->(t:Transition {confidence: "High"})
@@ -184,6 +187,7 @@ The system SHALL enable efficient Cypher queries for transition pathway analysis
 
 - **WHEN** analyzing role of patents in commercialization
 - **THEN** the system executes:
+
   ```cypher
   MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)
   OPTIONAL MATCH (t)-[:ENABLED_BY]->(p:Patent)

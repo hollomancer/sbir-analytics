@@ -3,12 +3,14 @@
 ## Context
 
 We currently classify SBIR awards and patents into CET areas and attach evidence for explainability. To improve discovery, validation, and analytics, we will add an embedding-driven analysis layer built on PaECTER (Patent Embeddings using Citation-informed TransformERs). This will enable:
+
 - Dense vector embeddings for patents and awards
 - Award↔patent semantic similarity (top‑k with thresholds)
 - Embedding-space diagnostics for classifier cohesion/separation
 - Quality gates, drift detection, and performance telemetry
 
 Provider strategy:
+
 - Default: Hugging Face Inference API (serverless; no local GPU required)
 - Later option: Hugging Face Inference Endpoints (dedicated capacity, TEI-backed)
 - Local CPU/GPU: non-default, explicit fallback only when required
@@ -40,6 +42,7 @@ Reference model: mpi-inno-comp/paecter (Apache-2.0), 1024-d embeddings, optimize
   - neo4j_award_patent_similarity (optional; off by default)
 
 - Data Flow:
+
   1) Transform patents → build text (title [+ abstract]) → remote embeddings
   2) Enriched awards → build text (solicitation_title [+ abstract]) → remote embeddings
   3) Similarity: compute award→patent top‑k cosine (brute-force; FAISS optional later)
@@ -103,22 +106,27 @@ All keys are overrideable via environment variables (e.g., SBIR_ETL__PAECTER__RE
 ## Key Decisions
 
 1) Default Provider: Inference API
+
 - Why: Quickest path to production without local GPUs; fully managed scaling
 - Impact: Client implements batching, throttling, retries; records model_id and revision in outputs
 
 2) Endpoint Option (Later)
+
 - Why: Dedicated capacity, stable performance SLOs; TEI-backed for embeddings
 - Impact: Add endpoint.url and ensure request compatibility; same client abstractions
 
 3) Local Fallback (Explicit)
+
 - Why: Allow offline dev or disaster recovery; not default to avoid dependency sprawl
 - Impact: Optional installation of transformers/torch; maintain feature parity but accept slower performance
 
 4) Similarity Backend
+
 - Default: Brute-force cosine (normalize vectors, then dot product)
 - Optional: FAISS for large-scale search (switch threshold configurable)
 
 5) Graph Storage
+
 - No vectors in Neo4j; only SIMILAR_TO edges with score and metadata
 - Keep graph lean and governance simple
 
@@ -151,10 +159,12 @@ All keys are overrideable via environment variables (e.g., SBIR_ETL__PAECTER__RE
   - Redact payloads in error logs
 
 Outputs (Parquet):
+
 - patents: patent_id, text_source, embedding (list[float]), model_name, model_revision, provider, computed_at
 - awards: award_id, text_source, embedding, model_name, model_revision, provider, computed_at
 
 Checks JSON (adjacent to outputs):
+
 - { ok, coverage, threshold, total, embedded, reason?, config_snapshot }
 
 ### Similarity Computation
@@ -261,6 +271,7 @@ Checks JSON (adjacent to outputs):
 8) Add tests (unit + integration with stubbed remote responses)
 
 Rollback:
+
 - Disable assets via selection or config; no changes to existing CET behaviors
 - Use prune mode in loader to remove similarity edges if needed
 

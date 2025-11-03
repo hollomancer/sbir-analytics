@@ -1,71 +1,90 @@
 # configuration Specification
 
 ## Purpose
+
 TBD - created by archiving change add-initial-architecture. Update Purpose after archive.
+
 ## Requirements
+
+
 ### Requirement: Three-Layer Configuration System
+
 The system SHALL implement a three-layer configuration architecture: YAML files, Pydantic validation, and environment variable overrides.
 
 #### Scenario: Base configuration loading
+
 - **WHEN** the system starts
 - **THEN** it SHALL load the base configuration from `config/base.yaml`
 - **AND** the configuration SHALL be parsed successfully
 
 #### Scenario: Environment-specific overrides
+
 - **WHEN** an environment is specified (dev, staging, prod)
 - **THEN** the system SHALL load the environment-specific YAML file (e.g., `config/prod.yaml`)
 - **AND** values from the environment file SHALL override base configuration values
 
 #### Scenario: Environment variable overrides
+
 - **WHEN** environment variables with prefix `SBIR_ETL__` are set
 - **THEN** those values SHALL override YAML configuration values
 - **AND** nested paths SHALL be supported using double underscores (e.g., `SBIR_ETL__DATA_QUALITY__MAX_DUPLICATE_RATE`)
 
 ### Requirement: Type-Safe Configuration Validation
+
 The system SHALL validate all configuration using Pydantic schemas to ensure type safety and catch errors at startup.
 
 #### Scenario: Valid configuration
+
 - **WHEN** configuration is loaded and validated
 - **THEN** a PipelineConfig instance SHALL be returned with all fields properly typed
 - **AND** the system SHALL proceed with initialization
 
 #### Scenario: Invalid configuration
+
 - **WHEN** configuration contains invalid values (e.g., negative numbers for positive-only fields)
 - **THEN** Pydantic validation SHALL raise a detailed error
 - **AND** the system SHALL fail to start with a clear error message
 - **AND** the error message SHALL indicate which field is invalid and why
 
 ### Requirement: Secret Management
+
 The system SHALL never store secrets in configuration files and SHALL require secrets to be provided via environment variables.
 
 #### Scenario: Database password from environment
+
 - **WHEN** the system needs database credentials
 - **THEN** the password SHALL be read from an environment variable (e.g., `SBIR_ETL__NEO4J_PASSWORD`)
 - **AND** the password SHALL NOT be present in any YAML configuration file
 
 #### Scenario: API key from environment
+
 - **WHEN** the system needs API keys (e.g., SAM.gov API key)
 - **THEN** the API key SHALL be read from an environment variable
 - **AND** the configuration SHALL support null/empty values in YAML files for secrets
 
 ### Requirement: Configuration Documentation
+
 The system SHALL provide clear documentation of all configuration parameters and their valid ranges.
 
 #### Scenario: Configuration field description
+
 - **WHEN** a developer reviews the Pydantic schema
 - **THEN** each field SHALL have a docstring or Field description
 - **AND** valid ranges SHALL be enforced via Pydantic validators (e.g., `ge=0.0, le=1.0`)
 
 #### Scenario: README guidance
+
 - **WHEN** a user reads `config/README.md`
 - **THEN** it SHALL document all available configuration sections
 - **AND** it SHALL provide examples of environment variable overrides
 - **AND** it SHALL explain the configuration priority order
 
 ### Requirement: Cached Configuration Loading
+
 The system SHALL cache the loaded configuration to avoid repeated file I/O during a single run.
 
 #### Scenario: Single configuration load per process
+
 - **WHEN** multiple modules request configuration
 - **THEN** the configuration SHALL be loaded only once
 - **AND** subsequent calls SHALL return the cached instance
@@ -87,18 +106,22 @@ The system SHALL externalize CET taxonomy definitions in YAML format to enable u
 
 - **WHEN** defining "Artificial Intelligence" in taxonomy.yaml
 - **THEN** the configuration includes:
+
   ```yaml
   - id: artificial_intelligence
+
     name: Artificial Intelligence
     definition: "AI and machine learning technologies including neural networks..."
     parent_cet_id: null
     keywords:
+
       - artificial intelligence
       - machine learning
       - neural networks
       - deep learning
       - computer vision
       - natural language processing
+
     taxonomy_version: "NSTC-2025Q1"
     effective_date: "2025-01-01"
     status: active
@@ -108,20 +131,25 @@ The system SHALL externalize CET taxonomy definitions in YAML format to enable u
 
 - **WHEN** defining "Quantum Sensing" as a subcategory of "Quantum Computing"
 - **THEN** the configuration includes:
+
   ```yaml
   - id: quantum_sensing
+
     name: Quantum Sensing
     definition: "Quantum-based sensing and metrology technologies..."
     parent_cet_id: quantum_computing
     keywords:
+
       - quantum sensor
       - quantum metrology
       - atomic clock
       - quantum interferometry
+
     taxonomy_version: "NSTC-2025Q1"
     effective_date: "2025-01-01"
     status: active
   ```
+
 - **AND** the system builds parent-child relationships
 
 #### Scenario: Validate taxonomy completeness
@@ -143,6 +171,7 @@ The system SHALL externalize ML model hyperparameters in YAML to enable tuning w
 
 - **WHEN** loading classification configuration
 - **THEN** the system reads config/cet/classification.yaml:
+
   ```yaml
   vectorizer:
     ngram_range: [1, 3]      # Unigrams, bigrams, trigrams
@@ -152,24 +181,28 @@ The system SHALL externalize ML model hyperparameters in YAML to enable tuning w
     sublinear_tf: true       # Apply sublinear term frequency scaling
     norm: l2                 # L2 normalization
   ```
+
 - **AND** applies these parameters when initializing TF-IDF vectorizer
 
 #### Scenario: Configure feature selection
 
 - **WHEN** configuring feature selection parameters
 - **THEN** the system reads:
+
   ```yaml
   feature_selection:
     enabled: true
     method: chi2             # Chi-squared test
     k: 20000                 # Select top 20,000 features
   ```
+
 - **AND** reduces feature space from 50,000 to 20,000 using chi-squared selection
 
 #### Scenario: Configure classifier parameters
 
 - **WHEN** configuring logistic regression classifier
 - **THEN** the system reads:
+
   ```yaml
   classifier:
     max_iter: 500
@@ -183,6 +216,7 @@ The system SHALL externalize ML model hyperparameters in YAML to enable tuning w
 
 - **WHEN** configuring probability calibration
 - **THEN** the system reads:
+
   ```yaml
   calibration:
     enabled: true
@@ -195,6 +229,7 @@ The system SHALL externalize ML model hyperparameters in YAML to enable tuning w
 
 - **WHEN** configuring classification confidence bands
 - **THEN** the system reads:
+
   ```yaml
   scoring:
     bands:
@@ -212,6 +247,7 @@ The system SHALL externalize ML model hyperparameters in YAML to enable tuning w
         label: "Low"
     max_supporting: 3       # Maximum supporting CET areas
   ```
+
 - **AND** applies these thresholds when converting scores to confidence labels
 
 ### Requirement: CET Configuration Validation

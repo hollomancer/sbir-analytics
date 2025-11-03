@@ -6,7 +6,9 @@
 **Estimated Time to Completion**: 40-50 hours over 2 weeks
 
 ### Documentation (0/0 - Complete ✓)
+
 All documentation tasks complete:
+
 - [x] Detection algorithm (460 lines)
 - [x] Scoring guide (920 lines)
 - [x] Vendor matching (815 lines)
@@ -21,7 +23,9 @@ All documentation tasks complete:
 **Total Documentation**: 7,938 lines across 11 files
 
 ### Configuration & Deployment (5/5 - Complete ✓)
+
 All procedures documented:
+
 - [x] Environment-specific configuration guide
 - [x] Deployment checklist with sign-offs
 - [x] Configuration override testing procedures
@@ -29,7 +33,9 @@ All procedures documented:
 - [x] Monitoring and alerting setup guide
 
 ### Deployment & Validation (0/9 - Ready for Execution ⏳)
+
 All procedures defined; awaiting execution:
+
 - [ ] 24.1 Run full pipeline on dev
 - [ ] 24.2 Validate data quality metrics
 - [ ] 24.3 Generate evaluation report
@@ -43,16 +49,19 @@ All procedures defined; awaiting execution:
 **Status**: All procedures documented and ready; awaiting infrastructure setup and stakeholder approval.
 
 ## 25. Next Work Package: Transition Linking MVP (2 sprints)</parameter>
+
 </invoke>
 
 Goal: Deliver a minimal, testable end-to-end transition detection flow on a small, representative dataset. Focus on award↔contract linkage, scoring, evidence, and validation.
 
 ### Scope
+
 - Data: 2–3 agencies, last 3–5 years of awards/contracts (sampled to <= 10k records each)
 - Signals: UEI/DUNS vendor linkage, PIID/FAIN linkage, date overlap, award amount sanity, agency alignment
 - Outputs: transitions.parquet, transitions.evidence.ndjson, checks JSON, Dagster asset metadata
 
 ### Tasks
+
 - [x] 25.1 Ingest a contracts SAMPLE
   - [x] Implement/configure a "contracts_sample" extractor reading FPDS/USAspending subset (CSV/Parquet) to `data/processed/contracts_sample.parquet`
   - [x] Columns: `piid`, `fain`, `uei`, `duns`, `vendor_name`, `action_date`, `obligated_amount`, `awarding_agency_code`
@@ -72,7 +81,9 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 - [x] 25.3 Transition Scoring v1 (rule-based)
   - [x] Implement a deterministic scorer that aggregates:
+
         UEI/DUNS exact (strong), PIID/FAIN link (strong), date overlap (medium), agency alignment (medium), amount sanity (low)
+
   - [x] Output fields: `award_id`, `contract_id`, `score`, `signals[]`, `computed_at`
   - [x] Thresholds in config; default: high>=0.80, med>=0.60
   - Acceptance:
@@ -81,7 +92,9 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 - [x] 25.4 Evidence Bundle v1
   - [x] For each transition, emit structured evidence:
+
         `matched_keys`, `dates`, `amounts`, `agencies`, `resolver_path`, `notes`
+
   - [x] Persist NDJSON to `data/processed/transitions_evidence.ndjson` and reference from score rows
   - Acceptance:
     - [x] Evidence present for 100% of transitions with `score >= 0.60`
@@ -95,9 +108,13 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 
 - [x] 25.6 Validation & Gates (MVP)
   - [x] Coverage gates:
+
         `contracts_sample`: action_date ≥ 90%, `vendor_resolution`: mapped ≥ 60%
+
   - [x] Quality gate:
+
         transition precision quick-check via 30-manual-spot review ≥ 80% for `score>=0.80` (sample prepared: 30 synthetic transitions with 13 high-confidence, ready for manual review at reports/validation/transition_quality_review_sample.json)
+
   - [x] Write validation summary to `reports/validation/transition_mvp.json`
   - [x] Analytics gate in CI: enforce `transition_analytics.checks.json` (denominators > 0, rates within [0,1], optional minimum rates via `SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE` and `SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE`)
   - Acceptance:
@@ -119,6 +136,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
     - [x] Docs allow a new developer to run the MVP in < 30 minutes (30-minute quick start verified with step-by-step commands and expected outputs)
 
 ### Deliverables
+
 - `data/processed/contracts_sample.parquet`
 - `data/processed/vendor_resolution.parquet`
 - `data/processed/transitions.parquet` and `transitions_evidence.ndjson`
@@ -127,6 +145,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
 - docs/transition/mvp.md updated
 
 ### Exit Criteria
+
 - End-to-end run completes on the agreed sample within < 10 minutes locally
 - Validation gates pass; manual spot-check precision ≥ 80% at `score>=0.80`
 - All new tests passing in CI; docs published
@@ -309,6 +328,7 @@ Goal: Deliver a minimal, testable end-to-end transition detection flow on a smal
   - Notes: All methods handle None/missing CET gracefully. `get_analysis_report()` provides detailed analysis with confidence classification (exact_match, partial_match, no_match) and explanatory notes.
 
 Unit Tests (37 passing, 96% coverage):
+
   - [x] TestExtractAwardCET: 6 tests (field extraction, None handling, whitespace stripping)
   - [x] TestInferContractCET: 7 tests (keyword inference, confidence scoring, case-insensitivity, edge cases)
   - [x] TestCalculateAlignment: 7 tests (exact/partial/no match, missing data handling)
@@ -537,9 +557,11 @@ Unit Tests (37 passing, 96% coverage):
   - Notes: Documented in transition_deployment_checklist.md with test procedures for overriding confidence thresholds, timing windows, signal weights, and vendor resolution parameters. Verified that environment variables take precedence over config files (SBIR_ETL__TRANSITION__* prefix).
 - [x] 23.5 Document deployment procedure in docs/deployment/transition_deployment.md
   - Notes: Complete deployment guide (669 lines) with environment configurations (dev/staging/prod), database setup, deployment steps, verification procedures, monitoring/alerting setup, troubleshooting, rollback procedure, maintenance schedule, and support escalation paths.</parameter>
+
 </invoke>
 
 <old_text line=530>
+
 ## 24. Deployment & Validation
 
 - [ ] 24.1 Run full pipeline on development environment

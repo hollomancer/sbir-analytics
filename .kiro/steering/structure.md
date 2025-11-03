@@ -4,7 +4,8 @@
 
 The project has undergone major consolidation to eliminate code duplication and improve maintainability. The architecture now follows a streamlined modular ETL design with clear separation of concerns:
 
-**Key Consolidation Achievements:**
+### Key Consolidation Achievements:
+
 - ✅ **Asset Consolidation**: USPTO assets unified into single file (`src/assets/uspto_assets.py`)
 - ✅ **Configuration Consolidation**: Hierarchical PipelineConfig with 16+ consolidated schemas
 - ✅ **Model Consolidation**: Unified Award model replaces separate implementations
@@ -15,7 +16,7 @@ The project has undergone major consolidation to eliminate code duplication and 
 
 The project follows a consolidated modular ETL architecture with clear separation of concerns:
 
-```
+```text
 src/
 ├── assets/                 # Dagster asset definitions (pipeline orchestration)
 ├── config/                 # Configuration management and schemas
@@ -34,6 +35,7 @@ src/
 ## Key Architectural Patterns
 
 ### ETL Pipeline Stages
+
 1. **Extract**: Raw data ingestion (SBIR CSV, USAspending PostgreSQL, USPTO)
 2. **Validate**: Schema validation using Pydantic models
 3. **Enrich**: External API enrichment and fuzzy entity matching
@@ -41,6 +43,7 @@ src/
 5. **Load**: Neo4j batch loading with relationship creation
 
 ### Consolidated Dagster Asset Organization
+
 - **Unified Assets**: Major consolidation completed - USPTO assets in single file (`src/assets/uspto_assets.py`)
 - **Consistent Naming**: Standardized prefixes (raw_, validated_, enriched_, transformed_, loaded_)
 - **Jobs**: Defined in `src/assets/jobs/` for pipeline orchestration
@@ -48,6 +51,7 @@ src/
 - **Groups**: Assets organized by functional area (sbir_ingestion, cet_pipeline, etc.)
 
 ### Consolidated Configuration Management
+
 - **Hierarchical Schema**: Single PipelineConfig with 16+ consolidated schemas in `src/config/schemas.py`
 - **Type Safety**: Complete Pydantic validation with custom validators
 - **YAML Files**: Environment-specific configs in `config/` directory
@@ -55,6 +59,7 @@ src/
 - **No Duplication**: All configuration patterns unified and documented
 
 ### Unified Data Models
+
 - **Consolidated Models**: Award model replaces separate SbirAward implementations
 - **Pydantic Validation**: All data structures use Pydantic for validation
 - **Field Validation**: Custom validators for business rules (UEI format, date ranges)
@@ -64,7 +69,8 @@ src/
 ## Directory Conventions
 
 ### Configuration Files
-```
+
+```text
 config/
 ├── base.yaml              # Default settings (version controlled)
 ├── dev.yaml               # Development overrides
@@ -74,7 +80,8 @@ config/
 ```
 
 ### Data Organization
-```
+
+```text
 data/
 ├── raw/                   # Source data files (not in git)
 ├── processed/             # Intermediate processing results
@@ -84,7 +91,8 @@ data/
 ```
 
 ### Testing Structure
-```
+
+```text
 tests/
 ├── unit/                  # Component-level tests
 ├── integration/           # Multi-component tests
@@ -94,7 +102,8 @@ tests/
 ```
 
 ### Documentation
-```
+
+```text
 docs/
 ├── architecture/          # System design documents
 ├── data/                  # Data dictionaries and schemas
@@ -106,37 +115,44 @@ docs/
 ## Naming Conventions
 
 ### Files and Modules
+
 - **Snake case**: `sbir_awards.py`, `company_enricher.py`
 - **Descriptive names**: Clearly indicate purpose and scope
 - **Asset files**: End with `_assets.py` for Dagster asset modules
 
 ### Classes and Functions
+
 - **PascalCase**: Classes use `SbirAward`, `CompanyEnricher`
 - **Snake case**: Functions use `validate_awards()`, `enrich_companies()`
 - **Type hints**: All functions must include complete type annotations
 
 ### Constants and Configuration
+
 - **UPPER_SNAKE_CASE**: `DEFAULT_BATCH_SIZE`, `MAX_RETRY_ATTEMPTS`
 - **Environment variables**: `SBIR_ETL__` prefix for all project variables
 
 ## Code Organization Principles
 
 ### Separation of Concerns
+
 - **Single responsibility**: Each module has one clear purpose
 - **Dependency injection**: Configuration and clients passed as parameters
 - **Interface segregation**: Small, focused interfaces over large monolithic ones
 
 ### Error Handling
+
 - **Explicit exceptions**: Custom exception classes for different error types
 - **Graceful degradation**: Continue processing when possible, log failures
 - **Quality gates**: Configurable thresholds for data quality validation
 
 ### Performance Considerations
+
 - **Chunked processing**: Large datasets processed in configurable batches
 - **Memory monitoring**: Built-in memory usage tracking and alerts
 - **Lazy evaluation**: Data loaded and processed on-demand where possible
 
 ### Testing Strategy
+
 - **Unit tests**: Test individual functions in isolation
 - **Integration tests**: Test component interactions with real databases
 - **Asset checks**: Dagster asset checks for data quality validation
@@ -145,11 +161,13 @@ docs/
 ## Import Conventions
 
 ### Standard Import Order
+
 1. Standard library imports
 2. Third-party library imports
 3. Local application imports (relative imports discouraged)
 
 ### Example Import Structure
+
 ```python
 from datetime import date
 from typing import Any
