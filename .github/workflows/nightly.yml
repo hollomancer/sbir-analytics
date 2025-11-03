@@ -199,17 +199,15 @@ jobs:
         with:
           script: |
             const title = `Nightly CI failure: ${context.sha.substring(0,7)}`;
-            const body = `
-**What failed**
-See nightly logs artifacts.
+            const body = `**What failed**
+            See nightly logs artifacts.
 
-**Ask**
-Propose minimal, reversible fix in a PR.
-Link failing tests and rationale.
+            **Ask**
+            Propose minimal, reversible fix in a PR.
+            Link failing tests and rationale.
 
-**Guardrails**
-No secrets, release, or ruleset changes.
-`;
+            **Guardrails**
+            No secrets, release, or ruleset changes.`;
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
