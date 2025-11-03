@@ -1,4 +1,15 @@
 # sbir-etl/tests/unit/ml/test_patent_vectorizer_and_training.py
+"""
+DEPRECATED MODULE - SKIPPED
+
+This test module is skipped because the vectorizers functionality has been removed/refactored.
+The module is kept for historical reference but will not run.
+
+To restore this module:
+1. Re-implement the vectorizers in src/ml/features/vectorizers.py
+2. Uncomment the imports below
+3. Remove the pytestmark skip decorator
+"""
 from pathlib import Path
 
 import pytest
