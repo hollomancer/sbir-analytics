@@ -8,7 +8,6 @@ StateIO R package for state-level input-output economic modeling.
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -19,14 +18,9 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..utils.r_helpers import (
-    RFunctionError,
-    call_r_function,
-    check_r_package,
-    extract_r_result,
     validate_r_input,
 )
-
-from .economic_model_interface import EconomicImpactResult, EconomicModelInterface
+from .economic_model_interface import EconomicModelInterface
 
 # Try to import StateIO function wrappers (may not be available if import fails)
 try:
@@ -128,14 +122,10 @@ class RStateIOAdapter(EconomicModelInterface):
             cache_dir: Directory for cache storage
         """
         if not RPY2_AVAILABLE:
-            raise ImportError(
-                "rpy2 is not installed. Install with: poetry install --extras r"
-            )
+            raise ImportError("rpy2 is not installed. Install with: poetry install --extras r")
 
         self.config = config or get_config().fiscal_analysis
-        self.model_version = getattr(
-            self.config, "stateio_model_version", "v2.1"
-        )
+        self.model_version = getattr(self.config, "stateio_model_version", "v2.1")
 
         # Initialize R interface
         self._init_r_interface()
@@ -212,9 +202,7 @@ class RStateIOAdapter(EconomicModelInterface):
         json_str = sorted_df.to_json(orient="records")
         return hashlib.sha256(json_str.encode()).hexdigest()[:16]
 
-    def _get_cache_key(
-        self, shocks_df: pd.DataFrame, model_version: str | None = None
-    ) -> str:
+    def _get_cache_key(self, shocks_df: pd.DataFrame, model_version: str | None = None) -> str:
         """Generate cache key for shocks and model version.
 
         Args:
@@ -304,6 +292,7 @@ class RStateIOAdapter(EconomicModelInterface):
         if self._pandas_converter is not None:
             # Use modern rpy2 conversion with context manager
             from rpy2.robjects.conversion import localconverter
+
             with localconverter(ro.default_converter + self._pandas_converter):  # type: ignore
                 r_dataframe = ro.conversion.py2rpy(r_df)  # type: ignore
         else:
@@ -325,6 +314,7 @@ class RStateIOAdapter(EconomicModelInterface):
         if self._pandas_converter is not None:
             # Use modern rpy2 conversion with context manager
             from rpy2.robjects.conversion import localconverter
+
             with localconverter(ro.default_converter + self._pandas_converter):  # type: ignore
                 df = ro.conversion.rpy2py(r_result)  # type: ignore
         else:
@@ -383,7 +373,7 @@ class RStateIOAdapter(EconomicModelInterface):
         self._validate_bea_sectors(shocks_df)
 
         # Convert shocks to R format
-        r_shocks = self._convert_shocks_to_r(shocks_df)
+        self._convert_shocks_to_r(shocks_df)
 
         model_ver = model_version or self.model_version
 
@@ -528,9 +518,7 @@ class RStateIOAdapter(EconomicModelInterface):
 
                     # Get production impact for this sector
                     if production_by_sector is not None and sector in production_by_sector.index:
-                        production_impact = Decimal(
-                            str(float(production_by_sector[sector]))
-                        )
+                        production_impact = Decimal(str(float(production_by_sector[sector])))
                     else:
                         # Fallback: estimate from shock amount with multiplier
                         production_impact = Decimal(str(shock_amt)) * Decimal("2.0")
@@ -565,7 +553,9 @@ class RStateIOAdapter(EconomicModelInterface):
                             "bea_sector": sector,
                             "fiscal_year": shock_row["fiscal_year"],
                             "wage_impact": wage_impact,
-                            "proprietor_income_impact": Decimal("0"),  # May need separate extraction
+                            "proprietor_income_impact": Decimal(
+                                "0"
+                            ),  # May need separate extraction
                             "gross_operating_surplus": gos_impact,
                             "consumption_impact": production_impact * Decimal("0.2"),
                             "tax_impact": tax_impact,
@@ -640,12 +630,12 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state IO table
                 specs = {"BaseIOSchema": "2017"}
-                io_model = build_state_model(  # type: ignore
+                build_state_model(  # type: ignore
                     self.stateio, state, year, specs
                 )
 
                 # Get value added components
-                va_components = get_state_value_added(  # type: ignore
+                get_state_value_added(  # type: ignore
                     self.stateio, state, year, specs
                 )
 
@@ -654,9 +644,7 @@ class RStateIOAdapter(EconomicModelInterface):
                 # TODO: Apply value added ratios to get economic components
 
                 # For now, return placeholder structure
-                logger.warning(
-                    f"Direct StateIO matrix computation not yet implemented for {state}"
-                )
+                logger.warning(f"Direct StateIO matrix computation not yet implemented for {state}")
 
                 # Add placeholder results
                 for _, shock_row in state_shocks.iterrows():
@@ -886,4 +874,3 @@ class RStateIOAdapter(EconomicModelInterface):
     def is_available(self) -> bool:
         """Check if R adapter is available."""
         return RPY2_AVAILABLE and self.stateio is not None
-

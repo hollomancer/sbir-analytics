@@ -219,9 +219,9 @@ class TransitionEvaluator:
         df = detections_df.copy()
         df = df[pd.to_numeric(df[score_column], errors="coerce") >= self.score_threshold]
 
-        pairs = set(
+        pairs = {
             tuple(str(df[col].iloc[i]).strip() for col in id_columns) for i in range(len(df))
-        )
+        }
         return {"set": pairs, "count": len(pairs)}
 
     def _extract_ground_truth_pairs(
@@ -242,9 +242,9 @@ class TransitionEvaluator:
         if label_column and label_column in df.columns:
             df = df[df[label_column].astype(bool)]
 
-        pairs = set(
+        pairs = {
             tuple(str(df[col].iloc[i]).strip() for col in id_columns) for i in range(len(df))
-        )
+        }
         return {"set": pairs, "count": len(pairs)}
 
     def _build_confusion_matrix(

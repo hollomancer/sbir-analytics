@@ -250,7 +250,7 @@ class TestApplicabilityModel:
         assert "advanced_materials" in metrics
 
         # Check metric values are reasonable
-        for cet_id, cet_metrics in metrics.items():
+        for _cet_id, cet_metrics in metrics.items():
             assert 0.0 <= cet_metrics["accuracy"] <= 1.0
             assert 0.0 <= cet_metrics["precision"] <= 1.0
             assert 0.0 <= cet_metrics["recall"] <= 1.0

@@ -8,6 +8,7 @@ texts are classified into the expected CET areas.
 The test size is configurable via environment variable:
   CET_TRAIN_SCALE (default: 2000)
 """
+
 import os
 import random
 
@@ -174,7 +175,9 @@ def test_cet_training_scale_synthetic():
 
     # Train (may take time; marked slow)
     train_metrics = model.train(X_train, y_train_df)
-    assert isinstance(train_metrics, dict) or getattr(model, "is_trained", False), "Training did not return metrics or mark model as trained"
+    assert isinstance(train_metrics, dict) or getattr(
+        model, "is_trained", False
+    ), "Training did not return metrics or mark model as trained"
 
     # Verify model metadata
     assert getattr(model, "is_trained", False) is True
@@ -202,8 +205,12 @@ def test_cet_training_scale_synthetic():
         assert score is not None and score >= 0.0
 
     # Map expectations
-    assert primary_ids[0] in ("artificial_intelligence",), f"Unexpected primary for text 0: {primary_ids[0]}"
-    assert primary_ids[1] in ("quantum_information_science",), f"Unexpected primary for text 1: {primary_ids[1]}"
+    assert primary_ids[0] in (
+        "artificial_intelligence",
+    ), f"Unexpected primary for text 0: {primary_ids[0]}"
+    assert primary_ids[1] in (
+        "quantum_information_science",
+    ), f"Unexpected primary for text 1: {primary_ids[1]}"
     assert primary_ids[2] in ("biotechnology",), f"Unexpected primary for text 2: {primary_ids[2]}"
 
     # Sanity: evaluate simple recall@1 on the test split for a minimal pass threshold
@@ -227,4 +234,6 @@ def test_cet_training_scale_synthetic():
     assert recall_at_1 >= 0.20, f"Low recall@1 on synthetic test: {recall_at_1:.3f}"
 
     # If we reach here, training & classification on mid-sized synthetic data succeeded
-    print(f"[CET SCALE TEST] Trained on {len(X_train)} examples, recall@1 (sample) = {recall_at_1:.3f}")
+    print(
+        f"[CET SCALE TEST] Trained on {len(X_train)} examples, recall@1 (sample) = {recall_at_1:.3f}"
+    )

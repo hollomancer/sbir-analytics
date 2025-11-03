@@ -83,7 +83,7 @@ def _choose_best_sheet(xls: pd.ExcelFile) -> str:
       - Otherwise choose the sheet with the most columns / non-empty cells
     """
     sheet_names = list(xls.sheet_names)
-    lower = [s.lower() for s in sheet_names]
+    [s.lower() for s in sheet_names]
     for keyword in ("data", "dictionary", "spec", "schema", "fields"):
         for s in sheet_names:
             if keyword in s.lower():
@@ -310,12 +310,12 @@ def analyze_csv(csv_path: Path, max_preview: int = 5) -> dict[str, Any]:
         raise FileNotFoundError(f"CSV fixture not found at: {csv_path}")
 
     # Try a forgiving read
-    read_kwargs = dict(
-        encoding="utf-8",
-        dtype=str,  # read as strings for robust inspection
-        keep_default_na=False,
-        na_values=["", "NA", "N/A", "None"],
-    )
+    read_kwargs = {
+        "encoding": "utf-8",
+        "dtype": str,  # read as strings for robust inspection
+        "keep_default_na": False,
+        "na_values": ["", "NA", "N/A", "None"],
+    }
 
     # Attempt read; if it fails, attempt a more permissive approach
     try:
@@ -376,7 +376,7 @@ def compare_dictionary_and_csv(
     dict_cols = [spec.name for spec in dict_specs]
     missing_in_csv = [c for c in dict_cols if c not in csv_cols]
     extra_in_csv = [c for c in csv_cols if c not in dict_cols]
-    order_mismatches = [
+    [
         c for c in dict_cols if c in csv_cols and dict_cols.index(c) != csv_cols.index(c)
     ]
     # order_mismatches above is simplistic; instead compute positional diffs

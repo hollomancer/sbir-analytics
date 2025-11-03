@@ -16,7 +16,6 @@ Usage:
         --output reports/quality/assessment.html
 """
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -542,7 +541,7 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
             {"".join([
                 f'<tr><td>{metric}</td><td>{value:.1%}</td></tr>'
                 for metric, value in report.get('quality_metrics', {}).items()
-                if isinstance(value, (int, float))
+                if isinstance(value, int | float)
             ])}
         </table>
     </div>
@@ -571,21 +570,17 @@ def main():
     setup_logging_for_script("validate_enrichment_quality")
 
     parser = create_parser(
-        "Validate enrichment quality with detailed breakdowns",
-        "validate_enrichment_quality"
+        "Validate enrichment quality with detailed breakdowns", "validate_enrichment_quality"
     )
 
     add_input_file_argument(
         parser,
         "enriched-file",
         "data/enriched/sbir_enriched.parquet",
-        "Path to enriched SBIR data (parquet or CSV)"
+        "Path to enriched SBIR data (parquet or CSV)",
     )
     add_output_file_argument(
-        parser,
-        "output",
-        "reports/quality/assessment.html",
-        "Output path for HTML report"
+        parser, "output", "reports/quality/assessment.html", "Output path for HTML report"
     )
     add_json_output_argument()
 

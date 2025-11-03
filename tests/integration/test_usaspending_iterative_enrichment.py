@@ -9,9 +9,7 @@ Tests the full iterative enrichment cycle including:
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
@@ -38,13 +36,15 @@ def tmp_checkpoint_store(tmp_path):
 @pytest.fixture
 def sample_awards_df():
     """Sample awards DataFrame for testing."""
-    return pd.DataFrame({
-        "award_id": ["AWARD-001", "AWARD-002", "AWARD-003"],
-        "UEI": ["UEI123456789", "UEI987654321", None],
-        "DUNS": ["123456789", None, "987654321"],
-        "CAGE": ["1A2B3", None, "4C5D6"],
-        "contract": ["CONTRACT-001", None, None],
-    })
+    return pd.DataFrame(
+        {
+            "award_id": ["AWARD-001", "AWARD-002", "AWARD-003"],
+            "UEI": ["UEI123456789", "UEI987654321", None],
+            "DUNS": ["123456789", None, "987654321"],
+            "CAGE": ["1A2B3", None, "4C5D6"],
+            "contract": ["CONTRACT-001", None, None],
+        }
+    )
 
 
 @pytest.fixture
@@ -66,9 +66,9 @@ def mock_usaspending_api_client():
             }
 
         async def mock_enrich_award(**kwargs):
-            award_id = kwargs.get("award_id", "UNKNOWN")
+            kwargs.get("award_id", "UNKNOWN")
             uei = kwargs.get("uei")
-            
+
             if not uei:
                 return {
                     "success": False,
@@ -80,13 +80,14 @@ def mock_usaspending_api_client():
             # Check freshness record for delta detection
             freshness_record = kwargs.get("freshness_record")
             payload = make_recipient_response(uei)
-            
+
             # Compute hash
             import hashlib
             import json
+
             payload_str = json.dumps(payload, sort_keys=True)
             new_hash = hashlib.sha256(payload_str.encode()).hexdigest()
-            
+
             delta_detected = True
             if freshness_record and freshness_record.payload_hash:
                 delta_detected = freshness_record.payload_hash != new_hash
@@ -103,10 +104,16 @@ def mock_usaspending_api_client():
             }
 
         mock_client.enrich_award = AsyncMock(side_effect=mock_enrich_award)
-        mock_client.get_recipient_by_uei = AsyncMock(side_effect=lambda uei: make_recipient_response(uei))
-        mock_client.get_recipient_by_duns = AsyncMock(side_effect=lambda duns: make_recipient_response(f"UEI{duns}"))
-        mock_client.get_recipient_by_cage = AsyncMock(side_effect=lambda cage: make_recipient_response(f"UEI_{cage}"))
-        
+        mock_client.get_recipient_by_uei = AsyncMock(
+            side_effect=lambda uei: make_recipient_response(uei)
+        )
+        mock_client.get_recipient_by_duns = AsyncMock(
+            side_effect=lambda duns: make_recipient_response(f"UEI{duns}")
+        )
+        mock_client.get_recipient_by_cage = AsyncMock(
+            side_effect=lambda cage: make_recipient_response(f"UEI_{cage}")
+        )
+
         yield mock_client
 
 
@@ -343,7 +350,9 @@ class TestFullIterativeCycle:
         from src.utils.enrichment_freshness import update_freshness_ledger
 
         for stale_record in stale:
-            award_row = sample_awards_df[sample_awards_df["award_id"] == stale_record.award_id].iloc[0]
+            award_row = sample_awards_df[
+                sample_awards_df["award_id"] == stale_record.award_id
+            ].iloc[0]
 
             result = await mock_usaspending_api_client.enrich_award(
                 award_id=stale_record.award_id,
@@ -371,4 +380,3 @@ class TestFullIterativeCycle:
             assert record.last_success_at is not None
             # Should be recent (within last minute)
             assert (datetime.now() - record.last_success_at).total_seconds() < 60
-

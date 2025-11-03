@@ -85,7 +85,7 @@ class CompanyCETAggregator:
         # Normalize types for some columns
         # supporting_cets should be list-like or None
         self.df["supporting_cets"] = self.df["supporting_cets"].apply(
-            lambda v: v if isinstance(v, (list, tuple)) else []
+            lambda v: v if isinstance(v, list | tuple) else []
         )
 
         # award_date -> datetime if possible
@@ -114,7 +114,7 @@ class CompanyCETAggregator:
             rows.append((str(primary), score, award_id))
 
         supporting = row.get("supporting_cets") or []
-        if isinstance(supporting, (list, tuple)):
+        if isinstance(supporting, list | tuple):
             for s in supporting:
                 if not s:
                     continue
@@ -122,7 +122,7 @@ class CompanyCETAggregator:
                 if isinstance(s, Mapping):
                     cet_id = s.get("cet_id") or s.get("cet") or None
                     score_raw = s.get("score", 0.0)
-                elif isinstance(s, (list, tuple)) and len(s) >= 2:
+                elif isinstance(s, list | tuple) and len(s) >= 2:
                     cet_id, score_raw = s[0], s[1]
                 else:
                     # unsupported format; skip
@@ -240,7 +240,7 @@ class CompanyCETAggregator:
         )
         # awards_with_cet: count distinct award_id per company where has_cet is True
         awards_with_cet = (
-            flat.loc[flat["has_cet"] == True]
+            flat.loc[flat["has_cet"] is True]
             .groupby("company_id")["award_id"]
             .nunique()
             .rename("awards_with_cet")
@@ -266,9 +266,9 @@ class CompanyCETAggregator:
 
         # Aggregate per company and cet
         if use_scores == "median":
-            agg_func = np.median if np is not None else lambda x: x.median()
+            np.median if np is not None else lambda x: x.median()
         else:
-            agg_func = np.mean if np is not None else lambda x: x.mean()
+            np.mean if np is not None else lambda x: x.mean()
 
         cet_group = cet_rows.groupby(["company_id", "cet_id"])["score"].agg(list).to_frame("scores")
 
@@ -338,7 +338,6 @@ class CompanyCETAggregator:
             trend: dict[str, dict[str, float]] = {}
             # choose period column
             if company_awards["phase"].notnull().any():
-                period_col = "phase"
                 periods = company_awards[["award_id", "phase"]].drop_duplicates()
                 # compute shares per phase by counting award-level primary CETs per phase, weighted by score
                 for p in periods["phase"].dropna().unique():

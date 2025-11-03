@@ -363,7 +363,7 @@ class TestPerformanceMetricsValidation:
 
         # Should achieve 10K detections/min = 166.67 detections/sec
         # 1000 detections in 6 seconds = 166.67 detections/sec
-        expected_per_minute = (1000 / 6) * 60
+        (1000 / 6) * 60
         assert metrics["detections_per_minute"] > 9000
         assert metrics["detections_per_minute"] < 11000
 
@@ -679,7 +679,7 @@ class TestFullScaleDatasetSimulation:
 
         # Record metrics
         profiler.record_count("total_detections", len(all_detections))
-        summary = profiler.get_summary()
+        profiler.get_summary()
 
         # Verify scaling
         assert len(all_detections) > 0
@@ -799,12 +799,12 @@ class TestCETEffectivenessPipeline:
             data["awards"],
             data["detections"],
         )
-        cet_ttt = analytics.compute_avg_time_to_transition_by_cet_area(
+        analytics.compute_avg_time_to_transition_by_cet_area(
             data["awards"],
             data["detections"],
             data["contracts"],
         )
-        cet_patent = analytics.compute_patent_backed_transition_rates_by_cet_area(
+        analytics.compute_patent_backed_transition_rates_by_cet_area(
             data["awards"],
             data["detections"],
             data["patents"],
@@ -848,11 +848,11 @@ class TestPerformanceAndQualityValidation:
             total_time_ms=300000,  # 5 minutes
         )
 
-        dpm = metrics["detections_per_minute"]
+        metrics["detections_per_minute"]
         target = 10000
 
         # For this simulation, calculate expected
-        expected_dpm = (50000 / 5) if metrics.get("detections_per_minute", 0) > 0 else 0
+        (50000 / 5) if metrics.get("detections_per_minute", 0) > 0 else 0
 
         print("\nPerformance Validation (Task 21.5):")
         print(f"  Awards: {metrics['awards_processed']:,}")

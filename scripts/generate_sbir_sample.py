@@ -261,17 +261,15 @@ def generate_record(idx: int) -> dict:
 
     # Phase duration
     if random.choice(["Phase I", "Phase II", "Phase III"]) == "Phase I":
-        duration_months = 6
+        pass
     elif random.choice(["Phase I", "Phase II", "Phase III"]) == "Phase II":
-        duration_months = 24
+        pass
     else:
-        duration_months = 36
+        pass
 
     # Edge cases
     has_missing_uei = random.random() < 0.2
     has_invalid_phone = random.random() < 0.1
-    is_old_award = award_year < 1990
-    has_max_amount = base_amount > 9000000
 
     return {
         "Company": company,

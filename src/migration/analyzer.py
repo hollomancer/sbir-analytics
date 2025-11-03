@@ -40,12 +40,14 @@ class OpenSpecAnalyzer:
                 specifications=self._scan_specs(),
                 project_context=self._parse_project_md(),
                 agent_instructions=self._parse_agents_md(),
-                archived_changes=self._list_archived_changes()
+                archived_changes=self._list_archived_changes(),
             )
 
-            self.logger.info(f"Analysis complete: {len(content.active_changes)} active changes, "
-                           f"{len(content.specifications)} specs, "
-                           f"{len(content.archived_changes)} archived changes")
+            self.logger.info(
+                f"Analysis complete: {len(content.active_changes)} active changes, "
+                f"{len(content.specifications)} specs, "
+                f"{len(content.archived_changes)} archived changes"
+            )
 
             return content
 
@@ -76,10 +78,7 @@ class OpenSpecAnalyzer:
         """Parse individual OpenSpec change directory."""
         change_id = change_dir.name
 
-        change = OpenSpecChange(
-            id=change_id,
-            path=change_dir
-        )
+        change = OpenSpecChange(id=change_id, path=change_dir)
 
         # Parse proposal.md
         proposal_file = change_dir / "proposal.md"
@@ -103,33 +102,31 @@ class OpenSpecAnalyzer:
 
     def _parse_proposal(self, proposal_file: Path) -> OpenSpecProposal:
         """Parse OpenSpec proposal.md file."""
-        content = proposal_file.read_text(encoding='utf-8')
+        content = proposal_file.read_text(encoding="utf-8")
 
         # Extract title (first heading)
-        title_match = re.search(r'^#\s+(.+)', content, re.MULTILINE)
+        title_match = re.search(r"^#\s+(.+)", content, re.MULTILINE)
         title = title_match.group(1) if title_match else proposal_file.parent.name
 
         # Extract "Why" section
-        why_match = re.search(r'##\s+Why\s*\n(.*?)(?=##|\Z)', content, re.DOTALL | re.IGNORECASE)
+        why_match = re.search(r"##\s+Why\s*\n(.*?)(?=##|\Z)", content, re.DOTALL | re.IGNORECASE)
         why = why_match.group(1).strip() if why_match else ""
 
         # Extract "What Changes" section
-        what_match = re.search(r'##\s+What\s+Changes?\s*\n(.*?)(?=##|\Z)', content, re.DOTALL | re.IGNORECASE)
+        what_match = re.search(
+            r"##\s+What\s+Changes?\s*\n(.*?)(?=##|\Z)", content, re.DOTALL | re.IGNORECASE
+        )
         what_changes = []
         if what_match:
             what_content = what_match.group(1).strip()
             # Extract bullet points
-            what_changes = re.findall(r'^\s*[-*]\s+(.+)', what_content, re.MULTILINE)
+            what_changes = re.findall(r"^\s*[-*]\s+(.+)", what_content, re.MULTILINE)
 
         # Extract impact information
         impact = self._parse_impact_section(content)
 
         return OpenSpecProposal(
-            title=title,
-            why=why,
-            what_changes=what_changes,
-            impact=impact,
-            raw_content=content
+            title=title, why=why, what_changes=what_changes, impact=impact, raw_content=content
         )
 
     def _parse_impact_section(self, content: str) -> OpenSpecImpact:
@@ -137,35 +134,43 @@ class OpenSpecAnalyzer:
         impact = OpenSpecImpact()
 
         # Extract affected specs
-        specs_match = re.search(r'###\s+Affected\s+Specs\s*\n(.*?)(?=###|\Z)', content, re.DOTALL | re.IGNORECASE)
+        specs_match = re.search(
+            r"###\s+Affected\s+Specs\s*\n(.*?)(?=###|\Z)", content, re.DOTALL | re.IGNORECASE
+        )
         if specs_match:
             specs_content = specs_match.group(1).strip()
-            impact.affected_specs = re.findall(r'^\s*[-*]\s+\*\*([^*]+)\*\*', specs_content, re.MULTILINE)
+            impact.affected_specs = re.findall(
+                r"^\s*[-*]\s+\*\*([^*]+)\*\*", specs_content, re.MULTILINE
+            )
 
         # Extract affected code
-        code_match = re.search(r'###\s+Affected\s+Code\s*\n(.*?)(?=###|\Z)', content, re.DOTALL | re.IGNORECASE)
+        code_match = re.search(
+            r"###\s+Affected\s+Code\s*\n(.*?)(?=###|\Z)", content, re.DOTALL | re.IGNORECASE
+        )
         if code_match:
             code_content = code_match.group(1).strip()
-            impact.affected_code = re.findall(r'^\s*[-*]\s+`([^`]+)`', code_content, re.MULTILINE)
+            impact.affected_code = re.findall(r"^\s*[-*]\s+`([^`]+)`", code_content, re.MULTILINE)
 
         # Extract dependencies
-        deps_match = re.search(r'###\s+Dependencies\s*\n(.*?)(?=###|\Z)', content, re.DOTALL | re.IGNORECASE)
+        deps_match = re.search(
+            r"###\s+Dependencies\s*\n(.*?)(?=###|\Z)", content, re.DOTALL | re.IGNORECASE
+        )
         if deps_match:
             deps_content = deps_match.group(1).strip()
-            impact.dependencies = re.findall(r'^\s*[-*]\s+(.+)', deps_content, re.MULTILINE)
+            impact.dependencies = re.findall(r"^\s*[-*]\s+(.+)", deps_content, re.MULTILINE)
 
         return impact
 
     def _parse_tasks(self, tasks_file: Path) -> OpenSpecTasks:
         """Parse OpenSpec tasks.md file."""
-        content = tasks_file.read_text(encoding='utf-8')
+        content = tasks_file.read_text(encoding="utf-8")
         tasks = []
 
         # Parse task items (looking for checkbox format)
-        task_pattern = r'^\s*-\s*\[\s*([x\s])\s*\]\s*(\d+(?:\.\d+)*)\s+(.+)'
+        task_pattern = r"^\s*-\s*\[\s*([x\s])\s*\]\s*(\d+(?:\.\d+)*)\s+(.+)"
 
         current_task = None
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             task_match = re.match(task_pattern, line)
             if task_match:
                 # Save previous task if exists
@@ -173,21 +178,19 @@ class OpenSpecAnalyzer:
                     tasks.append(current_task)
 
                 # Create new task
-                completed = task_match.group(1).lower() == 'x'
+                completed = task_match.group(1).lower() == "x"
                 task_id = task_match.group(2)
                 description = task_match.group(3).strip()
 
                 current_task = OpenSpecTask(
-                    id=task_id,
-                    description=description,
-                    completed=completed
+                    id=task_id, description=description, completed=completed
                 )
-            elif line.strip().startswith('-') and current_task:
+            elif line.strip().startswith("-") and current_task:
                 # This is a subtask
                 subtask = line.strip()[1:].strip()
                 if subtask:
                     current_task.subtasks.append(subtask)
-            elif line.strip().startswith('Notes:') and current_task:
+            elif line.strip().startswith("Notes:") and current_task:
                 # This is a note
                 current_task.notes = line.strip()[6:].strip()
 
@@ -195,25 +198,22 @@ class OpenSpecAnalyzer:
         if current_task:
             tasks.append(current_task)
 
-        return OpenSpecTasks(
-            tasks=tasks,
-            raw_content=content
-        )
+        return OpenSpecTasks(tasks=tasks, raw_content=content)
 
     def _parse_design(self, design_file: Path) -> OpenSpecDesign:
         """Parse OpenSpec design.md file."""
-        content = design_file.read_text(encoding='utf-8')
+        content = design_file.read_text(encoding="utf-8")
 
         # Extract sections
         sections = {}
         current_section = None
         current_content = []
 
-        for line in content.split('\n'):
-            if line.startswith('##'):
+        for line in content.split("\n"):
+            if line.startswith("##"):
                 # Save previous section
                 if current_section:
-                    sections[current_section] = '\n'.join(current_content).strip()
+                    sections[current_section] = "\n".join(current_content).strip()
 
                 # Start new section
                 current_section = line[2:].strip()
@@ -223,19 +223,13 @@ class OpenSpecAnalyzer:
 
         # Save final section
         if current_section:
-            sections[current_section] = '\n'.join(current_content).strip()
+            sections[current_section] = "\n".join(current_content).strip()
 
-        return OpenSpecDesign(
-            content=content,
-            sections=sections
-        )
+        return OpenSpecDesign(content=content, sections=sections)
 
     def _extract_change_metadata(self, change_dir: Path) -> dict:
         """Extract metadata from change directory."""
-        metadata = {
-            "directory_name": change_dir.name,
-            "files_present": []
-        }
+        metadata = {"directory_name": change_dir.name, "files_present": []}
 
         # List all files in change directory
         for file_path in change_dir.rglob("*"):
@@ -271,38 +265,33 @@ class OpenSpecAnalyzer:
         if not spec_file.exists():
             raise ContentParsingError(f"spec.md not found in {spec_dir}")
 
-        content = spec_file.read_text(encoding='utf-8')
+        content = spec_file.read_text(encoding="utf-8")
 
         # Extract sections similar to design parsing
         sections = {}
         current_section = None
         current_content = []
 
-        for line in content.split('\n'):
-            if line.startswith('##'):
+        for line in content.split("\n"):
+            if line.startswith("##"):
                 if current_section:
-                    sections[current_section] = '\n'.join(current_content).strip()
+                    sections[current_section] = "\n".join(current_content).strip()
                 current_section = line[2:].strip()
                 current_content = []
             else:
                 current_content.append(line)
 
         if current_section:
-            sections[current_section] = '\n'.join(current_content).strip()
+            sections[current_section] = "\n".join(current_content).strip()
 
-        return OpenSpecSpec(
-            name=spec_dir.name,
-            path=spec_dir,
-            content=content,
-            sections=sections
-        )
+        return OpenSpecSpec(name=spec_dir.name, path=spec_dir, content=content, sections=sections)
 
     def _parse_project_md(self) -> str | None:
         """Parse openspec/project.md file."""
         project_file = self.openspec_path / "project.md"
 
         if project_file.exists():
-            return project_file.read_text(encoding='utf-8')
+            return project_file.read_text(encoding="utf-8")
 
         return None
 
@@ -311,7 +300,7 @@ class OpenSpecAnalyzer:
         agents_file = self.openspec_path / "AGENTS.md"
 
         if agents_file.exists():
-            return agents_file.read_text(encoding='utf-8')
+            return agents_file.read_text(encoding="utf-8")
 
         return None
 

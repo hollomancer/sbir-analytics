@@ -271,7 +271,7 @@ class PatentETLValidator:
 
         try:
             # Attempt connection
-            client = Neo4jClient(uri=self.neo4j_uri)
+            Neo4jClient(uri=self.neo4j_uri)
             logger.info(f"✓ Neo4j client initialized for {self.neo4j_uri}")
 
             # Check connection
@@ -284,7 +284,7 @@ class PatentETLValidator:
                     auth=None,  # Adjust based on your setup
                 )
                 with driver.session() as session:
-                    result = session.run("RETURN 1")
+                    session.run("RETURN 1")
                     logger.info("✓ Neo4j connectivity verified")
 
                 self.validation_results["stages"]["neo4j_connectivity"] = {
@@ -320,8 +320,6 @@ class PatentETLValidator:
         try:
             # Simulate asset check results based on extraction/transformation metrics
             load_success_threshold = 0.99
-            completeness_threshold = 0.95
-            uniqueness_threshold = 0.98
 
             # Patent load success rate check
             patent_load_success = self.metrics["transformation_success_rate"] / 100.0

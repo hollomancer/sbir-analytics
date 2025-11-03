@@ -21,7 +21,6 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
 from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 from src.utils.enrichment_freshness import FreshnessStore
 
@@ -83,8 +82,7 @@ def extract_enrichment_timestamp(enriched_row: pd.Series) -> datetime | None:
 
     # Fallback: use current time if enrichment seems present (has usaspending fields)
     if any(
-        col.startswith("usaspending_") or col.startswith("recipient_")
-        for col in enriched_row.index
+        col.startswith("usaspending_") or col.startswith("recipient_") for col in enriched_row.index
     ):
         return datetime.now()
 

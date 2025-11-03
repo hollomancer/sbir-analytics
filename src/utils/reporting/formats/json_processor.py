@@ -29,7 +29,7 @@ class JsonReportProcessor(BaseReportProcessor):
         pipeline_metrics: PipelineMetrics,
         output_dir: Path,
         validate_schema: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> ReportArtifact:
         """Generate JSON report with complete pipeline metrics.
 
@@ -91,7 +91,7 @@ class JsonReportProcessor(BaseReportProcessor):
         data["timestamp"] = pipeline_metrics.timestamp.isoformat()
         data["duration"] = {
             "seconds": pipeline_metrics.duration.total_seconds(),
-            "human_readable": str(pipeline_metrics.duration)
+            "human_readable": str(pipeline_metrics.duration),
         }
 
         # Handle performance metrics
@@ -101,7 +101,7 @@ class JsonReportProcessor(BaseReportProcessor):
             perf_data["end_time"] = pipeline_metrics.performance_metrics.end_time.isoformat()
             perf_data["duration"] = {
                 "seconds": pipeline_metrics.performance_metrics.duration.total_seconds(),
-                "human_readable": str(pipeline_metrics.performance_metrics.duration)
+                "human_readable": str(pipeline_metrics.performance_metrics.duration),
             }
 
         # Handle module metrics
@@ -109,18 +109,24 @@ class JsonReportProcessor(BaseReportProcessor):
             for module_name, module in data["module_metrics"].items():
                 if "execution_time" in module:
                     module["execution_time_seconds"] = module["execution_time"]
-                    module["execution_time"] = str(pipeline_metrics.module_metrics[module_name].execution_time)
+                    module["execution_time"] = str(
+                        pipeline_metrics.module_metrics[module_name].execution_time
+                    )
                 if "start_time" in module:
-                    module["start_time"] = pipeline_metrics.module_metrics[module_name].start_time.isoformat()
+                    module["start_time"] = pipeline_metrics.module_metrics[
+                        module_name
+                    ].start_time.isoformat()
                 if "end_time" in module:
-                    module["end_time"] = pipeline_metrics.module_metrics[module_name].end_time.isoformat()
+                    module["end_time"] = pipeline_metrics.module_metrics[
+                        module_name
+                    ].end_time.isoformat()
 
         # Add metadata
         data["_metadata"] = {
             "generated_by": "sbir-etl statistical reporter",
             "version": "1.0",
             "format": "pipeline_metrics_json",
-            "schema_version": "1.0"
+            "schema_version": "1.0",
         }
 
         return data
@@ -147,10 +153,10 @@ class JsonReportProcessor(BaseReportProcessor):
 
         # Handle bytes objects
         if isinstance(obj, bytes):
-            return obj.decode('utf-8', errors='replace')
+            return obj.decode("utf-8", errors="replace")
 
         # Handle other complex objects by converting to string
-        if hasattr(obj, '__str__'):
+        if hasattr(obj, "__str__"):
             return str(obj)
 
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from typing import Any
 
 import typer
@@ -16,7 +15,9 @@ from ..context import CommandContext
 class CLIError(Exception):
     """Base exception for CLI errors with exit code support."""
 
-    def __init__(self, message: str, exit_code: int = 1, suggestions: list[str] | None = None) -> None:
+    def __init__(
+        self, message: str, exit_code: int = 1, suggestions: list[str] | None = None
+    ) -> None:
         """Initialize CLI error.
 
         Args:
@@ -45,7 +46,7 @@ def format_error(
     Returns:
         Rich Panel with formatted error
     """
-    console = context.console if context else Console()
+    context.console if context else Console()
 
     # Build error text
     error_text = Text()
@@ -142,4 +143,3 @@ def handle_cli_error(func: Any) -> Any:
                 handle_error(e)
 
     return wrapper
-

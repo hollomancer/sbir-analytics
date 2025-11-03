@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -340,4 +339,3 @@ class TestEnrichmentFreshnessRecordModel:
         assert isinstance(record, EnrichmentFreshnessRecord)
         assert record.award_id == sample_freshness_record.award_id
         assert record.status == sample_freshness_record.status
-

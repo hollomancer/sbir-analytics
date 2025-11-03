@@ -52,15 +52,15 @@ def _normalize_labels_column(df: pd.DataFrame, cet_label_col: str) -> list[set[s
     for v in df[cet_label_col].tolist():
         if v is None:
             labels.append(set())
-        elif isinstance(v, (list, tuple, set)):
-            labels.append(set(str(x) for x in v))
+        elif isinstance(v, list | tuple | set):
+            labels.append({str(x) for x in v})
         else:
             # Accept delimited strings like "a,b,c"
             s = str(v).strip()
             if not s:
                 labels.append(set())
             else:
-                labels.append(set(p.strip() for p in s.split(",")))
+                labels.append({p.strip() for p in s.split(",")})
     return labels
 
 
@@ -168,7 +168,7 @@ def train_patent_classifier(
         raise ValueError(f"Training DataFrame missing required columns: {missing_cols}")
 
     # Prepare labels
-    labels_series = _normalize_labels_column(df, cet_label_col)
+    _normalize_labels_column(df, cet_label_col)
 
     # Instantiate classifier
     classifier = PatentCETClassifier(

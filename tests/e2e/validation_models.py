@@ -79,6 +79,7 @@ class ValidationResult:
     def critical_issues(self) -> list[ValidationCheck]:
         """Get all critical validation issues."""
         from src.models.quality import QualitySeverity
+
         return [c for c in self.all_checks if c.severity == QualitySeverity.CRITICAL]
 
 
@@ -125,10 +126,12 @@ class TestReport:
             "stages_failed": len(validation.failed_stages),
             "stages_with_warnings": len(validation.warning_stages),
             "total_checks": len(validation.all_checks),
-            "checks_passed": len([c for c in validation.all_checks if c.status == ValidationStatus.PASSED]),
+            "checks_passed": len(
+                [c for c in validation.all_checks if c.status == ValidationStatus.PASSED]
+            ),
             "checks_failed": len(validation.failed_checks),
             "critical_issues": len(validation.critical_issues),
-            "scenario": validation.scenario.value
+            "scenario": validation.scenario.value,
         }
 
     def _generate_recommendations(self):
@@ -139,87 +142,105 @@ class TestReport:
         # Critical issues recommendations
         if validation.critical_issues:
             critical_checks = [c.name for c in validation.critical_issues]
-            recommendations.append(Recommendation(
-                title="Address Critical Issues",
-                description=f"Found {len(validation.critical_issues)} critical issues that must be resolved",
-                priority=RecommendationPriority.CRITICAL,
-                category="data_quality",
-                actions=[
-                    "Review failed validation checks",
-                    "Fix data source issues",
-                    "Verify pipeline configuration",
-                    "Re-run validation after fixes"
-                ],
-                related_checks=critical_checks,
-                details={"critical_count": len(validation.critical_issues)}
-            ))
+            recommendations.append(
+                Recommendation(
+                    title="Address Critical Issues",
+                    description=f"Found {len(validation.critical_issues)} critical issues that must be resolved",
+                    priority=RecommendationPriority.CRITICAL,
+                    category="data_quality",
+                    actions=[
+                        "Review failed validation checks",
+                        "Fix data source issues",
+                        "Verify pipeline configuration",
+                        "Re-run validation after fixes",
+                    ],
+                    related_checks=critical_checks,
+                    details={"critical_count": len(validation.critical_issues)},
+                )
+            )
 
         # Performance recommendations
         slow_stages = [s for s in validation.stage_results if s.duration_seconds > 30]
         if slow_stages:
             stage_names = [s.stage.value for s in slow_stages]
-            recommendations.append(Recommendation(
-                title="Optimize Performance",
-                description=f"Stages taking longer than expected: {', '.join(stage_names)}",
-                priority=RecommendationPriority.MEDIUM,
-                category="performance",
-                actions=[
-                    "Review resource allocation",
-                    "Optimize data processing logic",
-                    "Consider batch size adjustments",
-                    "Monitor memory usage"
-                ],
-                details={"slow_stages": stage_names}
-            ))
+            recommendations.append(
+                Recommendation(
+                    title="Optimize Performance",
+                    description=f"Stages taking longer than expected: {', '.join(stage_names)}",
+                    priority=RecommendationPriority.MEDIUM,
+                    category="performance",
+                    actions=[
+                        "Review resource allocation",
+                        "Optimize data processing logic",
+                        "Consider batch size adjustments",
+                        "Monitor memory usage",
+                    ],
+                    details={"slow_stages": stage_names},
+                )
+            )
 
         # Data quality recommendations
-        failed_data_checks = [c for c in validation.failed_checks if "record_count" in c.name or "match_rate" in c.name]
+        failed_data_checks = [
+            c
+            for c in validation.failed_checks
+            if "record_count" in c.name or "match_rate" in c.name
+        ]
         if failed_data_checks:
             check_names = [c.name for c in failed_data_checks]
-            recommendations.append(Recommendation(
-                title="Improve Data Quality",
-                description="Data quality checks failed, indicating potential issues with input data",
-                priority=RecommendationPriority.HIGH,
-                category="data_quality",
-                actions=[
-                    "Validate input data sources",
-                    "Review data extraction logic",
-                    "Check enrichment data coverage",
-                    "Adjust quality thresholds if appropriate"
-                ],
-                related_checks=check_names
-            ))
+            recommendations.append(
+                Recommendation(
+                    title="Improve Data Quality",
+                    description="Data quality checks failed, indicating potential issues with input data",
+                    priority=RecommendationPriority.HIGH,
+                    category="data_quality",
+                    actions=[
+                        "Validate input data sources",
+                        "Review data extraction logic",
+                        "Check enrichment data coverage",
+                        "Adjust quality thresholds if appropriate",
+                    ],
+                    related_checks=check_names,
+                )
+            )
 
         # Neo4j specific recommendations
-        neo4j_failures = [c for c in validation.failed_checks if any(stage.stage == ValidationStage.LOADING for stage in validation.stage_results)]
+        neo4j_failures = [
+            c
+            for c in validation.failed_checks
+            if any(stage.stage == ValidationStage.LOADING for stage in validation.stage_results)
+        ]
         if neo4j_failures:
-            recommendations.append(Recommendation(
-                title="Fix Neo4j Loading Issues",
-                description="Neo4j graph validation failed",
-                priority=RecommendationPriority.HIGH,
-                category="infrastructure",
-                actions=[
-                    "Verify Neo4j connection",
-                    "Check database constraints",
-                    "Review loading logic",
-                    "Validate graph schema"
-                ],
-                related_checks=[c.name for c in neo4j_failures]
-            ))
+            recommendations.append(
+                Recommendation(
+                    title="Fix Neo4j Loading Issues",
+                    description="Neo4j graph validation failed",
+                    priority=RecommendationPriority.HIGH,
+                    category="infrastructure",
+                    actions=[
+                        "Verify Neo4j connection",
+                        "Check database constraints",
+                        "Review loading logic",
+                        "Validate graph schema",
+                    ],
+                    related_checks=[c.name for c in neo4j_failures],
+                )
+            )
 
         # Success recommendations
         if validation.overall_status == ValidationStatus.PASSED:
-            recommendations.append(Recommendation(
-                title="Pipeline Validation Successful",
-                description="All validation checks passed successfully",
-                priority=RecommendationPriority.LOW,
-                category="success",
-                actions=[
-                    "Pipeline is ready for production use",
-                    "Consider running performance benchmarks",
-                    "Monitor ongoing data quality"
-                ]
-            ))
+            recommendations.append(
+                Recommendation(
+                    title="Pipeline Validation Successful",
+                    description="All validation checks passed successfully",
+                    priority=RecommendationPriority.LOW,
+                    category="success",
+                    actions=[
+                        "Pipeline is ready for production use",
+                        "Consider running performance benchmarks",
+                        "Monitor ongoing data quality",
+                    ],
+                )
+            )
 
         self.recommendations = recommendations
 
@@ -229,7 +250,7 @@ class ValidationReporter:
 
     def __init__(self, output_dir: str = "artifacts"):
         """Initialize validation reporter.
-        
+
         Args:
             output_dir: Directory to save report artifacts
         """
@@ -239,15 +260,15 @@ class ValidationReporter:
         self,
         validation_result: ValidationResult,
         test_id: str | None = None,
-        include_artifacts: bool = True
+        include_artifacts: bool = True,
     ) -> TestReport:
         """Generate comprehensive test report.
-        
+
         Args:
             validation_result: Validation result to report on
             test_id: Optional test identifier
             include_artifacts: Whether to generate artifact files
-            
+
         Returns:
             TestReport with validation results and recommendations
         """
@@ -261,7 +282,7 @@ class ValidationReporter:
             test_id=test_id,
             scenario=validation_result.scenario,
             timestamp=datetime.now(),
-            validation_result=validation_result
+            validation_result=validation_result,
         )
 
         if include_artifacts:
@@ -272,10 +293,10 @@ class ValidationReporter:
 
     def _generate_artifacts(self, report: TestReport) -> dict[str, str]:
         """Generate report artifacts (files).
-        
+
         Args:
             report: Test report to generate artifacts for
-            
+
         Returns:
             Dictionary mapping artifact type to file path
         """
@@ -311,14 +332,16 @@ class ValidationReporter:
                                 "message": check.message,
                                 "expected": check.expected,
                                 "actual": check.actual,
-                                "severity": check.severity.value if hasattr(check.severity, 'value') else str(check.severity)
+                                "severity": check.severity.value
+                                if hasattr(check.severity, "value")
+                                else str(check.severity),
                             }
                             for check in stage.checks
                         ],
-                        "metadata": stage.metadata
+                        "metadata": stage.metadata,
                     }
                     for stage in report.validation_result.stage_results
-                ]
+                ],
             },
             "recommendations": [
                 {
@@ -328,20 +351,20 @@ class ValidationReporter:
                     "category": rec.category,
                     "actions": rec.actions,
                     "related_checks": rec.related_checks,
-                    "details": rec.details
+                    "details": rec.details,
                 }
                 for rec in report.recommendations
-            ]
+            ],
         }
 
-        with open(json_path, 'w') as f:
+        with open(json_path, "w") as f:
             json.dump(json_data, f, indent=2, default=str)
         artifacts["json"] = str(json_path)
 
         # Markdown report
         md_path = output_path / f"{report.report_id}.md"
         md_content = self._generate_markdown_report(report)
-        with open(md_path, 'w') as f:
+        with open(md_path, "w") as f:
             f.write(md_content)
         artifacts["markdown"] = str(md_path)
 
@@ -349,10 +372,10 @@ class ValidationReporter:
 
     def _generate_markdown_report(self, report: TestReport) -> str:
         """Generate markdown report content.
-        
+
         Args:
             report: Test report to generate markdown for
-            
+
         Returns:
             Markdown report content as string
         """
@@ -385,7 +408,13 @@ class ValidationReporter:
         lines.append("## Stage Results")
         lines.append("")
         for stage_result in report.validation_result.stage_results:
-            status_icon = "✅" if stage_result.status == ValidationStatus.PASSED else "❌" if stage_result.status == ValidationStatus.FAILED else "⚠️"
+            status_icon = (
+                "✅"
+                if stage_result.status == ValidationStatus.PASSED
+                else "❌"
+                if stage_result.status == ValidationStatus.FAILED
+                else "⚠️"
+            )
             lines.append(f"### {status_icon} {stage_result.stage.value.title()} Stage")
             lines.append("")
             lines.append(f"**Status:** {stage_result.status.value}")
@@ -396,7 +425,13 @@ class ValidationReporter:
                 lines.append("**Validation Checks:**")
                 lines.append("")
                 for check in stage_result.checks:
-                    check_icon = "✅" if check.status == ValidationStatus.PASSED else "❌" if check.status == ValidationStatus.FAILED else "⚠️"
+                    check_icon = (
+                        "✅"
+                        if check.status == ValidationStatus.PASSED
+                        else "❌"
+                        if check.status == ValidationStatus.FAILED
+                        else "⚠️"
+                    )
                     lines.append(f"- {check_icon} **{check.name}**: {check.message}")
                 lines.append("")
 
@@ -405,7 +440,13 @@ class ValidationReporter:
             lines.append("## Recommendations")
             lines.append("")
             for rec in report.recommendations:
-                priority_icon = "🔴" if rec.priority == RecommendationPriority.CRITICAL else "🟡" if rec.priority == RecommendationPriority.HIGH else "🟢"
+                priority_icon = (
+                    "🔴"
+                    if rec.priority == RecommendationPriority.CRITICAL
+                    else "🟡"
+                    if rec.priority == RecommendationPriority.HIGH
+                    else "🟢"
+                )
                 lines.append(f"### {priority_icon} {rec.title}")
                 lines.append("")
                 lines.append(f"**Priority:** {rec.priority.value}")

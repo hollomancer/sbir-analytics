@@ -96,7 +96,7 @@ def test_train_classifier_with_feature_extraction_and_dummy_pipelines(tmp_path):
     assert classifier.pipelines, "Pipelines should have been created by pipelines_factory"
 
     # Ensure each pipeline was fitted (DummyPipeline sets is_fitted on fit)
-    for cet, pipe in classifier.pipelines.items():
+    for _cet, pipe in classifier.pipelines.items():
         # DummyPipeline exposes is_fitted attribute
         if hasattr(pipe, "is_fitted"):
             assert pipe.is_fitted is True

@@ -69,7 +69,11 @@ class FiscalUncertaintyQuantifier:
                     ci_config = ci_config.__dict__
             else:
                 ci_config = self.sensitivity_config.get("confidence_intervals", {})
-            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99]) if isinstance(ci_config, dict) else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
+            confidence_levels = (
+                ci_config.get("levels", [0.90, 0.95, 0.99])
+                if isinstance(ci_config, dict)
+                else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
+            )
 
         if estimates.empty:
             return {level: (Decimal("0"), Decimal("0")) for level in confidence_levels}
@@ -113,7 +117,11 @@ class FiscalUncertaintyQuantifier:
                     ci_config = ci_config.__dict__
             else:
                 ci_config = self.sensitivity_config.get("confidence_intervals", {})
-            confidence_levels = ci_config.get("levels", [0.90, 0.95, 0.99]) if isinstance(ci_config, dict) else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
+            confidence_levels = (
+                ci_config.get("levels", [0.90, 0.95, 0.99])
+                if isinstance(ci_config, dict)
+                else getattr(ci_config, "levels", [0.90, 0.95, 0.99])
+            )
 
         if estimates.empty:
             return {level: (Decimal("0"), Decimal("0")) for level in confidence_levels}
@@ -251,11 +259,19 @@ class FiscalUncertaintyQuantifier:
                 ci_config = ci_config.__dict__
         else:
             ci_config = self.sensitivity_config.get("confidence_intervals", {})
-        
-        method = ci_config.get("method", "percentile") if isinstance(ci_config, dict) else getattr(ci_config, "method", "percentile")
+
+        method = (
+            ci_config.get("method", "percentile")
+            if isinstance(ci_config, dict)
+            else getattr(ci_config, "method", "percentile")
+        )
 
         if method == "bootstrap":
-            bootstrap_samples = ci_config.get("bootstrap_samples", 1000) if isinstance(ci_config, dict) else getattr(ci_config, "bootstrap_samples", 1000)
+            bootstrap_samples = (
+                ci_config.get("bootstrap_samples", 1000)
+                if isinstance(ci_config, dict)
+                else getattr(ci_config, "bootstrap_samples", 1000)
+            )
             confidence_intervals = self.compute_bootstrap_confidence_intervals(
                 estimates, confidence_levels=confidence_levels, num_samples=bootstrap_samples
             )
@@ -282,7 +298,9 @@ class FiscalUncertaintyQuantifier:
                 quality_flags.append("moderate_uncertainty")
 
         # Check if range is very large
-        range_pct = float((max_estimate - min_estimate) / mean_estimate * 100) if mean_estimate != 0 else 0
+        range_pct = (
+            float((max_estimate - min_estimate) / mean_estimate * 100) if mean_estimate != 0 else 0
+        )
         if range_pct > 200:
             quality_flags.append("very_wide_range")
 
@@ -336,4 +354,3 @@ class FiscalUncertaintyQuantifier:
                 return True
 
         return False
-

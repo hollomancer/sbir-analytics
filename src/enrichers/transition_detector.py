@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 from src.models.transitions import CompanyTransition, TransitionType
@@ -8,7 +7,7 @@ class TransitionDetector:
     def detect(self, df: pd.DataFrame) -> list[CompanyTransition]:
         # Placeholder for transition detection logic
         transitions = []
-        for i, row in df.iterrows():
+        for _i, row in df.iterrows():
             if "acquired" in row["description"].lower():
                 transitions.append(
                     CompanyTransition(

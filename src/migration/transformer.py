@@ -36,14 +36,18 @@ class ContentTransformer:
         try:
             kiro_content = KiroContent(
                 specs=self._convert_changes_to_specs(openspec_content.active_changes),
-                consolidation_mapping=self._plan_spec_consolidation(openspec_content.specifications)
+                consolidation_mapping=self._plan_spec_consolidation(
+                    openspec_content.specifications
+                ),
             )
 
             # Add consolidated specs from OpenSpec specifications
             consolidated_specs = self._consolidate_specs(openspec_content.specifications)
             kiro_content.specs.extend(consolidated_specs)
 
-            self.logger.info(f"Transformation complete: {len(kiro_content.specs)} Kiro specs generated")
+            self.logger.info(
+                f"Transformation complete: {len(kiro_content.specs)} Kiro specs generated"
+            )
 
             return kiro_content
 
@@ -90,8 +94,8 @@ class ContentTransformer:
             tasks=tasks,
             source_mapping={
                 "openspec_change_id": change.id,
-                "source_files": change.metadata.get("files_present", [])
-            }
+                "source_files": change.metadata.get("files_present", []),
+            },
         )
 
     def _generate_spec_name(self, change) -> str:
@@ -115,7 +119,7 @@ class ContentTransformer:
         return KiroRequirements(
             introduction=self._generate_introduction(proposal),
             glossary=self._extract_glossary_terms(proposal),
-            requirements=requirements
+            requirements=requirements,
         )
 
     def _extract_user_stories(self, proposal) -> list[dict]:
@@ -126,16 +130,16 @@ class ContentTransformer:
         primary_story = {
             "persona": "developer",
             "goal": proposal.title.lower(),
-            "benefit": self._extract_benefit_from_why(proposal.why)
+            "benefit": self._extract_benefit_from_why(proposal.why),
         }
         stories.append(primary_story)
 
         # Additional stories from what_changes items
-        for i, change in enumerate(proposal.what_changes[:3], 2):  # Limit to 3 additional stories
+        for _i, change in enumerate(proposal.what_changes[:3], 2):  # Limit to 3 additional stories
             story = {
                 "persona": "developer",
-                "goal": change.strip().rstrip('.'),
-                "benefit": "support the enhanced functionality described in the proposal"
+                "goal": change.strip().rstrip("."),
+                "benefit": "support the enhanced functionality described in the proposal",
             }
             stories.append(story)
 
@@ -144,7 +148,7 @@ class ContentTransformer:
     def _extract_benefit_from_why(self, why_text: str) -> str:
         """Extract benefit statement from why section."""
         # Clean up the why text and extract key benefit
-        sentences = why_text.split('.')
+        sentences = why_text.split(".")
         if sentences:
             # Take the first sentence as the primary benefit
             benefit = sentences[0].strip()
@@ -166,10 +170,10 @@ class ContentTransformer:
 
         # Common technical patterns to extract
         patterns = [
-            (r'\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b', 'technical_term'),  # CamelCase terms
-            (r'\b([A-Z]{2,})\b', 'acronym'),  # Acronyms
-            (r'`([^`]+)`', 'code_term'),  # Code terms in backticks
-            (r'\*\*([^*]+)\*\*', 'emphasized_term'),  # Bold terms
+            (r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b", "technical_term"),  # CamelCase terms
+            (r"\b([A-Z]{2,})\b", "acronym"),  # Acronyms
+            (r"`([^`]+)`", "code_term"),  # Code terms in backticks
+            (r"\*\*([^*]+)\*\*", "emphasized_term"),  # Bold terms
         ]
 
         for pattern, term_type in patterns:
@@ -185,13 +189,13 @@ class ContentTransformer:
 
     def _generate_definition(self, term: str, term_type: str, content: str) -> str:
         """Generate a definition for a glossary term."""
-        if term_type == 'acronym':
+        if term_type == "acronym":
             return "System component or technology referenced in the implementation"
-        elif term_type == 'code_term':
+        elif term_type == "code_term":
             return f"Code component or file: {term}"
-        elif term_type == 'emphasized_term':
+        elif term_type == "emphasized_term":
             return f"Key concept: {term}"
-        elif term_type == 'technical_term':
+        elif term_type == "technical_term":
             return f"Technical component or system: {term}"
 
         return f"System component: {term}"
@@ -205,7 +209,7 @@ class ContentTransformer:
             data_models=design.sections.get("Data Models", ""),
             error_handling=design.sections.get("Error Handling", ""),
             testing_strategy=design.sections.get("Testing Strategy", ""),
-            source_content=design.content
+            source_content=design.content,
         )
 
     def _convert_tasks(self, tasks) -> KiroTasks:
@@ -218,7 +222,7 @@ class ContentTransformer:
                 description=task.description,
                 subtasks=task.subtasks,
                 completed=task.completed,
-                optional=task.description.endswith("*")
+                optional=task.description.endswith("*"),
             )
             kiro_tasks.append(kiro_task)
 
@@ -230,11 +234,16 @@ class ContentTransformer:
 
         # Group related specifications by functional area
         functional_groups = {
-            "data_pipeline": ["data-extraction", "data-validation", "data-transformation", "data-loading"],
+            "data_pipeline": [
+                "data-extraction",
+                "data-validation",
+                "data-transformation",
+                "data-loading",
+            ],
             "data_enrichment": ["data-enrichment"],
             "infrastructure": ["neo4j-server", "runtime-environment"],
             "orchestration": ["pipeline-orchestration"],
-            "configuration": ["configuration"]
+            "configuration": ["configuration"],
         }
 
         # Create mapping from spec names to their groups
@@ -292,7 +301,7 @@ class ContentTransformer:
             data_models=combined_sections.get("Data Models", ""),
             error_handling=combined_sections.get("Error Handling", ""),
             testing_strategy=combined_sections.get("Testing Strategy", ""),
-            source_content="\n\n".join(combined_content)
+            source_content="\n\n".join(combined_content),
         )
 
         return KiroSpec(
@@ -302,8 +311,8 @@ class ContentTransformer:
             tasks=None,  # Consolidated specs don't have tasks
             source_mapping={
                 "consolidated_from": [spec.name for spec in specs],
-                "consolidation_type": "functional_grouping"
-            }
+                "consolidation_type": "functional_grouping",
+            },
         )
 
     def _generate_consolidated_requirements(self, group_name: str, specs) -> KiroRequirements:
@@ -312,7 +321,7 @@ class ContentTransformer:
         user_story = {
             "persona": "developer",
             "goal": f"consolidated {group_name.replace('_', ' ')} functionality",
-            "benefit": f"have a unified approach to {group_name.replace('_', ' ')} across the system"
+            "benefit": f"have a unified approach to {group_name.replace('_', ' ')} across the system",
         }
 
         # Generate EARS requirement
@@ -321,7 +330,7 @@ class ContentTransformer:
         return KiroRequirements(
             introduction=f"This consolidated specification covers {group_name.replace('_', ' ')} functionality from multiple OpenSpec specifications.",
             glossary=self._extract_consolidated_glossary(specs),
-            requirements=[requirement]
+            requirements=[requirement],
         )
 
     def _extract_consolidated_glossary(self, specs) -> dict[str, str]:
@@ -330,11 +339,55 @@ class ContentTransformer:
 
         # Common words to exclude from glossary
         excluded_words = {
-            'THE', 'AND', 'OR', 'NOT', 'FOR', 'FROM', 'TO', 'OF', 'IN', 'ON', 'AT', 'BY', 'WITH',
-            'SHALL', 'WHEN', 'THEN', 'WHERE', 'CASE', 'ELSE', 'END', 'IF', 'GIVEN', 'PROVIDED',
-            'SEE', 'DOCUMENT', 'DETAILS', 'UNKNOWN', 'ERROR', 'WARNING', 'INFO', 'SET', 'GET',
-            'ORDER', 'GROUP', 'HAVING', 'COUNT', 'SELECT', 'RETURN', 'MATCH', 'LIMIT', 'DESC',
-            'LEFT', 'JOIN', 'BETWEEN', 'UNWIND', 'OWNS', 'FUNDED', 'ALIGNED', 'MISALIGNED'
+            "THE",
+            "AND",
+            "OR",
+            "NOT",
+            "FOR",
+            "FROM",
+            "TO",
+            "OF",
+            "IN",
+            "ON",
+            "AT",
+            "BY",
+            "WITH",
+            "SHALL",
+            "WHEN",
+            "THEN",
+            "WHERE",
+            "CASE",
+            "ELSE",
+            "END",
+            "IF",
+            "GIVEN",
+            "PROVIDED",
+            "SEE",
+            "DOCUMENT",
+            "DETAILS",
+            "UNKNOWN",
+            "ERROR",
+            "WARNING",
+            "INFO",
+            "SET",
+            "GET",
+            "ORDER",
+            "GROUP",
+            "HAVING",
+            "COUNT",
+            "SELECT",
+            "RETURN",
+            "MATCH",
+            "LIMIT",
+            "DESC",
+            "LEFT",
+            "JOIN",
+            "BETWEEN",
+            "UNWIND",
+            "OWNS",
+            "FUNDED",
+            "ALIGNED",
+            "MISALIGNED",
         }
 
         for spec in specs:
@@ -343,15 +396,21 @@ class ContentTransformer:
 
             # Look for meaningful technical terms
             patterns = [
-                (r'\b([A-Z][a-z]+(?:[A-Z][a-z]+){2,})\b', 'technical_term'),  # Longer CamelCase terms
-                (r'\b(API|ETL|CSV|SQL|JSON|YAML|ISO|UEI|DUNS|ZIP|SBIR|STTR|CET|NSTC|USPTO|IBM)\b', 'acronym'),  # Specific acronyms
+                (
+                    r"\b([A-Z][a-z]+(?:[A-Z][a-z]+){2,})\b",
+                    "technical_term",
+                ),  # Longer CamelCase terms
+                (
+                    r"\b(API|ETL|CSV|SQL|JSON|YAML|ISO|UEI|DUNS|ZIP|SBIR|STTR|CET|NSTC|USPTO|IBM)\b",
+                    "acronym",
+                ),  # Specific acronyms
             ]
 
             for pattern, term_type in patterns:
                 matches = re.findall(pattern, content)
                 for match in matches:
                     if len(match) > 3 and match not in excluded_words and match not in glossary:
-                        if term_type == 'acronym':
+                        if term_type == "acronym":
                             glossary[match] = f"System acronym referenced in {spec.name}"
                         else:
                             glossary[match] = f"Technical component from {spec.name}: {match}"
@@ -371,23 +430,23 @@ class EARSConverter:
         acceptance_criteria = self._generate_ears_criteria(user_story)
 
         return KiroRequirement(
-            number=number,
-            user_story=story_text,
-            acceptance_criteria=acceptance_criteria
+            number=number, user_story=story_text, acceptance_criteria=acceptance_criteria
         )
 
     def _generate_ears_criteria(self, user_story: dict) -> list[str]:
         """Generate EARS-compliant acceptance criteria."""
         criteria = []
-        goal = user_story['goal']
+        goal = user_story["goal"]
 
         # Extract key verbs and nouns from the goal
-        if 'add' in goal.lower() or 'implement' in goal.lower():
+        if "add" in goal.lower() or "implement" in goal.lower():
             criteria.append(f"THE System SHALL implement {self._clean_goal(goal)}")
-            criteria.append(f"THE System SHALL validate the implementation of {self._clean_goal(goal)}")
-        elif 'provide' in goal.lower() or 'support' in goal.lower():
+            criteria.append(
+                f"THE System SHALL validate the implementation of {self._clean_goal(goal)}"
+            )
+        elif "provide" in goal.lower() or "support" in goal.lower():
             criteria.append(f"THE System SHALL provide {self._clean_goal(goal)}")
-        elif 'enable' in goal.lower() or 'allow' in goal.lower():
+        elif "enable" in goal.lower() or "allow" in goal.lower():
             criteria.append(f"THE System SHALL enable {self._clean_goal(goal)}")
         else:
             # Default EARS pattern
@@ -403,6 +462,6 @@ class EARSConverter:
         """Clean and normalize goal text for EARS patterns."""
         # Remove common prefixes and clean up
         goal = goal.lower()
-        goal = re.sub(r'^(add|implement|provide|support|enable|allow)\s+', '', goal)
+        goal = re.sub(r"^(add|implement|provide|support|enable|allow)\s+", "", goal)
         goal = goal.strip()
         return goal

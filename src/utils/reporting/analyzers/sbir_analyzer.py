@@ -19,7 +19,7 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize SBIR enrichment analyzer.
-        
+
         Args:
             config: Optional configuration for analysis thresholds
         """
@@ -35,26 +35,35 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         # Key enrichment fields to analyze
         self.enrichment_fields = [
-            "naics_code", "recipient_name", "recipient_uei", "recipient_duns",
-            "sam_gov_data", "usaspending_data", "company_info"
+            "naics_code",
+            "recipient_name",
+            "recipient_uei",
+            "recipient_duns",
+            "sam_gov_data",
+            "usaspending_data",
+            "company_info",
         ]
 
         # Enrichment sources to track
         self.enrichment_sources = [
-            "original_data", "usaspending_api", "sam_gov_api", "fuzzy_match",
-            "agency_default", "sector_fallback"
+            "original_data",
+            "usaspending_api",
+            "sam_gov_api",
+            "fuzzy_match",
+            "agency_default",
+            "sector_fallback",
         ]
 
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
         """Analyze SBIR enrichment data and generate comprehensive report.
-        
+
         Args:
             module_data: Dictionary containing:
                 - enriched_df: Enriched SBIR DataFrame
                 - original_df: Original SBIR DataFrame (for comparison)
                 - enrichment_metrics: Enrichment operation metrics
                 - run_context: Pipeline run context
-                
+
         Returns:
             ModuleReport with SBIR enrichment analysis
         """
@@ -105,10 +114,10 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from SBIR enrichment data.
-        
+
         Args:
             module_data: Module data containing enriched DataFrame
-            
+
         Returns:
             Dictionary of key SBIR enrichment metrics
         """
@@ -150,10 +159,10 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def generate_insights(self, module_data: dict[str, Any]) -> list[AnalysisInsight]:
         """Generate automated insights for SBIR enrichment analysis.
-        
+
         Args:
             module_data: Module data containing enriched DataFrame
-            
+
         Returns:
             List of analysis insights and recommendations
         """
@@ -167,89 +176,114 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
         # Analyze overall match rate
         overall_match_rate = enrichment_metrics.get("overall_match_rate", 0.0)
         if overall_match_rate < self.thresholds["min_match_rate"]:
-            insights.append(AnalysisInsight(
-                category="enrichment_quality",
-                title="Low Overall Match Rate",
-                message=f"Overall match rate ({overall_match_rate:.1%}) is below threshold ({self.thresholds['min_match_rate']:.1%})",
-                severity="warning",
-                confidence=0.9,
-                affected_records=int(len(enriched_df) * (1 - overall_match_rate)),
-                recommendations=[
-                    "Review enrichment source configurations",
-                    "Check data quality of input records",
-                    "Consider adjusting fuzzy matching thresholds",
-                    "Validate API connectivity and rate limits"
-                ],
-                metadata={"current_rate": overall_match_rate, "threshold": self.thresholds["min_match_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="enrichment_quality",
+                    title="Low Overall Match Rate",
+                    message=f"Overall match rate ({overall_match_rate:.1%}) is below threshold ({self.thresholds['min_match_rate']:.1%})",
+                    severity="warning",
+                    confidence=0.9,
+                    affected_records=int(len(enriched_df) * (1 - overall_match_rate)),
+                    recommendations=[
+                        "Review enrichment source configurations",
+                        "Check data quality of input records",
+                        "Consider adjusting fuzzy matching thresholds",
+                        "Validate API connectivity and rate limits",
+                    ],
+                    metadata={
+                        "current_rate": overall_match_rate,
+                        "threshold": self.thresholds["min_match_rate"],
+                    },
+                )
+            )
 
         # Analyze confidence distribution
         confidence_dist = self._calculate_confidence_distribution(enriched_df)
         high_confidence_rate = confidence_dist.get("high_confidence_rate", 0.0)
         if high_confidence_rate < self.thresholds["min_high_confidence_rate"]:
-            insights.append(AnalysisInsight(
-                category="enrichment_confidence",
-                title="Low High-Confidence Enrichment Rate",
-                message=f"High-confidence enrichment rate ({high_confidence_rate:.1%}) is below target ({self.thresholds['min_high_confidence_rate']:.1%})",
-                severity="info",
-                confidence=0.8,
-                affected_records=int(len(enriched_df) * (1 - high_confidence_rate)),
-                recommendations=[
-                    "Prioritize exact match sources over fuzzy matching",
-                    "Improve data standardization before enrichment",
-                    "Review and update agency default mappings",
-                    "Consider additional high-quality data sources"
-                ],
-                metadata={"current_rate": high_confidence_rate, "threshold": self.thresholds["min_high_confidence_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="enrichment_confidence",
+                    title="Low High-Confidence Enrichment Rate",
+                    message=f"High-confidence enrichment rate ({high_confidence_rate:.1%}) is below target ({self.thresholds['min_high_confidence_rate']:.1%})",
+                    severity="info",
+                    confidence=0.8,
+                    affected_records=int(len(enriched_df) * (1 - high_confidence_rate)),
+                    recommendations=[
+                        "Prioritize exact match sources over fuzzy matching",
+                        "Improve data standardization before enrichment",
+                        "Review and update agency default mappings",
+                        "Consider additional high-quality data sources",
+                    ],
+                    metadata={
+                        "current_rate": high_confidence_rate,
+                        "threshold": self.thresholds["min_high_confidence_rate"],
+                    },
+                )
+            )
 
         # Analyze fallback usage
         match_rates = self._calculate_match_rates_by_source(enriched_df)
-        fallback_rate = match_rates.get("sector_fallback", 0.0) + match_rates.get("agency_default", 0.0)
+        fallback_rate = match_rates.get("sector_fallback", 0.0) + match_rates.get(
+            "agency_default", 0.0
+        )
         if fallback_rate > self.thresholds["max_fallback_rate"]:
-            insights.append(AnalysisInsight(
-                category="enrichment_fallback",
-                title="High Fallback Usage",
-                message=f"Fallback enrichment rate ({fallback_rate:.1%}) exceeds threshold ({self.thresholds['max_fallback_rate']:.1%})",
-                severity="warning",
-                confidence=0.85,
-                affected_records=int(len(enriched_df) * fallback_rate),
-                recommendations=[
-                    "Investigate primary enrichment source failures",
-                    "Improve data quality of input records",
-                    "Review and update enrichment source priorities",
-                    "Consider adding additional enrichment sources"
-                ],
-                metadata={"current_rate": fallback_rate, "threshold": self.thresholds["max_fallback_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="enrichment_fallback",
+                    title="High Fallback Usage",
+                    message=f"Fallback enrichment rate ({fallback_rate:.1%}) exceeds threshold ({self.thresholds['max_fallback_rate']:.1%})",
+                    severity="warning",
+                    confidence=0.85,
+                    affected_records=int(len(enriched_df) * fallback_rate),
+                    recommendations=[
+                        "Investigate primary enrichment source failures",
+                        "Improve data quality of input records",
+                        "Review and update enrichment source priorities",
+                        "Consider adding additional enrichment sources",
+                    ],
+                    metadata={
+                        "current_rate": fallback_rate,
+                        "threshold": self.thresholds["max_fallback_rate"],
+                    },
+                )
+            )
 
         # Analyze field-specific coverage
-        coverage_metrics = self._calculate_field_coverage(enriched_df, module_data.get("original_df"))
+        coverage_metrics = self._calculate_field_coverage(
+            enriched_df, module_data.get("original_df")
+        )
         for field, coverage in coverage_metrics.items():
             if coverage < self.thresholds["min_coverage_rate"]:
-                insights.append(AnalysisInsight(
-                    category="field_coverage",
-                    title=f"Low Coverage for {field}",
-                    message=f"Field '{field}' coverage ({coverage:.1%}) is below target ({self.thresholds['min_coverage_rate']:.1%})",
-                    severity="info",
-                    confidence=0.7,
-                    affected_records=int(len(enriched_df) * (1 - coverage)),
-                    recommendations=[
-                        f"Review enrichment sources for {field}",
-                        f"Check data quality requirements for {field}",
-                        f"Consider alternative sources for {field} data"
-                    ],
-                    metadata={"field": field, "current_coverage": coverage, "threshold": self.thresholds["min_coverage_rate"]}
-                ))
+                insights.append(
+                    AnalysisInsight(
+                        category="field_coverage",
+                        title=f"Low Coverage for {field}",
+                        message=f"Field '{field}' coverage ({coverage:.1%}) is below target ({self.thresholds['min_coverage_rate']:.1%})",
+                        severity="info",
+                        confidence=0.7,
+                        affected_records=int(len(enriched_df) * (1 - coverage)),
+                        recommendations=[
+                            f"Review enrichment sources for {field}",
+                            f"Check data quality requirements for {field}",
+                            f"Consider alternative sources for {field} data",
+                        ],
+                        metadata={
+                            "field": field,
+                            "current_coverage": coverage,
+                            "threshold": self.thresholds["min_coverage_rate"],
+                        },
+                    )
+                )
 
         return insights
 
     def _calculate_match_rates_by_source(self, enriched_df: pd.DataFrame) -> dict[str, float]:
         """Calculate match rates by enrichment source.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
-            
+
         Returns:
             Dictionary mapping source names to match rates
         """
@@ -261,8 +295,12 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         # Check for enrichment source columns
         source_columns = [
-            "_usaspending_match_method", "_sam_gov_match_method", "_fuzzy_match_method",
-            "enrichment_source", "match_source", "naics_source"
+            "_usaspending_match_method",
+            "_sam_gov_match_method",
+            "_fuzzy_match_method",
+            "enrichment_source",
+            "match_source",
+            "naics_source",
         ]
 
         for col in source_columns:
@@ -283,13 +321,15 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         return match_rates
 
-    def _calculate_field_coverage(self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None) -> dict[str, float]:
+    def _calculate_field_coverage(
+        self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None
+    ) -> dict[str, float]:
         """Calculate coverage metrics for each enriched field.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
             original_df: Original SBIR DataFrame for comparison
-            
+
         Returns:
             Dictionary mapping field names to coverage rates
         """
@@ -317,16 +357,19 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def _calculate_confidence_distribution(self, enriched_df: pd.DataFrame) -> dict[str, Any]:
         """Calculate confidence score distribution.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
-            
+
         Returns:
             Dictionary with confidence distribution metrics
         """
         confidence_columns = [
-            "enrichment_confidence", "match_confidence", "confidence_score",
-            "_usaspending_confidence", "_sam_gov_confidence"
+            "enrichment_confidence",
+            "match_confidence",
+            "confidence_score",
+            "_usaspending_confidence",
+            "_sam_gov_confidence",
         ]
 
         confidence_values = []
@@ -351,9 +394,15 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
             "high_confidence_count": int(high_confidence),
             "medium_confidence_count": int(medium_confidence),
             "low_confidence_count": int(low_confidence),
-            "high_confidence_rate": high_confidence / total_with_confidence if total_with_confidence > 0 else 0,
-            "medium_confidence_rate": medium_confidence / total_with_confidence if total_with_confidence > 0 else 0,
-            "low_confidence_rate": low_confidence / total_with_confidence if total_with_confidence > 0 else 0,
+            "high_confidence_rate": high_confidence / total_with_confidence
+            if total_with_confidence > 0
+            else 0,
+            "medium_confidence_rate": medium_confidence / total_with_confidence
+            if total_with_confidence > 0
+            else 0,
+            "low_confidence_rate": low_confidence / total_with_confidence
+            if total_with_confidence > 0
+            else 0,
             "average_confidence": float(confidence_series.mean()),
             "median_confidence": float(confidence_series.median()),
             "min_confidence": float(confidence_series.min()),
@@ -362,10 +411,10 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def _calculate_enrichment_success(self, enriched_df: pd.DataFrame) -> dict[str, Any]:
         """Calculate overall enrichment success metrics.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
-            
+
         Returns:
             Dictionary with enrichment success metrics
         """
@@ -382,9 +431,10 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         # Count records with multiple enrichments
         multi_enriched = 0
-        for idx, row in enriched_df.iterrows():
-            enriched_fields = sum(1 for field in self.enrichment_fields
-                                if field in row.index and pd.notna(row[field]))
+        for _idx, row in enriched_df.iterrows():
+            enriched_fields = sum(
+                1 for field in self.enrichment_fields if field in row.index and pd.notna(row[field])
+            )
             if enriched_fields > 1:
                 multi_enriched += 1
 
@@ -397,13 +447,15 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
             "multi_enrichment_rate": multi_enriched / total_records,
         }
 
-    def _calculate_completeness_comparison(self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None) -> dict[str, Any]:
+    def _calculate_completeness_comparison(
+        self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None
+    ) -> dict[str, Any]:
         """Calculate before/after completeness comparison.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
             original_df: Original SBIR DataFrame
-            
+
         Returns:
             Dictionary with completeness comparison metrics
         """
@@ -413,8 +465,12 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
         comparison = {}
 
         # Calculate overall completeness
-        enriched_completeness = enriched_df.notna().sum().sum() / (len(enriched_df) * len(enriched_df.columns))
-        original_completeness = original_df.notna().sum().sum() / (len(original_df) * len(original_df.columns))
+        enriched_completeness = enriched_df.notna().sum().sum() / (
+            len(enriched_df) * len(enriched_df.columns)
+        )
+        original_completeness = original_df.notna().sum().sum() / (
+            len(original_df) * len(original_df.columns)
+        )
 
         comparison["overall"] = {
             "original_completeness": original_completeness,
@@ -438,13 +494,15 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         return comparison
 
-    def _calculate_data_hygiene(self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None) -> DataHygieneMetrics:
+    def _calculate_data_hygiene(
+        self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None
+    ) -> DataHygieneMetrics:
         """Calculate data hygiene metrics for enriched data.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
             original_df: Original SBIR DataFrame
-            
+
         Returns:
             DataHygieneMetrics instance
         """
@@ -452,7 +510,7 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
         # Calculate quality scores (simplified)
         quality_scores = []
-        for idx, row in enriched_df.iterrows():
+        for _idx, row in enriched_df.iterrows():
             # Simple quality score based on completeness and enrichment
             non_null_count = row.notna().sum()
             total_fields = len(row)
@@ -477,7 +535,9 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
             total_records=total_records,
             clean_records=int(clean_records),
             dirty_records=int(dirty_records),
-            clean_percentage=float(clean_records / total_records * 100) if total_records > 0 else 0.0,
+            clean_percentage=float(clean_records / total_records * 100)
+            if total_records > 0
+            else 0.0,
             quality_score_mean=float(quality_series.mean()),
             quality_score_median=float(quality_series.median()),
             quality_score_std=float(quality_series.std()),
@@ -488,13 +548,15 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
             validation_warnings=0,  # Would need specific validation logic
         )
 
-    def _calculate_changes_summary(self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None) -> ChangesSummary | None:
+    def _calculate_changes_summary(
+        self, enriched_df: pd.DataFrame, original_df: pd.DataFrame | None
+    ) -> ChangesSummary | None:
         """Calculate summary of changes made during enrichment.
-        
+
         Args:
             enriched_df: Enriched SBIR DataFrame
             original_df: Original SBIR DataFrame
-            
+
         Returns:
             ChangesSummary instance or None if no original data
         """
@@ -536,10 +598,10 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
 
     def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
         """Create an empty report when no data is available.
-        
+
         Args:
             run_context: Pipeline run context
-            
+
         Returns:
             Empty ModuleReport
         """

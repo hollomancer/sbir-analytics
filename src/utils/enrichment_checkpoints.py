@@ -6,8 +6,7 @@ when refresh runs are interrupted.
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -93,9 +92,7 @@ class CheckpointStore:
         self.save_all(df)
         logger.debug(f"Saved checkpoint: {checkpoint.partition_id} ({checkpoint.source})")
 
-    def load_checkpoint(
-        self, partition_id: str, source: str
-    ) -> EnrichmentCheckpoint | None:
+    def load_checkpoint(self, partition_id: str, source: str) -> EnrichmentCheckpoint | None:
         """Load a specific checkpoint.
 
         Args:
@@ -164,4 +161,3 @@ class CheckpointStore:
         mask = ~((df["partition_id"] == partition_id) & (df["source"] == source))
         df = df[mask]
         self.save_all(df)
-

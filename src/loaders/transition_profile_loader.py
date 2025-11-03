@@ -83,7 +83,7 @@ class TransitionProfileLoader:
         profile_data = []
 
         # Group transitions by award_id first
-        transitions_by_award = transitions_df.groupby("award_id")
+        transitions_df.groupby("award_id")
         awards_with_transitions = set(transitions_df["award_id"].unique())
 
         if awards_df is not None and not awards_df.empty:

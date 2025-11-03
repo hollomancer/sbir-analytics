@@ -864,6 +864,7 @@ def enriched_cet_award_classifications() -> Output:
 
             # Load the classified DataFrame from the output file
             import pandas as pd
+
             try:
                 classified_df = pd.read_parquet(output_path)
             except Exception:
@@ -877,15 +878,22 @@ def enriched_cet_award_classifications() -> Output:
                     "classified_records": len(classified_df),
                     "failed_records": 0,  # Assume all records were processed
                     "duration_seconds": 0.0,  # Could be enhanced with actual timing
-                    "classification_rate": len(classified_df[classified_df["primary_cet_area"].notna()]) / len(classified_df) if len(classified_df) > 0 else 0,
+                    "classification_rate": len(
+                        classified_df[classified_df["primary_cet_area"].notna()]
+                    )
+                    / len(classified_df)
+                    if len(classified_df) > 0
+                    else 0,
                     "model_accuracy": checks.get("accuracy", 0.0),
                     "model_precision": checks.get("precision", 0.0),
                     "model_recall": checks.get("recall", 0.0),
                     "model_f1_score": checks.get("f1_score", 0.0),
                 },
                 "taxonomy_data": {
-                    "taxonomy_areas": list(taxonomy.cet_areas.keys()) if hasattr(taxonomy, 'cet_areas') else [],
-                    "total_areas": len(taxonomy.cet_areas) if hasattr(taxonomy, 'cet_areas') else 0,
+                    "taxonomy_areas": list(taxonomy.cet_areas.keys())
+                    if hasattr(taxonomy, "cet_areas")
+                    else [],
+                    "total_areas": len(taxonomy.cet_areas) if hasattr(taxonomy, "cet_areas") else 0,
                 },
                 "run_context": run_context,
             }
@@ -896,20 +904,44 @@ def enriched_cet_award_classifications() -> Output:
             logger.info(
                 "CET classification analysis complete",
                 extra={
-                    "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+                    "insights_generated": len(analysis_report.insights)
+                    if hasattr(analysis_report, "insights")
+                    else 0,
+                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
+                    if analysis_report.data_hygiene
+                    else None,
                     "classification_success_rate": analysis_report.success_rate,
                 },
             )
 
             # Add analysis results to metadata
-            metadata.update({
-                "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
-                "analysis_category_distribution": analysis_report.module_metrics.get("category_distribution", {}) if analysis_report.module_metrics else {},
-                "analysis_confidence_distribution": analysis_report.module_metrics.get("confidence_distribution", {}) if analysis_report.module_metrics else {},
-                "analysis_taxonomy_coverage": analysis_report.module_metrics.get("taxonomy_coverage", {}) if analysis_report.module_metrics else {},
-            })
+            metadata.update(
+                {
+                    "analysis_insights_count": len(analysis_report.insights)
+                    if hasattr(analysis_report, "insights")
+                    else 0,
+                    "analysis_data_hygiene_score": round(
+                        analysis_report.data_hygiene.quality_score_mean, 3
+                    )
+                    if analysis_report.data_hygiene
+                    else None,
+                    "analysis_category_distribution": analysis_report.module_metrics.get(
+                        "category_distribution", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                    "analysis_confidence_distribution": analysis_report.module_metrics.get(
+                        "confidence_distribution", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                    "analysis_taxonomy_coverage": analysis_report.module_metrics.get(
+                        "taxonomy_coverage", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                }
+            )
 
         except Exception as e:
             logger.warning(f"CET classification analysis failed: {e}")
@@ -1792,7 +1824,7 @@ def raw_cet_human_sampling() -> Output:
     # Config
     sample_size = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SIZE", "50"))
     seed = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SEED", "42"))
-    rng = Random(seed)
+    Random(seed)
 
     def _read_awards():
         if pd is not None and input_parquet.exists():
@@ -1859,7 +1891,7 @@ def raw_cet_human_sampling() -> Output:
     if "primary_cet" in df.columns and df["primary_cet"].notna().any():
         groups = []
         per_cet = max(1, sample_size // max(1, df["primary_cet"].nunique()))
-        for cet, sub in df.groupby("primary_cet"):
+        for _cet, sub in df.groupby("primary_cet"):
             rows = (
                 sub.sample(n=min(per_cet, len(sub)), random_state=seed)
                 if hasattr(sub, "sample")
@@ -1895,9 +1927,9 @@ def raw_cet_human_sampling() -> Output:
             # Keep only JSON-serializable structures
             rec = {k: row.get(k) for k in existing_cols}
             # Ensure keywords and supporting_cets are basic types
-            if isinstance(rec.get("keywords"), (list, tuple)):
+            if isinstance(rec.get("keywords"), list | tuple):
                 rec["keywords"] = list(rec["keywords"])
-            if isinstance(rec.get("supporting_cets"), (list, tuple)):
+            if isinstance(rec.get("supporting_cets"), list | tuple):
                 rec["supporting_cets"] = list(rec["supporting_cets"])
             fh.write(json.dumps(rec) + "\n")
 
@@ -2018,7 +2050,9 @@ def validated_cet_iaa_report() -> Output:
         import math
 
         # Drop pairs with missing values
-        paired = [(a, b) for a, b in zip(series_a, series_b, strict=False) if pd.notna(a) and pd.notna(b)]
+        paired = [
+            (a, b) for a, b in zip(series_a, series_b, strict=False) if pd.notna(a) and pd.notna(b)
+        ]
         if not paired:
             return None
         labels = list({x for ab in paired for x in ab})

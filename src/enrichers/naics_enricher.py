@@ -9,17 +9,16 @@ The implementation intentionally uses conservative heuristics and supports a
 development environments. The resulting compact index is persisted as Parquet
 for fast joins in downstream enrichment.
 """
+
 from __future__ import annotations
 
 import gzip
-import io
 import json
 import logging
 import re
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 import pandas as pd
 
@@ -42,10 +41,10 @@ class NAICSEnricherConfig:
 class NAICSEnricher:
     def __init__(self, config: NAICSEnricherConfig):
         self.config = config
-        self.award_map: Dict[str, Set[str]] = {}
-        self.recipient_map: Dict[str, Set[str]] = {}
+        self.award_map: dict[str, set[str]] = {}
+        self.recipient_map: dict[str, set[str]] = {}
         # optional canonical NAICS set (loaded from data/reference/naics_codes.txt if present)
-        self.valid_naics_set: Set[str] = set()
+        self.valid_naics_set: set[str] = set()
         ref = Path("data/reference/naics_codes.txt")
         if ref.exists():
             try:
@@ -65,35 +64,35 @@ class NAICSEnricher:
             df = pd.read_parquet(cache)
             # reconstruct maps
             for _, row in df.iterrows():
-                    key_type = row["key_type"]
-                    key = row["key"]
-                    raw = row["naics_candidates"]
+                key_type = row["key_type"]
+                key = row["key"]
+                raw = row["naics_candidates"]
+                naics = set()
+                if raw is None:
                     naics = set()
-                    if raw is None:
-                        naics = set()
-                    else:
-                        # handle lists, tuples, numpy arrays, and JSON strings
-                        try:
-                            if isinstance(raw, (list, tuple, set)):
-                                naics = set(raw)
+                else:
+                    # handle lists, tuples, numpy arrays, and JSON strings
+                    try:
+                        if isinstance(raw, list | tuple | set):
+                            naics = set(raw)
+                        else:
+                            # numpy arrays have .tolist()
+                            if hasattr(raw, "tolist"):
+                                naics = set(raw.tolist())
                             else:
-                                # numpy arrays have .tolist()
-                                if hasattr(raw, "tolist"):
-                                    naics = set(raw.tolist())
-                                else:
-                                    # fallback: try to parse as JSON string
-                                    try:
-                                        parsed = json.loads(raw)
-                                        if isinstance(parsed, (list, tuple)):
-                                            naics = set(parsed)
-                                    except Exception:
-                                        naics = set()
-                        except Exception:
-                            naics = set()
-                    if key_type == "award":
-                        self.award_map[key] = naics
-                    else:
-                        self.recipient_map[key] = naics
+                                # fallback: try to parse as JSON string
+                                try:
+                                    parsed = json.loads(raw)
+                                    if isinstance(parsed, list | tuple):
+                                        naics = set(parsed)
+                                except Exception:
+                                    naics = set()
+                    except Exception:
+                        naics = set()
+                if key_type == "award":
+                    self.award_map[key] = naics
+                else:
+                    self.recipient_map[key] = naics
             return
 
         zip_path = Path(self.config.zip_path)
@@ -102,8 +101,17 @@ class NAICSEnricher:
 
         file_count = 0
         with zipfile.ZipFile(zip_path, "r") as z:
-            members = [n for n in z.namelist() if n.startswith("pruned_data_store_api_dump/") and n.endswith(".dat.gz")]
-            logger.info("Found %d pruned dump members; processing up to %d files (sample_only=%s)", len(members), self.config.max_files, self.config.sample_only)
+            members = [
+                n
+                for n in z.namelist()
+                if n.startswith("pruned_data_store_api_dump/") and n.endswith(".dat.gz")
+            ]
+            logger.info(
+                "Found %d pruned dump members; processing up to %d files (sample_only=%s)",
+                len(members),
+                self.config.max_files,
+                self.config.sample_only,
+            )
             for member in members:
                 if self.config.sample_only and file_count >= self.config.max_files:
                     break
@@ -115,7 +123,10 @@ class NAICSEnricher:
                         with gzip.GzipFile(fileobj=comp_fh) as gz:
                             line_no = 0
                             for raw in gz:
-                                if self.config.sample_only and line_no >= self.config.max_lines_per_file:
+                                if (
+                                    self.config.sample_only
+                                    and line_no >= self.config.max_lines_per_file
+                                ):
                                     break
                                 try:
                                     line = raw.decode("utf-8", errors="ignore")
@@ -239,7 +250,12 @@ class NAICSEnricher:
         for r in recipient_candidates:
             self.recipient_map.setdefault(r, set()).update(naics)
 
-    def enrich_awards(self, df: pd.DataFrame, award_id_col: str = "award_id", recipient_uei_col: str = "recipient_uei") -> pd.DataFrame:
+    def enrich_awards(
+        self,
+        df: pd.DataFrame,
+        award_id_col: str = "award_id",
+        recipient_uei_col: str = "recipient_uei",
+    ) -> pd.DataFrame:
         """Enrich the provided awards DataFrame with NAICS fields using the built index.
 
         Adds columns: `naics_assigned`, `naics_origin`, `naics_confidence`, `naics_quality_flags`, `naics_trace`.
@@ -250,7 +266,7 @@ class NAICSEnricher:
             naics_assigned = None
             origin = "unknown"
             conf = 0.0
-            flags: List[str] = []
+            flags: list[str] = []
             trace = []
 
             # try award-level

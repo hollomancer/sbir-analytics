@@ -6,7 +6,6 @@ used in fiscal returns analysis.
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any
 
 import pandas as pd
@@ -223,8 +222,7 @@ def calculate_impacts_with_useeior(
         result = call_r_function(useeior_pkg, "calculateEEIOModel", **kwargs)
 
         logger.info(
-            f"Calculated impacts with USEEIOR (perspective={perspective}, "
-            f"location={location})"
+            f"Calculated impacts with USEEIOR (perspective={perspective}, " f"location={location})"
         )
         return result
 
@@ -309,7 +307,9 @@ def extract_economic_components_from_impacts(
             production_impacts = n_matrix.sum(axis=1)  # Sum across all commodities per sector
         else:
             # If it's a matrix, convert to DataFrame
-            production_impacts = pd.Series(n_matrix.sum(axis=1) if hasattr(n_matrix, 'sum') else n_matrix.flatten())
+            production_impacts = pd.Series(
+                n_matrix.sum(axis=1) if hasattr(n_matrix, "sum") else n_matrix.flatten()
+            )
 
     except Exception as e:
         logger.warning(f"Could not extract production impacts from N matrix: {e}")
@@ -387,9 +387,7 @@ def compute_impacts_via_useeior_state_models(
             state_model = state_models.rx2(state)  # type: ignore
 
             # Format shocks as demand vector
-            demand = format_demand_vector_from_shocks(
-                useeior_pkg, state_model, state_shocks
-            )
+            demand = format_demand_vector_from_shocks(useeior_pkg, state_model, state_shocks)
 
             # Calculate impacts
             impacts = calculate_impacts_with_useeior(
@@ -425,4 +423,3 @@ def compute_impacts_via_useeior_state_models(
     # Convert results to DataFrame
     # This will be completed when we understand the exact result structure
     return pd.DataFrame(all_results)
-

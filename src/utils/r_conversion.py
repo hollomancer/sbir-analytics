@@ -38,9 +38,7 @@ def pandas_to_r(df: pd.DataFrame, activate_conversion: bool = True) -> Any:
         ImportError: If rpy2 is not installed
     """
     if not RPY2_AVAILABLE:
-        raise ImportError(
-            "rpy2 is not installed. Install with: poetry install --extras r"
-        )
+        raise ImportError("rpy2 is not installed. Install with: poetry install --extras r")
 
     if activate_conversion:
         pandas2ri.activate()  # type: ignore
@@ -67,9 +65,7 @@ def r_to_pandas(r_df: Any, preserve_types: bool = True) -> pd.DataFrame:
         ImportError: If rpy2 is not installed
     """
     if not RPY2_AVAILABLE:
-        raise ImportError(
-            "rpy2 is not installed. Install with: poetry install --extras r"
-        )
+        raise ImportError("rpy2 is not installed. Install with: poetry install --extras r")
 
     try:
         df = pandas2ri.rpy2py(r_df)  # type: ignore
@@ -97,4 +93,3 @@ def check_r_available() -> bool:
         True if rpy2 is installed and available
     """
     return RPY2_AVAILABLE
-

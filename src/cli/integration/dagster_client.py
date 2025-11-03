@@ -8,8 +8,8 @@ from typing import Any
 
 from dagster import AssetKey, DagsterInstance, Definitions, materialize
 from dagster._core.definitions.asset_selection import AssetSelection
-from rich.console import Console
 from loguru import logger
+from rich.console import Console
 
 from src.config.schemas import PipelineConfig
 
@@ -91,12 +91,14 @@ class DagsterClient:
         """
         assets_info = []
         for asset in self.defs.assets:
-            assets_info.append({
-                "key": str(asset.key),
-                "group": asset.group_name,
-                "description": asset.description or "",
-                "is_source": asset.is_source,
-            })
+            assets_info.append(
+                {
+                    "key": str(asset.key),
+                    "group": asset.group_name,
+                    "description": asset.description or "",
+                    "is_source": asset.is_source,
+                }
+            )
         return assets_info
 
     def get_asset_status(self, asset_key: str) -> AssetStatus:
@@ -218,4 +220,3 @@ class DagsterClient:
         except Exception as e:
             logger.error(f"Failed to get run status for {run_id}: {e}")
             return {"status": "error", "run_id": run_id, "error": str(e)}
-

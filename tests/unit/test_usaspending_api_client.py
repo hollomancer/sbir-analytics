@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import HTTPStatusError, Response, TimeoutException
+from httpx import HTTPStatusError, TimeoutException
 
 from src.enrichers.usaspending_api_client import (
     USAspendingAPIClient,
@@ -317,9 +316,7 @@ class TestEnrichAward:
     """Test enrich_award method."""
 
     @pytest.mark.asyncio
-    async def test_enrich_award_success_with_uei(
-        self, api_client, sample_recipient_response
-    ):
+    async def test_enrich_award_success_with_uei(self, api_client, sample_recipient_response):
         """Test successful enrichment with UEI."""
         with patch.object(api_client, "get_recipient_by_uei", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = sample_recipient_response
@@ -335,9 +332,7 @@ class TestEnrichAward:
             assert result["delta_detected"] is True
 
     @pytest.mark.asyncio
-    async def test_enrich_award_delta_detection(
-        self, api_client, sample_recipient_response
-    ):
+    async def test_enrich_award_delta_detection(self, api_client, sample_recipient_response):
         """Test delta detection when freshness record exists."""
         # Create freshness record with existing hash
         existing_hash = api_client._compute_payload_hash(sample_recipient_response)
@@ -364,9 +359,7 @@ class TestEnrichAward:
             assert result["delta_detected"] is False
 
     @pytest.mark.asyncio
-    async def test_enrich_award_fallback_to_duns(
-        self, api_client, sample_recipient_response
-    ):
+    async def test_enrich_award_fallback_to_duns(self, api_client, sample_recipient_response):
         """Test enrichment falls back to DUNS when UEI fails."""
         with patch.object(api_client, "get_recipient_by_uei", new_callable=AsyncMock) as mock_uei:
             with patch.object(
@@ -442,4 +435,3 @@ class TestStateManagement:
         api_client.save_state(test_state)
 
         assert api_client.state_file.exists()
-

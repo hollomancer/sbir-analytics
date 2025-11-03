@@ -150,12 +150,10 @@ class BaseSearchProvider(ABC):
         backoff_base = backoff_base if backoff_base is not None else self.backoff_base
         retriable_exceptions = retriable_exceptions or (Exception,)
 
-        last_exc: BaseException | None = None
         for attempt in range(1, max_retries + 1):
             try:
                 return func(*args, **kwargs)
             except retriable_exceptions as exc:
-                last_exc = exc
                 if attempt < max_retries:
                     wait = backoff_base ** (attempt - 1)
                     logger.debug(

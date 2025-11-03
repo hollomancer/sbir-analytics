@@ -125,4 +125,3 @@ def create_summary_panel(
             content.append("\n")
 
     return Panel(content, title=title, border_style="blue")
-

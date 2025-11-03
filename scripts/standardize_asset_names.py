@@ -2,7 +2,7 @@
 """
 Script to standardize asset names across the SBIR ETL pipeline.
 
-This script applies the standardized naming conventions defined in 
+This script applies the standardized naming conventions defined in
 src/assets/asset_naming_standards.py to all asset files.
 
 Usage:
@@ -19,13 +19,17 @@ from src.assets.asset_naming_standards import ASSET_RENAMING_MAP, GROUP_RENAMING
 def find_asset_files() -> list[Path]:
     """Find all asset files in the src/assets directory."""
     assets_dir = Path("src/assets")
-    return [f for f in assets_dir.glob("*.py") if f.name != "__init__.py" and f.name != "asset_naming_standards.py"]
+    return [
+        f
+        for f in assets_dir.glob("*.py")
+        if f.name != "__init__.py" and f.name != "asset_naming_standards.py"
+    ]
 
 
 def update_asset_definitions(file_path: Path, dry_run: bool = False) -> list[str]:
     """
     Update asset definitions in a file to use standardized names.
-    
+
     Returns:
         List of changes made
     """
@@ -42,9 +46,9 @@ def update_asset_definitions(file_path: Path, dry_run: bool = False) -> list[str
             continue
 
         # Update function definitions
-        func_pattern = rf'def {re.escape(old_name)}\('
+        func_pattern = rf"def {re.escape(old_name)}\("
         if re.search(func_pattern, content):
-            content = re.sub(func_pattern, f'def {new_name}(', content)
+            content = re.sub(func_pattern, f"def {new_name}(", content)
             changes.append(f"Renamed function: {old_name} -> {new_name}")
 
         # Update asset name parameters in decorators
@@ -58,7 +62,7 @@ def update_asset_definitions(file_path: Path, dry_run: bool = False) -> list[str
             rf'AssetIn\("{re.escape(old_name)}"\)',
             rf'asset="{re.escape(old_name)}"',
             rf'deps=\["{re.escape(old_name)}"\]',
-            rf'"{re.escape(old_name)}"'
+            rf'"{re.escape(old_name)}"',
         ]
 
         for pattern in dep_patterns:
@@ -78,7 +82,7 @@ def update_asset_definitions(file_path: Path, dry_run: bool = False) -> list[str
 
     # Write changes if not dry run
     if not dry_run and content != original_content:
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             f.write(content)
         changes.append(f"File updated: {file_path}")
 
@@ -102,7 +106,7 @@ def update_job_definitions(dry_run: bool = False) -> list[str]:
                 continue
 
             # Update import statements
-            import_pattern = rf'from .* import .*{re.escape(old_name)}'
+            import_pattern = rf"from .* import .*{re.escape(old_name)}"
             if re.search(import_pattern, content):
                 content = re.sub(re.escape(old_name), new_name, content)
                 changes.append(f"Updated import in {job_file}: {old_name} -> {new_name}")
@@ -124,7 +128,7 @@ def update_job_definitions(dry_run: bool = False) -> list[str]:
                 changes.append(f"Updated group selection in {job_file}: {old_group} -> {new_group}")
 
         if not dry_run and content != original_content:
-            with open(job_file, 'w') as f:
+            with open(job_file, "w") as f:
                 f.write(content)
             changes.append(f"Job file updated: {job_file}")
 

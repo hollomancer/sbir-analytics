@@ -79,7 +79,7 @@ class TestFiscalUncertaintyQuantifier:
         assert len(indices) > 0
 
         # Check indices are between 0 and 1 (correlation-based)
-        for param, sensitivity in indices.items():
+        for _param, sensitivity in indices.items():
             assert 0.0 <= sensitivity <= 1.0
 
     def test_quantify_uncertainty(self, quantifier, sample_scenario_results_df):
@@ -126,4 +126,3 @@ class TestFiscalUncertaintyQuantifier:
 
         flagged = quantifier.flag_high_uncertainty(result)
         assert flagged is True
-

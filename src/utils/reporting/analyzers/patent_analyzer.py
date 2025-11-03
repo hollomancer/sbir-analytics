@@ -19,7 +19,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize patent analysis analyzer.
-        
+
         Args:
             config: Optional configuration for analysis thresholds
         """
@@ -35,8 +35,14 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
         # Key patent fields to analyze
         self.patent_fields = [
-            "grant_doc_num", "title", "grant_date", "inventor_names",
-            "assignee_names", "abstract", "claims_count", "citations_count"
+            "grant_doc_num",
+            "title",
+            "grant_date",
+            "inventor_names",
+            "assignee_names",
+            "abstract",
+            "claims_count",
+            "citations_count",
         ]
 
         # Neo4j node and relationship types
@@ -45,7 +51,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
         """Analyze patent data and generate comprehensive report.
-        
+
         Args:
             module_data: Dictionary containing:
                 - patent_df: Patent DataFrame
@@ -53,7 +59,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
                 - loading_results: Neo4j loading results
                 - neo4j_stats: Neo4j database statistics
                 - run_context: Pipeline run context
-                
+
         Returns:
             ModuleReport with patent analysis results
         """
@@ -105,10 +111,10 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from patent analysis data.
-        
+
         Args:
             module_data: Module data containing patent DataFrame and results
-            
+
         Returns:
             Dictionary of key patent analysis metrics
         """
@@ -150,10 +156,10 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def generate_insights(self, module_data: dict[str, Any]) -> list[AnalysisInsight]:
         """Generate automated insights for patent analysis.
-        
+
         Args:
             module_data: Module data containing patent DataFrame and results
-            
+
         Returns:
             List of analysis insights and recommendations
         """
@@ -168,107 +174,131 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
         # Analyze validation pass rate
         validation_pass_rate = validation_results.get("validation_pass_rate", 0.0)
         if validation_pass_rate < self.thresholds["min_validation_pass_rate"]:
-            insights.append(AnalysisInsight(
-                category="validation_quality",
-                title="Low Patent Validation Pass Rate",
-                message=f"Patent validation pass rate ({validation_pass_rate:.1%}) is below threshold ({self.thresholds['min_validation_pass_rate']:.1%})",
-                severity="warning",
-                confidence=0.9,
-                affected_records=int(len(patent_df) * (1 - validation_pass_rate)),
-                recommendations=[
-                    "Review patent data quality at source",
-                    "Check validation rules for appropriateness",
-                    "Investigate common validation failure patterns",
-                    "Consider data cleaning before validation"
-                ],
-                metadata={"current_rate": validation_pass_rate, "threshold": self.thresholds["min_validation_pass_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="validation_quality",
+                    title="Low Patent Validation Pass Rate",
+                    message=f"Patent validation pass rate ({validation_pass_rate:.1%}) is below threshold ({self.thresholds['min_validation_pass_rate']:.1%})",
+                    severity="warning",
+                    confidence=0.9,
+                    affected_records=int(len(patent_df) * (1 - validation_pass_rate)),
+                    recommendations=[
+                        "Review patent data quality at source",
+                        "Check validation rules for appropriateness",
+                        "Investigate common validation failure patterns",
+                        "Consider data cleaning before validation",
+                    ],
+                    metadata={
+                        "current_rate": validation_pass_rate,
+                        "threshold": self.thresholds["min_validation_pass_rate"],
+                    },
+                )
+            )
 
         # Analyze loading success rate
         loading_success_rate = loading_results.get("loading_success_rate", 0.0)
         if loading_success_rate < self.thresholds["min_loading_success_rate"]:
-            insights.append(AnalysisInsight(
-                category="loading_performance",
-                title="Low Patent Loading Success Rate",
-                message=f"Patent loading success rate ({loading_success_rate:.1%}) is below threshold ({self.thresholds['min_loading_success_rate']:.1%})",
-                severity="error",
-                confidence=0.95,
-                affected_records=int(len(patent_df) * (1 - loading_success_rate)),
-                recommendations=[
-                    "Check Neo4j database connectivity and performance",
-                    "Review constraint violations and duplicate handling",
-                    "Investigate transaction timeout issues",
-                    "Consider batch size optimization"
-                ],
-                metadata={"current_rate": loading_success_rate, "threshold": self.thresholds["min_loading_success_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="loading_performance",
+                    title="Low Patent Loading Success Rate",
+                    message=f"Patent loading success rate ({loading_success_rate:.1%}) is below threshold ({self.thresholds['min_loading_success_rate']:.1%})",
+                    severity="error",
+                    confidence=0.95,
+                    affected_records=int(len(patent_df) * (1 - loading_success_rate)),
+                    recommendations=[
+                        "Check Neo4j database connectivity and performance",
+                        "Review constraint violations and duplicate handling",
+                        "Investigate transaction timeout issues",
+                        "Consider batch size optimization",
+                    ],
+                    metadata={
+                        "current_rate": loading_success_rate,
+                        "threshold": self.thresholds["min_loading_success_rate"],
+                    },
+                )
+            )
 
         # Analyze data quality scores
         avg_quality_score = validation_results.get("average_quality_score", 0.0)
         if avg_quality_score < self.thresholds["min_data_quality_score"]:
-            insights.append(AnalysisInsight(
-                category="data_quality",
-                title="Low Average Patent Data Quality",
-                message=f"Average patent data quality score ({avg_quality_score:.2f}) is below threshold ({self.thresholds['min_data_quality_score']:.2f})",
-                severity="warning",
-                confidence=0.8,
-                affected_records=len(patent_df),
-                recommendations=[
-                    "Improve patent data extraction processes",
-                    "Implement additional data cleaning steps",
-                    "Review and update data quality validation rules",
-                    "Consider data source quality improvements"
-                ],
-                metadata={"current_score": avg_quality_score, "threshold": self.thresholds["min_data_quality_score"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="data_quality",
+                    title="Low Average Patent Data Quality",
+                    message=f"Average patent data quality score ({avg_quality_score:.2f}) is below threshold ({self.thresholds['min_data_quality_score']:.2f})",
+                    severity="warning",
+                    confidence=0.8,
+                    affected_records=len(patent_df),
+                    recommendations=[
+                        "Improve patent data extraction processes",
+                        "Implement additional data cleaning steps",
+                        "Review and update data quality validation rules",
+                        "Consider data source quality improvements",
+                    ],
+                    metadata={
+                        "current_score": avg_quality_score,
+                        "threshold": self.thresholds["min_data_quality_score"],
+                    },
+                )
+            )
 
         # Analyze duplicate rates
         duplicate_rate = validation_results.get("duplicate_rate", 0.0)
         if duplicate_rate > self.thresholds["max_duplicate_rate"]:
-            insights.append(AnalysisInsight(
-                category="data_duplicates",
-                title="High Patent Duplicate Rate",
-                message=f"Patent duplicate rate ({duplicate_rate:.1%}) exceeds threshold ({self.thresholds['max_duplicate_rate']:.1%})",
-                severity="warning",
-                confidence=0.85,
-                affected_records=int(len(patent_df) * duplicate_rate),
-                recommendations=[
-                    "Implement deduplication logic before loading",
-                    "Review patent identifier uniqueness constraints",
-                    "Investigate source of duplicate records",
-                    "Consider merge strategies for duplicate patents"
-                ],
-                metadata={"current_rate": duplicate_rate, "threshold": self.thresholds["max_duplicate_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="data_duplicates",
+                    title="High Patent Duplicate Rate",
+                    message=f"Patent duplicate rate ({duplicate_rate:.1%}) exceeds threshold ({self.thresholds['max_duplicate_rate']:.1%})",
+                    severity="warning",
+                    confidence=0.85,
+                    affected_records=int(len(patent_df) * duplicate_rate),
+                    recommendations=[
+                        "Implement deduplication logic before loading",
+                        "Review patent identifier uniqueness constraints",
+                        "Investigate source of duplicate records",
+                        "Consider merge strategies for duplicate patents",
+                    ],
+                    metadata={
+                        "current_rate": duplicate_rate,
+                        "threshold": self.thresholds["max_duplicate_rate"],
+                    },
+                )
+            )
 
         # Analyze relationship creation success
         relationship_success_rate = loading_results.get("relationship_success_rate", 0.0)
         if relationship_success_rate < 0.9:  # High threshold for relationships
-            insights.append(AnalysisInsight(
-                category="relationship_creation",
-                title="Patent Relationship Creation Issues",
-                message=f"Patent relationship creation success rate ({relationship_success_rate:.1%}) indicates potential issues",
-                severity="info",
-                confidence=0.7,
-                affected_records=int(len(patent_df) * (1 - relationship_success_rate)),
-                recommendations=[
-                    "Review patent assignment data quality",
-                    "Check entity matching logic for assignments",
-                    "Validate relationship creation queries",
-                    "Investigate orphaned patent records"
-                ],
-                metadata={"current_rate": relationship_success_rate}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="relationship_creation",
+                    title="Patent Relationship Creation Issues",
+                    message=f"Patent relationship creation success rate ({relationship_success_rate:.1%}) indicates potential issues",
+                    severity="info",
+                    confidence=0.7,
+                    affected_records=int(len(patent_df) * (1 - relationship_success_rate)),
+                    recommendations=[
+                        "Review patent assignment data quality",
+                        "Check entity matching logic for assignments",
+                        "Validate relationship creation queries",
+                        "Investigate orphaned patent records",
+                    ],
+                    metadata={"current_rate": relationship_success_rate},
+                )
+            )
 
         return insights
 
-    def _calculate_validation_metrics(self, patent_df: pd.DataFrame, validation_results: dict[str, Any]) -> dict[str, Any]:
+    def _calculate_validation_metrics(
+        self, patent_df: pd.DataFrame, validation_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate patent validation metrics.
-        
+
         Args:
             patent_df: Patent DataFrame
             validation_results: Validation results dictionary
-            
+
         Returns:
             Dictionary with validation metrics
         """
@@ -306,13 +336,15 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
             "validation_warnings": validation_results.get("validation_warnings", []),
         }
 
-    def _calculate_loading_statistics(self, loading_results: dict[str, Any], neo4j_stats: dict[str, Any]) -> dict[str, Any]:
+    def _calculate_loading_statistics(
+        self, loading_results: dict[str, Any], neo4j_stats: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate Neo4j loading statistics.
-        
+
         Args:
             loading_results: Loading operation results
             neo4j_stats: Neo4j database statistics
-            
+
         Returns:
             Dictionary with loading statistics
         """
@@ -342,20 +374,24 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
             "loading_errors": loading_errors,
             "loading_success_rate": loading_success_rate,
             "loading_duration_seconds": loading_duration,
-            "loading_throughput": total_operations / loading_duration if loading_duration > 0 else 0.0,
+            "loading_throughput": total_operations / loading_duration
+            if loading_duration > 0
+            else 0.0,
             "nodes_by_type": nodes_by_type,
             "relationships_by_type": relationships_by_type,
             "constraint_violations": neo4j_stats.get("constraint_violations", 0),
             "index_usage": neo4j_stats.get("index_usage", {}),
         }
 
-    def _calculate_quality_scores(self, patent_df: pd.DataFrame, validation_results: dict[str, Any]) -> dict[str, Any]:
+    def _calculate_quality_scores(
+        self, patent_df: pd.DataFrame, validation_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """Calculate data quality scores for patent records.
-        
+
         Args:
             patent_df: Patent DataFrame
             validation_results: Validation results
-            
+
         Returns:
             Dictionary with quality score metrics
         """
@@ -363,7 +399,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
         # Calculate quality scores for each record
         quality_scores = []
-        for idx, row in patent_df.iterrows():
+        for _idx, row in patent_df.iterrows():
             # Completeness score (0-1)
             non_null_count = row.notna().sum()
             total_fields = len(row)
@@ -420,10 +456,10 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def _calculate_patent_specific_metrics(self, patent_df: pd.DataFrame) -> dict[str, Any]:
         """Calculate patent-specific analysis metrics.
-        
+
         Args:
             patent_df: Patent DataFrame
-            
+
         Returns:
             Dictionary with patent-specific metrics
         """
@@ -494,10 +530,10 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def _calculate_relationship_metrics(self, neo4j_stats: dict[str, Any]) -> dict[str, Any]:
         """Calculate patent relationship metrics from Neo4j statistics.
-        
+
         Args:
             neo4j_stats: Neo4j database statistics
-            
+
         Returns:
             Dictionary with relationship metrics
         """
@@ -533,13 +569,15 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
         return metrics
 
-    def _calculate_data_hygiene(self, patent_df: pd.DataFrame, validation_results: dict[str, Any]) -> DataHygieneMetrics:
+    def _calculate_data_hygiene(
+        self, patent_df: pd.DataFrame, validation_results: dict[str, Any]
+    ) -> DataHygieneMetrics:
         """Calculate data hygiene metrics for patent data.
-        
+
         Args:
             patent_df: Patent DataFrame
             validation_results: Validation results
-            
+
         Returns:
             DataHygieneMetrics instance
         """
@@ -563,7 +601,9 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
             total_records=total_records,
             clean_records=int(clean_records),
             dirty_records=int(dirty_records),
-            clean_percentage=float(clean_records / total_records * 100) if total_records > 0 else 0.0,
+            clean_percentage=float(clean_records / total_records * 100)
+            if total_records > 0
+            else 0.0,
             quality_score_mean=quality_metrics["average_quality_score"],
             quality_score_median=quality_metrics["median_quality_score"],
             quality_score_std=quality_metrics["quality_std"],
@@ -574,13 +614,15 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
             validation_warnings=validation_results.get("warning_count", 0),
         )
 
-    def _calculate_changes_summary(self, loading_results: dict[str, Any], neo4j_stats: dict[str, Any]) -> ChangesSummary:
+    def _calculate_changes_summary(
+        self, loading_results: dict[str, Any], neo4j_stats: dict[str, Any]
+    ) -> ChangesSummary:
         """Calculate summary of changes made during patent loading.
-        
+
         Args:
             loading_results: Loading operation results
             neo4j_stats: Neo4j database statistics
-            
+
         Returns:
             ChangesSummary instance
         """
@@ -615,10 +657,10 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
     def _create_empty_report(self, run_context: dict[str, Any]) -> ModuleReport:
         """Create an empty report when no data is available.
-        
+
         Args:
             run_context: Pipeline run context
-            
+
         Returns:
             Empty ModuleReport
         """

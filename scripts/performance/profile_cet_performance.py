@@ -96,7 +96,7 @@ def load_sample_texts(sample_size: int) -> list[str]:
                     )
                     if v is None:
                         continue
-                    if isinstance(v, (list, tuple)):
+                    if isinstance(v, list | tuple):
                         parts.append(" ".join(map(str, v)))
                     else:
                         parts.append(str(v))
@@ -121,7 +121,7 @@ def load_sample_texts(sample_size: int) -> list[str]:
                         title = obj.get("title", "")
                         abstract = obj.get("abstract", "")
                         keywords = obj.get("keywords", "")
-                        if isinstance(keywords, (list, tuple)):
+                        if isinstance(keywords, list | tuple):
                             keywords = " ".join(map(str, keywords))
                         texts.append(" ".join([str(title), str(abstract), str(keywords)]).strip())
                         if len(texts) >= sample_size:
@@ -227,7 +227,7 @@ def try_load_model(path: Path):
                                 if hasattr(pipe, "predict_proba"):
                                     prob = pipe.predict_proba([t])[0]
                                     # If predict_proba returns 2-class array, take positive class
-                                    if isinstance(prob, (list, tuple)) and len(prob) >= 1:
+                                    if isinstance(prob, list | tuple) and len(prob) >= 1:
                                         score = float(prob[-1] if len(prob) > 1 else prob[0])
                                     else:
                                         score = float(prob)

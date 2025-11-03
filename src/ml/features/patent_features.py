@@ -190,7 +190,7 @@ def _coerce_to_list_of_str(value: object) -> list[str]:
         # split common delimiters: comma, semicolon, pipe, whitespace
         parts = re.split(r"[,;|\n\r]+|\s{2,}", value)
         return [p.strip() for p in parts if p and p.strip()]
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(value, list | tuple | set):
         return [str(v).strip() for v in value if v is not None and str(v).strip()]
     # fallback
     return [str(value).strip()]
@@ -486,7 +486,7 @@ def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]
                 continue
             if isinstance(v, str):
                 out[str(k)] = [v]
-            elif isinstance(v, (list, tuple)):
+            elif isinstance(v, list | tuple):
                 out[str(k)] = [str(x) for x in v if x]
             else:
                 # Fallback to string

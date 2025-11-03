@@ -134,15 +134,11 @@ class EnrichmentConfig(BaseModel):
 class EnrichmentSourceConfig(BaseModel):
     """Configuration for a single enrichment source's iterative refresh settings."""
 
-    cadence_days: int = Field(
-        default=1, ge=1, description="Number of days between refresh cycles"
-    )
+    cadence_days: int = Field(default=1, ge=1, description="Number of days between refresh cycles")
     sla_staleness_days: int = Field(
         default=1, ge=1, description="Maximum age in days before considered stale"
     )
-    batch_size: int = Field(
-        default=100, ge=1, le=1000, description="Number of records per batch"
-    )
+    batch_size: int = Field(default=100, ge=1, le=1000, description="Number of records per batch")
     max_concurrent_requests: int = Field(
         default=5, ge=1, le=20, description="Maximum concurrent API requests"
     )
@@ -152,9 +148,7 @@ class EnrichmentSourceConfig(BaseModel):
     enable_delta_detection: bool = Field(
         default=True, description="Enable payload hash-based delta detection"
     )
-    hash_algorithm: str = Field(
-        default="sha256", description="Hash algorithm for payload hashing"
-    )
+    hash_algorithm: str = Field(default="sha256", description="Hash algorithm for payload hashing")
     retry_attempts: int = Field(default=3, ge=0, description="Number of retry attempts")
     retry_backoff_seconds: float = Field(
         default=2.0, ge=0.0, description="Initial retry backoff delay in seconds"
@@ -162,9 +156,7 @@ class EnrichmentSourceConfig(BaseModel):
     retry_backoff_multiplier: float = Field(
         default=2.0, ge=1.0, description="Exponential backoff multiplier"
     )
-    timeout_seconds: int = Field(
-        default=30, ge=1, description="Request timeout in seconds"
-    )
+    timeout_seconds: int = Field(default=30, ge=1, description="Request timeout in seconds")
     connection_timeout_seconds: int = Field(
         default=10, ge=1, description="Connection timeout in seconds"
     )
@@ -175,9 +167,7 @@ class EnrichmentSourceConfig(BaseModel):
         default="data/state/enrichment_refresh_state.json",
         description="Path to state file",
     )
-    enable_metrics: bool = Field(
-        default=True, description="Enable metrics collection"
-    )
+    enable_metrics: bool = Field(default=True, description="Enable metrics collection")
     metrics_file: str = Field(
         default="reports/metrics/enrichment_freshness.json",
         description="Path to metrics output file",
@@ -186,8 +176,8 @@ class EnrichmentSourceConfig(BaseModel):
 
 class EnrichmentRefreshConfig(BaseModel):
     """Configuration for iterative enrichment refresh across all sources.
-    
-    Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) 
+
+    Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.)
     will be evaluated in Phase 2+.
     """
 
@@ -445,7 +435,7 @@ class StatisticalReportingConfig(BaseModel):
             "enrichment_success_warning": 0.85,
             "enrichment_success_error": 0.70,
             "performance_degradation_warning": 1.5,  # 50% slower
-            "performance_degradation_error": 2.0,    # 100% slower
+            "performance_degradation_error": 2.0,  # 100% slower
         }
     )
 
@@ -532,7 +522,7 @@ class TaxParameterConfig(BaseModel):
         # Convert to dict and validate rate values
         out: dict[str, Any] = dict(v)
         for key, value in out.items():
-            if "rate" in key and isinstance(value, (int, float)):
+            if "rate" in key and isinstance(value, int | float):
                 rate = float(value)
                 if not (0.0 <= rate <= 1.0):
                     raise ValueError(f"Tax rate {key} must be between 0.0 and 1.0, got {rate}")
@@ -601,10 +591,12 @@ class SensitivityConfig(BaseModel):
         for param_name, param_config in out.items():
             if isinstance(param_config, dict) and "variation_percent" in param_config:
                 variation = param_config["variation_percent"]
-                if isinstance(variation, (int, float)):
+                if isinstance(variation, int | float):
                     variation = float(variation)
                     if not (0.0 <= variation <= 1.0):
-                        raise ValueError(f"Variation percent for {param_name} must be between 0.0 and 1.0, got {variation}")
+                        raise ValueError(
+                            f"Variation percent for {param_name} must be between 0.0 and 1.0, got {variation}"
+                        )
                     param_config["variation_percent"] = variation
 
         return out
@@ -615,8 +607,12 @@ class CLIConfig(BaseModel):
 
     # Display settings
     theme: str = Field(default="default", description="CLI theme (default, dark, light)")
-    progress_refresh_rate: float = Field(default=0.1, description="Progress bar refresh rate in seconds")
-    dashboard_refresh_rate: int = Field(default=10, description="Dashboard auto-refresh interval in seconds")
+    progress_refresh_rate: float = Field(
+        default=0.1, description="Progress bar refresh rate in seconds"
+    )
+    dashboard_refresh_rate: int = Field(
+        default=10, description="Dashboard auto-refresh interval in seconds"
+    )
 
     # Output settings
     max_table_rows: int = Field(default=50, description="Maximum rows to display in tables")
@@ -650,20 +646,23 @@ class FiscalAnalysisConfig(BaseModel):
 
     # Base analysis parameters
     base_year: int = Field(default=2023, description="Base year for inflation adjustment")
-    inflation_source: str = Field(default="bea_gdp_deflator", description="Source for inflation data")
-    naics_crosswalk_version: str = Field(default="2022", description="NAICS-to-BEA crosswalk version")
+    inflation_source: str = Field(
+        default="bea_gdp_deflator", description="Source for inflation data"
+    )
+    naics_crosswalk_version: str = Field(
+        default="2022", description="NAICS-to-BEA crosswalk version"
+    )
     stateio_model_version: str = Field(default="v2.1", description="StateIO model version")
 
     # Tax calculation parameters
     tax_parameters: TaxParameterConfig = Field(
-        default_factory=TaxParameterConfig,
-        description="Federal tax calculation parameters"
+        default_factory=TaxParameterConfig, description="Federal tax calculation parameters"
     )
 
     # Sensitivity analysis parameters
     sensitivity_parameters: SensitivityConfig = Field(
         default_factory=SensitivityConfig,
-        description="Sensitivity analysis and uncertainty quantification parameters"
+        description="Sensitivity analysis and uncertainty quantification parameters",
     )
 
     # Data quality thresholds
@@ -750,7 +749,9 @@ class PipelineConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
-    statistical_reporting: StatisticalReportingConfig = Field(default_factory=StatisticalReportingConfig)
+    statistical_reporting: StatisticalReportingConfig = Field(
+        default_factory=StatisticalReportingConfig
+    )
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
     cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
 

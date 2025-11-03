@@ -86,4 +86,3 @@ class TestFiscalParameterSweep:
                 if param_name in ranges:
                     param_range = ranges[param_name]
                     assert param_range.min_value <= param_value <= param_range.max_value
-

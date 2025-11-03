@@ -339,7 +339,9 @@ class EvidenceExtractor:
 
         results = []
 
-        for classifications, document_parts in zip(classifications_list, document_parts_list, strict=False):
+        for classifications, document_parts in zip(
+            classifications_list, document_parts_list, strict=False
+        ):
             # Process each classification in the list
             updated_classifications = []
             for classification in classifications:

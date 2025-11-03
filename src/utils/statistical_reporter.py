@@ -178,9 +178,9 @@ class StatisticalReporter:
         # Extract timing information
         start_time = metrics_data.get("start_time", datetime.now())
         end_time = metrics_data.get("end_time", datetime.now())
-        if isinstance(start_time, (int, float)):
+        if isinstance(start_time, int | float):
             start_time = datetime.fromtimestamp(start_time)
-        if isinstance(end_time, (int, float)):
+        if isinstance(end_time, int | float):
             end_time = datetime.fromtimestamp(end_time)
 
         execution_time = end_time - start_time
@@ -688,9 +688,9 @@ class StatisticalReporter:
         # Calculate overall timing
         start_time = run_context.get("start_time", datetime.now())
         end_time = run_context.get("end_time", datetime.now())
-        if isinstance(start_time, (int, float)):
+        if isinstance(start_time, int | float):
             start_time = datetime.fromtimestamp(start_time)
-        if isinstance(end_time, (int, float)):
+        if isinstance(end_time, int | float):
             end_time = datetime.fromtimestamp(end_time)
 
         duration = end_time - start_time
@@ -1011,7 +1011,7 @@ class StatisticalReporter:
                 y=[0, pipeline_metrics.performance_metrics.peak_memory_mb],
                 mode="lines+markers",
                 name="Memory Usage",
-                line=dict(color="red"),
+                line={"color": "red"},
             ),
             row=2,
             col=1,

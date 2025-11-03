@@ -46,9 +46,7 @@ class FiscalComponentCalculator:
         """
         self.config = config or get_config().fiscal_analysis
 
-    def extract_components(
-        self, impacts_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    def extract_components(self, impacts_df: pd.DataFrame) -> pd.DataFrame:
         """Extract tax base components from economic impacts DataFrame.
 
         Args:
@@ -120,12 +118,8 @@ class FiscalComponentCalculator:
             )
 
         # Validate each row
-        result_df["component_valid"] = result_df.apply(
-            self._validate_row_components, axis=1
-        )
-        result_df["component_quality_flags"] = result_df.apply(
-            self._get_quality_flags, axis=1
-        )
+        result_df["component_valid"] = result_df.apply(self._validate_row_components, axis=1)
+        result_df["component_quality_flags"] = result_df.apply(self._get_quality_flags, axis=1)
 
         # Add summary statistics
         total_wages = result_df["wage_impact"].sum()
@@ -267,7 +261,9 @@ class FiscalComponentCalculator:
             total_expected = total_computed  # Use computed as expected if no production
 
         difference = abs(total_computed - total_expected)
-        tolerance = total_expected * Decimal("0.05") if total_expected > 0 else Decimal("0.01")  # 5% tolerance
+        tolerance = (
+            total_expected * Decimal("0.05") if total_expected > 0 else Decimal("0.01")
+        )  # 5% tolerance
 
         is_valid = difference <= tolerance
 
@@ -293,4 +289,3 @@ class FiscalComponentCalculator:
             component_breakdown=component_breakdown,
             quality_flags=quality_flags,
         )
-

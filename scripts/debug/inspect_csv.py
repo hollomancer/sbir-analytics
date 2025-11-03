@@ -72,10 +72,9 @@ def inspect_csv_once(
         raise FileNotFoundError(f"CSV file not found: {path}")
 
     # For showing raw lines if requested, load them into a list once for indexing
-    raw_lines: list[str] = []
     if show_raw:
         with path.open("r", encoding="utf-8", newline="") as rf:
-            raw_lines = rf.readlines()
+            rf.readlines()
 
     # Configure csv.reader; be defensive about quoting settings
     reader_kwargs = {"delimiter": delimiter, "quotechar": quotechar}
@@ -131,9 +130,7 @@ def inspect_csv_once(
     return summary
 
 
-def print_summary(
-    result: dict, show_raw: bool = False, raw_lines: list[str] | None = None
-) -> None:
+def print_summary(result: dict, show_raw: bool = False, raw_lines: list[str] | None = None) -> None:
     """
     Nicely print the summary returned by inspect_csv_once.
     """

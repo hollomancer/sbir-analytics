@@ -30,10 +30,7 @@ class BaseReportProcessor(ABC):
 
     @abstractmethod
     def generate(
-        self,
-        pipeline_metrics: PipelineMetrics,
-        output_dir: Path,
-        **kwargs: Any
+        self, pipeline_metrics: PipelineMetrics, output_dir: Path, **kwargs: Any
     ) -> ReportArtifact:
         """Generate a report artifact.
 
@@ -80,7 +77,7 @@ class BaseReportProcessor(ABC):
         """
         start_time = time.time()
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         end_time = time.time()
@@ -118,7 +115,9 @@ class ReportProcessorRegistry:
         """Initialize the registry."""
         self._processors: dict[ReportFormat, type[BaseReportProcessor]] = {}
 
-    def register(self, format_type: ReportFormat, processor_class: type[BaseReportProcessor]) -> None:
+    def register(
+        self, format_type: ReportFormat, processor_class: type[BaseReportProcessor]
+    ) -> None:
         """Register a processor class for a format type.
 
         Args:
@@ -138,7 +137,9 @@ class ReportProcessorRegistry:
         """
         return self._processors.get(format_type)
 
-    def create_processor(self, format_type: ReportFormat, **kwargs: Any) -> BaseReportProcessor | None:
+    def create_processor(
+        self, format_type: ReportFormat, **kwargs: Any
+    ) -> BaseReportProcessor | None:
         """Create a processor instance for a format type.
 
         Args:

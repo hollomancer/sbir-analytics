@@ -204,7 +204,6 @@ class TaxonomyLoader:
             "areas_with_parent_count": areas_with_parent,
             "missing_required_fields": missing_required_fields,
             "missing_required_fields_flag": missing_required_fields,
-            "missing_required_fields": missing_required_fields,
             "missing_required_fields_detail": missing_required_fields,
         }
 

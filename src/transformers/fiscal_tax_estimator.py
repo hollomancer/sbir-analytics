@@ -16,7 +16,6 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..models.fiscal_models import TaxImpactEstimate
 
 
 @dataclass
@@ -70,7 +69,7 @@ class FiscalTaxEstimator:
         income_float = float(income)
 
         # Sort brackets by rate (ascending)
-        brackets = sorted(
+        sorted(
             progressive_rates.items(),
             key=lambda x: x[1],
         )
@@ -87,7 +86,9 @@ class FiscalTaxEstimator:
 
         return base_rate
 
-    def estimate_individual_income_tax(self, wage_impact: Decimal, proprietor_income: Decimal) -> Decimal:
+    def estimate_individual_income_tax(
+        self, wage_impact: Decimal, proprietor_income: Decimal
+    ) -> Decimal:
         """Estimate individual income tax from wage and proprietor income.
 
         Args:
@@ -102,9 +103,7 @@ class FiscalTaxEstimator:
             return Decimal("0")
 
         # Get progressive rates
-        progressive_rates = self.tax_params.individual_income_tax.get(
-            "progressive_rates", {}
-        )
+        progressive_rates = self.tax_params.individual_income_tax.get("progressive_rates", {})
 
         # Calculate effective rate
         effective_rate = self._get_individual_income_tax_rate(taxable_income, progressive_rates)
@@ -134,7 +133,9 @@ class FiscalTaxEstimator:
         # Get payroll tax rates
         ss_rate = Decimal(str(self.tax_params.payroll_tax.get("social_security_rate", 0.062)))
         medicare_rate = Decimal(str(self.tax_params.payroll_tax.get("medicare_rate", 0.0145)))
-        unemployment_rate = Decimal(str(self.tax_params.payroll_tax.get("unemployment_rate", 0.006)))
+        unemployment_rate = Decimal(
+            str(self.tax_params.payroll_tax.get("unemployment_rate", 0.006))
+        )
 
         # Apply Social Security wage base limit
         wage_base_limit = Decimal(str(self.tax_params.payroll_tax.get("wage_base_limit", 160200)))
@@ -189,9 +190,7 @@ class FiscalTaxEstimator:
 
         return tax_receipt
 
-    def estimate_taxes_from_components(
-        self, components_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    def estimate_taxes_from_components(self, components_df: pd.DataFrame) -> pd.DataFrame:
         """Estimate federal taxes from economic components DataFrame.
 
         Args:
@@ -268,7 +267,11 @@ class FiscalTaxEstimator:
         result_df["tax_parameter_version"] = "config_v2023"
 
         # Create shock_id for linking to EconomicShock
-        if "state" in result_df.columns and "bea_sector" in result_df.columns and "fiscal_year" in result_df.columns:
+        if (
+            "state" in result_df.columns
+            and "bea_sector" in result_df.columns
+            and "fiscal_year" in result_df.columns
+        ):
             result_df["shock_id"] = (
                 result_df["state"].astype(str)
                 + "_"
@@ -347,4 +350,3 @@ class FiscalTaxEstimator:
             num_estimates=len(tax_estimates_df),
             avg_effective_rate=avg_effective_rate,
         )
-

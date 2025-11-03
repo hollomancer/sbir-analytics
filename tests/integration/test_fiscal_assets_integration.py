@@ -2,8 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -84,9 +83,7 @@ class TestFiscalDataPreparationAssets:
     """Test fiscal data preparation assets."""
 
     @patch("src.enrichers.geographic_resolver.resolve_award_geography")
-    def test_fiscal_prepared_sbir_awards(
-        self, mock_resolve, sample_fiscal_naics_enriched
-    ):
+    def test_fiscal_prepared_sbir_awards(self, mock_resolve, sample_fiscal_naics_enriched):
         """Test fiscal_prepared_sbir_awards asset."""
         # Mock geographic resolution
         resolved_df = sample_fiscal_naics_enriched.copy()
@@ -95,12 +92,12 @@ class TestFiscalDataPreparationAssets:
         mock_resolve.return_value = (resolved_df, {})
 
         context = build_asset_context()
-        result = fiscal_assets.fiscal_prepared_sbir_awards(
-            context, sample_fiscal_naics_enriched
-        )
+        result = fiscal_assets.fiscal_prepared_sbir_awards(context, sample_fiscal_naics_enriched)
 
         assert len(result.value) == 2
-        assert "resolved_state" in result.value.columns or "fiscal_state_code" in result.value.columns
+        assert (
+            "resolved_state" in result.value.columns or "fiscal_state_code" in result.value.columns
+        )
 
     @patch("src.assets.fiscal_assets.adjust_awards_for_inflation")
     def test_inflation_adjusted_awards(self, mock_adjust, sample_fiscal_naics_enriched):
@@ -187,9 +184,7 @@ class TestSensitivityAnalysisAssets:
         scenarios = fiscal_assets.sensitivity_scenarios(context)
 
         # Test uncertainty analysis
-        result = fiscal_assets.uncertainty_analysis(
-            context, scenarios.value, tax_estimates.value
-        )
+        result = fiscal_assets.uncertainty_analysis(context, scenarios.value, tax_estimates.value)
 
         assert len(result.value) == 1
         assert "min_estimate" in result.value.columns
@@ -232,4 +227,3 @@ class TestAssetChecks:
         result = fiscal_assets.inflation_adjustment_quality_check(df)
 
         assert "success_rate" in result.metadata
-

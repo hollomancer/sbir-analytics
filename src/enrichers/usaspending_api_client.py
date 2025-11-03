@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +23,7 @@ from tenacity import (
 )
 
 from ..config.loader import get_config
-from ..models.enrichment import EnrichmentDeltaEvent, EnrichmentFreshnessRecord
+from ..models.enrichment import EnrichmentFreshnessRecord
 
 
 class USAspendingAPIError(Exception):
@@ -67,7 +67,9 @@ class USAspendingAPIClient:
         self._rate_limiter_lock = False
 
         # State file path
-        self.state_file = Path(self.config.get("state_file", "data/state/enrichment_refresh_state.json"))
+        self.state_file = Path(
+            self.config.get("state_file", "data/state/enrichment_refresh_state.json")
+        )
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
         logger.info(
@@ -407,7 +409,7 @@ class USAspendingAPIClient:
             return {}
 
         try:
-            with open(self.state_file, "r") as f:
+            with open(self.state_file) as f:
                 return json.load(f)
         except Exception as e:
             logger.warning(f"Failed to load state file {self.state_file}: {e}")

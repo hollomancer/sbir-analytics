@@ -5,7 +5,7 @@ Allows operators to request ad-hoc refresh windows or replays of failed slices.
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add project root to path
@@ -37,11 +37,11 @@ def refresh_usaspending(
         "--window",
         help="Number of days to look back for stale awards (overrides SLA from config)",
     ),
-    stale_only: bool = Option(
-        False, "--stale-only", help="Only refresh awards that are stale"
-    ),
+    stale_only: bool = Option(False, "--stale-only", help="Only refresh awards that are stale"),
     force: bool = Option(False, "--force", help="Force refresh even if not stale"),
-    dry_run: bool = Option(False, "--dry-run", help="Show what would be refreshed without executing"),
+    dry_run: bool = Option(
+        False, "--dry-run", help="Show what would be refreshed without executing"
+    ),
 ) -> None:
     """Refresh USAspending enrichment for specified awards.
 
@@ -100,10 +100,8 @@ def refresh_usaspending(
     # For now, this is a placeholder that shows what would be done
     # In production, this would trigger the Dagster job with appropriate config
     logger.info("Refresh functionality requires Dagster job execution")
-    logger.info(f"To refresh via Dagster, run:")
-    logger.info(
-        f"  dagster job execute usaspending_iterative_enrichment_job -c config/dev.yaml"
-    )
+    logger.info("To refresh via Dagster, run:")
+    logger.info("  dagster job execute usaspending_iterative_enrichment_job -c config/dev.yaml")
     if award_ids_list:
         logger.info(f"  With award_ids: {award_ids_list[:5]}...")
 
@@ -165,7 +163,9 @@ def stats(
     df_source = df[df["source"] == source] if "source" in df.columns else df
 
     total = len(df_source)
-    successful = len(df_source[df_source["status"] == "success"]) if "status" in df_source.columns else 0
+    successful = (
+        len(df_source[df_source["status"] == "success"]) if "status" in df_source.columns else 0
+    )
     stale_records = store.get_stale_records(source, sla_days)
     stale_count = len(stale_records)
 
@@ -183,4 +183,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

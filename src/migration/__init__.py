@@ -12,5 +12,5 @@ __all__ = [
     "MigrationReport",
     "OpenSpecContent",
     "KiroContent",
-    "ValidationReport"
+    "ValidationReport",
 ]

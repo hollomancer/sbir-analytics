@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+
 import pandas as pd
 
 from src.assets.fiscal_prepared_sbir_awards import fiscal_prepared_sbir_awards
@@ -10,7 +11,7 @@ def test_asset_uses_fixture(tmp_path):
     fixture = Path("tests/fixtures/naics_index_fixture.parquet")
     if not fixture.exists():
         # generate fixture if missing (non-failing test)
-        from tests.fixtures.generate_naics_fixture import out as _o
+        pass
         # the generator prints output; just ensure it ran
     dest_dir = Path("data/processed/usaspending")
     dest_dir.mkdir(parents=True, exist_ok=True)

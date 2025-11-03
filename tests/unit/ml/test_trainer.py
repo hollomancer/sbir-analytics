@@ -227,7 +227,7 @@ class TestModelTraining:
                 taxonomy_version="NSTC-2025Q1",
             )
 
-            model = trainer.train(
+            trainer.train(
                 sample_training_dataset, perform_cv=False, perform_calibration=False
             )
 
@@ -255,7 +255,7 @@ class TestModelTraining:
                 taxonomy_version="NSTC-2025Q1",
             )
 
-            model = trainer.train(
+            trainer.train(
                 sample_training_dataset, perform_cv=True, perform_calibration=False
             )
 

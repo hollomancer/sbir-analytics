@@ -97,9 +97,7 @@ class OpenSpecToKiroMigrator:
                 self.logger.info("Phase 5: Preserving OpenSpec history")
                 self.progress_tracker.update("preservation", "started")
                 self.preserver.archive_openspec(
-                    self.config.openspec_path,
-                    self.config.archive_path,
-                    generated_specs
+                    self.config.openspec_path, self.config.archive_path, generated_specs
                 )
                 self.progress_tracker.update("preservation", "completed")
 
@@ -112,7 +110,7 @@ class OpenSpecToKiroMigrator:
                 openspec_content=openspec_content,
                 generated_specs=generated_specs,
                 validation_report=validation_report,
-                progress=self.progress_tracker.get_summary()
+                progress=self.progress_tracker.get_summary(),
             )
 
             self._write_migration_report(migration_report)
@@ -120,7 +118,9 @@ class OpenSpecToKiroMigrator:
             if validation_report.passed:
                 self.logger.info("Migration completed successfully!")
             else:
-                self.logger.warning(f"Migration completed with {len(validation_report.issues)} validation issues")
+                self.logger.warning(
+                    f"Migration completed with {len(validation_report.issues)} validation issues"
+                )
 
             return migration_report
 
@@ -147,16 +147,15 @@ class OpenSpecToKiroMigrator:
         # File handler with rotation
         log_file = self.config.output_path / "migration.log"
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file, mode='w')  # Overwrite previous log
+        file_handler = logging.FileHandler(log_file, mode="w")  # Overwrite previous log
         file_handler.setLevel(logging.DEBUG)
 
         # Enhanced formatter with more context
         console_formatter = logging.Formatter(
-            '%(asctime)s [%(levelname)8s] %(message)s',
-            datefmt='%H:%M:%S'
+            "%(asctime)s [%(levelname)8s] %(message)s", datefmt="%H:%M:%S"
         )
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
         )
 
         console_handler.setFormatter(console_formatter)
@@ -166,7 +165,9 @@ class OpenSpecToKiroMigrator:
         logger.addHandler(file_handler)
 
         # Log configuration info
-        logger.info(f"Logging initialized - Console: {'DEBUG' if self.config.verbose else 'INFO'}, File: DEBUG")
+        logger.info(
+            f"Logging initialized - Console: {'DEBUG' if self.config.verbose else 'INFO'}, File: DEBUG"
+        )
         logger.info(f"Log file: {log_file}")
 
         return logger
@@ -176,7 +177,7 @@ class OpenSpecToKiroMigrator:
         report_file = self.config.output_path / f"migration_report_{report.migration_id}.json"
         report_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(report_file, 'w') as f:
+        with open(report_file, "w") as f:
             json.dump(report.to_dict(), f, indent=2, default=str)
 
         self.logger.info(f"Migration report written to: {report_file}")
@@ -198,7 +199,9 @@ class OpenSpecToKiroMigrator:
                 missing_paths.append(path_name)
 
         if missing_paths:
-            self.logger.warning(f"OpenSpec structure incomplete. Missing: {', '.join(missing_paths)}")
+            self.logger.warning(
+                f"OpenSpec structure incomplete. Missing: {', '.join(missing_paths)}"
+            )
 
         # Validate output paths are writable
         try:
@@ -220,7 +223,7 @@ class ProgressTracker:
             "transformation": {"status": "pending", "start_time": None, "end_time": None},
             "generation": {"status": "pending", "start_time": None, "end_time": None},
             "validation": {"status": "pending", "start_time": None, "end_time": None},
-            "preservation": {"status": "pending", "start_time": None, "end_time": None}
+            "preservation": {"status": "pending", "start_time": None, "end_time": None},
         }
 
     def update(self, phase: str, status: str):
@@ -237,8 +240,10 @@ class ProgressTracker:
         """Get progress summary."""
         return {
             "phases": self.phases,
-            "completed_phases": len([p for p in self.phases.values() if p["status"] == "completed"]),
-            "total_phases": len(self.phases)
+            "completed_phases": len(
+                [p for p in self.phases.values() if p["status"] == "completed"]
+            ),
+            "total_phases": len(self.phases),
         }
 
 
@@ -251,52 +256,44 @@ def main():
 Examples:
   # Dry run to analyze what would be migrated
   python scripts/migrate_openspec_to_kiro.py --dry-run --verbose
-  
+
   # Full migration with custom paths
   python scripts/migrate_openspec_to_kiro.py --openspec-path ./my-openspec --kiro-path ./.kiro/specs
-  
+
   # Migration without preserving history
   python scripts/migrate_openspec_to_kiro.py --no-preserve-history
-        """
+        """,
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Perform analysis without creating files"
+        "--dry-run", action="store_true", help="Perform analysis without creating files"
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument(
         "--openspec-path",
         type=Path,
         default=Path("openspec"),
-        help="Path to OpenSpec directory (default: openspec)"
+        help="Path to OpenSpec directory (default: openspec)",
     )
     parser.add_argument(
         "--kiro-path",
         type=Path,
         default=Path(".kiro/specs"),
-        help="Path to Kiro specs directory (default: .kiro/specs)"
+        help="Path to Kiro specs directory (default: .kiro/specs)",
     )
     parser.add_argument(
         "--archive-path",
         type=Path,
         default=Path("archive/openspec"),
-        help="Path for OpenSpec archive (default: archive/openspec)"
+        help="Path for OpenSpec archive (default: archive/openspec)",
     )
     parser.add_argument(
         "--output-path",
         type=Path,
         default=Path("migration_output"),
-        help="Path for migration output files (default: migration_output)"
+        help="Path for migration output files (default: migration_output)",
     )
     parser.add_argument(
-        "--no-preserve-history",
-        action="store_true",
-        help="Skip historical preservation step"
+        "--no-preserve-history", action="store_true", help="Skip historical preservation step"
     )
 
     args = parser.parse_args()
@@ -314,7 +311,7 @@ Examples:
         output_path=args.output_path,
         dry_run=args.dry_run,
         verbose=args.verbose,
-        preserve_history=not args.no_preserve_history
+        preserve_history=not args.no_preserve_history,
     )
 
     # Execute migration
@@ -334,9 +331,9 @@ def _print_migration_summary(report: MigrationReport, config: MigrationConfig):
     """Print enhanced migration summary."""
     duration = report.end_time - report.start_time
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🔄 OPENSPEC TO KIRO MIGRATION SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     # Basic info
     print(f"📋 Migration ID: {report.migration_id}")
@@ -379,7 +376,9 @@ def _print_migration_summary(report: MigrationReport, config: MigrationConfig):
         print(f"   • Kiro Specs: {config.kiro_path}")
         if config.preserve_history:
             print(f"   • Archive: {config.archive_path}")
-    print(f"   • Migration Report: {config.output_path}/migration_report_{report.migration_id}.json")
+    print(
+        f"   • Migration Report: {config.output_path}/migration_report_{report.migration_id}.json"
+    )
     print(f"   • Migration Log: {config.output_path}/migration.log")
 
     if not config.dry_run and report.validation_report and report.validation_report.passed:
@@ -390,7 +389,7 @@ def _print_migration_summary(report: MigrationReport, config: MigrationConfig):
     else:
         print("\n⚠️  Migration completed with issues. Review the detailed report.")
 
-    print("="*70)
+    print("=" * 70)
 
 
 if __name__ == "__main__":

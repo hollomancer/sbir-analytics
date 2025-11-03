@@ -1,10 +1,9 @@
 """Unit tests for CLI commands."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import typer
-from typer.testing import CliRunner
 
 from src.cli.commands import enrich, ingest, metrics, status
 from src.cli.context import CommandContext
@@ -40,7 +39,7 @@ class TestStatusCommands:
         )
 
         # Create command context
-        ctx = typer.Context(
+        typer.Context(
             command=Mock(),
             params={"group": None},
             info_name="status assets",
@@ -175,4 +174,3 @@ class TestEnrichCommands:
         ]
 
         assert hasattr(enrich, "stats")
-

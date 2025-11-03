@@ -5,7 +5,6 @@ Loads transition detections into Neo4j as Transition nodes and creates
 relationships to Awards, Contracts, Patents, and CET areas.
 """
 
-
 import pandas as pd
 from loguru import logger
 

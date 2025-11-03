@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import json
-from rich.console import Console
 from loguru import logger
+from rich.console import Console
 
 from src.config.schemas import PipelineConfig
 
@@ -112,9 +112,7 @@ class MetricsCollector:
         total_duration = sum(m.get("duration_seconds", 0) for m in metrics)
         total_errors = sum(m.get("error_count", 0) for m in metrics)
         avg_memory = (
-            sum(m.get("peak_memory_mb", 0) for m in metrics) / len(metrics)
-            if metrics
-            else 0.0
+            sum(m.get("peak_memory_mb", 0) for m in metrics) / len(metrics) if metrics else 0.0
         )
         success_count = sum(1 for m in metrics if m.get("success", False))
         success_rate = success_count / len(metrics) if metrics else 0.0
@@ -139,4 +137,3 @@ class MetricsCollector:
             List of metric dictionaries for the asset group
         """
         return self.get_metrics(asset_group=asset_group)
-

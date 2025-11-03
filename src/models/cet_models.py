@@ -109,9 +109,7 @@ class CETClassification(BaseModel):
         default_factory=list, description="Supporting evidence (up to 3 statements)"
     )
     classified_at: str | None = Field(None, description="ISO 8601 timestamp of classification")
-    taxonomy_version: str | None = Field(
-        None, description="Taxonomy version (e.g., 'NSTC-2025Q1')"
-    )
+    taxonomy_version: str | None = Field(None, description="Taxonomy version (e.g., 'NSTC-2025Q1')")
 
     @field_validator("evidence")
     @classmethod

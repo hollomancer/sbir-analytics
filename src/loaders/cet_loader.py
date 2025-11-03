@@ -155,7 +155,7 @@ class CETLoader:
 
             # Optional keywords (normalize to lowercase unique list)
             kw = raw.get("keywords")
-            if isinstance(kw, (list, tuple)):
+            if isinstance(kw, list | tuple):
                 node["keywords"] = _normalize_keywords(kw)
 
             area_nodes.append(node)
@@ -223,7 +223,7 @@ class CETLoader:
                 node["cet_specialization_score"] = float(raw["cet_specialization_score"])
             if "cet_taxonomy_version" in raw and raw["cet_taxonomy_version"] is not None:
                 node["cet_taxonomy_version"] = _as_str(raw["cet_taxonomy_version"])
-            if "cet_areas" in raw and isinstance(raw["cet_areas"], (list, tuple)):
+            if "cet_areas" in raw and isinstance(raw["cet_areas"], list | tuple):
                 node["cet_areas"] = sorted({_as_str(v) for v in raw["cet_areas"] if _as_str(v)})
 
             # Updated timestamp (iso)
@@ -290,7 +290,7 @@ class CETLoader:
                 node["cet_primary_id"] = _as_str(raw["cet_primary_id"])
             if "cet_primary_score" in raw and raw["cet_primary_score"] is not None:
                 node["cet_primary_score"] = float(raw["cet_primary_score"])
-            if "cet_supporting_ids" in raw and isinstance(raw["cet_supporting_ids"], (list, tuple)):
+            if "cet_supporting_ids" in raw and isinstance(raw["cet_supporting_ids"], list | tuple):
                 node["cet_supporting_ids"] = sorted(
                     {_as_str(v) for v in raw["cet_supporting_ids"] if _as_str(v)}
                 )

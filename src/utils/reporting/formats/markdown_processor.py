@@ -35,7 +35,7 @@ class MarkdownProcessor(BaseReportProcessor):
         output_dir: Path,
         max_length: int | None = None,
         include_links: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> ReportArtifact:
         """Generate concise markdown report summary.
 
@@ -58,8 +58,7 @@ class MarkdownProcessor(BaseReportProcessor):
 
         # Generate markdown content
         markdown_content = self._generate_markdown_content(
-            pipeline_metrics,
-            include_links=include_links
+            pipeline_metrics, include_links=include_links
         )
 
         # Truncate if too long
@@ -86,9 +85,7 @@ class MarkdownProcessor(BaseReportProcessor):
         return artifact
 
     def _generate_markdown_content(
-        self,
-        pipeline_metrics: PipelineMetrics,
-        include_links: bool = True
+        self, pipeline_metrics: PipelineMetrics, include_links: bool = True
     ) -> str:
         """Generate markdown content with key metrics and insights.
 
@@ -114,8 +111,12 @@ class MarkdownProcessor(BaseReportProcessor):
         lines.append("")
         lines.append(f"- **Total Records Processed:** {pipeline_metrics.total_records_processed:,}")
         lines.append(f"- **Overall Success Rate:** {pipeline_metrics.overall_success_rate:.1%}")
-        lines.append(f"- **Peak Memory Usage:** {pipeline_metrics.performance_metrics.peak_memory_mb:.1f} MB")
-        lines.append(f"- **Processing Throughput:** {pipeline_metrics.performance_metrics.records_per_second:.1f} records/sec")
+        lines.append(
+            f"- **Peak Memory Usage:** {pipeline_metrics.performance_metrics.peak_memory_mb:.1f} MB"
+        )
+        lines.append(
+            f"- **Processing Throughput:** {pipeline_metrics.performance_metrics.records_per_second:.1f} records/sec"
+        )
         lines.append("")
 
         # Module performance summary
@@ -158,8 +159,12 @@ class MarkdownProcessor(BaseReportProcessor):
             lines.append("## 📁 Report Artifacts")
             lines.append("")
             run_dir = f"reports/statistical/{pipeline_metrics.run_id}/"
-            lines.append(f"- **[📊 HTML Report]({run_dir}report.html)** - Interactive dashboard with charts")
-            lines.append(f"- **[📋 JSON Report]({run_dir}report.json)** - Machine-readable complete data")
+            lines.append(
+                f"- **[📊 HTML Report]({run_dir}report.html)** - Interactive dashboard with charts"
+            )
+            lines.append(
+                f"- **[📋 JSON Report]({run_dir}report.json)** - Machine-readable complete data"
+            )
             lines.append(f"- **[📝 Markdown Summary]({run_dir}report.md)** - This summary")
             lines.append("")
 
@@ -239,15 +244,14 @@ class MarkdownProcessor(BaseReportProcessor):
         # Module insights
         if pipeline_metrics.module_metrics:
             best_performer = max(
-                pipeline_metrics.module_metrics.items(),
-                key=lambda x: x[1].success_rate
+                pipeline_metrics.module_metrics.items(), key=lambda x: x[1].success_rate
             )
             if best_performer[1].success_rate >= 0.95:
                 insights.append(f"Excellent performance from {best_performer[0]} module")
 
             slowest_module = max(
                 pipeline_metrics.module_metrics.items(),
-                key=lambda x: x[1].execution_time.total_seconds()
+                key=lambda x: x[1].execution_time.total_seconds(),
             )
             if slowest_module[1].execution_time.total_seconds() > 60:  # 1 minute
                 insights.append(f"Consider optimizing {slowest_module[0]} module performance")
@@ -268,7 +272,7 @@ class MarkdownProcessor(BaseReportProcessor):
             return content
 
         # Find a good truncation point (end of a section)
-        lines = content.split('\n')
+        lines = content.split("\n")
         truncated_lines = []
         current_length = 0
 
@@ -282,7 +286,7 @@ class MarkdownProcessor(BaseReportProcessor):
         truncated_lines.append("")
         truncated_lines.append("*... (truncated due to length)*")
 
-        return '\n'.join(truncated_lines)
+        return "\n".join(truncated_lines)
 
     def _get_interactive_flag(self) -> bool:
         """Markdown reports are not interactive."""

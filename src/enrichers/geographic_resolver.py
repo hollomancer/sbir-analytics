@@ -36,7 +36,7 @@ class GeographicResolver:
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the geographic resolver.
-        
+
         Args:
             config: Optional configuration override
         """
@@ -45,18 +45,62 @@ class GeographicResolver:
 
         # US state mappings (code -> name and name -> code)
         self.state_mappings = {
-            'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-            'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-            'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-            'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-            'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-            'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-            'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-            'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-            'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-            'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-            'DC': 'District of Columbia', 'PR': 'Puerto Rico', 'VI': 'Virgin Islands', 'GU': 'Guam',
-            'AS': 'American Samoa', 'MP': 'Northern Mariana Islands'
+            "AL": "Alabama",
+            "AK": "Alaska",
+            "AZ": "Arizona",
+            "AR": "Arkansas",
+            "CA": "California",
+            "CO": "Colorado",
+            "CT": "Connecticut",
+            "DE": "Delaware",
+            "FL": "Florida",
+            "GA": "Georgia",
+            "HI": "Hawaii",
+            "ID": "Idaho",
+            "IL": "Illinois",
+            "IN": "Indiana",
+            "IA": "Iowa",
+            "KS": "Kansas",
+            "KY": "Kentucky",
+            "LA": "Louisiana",
+            "ME": "Maine",
+            "MD": "Maryland",
+            "MA": "Massachusetts",
+            "MI": "Michigan",
+            "MN": "Minnesota",
+            "MS": "Mississippi",
+            "MO": "Missouri",
+            "MT": "Montana",
+            "NE": "Nebraska",
+            "NV": "Nevada",
+            "NH": "New Hampshire",
+            "NJ": "New Jersey",
+            "NM": "New Mexico",
+            "NY": "New York",
+            "NC": "North Carolina",
+            "ND": "North Dakota",
+            "OH": "Ohio",
+            "OK": "Oklahoma",
+            "OR": "Oregon",
+            "PA": "Pennsylvania",
+            "RI": "Rhode Island",
+            "SC": "South Carolina",
+            "SD": "South Dakota",
+            "TN": "Tennessee",
+            "TX": "Texas",
+            "UT": "Utah",
+            "VT": "Vermont",
+            "VA": "Virginia",
+            "WA": "Washington",
+            "WV": "West Virginia",
+            "WI": "Wisconsin",
+            "WY": "Wyoming",
+            "DC": "District of Columbia",
+            "PR": "Puerto Rico",
+            "VI": "Virgin Islands",
+            "GU": "Guam",
+            "AS": "American Samoa",
+            "MP": "Northern Mariana Islands",
         }
 
         # Reverse mapping (name -> code)
@@ -64,23 +108,40 @@ class GeographicResolver:
 
         # Common state abbreviations and variations
         self.state_variations = {
-            'CALIF': 'CA', 'CALIFORNIA': 'CA',
-            'FLA': 'FL', 'FLORIDA': 'FL',
-            'MASS': 'MA', 'MASSACHUSETTS': 'MA',
-            'MICH': 'MI', 'MICHIGAN': 'MI',
-            'PENN': 'PA', 'PENNSYLVANIA': 'PA',
-            'TEXAS': 'TX', 'TEX': 'TX',
-            'WASH': 'WA', 'WASHINGTON': 'WA',
-            'N.Y.': 'NY', 'NEW YORK': 'NY',
-            'N.J.': 'NJ', 'NEW JERSEY': 'NJ',
-            'N.C.': 'NC', 'NORTH CAROLINA': 'NC',
-            'S.C.': 'SC', 'SOUTH CAROLINA': 'SC',
-            'N.D.': 'ND', 'NORTH DAKOTA': 'ND',
-            'S.D.': 'SD', 'SOUTH DAKOTA': 'SD',
-            'W.V.': 'WV', 'WEST VIRGINIA': 'WV',
-            'N.H.': 'NH', 'NEW HAMPSHIRE': 'NH',
-            'N.M.': 'NM', 'NEW MEXICO': 'NM',
-            'R.I.': 'RI', 'RHODE ISLAND': 'RI',
+            "CALIF": "CA",
+            "CALIFORNIA": "CA",
+            "FLA": "FL",
+            "FLORIDA": "FL",
+            "MASS": "MA",
+            "MASSACHUSETTS": "MA",
+            "MICH": "MI",
+            "MICHIGAN": "MI",
+            "PENN": "PA",
+            "PENNSYLVANIA": "PA",
+            "TEXAS": "TX",
+            "TEX": "TX",
+            "WASH": "WA",
+            "WASHINGTON": "WA",
+            "N.Y.": "NY",
+            "NEW YORK": "NY",
+            "N.J.": "NJ",
+            "NEW JERSEY": "NJ",
+            "N.C.": "NC",
+            "NORTH CAROLINA": "NC",
+            "S.C.": "SC",
+            "SOUTH CAROLINA": "SC",
+            "N.D.": "ND",
+            "NORTH DAKOTA": "ND",
+            "S.D.": "SD",
+            "SOUTH DAKOTA": "SD",
+            "W.V.": "WV",
+            "WEST VIRGINIA": "WV",
+            "N.H.": "NH",
+            "NEW HAMPSHIRE": "NH",
+            "N.M.": "NM",
+            "NEW MEXICO": "NM",
+            "R.I.": "RI",
+            "RHODE ISLAND": "RI",
         }
 
         # Combine all mappings
@@ -89,14 +150,16 @@ class GeographicResolver:
         # Valid state codes set for quick lookup
         self.valid_state_codes = set(self.state_mappings.keys())
 
-        logger.info(f"Initialized GeographicResolver with {len(self.state_mappings)} states and {len(self.state_variations)} variations")
+        logger.info(
+            f"Initialized GeographicResolver with {len(self.state_mappings)} states and {len(self.state_variations)} variations"
+        )
 
     def normalize_state_input(self, state_input: str) -> str:
         """Normalize state input for matching.
-        
+
         Args:
             state_input: Raw state input
-            
+
         Returns:
             Normalized state string
         """
@@ -107,19 +170,19 @@ class GeographicResolver:
         normalized = str(state_input).upper().strip()
 
         # Remove common punctuation
-        normalized = re.sub(r'[.,;]', '', normalized)
+        normalized = re.sub(r"[.,;]", "", normalized)
 
         # Handle common patterns
-        normalized = re.sub(r'\s+', ' ', normalized)  # Collapse whitespace
+        normalized = re.sub(r"\s+", " ", normalized)  # Collapse whitespace
 
         return normalized
 
     def extract_state_from_address(self, address: str) -> str | None:
         """Extract state code from full address string.
-        
+
         Args:
             address: Full address string
-            
+
         Returns:
             State code or None if not found
         """
@@ -130,7 +193,7 @@ class GeographicResolver:
 
         # Try to find state code at end of address (common pattern)
         # Look for 2-letter codes followed by ZIP
-        state_zip_pattern = r'\b([A-Z]{2})\s+\d{5}(?:-\d{4})?\s*$'
+        state_zip_pattern = r"\b([A-Z]{2})\s+\d{5}(?:-\d{4})?\s*$"
         match = re.search(state_zip_pattern, normalized_address)
         if match:
             potential_state = match.group(1)
@@ -158,15 +221,15 @@ class GeographicResolver:
 
     def resolve_from_state_field(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve state from dedicated state field.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
         # Check common state column names
-        state_columns = ['State', 'state', 'Company_State', 'company_state', 'ST', 'st']
+        state_columns = ["State", "state", "Company_State", "company_state", "ST", "st"]
 
         for col in state_columns:
             if col in award_row.index and pd.notna(award_row[col]):
@@ -181,7 +244,7 @@ class GeographicResolver:
                         source="state_field",
                         method="direct_code",
                         timestamp=datetime.now(),
-                        metadata={"column": col, "original_value": str(award_row[col])}
+                        metadata={"column": col, "original_value": str(award_row[col])},
                     )
 
                 # State name or variation match
@@ -194,22 +257,33 @@ class GeographicResolver:
                         source="state_field",
                         method="name_mapping",
                         timestamp=datetime.now(),
-                        metadata={"column": col, "original_value": str(award_row[col]), "matched_variation": state_input}
+                        metadata={
+                            "column": col,
+                            "original_value": str(award_row[col]),
+                            "matched_variation": state_input,
+                        },
                     )
 
         return None
 
     def resolve_from_address_field(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve state from address field.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
         # Check common address column names
-        address_columns = ['Address', 'address', 'Company_Address', 'company_address', 'Full_Address', 'Location']
+        address_columns = [
+            "Address",
+            "address",
+            "Company_Address",
+            "company_address",
+            "Full_Address",
+            "Location",
+        ]
 
         for col in address_columns:
             if col in award_row.index and pd.notna(award_row[col]):
@@ -224,29 +298,32 @@ class GeographicResolver:
                         source="address_field",
                         method="address_parsing",
                         timestamp=datetime.now(),
-                        metadata={"column": col, "original_address": address}
+                        metadata={"column": col, "original_address": address},
                     )
 
         return None
 
     def resolve_from_city_state(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve state from separate city and state fields.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
         # Look for city/state combinations
-        city_columns = ['City', 'city', 'Company_City', 'company_city']
-        state_columns = ['State', 'state', 'Company_State', 'company_state']
+        city_columns = ["City", "city", "Company_City", "company_city"]
+        state_columns = ["State", "state", "Company_State", "company_state"]
 
         for city_col in city_columns:
             for state_col in state_columns:
-                if (city_col in award_row.index and pd.notna(award_row[city_col]) and
-                    state_col in award_row.index and pd.notna(award_row[state_col])):
-
+                if (
+                    city_col in award_row.index
+                    and pd.notna(award_row[city_col])
+                    and state_col in award_row.index
+                    and pd.notna(award_row[state_col])
+                ):
                     state_input = self.normalize_state_input(str(award_row[state_col]))
 
                     # Direct state code match
@@ -262,8 +339,8 @@ class GeographicResolver:
                                 "city_column": city_col,
                                 "state_column": state_col,
                                 "city": str(award_row[city_col]),
-                                "state": str(award_row[state_col])
-                            }
+                                "state": str(award_row[state_col]),
+                            },
                         )
 
                     # State name match
@@ -281,18 +358,18 @@ class GeographicResolver:
                                 "state_column": state_col,
                                 "city": str(award_row[city_col]),
                                 "state": str(award_row[state_col]),
-                                "matched_variation": state_input
-                            }
+                                "matched_variation": state_input,
+                            },
                         )
 
         return None
 
     def resolve_from_zip_code(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve state from ZIP code (placeholder for future implementation).
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
@@ -303,15 +380,15 @@ class GeographicResolver:
 
     def resolve_from_enriched_data(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve state from existing enriched company data.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
         # Check for existing company enrichment data
-        enriched_columns = ['company_state', 'company_State', 'recipient_state']
+        enriched_columns = ["company_state", "company_State", "recipient_state"]
 
         for col in enriched_columns:
             if col in award_row.index and pd.notna(award_row[col]):
@@ -325,7 +402,7 @@ class GeographicResolver:
                         source="enriched_data",
                         method="existing_enrichment",
                         timestamp=datetime.now(),
-                        metadata={"column": col, "original_value": str(award_row[col])}
+                        metadata={"column": col, "original_value": str(award_row[col])},
                     )
 
                 if state_input in self.all_state_mappings:
@@ -337,17 +414,21 @@ class GeographicResolver:
                         source="enriched_data",
                         method="existing_enrichment_mapped",
                         timestamp=datetime.now(),
-                        metadata={"column": col, "original_value": str(award_row[col]), "matched_variation": state_input}
+                        metadata={
+                            "column": col,
+                            "original_value": str(award_row[col]),
+                            "matched_variation": state_input,
+                        },
                     )
 
         return None
 
     def resolve_single_award(self, award_row: pd.Series) -> GeographicResolutionResult | None:
         """Resolve geographic location for a single award using hierarchical approach.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Geographic resolution result or None
         """
@@ -373,23 +454,23 @@ class GeographicResolver:
 
     def resolve_awards_dataframe(self, awards_df: pd.DataFrame) -> pd.DataFrame:
         """Resolve geographic locations for entire awards DataFrame.
-        
+
         Args:
             awards_df: SBIR awards DataFrame
-            
+
         Returns:
             DataFrame with geographic resolution columns
         """
         enriched_df = awards_df.copy()
 
         # Initialize geographic resolution columns
-        enriched_df['fiscal_state_code'] = None
-        enriched_df['fiscal_state_name'] = None
-        enriched_df['fiscal_geo_confidence'] = None
-        enriched_df['fiscal_geo_source'] = None
-        enriched_df['fiscal_geo_method'] = None
-        enriched_df['fiscal_geo_timestamp'] = None
-        enriched_df['fiscal_geo_metadata'] = None
+        enriched_df["fiscal_state_code"] = None
+        enriched_df["fiscal_state_name"] = None
+        enriched_df["fiscal_geo_confidence"] = None
+        enriched_df["fiscal_geo_source"] = None
+        enriched_df["fiscal_geo_method"] = None
+        enriched_df["fiscal_geo_timestamp"] = None
+        enriched_df["fiscal_geo_metadata"] = None
 
         logger.info(f"Starting geographic resolution for {len(awards_df)} awards")
 
@@ -405,13 +486,13 @@ class GeographicResolver:
 
                 if result:
                     # Store resolution results
-                    enriched_df.at[idx, 'fiscal_state_code'] = result.state_code
-                    enriched_df.at[idx, 'fiscal_state_name'] = result.state_name
-                    enriched_df.at[idx, 'fiscal_geo_confidence'] = result.confidence
-                    enriched_df.at[idx, 'fiscal_geo_source'] = result.source
-                    enriched_df.at[idx, 'fiscal_geo_method'] = result.method
-                    enriched_df.at[idx, 'fiscal_geo_timestamp'] = result.timestamp
-                    enriched_df.at[idx, 'fiscal_geo_metadata'] = str(result.metadata)
+                    enriched_df.at[idx, "fiscal_state_code"] = result.state_code
+                    enriched_df.at[idx, "fiscal_state_name"] = result.state_name
+                    enriched_df.at[idx, "fiscal_geo_confidence"] = result.confidence
+                    enriched_df.at[idx, "fiscal_geo_source"] = result.source
+                    enriched_df.at[idx, "fiscal_geo_method"] = result.method
+                    enriched_df.at[idx, "fiscal_geo_timestamp"] = result.timestamp
+                    enriched_df.at[idx, "fiscal_geo_metadata"] = str(result.metadata)
 
                     # Track statistics
                     source_counts[result.source] = source_counts.get(result.source, 0) + 1
@@ -424,7 +505,11 @@ class GeographicResolver:
         # Log resolution statistics
         total_awards = len(awards_df)
         resolution_rate = resolved_count / total_awards if total_awards > 0 else 0
-        avg_confidence = sum(confidence_distribution) / len(confidence_distribution) if confidence_distribution else 0
+        avg_confidence = (
+            sum(confidence_distribution) / len(confidence_distribution)
+            if confidence_distribution
+            else 0
+        )
 
         logger.info("Geographic resolution complete:")
         logger.info(f"  Resolution rate: {resolution_rate:.1%} ({resolved_count}/{total_awards})")
@@ -435,35 +520,38 @@ class GeographicResolver:
 
     def validate_resolution_quality(self, enriched_df: pd.DataFrame) -> dict[str, Any]:
         """Validate geographic resolution quality against configured thresholds.
-        
+
         Args:
             enriched_df: DataFrame with geographic resolution
-            
+
         Returns:
             Quality validation results
         """
         total_awards = len(enriched_df)
-        resolved_count = enriched_df['fiscal_state_code'].notna().sum()
+        resolved_count = enriched_df["fiscal_state_code"].notna().sum()
         resolution_rate = resolved_count / total_awards if total_awards > 0 else 0
 
         # Calculate confidence distribution
-        confidences = enriched_df['fiscal_geo_confidence'].dropna()
+        confidences = enriched_df["fiscal_geo_confidence"].dropna()
         high_confidence_count = (confidences >= 0.80).sum() if not confidences.empty else 0
-        medium_confidence_count = ((confidences >= 0.60) & (confidences < 0.80)).sum() if not confidences.empty else 0
+        medium_confidence_count = (
+            ((confidences >= 0.60) & (confidences < 0.80)).sum() if not confidences.empty else 0
+        )
         low_confidence_count = (confidences < 0.60).sum() if not confidences.empty else 0
 
         # Source distribution
-        source_counts = enriched_df['fiscal_geo_source'].value_counts().to_dict()
+        source_counts = enriched_df["fiscal_geo_source"].value_counts().to_dict()
 
         # State distribution
-        state_counts = enriched_df['fiscal_state_code'].value_counts().to_dict()
+        state_counts = enriched_df["fiscal_state_code"].value_counts().to_dict()
 
         # Quality assessment
         quality_results = {
             "total_awards": total_awards,
             "resolution_rate": resolution_rate,
             "resolution_threshold": self.quality_thresholds.get("geographic_resolution_rate", 0.90),
-            "resolution_meets_threshold": resolution_rate >= self.quality_thresholds.get("geographic_resolution_rate", 0.90),
+            "resolution_meets_threshold": resolution_rate
+            >= self.quality_thresholds.get("geographic_resolution_rate", 0.90),
             "resolved_count": int(resolved_count),
             "unresolved_count": int(total_awards - resolved_count),
             "confidence_distribution": {
@@ -481,21 +569,22 @@ class GeographicResolver:
         if quality_results["resolution_meets_threshold"]:
             logger.info(f"Geographic resolution quality: PASS (rate: {resolution_rate:.1%})")
         else:
-            logger.warning(f"Geographic resolution quality: FAIL (rate: {resolution_rate:.1%}, threshold: {quality_results['resolution_threshold']:.1%})")
+            logger.warning(
+                f"Geographic resolution quality: FAIL (rate: {resolution_rate:.1%}, threshold: {quality_results['resolution_threshold']:.1%})"
+            )
 
         return quality_results
 
 
 def resolve_award_geography(
-    awards_df: pd.DataFrame,
-    config: dict[str, Any] | None = None
+    awards_df: pd.DataFrame, config: dict[str, Any] | None = None
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Main function to resolve geographic locations for SBIR awards.
-    
+
     Args:
         awards_df: SBIR awards DataFrame
         config: Optional configuration override
-        
+
     Returns:
         Tuple of (enriched DataFrame, quality metrics)
     """

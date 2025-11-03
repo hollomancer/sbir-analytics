@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from rich.console import Console
 from rich.progress import (
@@ -13,10 +14,8 @@ from rich.progress import (
     SpinnerColumn,
     TaskID,
     TextColumn,
-    TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from loguru import logger
 
 
 class PipelineProgressTracker:
@@ -209,8 +208,7 @@ class PipelineProgressTracker:
 
         # Build update callbacks dict
         update_callbacks = {
-            op["description"]: create_update_callback(op["description"])
-            for op in operations
+            op["description"]: create_update_callback(op["description"]) for op in operations
         }
 
         try:
@@ -285,4 +283,3 @@ def create_progress_tracker(
         show_percentage=show_percentage,
         show_speed=show_speed,
     )
-

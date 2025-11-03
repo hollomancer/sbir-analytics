@@ -1,14 +1,16 @@
-from pathlib import Path
-from typing import Dict, Optional, List, Union
 import csv
+from pathlib import Path
+
 import pandas as pd
 
 
-
 class NAICSToBEAMapper:
-    def __init__(self, mapping_path: Optional[str] = None, bea_excel_path: Optional[str] = None):
+    def __init__(self, mapping_path: str | None = None, bea_excel_path: str | None = None):
         self.mapping_path = mapping_path or "data/reference/naics_to_bea.csv"
-        self.bea_excel_path = bea_excel_path or "data/reference/BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx"
+        self.bea_excel_path = (
+            bea_excel_path
+            or "data/reference/BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx"
+        )
         self.map = {}  # prefix -> bea_sector
         self.multi_map = {}  # bea_code -> List[naics_code]
         self._load()
@@ -37,17 +39,19 @@ class NAICSToBEAMapper:
         # Expect columns: 'BEA Code', 'BEA Industry', 'NAICS Code', 'NAICS Description'
         # Some rows may have multiple NAICS codes per BEA code, separated by commas or semicolons
         for _, row in df.iterrows():
-            bea_code = str(row.get('BEA Code', '')).strip()
-            naics_codes = str(row.get('NAICS Code', '')).strip()
+            bea_code = str(row.get("BEA Code", "")).strip()
+            naics_codes = str(row.get("NAICS Code", "")).strip()
             if not bea_code or not naics_codes:
                 continue
             # Split NAICS codes by comma, semicolon, or whitespace
-            codes = [c.strip() for c in naics_codes.replace(';', ',').split(',') if c.strip()]
+            codes = [c.strip() for c in naics_codes.replace(";", ",").split(",") if c.strip()]
             if bea_code not in self.multi_map:
                 self.multi_map[bea_code] = []
             self.multi_map[bea_code].extend(codes)
 
-    def map_code(self, naics_code: str, vintage: Optional[str] = None) -> Optional[Union[str, List[str]]]:
+    def map_code(
+        self, naics_code: str, vintage: str | None = None
+    ) -> str | list[str] | None:
         """Map a NAICS code to BEA sector using longest-prefix match or multi-vintage mapping.
 
         If vintage is None, use default mapping. If vintage is 'bea', use BEA concordance spreadsheet.
@@ -56,7 +60,7 @@ class NAICSToBEAMapper:
         if not naics_code:
             return None
         code = naics_code.strip()
-        if vintage == 'bea':
+        if vintage == "bea":
             # Search multi_map for BEA codes that include this NAICS code
             result = [bea for bea, naics_list in self.multi_map.items() if code in naics_list]
             return result if result else None

@@ -115,4 +115,3 @@ class EconomicModelInterface(ABC):
             True if model can be used, False otherwise
         """
         pass
-

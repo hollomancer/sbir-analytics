@@ -69,15 +69,21 @@ class Award(BaseModel):
     contact_title: str | None = Field(None, description="Contact title/position (SBIR.gov format)")
     contact_email: str | None = Field(None, description="Primary contact email")
     contact_phone: str | None = Field(None, description="Primary contact phone")
-    principal_investigator: str | None = Field(None, description="Principal Investigator", alias="pi_name")
+    principal_investigator: str | None = Field(
+        None, description="Principal Investigator", alias="pi_name"
+    )
     pi_title: str | None = Field(None, description="PI title/position (SBIR.gov format)")
     pi_phone: str | None = Field(None, description="PI phone number (SBIR.gov format)")
     pi_email: str | None = Field(None, description="PI email address (SBIR.gov format)")
     research_institution: str | None = Field(
         None, description="Research institution or PI affiliation", alias="ri_name"
     )
-    ri_poc_name: str | None = Field(None, description="Research Institution POC name (SBIR.gov format)", alias="ri_poc_name")
-    ri_poc_phone: str | None = Field(None, description="Research Institution POC phone (SBIR.gov format)", alias="ri_poc_phone")
+    ri_poc_name: str | None = Field(
+        None, description="Research Institution POC name (SBIR.gov format)", alias="ri_poc_name"
+    )
+    ri_poc_phone: str | None = Field(
+        None, description="Research Institution POC phone (SBIR.gov format)", alias="ri_poc_phone"
+    )
 
     # Timeline fields (with aliases for SBIR.gov format)
     proposal_award_date: date | None = Field(None, description="Proposal or award decision date")
@@ -86,25 +92,41 @@ class Award(BaseModel):
     solicitation_date: date | None = Field(
         None, description="Solicitation / solicitation release date"
     )
-    solicitation_close_date: date | None = Field(None, description="Solicitation closing date (SBIR.gov format)")
-    proposal_receipt_date: date | None = Field(None, description="Date proposal was received (SBIR.gov format)")
-    date_of_notification: date | None = Field(None, description="Date company was notified (SBIR.gov format)")
+    solicitation_close_date: date | None = Field(
+        None, description="Solicitation closing date (SBIR.gov format)"
+    )
+    proposal_receipt_date: date | None = Field(
+        None, description="Date proposal was received (SBIR.gov format)"
+    )
+    date_of_notification: date | None = Field(
+        None, description="Date company was notified (SBIR.gov format)"
+    )
 
     # Tracking fields (with aliases for SBIR.gov format)
     agency_tracking_number: str | None = Field(None, description="Agency tracking number")
     solicitation_number: str | None = Field(None, description="Solicitation number")
-    solicitation_year: int | None = Field(None, description="Year of solicitation (SBIR.gov format)", ge=1983, le=2026)
-    topic_code: str | None = Field(None, description="Topic code from solicitation (SBIR.gov format)")
+    solicitation_year: int | None = Field(
+        None, description="Year of solicitation (SBIR.gov format)", ge=1983, le=2026
+    )
+    topic_code: str | None = Field(
+        None, description="Topic code from solicitation (SBIR.gov format)"
+    )
 
     # Business classification flags (with aliases for SBIR.gov format)
     is_hubzone: bool | None = Field(None, description="HUBZone designation", alias="hubzone_owned")
-    is_woman_owned: bool | None = Field(None, description="Woman-owned business flag", alias="woman_owned")
+    is_woman_owned: bool | None = Field(
+        None, description="Woman-owned business flag", alias="woman_owned"
+    )
     is_socially_disadvantaged: bool | None = Field(
-        None, description="Socially/economically disadvantaged flag", alias="socially_and_economically_disadvantaged"
+        None,
+        description="Socially/economically disadvantaged flag",
+        alias="socially_and_economically_disadvantaged",
     )
 
     # Company metadata (with aliases for SBIR.gov format)
-    number_of_employees: int | None = Field(None, description="Number of employees", alias="number_employees")
+    number_of_employees: int | None = Field(
+        None, description="Number of employees", alias="number_employees"
+    )
     company_website: str | None = Field(None, description="Company website URL")
 
     # USAspending enrichment
@@ -153,7 +175,7 @@ class Award(BaseModel):
     @classmethod
     def validate_phase(cls, v: str | None) -> str | None:
         """Validate phase if provided. Normalize to roman I/II/III.
-        
+
         Accepts both "Phase I" format (SBIR.gov) and "I" format (consolidated).
         """
         if v is None:
@@ -280,7 +302,7 @@ class Award(BaseModel):
         validate_assignment=True,
         populate_by_name=True,  # Allow both field names and aliases
         str_strip_whitespace=True,
-        json_encoders={date: lambda v: v.isoformat()}
+        json_encoders={date: lambda v: v.isoformat()},
     )
 
     @classmethod
@@ -314,18 +336,45 @@ class Award(BaseModel):
                 mapped_data[award_key] = data[sbir_key]
 
         # Copy fields that are the same in both formats
-        for key in ["award_title", "abstract", "agency", "branch", "phase", "program",
-                    "award_amount", "award_year", "proposal_award_date", "contract_end_date",
-                    "contract", "agency_tracking_number", "solicitation_number",
-                    "contact_name", "contact_title", "contact_phone", "contact_email",
-                    "pi_title", "pi_phone", "pi_email", "ri_poc_name", "ri_poc_phone",
-                    "solicitation_close_date", "proposal_receipt_date", "date_of_notification",
-                    "solicitation_year", "topic_code", "company_website", "address1", "address2"]:
+        for key in [
+            "award_title",
+            "abstract",
+            "agency",
+            "branch",
+            "phase",
+            "program",
+            "award_amount",
+            "award_year",
+            "proposal_award_date",
+            "contract_end_date",
+            "contract",
+            "agency_tracking_number",
+            "solicitation_number",
+            "contact_name",
+            "contact_title",
+            "contact_phone",
+            "contact_email",
+            "pi_title",
+            "pi_phone",
+            "pi_email",
+            "ri_poc_name",
+            "ri_poc_phone",
+            "solicitation_close_date",
+            "proposal_receipt_date",
+            "date_of_notification",
+            "solicitation_year",
+            "topic_code",
+            "company_website",
+            "address1",
+            "address2",
+        ]:
             if key in data:
                 mapped_data[key] = data[key]
 
         # Combine address1 and address2 into company_address if company_address not provided
-        if "company_address" not in mapped_data and ("address1" in mapped_data or "address2" in mapped_data):
+        if "company_address" not in mapped_data and (
+            "address1" in mapped_data or "address2" in mapped_data
+        ):
             addr_parts = [mapped_data.get("address1"), mapped_data.get("address2")]
             addr_parts = [p for p in addr_parts if p]
             if addr_parts:
@@ -333,7 +382,9 @@ class Award(BaseModel):
 
         # Generate award_id if not provided
         if "award_id" not in mapped_data and "award_id" not in data:
-            tracking = mapped_data.get("agency_tracking_number") or data.get("agency_tracking_number", "")
+            tracking = mapped_data.get("agency_tracking_number") or data.get(
+                "agency_tracking_number", ""
+            )
             contract = mapped_data.get("contract") or data.get("contract", "")
             if tracking and contract:
                 mapped_data["award_id"] = f"{tracking}_{contract}"
@@ -357,6 +408,7 @@ class Award(BaseModel):
                 award_year = mapped_data.get("award_year")
                 if award_year:
                     from datetime import date as date_cls
+
                     mapped_data["award_date"] = date_cls(award_year, 1, 1)
 
         return cls(**mapped_data)

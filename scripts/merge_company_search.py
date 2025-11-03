@@ -241,7 +241,7 @@ def merge_company_search_files(
     if len(uei_rows) > 0:
         # group by UEI_clean, choose preferred row per UEI
         canonical_by_uei = []
-        for uei, group in uei_rows.groupby("UEI_clean", sort=False):
+        for _uei, group in uei_rows.groupby("UEI_clean", sort=False):
             chosen = choose_preferred_row(group)
             canonical_by_uei.append(chosen)
         df_uei = pd.DataFrame(canonical_by_uei)
@@ -257,7 +257,7 @@ def merge_company_search_files(
     duns_rows = remaining[remaining["DUNs_clean"] != ""].copy()
     if len(duns_rows) > 0:
         canonical_by_duns = []
-        for duns, group in duns_rows.groupby("DUNs_clean", sort=False):
+        for _duns, group in duns_rows.groupby("DUNs_clean", sort=False):
             chosen = choose_preferred_row(group)
             canonical_by_duns.append(chosen)
         df_duns = pd.DataFrame(canonical_by_duns)

@@ -129,7 +129,9 @@ class TestReasonablenessChecks:
 
         # Check consistency
         assert summary.roi_ratio == summary.benefit_cost_ratio
-        assert summary.net_fiscal_return == summary.total_tax_receipts - summary.total_sbir_investment
+        assert (
+            summary.net_fiscal_return == summary.total_tax_receipts - summary.total_sbir_investment
+        )
 
         # Check confidence intervals
         assert summary.confidence_interval_low <= summary.total_tax_receipts
@@ -234,9 +236,8 @@ class TestReferenceValidation:
 
         # Should be identical with same seed
         assert len(scenarios1) == len(scenarios2)
-        for s1, s2 in zip(scenarios1, scenarios2):
+        for s1, s2 in zip(scenarios1, scenarios2, strict=False):
             assert s1.scenario_id == s2.scenario_id
             # Parameters should be very close (within numerical precision)
             for param in s1.parameters:
                 assert abs(s1.parameters[param] - s2.parameters[param]) < 0.0001
-

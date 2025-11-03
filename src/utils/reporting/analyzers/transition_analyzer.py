@@ -35,16 +35,20 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         }
 
         # Transition confidence bands
-        self.confidence_bands = {
-            "high": (0.8, 1.0),
-            "likely": (0.6, 0.79),
-            "possible": (0.0, 0.59)
-        }
+        self.confidence_bands = {"high": (0.8, 1.0), "likely": (0.6, 0.79), "possible": (0.0, 0.59)}
 
         # Key sectors for analysis
         self.key_sectors = [
-            "defense", "health", "energy", "transportation", "information_technology",
-            "aerospace", "biotechnology", "manufacturing", "research", "other"
+            "defense",
+            "health",
+            "energy",
+            "transportation",
+            "information_technology",
+            "aerospace",
+            "biotechnology",
+            "manufacturing",
+            "research",
+            "other",
         ]
 
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
@@ -171,7 +175,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         insights = []
         transitions_df = module_data.get("transitions_df")
         awards_df = module_data.get("awards_df")
-        detection_results = module_data.get("detection_results", {})
+        module_data.get("detection_results", {})
 
         if transitions_df is None or awards_df is None:
             return insights
@@ -182,105 +186,128 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
 
         # Analyze overall transition rate
         if transition_rate < self.thresholds["min_transition_rate"]:
-            insights.append(AnalysisInsight(
-                category="transition_rate",
-                title="Low Overall Transition Rate",
-                message=f"Transition rate ({transition_rate:.1%}) is below threshold ({self.thresholds['min_transition_rate']:.1%})",
-                severity="warning",
-                confidence=0.9,
-                affected_records=total_awards,
-                recommendations=[
-                    "Review detection algorithm sensitivity",
-                    "Check data quality for transition signals",
-                    "Consider expanding timing windows",
-                    "Validate vendor matching accuracy"
-                ],
-                metadata={"current_rate": transition_rate, "threshold": self.thresholds["min_transition_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="transition_rate",
+                    title="Low Overall Transition Rate",
+                    message=f"Transition rate ({transition_rate:.1%}) is below threshold ({self.thresholds['min_transition_rate']:.1%})",
+                    severity="warning",
+                    confidence=0.9,
+                    affected_records=total_awards,
+                    recommendations=[
+                        "Review detection algorithm sensitivity",
+                        "Check data quality for transition signals",
+                        "Consider expanding timing windows",
+                        "Validate vendor matching accuracy",
+                    ],
+                    metadata={
+                        "current_rate": transition_rate,
+                        "threshold": self.thresholds["min_transition_rate"],
+                    },
+                )
+            )
 
         # Analyze confidence distribution
         confidence_dist = self._calculate_confidence_distribution(transitions_df)
         high_confidence_rate = confidence_dist.get("high_confidence_rate", 0.0)
         if high_confidence_rate < self.thresholds["min_high_confidence_rate"]:
-            insights.append(AnalysisInsight(
-                category="confidence_distribution",
-                title="Low High-Confidence Transition Rate",
-                message=f"High-confidence transitions ({high_confidence_rate:.1%}) below target ({self.thresholds['min_high_confidence_rate']:.1%})",
-                severity="info",
-                confidence=0.8,
-                affected_records=int(total_transitions * (1 - high_confidence_rate)),
-                recommendations=[
-                    "Strengthen signal weighting in detection algorithm",
-                    "Improve evidence quality thresholds",
-                    "Review confidence calibration",
-                    "Consider additional signal types"
-                ],
-                metadata={"current_rate": high_confidence_rate, "threshold": self.thresholds["min_high_confidence_rate"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="confidence_distribution",
+                    title="Low High-Confidence Transition Rate",
+                    message=f"High-confidence transitions ({high_confidence_rate:.1%}) below target ({self.thresholds['min_high_confidence_rate']:.1%})",
+                    severity="info",
+                    confidence=0.8,
+                    affected_records=int(total_transitions * (1 - high_confidence_rate)),
+                    recommendations=[
+                        "Strengthen signal weighting in detection algorithm",
+                        "Improve evidence quality thresholds",
+                        "Review confidence calibration",
+                        "Consider additional signal types",
+                    ],
+                    metadata={
+                        "current_rate": high_confidence_rate,
+                        "threshold": self.thresholds["min_high_confidence_rate"],
+                    },
+                )
+            )
 
         # Analyze sector imbalances
         sector_rates = self._calculate_sector_transition_rates(transitions_df, awards_df)
         if sector_rates:
             max_rate = max(sector_rates.values())
             min_rate = min(sector_rates.values())
-            imbalance_ratio = max_rate / min_rate if min_rate > 0 else float('inf')
+            imbalance_ratio = max_rate / min_rate if min_rate > 0 else float("inf")
 
             if imbalance_ratio > 5:  # Significant sector imbalance
-                insights.append(AnalysisInsight(
-                    category="sector_imbalance",
-                    title="Significant Sector Transition Imbalance",
-                    message=f"Sector transition rates show imbalance (ratio: {imbalance_ratio:.1f}:1)",
-                    severity="info",
-                    confidence=0.7,
-                    affected_records=total_awards,
-                    recommendations=[
-                        "Investigate sector-specific detection challenges",
-                        "Review sector classification accuracy",
-                        "Consider sector-specific algorithm tuning",
-                        "Validate sector representation in training data"
-                    ],
-                    metadata={"imbalance_ratio": imbalance_ratio, "max_rate": max_rate, "min_rate": min_rate}
-                ))
+                insights.append(
+                    AnalysisInsight(
+                        category="sector_imbalance",
+                        title="Significant Sector Transition Imbalance",
+                        message=f"Sector transition rates show imbalance (ratio: {imbalance_ratio:.1f}:1)",
+                        severity="info",
+                        confidence=0.7,
+                        affected_records=total_awards,
+                        recommendations=[
+                            "Investigate sector-specific detection challenges",
+                            "Review sector classification accuracy",
+                            "Consider sector-specific algorithm tuning",
+                            "Validate sector representation in training data",
+                        ],
+                        metadata={
+                            "imbalance_ratio": imbalance_ratio,
+                            "max_rate": max_rate,
+                            "min_rate": min_rate,
+                        },
+                    )
+                )
 
         # Analyze success story potential
         success_metrics = self._calculate_success_story_metrics(transitions_df)
         high_impact_count = success_metrics.get("high_impact_transitions", 0)
         if high_impact_count == 0:
-            insights.append(AnalysisInsight(
-                category="success_stories",
-                title="No High-Impact Success Stories Identified",
-                message="No transitions meet success story criteria - may indicate overly strict thresholds",
-                severity="info",
-                confidence=0.6,
-                affected_records=total_transitions,
-                recommendations=[
-                    "Review success story scoring criteria",
-                    "Consider lowering impact thresholds",
-                    "Validate impact metrics calculation",
-                    "Check for data completeness issues"
-                ],
-                metadata={"high_impact_count": high_impact_count}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="success_stories",
+                    title="No High-Impact Success Stories Identified",
+                    message="No transitions meet success story criteria - may indicate overly strict thresholds",
+                    severity="info",
+                    confidence=0.6,
+                    affected_records=total_transitions,
+                    recommendations=[
+                        "Review success story scoring criteria",
+                        "Consider lowering impact thresholds",
+                        "Validate impact metrics calculation",
+                        "Check for data completeness issues",
+                    ],
+                    metadata={"high_impact_count": high_impact_count},
+                )
+            )
 
         # Analyze signal strength
         signal_metrics = self._calculate_signal_strength_metrics(transitions_df)
         avg_signal_strength = signal_metrics.get("average_signal_strength", 0.0)
         if avg_signal_strength < self.thresholds["min_signal_strength"]:
-            insights.append(AnalysisInsight(
-                category="signal_strength",
-                title="Weak Average Signal Strength",
-                message=f"Average signal strength ({avg_signal_strength:.2f}) below threshold ({self.thresholds['min_signal_strength']:.2f})",
-                severity="warning",
-                confidence=0.8,
-                affected_records=total_transitions,
-                recommendations=[
-                    "Review signal calculation logic",
-                    "Improve feature engineering",
-                    "Validate signal data sources",
-                    "Consider alternative signal combinations"
-                ],
-                metadata={"current_strength": avg_signal_strength, "threshold": self.thresholds["min_signal_strength"]}
-            ))
+            insights.append(
+                AnalysisInsight(
+                    category="signal_strength",
+                    title="Weak Average Signal Strength",
+                    message=f"Average signal strength ({avg_signal_strength:.2f}) below threshold ({self.thresholds['min_signal_strength']:.2f})",
+                    severity="warning",
+                    confidence=0.8,
+                    affected_records=total_transitions,
+                    recommendations=[
+                        "Review signal calculation logic",
+                        "Improve feature engineering",
+                        "Validate signal data sources",
+                        "Consider alternative signal combinations",
+                    ],
+                    metadata={
+                        "current_strength": avg_signal_strength,
+                        "threshold": self.thresholds["min_signal_strength"],
+                    },
+                )
+            )
 
         return insights
 
@@ -321,27 +348,37 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         if confidence_values:
             confidence_series = pd.Series(confidence_values)
 
-            high_confidence = ((confidence_series >= self.confidence_bands["high"][0]) &
-                              (confidence_series <= self.confidence_bands["high"][1])).sum()
-            likely_confidence = ((confidence_series >= self.confidence_bands["likely"][0]) &
-                                (confidence_series <= self.confidence_bands["likely"][1])).sum()
-            possible_confidence = ((confidence_series >= self.confidence_bands["possible"][0]) &
-                                  (confidence_series <= self.confidence_bands["possible"][1])).sum()
+            high_confidence = (
+                (confidence_series >= self.confidence_bands["high"][0])
+                & (confidence_series <= self.confidence_bands["high"][1])
+            ).sum()
+            likely_confidence = (
+                (confidence_series >= self.confidence_bands["likely"][0])
+                & (confidence_series <= self.confidence_bands["likely"][1])
+            ).sum()
+            possible_confidence = (
+                (confidence_series >= self.confidence_bands["possible"][0])
+                & (confidence_series <= self.confidence_bands["possible"][1])
+            ).sum()
 
-            confidence_distribution.update({
-                "high_confidence_count": int(high_confidence),
-                "likely_confidence_count": int(likely_confidence),
-                "possible_confidence_count": int(possible_confidence),
-                "high_confidence_rate": high_confidence / len(confidence_series),
-                "likely_confidence_rate": likely_confidence / len(confidence_series),
-                "possible_confidence_rate": possible_confidence / len(confidence_series),
-                "average_confidence": float(confidence_series.mean()),
-                "median_confidence": float(confidence_series.median()),
-            })
+            confidence_distribution.update(
+                {
+                    "high_confidence_count": int(high_confidence),
+                    "likely_confidence_count": int(likely_confidence),
+                    "possible_confidence_count": int(possible_confidence),
+                    "high_confidence_rate": high_confidence / len(confidence_series),
+                    "likely_confidence_rate": likely_confidence / len(confidence_series),
+                    "possible_confidence_rate": possible_confidence / len(confidence_series),
+                    "average_confidence": float(confidence_series.mean()),
+                    "median_confidence": float(confidence_series.median()),
+                }
+            )
 
         return confidence_distribution
 
-    def _calculate_sector_transition_rates(self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame) -> dict[str, float]:
+    def _calculate_sector_transition_rates(
+        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame
+    ) -> dict[str, float]:
         """Calculate transition rates by sector/agency.
 
         Args:
@@ -378,8 +415,9 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         sector_rates = {}
         for sector in awards_df[sector_col].dropna().unique():
             sector_awards = awards_df[awards_df[sector_col] == sector]
-            sector_transitions = sum(1 for award_id in sector_awards.index
-                                   if str(award_id) in successful_award_ids)
+            sector_transitions = sum(
+                1 for award_id in sector_awards.index if str(award_id) in successful_award_ids
+            )
 
             if len(sector_awards) > 0:
                 sector_rates[str(sector).lower()] = sector_transitions / len(sector_awards)
@@ -453,7 +491,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         # Calculate success story score based on multiple factors
         success_scores = []
 
-        for idx, row in transitions_df.iterrows():
+        for _idx, row in transitions_df.iterrows():
             score = 0.0
             factors = 0
 
@@ -532,10 +570,16 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             return {"error": "No transitions available"}
 
         # Aggregate signal strengths
-        signal_columns = ["agency_score", "timing_score", "competition_score", "patent_score", "cet_score"]
+        signal_columns = [
+            "agency_score",
+            "timing_score",
+            "competition_score",
+            "patent_score",
+            "cet_score",
+        ]
         signal_strengths = []
 
-        for idx, row in transitions_df.iterrows():
+        for _idx, row in transitions_df.iterrows():
             row_signals = []
             for col in signal_columns:
                 if col in row.index and pd.notna(row[col]):
@@ -590,7 +634,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
                         "quartiles": {
                             "25th": float(values.quantile(0.25)),
                             "75th": float(values.quantile(0.75)),
-                        }
+                        },
                     }
 
         # Analyze timing score distribution
@@ -604,7 +648,9 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
 
         return timing_analysis
 
-    def _calculate_data_hygiene(self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame) -> DataHygieneMetrics:
+    def _calculate_data_hygiene(
+        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame
+    ) -> DataHygieneMetrics:
         """Calculate data hygiene metrics for transition detection data.
 
         Args:
@@ -618,7 +664,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
 
         # Calculate quality scores based on completeness and signal strength
         quality_scores = []
-        for idx, row in transitions_df.iterrows():
+        for _idx, row in transitions_df.iterrows():
             score = 0.0
 
             # Award ID completeness (required)
@@ -631,11 +677,9 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             score += 0.3 if has_award_id else 0.0
 
             # Confidence score availability
-            has_confidence = False
             confidence_cols = ["confidence", "likelihood_score", "score"]
             for col in confidence_cols:
                 if col in row.index and pd.notna(row[col]):
-                    has_confidence = True
                     conf_val = float(row[col])
                     score += 0.3 * conf_val  # Weight by confidence value
                     break
@@ -662,7 +706,9 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             total_records=total_records,
             clean_records=int(clean_records),
             dirty_records=int(dirty_records),
-            clean_percentage=float(clean_records / total_records * 100) if total_records > 0 else 0.0,
+            clean_percentage=float(clean_records / total_records * 100)
+            if total_records > 0
+            else 0.0,
             quality_score_mean=float(quality_series.mean()),
             quality_score_median=float(quality_series.median()),
             quality_score_std=float(quality_series.std()),
@@ -673,7 +719,9 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             validation_warnings=0,
         )
 
-    def _calculate_changes_summary(self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame) -> ChangesSummary:
+    def _calculate_changes_summary(
+        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame
+    ) -> ChangesSummary:
         """Calculate summary of changes made during transition detection.
 
         Args:
@@ -688,8 +736,13 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
 
         # Fields added during detection
         detection_fields = [
-            "transition_id", "likelihood_score", "confidence", "signals",
-            "evidence", "primary_contract", "detected_at"
+            "transition_id",
+            "likelihood_score",
+            "confidence",
+            "signals",
+            "evidence",
+            "primary_contract",
+            "detected_at",
         ]
 
         fields_added = [field for field in detection_fields if field in transitions_df.columns]

@@ -47,7 +47,6 @@ try:
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:
-
     _RAPIDFUZZ_AVAILABLE = False
 
 
@@ -231,9 +230,7 @@ def estimate_enrichment_value(
     awards = awards_df.copy()
     awards_cols = awards.columns.tolist()
     # Compute cleaned UEI and DUNs on awards if present
-    awards_uei = ""
     if "UEI" in awards_cols:
-        awards_uei = "UEI"
         awards["UEI_clean"] = awards["UEI"].fillna("").astype(str).map(alnum_upper)
     else:
         awards["UEI_clean"] = ""

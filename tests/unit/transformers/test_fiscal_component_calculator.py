@@ -65,8 +65,10 @@ class TestFiscalComponentCalculator:
         assert result_df.iloc[1]["component_total"] == Decimal("200000")
 
         # Check validation passed
-        assert result_df.iloc[0]["component_valid"] == True  # Use == instead of is for boolean comparison
-        assert result_df.iloc[1]["component_valid"] == True
+        assert (
+            result_df.iloc[0]["component_valid"] is True
+        )  # Use == instead of is for boolean comparison
+        assert result_df.iloc[1]["component_valid"] is True
 
     def test_extract_components_empty_df(self, calculator):
         """Test component extraction with empty DataFrame."""
@@ -124,14 +126,16 @@ class TestFiscalComponentCalculator:
                     "proprietor_income_impact": Decimal("20000"),
                     "gross_operating_surplus": Decimal("20000"),
                     "consumption_impact": Decimal("10000"),
-                    "production_impact": Decimal("30000"),  # Much lower than components (100k vs 30k = 233% difference)
+                    "production_impact": Decimal(
+                        "30000"
+                    ),  # Much lower than components (100k vs 30k = 233% difference)
                 }
             ]
         )
 
         result_df = calculator.extract_components(impacts_df)
         # Component should be invalid due to large mismatch (>50% difference)
-        assert result_df.iloc[0]["component_valid"] == False  # Use == for boolean comparison
+        assert result_df.iloc[0]["component_valid"] is False  # Use == for boolean comparison
 
     def test_negative_components(self, calculator):
         """Test validation rejects negative components."""
@@ -150,5 +154,4 @@ class TestFiscalComponentCalculator:
         )
 
         result_df = calculator.extract_components(impacts_df)
-        assert result_df.iloc[0]["component_valid"] == False  # Use == for boolean comparison
-
+        assert result_df.iloc[0]["component_valid"] is False  # Use == for boolean comparison

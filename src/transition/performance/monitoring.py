@@ -112,7 +112,7 @@ def monitor_performance(
                 result = func(*args, **kwargs)
                 # Try to get item count from result
                 items = 0
-                if isinstance(result, (list, tuple)):
+                if isinstance(result, list | tuple):
                     items = len(result)
                 elif isinstance(result, dict) and "rows" in result:
                     items = result.get("rows", 0)

@@ -21,8 +21,9 @@ class HistoricalPreserver:
         """Initialize preserver."""
         self.logger = logging.getLogger(__name__)
 
-    def archive_openspec(self, openspec_path: Path, archive_path: Path,
-                        generated_specs: list[GeneratedSpec]):
+    def archive_openspec(
+        self, openspec_path: Path, archive_path: Path, generated_specs: list[GeneratedSpec]
+    ):
         """Archive complete OpenSpec directory structure."""
         self.logger.info(f"Archiving OpenSpec content to {archive_path}")
 
@@ -57,7 +58,7 @@ class HistoricalPreserver:
             "migration_metadata": {
                 "migration_date": datetime.now().isoformat(),
                 "migration_tool": "openspec_to_kiro_migrator",
-                "total_specs_generated": len(generated_specs)
+                "total_specs_generated": len(generated_specs),
             },
             "openspec_to_kiro_mapping": self._build_spec_mapping(generated_specs),
             "archived_content": {
@@ -65,18 +66,18 @@ class HistoricalPreserver:
                 "changes_directory": "openspec/changes/",
                 "specs_directory": "openspec/specs/",
                 "project_documentation": "openspec/project.md",
-                "agent_instructions": "openspec/AGENTS.md"
+                "agent_instructions": "openspec/AGENTS.md",
             },
             "migration_notes": [
                 "All OpenSpec content has been preserved in the openspec/ directory",
                 "Generated Kiro specs are located in .kiro/specs/",
                 "This mapping provides traceability between old and new systems",
-                "Archived content should be treated as read-only historical reference"
-            ]
+                "Archived content should be treated as read-only historical reference",
+            ],
         }
 
         mapping_file = archive_path / "migration_mapping.json"
-        with open(mapping_file, 'w', encoding='utf-8') as f:
+        with open(mapping_file, "w", encoding="utf-8") as f:
             json.dump(mapping, f, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Migration mapping created: {mapping_file}")
@@ -91,7 +92,7 @@ class HistoricalPreserver:
                 "files_created": spec.files_created,
                 "source_openspec_changes": spec.source_changes,
                 "source_openspec_specs": spec.source_specs,
-                "migration_status": "completed"
+                "migration_status": "completed",
             }
 
         return mapping
@@ -154,6 +155,6 @@ consult the migration mapping and archived files in this directory.
 """
 
         readme_file = archive_path / "README.md"
-        readme_file.write_text(readme_content, encoding='utf-8')
+        readme_file.write_text(readme_content, encoding="utf-8")
 
         self.logger.info(f"Archive README created: {readme_file}")

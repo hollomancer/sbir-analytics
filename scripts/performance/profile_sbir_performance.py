@@ -202,7 +202,7 @@ def profile_end_to_end_pipeline(config) -> dict[str, Any]:
 
         # Extract all data
         extract_start = time.time()
-        raw_df = extractor.extract_all()
+        extractor.extract_all()
         extract_duration = time.time() - extract_start
 
         # Validate data
@@ -335,7 +335,7 @@ def main():
         )
 
         import_start = time.time()
-        metadata = extractor_test.import_csv(incremental=True, batch_size=50000)
+        extractor_test.import_csv(incremental=True, batch_size=50000)
         import_duration = time.time() - import_start
 
         # Test extraction timing

@@ -14,6 +14,26 @@ Modules:
 """
 
 # USPTO validators
+# Quality baseline management
+from .baseline import (
+    BaselineComparison,
+    QualityBaseline,
+    QualityBaselineManager,
+)
+
+# General quality checks
+from .checks import (
+    check_completeness,
+    check_uniqueness,
+    check_value_ranges,
+    validate_sbir_awards,
+)
+
+# Quality dashboards
+from .dashboard import (
+    DashboardMetrics,
+    QualityDashboard,
+)
 from .uspto_validators import (
     USPTODataQualityValidator,
     USPTOValidationConfig,
@@ -26,27 +46,6 @@ from .uspto_validators import (
     validate_referential_integrity,
     validate_rf_id_uniqueness,
     validate_rf_id_uniqueness_from_iterator,
-)
-
-# Quality baseline management
-from .baseline import (
-    QualityBaseline,
-    BaselineComparison,
-    QualityBaselineManager,
-)
-
-# Quality dashboards
-from .dashboard import (
-    DashboardMetrics,
-    QualityDashboard,
-)
-
-# General quality checks
-from .checks import (
-    check_completeness,
-    check_uniqueness,
-    check_value_ranges,
-    validate_sbir_awards,
 )
 
 __all__ = [

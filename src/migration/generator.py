@@ -65,7 +65,7 @@ class KiroSpecGenerator:
             path=spec_dir,
             files_created=files_created,
             source_changes=spec.source_mapping.get("openspec_change_id", []),
-            source_specs=spec.source_mapping.get("openspec_specs", [])
+            source_specs=spec.source_mapping.get("openspec_specs", []),
         )
 
     def _write_requirements_file(self, file_path: Path, requirements):
@@ -84,7 +84,7 @@ class KiroSpecGenerator:
 
 {self._format_requirements(requirements.requirements)}
 """
-        file_path.write_text(content, encoding='utf-8')
+        file_path.write_text(content, encoding="utf-8")
 
     def _format_glossary(self, glossary: dict) -> str:
         """Format glossary section."""
@@ -156,7 +156,7 @@ class KiroSpecGenerator:
 
 {design.testing_strategy}
 """
-        file_path.write_text(content, encoding='utf-8')
+        file_path.write_text(content, encoding="utf-8")
 
     def _write_tasks_file(self, file_path: Path, tasks):
         """Write tasks.md in proper Kiro format."""
@@ -164,7 +164,7 @@ class KiroSpecGenerator:
 
 {self._format_tasks(tasks.tasks)}
 """
-        file_path.write_text(content, encoding='utf-8')
+        file_path.write_text(content, encoding="utf-8")
 
     def _format_tasks(self, tasks: list) -> str:
         """Format tasks section."""

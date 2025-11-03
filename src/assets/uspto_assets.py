@@ -790,7 +790,7 @@ def uspto_referential_asset_check(
 # ============================================================================
 # Transformation assets consolidated and implemented:
 # - transformed_patent_assignments: Transform raw patent assignment data
-# - transformed_patents: Transform patent document data  
+# - transformed_patents: Transform patent document data
 # - transformed_patent_entities: Transform patent entity data
 # - uspto_transformation_success_check: Validate transformation success rates
 # - uspto_company_linkage_check: Validate SBIR company linkage coverage
@@ -1506,6 +1506,7 @@ def loaded_patents(context) -> dict[str, Any]:
 
                 # Convert patents list to DataFrame for analyzer
                 import pandas as pd
+
                 patent_df = pd.DataFrame(patents) if patents else pd.DataFrame()
 
                 # Prepare module data for analysis
@@ -1534,20 +1535,38 @@ def loaded_patents(context) -> dict[str, Any]:
                 context.log.info(
                     "Patent loading analysis complete",
                     extra={
-                        "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                        "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
-                        "validation_pass_rate": analysis_report.data_hygiene.validation_pass_rate if analysis_report.data_hygiene else None,
+                        "insights_generated": len(analysis_report.insights)
+                        if hasattr(analysis_report, "insights")
+                        else 0,
+                        "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
+                        if analysis_report.data_hygiene
+                        else None,
+                        "validation_pass_rate": analysis_report.data_hygiene.validation_pass_rate
+                        if analysis_report.data_hygiene
+                        else None,
                     },
                 )
 
                 # Add analysis results to metadata
-                context.add_output_metadata({
-                    "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                    "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
-                    "analysis_validation_pass_rate": round(analysis_report.data_hygiene.validation_pass_rate, 3) if analysis_report.data_hygiene else None,
-                    "analysis_nodes_created": dict(metrics.nodes_created),
-                    "analysis_relationships_created": dict(metrics.relationships_created),
-                })
+                context.add_output_metadata(
+                    {
+                        "analysis_insights_count": len(analysis_report.insights)
+                        if hasattr(analysis_report, "insights")
+                        else 0,
+                        "analysis_data_hygiene_score": round(
+                            analysis_report.data_hygiene.quality_score_mean, 3
+                        )
+                        if analysis_report.data_hygiene
+                        else None,
+                        "analysis_validation_pass_rate": round(
+                            analysis_report.data_hygiene.validation_pass_rate, 3
+                        )
+                        if analysis_report.data_hygiene
+                        else None,
+                        "analysis_nodes_created": dict(metrics.nodes_created),
+                        "analysis_relationships_created": dict(metrics.relationships_created),
+                    }
+                )
 
             except Exception as e:
                 context.log.warning(f"Patent analysis failed: {e}")
@@ -2377,9 +2396,9 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     Output:
       - Path to written NDJSON sample
     """
-    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))  # type: ignore[attr-defined]
-    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)  # type: ignore[attr-defined]
-    sample_n = int(getattr(context, "op_config", {}).get("sample_n", 200))  # type: ignore[attr-defined]
+    Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))  # type: ignore[attr-defined]
+    getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)  # type: ignore[attr-defined]
+    int(getattr(context, "op_config", {}).get("sample_n", 200))  # type: ignore[attr-defined]
     output_path = Path(
         getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH)  # type: ignore[attr-defined]
     )
@@ -2464,7 +2483,7 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
         if getattr(context, "op_config", None) and context.op_config.get("raw_dta_dir")
         else DEFAULT_RAW_DTA_DIR
     )
-    dta_files = sorted([p for p in dta_dir.glob("*.dta")]) if dta_dir.exists() else []
+    dta_files = sorted(dta_dir.glob("*.dta")) if dta_dir.exists() else []
 
     result_summary = {
         "ok": False,

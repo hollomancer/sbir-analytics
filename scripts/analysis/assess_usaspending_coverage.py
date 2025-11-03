@@ -18,9 +18,7 @@ from loguru import logger
 class USAspendingCoverageAssessor:
     """Assesses USAspending coverage for SBIR enrichment."""
 
-    def __init__(
-        self, usaspending_dump: Path | None = None, profile_json: Path | None = None
-    ):
+    def __init__(self, usaspending_dump: Path | None = None, profile_json: Path | None = None):
         """Initialize assessor.
 
         Args:
@@ -466,7 +464,7 @@ def main():
             print(f"Target Achieved (≥70%): {results['target_achieved']}")
 
         print("\nMatch Rates by Identifier:")
-        for identifier, stats in results["match_rates"].items():
+        for _identifier, _stats in results["match_rates"].items():
             print(".1%")
 
         if results.get("data_quality_notes"):

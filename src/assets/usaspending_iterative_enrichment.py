@@ -1,11 +1,10 @@
 """Dagster assets for USAspending iterative enrichment.
 
-Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) 
+Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.)
 will be evaluated in Phase 2+.
 """
 
 import asyncio
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -14,7 +13,6 @@ from dagster import (
     AssetCheckSeverity,
     AssetExecutionContext,
     Config,
-    MetadataValue,
     OpExecutionContext,
     Output,
     asset,
@@ -26,7 +24,6 @@ from pydantic import Field
 
 from ..config.loader import get_config
 from ..enrichers.usaspending_api_client import USAspendingAPIClient
-from ..models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 from ..utils.enrichment_metrics import EnrichmentMetricsCollector
 
@@ -115,9 +112,7 @@ def stale_usaspending_awards(
         context.log.warning("Could not find award ID column")
         return Output(value=pd.DataFrame(), metadata={"stale_count": 0})
 
-    stale_df = enriched_sbir_awards[
-        enriched_sbir_awards[award_id_col].isin(stale_award_ids)
-    ].copy()
+    stale_df = enriched_sbir_awards[enriched_sbir_awards[award_id_col].isin(stale_award_ids)].copy()
 
     context.log.info(f"Found {len(stale_df)} stale awards needing refresh")
 
@@ -206,16 +201,10 @@ def usaspending_refresh_batch(
         """Process a single award."""
         award_id = str(row[award_id_col])
         uei = str(row[uei_col]) if uei_col and pd.notna(row.get(uei_col)) else None
-        duns = (
-            str(row[duns_col]) if duns_col and pd.notna(row.get(duns_col)) else None
-        )
-        cage = (
-            str(row[cage_col]) if cage_col and pd.notna(row.get(cage_col)) else None
-        )
+        duns = str(row[duns_col]) if duns_col and pd.notna(row.get(duns_col)) else None
+        cage = str(row[cage_col]) if cage_col and pd.notna(row.get(cage_col)) else None
         contract = (
-            str(row[contract_col])
-            if contract_col and pd.notna(row.get(contract_col))
-            else None
+            str(row[contract_col]) if contract_col and pd.notna(row.get(contract_col)) else None
         )
 
         # Load existing freshness record
@@ -259,7 +248,7 @@ def usaspending_refresh_batch(
             logger.error(f"Failed to refresh award {award_id}: {e}")
             stats["failed"] += 1
             stats["errors"].append(f"{award_id}: {str(e)}")
-            
+
             # Record API error
             metrics_collector.record_api_call(source, error=True)
 
@@ -302,13 +291,12 @@ def stale_awards_threshold_check(
     stale_usaspending_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that stale awards count is within acceptable threshold."""
-    config = get_config()
+    get_config()
     # You could add a threshold to config if needed
     stale_count = len(stale_usaspending_awards)
 
     # For now, just warn if more than 50% are stale
     # This threshold could be configurable
-    threshold_percent = 0.50
 
     # We'd need total awards count for percentage, but for now just check count
     if stale_count > 1000:  # Arbitrary threshold
@@ -329,4 +317,3 @@ def stale_awards_threshold_check(
             "stale_count": stale_count,
         },
     )
-

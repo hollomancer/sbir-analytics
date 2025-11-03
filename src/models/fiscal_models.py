@@ -16,16 +16,28 @@ class EconomicShock(BaseModel):
     fiscal_year: int = Field(..., description="Government fiscal year")
 
     # Economic impact data
-    shock_amount: Decimal = Field(..., description="Total SBIR spending amount (inflation-adjusted)")
-    award_ids: list[str] = Field(..., description="List of SBIR award IDs contributing to this shock")
+    shock_amount: Decimal = Field(
+        ..., description="Total SBIR spending amount (inflation-adjusted)"
+    )
+    award_ids: list[str] = Field(
+        ..., description="List of SBIR award IDs contributing to this shock"
+    )
 
     # Quality and confidence metrics
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for this aggregation")
-    naics_coverage_rate: float = Field(..., ge=0.0, le=1.0, description="Percentage of awards with NAICS codes")
-    geographic_resolution_rate: float = Field(..., ge=0.0, le=1.0, description="Percentage of awards with resolved geography")
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence score for this aggregation"
+    )
+    naics_coverage_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="Percentage of awards with NAICS codes"
+    )
+    geographic_resolution_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="Percentage of awards with resolved geography"
+    )
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.now, description="When this shock was computed")
+    created_at: datetime = Field(
+        default_factory=datetime.now, description="When this shock was computed"
+    )
     base_year: int = Field(..., description="Base year for inflation adjustment")
 
     model_config = ConfigDict(
@@ -69,7 +81,9 @@ class TaxImpactEstimate(BaseModel):
 
     # Tax receipt estimates by category
     individual_income_tax: Decimal = Field(..., description="Individual income tax receipts")
-    payroll_tax: Decimal = Field(..., description="Payroll tax receipts (Social Security + Medicare)")
+    payroll_tax: Decimal = Field(
+        ..., description="Payroll tax receipts (Social Security + Medicare)"
+    )
     corporate_income_tax: Decimal = Field(..., description="Corporate income tax receipts")
     excise_tax: Decimal = Field(..., description="Excise tax receipts")
     total_tax_receipt: Decimal = Field(..., description="Total federal tax receipts")
@@ -92,17 +106,27 @@ class TaxImpactEstimate(BaseModel):
     multiplier_version: str = Field(..., description="Version of economic multipliers used")
 
     # Quality flags
-    quality_flags: list[str] = Field(default_factory=list, description="Quality issues or assumptions")
+    quality_flags: list[str] = Field(
+        default_factory=list, description="Quality issues or assumptions"
+    )
 
     # Metadata
-    computed_at: datetime = Field(default_factory=datetime.now, description="When estimate was computed")
+    computed_at: datetime = Field(
+        default_factory=datetime.now, description="When estimate was computed"
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
         json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
     )
 
-    @field_validator("individual_income_tax", "payroll_tax", "corporate_income_tax", "excise_tax", "total_tax_receipt")
+    @field_validator(
+        "individual_income_tax",
+        "payroll_tax",
+        "corporate_income_tax",
+        "excise_tax",
+        "total_tax_receipt",
+    )
     @classmethod
     def validate_tax_amounts(cls, v: Decimal) -> Decimal:
         """Validate tax amounts are non-negative."""
@@ -122,10 +146,10 @@ class TaxImpactEstimate(BaseModel):
     def __post_init__(self):
         """Validate that total tax receipt equals sum of components."""
         computed_total = (
-            self.individual_income_tax +
-            self.payroll_tax +
-            self.corporate_income_tax +
-            self.excise_tax
+            self.individual_income_tax
+            + self.payroll_tax
+            + self.corporate_income_tax
+            + self.excise_tax
         )
         if abs(computed_total - self.total_tax_receipt) > Decimal("0.01"):
             raise ValueError("Total tax receipt must equal sum of individual tax components")
@@ -136,14 +160,20 @@ class FiscalReturnSummary(BaseModel):
 
     # Analysis metadata
     analysis_id: str = Field(..., description="Unique identifier for this analysis")
-    analysis_date: datetime = Field(default_factory=datetime.now, description="When analysis was performed")
+    analysis_date: datetime = Field(
+        default_factory=datetime.now, description="When analysis was performed"
+    )
     base_year: int = Field(..., description="Base year for monetary normalization")
     methodology_version: str = Field(..., description="Version of analysis methodology")
 
     # Investment and returns
-    total_sbir_investment: Decimal = Field(..., description="Total SBIR program investment (inflation-adjusted)")
+    total_sbir_investment: Decimal = Field(
+        ..., description="Total SBIR program investment (inflation-adjusted)"
+    )
     total_tax_receipts: Decimal = Field(..., description="Total federal tax receipts generated")
-    net_fiscal_return: Decimal = Field(..., description="Net return to Treasury (receipts - investment)")
+    net_fiscal_return: Decimal = Field(
+        ..., description="Net return to Treasury (receipts - investment)"
+    )
 
     # ROI metrics
     roi_ratio: float = Field(..., description="Return on investment ratio (receipts / investment)")
@@ -152,44 +182,44 @@ class FiscalReturnSummary(BaseModel):
     benefit_cost_ratio: float = Field(..., description="Benefit-cost ratio")
 
     # Uncertainty quantification
-    confidence_interval_low: Decimal = Field(..., description="Lower bound of 95% confidence interval")
-    confidence_interval_high: Decimal = Field(..., description="Upper bound of 95% confidence interval")
+    confidence_interval_low: Decimal = Field(
+        ..., description="Lower bound of 95% confidence interval"
+    )
+    confidence_interval_high: Decimal = Field(
+        ..., description="Upper bound of 95% confidence interval"
+    )
     confidence_level: float = Field(default=0.95, description="Confidence level for intervals")
 
     # Sensitivity analysis results
     sensitivity_analysis: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Sensitivity analysis results by parameter"
+        default_factory=dict, description="Sensitivity analysis results by parameter"
     )
 
     # Coverage and quality metrics
     coverage_metrics: dict[str, float] = Field(
-        default_factory=dict,
-        description="Data coverage rates (NAICS, geographic, etc.)"
+        default_factory=dict, description="Data coverage rates (NAICS, geographic, etc.)"
     )
 
     # Breakdown by dimensions
     breakdown_by_state: dict[str, Decimal] = Field(
-        default_factory=dict,
-        description="Tax receipts by state"
+        default_factory=dict, description="Tax receipts by state"
     )
     breakdown_by_sector: dict[str, Decimal] = Field(
-        default_factory=dict,
-        description="Tax receipts by BEA sector"
+        default_factory=dict, description="Tax receipts by BEA sector"
     )
     breakdown_by_fiscal_year: dict[int, Decimal] = Field(
-        default_factory=dict,
-        description="Tax receipts by fiscal year"
+        default_factory=dict, description="Tax receipts by fiscal year"
     )
 
     # Analysis parameters used
     analysis_parameters: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Key parameters used in analysis"
+        default_factory=dict, description="Key parameters used in analysis"
     )
 
     # Quality assessment
-    quality_score: float = Field(..., ge=0.0, le=1.0, description="Overall quality score for analysis")
+    quality_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Overall quality score for analysis"
+    )
     quality_flags: list[str] = Field(default_factory=list, description="Quality issues identified")
 
     model_config = ConfigDict(
@@ -249,11 +279,15 @@ class InflationAdjustment(BaseModel):
     inflation_factor: float = Field(..., description="Inflation adjustment factor applied")
 
     # Data source and quality
-    inflation_source: str = Field(..., description="Source of inflation data (e.g., 'BEA_GDP_deflator')")
+    inflation_source: str = Field(
+        ..., description="Source of inflation data (e.g., 'BEA_GDP_deflator')"
+    )
     quality_flag: str | None = Field(None, description="Quality flag if adjustment is estimated")
 
     # Metadata
-    adjusted_at: datetime = Field(default_factory=datetime.now, description="When adjustment was computed")
+    adjusted_at: datetime = Field(
+        default_factory=datetime.now, description="When adjustment was computed"
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -287,16 +321,26 @@ class NAICSMapping(BaseModel):
     bea_sector_name: str = Field(..., description="BEA sector description")
 
     # Mapping details
-    allocation_weight: float = Field(default=1.0, ge=0.0, le=1.0, description="Allocation weight for proportional mapping")
+    allocation_weight: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Allocation weight for proportional mapping"
+    )
     crosswalk_version: str = Field(..., description="Version of NAICS-BEA crosswalk used")
 
     # Data quality
-    naics_source: str = Field(..., description="Source of NAICS code (original, sam_gov, usaspending, etc.)")
-    naics_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in NAICS code accuracy")
-    mapping_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in BEA sector mapping")
+    naics_source: str = Field(
+        ..., description="Source of NAICS code (original, sam_gov, usaspending, etc.)"
+    )
+    naics_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in NAICS code accuracy"
+    )
+    mapping_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in BEA sector mapping"
+    )
 
     # Metadata
-    mapped_at: datetime = Field(default_factory=datetime.now, description="When mapping was performed")
+    mapped_at: datetime = Field(
+        default_factory=datetime.now, description="When mapping was performed"
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -308,7 +352,7 @@ class NAICSMapping(BaseModel):
     def validate_naics_code(cls, v: str) -> str:
         """Validate NAICS code format."""
         # Remove any non-digit characters and validate length
-        digits_only = ''.join(c for c in v if c.isdigit())
+        digits_only = "".join(c for c in v if c.isdigit())
         if len(digits_only) not in [2, 3, 4, 5, 6]:
             raise ValueError("NAICS code must be 2-6 digits")
         return digits_only
@@ -328,14 +372,22 @@ class GeographicResolution(BaseModel):
     resolved_zip: str | None = Field(None, description="Resolved ZIP code")
 
     # Resolution details
-    resolution_method: str = Field(..., description="Method used for resolution (direct, geocoding, fallback)")
-    resolution_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in geographic resolution")
+    resolution_method: str = Field(
+        ..., description="Method used for resolution (direct, geocoding, fallback)"
+    )
+    resolution_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in geographic resolution"
+    )
 
     # Data sources
-    data_sources: list[str] = Field(default_factory=list, description="Data sources used for resolution")
+    data_sources: list[str] = Field(
+        default_factory=list, description="Data sources used for resolution"
+    )
 
     # Metadata
-    resolved_at: datetime = Field(default_factory=datetime.now, description="When resolution was performed")
+    resolved_at: datetime = Field(
+        default_factory=datetime.now, description="When resolution was performed"
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,

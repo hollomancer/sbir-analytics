@@ -1,4 +1,3 @@
-import os
 import importlib.util
 import sys
 from pathlib import Path
@@ -38,8 +37,11 @@ def test_index_and_enrich_roundtrip():
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     # instantiate enricher pointing at existing parquet (use cache_path)
-    cfg = NAICSEnricherConfig(zip_path="data/raw/usaspending/usaspending-db-subset_20251006.zip",
-                              cache_path=str(path), sample_only=True)
+    cfg = NAICSEnricherConfig(
+        zip_path="data/raw/usaspending/usaspending-db-subset_20251006.zip",
+        cache_path=str(path),
+        sample_only=True,
+    )
     enr = NAICSEnricher(cfg)
     enr.load_usaspending_index(force=False)
 

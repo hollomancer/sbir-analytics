@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
 
 import typer
-from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 from ..context import CommandContext
 
@@ -18,7 +16,9 @@ app = typer.Typer(name="metrics", help="Display pipeline performance metrics")
 @app.command()
 def show(
     ctx: typer.Context,
-    start_date: str | None = typer.Option(None, "--start-date", "-s", help="Start date (YYYY-MM-DD)"),
+    start_date: str | None = typer.Option(
+        None, "--start-date", "-s", help="Start date (YYYY-MM-DD)"
+    ),
     end_date: str | None = typer.Option(None, "--end-date", "-e", help="End date (YYYY-MM-DD)"),
     asset_group: str | None = typer.Option(None, "--group", "-g", help="Filter by asset group"),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of records to show"),
@@ -32,7 +32,9 @@ def show(
         end = datetime.fromisoformat(end_date) if end_date else None
 
         if start_date and not start:
-            context.console.print(f"[red]Invalid start date format: {start_date}. Use YYYY-MM-DD[/red]")
+            context.console.print(
+                f"[red]Invalid start date format: {start_date}. Use YYYY-MM-DD[/red]"
+            )
             raise typer.Exit(code=1)
 
         if end_date and not end:
@@ -128,7 +130,9 @@ def latest(ctx: typer.Context) -> None:
             return
 
         # Create metrics display
-        table = Table(title="Latest Pipeline Metrics", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="Latest Pipeline Metrics", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Metric", style="cyan")
         table.add_column("Value", justify="right")
 
@@ -163,7 +167,9 @@ def latest(ctx: typer.Context) -> None:
 @app.command()
 def export(
     ctx: typer.Context,
-    start_date: str | None = typer.Option(None, "--start-date", "-s", help="Start date (YYYY-MM-DD)"),
+    start_date: str | None = typer.Option(
+        None, "--start-date", "-s", help="Start date (YYYY-MM-DD)"
+    ),
     end_date: str | None = typer.Option(None, "--end-date", "-e", help="End date (YYYY-MM-DD)"),
     asset_group: str | None = typer.Option(None, "--group", "-g", help="Filter by asset group"),
     output: str = typer.Option("metrics.json", "--output", "-o", help="Output file path"),
@@ -228,4 +234,3 @@ def export(
 def register_command(main_app: typer.Typer) -> None:
     """Register metrics commands with main app."""
     main_app.add_typer(app, name="metrics")
-

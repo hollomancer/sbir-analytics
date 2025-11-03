@@ -74,14 +74,10 @@ def call_r_function(
         RuntimeError: If rpy2 is not available
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError(
-            "rpy2 is not installed. Install with: poetry install --extras r"
-        )
+        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
 
     if package is None:
-        raise RFunctionError(
-            f"R package not loaded. Cannot call {function_name}."
-        )
+        raise RFunctionError(f"R package not loaded. Cannot call {function_name}.")
 
     try:
         # Get function from package
@@ -188,9 +184,7 @@ def safe_r_eval(r_code: str) -> Any:
         RFunctionError: If evaluation fails
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError(
-            "rpy2 is not installed. Install with: poetry install --extras r"
-        )
+        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
 
     try:
         result = ro.r(r_code)  # type: ignore
@@ -224,4 +218,3 @@ def get_r_package_version(package_name: str) -> str | None:
         return None
 
     return None
-

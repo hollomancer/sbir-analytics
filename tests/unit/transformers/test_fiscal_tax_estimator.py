@@ -118,7 +118,7 @@ class TestFiscalTaxEstimator:
         assert all(result_df["total_tax_receipt"] > 0)
 
         # Check total equals sum of components
-        for idx, row in result_df.iterrows():
+        for _idx, row in result_df.iterrows():
             computed_total = (
                 row["individual_income_tax"]
                 + row["payroll_tax"]
@@ -143,4 +143,3 @@ class TestFiscalTaxEstimator:
         assert stats.total_tax_receipts > 0
         assert stats.num_estimates == 2
         assert stats.avg_effective_rate > 0
-

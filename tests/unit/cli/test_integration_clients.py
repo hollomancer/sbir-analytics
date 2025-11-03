@@ -1,13 +1,13 @@
 """Unit tests for CLI integration clients."""
 
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from src.cli.integration.dagster_client import AssetStatus, DagsterClient, RunResult
-from src.cli.integration.metrics_collector import MetricsCollector, PipelineMetrics
-from src.cli.integration.neo4j_client import Neo4jClient, Neo4jHealthStatus, Neo4jStatistics
+from src.cli.integration.dagster_client import DagsterClient
+from src.cli.integration.metrics_collector import MetricsCollector
+from src.cli.integration.neo4j_client import Neo4jClient
 
 
 class TestDagsterClient:
@@ -196,7 +196,9 @@ class TestNeo4jClient:
         # Mock node count query
         mock_node_result = Mock()
         mock_node_record1 = Mock()
-        mock_node_record1.__getitem__ = Mock(side_effect=lambda k: "Company" if k == "label" else 100)
+        mock_node_record1.__getitem__ = Mock(
+            side_effect=lambda k: "Company" if k == "label" else 100
+        )
         mock_node_record2 = Mock()
         mock_node_record2.__getitem__ = Mock(side_effect=lambda k: "Award" if k == "label" else 50)
         mock_node_result.__iter__ = Mock(return_value=iter([mock_node_record1, mock_node_record2]))
@@ -204,7 +206,9 @@ class TestNeo4jClient:
         # Mock relationship count query
         mock_rel_result = Mock()
         mock_rel_record = Mock()
-        mock_rel_record.__getitem__ = Mock(side_effect=lambda k: "FUNDED" if k == "rel_type" else 150)
+        mock_rel_record.__getitem__ = Mock(
+            side_effect=lambda k: "FUNDED" if k == "rel_type" else 150
+        )
         mock_rel_result.__iter__ = Mock(return_value=iter([mock_rel_record]))
 
         mock_session.run.side_effect = [mock_node_result, mock_rel_result]
@@ -320,4 +324,3 @@ class TestMetricsCollector:
             assert metrics.processing_throughput == 150.0 / 15.0  # 150 records / 15 seconds
             assert metrics.memory_usage_mb == 384.0  # (512 + 256) / 2
             assert metrics.error_count == 1
-

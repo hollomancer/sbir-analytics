@@ -100,10 +100,8 @@ class FreshnessStore:
 
         if not df.empty:
             # Update existing records and append new ones
-            for idx, new_row in new_rows.iterrows():
-                mask = (df["award_id"] == new_row["award_id"]) & (
-                    df["source"] == new_row["source"]
-                )
+            for _idx, new_row in new_rows.iterrows():
+                mask = (df["award_id"] == new_row["award_id"]) & (df["source"] == new_row["source"])
                 if mask.any():
                     df.loc[mask, new_row.index] = new_row.values
                 else:
@@ -127,9 +125,7 @@ class FreshnessStore:
             logger.error(f"Failed to save freshness records: {e}")
             raise
 
-    def get_record(
-        self, award_id: str, source: str
-    ) -> EnrichmentFreshnessRecord | None:
+    def get_record(self, award_id: str, source: str) -> EnrichmentFreshnessRecord | None:
         """Get a specific freshness record.
 
         Args:
@@ -151,9 +147,7 @@ class FreshnessStore:
         model = EnrichmentFreshnessRecordModel(**row.to_dict())
         return model.to_dataclass()
 
-    def get_stale_records(
-        self, source: str, sla_days: int
-    ) -> list[EnrichmentFreshnessRecord]:
+    def get_stale_records(self, source: str, sla_days: int) -> list[EnrichmentFreshnessRecord]:
         """Get all stale records for a source.
 
         Args:
@@ -181,9 +175,7 @@ class FreshnessStore:
             last_success = row.get("last_success_at")
             if pd.isna(last_success):
                 # No successful enrichment yet
-                stale_records.append(
-                    EnrichmentFreshnessRecordModel(**row.to_dict()).to_dataclass()
-                )
+                stale_records.append(EnrichmentFreshnessRecordModel(**row.to_dict()).to_dataclass())
             else:
                 # Check if last success is before cutoff
                 if isinstance(last_success, pd.Timestamp):
@@ -308,7 +300,9 @@ def persist_to_neo4j(
             last_attempt_at=record.last_attempt_at.isoformat(),
             last_success_at=record.last_success_at.isoformat() if record.last_success_at else None,
             payload_hash=record.payload_hash,
-            status=record.status.value if isinstance(record.status, EnrichmentStatus) else record.status,
+            status=record.status.value
+            if isinstance(record.status, EnrichmentStatus)
+            else record.status,
             attempt_count=record.attempt_count,
             success_count=record.success_count,
         )

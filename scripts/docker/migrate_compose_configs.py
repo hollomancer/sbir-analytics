@@ -27,7 +27,12 @@ class ComposeConfigMigrator:
 
     def __init__(self, repo_root: Path | None = None):
         self.repo_root = repo_root or Path(__file__).parent.parent.parent
-        self.backup_dir = self.repo_root / "docker" / "backup" / f"compose-migration-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        self.backup_dir = (
+            self.repo_root
+            / "docker"
+            / "backup"
+            / f"compose-migration-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        )
 
         # Original compose files to be replaced
         self.original_files = [
@@ -36,7 +41,7 @@ class ComposeConfigMigrator:
             "docker/docker-compose.dev.yml",
             "docker/docker-compose.e2e.yml",
             "docker/docker-compose.test.yml",
-            "docker/neo4j.compose.override.yml"
+            "docker/neo4j.compose.override.yml",
         ]
 
         # New consolidated file (now renamed to docker-compose.yml)
@@ -49,7 +54,7 @@ class ComposeConfigMigrator:
             "docker/docker-compose.dev.yml": "dev",
             "docker/docker-compose.e2e.yml": "e2e",
             "docker/docker-compose.test.yml": "ci-test",
-            "docker/neo4j.compose.override.yml": "neo4j-standalone"
+            "docker/neo4j.compose.override.yml": "neo4j-standalone",
         }
 
     def validate_environment(self) -> bool:
@@ -76,10 +81,7 @@ class ComposeConfigMigrator:
         # Check Docker Compose version
         try:
             result = subprocess.run(
-                ["docker", "compose", "version"],
-                capture_output=True,
-                text=True,
-                check=True
+                ["docker", "compose", "version"], capture_output=True, text=True, check=True
             )
             print(f"✅ Docker Compose version: {result.stdout.strip()}")
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -122,11 +124,11 @@ class ComposeConfigMigrator:
                 "backup_date": datetime.now().isoformat(),
                 "backed_up_files": backed_up_files,
                 "migration_version": "1.0",
-                "repo_root": str(self.repo_root)
+                "repo_root": str(self.repo_root),
             }
 
             manifest_path = self.backup_dir / "backup_manifest.json"
-            with open(manifest_path, 'w') as f:
+            with open(manifest_path, "w") as f:
                 json.dump(manifest, f, indent=2)
 
             print(f"✅ Backup completed: {len(backed_up_files)} files backed up")
@@ -148,12 +150,21 @@ class ComposeConfigMigrator:
 
             try:
                 # Test docker compose config validation
-                result = subprocess.run([
-                    "docker", "compose",
-                    "--profile", profile,
-                    "-f", str(self.repo_root / self.consolidated_file),
-                    "config", "--quiet"
-                ], capture_output=True, text=True, cwd=self.repo_root)
+                result = subprocess.run(
+                    [
+                        "docker",
+                        "compose",
+                        "--profile",
+                        profile,
+                        "-f",
+                        str(self.repo_root / self.consolidated_file),
+                        "config",
+                        "--quiet",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    cwd=self.repo_root,
+                )
 
                 if result.returncode == 0:
                     test_results[profile] = {"status": "✅ PASS", "error": None}
@@ -280,34 +291,20 @@ def main():
         description="Migrate Docker Compose configurations to consolidated format"
     )
     parser.add_argument(
-        "--validate",
-        action="store_true",
-        help="Validate environment for migration"
+        "--validate", action="store_true", help="Validate environment for migration"
+    )
+    parser.add_argument("--backup", action="store_true", help="Create backup of original files")
+    parser.add_argument(
+        "--test-profiles", action="store_true", help="Test all profile configurations"
     )
     parser.add_argument(
-        "--backup",
-        action="store_true",
-        help="Create backup of original files"
+        "--migrate", action="store_true", help="Perform migration (dry run by default)"
     )
     parser.add_argument(
-        "--test-profiles",
-        action="store_true",
-        help="Test all profile configurations"
+        "--no-dry-run", action="store_true", help="Actually execute migration commands"
     )
     parser.add_argument(
-        "--migrate",
-        action="store_true",
-        help="Perform migration (dry run by default)"
-    )
-    parser.add_argument(
-        "--no-dry-run",
-        action="store_true",
-        help="Actually execute migration commands"
-    )
-    parser.add_argument(
-        "--usage",
-        action="store_true",
-        help="Show usage examples for new configuration"
+        "--usage", action="store_true", help="Show usage examples for new configuration"
     )
 
     args = parser.parse_args()

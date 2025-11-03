@@ -63,21 +63,11 @@ class EnrichmentFreshnessMetrics:
         self.sla_days = sla_days
 
         # Calculate derived metrics
-        self.coverage_rate = (
-            (within_sla / total_records) if total_records > 0 else 0.0
-        )
-        self.success_rate = (
-            (success_count / attempt_count) if attempt_count > 0 else 0.0
-        )
-        self.staleness_rate = (
-            (stale_count / total_records) if total_records > 0 else 0.0
-        )
-        self.error_rate = (
-            (api_errors / api_calls) if api_calls > 0 else 0.0
-        )
-        self.unchanged_rate = (
-            (unchanged_count / attempt_count) if attempt_count > 0 else 0.0
-        )
+        self.coverage_rate = (within_sla / total_records) if total_records > 0 else 0.0
+        self.success_rate = (success_count / attempt_count) if attempt_count > 0 else 0.0
+        self.staleness_rate = (stale_count / total_records) if total_records > 0 else 0.0
+        self.error_rate = (api_errors / api_calls) if api_calls > 0 else 0.0
+        self.unchanged_rate = (unchanged_count / attempt_count) if attempt_count > 0 else 0.0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary for serialization."""
@@ -238,7 +228,7 @@ class EnrichmentMetricsCollector:
         # Load existing metrics or create new structure
         if self.metrics_file.exists():
             try:
-                with open(self.metrics_file, "r") as f:
+                with open(self.metrics_file) as f:
                     all_metrics = json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load existing metrics: {e}")
@@ -278,4 +268,3 @@ def emit_freshness_metrics(source: str = "usaspending") -> Path:
     """
     collector = EnrichmentMetricsCollector()
     return collector.emit_metrics(source)
-

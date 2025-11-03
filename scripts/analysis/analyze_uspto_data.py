@@ -15,7 +15,7 @@ def analyze_file(filepath: Path) -> dict[str, Any]:
     """Analyze a single Stata file and return summary statistics."""
     print(f"\n{'=' * 60}")
     print(f"Analyzing: {filepath.name}")
-    print('=' * 60)
+    print("=" * 60)
 
     try:
         # Read first chunk to get structure
@@ -27,26 +27,26 @@ def analyze_file(filepath: Path) -> dict[str, Any]:
         estimated_rows = (sample_count + 1) * 1000
 
         info = {
-            'filename': filepath.name,
-            'columns': list(first_chunk.columns),
-            'num_columns': len(first_chunk.columns),
-            'estimated_rows': estimated_rows,
-            'dtypes': first_chunk.dtypes.to_dict(),
-            'sample_data': first_chunk.head(3),
+            "filename": filepath.name,
+            "columns": list(first_chunk.columns),
+            "num_columns": len(first_chunk.columns),
+            "estimated_rows": estimated_rows,
+            "dtypes": first_chunk.dtypes.to_dict(),
+            "sample_data": first_chunk.head(3),
         }
 
         print(f"Columns ({info['num_columns']}): {', '.join(info['columns'][:10])}")
-        if len(info['columns']) > 10:
+        if len(info["columns"]) > 10:
             print(f"  ... and {len(info['columns']) - 10} more")
         print(f"Estimated rows: ~{estimated_rows:,}")
 
         # Check for key linking fields
-        if 'rf_id' in info['columns']:
+        if "rf_id" in info["columns"]:
             print("✓ Contains rf_id (assignment record ID)")
 
         # Show data types
         print("\nKey data types:")
-        for col, dtype in list(info['dtypes'].items())[:5]:
+        for col, dtype in list(info["dtypes"].items())[:5]:
             print(f"  {col}: {dtype}")
 
         # Show sample
@@ -57,23 +57,23 @@ def analyze_file(filepath: Path) -> dict[str, Any]:
 
     except Exception as e:
         print(f"Error analyzing {filepath.name}: {e}")
-        return {'filename': filepath.name, 'error': str(e)}
+        return {"filename": filepath.name, "error": str(e)}
 
 
 def main():
     """Run analysis on all USPTO data files."""
-    data_dir = Path('data/raw/uspto')
+    data_dir = Path("data/raw/uspto")
 
     print("USPTO Patent Assignment Data Analysis")
     print("=" * 60)
 
     # Focus on key relational tables
     key_files = [
-        'assignment.dta',          # Main assignment records
-        'assignee.dta',            # Entities receiving rights
-        'assignor.dta',            # Entities giving up rights
-        'documentid.dta',          # Patent identifiers
-        'assignment_conveyance.dta',  # Conveyance types
+        "assignment.dta",  # Main assignment records
+        "assignee.dta",  # Entities receiving rights
+        "assignor.dta",  # Entities giving up rights
+        "documentid.dta",  # Patent identifiers
+        "assignment_conveyance.dta",  # Conveyance types
     ]
 
     results = {}
@@ -127,5 +127,5 @@ The data models patent ownership transfers over time.
     print("5. Link patents via grant_doc_num to SBIR companies")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

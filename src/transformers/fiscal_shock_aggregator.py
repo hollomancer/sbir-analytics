@@ -327,7 +327,7 @@ class FiscalShockAggregator:
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0.70
 
             # Calculate coverage rates for this shock
-            num_awards = len(data["award_ids"])
+            len(data["award_ids"])
             # For individual shock, use aggregate statistics as proxy
             # (full coverage would require tracking per-shock)
             naics_coverage_rate = naics_coverage / total_awards if total_awards > 0 else 0.0
@@ -350,9 +350,9 @@ class FiscalShockAggregator:
         logger.info(
             f"Aggregated {len(shocks)} shocks from {total_awards} awards",
             extra={
-                "unique_states": len(set(s.state for s in shocks)),
-                "unique_sectors": len(set(s.bea_sector for s in shocks)),
-                "unique_fiscal_years": len(set(s.fiscal_year for s in shocks)),
+                "unique_states": len({s.state for s in shocks}),
+                "unique_sectors": len({s.bea_sector for s in shocks}),
+                "unique_fiscal_years": len({s.fiscal_year for s in shocks}),
             },
         )
 
@@ -442,12 +442,14 @@ class FiscalShockAggregator:
         # Coverage rates (weighted by shock amount)
         total_shock_amount = sum(float(s.shock_amount) for s in shocks)
         if total_shock_amount > 0:
-            weighted_naics_coverage = sum(
-                float(s.shock_amount) * s.naics_coverage_rate for s in shocks
-            ) / total_shock_amount
-            weighted_geo_coverage = sum(
-                float(s.shock_amount) * s.geographic_resolution_rate for s in shocks
-            ) / total_shock_amount
+            weighted_naics_coverage = (
+                sum(float(s.shock_amount) * s.naics_coverage_rate for s in shocks)
+                / total_shock_amount
+            )
+            weighted_geo_coverage = (
+                sum(float(s.shock_amount) * s.geographic_resolution_rate for s in shocks)
+                / total_shock_amount
+            )
         else:
             weighted_naics_coverage = 0.0
             weighted_geo_coverage = 0.0
@@ -455,13 +457,12 @@ class FiscalShockAggregator:
         return ShockAggregationStats(
             total_shocks=len(shocks),
             total_awards_aggregated=total_awards,
-            unique_states=len(set(s.state for s in shocks)),
-            unique_sectors=len(set(s.bea_sector for s in shocks)),
-            unique_fiscal_years=len(set(s.fiscal_year for s in shocks)),
+            unique_states=len({s.state for s in shocks}),
+            unique_sectors=len({s.bea_sector for s in shocks}),
+            unique_fiscal_years=len({s.fiscal_year for s in shocks}),
             total_shock_amount=total_amount,
             avg_confidence=avg_confidence,
             naics_coverage_rate=weighted_naics_coverage,
             geographic_resolution_rate=weighted_geo_coverage,
             awards_per_shock_avg=total_awards / len(shocks) if shocks else 0.0,
         )
-

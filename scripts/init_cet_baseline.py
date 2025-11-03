@@ -246,7 +246,6 @@ def main(argv: list[str] | None = None) -> int:
 
     # Try coverage path (prefer precomputed dashboard)
     coverage_path = Path(args.coverage_path)
-    coverage_data = []
     latest_coverage_rate = None
     latest_year = None
 

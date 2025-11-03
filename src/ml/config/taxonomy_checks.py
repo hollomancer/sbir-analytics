@@ -94,7 +94,7 @@ def pretty_print_checks(checks: dict[str, Any], out=None) -> None:
     # Normalize counts
     try:
         missing_kw_count = (
-            int(missing_kw) if isinstance(missing_kw, (int, float)) else len(missing_kw)
+            int(missing_kw) if isinstance(missing_kw, int | float) else len(missing_kw)
         )
     except Exception:
         missing_kw_count = 0
@@ -102,7 +102,7 @@ def pretty_print_checks(checks: dict[str, Any], out=None) -> None:
     try:
         missing_def_count_val = (
             int(missing_def_count)
-            if isinstance(missing_def_count, (int, float))
+            if isinstance(missing_def_count, int | float)
             else len(missing_def_count)
         )
     except Exception:

@@ -451,8 +451,7 @@ class TransitionDetector:
                 )
 
                 # Yield each detection
-                for detection in detections:
-                    yield detection
+                yield from detections
 
                 if pbar:
                     pbar.update(1)

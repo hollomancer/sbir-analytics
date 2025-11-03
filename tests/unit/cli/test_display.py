@@ -1,6 +1,5 @@
 """Unit tests for CLI display components."""
 
-from unittest.mock import Mock
 
 import pytest
 
@@ -20,7 +19,9 @@ class TestProgressTracker:
     def console(self):
         """Create real console for testing."""
         from io import StringIO
+
         from rich.console import Console
+
         return Console(file=StringIO())
 
     def test_create_progress_tracker(self, console) -> None:
@@ -65,7 +66,9 @@ class TestMetricsDisplay:
     def console(self):
         """Create real console for testing."""
         from io import StringIO
+
         from rich.console import Console
+
         return Console(file=StringIO())
 
     def test_format_threshold_indicator_high(self, console) -> None:
@@ -109,7 +112,9 @@ class TestStatusDisplay:
     def console(self):
         """Create real console for testing."""
         from io import StringIO
+
         from rich.console import Console
+
         return Console(file=StringIO())
 
     def test_get_health_indicator_success(self, console) -> None:
@@ -152,4 +157,3 @@ class TestStatusDisplay:
         panel = create_summary_panel(summary_data, console)
 
         assert panel is not None
-

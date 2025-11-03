@@ -436,7 +436,7 @@ class TestSampleDataset:
         # Test vendor matching across 1000 awards
         from src.transition.features.vendor_resolver import VendorResolver
 
-        resolver = VendorResolver()
+        VendorResolver()
 
         # Should be able to resolve vendors
         uei_sample = awards.iloc[0]["UEI"]

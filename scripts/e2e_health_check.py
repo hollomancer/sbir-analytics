@@ -168,7 +168,7 @@ def main():
     passed = 0
     failed = 0
 
-    for check_name, (success, message) in results.items():
+    for check_name, (success, _message) in results.items():
         status = "✅ PASS" if success else "❌ FAIL"
         print(f"{check_name:20} {status}")
         if success:

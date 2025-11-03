@@ -6,13 +6,12 @@ This module provides the Typer application instance and command registration.
 from __future__ import annotations
 
 import sys
-from typing import Any
 
 import typer
-from rich.console import Console
 from loguru import logger
+from rich.console import Console
 
-from .display.errors import CLIError, handle_error
+from .display.errors import handle_error
 
 # Initialize Typer app
 app = typer.Typer(
@@ -85,4 +84,3 @@ dashboard.register_command(app)
 
 if __name__ == "__main__":
     app()
-

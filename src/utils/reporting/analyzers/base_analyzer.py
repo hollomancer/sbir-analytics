@@ -27,7 +27,7 @@ class ModuleAnalyzer(ABC):
 
     def __init__(self, module_name: str, config: dict[str, Any] | None = None):
         """Initialize the analyzer.
-        
+
         Args:
             module_name: Name of the module being analyzed
             config: Optional configuration for the analyzer
@@ -39,10 +39,10 @@ class ModuleAnalyzer(ABC):
     @abstractmethod
     def analyze(self, module_data: dict[str, Any]) -> ModuleReport:
         """Analyze module data and generate a comprehensive report.
-        
+
         Args:
             module_data: Module-specific data to analyze
-            
+
         Returns:
             ModuleReport with analysis results
         """
@@ -51,10 +51,10 @@ class ModuleAnalyzer(ABC):
     @abstractmethod
     def get_key_metrics(self, module_data: dict[str, Any]) -> dict[str, Any]:
         """Extract key metrics from module data.
-        
+
         Args:
             module_data: Module-specific data
-            
+
         Returns:
             Dictionary of key metrics
         """
@@ -63,10 +63,10 @@ class ModuleAnalyzer(ABC):
     @abstractmethod
     def generate_insights(self, module_data: dict[str, Any]) -> list[AnalysisInsight]:
         """Generate automated insights and recommendations.
-        
+
         Args:
             module_data: Module-specific data
-            
+
         Returns:
             List of analysis insights
         """
@@ -74,11 +74,11 @@ class ModuleAnalyzer(ABC):
 
     def calculate_success_rate(self, processed: int, total: int) -> float:
         """Calculate success rate with safe division.
-        
+
         Args:
             processed: Number of successfully processed records
             total: Total number of records
-            
+
         Returns:
             Success rate as a float between 0.0 and 1.0
         """
@@ -86,11 +86,11 @@ class ModuleAnalyzer(ABC):
 
     def calculate_coverage_rate(self, enriched: int, total: int) -> float:
         """Calculate coverage rate with safe division.
-        
+
         Args:
             enriched: Number of enriched records
             total: Total number of records
-            
+
         Returns:
             Coverage rate as a float between 0.0 and 1.0
         """
@@ -98,7 +98,7 @@ class ModuleAnalyzer(ABC):
 
     def add_insight(self, insight: AnalysisInsight) -> None:
         """Add an insight to the analyzer's insight collection.
-        
+
         Args:
             insight: Analysis insight to add
         """
@@ -117,7 +117,7 @@ class ModuleAnalyzer(ABC):
         changes_summary: Any | None = None,
     ) -> ModuleReport:
         """Create a standardized module report.
-        
+
         Args:
             run_id: Pipeline run identifier
             stage: Pipeline stage
@@ -128,7 +128,7 @@ class ModuleAnalyzer(ABC):
             module_metrics: Module-specific metrics
             data_hygiene: Optional data hygiene metrics
             changes_summary: Optional changes summary
-            
+
         Returns:
             ModuleReport instance
         """
@@ -151,14 +151,16 @@ class ModuleAnalyzer(ABC):
             module_metrics=module_metrics,
         )
 
-    def detect_anomalies(self, current_value: float, expected_value: float, threshold: float = 0.2) -> bool:
+    def detect_anomalies(
+        self, current_value: float, expected_value: float, threshold: float = 0.2
+    ) -> bool:
         """Detect if a metric value is anomalous compared to expected value.
-        
+
         Args:
             current_value: Current metric value
             expected_value: Expected or baseline value
             threshold: Threshold for anomaly detection (default 20%)
-            
+
         Returns:
             True if anomaly detected
         """
@@ -170,10 +172,10 @@ class ModuleAnalyzer(ABC):
 
     def categorize_confidence(self, confidence: float) -> str:
         """Categorize confidence score into human-readable levels.
-        
+
         Args:
             confidence: Confidence score between 0.0 and 1.0
-            
+
         Returns:
             Confidence category string
         """

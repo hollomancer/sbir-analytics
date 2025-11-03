@@ -24,4 +24,3 @@ usaspending_iterative_enrichment_job = define_asset_job(
         }
     },
 )
-

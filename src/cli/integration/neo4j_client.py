@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from neo4j import GraphDatabase
-from rich.console import Console
 from loguru import logger
+from rich.console import Console
 
-from src.config.schemas import Neo4jConfig, PipelineConfig
+from neo4j import GraphDatabase
+from src.config.schemas import PipelineConfig
 
 
 @dataclass
@@ -82,7 +82,9 @@ class Neo4jClient:
 
                 if record and record["test"] == 1:
                     # Try to get version
-                    version_result = session.run("CALL dbms.components() YIELD name, versions RETURN versions[0] as version")
+                    version_result = session.run(
+                        "CALL dbms.components() YIELD name, versions RETURN versions[0] as version"
+                    )
                     version_record = version_result.single()
                     version = version_record["version"] if version_record else None
 
@@ -121,7 +123,9 @@ class Neo4jClient:
                 ORDER BY count DESC
                 """
                 node_result = session.run(node_query)
-                node_counts = {record["label"]: record["count"] for record in node_result if record["label"]}
+                node_counts = {
+                    record["label"]: record["count"] for record in node_result if record["label"]
+                }
 
                 # Get relationship counts by type
                 rel_query = """
@@ -148,7 +152,9 @@ class Neo4jClient:
             logger.warning(f"Failed to get Neo4j statistics: {e}")
             return None
 
-    def execute_query(self, query: str, parameters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def execute_query(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Execute a read-only Cypher query.
 
         Args:
@@ -176,4 +182,3 @@ class Neo4jClient:
         except Exception as e:
             logger.error(f"Query execution failed: {e}")
             raise
-

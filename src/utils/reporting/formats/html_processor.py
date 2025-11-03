@@ -34,10 +34,7 @@ class HtmlReportProcessor(BaseReportProcessor):
         super().__init__(format_type)
 
     def generate(
-        self,
-        pipeline_metrics: PipelineMetrics,
-        output_dir: Path,
-        **kwargs: Any
+        self, pipeline_metrics: PipelineMetrics, output_dir: Path, **kwargs: Any
     ) -> ReportArtifact:
         """Generate HTML report with visualizations.
 
@@ -153,7 +150,7 @@ class HtmlReportProcessor(BaseReportProcessor):
                     y=[0, peak_memory],
                     mode="lines+markers",
                     name="Memory Usage (MB)",
-                    line=dict(color="red"),
+                    line={"color": "red"},
                     hovertemplate="Time: %{x:.1f}s<br>Memory: %{y:.1f} MB<extra></extra>",
                 ),
                 row=2,
@@ -166,7 +163,7 @@ class HtmlReportProcessor(BaseReportProcessor):
                 "text": f"Pipeline Statistical Report - {pipeline_metrics.run_id}",
                 "x": 0.5,
                 "xanchor": "center",
-                "font": {"size": 20}
+                "font": {"size": 20},
             },
             height=900,
             showlegend=True,
@@ -182,7 +179,7 @@ class HtmlReportProcessor(BaseReportProcessor):
                 "displayModeBar": True,
                 "displaylogo": False,
                 "modeBarButtonsToRemove": ["pan2d", "lasso2d"],
-            }
+            },
         )
 
         # Add custom styling and metadata section
@@ -318,8 +315,10 @@ class HtmlReportProcessor(BaseReportProcessor):
 
         for module_name, module in pipeline_metrics.module_metrics.items():
             success_class = (
-                "status-good" if module.success_rate >= 0.95
-                else "status-warning" if module.success_rate >= 0.85
+                "status-good"
+                if module.success_rate >= 0.95
+                else "status-warning"
+                if module.success_rate >= 0.85
                 else "status-error"
             )
             html += f"""
@@ -350,14 +349,14 @@ class HtmlReportProcessor(BaseReportProcessor):
     def _enhance_plotly_html(self, plotly_html: str, pipeline_metrics: PipelineMetrics) -> str:
         """Enhance Plotly HTML with additional metadata and styling."""
         # Extract the body content from Plotly HTML
-        body_start = plotly_html.find('<body>')
-        body_end = plotly_html.find('</body>')
+        body_start = plotly_html.find("<body>")
+        body_end = plotly_html.find("</body>")
 
         if body_start == -1 or body_end == -1:
             return plotly_html
 
         # Get the existing body content
-        body_content = plotly_html[body_start + 6:body_end]
+        body_content = plotly_html[body_start + 6 : body_end]
 
         # Create enhanced body with metadata section
         enhanced_body = f"""
@@ -377,7 +376,7 @@ class HtmlReportProcessor(BaseReportProcessor):
         """
 
         # Replace the body content
-        enhanced_html = plotly_html[:body_start + 6] + enhanced_body + plotly_html[body_end:]
+        enhanced_html = plotly_html[: body_start + 6] + enhanced_body + plotly_html[body_end:]
 
         return enhanced_html
 

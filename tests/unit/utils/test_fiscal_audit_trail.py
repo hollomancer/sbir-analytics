@@ -1,8 +1,6 @@
 """Unit tests for fiscal audit trail."""
 
 import json
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -81,7 +79,9 @@ class TestFiscalAuditTrail:
         )
 
         assert "inflation_adjustment" in audit_trail.audit_log["quality_metrics"]
-        assert audit_trail.audit_log["quality_metrics"]["inflation_adjustment"]["success_rate"] == 0.98
+        assert (
+            audit_trail.audit_log["quality_metrics"]["inflation_adjustment"]["success_rate"] == 0.98
+        )
 
     def test_finalize_audit_log(self, audit_trail):
         """Test audit log finalization."""
@@ -131,4 +131,3 @@ def test_create_audit_trail():
     assert trail.analysis_id == "factory_test"
     assert "configuration" in trail.audit_log
     assert len(trail.audit_log["configuration"]) > 0  # Should have logged config
-

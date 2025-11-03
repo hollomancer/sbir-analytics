@@ -21,7 +21,9 @@ def test_map_missing():
 
 
 def test_map_bea_excel():
-    m = NAICSToBEAMapper(bea_excel_path="data/reference/BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx")
+    m = NAICSToBEAMapper(
+        bea_excel_path="data/reference/BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx"
+    )
     # Example: NAICS code '334510' should map to one or more BEA codes in the spreadsheet
     result = m.map_code("334510", vintage="bea")
     assert isinstance(result, list)

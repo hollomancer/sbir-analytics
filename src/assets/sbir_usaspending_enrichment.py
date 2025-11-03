@@ -18,7 +18,6 @@ from loguru import logger
 from ..config.loader import get_config
 from ..enrichers.chunked_enrichment import ChunkedEnricher
 from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
-from ..models.quality import ModuleReport
 from ..utils.performance_monitor import performance_monitor
 from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
@@ -142,8 +141,12 @@ def enriched_sbir_awards(
     context.log.info(
         "SBIR enrichment analysis complete",
         extra={
-            "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-            "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+            "insights_generated": len(analysis_report.insights)
+            if hasattr(analysis_report, "insights")
+            else 0,
+            "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
+            if analysis_report.data_hygiene
+            else None,
         },
     )
 
@@ -182,8 +185,12 @@ def enriched_sbir_awards(
         "processing_mode": "chunked" if use_chunked else "standard",
         "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
         # Statistical analysis results
-        "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-        "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
+        "analysis_insights_count": len(analysis_report.insights)
+        if hasattr(analysis_report, "insights")
+        else 0,
+        "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3)
+        if analysis_report.data_hygiene
+        else None,
         "analysis_success_rate": round(analysis_report.success_rate, 3),
         "analysis_throughput": round(analysis_report.throughput_records_per_second, 2),
     }
@@ -252,7 +259,9 @@ def _enrich_chunked(
         # Process chunks with progress logging to Dagster UI
         enriched_chunks = []
         all_metrics = []
-        for chunk_num, (enriched_chunk, chunk_metrics) in enumerate(enricher.process_all_chunks(), 1):
+        for _chunk_num, (enriched_chunk, chunk_metrics) in enumerate(
+            enricher.process_all_chunks(), 1
+        ):
             enriched_chunks.append(enriched_chunk)
             all_metrics.append(chunk_metrics)
             # Log progress to Dagster UI after each chunk
@@ -268,19 +277,21 @@ def _enrich_chunked(
                     "total_records": progress.total_records,
                     "chunks_processed": progress.chunks_processed,
                     "total_chunks": progress.total_chunks,
-                    "estimated_remaining_minutes": round(progress.estimated_remaining_seconds / 60, 1),
+                    "estimated_remaining_minutes": round(
+                        progress.estimated_remaining_seconds / 60, 1
+                    ),
                 },
             )
 
         # Combine chunks and aggregate metrics
         enriched_df = pd.concat(enriched_chunks, ignore_index=True)
-        
+
         # Aggregate final metrics
         total_duration = sum(m.get("duration_seconds", 0) for m in all_metrics)
         total_matched = sum(m.get("records_matched", 0) for m in all_metrics)
         total_records = len(enriched_df)
         overall_match_rate = total_matched / total_records if total_records > 0 else 0
-        
+
         metrics = {
             "total_records": total_records,
             "total_chunks": len(all_metrics),

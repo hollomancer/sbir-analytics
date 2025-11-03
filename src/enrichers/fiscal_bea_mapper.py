@@ -71,10 +71,14 @@ class NAICSToBEAMapper:
         # Load crosswalk from config if not specified
         if crosswalk_path is None:
             naics_config = getattr(self.config, "naics_to_bea", {})
-            crosswalk_path = naics_config.get("crosswalk_path", "data/reference/bea/naics_to_bea_crosswalk_2017.csv")
+            crosswalk_path = naics_config.get(
+                "crosswalk_path", "data/reference/bea/naics_to_bea_crosswalk_2017.csv"
+            )
         if fallback_config_path is None:
             naics_config = getattr(self.config, "naics_to_bea", {})
-            fallback_config_path = naics_config.get("fallback_path", "config/fiscal/naics_bea_mappings.yaml")
+            fallback_config_path = naics_config.get(
+                "fallback_path", "config/fiscal/naics_bea_mappings.yaml"
+            )
 
         self.crosswalk_path = Path(crosswalk_path)
         self.fallback_config_path = Path(fallback_config_path)
@@ -99,13 +103,19 @@ class NAICSToBEAMapper:
             try:
                 self.crosswalk_df = pd.read_csv(self.crosswalk_path)
                 # Normalize NAICS codes (remove leading zeros, ensure string)
-                self.crosswalk_df["naics_code"] = self.crosswalk_df["naics_code"].astype(str).str.zfill(6)
-                logger.info(f"Loaded BEA crosswalk: {len(self.crosswalk_df)} mappings from {self.crosswalk_path}")
+                self.crosswalk_df["naics_code"] = (
+                    self.crosswalk_df["naics_code"].astype(str).str.zfill(6)
+                )
+                logger.info(
+                    f"Loaded BEA crosswalk: {len(self.crosswalk_df)} mappings from {self.crosswalk_path}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to load BEA crosswalk from {self.crosswalk_path}: {e}")
                 self.crosswalk_df = pd.DataFrame()
         else:
-            logger.warning(f"BEA crosswalk not found at {self.crosswalk_path}, using fallbacks only")
+            logger.warning(
+                f"BEA crosswalk not found at {self.crosswalk_path}, using fallbacks only"
+            )
             self.crosswalk_df = pd.DataFrame()
 
         # Load fallback configuration
@@ -115,7 +125,9 @@ class NAICSToBEAMapper:
                     self.fallback_config = yaml.safe_load(f) or {}
                 logger.info(f"Loaded fallback mappings from {self.fallback_config_path}")
             except Exception as e:
-                logger.warning(f"Failed to load fallback config from {self.fallback_config_path}: {e}")
+                logger.warning(
+                    f"Failed to load fallback config from {self.fallback_config_path}: {e}"
+                )
                 self.fallback_config = {}
 
     def _load_configuration(self) -> None:
@@ -201,7 +213,9 @@ class NAICSToBEAMapper:
                             bea_sector_code=row["bea_sector_code"],
                             bea_sector_name=row.get("bea_sector_name", ""),
                             allocation_weight=float(row.get("allocation_weight", 1.0)),
-                            confidence=max(0.50, float(row.get("confidence", 0.90)) - confidence_discount),
+                            confidence=max(
+                                0.50, float(row.get("confidence", 0.90)) - confidence_discount
+                            ),
                             source=f"hierarchical_{level}digit",
                             crosswalk_version=self.crosswalk_version,
                             mapped_at=datetime.now(),
@@ -354,7 +368,7 @@ class NAICSToBEAMapper:
         """
         enriched_rows = []
 
-        for idx, row in awards_df.iterrows():
+        for _idx, row in awards_df.iterrows():
             naics_code = row.get(naics_column)
 
             # Map to BEA sectors
@@ -373,7 +387,9 @@ class NAICSToBEAMapper:
         enriched_df = pd.DataFrame(enriched_rows)
         return enriched_df
 
-    def get_mapping_statistics(self, awards_df: pd.DataFrame, naics_column: str = "fiscal_naics_code") -> BEAMappingStatistics:
+    def get_mapping_statistics(
+        self, awards_df: pd.DataFrame, naics_column: str = "fiscal_naics_code"
+    ) -> BEAMappingStatistics:
         """Calculate mapping statistics for a set of awards.
 
         Args:
@@ -426,7 +442,9 @@ class NAICSToBEAMapper:
         )
 
 
-def enrich_awards_with_bea_sectors(awards_df: pd.DataFrame, mapper: NAICSToBEAMapper | None = None) -> tuple[pd.DataFrame, BEAMappingStatistics]:
+def enrich_awards_with_bea_sectors(
+    awards_df: pd.DataFrame, mapper: NAICSToBEAMapper | None = None
+) -> tuple[pd.DataFrame, BEAMappingStatistics]:
     """Helper function to enrich awards with BEA sectors.
 
     Args:
@@ -443,8 +461,3 @@ def enrich_awards_with_bea_sectors(awards_df: pd.DataFrame, mapper: NAICSToBEAMa
     stats = mapper.get_mapping_statistics(awards_df)
 
     return enriched_df, stats
-
-
-
-
-

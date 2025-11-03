@@ -8,14 +8,12 @@ import time
 from typing import Any
 
 import typer
-from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
 from ..context import CommandContext
-from ..display.metrics import create_metrics_table
 from ..display.status import create_asset_status_table, get_health_indicator
 
 app = typer.Typer(name="dashboard", help="Interactive real-time monitoring dashboard")
@@ -79,17 +77,19 @@ def update_dashboard(context: CommandContext, layout: Layout) -> None:
             assets_with_status = []
             for asset in assets_list[:10]:  # Limit to 10 for display
                 status = context.dagster_client.get_asset_status(asset["key"])
-                assets_with_status.append({
-                    "key": asset["key"],
-                    "group": asset.get("group", "-"),
-                    "status": status.status,
-                    "last_run": (
-                        status.last_run.strftime("%Y-%m-%d %H:%M")
-                        if status.last_run
-                        else "Never"
-                    ),
-                    "records_processed": status.records_processed,
-                })
+                assets_with_status.append(
+                    {
+                        "key": asset["key"],
+                        "group": asset.get("group", "-"),
+                        "status": status.status,
+                        "last_run": (
+                            status.last_run.strftime("%Y-%m-%d %H:%M")
+                            if status.last_run
+                            else "Never"
+                        ),
+                        "records_processed": status.records_processed,
+                    }
+                )
 
             assets_table = create_asset_status_table(assets_with_status, context.console, "Assets")
             layout["assets"].update(assets_table)
@@ -103,19 +103,27 @@ def update_dashboard(context: CommandContext, layout: Layout) -> None:
             if metrics:
                 metrics_text = Text()
                 metrics_text.append("Success Rate: ", style="cyan")
-                metrics_text.append(f"{metrics.enrichment_success_rate * 100:.1f}%\n", style="white")
+                metrics_text.append(
+                    f"{metrics.enrichment_success_rate * 100:.1f}%\n", style="white"
+                )
                 metrics_text.append("Throughput: ", style="cyan")
-                metrics_text.append(f"{metrics.processing_throughput:.1f} records/s\n", style="white")
+                metrics_text.append(
+                    f"{metrics.processing_throughput:.1f} records/s\n", style="white"
+                )
                 metrics_text.append("Memory: ", style="cyan")
                 metrics_text.append(f"{metrics.memory_usage_mb:.1f} MB\n", style="white")
                 metrics_text.append("Errors: ", style="cyan")
-                metrics_text.append(str(metrics.error_count), style="red" if metrics.error_count > 0 else "white")
+                metrics_text.append(
+                    str(metrics.error_count), style="red" if metrics.error_count > 0 else "white"
+                )
                 layout["metrics"].update(Panel(metrics_text, title="Metrics", border_style="blue"))
             else:
                 layout["metrics"].update(Panel("[dim]No metrics available[/dim]", title="Metrics"))
 
         except Exception as e:
-            layout["metrics"].update(Panel(f"[red]Error loading metrics: {e}[/red]", title="Metrics"))
+            layout["metrics"].update(
+                Panel(f"[red]Error loading metrics: {e}[/red]", title="Metrics")
+            )
 
         # Status panel
         try:
@@ -134,7 +142,9 @@ def update_dashboard(context: CommandContext, layout: Layout) -> None:
             layout["status"].update(Panel(status_text, title="System Status", border_style="blue"))
 
         except Exception as e:
-            layout["status"].update(Panel(f"[red]Error checking status: {e}[/red]", title="System Status"))
+            layout["status"].update(
+                Panel(f"[red]Error checking status: {e}[/red]", title="System Status")
+            )
 
         # Info panel
         info_text = Text()
@@ -205,4 +215,3 @@ def start(
 def register_command(main_app: typer.Typer) -> None:
     """Register dashboard commands with main app."""
     main_app.add_typer(app, name="dashboard")
-

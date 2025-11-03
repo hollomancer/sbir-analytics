@@ -1,6 +1,5 @@
-import os
-import sys
 import json
+import sys
 from pathlib import Path
 
 # ensure workspace root is on sys.path so `src` can be imported when running as a script
@@ -14,6 +13,7 @@ naics_path = ROOT / "src" / "enrichers" / "naics_enricher.py"
 spec = importlib.util.spec_from_file_location("naics_enricher_mod", str(naics_path))
 naics_mod = importlib.util.module_from_spec(spec)
 import sys
+
 sys.modules[spec.name] = naics_mod
 spec.loader.exec_module(naics_mod)
 
@@ -42,8 +42,9 @@ def main():
     enr = NAICSEnricher(cfg)
     # pandas parquet requires pyarrow/fastparquet; if not available, monkeypatch to write JSON fallback
     try:
-        import pyarrow  # type: ignore
+        pass  # type: ignore
     except Exception:
+
         def _df_to_parquet(self, path, index=False, **kwargs):
             path = str(path)
             alt = path + ".json"

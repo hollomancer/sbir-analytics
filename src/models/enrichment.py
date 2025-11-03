@@ -28,7 +28,7 @@ class EnrichmentStatus(str, Enum):
 @dataclass
 class EnrichmentFreshnessRecord:
     """Record tracking freshness metadata for a single award-source pair.
-    
+
     Tracks when enrichment was last attempted, last succeeded, payload changes,
     and current status to support iterative refresh workflows.
     """
@@ -46,37 +46,37 @@ class EnrichmentFreshnessRecord:
 
     def is_stale(self, sla_days: int) -> bool:
         """Check if this record is stale based on SLA.
-        
+
         Args:
             sla_days: Maximum allowed age in days
-            
+
         Returns:
             True if record exceeds SLA staleness threshold
         """
         if self.last_success_at is None:
             return True
-        
+
         age_days = (datetime.now() - self.last_success_at).total_seconds() / 86400
         return age_days > sla_days
 
     def has_delta(self, new_payload_hash: str) -> bool:
         """Check if new payload differs from stored hash.
-        
+
         Args:
             new_payload_hash: Hash of new API response
-            
+
         Returns:
             True if payload has changed
         """
         if self.payload_hash is None:
             return True  # No previous hash means we consider it a delta
-        
+
         return self.payload_hash != new_payload_hash
 
 
 class EnrichmentFreshnessRecordModel(BaseModel):
     """Pydantic model for EnrichmentFreshnessRecord serialization.
-    
+
     Used for JSON/Parquet persistence and validation.
     """
 
@@ -115,7 +115,9 @@ class EnrichmentFreshnessRecordModel(BaseModel):
             last_attempt_at=record.last_attempt_at,
             last_success_at=record.last_success_at,
             payload_hash=record.payload_hash,
-            status=record.status.value if isinstance(record.status, EnrichmentStatus) else record.status,
+            status=record.status.value
+            if isinstance(record.status, EnrichmentStatus)
+            else record.status,
             error_message=record.error_message,
             metadata=record.metadata,
             attempt_count=record.attempt_count,
@@ -140,7 +142,7 @@ class EnrichmentFreshnessRecordModel(BaseModel):
 
 class EnrichmentDeltaEvent(BaseModel):
     """Event emitted when enrichment payload changes.
-    
+
     Used to notify downstream consumers of enrichment updates.
     """
 
@@ -152,9 +154,7 @@ class EnrichmentDeltaEvent(BaseModel):
     changed_fields: list[str] = Field(
         default_factory=list, description="List of fields that changed"
     )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Additional delta metadata"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional delta metadata")
 
     model_config = ConfigDict(
         validate_assignment=True,

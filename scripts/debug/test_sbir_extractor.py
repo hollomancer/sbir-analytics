@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Quick test script for SBIR DuckDB extractor."""
 
-
 from src.extractors.sbir import SbirDuckDBExtractor
 
 print("=" * 70)

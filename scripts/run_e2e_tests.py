@@ -145,10 +145,12 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
     ]
 
     if _is_pytest_timeout_available():
-        pytest_args.extend([
-            f"--timeout={timeout}",
-            "--timeout-method=thread",
-        ])
+        pytest_args.extend(
+            [
+                f"--timeout={timeout}",
+                "--timeout-method=thread",
+            ]
+        )
     else:
         print(
             "⚠️  pytest-timeout plugin not found; skipping --timeout flags. "
@@ -161,11 +163,13 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
 
     # Add coverage if not in minimal mode
     if scenario != "minimal":
-        pytest_args.extend([
-            "--cov=src",
-            "--cov-report=term-missing",
-            "--cov-report=html:/app/artifacts/htmlcov",
-        ])
+        pytest_args.extend(
+            [
+                "--cov=src",
+                "--cov-report=term-missing",
+                "--cov-report=html:/app/artifacts/htmlcov",
+            ]
+        )
 
     print(f"Running: {' '.join(pytest_args)}")
     print()
@@ -175,6 +179,7 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
 
     # Run tests
     import subprocess
+
     try:
         result = subprocess.run(pytest_args, env=env, timeout=timeout)
         exit_code = result.returncode
@@ -222,21 +227,21 @@ Examples:
   python scripts/run_e2e_tests.py
   python scripts/run_e2e_tests.py --scenario minimal
   python scripts/run_e2e_tests.py --scenario large --timeout 900
-        """
+        """,
     )
 
     parser.add_argument(
         "--scenario",
         choices=["minimal", "standard", "large", "edge-cases"],
         default=os.getenv("E2E_TEST_SCENARIO", "standard"),
-        help="Test scenario to run (default: standard)"
+        help="Test scenario to run (default: standard)",
     )
 
     parser.add_argument(
         "--timeout",
         type=int,
         default=int(os.getenv("E2E_TEST_TIMEOUT", "600")),
-        help="Test timeout in seconds (default: 600)"
+        help="Test timeout in seconds (default: 600)",
     )
 
     args = parser.parse_args()

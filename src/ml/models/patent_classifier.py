@@ -85,9 +85,7 @@ class PatentFeatureExtractor:
         self.keywords_map = keywords_map
         self.stopwords = stopwords
 
-    def features_for_dataframe(
-        self, df, title_col: str = "title", assignee_col: str | None = None
-    ):
+    def features_for_dataframe(self, df, title_col: str = "title", assignee_col: str | None = None):
         """
         Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
           - texts: List[str] suitable to pass to classifier pipelines (combined normalized title + assignee hint)

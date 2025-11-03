@@ -10,12 +10,15 @@ To restore this module:
 2. Uncomment the imports below
 3. Remove the pytestmark skip decorator
 """
+
 from pathlib import Path
 
 import pytest
 
 # Skip entire module - vectorizers have been removed/refactored
-pytestmark = pytest.mark.skip(reason="Vectorizers module is empty - functionality removed/refactored")
+pytestmark = pytest.mark.skip(
+    reason="Vectorizers module is empty - functionality removed/refactored"
+)
 
 pd = pytest.importorskip("pandas")
 np = pytest.importorskip("numpy")
@@ -225,7 +228,7 @@ def test_evaluate_patent_classifier_precision_recall(tmp_path: Path):
     assert metrics.get("recall_at_1", 0.0) >= 0.0
 
     # Also directly exercise precision_recall_at_k with handcrafted predictions
-    y_true = [set(["artificial_intelligence"]), set(["quantum_information_science"])]
+    y_true = [{"artificial_intelligence"}, {"quantum_information_science"}]
     preds = [
         [  # correct top-1
             type("PC", (), {"cet_id": "artificial_intelligence", "score": 0.9}),

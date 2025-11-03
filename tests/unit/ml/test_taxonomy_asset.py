@@ -156,7 +156,7 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(cet_assets, "DEFAULT_OUTPUT_PATH", temp_output)
 
     # Run the asset function. The decorated asset is a normal function that returns a dagster.Output
-    result = cet_assets.cet_taxonomy()
+    cet_assets.cet_taxonomy()
 
     # The asset returns a dagster Output containing a string path as value (per implementation)
     # We expect the file (or a fallback) to have been written at temp_output

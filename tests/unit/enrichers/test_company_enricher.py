@@ -19,7 +19,11 @@ def test_enrich_exact_uei_match():
     # Company dataset with UEI present
     companies = pd.DataFrame(
         [
-            {"company": "Acme Innovations", "UEI": "A1B2C3D4E5F6", "industry": "Aerospace"},  # pragma: allowlist secret
+            {
+                "company": "Acme Innovations",
+                "UEI": "A1B2C3D4E5F6",
+                "industry": "Aerospace",
+            },  # pragma: allowlist secret
         ]
     )
     # Award row referencing the same UEI

@@ -19,7 +19,7 @@ def format_threshold_indicator(value: float, thresholds: dict[str, float]) -> Te
     Returns:
         Rich Text with colored indicator
     """
-    low = thresholds.get("low", 0.0)
+    thresholds.get("low", 0.0)
     medium = thresholds.get("medium", 0.5)
     high = thresholds.get("high", 1.0)
 
@@ -100,4 +100,3 @@ def create_metrics_table(
         table.add_row(*row_data)
 
     return table
-

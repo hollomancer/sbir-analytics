@@ -121,8 +121,10 @@ class TransitionSignals(BaseModel):
         """Validate text similarity score is within valid range."""
         if v is None:
             return v
-        if not isinstance(v, (int, float)):
-            raise ValueError(f"text_similarity_score must be a numeric value, got {type(v).__name__}: {v}")
+        if not isinstance(v, int | float):
+            raise ValueError(
+                f"text_similarity_score must be a numeric value, got {type(v).__name__}: {v}"
+            )
         if not (0.0 <= v <= 1.0):
             raise ValueError(f"text_similarity_score must be between 0.0 and 1.0, got: {v}")
         return float(v)
@@ -156,7 +158,7 @@ class EvidenceBundle(BaseModel):
 
     def add_item(self, item: EvidenceItem) -> None:
         """Add an evidence item to the bundle.
-        
+
         Args:
             item: The evidence item to add to the bundle.
         """
@@ -164,7 +166,7 @@ class EvidenceBundle(BaseModel):
 
     def total_score(self) -> float:
         """Calculate the aggregate score for all evidence items.
-        
+
         Returns:
             The mean score of all items with non-None scores, or 0.0 if no scores available.
         """
@@ -203,9 +205,7 @@ class FederalContract(BaseModel):
     contract_id: str = Field(..., description="Contract identifier (e.g., PIID).")
     agency: str | None = Field(None, description="Agency code or name (e.g., 'DOD', 'NASA').")
     sub_agency: str | None = Field(None, description="Sub-agency or office.")
-    vendor_name: str | None = Field(
-        None, description="Vendor name string as present on contract."
-    )
+    vendor_name: str | None = Field(None, description="Vendor name string as present on contract.")
     vendor_uei: str | None = Field(None, description="Vendor UEI if available.")
     vendor_cage: str | None = Field(None, description="Vendor CAGE code if available.")
     vendor_duns: str | None = Field(None, description="Vendor DUNS if available (legacy).")
@@ -245,7 +245,7 @@ class FederalContract(BaseModel):
         """Parse and validate date fields from various input formats."""
         if v is None:
             return None
-        if isinstance(v, (date, datetime)):
+        if isinstance(v, date | datetime):
             return v.date() if isinstance(v, datetime) else v
         # attempt ISO parse
         try:
@@ -344,7 +344,7 @@ class TransitionProfile(BaseModel):
     @property
     def to_summary(self) -> dict[str, str | int | float | None]:
         """Generate a summary dictionary of the transition profile.
-        
+
         Returns:
             Dictionary containing key metrics for the company's transition profile.
         """

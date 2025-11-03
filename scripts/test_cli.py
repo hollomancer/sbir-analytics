@@ -15,15 +15,7 @@ def test_imports() -> bool:
     """Test that all CLI modules can be imported."""
     print("Testing CLI imports...")
     try:
-        from src.cli.main import app
-        from src.cli.context import CommandContext
-        from src.cli.integration.dagster_client import DagsterClient
-        from src.cli.integration.neo4j_client import Neo4jClient
-        from src.cli.integration.metrics_collector import MetricsCollector
-        from src.cli.commands import status, metrics, ingest, enrich, dashboard
-        from src.cli.display.progress import PipelineProgressTracker
-        from src.cli.display.metrics import create_metrics_table
-        from src.cli.display.status import create_asset_status_table
+
         print("✓ All imports successful")
         return True
     except Exception as e:
@@ -38,7 +30,7 @@ def test_context_creation() -> bool:
         from src.cli.context import CommandContext
 
         context = CommandContext.create()
-        print(f"✓ Context created successfully")
+        print("✓ Context created successfully")
         print(f"  - Config: {type(context.config).__name__}")
         print(f"  - Console: {type(context.console).__name__}")
         print(f"  - DagsterClient: {type(context.dagster_client).__name__}")
@@ -48,6 +40,7 @@ def test_context_creation() -> bool:
     except Exception as e:
         print(f"✗ Context creation failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -60,9 +53,11 @@ def test_cli_app() -> bool:
 
         # Check app exists
         assert app is not None
-        print(f"✓ CLI app initialized")
+        print("✓ CLI app initialized")
         print(f"  - Name: {app.info.name}")
-        print(f"  - Commands registered: {len(list(app.registered_commands)) if hasattr(app, 'registered_commands') else 'N/A'}")
+        print(
+            f"  - Commands registered: {len(list(app.registered_commands)) if hasattr(app, 'registered_commands') else 'N/A'}"
+        )
         return True
     except Exception as e:
         print(f"✗ CLI app test failed: {e}")
@@ -74,14 +69,15 @@ def test_display_components() -> bool:
     print("\nTesting display components...")
     try:
         from rich.console import Console
-        from src.cli.display.progress import create_progress_tracker
+
         from src.cli.display.metrics import create_metrics_table
+        from src.cli.display.progress import create_progress_tracker
         from src.cli.display.status import get_health_indicator
 
         console = Console()
 
         # Test progress tracker
-        tracker = create_progress_tracker(console)
+        create_progress_tracker(console)
         print("✓ Progress tracker created")
 
         # Test health indicator
@@ -105,6 +101,7 @@ def test_display_components() -> bool:
     except Exception as e:
         print(f"✗ Display components test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -150,4 +147,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

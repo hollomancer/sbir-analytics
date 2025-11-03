@@ -28,7 +28,9 @@ from loguru import logger
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
-    from ..utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer  # type: ignore
+    from ..utils.reporting.analyzers.transition_analyzer import (
+        TransitionDetectionAnalyzer,  # type: ignore
+    )
 except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
@@ -180,7 +182,7 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
             # Containers
             if isinstance(x, dict):
                 return {str(k): _to_jsonable(v) for k, v in x.items()}
-            if isinstance(x, (list, tuple, set)):
+            if isinstance(x, list | tuple | set):
                 return [_to_jsonable(v) for v in list(x)]
             return x
 
@@ -791,7 +793,8 @@ def transformed_transition_scores(
     results: list[dict[str, Any]] = []
     # Build quick lookup for contracts by contract_id
     contracts_by_id = {
-        str(c.get("contract_id") or c.get("piid") or ""): c for _, c in validated_contracts_sample.iterrows()
+        str(c.get("contract_id") or c.get("piid") or ""): c
+        for _, c in validated_contracts_sample.iterrows()
     }
 
     for _, row in enriched_vendor_resolution.iterrows():
@@ -1013,7 +1016,9 @@ def transformed_transition_evidence(
                 "distinct_contracts": int(transformed_transition_scores["contract_id"].nunique())
                 if len(transformed_transition_scores)
                 else 0,
-                "by_method": transformed_transition_scores["method"].value_counts(dropna=False).to_dict()
+                "by_method": transformed_transition_scores["method"]
+                .value_counts(dropna=False)
+                .to_dict()
                 if len(transformed_transition_scores)
                 else {},
                 "score": {
@@ -1216,21 +1221,49 @@ def transformed_transition_detections(
             context.log.info(
                 "Transition detection analysis complete",
                 extra={
-                    "insights_generated": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean if analysis_report.data_hygiene else None,
+                    "insights_generated": len(analysis_report.insights)
+                    if hasattr(analysis_report, "insights")
+                    else 0,
+                    "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
+                    if analysis_report.data_hygiene
+                    else None,
                     "transition_success_rate": analysis_report.success_rate,
                 },
             )
 
             # Add analysis results to metadata
-            meta.update({
-                "analysis_insights_count": len(analysis_report.insights) if hasattr(analysis_report, 'insights') else 0,
-                "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3) if analysis_report.data_hygiene else None,
-                "analysis_transition_rate": analysis_report.module_metrics.get("overall_transition_rate", 0) if analysis_report.module_metrics else 0,
-                "analysis_sector_transition_rates": analysis_report.module_metrics.get("sector_transition_rates", {}) if analysis_report.module_metrics else {},
-                "analysis_success_story_metrics": analysis_report.module_metrics.get("success_story_metrics", {}) if analysis_report.module_metrics else {},
-                "analysis_signal_strength_metrics": analysis_report.module_metrics.get("signal_strength_metrics", {}) if analysis_report.module_metrics else {},
-            })
+            meta.update(
+                {
+                    "analysis_insights_count": len(analysis_report.insights)
+                    if hasattr(analysis_report, "insights")
+                    else 0,
+                    "analysis_data_hygiene_score": round(
+                        analysis_report.data_hygiene.quality_score_mean, 3
+                    )
+                    if analysis_report.data_hygiene
+                    else None,
+                    "analysis_transition_rate": analysis_report.module_metrics.get(
+                        "overall_transition_rate", 0
+                    )
+                    if analysis_report.module_metrics
+                    else 0,
+                    "analysis_sector_transition_rates": analysis_report.module_metrics.get(
+                        "sector_transition_rates", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                    "analysis_success_story_metrics": analysis_report.module_metrics.get(
+                        "success_story_metrics", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                    "analysis_signal_strength_metrics": analysis_report.module_metrics.get(
+                        "signal_strength_metrics", {}
+                    )
+                    if analysis_report.module_metrics
+                    else {},
+                }
+            )
 
         except Exception as e:
             context.log.warning(f"Transition detection analysis failed: {e}")
@@ -1393,7 +1426,9 @@ def contracts_sample_quality_check(validated_contracts_sample: pd.DataFrame) -> 
 def vendor_resolution_quality_check(enriched_vendor_resolution: pd.DataFrame) -> AssetCheckResult:
     total = len(enriched_vendor_resolution)
     res_rate = (
-        float((enriched_vendor_resolution["match_method"] != "unresolved").mean()) if total > 0 else 0.0
+        float((enriched_vendor_resolution["match_method"] != "unresolved").mean())
+        if total > 0
+        else 0.0
     )
     min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
     passed = res_rate >= min_rate
@@ -1408,7 +1443,9 @@ def vendor_resolution_quality_check(enriched_vendor_resolution: pd.DataFrame) ->
             "total_contracts": total,
             "resolution_rate": f"{res_rate:.2%}",
             "threshold": f"{min_rate:.2%}",
-            "by_method": enriched_vendor_resolution["match_method"].value_counts(dropna=False).to_dict()
+            "by_method": enriched_vendor_resolution["match_method"]
+            .value_counts(dropna=False)
+            .to_dict()
             if total > 0
             else {},
         },
@@ -1419,7 +1456,9 @@ def vendor_resolution_quality_check(enriched_vendor_resolution: pd.DataFrame) ->
     asset="transformed_transition_scores",
     description="Transition scores quality: schema fields, score bounds [0,1], and non-empty signals",
 )
-def transition_scores_quality_check(transformed_transition_scores: pd.DataFrame) -> AssetCheckResult:
+def transition_scores_quality_check(
+    transformed_transition_scores: pd.DataFrame,
+) -> AssetCheckResult:
     required_cols = ["award_id", "contract_id", "score", "method", "signals", "computed_at"]
     missing = [c for c in required_cols if c not in transformed_transition_scores.columns]
     total = len(transformed_transition_scores)
@@ -1436,7 +1475,7 @@ def transition_scores_quality_check(transformed_transition_scores: pd.DataFrame)
         def _is_empty_signals(v):
             if v is None:
                 return True
-            if isinstance(v, (list, tuple, set)):
+            if isinstance(v, list | tuple | set):
                 return len(v) == 0
             # Strings or other scalars: consider empty only if len == 0
             try:

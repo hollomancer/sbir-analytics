@@ -40,7 +40,9 @@ class PerformanceMetrics(BaseModel):
     disk_io_mb: float | None = Field(None, description="Total disk I/O in MB")
 
     # Error and retry metrics
-    total_retries: int = Field(default=0, description="Total number of retries across all operations")
+    total_retries: int = Field(
+        default=0, description="Total number of retries across all operations"
+    )
     failed_operations: int = Field(default=0, description="Number of failed operations")
 
     model_config = ConfigDict(validate_assignment=True)
@@ -51,7 +53,9 @@ class ModuleMetrics(BaseModel):
 
     # Module identification
     module_name: str = Field(..., description="Name of the pipeline module")
-    stage: str = Field(..., description="Pipeline stage (extract, validate, enrich, transform, load)")
+    stage: str = Field(
+        ..., description="Pipeline stage (extract, validate, enrich, transform, load)"
+    )
 
     # Execution metrics
     execution_time: timedelta = Field(..., description="Module execution duration")
@@ -65,7 +69,9 @@ class ModuleMetrics(BaseModel):
     records_failed: int = Field(default=0, description="Number of failed records")
 
     # Success metrics
-    success_rate: float = Field(..., ge=0.0, le=1.0, description="Processing success rate (0.0-1.0)")
+    success_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="Processing success rate (0.0-1.0)"
+    )
     throughput_records_per_second: float = Field(..., description="Processing throughput")
 
     # Quality metrics
@@ -82,7 +88,9 @@ class ModuleMetrics(BaseModel):
     )
 
     # Memory and performance
-    peak_memory_mb: float | None = Field(None, description="Peak memory usage during module execution")
+    peak_memory_mb: float | None = Field(
+        None, description="Peak memory usage during module execution"
+    )
     average_cpu_percent: float | None = Field(None, description="Average CPU usage percentage")
 
     # Module-specific metrics
@@ -106,7 +114,9 @@ class PipelineMetrics(BaseModel):
     duration: timedelta = Field(..., description="Total pipeline execution duration")
 
     # Overall processing metrics
-    total_records_processed: int = Field(..., description="Total records processed across all modules")
+    total_records_processed: int = Field(
+        ..., description="Total records processed across all modules"
+    )
     overall_success_rate: float = Field(
         ..., ge=0.0, le=1.0, description="Overall pipeline success rate"
     )
@@ -152,7 +162,9 @@ class ReportArtifact(BaseModel):
 
     # Generation metadata
     generated_at: datetime = Field(..., description="When the artifact was generated")
-    generation_duration_seconds: float = Field(..., description="Time taken to generate the artifact")
+    generation_duration_seconds: float = Field(
+        ..., description="Time taken to generate the artifact"
+    )
 
     # Content metadata
     contains_interactive_elements: bool = Field(

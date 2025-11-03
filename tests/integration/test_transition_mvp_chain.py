@@ -458,7 +458,7 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
         try:
             mk = sorted(set(mk))
         except Exception:
-            mk = list(mk) if isinstance(mk, (list, tuple, set)) else [mk]
+            mk = list(mk) if isinstance(mk, list | tuple | set) else [mk]
         return {
             "award_id": rec.get("award_id"),
             "contract_id": rec.get("contract_id"),

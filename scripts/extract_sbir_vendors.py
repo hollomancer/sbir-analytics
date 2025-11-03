@@ -63,14 +63,14 @@ def extract_vendors(
         company_values = df["Company"].dropna().astype(str).str.strip()
         company_values = company_values[company_values != ""]
         # Normalize company names (uppercase)
-        vendors["company_names"] = set(name.upper() for name in company_values.unique())
+        vendors["company_names"] = {name.upper() for name in company_values.unique()}
         logger.info(f"Found {len(vendors['company_names']):,} unique company names")
 
     # Prepare JSON-serializable output
     output_data = {
-        "uei": sorted(list(vendors["uei"])),
-        "duns": sorted(list(vendors["duns"])),
-        "company_names": sorted(list(vendors["company_names"]))[:1000],  # Limit names for file size
+        "uei": sorted(vendors["uei"]),
+        "duns": sorted(vendors["duns"]),
+        "company_names": sorted(vendors["company_names"])[:1000],  # Limit names for file size
         "stats": {
             "total_awards": len(df),
             "unique_uei": len(vendors["uei"]),

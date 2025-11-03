@@ -192,9 +192,7 @@ class CETSignalExtractor:
 
         return None
 
-    def infer_contract_cet(
-        self, contract_description: str | None
-    ) -> tuple[str | None, float]:
+    def infer_contract_cet(self, contract_description: str | None) -> tuple[str | None, float]:
         """
         Infer CET area from contract description using keyword matching.
 

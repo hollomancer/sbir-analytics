@@ -440,7 +440,7 @@ def run_full_enrichment(
         "output_enriched": str(out_enriched),
         "output_candidates": str(out_candidates),
         "rows_processed": int(total_rows_processed),
-        "stats": {k: int(v) if isinstance(v, (int, float)) else v for k, v in stats.items()},
+        "stats": {k: int(v) if isinstance(v, int | float) else v for k, v in stats.items()},
     }
 
     with out_summary.open("w", encoding="utf-8") as fh:

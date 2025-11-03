@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -62,14 +61,8 @@ def assets(
             status = context.dagster_client.get_asset_status(asset_key)
 
             indicator = get_status_indicator(status.status)
-            last_run = (
-                status.last_run.strftime("%Y-%m-%d %H:%M")
-                if status.last_run
-                else "Never"
-            )
-            records = (
-                str(status.records_processed) if status.records_processed else "-"
-            )
+            last_run = status.last_run.strftime("%Y-%m-%d %H:%M") if status.last_run else "Never"
+            records = str(status.records_processed) if status.records_processed else "-"
 
             table.add_row(
                 asset_key,
@@ -130,10 +123,14 @@ def neo4j(
                 rels_table.add_column("Type", style="cyan")
                 rels_table.add_column("Count", justify="right")
 
-                for rel_type, count in sorted(stats.relationship_counts.items(), key=lambda x: -x[1]):
+                for rel_type, count in sorted(
+                    stats.relationship_counts.items(), key=lambda x: -x[1]
+                ):
                     rels_table.add_row(rel_type, str(count))
 
-                rels_table.add_row("[bold]Total[/bold]", f"[bold]{stats.total_relationships}[/bold]")
+                rels_table.add_row(
+                    "[bold]Total[/bold]", f"[bold]{stats.total_relationships}[/bold]"
+                )
 
                 context.console.print(rels_table)
 
@@ -202,4 +199,3 @@ def summary(ctx: typer.Context) -> None:
 def register_command(main_app: typer.Typer) -> None:
     """Register status commands with main app."""
     main_app.add_typer(app, name="status")
-

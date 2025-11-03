@@ -42,7 +42,7 @@ class InflationAdjuster:
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the inflation adjuster.
-        
+
         Args:
             config: Optional configuration override
         """
@@ -54,19 +54,49 @@ class InflationAdjuster:
         # BEA GDP deflator data (2009=100 base)
         # This is sample data - in production, this would be loaded from BEA API or data file
         self.bea_gdp_deflator = {
-            1990: 72.2, 1991: 75.0, 1992: 76.8, 1993: 78.6, 1994: 80.1,
-            1995: 81.5, 1996: 82.7, 1997: 84.1, 1998: 84.9, 1999: 85.8,
-            2000: 87.0, 2001: 88.4, 2002: 89.6, 2003: 91.2, 2004: 93.4,
-            2005: 96.0, 2006: 98.6, 2007: 101.0, 2008: 102.3, 2009: 100.0,
-            2010: 101.2, 2011: 103.3, 2012: 105.2, 2013: 106.7, 2014: 108.3,
-            2015: 108.6, 2016: 109.7, 2017: 111.7, 2018: 114.1, 2019: 116.0,
-            2020: 117.6, 2021: 122.2, 2022: 130.7, 2023: 135.4, 2024: 138.2
+            1990: 72.2,
+            1991: 75.0,
+            1992: 76.8,
+            1993: 78.6,
+            1994: 80.1,
+            1995: 81.5,
+            1996: 82.7,
+            1997: 84.1,
+            1998: 84.9,
+            1999: 85.8,
+            2000: 87.0,
+            2001: 88.4,
+            2002: 89.6,
+            2003: 91.2,
+            2004: 93.4,
+            2005: 96.0,
+            2006: 98.6,
+            2007: 101.0,
+            2008: 102.3,
+            2009: 100.0,
+            2010: 101.2,
+            2011: 103.3,
+            2012: 105.2,
+            2013: 106.7,
+            2014: 108.3,
+            2015: 108.6,
+            2016: 109.7,
+            2017: 111.7,
+            2018: 114.1,
+            2019: 116.0,
+            2020: 117.6,
+            2021: 122.2,
+            2022: 130.7,
+            2023: 135.4,
+            2024: 138.2,
         }
 
         # Convert to base year index (default 2023=100)
         self._normalize_deflator_to_base_year()
 
-        logger.info(f"Initialized InflationAdjuster with base year {self.base_year} and {len(self.bea_gdp_deflator)} deflator values")
+        logger.info(
+            f"Initialized InflationAdjuster with base year {self.base_year} and {len(self.bea_gdp_deflator)} deflator values"
+        )
 
     def _normalize_deflator_to_base_year(self):
         """Normalize deflator values to use configured base year as 100."""
@@ -82,10 +112,10 @@ class InflationAdjuster:
 
     def get_deflator_value(self, year: int) -> float | None:
         """Get deflator value for a specific year.
-        
+
         Args:
             year: Year to get deflator for
-            
+
         Returns:
             Deflator value or None if not available
         """
@@ -93,10 +123,10 @@ class InflationAdjuster:
 
     def interpolate_deflator(self, year: int) -> float | None:
         """Interpolate deflator value for missing years using linear interpolation.
-        
+
         Args:
             year: Year to interpolate deflator for
-            
+
         Returns:
             Interpolated deflator value or None if cannot interpolate
         """
@@ -126,17 +156,19 @@ class InflationAdjuster:
             weight = (year - lower_year) / (upper_year - lower_year)
             interpolated_value = lower_value + weight * (upper_value - lower_value)
 
-            logger.debug(f"Interpolated deflator for {year}: {interpolated_value:.2f} (between {lower_year}:{lower_value:.2f} and {upper_year}:{upper_value:.2f})")
+            logger.debug(
+                f"Interpolated deflator for {year}: {interpolated_value:.2f} (between {lower_year}:{lower_value:.2f} and {upper_year}:{upper_value:.2f})"
+            )
             return interpolated_value
 
         return None
 
     def extrapolate_deflator(self, year: int) -> float | None:
         """Extrapolate deflator value for years outside available range.
-        
+
         Args:
             year: Year to extrapolate deflator for
-            
+
         Returns:
             Extrapolated deflator value or None if cannot extrapolate
         """
@@ -157,13 +189,17 @@ class InflationAdjuster:
                 # Calculate average annual growth rate
                 total_growth = early_values[-1] / early_values[0]
                 years_span = early_years[-1] - early_years[0]
-                avg_growth_rate = (total_growth ** (1/years_span)) - 1
+                avg_growth_rate = (total_growth ** (1 / years_span)) - 1
 
                 # Extrapolate backwards
                 years_back = min_year - year
-                extrapolated_value = self.bea_gdp_deflator[min_year] / ((1 + avg_growth_rate) ** years_back)
+                extrapolated_value = self.bea_gdp_deflator[min_year] / (
+                    (1 + avg_growth_rate) ** years_back
+                )
 
-                logger.debug(f"Extrapolated deflator backwards for {year}: {extrapolated_value:.2f} (growth rate: {avg_growth_rate:.3f})")
+                logger.debug(
+                    f"Extrapolated deflator backwards for {year}: {extrapolated_value:.2f} (growth rate: {avg_growth_rate:.3f})"
+                )
                 return extrapolated_value
 
         # Extrapolate forwards (use average growth rate from last 5 years)
@@ -175,24 +211,30 @@ class InflationAdjuster:
                 # Calculate average annual growth rate
                 total_growth = recent_values[-1] / recent_values[0]
                 years_span = recent_years[-1] - recent_years[0]
-                avg_growth_rate = (total_growth ** (1/years_span)) - 1
+                avg_growth_rate = (total_growth ** (1 / years_span)) - 1
 
                 # Extrapolate forwards
                 years_forward = year - max_year
-                extrapolated_value = self.bea_gdp_deflator[max_year] * ((1 + avg_growth_rate) ** years_forward)
+                extrapolated_value = self.bea_gdp_deflator[max_year] * (
+                    (1 + avg_growth_rate) ** years_forward
+                )
 
-                logger.debug(f"Extrapolated deflator forwards for {year}: {extrapolated_value:.2f} (growth rate: {avg_growth_rate:.3f})")
+                logger.debug(
+                    f"Extrapolated deflator forwards for {year}: {extrapolated_value:.2f} (growth rate: {avg_growth_rate:.3f})"
+                )
                 return extrapolated_value
 
         return None
 
-    def get_inflation_factor(self, from_year: int, to_year: int | None = None) -> tuple[float | None, list[str]]:
+    def get_inflation_factor(
+        self, from_year: int, to_year: int | None = None
+    ) -> tuple[float | None, list[str]]:
         """Calculate inflation factor to convert from one year to another.
-        
+
         Args:
             from_year: Source year
             to_year: Target year (defaults to base_year)
-            
+
         Returns:
             Tuple of (inflation factor, quality flags)
         """
@@ -237,15 +279,24 @@ class InflationAdjuster:
 
     def extract_award_year(self, award_row: pd.Series) -> int | None:
         """Extract award year from award data.
-        
+
         Args:
             award_row: Award row data
-            
+
         Returns:
             Award year or None if not found
         """
         # Check common date column names
-        date_columns = ['Award_Date', 'award_date', 'Date', 'date', 'Award_Year', 'award_year', 'Year', 'year']
+        date_columns = [
+            "Award_Date",
+            "award_date",
+            "Date",
+            "date",
+            "Award_Year",
+            "award_year",
+            "Year",
+            "year",
+        ]
 
         for col in date_columns:
             if col in award_row.index and pd.notna(award_row[col]):
@@ -254,7 +305,7 @@ class InflationAdjuster:
                 # Handle different date formats
                 try:
                     # If it's already a year (integer)
-                    if isinstance(value, (int, float)) and 1980 <= value <= 2030:
+                    if isinstance(value, int | float) and 1980 <= value <= 2030:
                         return int(value)
 
                     # If it's a date string or datetime
@@ -264,12 +315,12 @@ class InflationAdjuster:
                             return int(value)
 
                         # Try to parse as date
-                        parsed_date = pd.to_datetime(value, errors='coerce')
+                        parsed_date = pd.to_datetime(value, errors="coerce")
                         if pd.notna(parsed_date):
                             return parsed_date.year
 
                     # If it's a pandas datetime
-                    elif hasattr(value, 'year'):
+                    elif hasattr(value, "year"):
                         return value.year
 
                 except (ValueError, TypeError):
@@ -277,13 +328,15 @@ class InflationAdjuster:
 
         return None
 
-    def adjust_single_award(self, award_row: pd.Series, target_year: int | None = None) -> InflationAdjustmentResult:
+    def adjust_single_award(
+        self, award_row: pd.Series, target_year: int | None = None
+    ) -> InflationAdjustmentResult:
         """Adjust a single award amount for inflation.
-        
+
         Args:
             award_row: Award row data
             target_year: Target year for adjustment (defaults to base_year)
-            
+
         Returns:
             Inflation adjustment result
         """
@@ -291,7 +344,14 @@ class InflationAdjuster:
             target_year = self.base_year
 
         # Extract award amount
-        amount_columns = ['Award_Amount', 'award_amount', 'Amount', 'amount', 'Award_Value', 'award_value']
+        amount_columns = [
+            "Award_Amount",
+            "award_amount",
+            "Amount",
+            "amount",
+            "Award_Value",
+            "award_value",
+        ]
         original_amount = None
         amount_column = None
 
@@ -299,7 +359,7 @@ class InflationAdjuster:
             if col in award_row.index and pd.notna(award_row[col]):
                 try:
                     # Handle string amounts with currency symbols and commas
-                    amount_str = str(award_row[col]).replace('$', '').replace(',', '').strip()
+                    amount_str = str(award_row[col]).replace("$", "").replace(",", "").strip()
                     original_amount = Decimal(amount_str)
                     amount_column = col
                     break
@@ -309,8 +369,8 @@ class InflationAdjuster:
         if original_amount is None:
             # Return result with error
             return InflationAdjustmentResult(
-                original_amount=Decimal('0'),
-                adjusted_amount=Decimal('0'),
+                original_amount=Decimal("0"),
+                adjusted_amount=Decimal("0"),
                 base_year=target_year,
                 award_year=0,
                 inflation_factor=1.0,
@@ -319,7 +379,7 @@ class InflationAdjuster:
                 method="error",
                 quality_flags=["missing_amount"],
                 timestamp=datetime.now(),
-                metadata={"error": "No valid amount found"}
+                metadata={"error": "No valid amount found"},
             )
 
         # Extract award year
@@ -338,7 +398,7 @@ class InflationAdjuster:
                 method="error",
                 quality_flags=["missing_year"],
                 timestamp=datetime.now(),
-                metadata={"error": "No valid award year found", "amount_column": amount_column}
+                metadata={"error": "No valid award year found", "amount_column": amount_column},
             )
 
         # Calculate inflation factor
@@ -357,12 +417,15 @@ class InflationAdjuster:
                 method="error",
                 quality_flags=quality_flags,
                 timestamp=datetime.now(),
-                metadata={"error": "Could not calculate inflation factor", "amount_column": amount_column}
+                metadata={
+                    "error": "Could not calculate inflation factor",
+                    "amount_column": amount_column,
+                },
             )
 
         # Apply inflation adjustment
         adjusted_amount = original_amount * Decimal(str(inflation_factor))
-        adjusted_amount = adjusted_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        adjusted_amount = adjusted_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # Determine confidence based on quality flags
         confidence = 1.0
@@ -392,17 +455,19 @@ class InflationAdjuster:
             metadata={
                 "amount_column": amount_column,
                 "from_deflator": self.get_deflator_value(award_year) or "calculated",
-                "to_deflator": self.get_deflator_value(target_year) or "calculated"
-            }
+                "to_deflator": self.get_deflator_value(target_year) or "calculated",
+            },
         )
 
-    def adjust_awards_dataframe(self, awards_df: pd.DataFrame, target_year: int | None = None) -> pd.DataFrame:
+    def adjust_awards_dataframe(
+        self, awards_df: pd.DataFrame, target_year: int | None = None
+    ) -> pd.DataFrame:
         """Adjust entire awards DataFrame for inflation.
-        
+
         Args:
             awards_df: SBIR awards DataFrame
             target_year: Target year for adjustment (defaults to base_year)
-            
+
         Returns:
             DataFrame with inflation adjustment columns
         """
@@ -412,26 +477,28 @@ class InflationAdjuster:
         enriched_df = awards_df.copy()
 
         # Initialize inflation adjustment columns
-        enriched_df['fiscal_original_amount'] = None
-        enriched_df['fiscal_adjusted_amount'] = None
-        enriched_df['fiscal_inflation_factor'] = None
-        enriched_df['fiscal_award_year'] = None
-        enriched_df['fiscal_base_year'] = target_year
-        enriched_df['fiscal_inflation_confidence'] = None
-        enriched_df['fiscal_inflation_source'] = self.inflation_source
-        enriched_df['fiscal_inflation_method'] = None
-        enriched_df['fiscal_inflation_quality_flags'] = None
-        enriched_df['fiscal_inflation_timestamp'] = None
-        enriched_df['fiscal_inflation_metadata'] = None
+        enriched_df["fiscal_original_amount"] = None
+        enriched_df["fiscal_adjusted_amount"] = None
+        enriched_df["fiscal_inflation_factor"] = None
+        enriched_df["fiscal_award_year"] = None
+        enriched_df["fiscal_base_year"] = target_year
+        enriched_df["fiscal_inflation_confidence"] = None
+        enriched_df["fiscal_inflation_source"] = self.inflation_source
+        enriched_df["fiscal_inflation_method"] = None
+        enriched_df["fiscal_inflation_quality_flags"] = None
+        enriched_df["fiscal_inflation_timestamp"] = None
+        enriched_df["fiscal_inflation_metadata"] = None
 
-        logger.info(f"Starting inflation adjustment for {len(awards_df)} awards to {target_year} dollars")
+        logger.info(
+            f"Starting inflation adjustment for {len(awards_df)} awards to {target_year} dollars"
+        )
 
         # Track adjustment statistics
         method_counts = {}
         confidence_distribution = []
         successful_adjustments = 0
-        total_original_amount = Decimal('0')
-        total_adjusted_amount = Decimal('0')
+        total_original_amount = Decimal("0")
+        total_adjusted_amount = Decimal("0")
 
         # Adjust each award
         for idx, row in awards_df.iterrows():
@@ -439,15 +506,19 @@ class InflationAdjuster:
                 result = self.adjust_single_award(row, target_year)
 
                 # Store adjustment results
-                enriched_df.at[idx, 'fiscal_original_amount'] = float(result.original_amount)
-                enriched_df.at[idx, 'fiscal_adjusted_amount'] = float(result.adjusted_amount)
-                enriched_df.at[idx, 'fiscal_inflation_factor'] = result.inflation_factor
-                enriched_df.at[idx, 'fiscal_award_year'] = result.award_year
-                enriched_df.at[idx, 'fiscal_inflation_confidence'] = result.confidence
-                enriched_df.at[idx, 'fiscal_inflation_method'] = result.method
-                enriched_df.at[idx, 'fiscal_inflation_quality_flags'] = json.dumps(result.quality_flags)
-                enriched_df.at[idx, 'fiscal_inflation_timestamp'] = result.timestamp
-                enriched_df.at[idx, 'fiscal_inflation_metadata'] = json.dumps(result.metadata, default=str)
+                enriched_df.at[idx, "fiscal_original_amount"] = float(result.original_amount)
+                enriched_df.at[idx, "fiscal_adjusted_amount"] = float(result.adjusted_amount)
+                enriched_df.at[idx, "fiscal_inflation_factor"] = result.inflation_factor
+                enriched_df.at[idx, "fiscal_award_year"] = result.award_year
+                enriched_df.at[idx, "fiscal_inflation_confidence"] = result.confidence
+                enriched_df.at[idx, "fiscal_inflation_method"] = result.method
+                enriched_df.at[idx, "fiscal_inflation_quality_flags"] = json.dumps(
+                    result.quality_flags
+                )
+                enriched_df.at[idx, "fiscal_inflation_timestamp"] = result.timestamp
+                enriched_df.at[idx, "fiscal_inflation_metadata"] = json.dumps(
+                    result.metadata, default=str
+                )
 
                 # Track statistics
                 method_counts[result.method] = method_counts.get(result.method, 0) + 1
@@ -464,8 +535,16 @@ class InflationAdjuster:
         # Log adjustment statistics
         total_awards = len(awards_df)
         success_rate = successful_adjustments / total_awards if total_awards > 0 else 0
-        avg_confidence = sum(confidence_distribution) / len(confidence_distribution) if confidence_distribution else 0
-        avg_inflation_factor = float(total_adjusted_amount / total_original_amount) if total_original_amount > 0 else 1.0
+        avg_confidence = (
+            sum(confidence_distribution) / len(confidence_distribution)
+            if confidence_distribution
+            else 0
+        )
+        avg_inflation_factor = (
+            float(total_adjusted_amount / total_original_amount)
+            if total_original_amount > 0
+            else 1.0
+        )
 
         logger.info("Inflation adjustment complete:")
         logger.info(f"  Success rate: {success_rate:.1%} ({successful_adjustments}/{total_awards})")
@@ -479,28 +558,30 @@ class InflationAdjuster:
 
     def validate_adjustment_quality(self, enriched_df: pd.DataFrame) -> dict[str, Any]:
         """Validate inflation adjustment quality against configured thresholds.
-        
+
         Args:
             enriched_df: DataFrame with inflation adjustments
-            
+
         Returns:
             Quality validation results
         """
         total_awards = len(enriched_df)
-        successful_adjustments = (enriched_df['fiscal_inflation_method'] != 'error').sum()
+        successful_adjustments = (enriched_df["fiscal_inflation_method"] != "error").sum()
         success_rate = successful_adjustments / total_awards if total_awards > 0 else 0
 
         # Calculate confidence distribution
-        confidences = enriched_df['fiscal_inflation_confidence'].dropna()
+        confidences = enriched_df["fiscal_inflation_confidence"].dropna()
         high_confidence_count = (confidences >= 0.90).sum() if not confidences.empty else 0
-        medium_confidence_count = ((confidences >= 0.70) & (confidences < 0.90)).sum() if not confidences.empty else 0
+        medium_confidence_count = (
+            ((confidences >= 0.70) & (confidences < 0.90)).sum() if not confidences.empty else 0
+        )
         low_confidence_count = (confidences < 0.70).sum() if not confidences.empty else 0
 
         # Method distribution
-        method_counts = enriched_df['fiscal_inflation_method'].value_counts().to_dict()
+        method_counts = enriched_df["fiscal_inflation_method"].value_counts().to_dict()
 
         # Quality flags analysis
-        quality_flags_series = enriched_df['fiscal_inflation_quality_flags'].dropna()
+        quality_flags_series = enriched_df["fiscal_inflation_quality_flags"].dropna()
         all_flags = []
         for flags_json in quality_flags_series:
             try:
@@ -515,8 +596,8 @@ class InflationAdjuster:
             flag_counts[flag] = flag_counts.get(flag, 0) + 1
 
         # Calculate total amounts
-        original_amounts = enriched_df['fiscal_original_amount'].dropna()
-        adjusted_amounts = enriched_df['fiscal_adjusted_amount'].dropna()
+        original_amounts = enriched_df["fiscal_original_amount"].dropna()
+        adjusted_amounts = enriched_df["fiscal_adjusted_amount"].dropna()
         total_original = float(original_amounts.sum()) if not original_amounts.empty else 0
         total_adjusted = float(adjusted_amounts.sum()) if not adjusted_amounts.empty else 0
 
@@ -526,7 +607,8 @@ class InflationAdjuster:
             "successful_adjustments": int(successful_adjustments),
             "success_rate": success_rate,
             "success_threshold": self.quality_thresholds.get("inflation_adjustment_success", 0.95),
-            "success_meets_threshold": success_rate >= self.quality_thresholds.get("inflation_adjustment_success", 0.95),
+            "success_meets_threshold": success_rate
+            >= self.quality_thresholds.get("inflation_adjustment_success", 0.95),
             "confidence_distribution": {
                 "high_confidence": int(high_confidence_count),
                 "medium_confidence": int(medium_confidence_count),
@@ -537,7 +619,9 @@ class InflationAdjuster:
             "average_confidence": float(confidences.mean()) if not confidences.empty else 0.0,
             "total_original_amount": total_original,
             "total_adjusted_amount": total_adjusted,
-            "overall_inflation_factor": total_adjusted / total_original if total_original > 0 else 1.0,
+            "overall_inflation_factor": total_adjusted / total_original
+            if total_original > 0
+            else 1.0,
             "base_year": self.base_year,
             "inflation_source": self.inflation_source,
         }
@@ -546,23 +630,23 @@ class InflationAdjuster:
         if quality_results["success_meets_threshold"]:
             logger.info(f"Inflation adjustment quality: PASS (success rate: {success_rate:.1%})")
         else:
-            logger.warning(f"Inflation adjustment quality: FAIL (success rate: {success_rate:.1%}, threshold: {quality_results['success_threshold']:.1%})")
+            logger.warning(
+                f"Inflation adjustment quality: FAIL (success rate: {success_rate:.1%}, threshold: {quality_results['success_threshold']:.1%})"
+            )
 
         return quality_results
 
 
 def adjust_awards_for_inflation(
-    awards_df: pd.DataFrame,
-    target_year: int | None = None,
-    config: dict[str, Any] | None = None
+    awards_df: pd.DataFrame, target_year: int | None = None, config: dict[str, Any] | None = None
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Main function to adjust SBIR awards for inflation.
-    
+
     Args:
         awards_df: SBIR awards DataFrame
         target_year: Target year for adjustment (defaults to config base_year)
         config: Optional configuration override
-        
+
     Returns:
         Tuple of (adjusted DataFrame, quality metrics)
     """

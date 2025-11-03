@@ -1,8 +1,7 @@
 """Unit tests for R StateIO adapter."""
 
 from decimal import Decimal
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -268,7 +267,9 @@ class TestRStateIOAdapterImpactComputation:
     @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_adapter.importr")
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    def test_compute_impacts_stateio_not_loaded(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
+    def test_compute_impacts_stateio_not_loaded(
+        self, mock_pandas2ri, mock_importr, mock_config, sample_shocks
+    ):
         """Test error when StateIO package is not loaded."""
         mock_importr.side_effect = Exception("Package not found")
 
@@ -338,9 +339,7 @@ class TestRStateIOAdapterIntegration:
         mock_stateio = MagicMock()
         mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
 
-        adapter = RStateIOAdapter(
-            config=mock_config, cache_enabled=True, cache_dir=str(tmp_path)
-        )
+        adapter = RStateIOAdapter(config=mock_config, cache_enabled=True, cache_dir=str(tmp_path))
 
         # First call - should compute and cache
         result1 = adapter.compute_impacts(sample_shocks)
@@ -387,4 +386,3 @@ class TestRStateIOAdapterIntegration:
         # When package not loaded
         adapter.stateio = None
         assert adapter.is_available() is False
-

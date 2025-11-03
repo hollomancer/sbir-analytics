@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
@@ -139,4 +138,3 @@ class TestCheckpointStore:
         # File doesn't exist yet
         df = checkpoint_store.load_all()
         assert len(df) == 0
-

@@ -31,6 +31,7 @@ Usage:
 If the companies CSV is provided and contains a canonical index column, the script
 will attempt to map matched company indices to company names for better readability.
 """
+
 from __future__ import annotations
 
 import json
@@ -56,7 +57,7 @@ def safe_load_json_candidates(s: Any) -> list[dict[str, Any]]:
         return []
     if isinstance(s, list):
         return s
-    if isinstance(s, (float, int)) and (pd.isna(s) or s == ""):
+    if isinstance(s, float | int) and (pd.isna(s) or s == ""):
         return []
     try:
         if isinstance(s, str):
@@ -172,7 +173,7 @@ def summarize_candidates(
 
     # Load candidate-review CSV
     df = pd.read_csv(candidates_csv, dtype=str, keep_default_na=False)
-    total = len(df)
+    len(df)
 
     # Build company index map if available
     company_map = build_company_index_map(companies_csv) if companies_csv else {}
@@ -189,7 +190,9 @@ def summarize_candidates(
             except Exception:
                 best_score = None
         # parse candidates JSON string (may be '[]' or JSON)
-        cand_list = safe_load_json_candidates(row.get("candidates") or row.get("_match_candidates") or "")
+        cand_list = safe_load_json_candidates(
+            row.get("candidates") or row.get("_match_candidates") or ""
+        )
         parsed_candidates.append(cand_list)
         if best_score is None:
             # derive best score from parsed list if present
@@ -212,12 +215,11 @@ def summarize_candidates(
     df["_best_score"] = best_scores
 
     # Basic stats
-    num_candidates = total
     num_with_score = int(df["_best_score"].notna().sum())
     score_series = pd.to_numeric(df["_best_score"], errors="coerce")
-    avg_score = float(score_series.mean()) if num_with_score > 0 else None
-    median_score = float(score_series.median()) if num_with_score > 0 else None
-    min_score = float(score_series.min()) if num_with_score > 0 else None
+    float(score_series.mean()) if num_with_score > 0 else None
+    float(score_series.median()) if num_with_score > 0 else None
+    float(score_series.min()) if num_with_score > 0 else None
     max_score = float(score_series.max()) if num_with_score > 0 else None
 
     # bucket distribution
@@ -250,7 +252,9 @@ def summarize_candidates(
         norm_cands = []
         for cand in parsed[:5]:
             idx = cand.get("idx") or cand.get("index") or cand.get("key") or cand.get("id") or ""
-            score = cand.get("score") or cand.get("best_match_score") or cand.get("match_score") or ""
+            score = (
+                cand.get("score") or cand.get("best_match_score") or cand.get("match_score") or ""
+            )
             name = cand.get("name") or cand.get("company") or ""
             norm_cands.append({"idx": idx, "score": score, "name": name})
         samples.append(

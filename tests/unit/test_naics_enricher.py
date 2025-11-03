@@ -1,5 +1,5 @@
-import os
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -43,7 +43,13 @@ def test_build_index_sampled(tmp_path):
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
-    cfg = NAICSEnricherConfig(zip_path=USASPENDING_ZIP, cache_path=str(cache), sample_only=True, max_files=2, max_lines_per_file=200)
+    cfg = NAICSEnricherConfig(
+        zip_path=USASPENDING_ZIP,
+        cache_path=str(cache),
+        sample_only=True,
+        max_files=2,
+        max_lines_per_file=200,
+    )
     enr = NAICSEnricher(cfg)
     enr.load_usaspending_index(force=True)
     # after build, expect some entries in award_map or recipient_map
@@ -61,7 +67,13 @@ def test_enrich_awards_with_index(tmp_path):
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
-    cfg = NAICSEnricherConfig(zip_path=USASPENDING_ZIP, cache_path=str(cache), sample_only=True, max_files=2, max_lines_per_file=200)
+    cfg = NAICSEnricherConfig(
+        zip_path=USASPENDING_ZIP,
+        cache_path=str(cache),
+        sample_only=True,
+        max_files=2,
+        max_lines_per_file=200,
+    )
     enr = NAICSEnricher(cfg)
     enr.load_usaspending_index(force=True)
 

@@ -3,7 +3,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-import typer
 from typer.testing import CliRunner
 
 from src.cli.main import app
@@ -92,4 +91,3 @@ class TestCLIIntegration:
 
         # Should handle error gracefully
         assert result.exit_code != 0
-

@@ -370,9 +370,9 @@ def main():
 
     # Filter skip extensions
     if args.skip_extensions:
-        skip_set = set(
+        skip_set = {
             x.lower() if x.startswith(".") else f".{x.lower()}" for x in args.skip_extensions
-        )
+        }
         files = [f for f in files if f.suffix.lower() not in skip_set]
 
     LOG.info("Found %d files to analyze", len(files))

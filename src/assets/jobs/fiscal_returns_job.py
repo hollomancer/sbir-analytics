@@ -33,4 +33,3 @@ fiscal_returns_full_job = define_asset_job(
 
 # Define fiscal returns analysis job (alias for full job)
 fiscal_returns_analysis_job = fiscal_returns_full_job
-

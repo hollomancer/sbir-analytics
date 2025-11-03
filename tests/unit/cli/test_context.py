@@ -2,7 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
 from rich.console import Console
 
 from src.cli.context import CommandContext
@@ -72,4 +71,3 @@ class TestCommandContext:
         # Verify
         assert context.config == mock_config
         assert context.dagster_client == mock_dagster_instance
-

@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
-from src.enrichers.usaspending_index import parse_toc_table_dat_map, extract_table_sample
-
+from src.enrichers.usaspending_index import extract_table_sample, parse_toc_table_dat_map
 
 USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-subset_20251006.zip")
 

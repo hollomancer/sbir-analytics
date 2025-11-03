@@ -23,9 +23,12 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from src.config.loader import get_config
+from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from src.utils.performance_monitor import performance_monitor
+
 from ..lib.cli_utils import (
     add_baseline_argument,
-    add_input_file_argument,
     add_output_file_argument,
     add_sample_size_argument,
     add_save_as_baseline_argument,
@@ -35,10 +38,6 @@ from ..lib.cli_utils import (
     save_json_output,
     setup_logging_for_script,
 )
-
-from src.config.loader import get_config
-from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
-from src.utils.performance_monitor import performance_monitor
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
@@ -339,8 +338,7 @@ def main():
     setup_logging_for_script("benchmark_enrichment")
 
     parser = create_parser(
-        "Benchmark the SBIR-USAspending enrichment pipeline",
-        "benchmark_enrichment"
+        "Benchmark the SBIR-USAspending enrichment pipeline", "benchmark_enrichment"
     )
 
     add_sample_size_argument(parser)
@@ -348,7 +346,7 @@ def main():
         parser,
         "output",
         None,
-        "Output path for benchmark JSON (default: reports/benchmarks/benchmark_<timestamp>.json)"
+        "Output path for benchmark JSON (default: reports/benchmarks/benchmark_<timestamp>.json)",
     )
     add_baseline_argument(parser)
     add_save_as_baseline_argument(parser)

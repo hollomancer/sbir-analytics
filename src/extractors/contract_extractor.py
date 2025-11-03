@@ -145,7 +145,7 @@ class ContractExtractor:
         filters = {
             "uei": set(data.get("uei", [])),
             "duns": set(data.get("duns", [])),
-            "company_names": set(name.upper() for name in data.get("company_names", [])),
+            "company_names": {name.upper() for name in data.get("company_names", [])},
         }
 
         logger.info(

@@ -89,7 +89,7 @@ def test_ingest_dta_to_duckdb(tmp_path: Path):
         ), "Row count mismatch between summary and table"
 
         # Verify presence of expected grant ids and a sample score value
-        grants = set(str(x) for x in df_out["grant_doc_num"].tolist())
+        grants = {str(x) for x in df_out["grant_doc_num"].tolist()}
         assert {"US1001B2", "US1002B2"}.issubset(grants)
 
         # Check one of the numeric fields exists and is in expected range

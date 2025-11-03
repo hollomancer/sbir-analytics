@@ -1,19 +1,21 @@
-from typing import Optional
+
 try:
     from dagster import asset
 except Exception:
     # allow running tests where dagster isn't installed; provide a no-op decorator
     def asset(fn=None, **kwargs):
         if fn is None:
+
             def _wrap(f):
                 return f
+
             return _wrap
         return fn
 
-import json
-from pathlib import Path
+
 import importlib.util
 import sys
+from pathlib import Path
 
 
 def _load_naics_module():
@@ -29,7 +31,7 @@ def _load_naics_module():
 
 
 @asset
-def fiscal_prepared_sbir_awards(raw_awards) -> Optional[dict]:
+def fiscal_prepared_sbir_awards(raw_awards) -> dict | None:
     """Dagster asset: enrich raw_awards with NAICS using the persisted usaspending index.
 
     Expects `raw_awards` to be a pandas DataFrame-like object with columns `award_id` and `recipient_uei`.
@@ -45,8 +47,11 @@ def fiscal_prepared_sbir_awards(raw_awards) -> Optional[dict]:
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache_path = Path("data/processed/usaspending/naics_index.parquet")
-    cfg = NAICSEnricherConfig(zip_path="data/raw/usaspending/usaspending-db-subset_20251006.zip",
-                              cache_path=str(cache_path), sample_only=True)
+    cfg = NAICSEnricherConfig(
+        zip_path="data/raw/usaspending/usaspending-db-subset_20251006.zip",
+        cache_path=str(cache_path),
+        sample_only=True,
+    )
     enr = NAICSEnricher(cfg)
     try:
         enr.load_usaspending_index(force=False)

@@ -5,7 +5,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from src.transformers.fiscal_roi_calculator import FiscalROICalculator, ROICalculationResult
+from src.transformers.fiscal_roi_calculator import FiscalROICalculator
 
 
 @pytest.fixture
@@ -70,7 +70,9 @@ class TestFiscalROICalculator:
         investment = Decimal("100000")
         annual_returns = Decimal("100")  # Very low returns (will never payback)
 
-        payback = calculator._calculate_payback_period(investment, annual_returns, discount_rate=0.0)
+        payback = calculator._calculate_payback_period(
+            investment, annual_returns, discount_rate=0.0
+        )
 
         assert payback is None or payback > 50  # Very long or None
 
@@ -140,4 +142,3 @@ class TestFiscalROICalculator:
         assert len(summary.breakdown_by_sector) > 0
         assert "CA" in summary.breakdown_by_state
         assert "TX" in summary.breakdown_by_state
-

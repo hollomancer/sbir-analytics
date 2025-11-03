@@ -194,7 +194,9 @@ class FiscalAuditTrail:
             Path to saved audit log file
         """
         if output_path is None:
-            output_dir = Path(self.config.fiscal_analysis.output.get("output_directory", "reports/fiscal_returns"))
+            output_dir = Path(
+                self.config.fiscal_analysis.output.get("output_directory", "reports/fiscal_returns")
+            )
             output_dir.mkdir(parents=True, exist_ok=True)
             output_path = output_dir / f"audit_trail_{self.analysis_id}.json"
         else:
@@ -228,7 +230,9 @@ class FiscalAuditTrail:
         }
 
 
-def create_audit_trail(analysis_id: str | None = None, config: Any | None = None) -> FiscalAuditTrail:
+def create_audit_trail(
+    analysis_id: str | None = None, config: Any | None = None
+) -> FiscalAuditTrail:
     """Create a new audit trail instance.
 
     Args:
@@ -241,4 +245,3 @@ def create_audit_trail(analysis_id: str | None = None, config: Any | None = None
     trail = FiscalAuditTrail(analysis_id=analysis_id, config=config)
     trail.log_configuration()
     return trail
-

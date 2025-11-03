@@ -25,7 +25,7 @@ app = typer.Typer(help="Validate R StateIO adapter installation and functionalit
 
 @app.command()
 def check_installation(
-    output: str = typer.Option("reports/validation/r_adapter_check.json", help="Output JSON file")
+    output: str = typer.Option("reports/validation/r_adapter_check.json", help="Output JSON file"),
 ):
     """Check if R and required packages are installed."""
     results = {
@@ -54,7 +54,7 @@ def check_installation(
 
         # Check StateIO package
         try:
-            stateio = importr("stateior")
+            importr("stateior")
             results["stateio_available"] = True
             logger.info("✓ StateIO R package is installed")
         except Exception as e:
@@ -63,7 +63,7 @@ def check_installation(
 
         # Check USEEIOR package
         try:
-            useeio = importr("useeior")
+            importr("useeior")
             results["useeio_available"] = True
             logger.info("✓ USEEIOR R package is installed")
         except Exception as e:
@@ -88,7 +88,7 @@ def check_installation(
 
 @app.command()
 def test_adapter(
-    output: str = typer.Option("reports/validation/r_adapter_test.json", help="Output JSON file")
+    output: str = typer.Option("reports/validation/r_adapter_test.json", help="Output JSON file"),
 ):
     """Test R adapter with sample shocks data."""
     results = {
@@ -200,9 +200,7 @@ def test_adapter(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         # Convert Decimal to string for JSON serialization
-        json_results = json.loads(
-            json.dumps(results, indent=2, default=str, ensure_ascii=False)
-        )
+        json_results = json.loads(json.dumps(results, indent=2, default=str, ensure_ascii=False))
         json.dump(json_results, f, indent=2)
 
     logger.info(f"Test results written to {output_path}")
@@ -228,9 +226,7 @@ def test_adapter(
 
 
 @app.command()
-def full_check(
-    output_dir: str = typer.Option("reports/validation", help="Output directory")
-):
+def full_check(output_dir: str = typer.Option("reports/validation", help="Output directory")):
     """Run full validation check (installation + adapter test)."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -239,9 +235,7 @@ def full_check(
 
     # Check installation
     logger.info("\n1. Checking R installation...")
-    install_result = check_installation(
-        output=str(output_path / "r_adapter_check.json")
-    )
+    install_result = check_installation(output=str(output_path / "r_adapter_check.json"))
 
     # Test adapter
     logger.info("\n2. Testing adapter...")
@@ -262,4 +256,3 @@ def full_check(
 
 if __name__ == "__main__":
     app()
-

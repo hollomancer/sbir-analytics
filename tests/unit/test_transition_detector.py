@@ -457,7 +457,7 @@ class TestBatchDetection:
             for i in range(10)
         ]
 
-        detections = list(
+        list(
             detector.detect_batch(
                 awards=awards,
                 contracts=sample_contracts,

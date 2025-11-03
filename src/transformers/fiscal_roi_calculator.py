@@ -140,7 +140,11 @@ class FiscalROICalculator:
             logger.warning("Empty tax estimates DataFrame provided to ROI calculator")
 
         # Aggregate tax receipts
-        total_tax_receipts = tax_estimates_df["total_tax_receipt"].sum() if not tax_estimates_df.empty else Decimal("0")
+        total_tax_receipts = (
+            tax_estimates_df["total_tax_receipt"].sum()
+            if not tax_estimates_df.empty
+            else Decimal("0")
+        )
 
         # Calculate basic ROI ratio
         if sbir_investment > 0:
@@ -153,7 +157,11 @@ class FiscalROICalculator:
 
         # Calculate payback period
         # Assume annual returns are total divided by time horizon
-        annual_returns = total_tax_receipts / Decimal(str(time_horizon_years)) if time_horizon_years > 0 else Decimal("0")
+        annual_returns = (
+            total_tax_receipts / Decimal(str(time_horizon_years))
+            if time_horizon_years > 0
+            else Decimal("0")
+        )
         payback_period = self._calculate_payback_period(
             sbir_investment,
             annual_returns,
@@ -179,30 +187,20 @@ class FiscalROICalculator:
         if not tax_estimates_df.empty:
             if "state" in tax_estimates_df.columns:
                 breakdown_by_state = (
-                    tax_estimates_df.groupby("state")["total_tax_receipt"]
-                    .sum()
-                    .to_dict()
+                    tax_estimates_df.groupby("state")["total_tax_receipt"].sum().to_dict()
                 )
                 # Convert to Decimal
-                breakdown_by_state = {
-                    k: Decimal(str(v)) for k, v in breakdown_by_state.items()
-                }
+                breakdown_by_state = {k: Decimal(str(v)) for k, v in breakdown_by_state.items()}
 
             if "bea_sector" in tax_estimates_df.columns:
                 breakdown_by_sector = (
-                    tax_estimates_df.groupby("bea_sector")["total_tax_receipt"]
-                    .sum()
-                    .to_dict()
+                    tax_estimates_df.groupby("bea_sector")["total_tax_receipt"].sum().to_dict()
                 )
-                breakdown_by_sector = {
-                    k: Decimal(str(v)) for k, v in breakdown_by_sector.items()
-                }
+                breakdown_by_sector = {k: Decimal(str(v)) for k, v in breakdown_by_sector.items()}
 
             if "fiscal_year" in tax_estimates_df.columns:
                 breakdown_by_fiscal_year = (
-                    tax_estimates_df.groupby("fiscal_year")["total_tax_receipt"]
-                    .sum()
-                    .to_dict()
+                    tax_estimates_df.groupby("fiscal_year")["total_tax_receipt"].sum().to_dict()
                 )
                 breakdown_by_fiscal_year = {
                     int(k): Decimal(str(v)) for k, v in breakdown_by_fiscal_year.items()
@@ -328,4 +326,3 @@ class FiscalROICalculator:
             discount_rate=discount_rate,
             time_horizon_years=time_horizon_years,
         )
-

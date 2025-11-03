@@ -369,7 +369,6 @@ def aggregate_run_metrics(
       - avg_latency_ms (if latency values present in result metadata)
     """
     # Be resilient if ProviderResponse is a plain dict
-    results = []
     provider_name = None
     query = truth.get("__query__", "")
     latency_values: list[float] = []

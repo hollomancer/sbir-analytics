@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import typer
-from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 
 from ..context import CommandContext
@@ -17,7 +15,10 @@ app = typer.Typer(name="enrich", help="Execute enrichment workflows")
 def run(
     ctx: typer.Context,
     sources: str | None = typer.Option(
-        None, "--sources", "-s", help="Comma-separated enrichment sources (e.g., 'sam_gov,usaspending')"
+        None,
+        "--sources",
+        "-s",
+        help="Comma-separated enrichment sources (e.g., 'sam_gov,usaspending')",
     ),
     batch_size: int | None = typer.Option(None, "--batch-size", "-b", help="Batch processing size"),
     confidence_threshold: float | None = typer.Option(
@@ -44,38 +45,42 @@ def run(
             context.console.print("[yellow]No valid enrichment sources specified[/yellow]")
             return
 
-        context.console.print(f"[cyan]Executing enrichment for sources: {', '.join(asset_groups)}[/cyan]")
+        context.console.print(
+            f"[cyan]Executing enrichment for sources: {', '.join(asset_groups)}[/cyan]"
+        )
 
         # Execute enrichment with progress tracking
         tracker = create_progress_tracker(context.console)
         operations = [
-            {"description": f"Enriching with {group}", "total": None}
-            for group in asset_groups
+            {"description": f"Enriching with {group}", "total": None} for group in asset_groups
         ]
 
         with tracker.track_multiple_operations(operations) as updates:
-                success_count = 0
-                total_processed = 0
+            success_count = 0
 
-                for i, group in enumerate(asset_groups):
-                    update = updates[f"Enriching with {group}"]
-                    update({"completed": 0, "records": 0, "message": "Starting..."})
+            for _i, group in enumerate(asset_groups):
+                update = updates[f"Enriching with {group}"]
+                update({"completed": 0, "records": 0, "message": "Starting..."})
 
-                    try:
-                        # Trigger materialization for this enrichment group
-                        result = context.dagster_client.trigger_materialization(
-                            asset_groups=[group],
+                try:
+                    # Trigger materialization for this enrichment group
+                    result = context.dagster_client.trigger_materialization(
+                        asset_groups=[group],
+                    )
+
+                    if result.status == "success":
+                        success_count += 1
+                        update(
+                            {"completed": 100, "records": 0, "message": "Completed successfully"}
+                        )
+                    else:
+                        update(
+                            {"completed": 100, "records": 0, "message": f"Failed: {result.status}"}
                         )
 
-                        if result.status == "success":
-                            success_count += 1
-                            update({"completed": 100, "records": 0, "message": "Completed successfully"})
-                        else:
-                            update({"completed": 100, "records": 0, "message": f"Failed: {result.status}"})
-
-                    except Exception as e:
-                        update({"completed": 100, "records": 0, "message": f"Error: {str(e)[:50]}"})
-                        context.console.print(f"[red]Error enriching with {group}: {e}[/red]")
+                except Exception as e:
+                    update({"completed": 100, "records": 0, "message": f"Error: {str(e)[:50]}"})
+                    context.console.print(f"[red]Error enriching with {group}: {e}[/red]")
 
         # Display summary
         summary_table = Table(title="Enrichment Summary", show_header=True)
@@ -94,7 +99,9 @@ def run(
         context.console.print(summary_table)
 
         if success_count == len(asset_groups):
-            context.console.print(f"[green]✓ All enrichment operations completed successfully[/green]")
+            context.console.print(
+                "[green]✓ All enrichment operations completed successfully[/green]"
+            )
         else:
             context.console.print(
                 f"[yellow]⚠ {success_count}/{len(asset_groups)} enrichment operations completed[/yellow]"
@@ -148,4 +155,3 @@ def stats(
 def register_command(main_app: typer.Typer) -> None:
     """Register enrich commands with main app."""
     main_app.add_typer(app, name="enrich")
-

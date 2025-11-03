@@ -13,6 +13,7 @@ from rich.console import Console
 
 if TYPE_CHECKING:
     from src.config.schemas import PipelineConfig
+
     from .integration.dagster_client import DagsterClient
     from .integration.metrics_collector import MetricsCollector
     from .integration.neo4j_client import Neo4jClient
@@ -49,6 +50,7 @@ class CommandContext:
         """
         # Import here to avoid circular dependencies
         from src.config.loader import get_config
+
         from .integration.dagster_client import DagsterClient
         from .integration.metrics_collector import MetricsCollector
         from .integration.neo4j_client import Neo4jClient
@@ -70,4 +72,3 @@ class CommandContext:
             neo4j_client=neo4j_client,
             metrics_collector=metrics_collector,
         )
-

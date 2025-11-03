@@ -267,7 +267,7 @@ class FiscalParameterSweep:
         scenario_id = 1
 
         for combo in product(*[param_grids[name] for name in param_names]):
-            parameters = dict(zip(param_names, combo))
+            parameters = dict(zip(param_names, combo, strict=False))
 
             scenario = ParameterScenario(
                 scenario_id=scenario_id,
@@ -299,10 +299,22 @@ class FiscalParameterSweep:
                 sweep_config = sweep_config.__dict__
         else:
             sweep_config = self.sensitivity_config.get("parameter_sweep", {})
-        
-        method = sweep_config.get("method", "monte_carlo") if isinstance(sweep_config, dict) else getattr(sweep_config, "method", "monte_carlo")
-        num_scenarios = sweep_config.get("num_scenarios", 1000) if isinstance(sweep_config, dict) else getattr(sweep_config, "num_scenarios", 1000)
-        random_seed = sweep_config.get("random_seed", 42) if isinstance(sweep_config, dict) else getattr(sweep_config, "random_seed", 42)
+
+        method = (
+            sweep_config.get("method", "monte_carlo")
+            if isinstance(sweep_config, dict)
+            else getattr(sweep_config, "method", "monte_carlo")
+        )
+        num_scenarios = (
+            sweep_config.get("num_scenarios", 1000)
+            if isinstance(sweep_config, dict)
+            else getattr(sweep_config, "num_scenarios", 1000)
+        )
+        random_seed = (
+            sweep_config.get("random_seed", 42)
+            if isinstance(sweep_config, dict)
+            else getattr(sweep_config, "random_seed", 42)
+        )
 
         if method == "monte_carlo":
             scenarios = self.generate_monte_carlo_scenarios(num_scenarios, random_seed)
@@ -342,4 +354,3 @@ class FiscalParameterSweep:
         )
 
         return df
-

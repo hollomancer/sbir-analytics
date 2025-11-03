@@ -32,65 +32,59 @@ class TestPipelineValidator:
         validator = PipelineValidator()
 
         # Create test data
-        test_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp'],
-            'UEI': ['UEI001', 'UEI002'],
-            'Contract': ['C001', 'C002']
-        })
+        test_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp"],
+                "UEI": ["UEI001", "UEI002"],
+                "Contract": ["C001", "C002"],
+            }
+        )
 
         result = validator.validate_extraction_stage(
-            raw_data=test_data,
-            expected_columns=['Company', 'UEI', 'Contract'],
-            min_records=1
+            raw_data=test_data, expected_columns=["Company", "UEI", "Contract"], min_records=1
         )
 
         assert result.stage == ValidationStage.EXTRACTION
         assert result.status == ValidationStatus.PASSED
         assert len(result.checks) >= 2  # At least record count and column checks
-        assert result.metadata['record_count'] == 2
-        assert result.metadata['column_count'] == 3
+        assert result.metadata["record_count"] == 2
+        assert result.metadata["column_count"] == 3
 
     def test_validate_extraction_stage_missing_columns(self):
         """Test extraction validation with missing required columns."""
         validator = PipelineValidator()
 
-        test_data = pd.DataFrame({
-            'Company': ['Acme Inc'],
-            'UEI': ['UEI001']
-        })
+        test_data = pd.DataFrame({"Company": ["Acme Inc"], "UEI": ["UEI001"]})
 
         result = validator.validate_extraction_stage(
             raw_data=test_data,
-            expected_columns=['Company', 'UEI', 'Contract'],  # Contract missing
-            min_records=1
+            expected_columns=["Company", "UEI", "Contract"],  # Contract missing
+            min_records=1,
         )
 
         assert result.stage == ValidationStage.EXTRACTION
         assert result.status == ValidationStatus.FAILED
 
         # Find the failed column check
-        column_check = next((c for c in result.checks if c.name == 'required_columns'), None)
+        column_check = next((c for c in result.checks if c.name == "required_columns"), None)
         assert column_check is not None
         assert column_check.status == ValidationStatus.FAILED
-        assert 'Contract' in column_check.message
+        assert "Contract" in column_check.message
 
     def test_validate_extraction_stage_insufficient_records(self):
         """Test extraction validation with insufficient records."""
         validator = PipelineValidator()
 
-        test_data = pd.DataFrame({
-            'Company': ['Acme Inc'],
-            'UEI': ['UEI001']
-        })
+        test_data = pd.DataFrame({"Company": ["Acme Inc"], "UEI": ["UEI001"]})
 
         result = validator.validate_extraction_stage(
             raw_data=test_data,
-            min_records=5  # Require 5 records but only have 1
+            min_records=5,  # Require 5 records but only have 1
         )
 
         assert result.status == ValidationStatus.FAILED
 
-        record_check = next((c for c in result.checks if c.name == 'minimum_record_count'), None)
+        record_check = next((c for c in result.checks if c.name == "minimum_record_count"), None)
         assert record_check is not None
         assert record_check.status == ValidationStatus.FAILED
         assert record_check.severity == QualitySeverity.CRITICAL
@@ -100,56 +94,61 @@ class TestPipelineValidator:
         validator = PipelineValidator()
 
         # Original data
-        original_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp'],
-            'UEI': ['UEI001', 'UEI002']
-        })
+        original_data = pd.DataFrame(
+            {"Company": ["Acme Inc", "TechCorp"], "UEI": ["UEI001", "UEI002"]}
+        )
 
         # Enriched data with match columns
-        enriched_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp'],
-            'UEI': ['UEI001', 'UEI002'],
-            '_usaspending_match_method': ['exact', 'fuzzy'],
-            '_usaspending_match_score': [1.0, 0.85]
-        })
+        enriched_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp"],
+                "UEI": ["UEI001", "UEI002"],
+                "_usaspending_match_method": ["exact", "fuzzy"],
+                "_usaspending_match_score": [1.0, 0.85],
+            }
+        )
 
         result = validator.validate_enrichment_stage(
             enriched_data=enriched_data,
             original_data=original_data,
             min_match_rate=0.7,
-            expected_enrichment_columns=['_usaspending_match_method', '_usaspending_match_score']
+            expected_enrichment_columns=["_usaspending_match_method", "_usaspending_match_score"],
         )
 
         assert result.stage == ValidationStage.ENRICHMENT
         assert result.status == ValidationStatus.PASSED
-        assert result.metadata['match_rate'] == 1.0  # Both records matched
+        assert result.metadata["match_rate"] == 1.0  # Both records matched
 
     def test_validate_enrichment_stage_low_match_rate(self):
         """Test enrichment validation with low match rate."""
         validator = PipelineValidator()
 
-        original_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp', 'StartupCo'],
-            'UEI': ['UEI001', 'UEI002', 'UEI003']
-        })
+        original_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp", "StartupCo"],
+                "UEI": ["UEI001", "UEI002", "UEI003"],
+            }
+        )
 
         # Only 1 out of 3 records matched
-        enriched_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp', 'StartupCo'],
-            'UEI': ['UEI001', 'UEI002', 'UEI003'],
-            '_usaspending_match_method': ['exact', None, None],
-            '_usaspending_match_score': [1.0, None, None]
-        })
+        enriched_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp", "StartupCo"],
+                "UEI": ["UEI001", "UEI002", "UEI003"],
+                "_usaspending_match_method": ["exact", None, None],
+                "_usaspending_match_score": [1.0, None, None],
+            }
+        )
 
         result = validator.validate_enrichment_stage(
             enriched_data=enriched_data,
             original_data=original_data,
-            min_match_rate=0.7  # Require 70% but only have 33%
+            min_match_rate=0.7,  # Require 70% but only have 33%
         )
 
         assert result.status == ValidationStatus.FAILED
 
-        match_rate_check = next((c for c in result.checks if c.name == 'match_rate'), None)
+        match_rate_check = next((c for c in result.checks if c.name == "match_rate"), None)
         assert match_rate_check is not None
         assert match_rate_check.status == ValidationStatus.FAILED
         assert match_rate_check.actual < 0.7
@@ -186,16 +185,13 @@ class TestPipelineValidator:
                 call_results.append("rel_count")
             elif "db.labels()" in query:
                 # Node types query
-                result.__iter__ = Mock(return_value=iter([
-                    {"label": "Company"},
-                    {"label": "Award"}
-                ]))
+                result.__iter__ = Mock(
+                    return_value=iter([{"label": "Company"}, {"label": "Award"}])
+                )
                 call_results.append("node_types")
             elif "db.relationshipTypes()" in query:
                 # Relationship types query
-                result.__iter__ = Mock(return_value=iter([
-                    {"relationshipType": "RECEIVED"}
-                ]))
+                result.__iter__ = Mock(return_value=iter([{"relationshipType": "RECEIVED"}]))
                 call_results.append("rel_types")
 
             return result
@@ -205,16 +201,16 @@ class TestPipelineValidator:
         validator = PipelineValidator(neo4j_client=mock_client)
 
         result = validator.validate_neo4j_graph(
-            expected_node_types=['Company', 'Award'],
-            expected_relationships=['RECEIVED'],
+            expected_node_types=["Company", "Award"],
+            expected_relationships=["RECEIVED"],
             min_nodes=10,
-            min_relationships=5
+            min_relationships=5,
         )
 
         assert result.stage == ValidationStage.LOADING
         assert result.status == ValidationStatus.PASSED
-        assert result.metadata['node_count'] == 100
-        assert result.metadata['relationship_count'] == 50
+        assert result.metadata["node_count"] == 100
+        assert result.metadata["relationship_count"] == 50
 
     def test_validate_neo4j_graph_no_client(self):
         """Test Neo4j validation when no client is provided."""
@@ -225,7 +221,7 @@ class TestPipelineValidator:
         assert result.stage == ValidationStage.LOADING
         assert result.status == ValidationStatus.SKIPPED
         assert len(result.checks) == 1
-        assert result.checks[0].name == 'neo4j_client'
+        assert result.checks[0].name == "neo4j_client"
 
     def test_validate_neo4j_graph_connection_failure(self):
         """Test Neo4j validation with connection failure."""
@@ -238,7 +234,7 @@ class TestPipelineValidator:
 
         assert result.status == ValidationStatus.FAILED
 
-        connection_check = next((c for c in result.checks if c.name == 'neo4j_connection'), None)
+        connection_check = next((c for c in result.checks if c.name == "neo4j_connection"), None)
         assert connection_check is not None
         assert connection_check.status == ValidationStatus.FAILED
         assert connection_check.severity == QualitySeverity.CRITICAL
@@ -258,11 +254,9 @@ class TestValidationModels:
             duration_seconds=1.0,
             checks=[
                 ValidationCheck(
-                    name="test_check",
-                    status=ValidationStatus.PASSED,
-                    message="Test passed"
+                    name="test_check", status=ValidationStatus.PASSED, message="Test passed"
                 )
-            ]
+            ],
         )
 
         failed_stage = StageValidationResult(
@@ -274,9 +268,9 @@ class TestValidationModels:
                     name="critical_check",
                     status=ValidationStatus.FAILED,
                     message="Critical failure",
-                    severity=QualitySeverity.CRITICAL
+                    severity=QualitySeverity.CRITICAL,
                 )
-            ]
+            ],
         )
 
         validation_result = ValidationResult(
@@ -285,7 +279,7 @@ class TestValidationModels:
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.FAILED,
             total_duration_seconds=3.0,
-            stage_results=[passed_stage, failed_stage]
+            stage_results=[passed_stage, failed_stage],
         )
 
         assert len(validation_result.passed_stages) == 1
@@ -303,14 +297,14 @@ class TestValidationModels:
             name="critical_test",
             status=ValidationStatus.FAILED,
             message="Critical failure",
-            severity=QualitySeverity.CRITICAL
+            severity=QualitySeverity.CRITICAL,
         )
 
         stage_result = StageValidationResult(
             stage=ValidationStage.EXTRACTION,
             status=ValidationStatus.FAILED,
             duration_seconds=1.0,
-            checks=[critical_check]
+            checks=[critical_check],
         )
 
         validation_result = ValidationResult(
@@ -319,7 +313,7 @@ class TestValidationModels:
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.FAILED,
             total_duration_seconds=1.0,
-            stage_results=[stage_result]
+            stage_results=[stage_result],
         )
 
         report = TestReport(
@@ -327,17 +321,20 @@ class TestValidationModels:
             test_id="test_002",
             scenario=TestScenario.MINIMAL,
             timestamp=pd.Timestamp.now(),
-            validation_result=validation_result
+            validation_result=validation_result,
         )
 
         # Check summary generation
-        assert report.summary['overall_status'] == 'failed'
-        assert report.summary['critical_issues'] == 1
-        assert report.summary['stages_failed'] == 1
+        assert report.summary["overall_status"] == "failed"
+        assert report.summary["critical_issues"] == 1
+        assert report.summary["stages_failed"] == 1
 
         # Check recommendations generation
         assert len(report.recommendations) > 0
-        critical_rec = next((r for r in report.recommendations if r.priority == RecommendationPriority.CRITICAL), None)
+        critical_rec = next(
+            (r for r in report.recommendations if r.priority == RecommendationPriority.CRITICAL),
+            None,
+        )
         assert critical_rec is not None
         assert "critical_test" in critical_rec.related_checks
 
@@ -359,11 +356,9 @@ class TestValidationModels:
                 duration_seconds=1.0,
                 checks=[
                     ValidationCheck(
-                        name="test_check",
-                        status=ValidationStatus.PASSED,
-                        message="Test passed"
+                        name="test_check", status=ValidationStatus.PASSED, message="Test passed"
                     )
-                ]
+                ],
             )
 
             validation_result = ValidationResult(
@@ -372,11 +367,13 @@ class TestValidationModels:
                 timestamp=pd.Timestamp.now(),
                 overall_status=ValidationStatus.PASSED,
                 total_duration_seconds=1.0,
-                stage_results=[stage_result]
+                stage_results=[stage_result],
             )
 
             # Generate report with explicit test_id
-            report = reporter.generate_report(validation_result, test_id="test_003", include_artifacts=True)
+            report = reporter.generate_report(
+                validation_result, test_id="test_003", include_artifacts=True
+            )
 
             assert report.test_id == "test_003"
             assert report.scenario == TestScenario.STANDARD
@@ -388,6 +385,7 @@ class TestValidationModels:
 
             # Check JSON content
             import json
+
             with open(report.artifacts["json"]) as f:
                 json_data = json.load(f)
             assert json_data["test_id"] == "test_003"
@@ -409,31 +407,31 @@ class TestIntegration:
         reporter = ValidationReporter()
 
         # Create test data
-        raw_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp'],
-            'UEI': ['UEI001', 'UEI002'],
-            'Contract': ['C001', 'C002']
-        })
+        raw_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp"],
+                "UEI": ["UEI001", "UEI002"],
+                "Contract": ["C001", "C002"],
+            }
+        )
 
-        enriched_data = pd.DataFrame({
-            'Company': ['Acme Inc', 'TechCorp'],
-            'UEI': ['UEI001', 'UEI002'],
-            'Contract': ['C001', 'C002'],
-            '_usaspending_match_method': ['exact', 'fuzzy'],
-            '_usaspending_match_score': [1.0, 0.85]
-        })
+        enriched_data = pd.DataFrame(
+            {
+                "Company": ["Acme Inc", "TechCorp"],
+                "UEI": ["UEI001", "UEI002"],
+                "Contract": ["C001", "C002"],
+                "_usaspending_match_method": ["exact", "fuzzy"],
+                "_usaspending_match_score": [1.0, 0.85],
+            }
+        )
 
         # Run validations
         extraction_result = validator.validate_extraction_stage(
-            raw_data=raw_data,
-            expected_columns=['Company', 'UEI', 'Contract'],
-            min_records=1
+            raw_data=raw_data, expected_columns=["Company", "UEI", "Contract"], min_records=1
         )
 
         enrichment_result = validator.validate_enrichment_stage(
-            enriched_data=enriched_data,
-            original_data=raw_data,
-            min_match_rate=0.7
+            enriched_data=enriched_data, original_data=raw_data, min_match_rate=0.7
         )
 
         # Create overall validation result
@@ -442,8 +440,9 @@ class TestIntegration:
             scenario=TestScenario.STANDARD,
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.PASSED,
-            total_duration_seconds=extraction_result.duration_seconds + enrichment_result.duration_seconds,
-            stage_results=[extraction_result, enrichment_result]
+            total_duration_seconds=extraction_result.duration_seconds
+            + enrichment_result.duration_seconds,
+            stage_results=[extraction_result, enrichment_result],
         )
 
         # Generate report
@@ -451,8 +450,8 @@ class TestIntegration:
 
         assert report.validation_result.overall_status == ValidationStatus.PASSED
         assert len(report.validation_result.stage_results) == 2
-        assert report.summary['stages_passed'] == 2
-        assert report.summary['stages_failed'] == 0
+        assert report.summary["stages_passed"] == 2
+        assert report.summary["stages_failed"] == 0
 
         # Should have success recommendation
         success_rec = next((r for r in report.recommendations if r.category == "success"), None)
