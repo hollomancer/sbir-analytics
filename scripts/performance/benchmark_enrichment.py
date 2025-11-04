@@ -16,9 +16,16 @@ Usage:
 """
 
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# Add workspace root to path for imports
+_script_dir = Path(__file__).parent
+_workspace_root = _script_dir.parent.parent
+if str(_workspace_root) not in sys.path:
+    sys.path.insert(0, str(_workspace_root))
 
 import pandas as pd
 from loguru import logger
@@ -302,7 +309,7 @@ def detect_regressions(current: dict[str, Any], baseline: dict[str, Any]) -> dic
 
 def save_benchmark(
     benchmark_data: dict[str, Any],
-    output_path: Path | None = None,
+    output_path: Path | str | None = None,
 ) -> Path:
     """
     Save benchmark results to JSON file.
@@ -314,11 +321,13 @@ def save_benchmark(
     Returns:
         Path where benchmark was saved
     """
-    if output_path is None:
+    if output_path is None or output_path == "":
         benchmarks_dir = Path("reports/benchmarks")
         benchmarks_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = benchmarks_dir / f"benchmark_{timestamp}.json"
+    else:
+        output_path = Path(output_path)
 
     # Add timestamp and metadata
     benchmark_data["timestamp"] = datetime.now().isoformat()
@@ -345,7 +354,7 @@ def main():
     add_output_file_argument(
         parser,
         "output",
-        None,
+        "",
         "Output path for benchmark JSON (default: reports/benchmarks/benchmark_<timestamp>.json)",
     )
     add_baseline_argument(parser)

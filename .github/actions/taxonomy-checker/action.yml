@@ -132,15 +132,17 @@ runs:
           const pr = context.issue.number || (context.payload.pull_request && context.payload.pull_request.number);
           const summaryRaw = `Checks summary: ${{ steps.evaluate.outputs.summary }}`;
           const title = `**${{ inputs.comment-title }}**`;
+          const codeBlockStart = '```json';
+          const codeBlockEnd = '```';
           const body = `${title}
 
 The CET taxonomy completeness checks reported issues that require attention. Summary:
 
-` + '```json' + `
+${codeBlockStart}
 ${{ steps.evaluate.outputs.summary }}
-` + '```' + `
+${codeBlockEnd}
 
-Please review the taxonomy at ` + '`config/cet/taxonomy.yaml`' + ` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
+Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
 
 Artifacts: the checks JSON has been uploaded by the CI job for inspection.`;
           if (!pr) {

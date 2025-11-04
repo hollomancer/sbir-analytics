@@ -391,6 +391,7 @@ Each signal contains:
 
 ### Contract Details
 
+<!-- pragma: allowlist secret -->
 ```json
 {
   "contract_details": {

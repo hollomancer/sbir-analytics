@@ -174,39 +174,45 @@ class TestVendorResolution:
     @pytest.fixture
     def vendor_crosswalk(self):
         """Create a vendor cross-walk."""
-        from src.transition.features.vendor_crosswalk import VendorCrosswalk
+        from src.transition.features.vendor_crosswalk import CrosswalkRecord, VendorCrosswalk
 
         crosswalk = VendorCrosswalk()
-        crosswalk.add_mapping(
-            uei="UEI123456789",
-            duns="123456789",
-            cage="1A2B3C",
-            company_name="TechCorp Inc",
+        crosswalk.add_or_merge(
+            CrosswalkRecord(
+                canonical_id="co-001",
+                canonical_name="TechCorp Inc",
+                uei="UEI123456789",
+                duns="123456789",
+                cage="1A2B3C",
+            )
         )
-        crosswalk.add_mapping(
-            uei="UEI987654321",
-            duns="987654321",
-            cage="4D5E6F",
-            company_name="AdvancedSys LLC",
+        crosswalk.add_or_merge(
+            CrosswalkRecord(
+                canonical_id="co-002",
+                canonical_name="AdvancedSys LLC",
+                uei="UEI987654321",
+                duns="987654321",
+                cage="4D5E6F",
+            )
         )
         return crosswalk
 
     def test_vendor_resolution_matches_uei(self, vendor_crosswalk):
         """Test vendor resolution by UEI."""
-        result = vendor_crosswalk.resolve(uei="UEI123456789")
+        result = vendor_crosswalk.find_by_uei("UEI123456789")
         assert result is not None
         assert result.uei == "UEI123456789"
         assert result.duns == "123456789"
 
     def test_vendor_resolution_matches_duns(self, vendor_crosswalk):
         """Test vendor resolution by DUNS."""
-        result = vendor_crosswalk.resolve(duns="987654321")
+        result = vendor_crosswalk.find_by_duns("987654321")
         assert result is not None
         assert result.uei == "UEI987654321"
 
     def test_vendor_resolution_matches_cage(self, vendor_crosswalk):
         """Test vendor resolution by CAGE code."""
-        result = vendor_crosswalk.resolve(cage="1A2B3C")
+        result = vendor_crosswalk.find_by_cage("1A2B3C")
         assert result is not None
         assert result.uei == "UEI123456789"
 
@@ -405,10 +411,10 @@ class TestSampleDataset:
                 "company": [f"Company {i}" for i in range(1000)],
                 "UEI": [f"UEI{i:09d}" for i in range(1000)],
                 "Phase": ["I" if i % 2 == 0 else "II" for i in range(1000)],
-                "awarding_agency_name": ["NSF", "DoD", "DoE"] * 334,
+                "awarding_agency_name": (["NSF", "DoD", "DoE"] * 333 + ["NSF"])[:1000],
                 "award_date": pd.date_range("2018-01-01", periods=1000, freq="D"),
                 "completion_date": pd.date_range("2019-01-01", periods=1000, freq="D"),
-                "cet_area": ["AI", "Manufacturing", "Biotech"] * 334,
+                "cet_area": (["AI", "Manufacturing", "Biotech"] * 333 + ["AI"])[:1000],
             }
         )
 
@@ -418,7 +424,7 @@ class TestSampleDataset:
                 "vendor_uei": [f"UEI{(i % 1000):09d}" for i in range(5000)],
                 "action_date": pd.date_range("2019-06-01", periods=5000, freq="12H"),
                 "description": [f"Contract description {i}" for i in range(5000)],
-                "awarding_agency_name": ["NSF", "DoD", "DoE"] * 1667,
+                "awarding_agency_name": (["NSF", "DoD", "DoE"] * 1666 + ["NSF", "DoD"])[:5000],
             }
         )
 

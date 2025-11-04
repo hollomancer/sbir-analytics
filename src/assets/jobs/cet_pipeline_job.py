@@ -22,11 +22,14 @@ from dagster import AssetSelection, define_asset_job
 
 # Import CET production assets
 try:
-    from src.assets.cet_assets import (  # type: ignore
-        cet_award_classifications,
-        cet_company_profiles,
+    from ..cet_assets import (  # type: ignore
+        enriched_cet_award_classifications,
+        transformed_cet_company_profiles,
         cet_taxonomy,
     )
+    # Create aliases for backward compatibility
+    cet_award_classifications = enriched_cet_award_classifications  # type: ignore
+    cet_company_profiles = transformed_cet_company_profiles  # type: ignore
 except Exception:  # pragma: no cover - defensive import for repository load-time
     cet_taxonomy = None  # type: ignore
     cet_award_classifications = None  # type: ignore
@@ -34,7 +37,7 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
 
 # Import CET Neo4j loading/enrichment assets (consolidated)
 try:
-    from src.assets.cet_assets import (  # type: ignore
+    from ..cet_assets import (  # type: ignore
         neo4j_award_cet_enrichment,
         neo4j_award_cet_relationships,
         neo4j_cetarea_nodes,

@@ -27,7 +27,9 @@ from src.models.quality import (
     ChangesSummary,
     DataHygieneMetrics,
     InsightRecommendation,
+    ModuleReport,
     QualitySeverity,
+    StatisticalReport,
 )
 from src.models.statistical_reports import (
     ExecutiveSummary,

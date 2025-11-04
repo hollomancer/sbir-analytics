@@ -227,12 +227,20 @@ class FiscalReturnSummary(BaseModel):
         json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
     )
 
-    @field_validator("total_sbir_investment", "total_tax_receipts")
+    @field_validator("total_sbir_investment")
     @classmethod
-    def validate_positive_amounts(cls, v: Decimal) -> Decimal:
-        """Validate investment and receipt amounts are positive."""
+    def validate_positive_investment(cls, v: Decimal) -> Decimal:
+        """Validate investment amount is positive."""
         if v <= 0:
-            raise ValueError("Investment and receipt amounts must be positive")
+            raise ValueError("Investment amount must be positive")
+        return v
+
+    @field_validator("total_tax_receipts")
+    @classmethod
+    def validate_non_negative_receipts(cls, v: Decimal) -> Decimal:
+        """Validate receipt amounts are non-negative (zero is allowed)."""
+        if v < 0:
+            raise ValueError("Receipt amounts must be non-negative")
         return v
 
     @field_validator("roi_ratio", "benefit_cost_ratio")
