@@ -23,7 +23,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from ..lib.cli_utils import (
+from scripts.lib.cli_utils import (
     add_input_file_argument,
     add_json_output_argument,
     add_output_file_argument,

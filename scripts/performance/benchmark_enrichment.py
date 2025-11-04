@@ -27,7 +27,7 @@ from src.config.loader import get_config
 from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
 from src.utils.performance_monitor import performance_monitor
 
-from ..lib.cli_utils import (
+from scripts.lib.cli_utils import (
     add_baseline_argument,
     add_output_file_argument,
     add_sample_size_argument,

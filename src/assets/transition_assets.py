@@ -542,6 +542,23 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
         else 0.0
     )
 
+    # Calculate parent-child relationship statistics
+    parent_contract_col = df.get("parent_contract_id", pd.Series(dtype=object))
+    contract_award_type_col = df.get("contract_award_type", pd.Series(dtype=object))
+    child_rows = int(parent_contract_col.notna().sum()) if total > 0 else 0
+    idv_parent_rows = 0
+    if total > 0 and contract_award_type_col is not None:
+        idv_parent_mask = contract_award_type_col.astype(str).str.upper().str.startswith("IDV")
+        idv_parent_rows = int(idv_parent_mask.sum())
+    child_ratio = child_rows / total if total > 0 else 0.0
+    idv_parent_ratio = idv_parent_rows / total if total > 0 else 0.0
+    parent_child_stats = {
+        "child_rows": child_rows,
+        "idv_parent_rows": idv_parent_rows,
+        "child_ratio": round(child_ratio, 4),
+        "idv_parent_ratio": round(idv_parent_ratio, 4),
+    }
+
     checks = {
         "ok": True,
         "reason": None,
@@ -1192,6 +1209,16 @@ def transformed_transition_detections(
     }
     context.log.info("Produced transition_detections", extra=metrics)
 
+    # Initialize metadata dict
+    meta = {
+        "output_path": str(out_path),
+        "rows": total,
+        "high_confidence_candidates": high_conf,
+        "avg_score": avg_score,
+        "threshold": float(threshold),
+        "by_method": by_method,
+    }
+
     # Perform statistical analysis with transition analyzer
     if TransitionDetectionAnalyzer is not None:
         try:
@@ -1205,7 +1232,6 @@ def transformed_transition_detections(
             # Prepare module data for analysis
             module_data = {
                 "transitions_df": df,
-                "awards_df": enriched_sbir_awards,  # Should be available from dependency
                 "detection_results": {
                     "awards_processed": total,
                     "detection_failed": 0,  # Could be enhanced with actual failure counts
@@ -1270,14 +1296,6 @@ def transformed_transition_detections(
     else:
         context.log.info("Transition analyzer not available; skipping statistical analysis")
 
-    meta = {
-        "output_path": str(out_path),
-        "rows": total,
-        "high_confidence_candidates": high_conf,
-        "avg_score": avg_score,
-        "threshold": float(threshold),
-        "by_method": by_method,
-    }
     return Output(df, metadata=meta)
 
 

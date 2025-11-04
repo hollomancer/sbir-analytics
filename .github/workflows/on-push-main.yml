@@ -234,7 +234,7 @@ jobs:
         run: |
           set -eux
           # Use profile-based compose to bring up ephemeral neo4j + app (app configured to run pytest)
-          docker compose --profile ci-test up --abort-on-container-exit --build neo4j app
+          docker compose --profile ci-test up --abort-on-container-exit --build neo4j-ci app-ci
         timeout-minutes: 30
 
       - name: Tear down test compose (cleanup)
@@ -351,7 +351,7 @@ jobs:
         run: |
           set -eux
           # Synchronous job execution against definitions.py
-          poetry run dagster job execute -f src/definitions.py -j cet_full_pipeline_job
+          poetry run dagster job execute -m src.definitions -j cet_full_pipeline_job
 
       - name: List produced artifacts
         if: always()
@@ -759,6 +759,7 @@ jobs:
       - name: Create baseline if needed
         if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
         run: |
+          export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}"
           python scripts/performance/benchmark_enrichment.py \
             --sample-size 500 \
             --save-as-baseline
