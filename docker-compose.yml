@@ -243,7 +243,6 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_WEBSERVER_CONTAINER_NAME:-sbir-dagster-web}
     profiles:
-      - dev
       - prod
       - cet-staging
     environment:
@@ -272,7 +271,11 @@ services:
 
   # Development Dagster webserver with bind mounts and watch files
   dagster-webserver-dev:
-    extends: dagster-webserver
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: sbir-dagster-web-dev
     profiles:
       - dev
@@ -283,6 +286,8 @@ services:
       NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
       ENABLE_WATCHFILES: "1"
       ENV_DAGSTER_CMD: "${ENV_DAGSTER_CMD:-dagster dev -h 0.0.0.0 -p 3000}"
+      HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
+      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
     volumes:
       - ./src:/app/src:rw
       - ./config:/app/config:rw
@@ -290,11 +295,15 @@ services:
       - ./reports:/app/reports:rw
       - ./logs:/app/logs:rw
       - ./data:/app/data:rw
+    ports:
+      - "${DAGSTER_PORT:-3000}:3000"
     depends_on:
       neo4j-dev:
         condition: service_healthy
+    healthcheck: *healthcheck-dagster
     networks:
       - sbir-dev-network
+    restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
 
   # CET Staging Dagster webserver
   dagster-webserver-staging:
@@ -327,7 +336,6 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_DAEMON_CONTAINER_NAME:-sbir-dagster-daemon}
     profiles:
-      - dev
       - prod
       - cet-staging
     environment: *common-environment
@@ -349,7 +357,11 @@ services:
 
   # Development Dagster daemon
   dagster-daemon-dev:
-    extends: dagster-daemon
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: sbir-dagster-daemon-dev
     profiles:
       - dev
@@ -364,13 +376,16 @@ services:
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
       - ./logs:/app/logs:rw
+    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
     depends_on:
       neo4j-dev:
         condition: service_healthy
       dagster-webserver-dev:
         condition: service_healthy
+    healthcheck: *healthcheck-daemon
     networks:
       - sbir-dev-network
+    restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
 
   # CET Staging Dagster daemon
   dagster-daemon-staging:
@@ -409,7 +424,6 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${ETL_RUNNER_CONTAINER_NAME:-sbir-etl-runner}
     profiles:
-      - dev
       - prod
       - cet-staging
     environment: *common-environment
@@ -434,7 +448,11 @@ services:
 
   # Development ETL runner
   etl-runner-dev:
-    extends: etl-runner
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: sbir-etl-runner-dev
     profiles:
       - dev
@@ -449,11 +467,18 @@ services:
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
       - ./logs:/app/logs:rw
+    entrypoint: ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner"]
+    command:
+      - "--"
+      - "sh"
+      - "-c"
+      - "echo 'etl-runner ready; run with docker compose run etl-runner-dev -- <cmd>' && sleep infinity"
     depends_on:
       neo4j-dev:
         condition: service_healthy
     networks:
       - sbir-dev-network
+    restart: "no"
 
   # CET Staging ETL runner
   etl-runner-staging:
