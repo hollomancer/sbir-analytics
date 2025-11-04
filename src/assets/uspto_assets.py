@@ -52,6 +52,8 @@ from typing import Any
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
+from ..exceptions import DependencyError
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -2057,7 +2059,14 @@ def _batch_to_dataframe(batch: list[dict]):
     try:
         import pandas as pd  # type: ignore
     except Exception as exc:  # pragma: no cover
-        raise RuntimeError("pandas is required to convert batches to DataFrame") from exc
+        raise DependencyError(
+            "pandas is required to convert batches to DataFrame",
+            dependency_name="pandas",
+            component="assets.uspto_assets",
+            operation="batch_to_dataframe",
+            details={"install_command": "poetry install"},
+            cause=exc,
+        ) from exc
 
     rows = []
     for rec in batch:
