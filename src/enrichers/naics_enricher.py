@@ -146,13 +146,13 @@ class NAICSEnricher:
             # must be 2-6 digits
             if ci < 0:
                 return False
-            l = len(str(ci))
-            if l < 2 or l > 6:
+            code_length = len(str(ci))
+            if code_length < 2 or code_length > 6:
                 return False
             # conservative filters
-            if l == 2 and ci < 11:
+            if code_length == 2 and ci < 11:
                 return False
-            if l >= 3 and ci < 100:
+            if code_length >= 3 and ci < 100:
                 return False
             return True
 

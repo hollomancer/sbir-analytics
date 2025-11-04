@@ -22,10 +22,11 @@ from pathlib import Path
 from typing import Any
 
 # Add workspace root to path for imports
-_script_dir = Path(__file__).parent
+_script_dir = Path(__file__).resolve().parent
 _workspace_root = _script_dir.parent.parent
-if str(_workspace_root) not in sys.path:
-    sys.path.insert(0, str(_workspace_root))
+_workspace_root_str = str(_workspace_root.resolve())
+if _workspace_root_str not in sys.path:
+    sys.path.insert(0, _workspace_root_str)
 
 import pandas as pd
 from loguru import logger

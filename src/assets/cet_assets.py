@@ -2842,6 +2842,65 @@ def transformed_cet_company_profiles() -> Output:
             ]
         )
 
+    # Join with enriched awards to get company information if missing
+    if not df_cls.empty and "company_id" not in df_cls.columns:
+        try:
+            enriched_awards_parquet = Path("data/processed/enriched_sbir_awards.parquet")
+            enriched_awards_ndjson = Path("data/processed/enriched_sbir_awards.ndjson")
+            if enriched_awards_parquet.exists():
+                df_awards = pd.read_parquet(enriched_awards_parquet)
+            elif enriched_awards_ndjson.exists():
+                recs = []
+                with open(enriched_awards_ndjson, encoding="utf-8") as fh:
+                    for line in fh:
+                        if line.strip():
+                            recs.append(json.loads(line))
+                df_awards = pd.DataFrame(recs)
+            else:
+                df_awards = pd.DataFrame()
+
+            if not df_awards.empty and "award_id" in df_cls.columns:
+                # Try to find award ID column in enriched awards
+                award_id_col = None
+                for col in ["award_id", "Award ID", "id"]:
+                    if col in df_awards.columns:
+                        award_id_col = col
+                        break
+
+                if award_id_col:
+                    # Try to find company identifier columns
+                    company_id_col = None
+                    company_name_col = None
+                    for col in ["company_uei", "UEI", "company_id"]:
+                        if col in df_awards.columns:
+                            company_id_col = col
+                            break
+                    for col in ["Company", "company_name", "company"]:
+                        if col in df_awards.columns:
+                            company_name_col = col
+                            break
+
+                    # Join on award_id
+                    if company_id_col:
+                        join_cols = [award_id_col, company_id_col]
+                        if company_name_col and company_name_col not in join_cols:
+                            join_cols.append(company_name_col)
+                        df_join = df_awards[[col for col in join_cols if col in df_awards.columns]].copy()
+                        df_join = df_join.rename(columns={award_id_col: "award_id", company_id_col: "company_id"})
+                        if company_name_col and company_name_col != "company_id":
+                            df_join = df_join.rename(columns={company_name_col: "company_name"})
+                        df_cls = df_cls.merge(df_join, on="award_id", how="left")
+                        logger.info(f"Joined classifications with enriched awards to get company info (joined {df_cls['company_id'].notna().sum()} rows)")
+        except Exception:
+            logger.exception("Failed to join classifications with enriched awards; proceeding without company info")
+
+    # Ensure company_id and company_name columns exist (CompanyCETAggregator expects them)
+    if not df_cls.empty:
+        if "company_id" not in df_cls.columns:
+            df_cls["company_id"] = None
+        if "company_name" not in df_cls.columns:
+            df_cls["company_name"] = None
+
     # Run aggregation
     try:
         aggregator = CompanyCETAggregator(df_cls)

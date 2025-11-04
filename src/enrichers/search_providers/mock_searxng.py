@@ -1,4 +1,3 @@
-sbir - etl / src / enrichers / search_providers / mock_searxng.py
 """Mock SearXNG-like search provider for local testing and benchmarks.
 
 This module provides a lightweight, deterministic mock provider that mimics

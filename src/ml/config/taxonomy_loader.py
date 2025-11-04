@@ -127,7 +127,7 @@ class TaxonomyLoader:
         taxonomy = TaxonomyConfig(
             version=raw_config["version"],
             last_updated=raw_config["last_updated"],
-            description=raw_config["description"],
+            description=raw_config.get("description", ""),
             cet_areas=cet_areas,
         )
 
