@@ -113,7 +113,7 @@ def tokenize(text: str | None) -> list[str]:
     return [m.group(0) for m in _token_re.finditer(text)]
 
 
-def remove_stopwords(tokens: Iterable[str], stopwords: Iterable[str] | None = None) -> list[str]:
+def remove_stopwords(tokens: Iterable[str] | None, stopwords: Iterable[str] | None = None) -> list[str]:
     """
     Remove stopwords from an iterable of tokens.
 
@@ -124,7 +124,7 @@ def remove_stopwords(tokens: Iterable[str], stopwords: Iterable[str] | None = No
     if tokens is None:
         return []
     sw = set(stopwords) if stopwords is not None else DEFAULT_STOPWORDS
-    filtered = []
+    filtered: list[str] = []
     for t in tokens:
         t_lower = t.lower()
         # Remove stopwords
@@ -489,10 +489,17 @@ def extract_features(
     ipc_codes = ipc_cpc.get("ipc", [])
     cpc_codes = ipc_cpc.get("cpc", [])
 
-    assignee_field = None
+    assignee_field: str | list[str] | None = None
     for key in ("assignees", "assignee", "assignee_name"):
         if key in record and record[key]:
-            assignee_field = record[key]
+            field_value = record[key]
+            # Convert to appropriate type for guess_assignee_type
+            if isinstance(field_value, str):
+                assignee_field = field_value
+            elif isinstance(field_value, (list, tuple)):
+                assignee_field = [str(item) for item in field_value]
+            else:
+                assignee_field = str(field_value) if field_value else None
             break
 
     assignee_guess = guess_assignee_type(assignee_field)
@@ -505,11 +512,11 @@ def extract_features(
     kw_feats = bag_of_keywords_features(text_for_keywords, keywords_map=keywords_map)
 
     # Application year extract (best-effort)
-    app_year = None
+    app_year: int | None = None
     for k in ("application_year", "year", "filing_year", "publication_year"):
         if k in record and record[k]:
             try:
-                app_year = int(record[k])
+                app_year = int(str(record[k]))
                 break
             except Exception:
                 # ignore parse errors
@@ -546,9 +553,9 @@ def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]
     """
     try:
         # Local imports for import-safety
-        from pathlib import Path  # type: ignore
+        from pathlib import Path
 
-        import yaml  # type: ignore
+        import yaml
     except Exception:
         return {}
 
@@ -556,7 +563,12 @@ def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]
     if path is None:
         candidate = Path("config/cet/patent_keywords.yaml")
     else:
-        candidate = Path(path) if not isinstance(path, Path) else path
+        if isinstance(path, Path):
+            candidate = path
+        elif isinstance(path, str):
+            candidate = Path(path)
+        else:
+            return {}
 
     if not candidate.exists():
         return {}
@@ -601,7 +613,7 @@ def get_keywords_map(
     loaded = load_keywords_map()
     if loaded:
         return loaded
-    return DEFAULT_KEYWORDS_MAP  # type: ignore
+    return DEFAULT_KEYWORDS_MAP
 
 
 # Expose useful names

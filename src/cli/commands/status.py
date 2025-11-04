@@ -153,7 +153,7 @@ def summary(ctx: typer.Context) -> None:
         ]
 
         # Count by status
-        status_counts = {}
+        status_counts: dict[str, int] = {}
         for status in asset_statuses:
             s = status.status
             status_counts[s] = status_counts.get(s, 0) + 1

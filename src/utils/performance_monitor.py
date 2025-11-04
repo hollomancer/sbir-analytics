@@ -24,10 +24,11 @@ import contextlib
 import functools
 import json
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, TypeVar
 
+T = TypeVar("T")
 
 # psutil is optional; when available we record memory usage
 try:
@@ -35,7 +36,7 @@ try:
 
     _PSUTIL_AVAILABLE = True
 except Exception:
-    psutil = None  # type: ignore
+    psutil = None  # type: ignore[assignment, unused-ignore]
     _PSUTIL_AVAILABLE = False
 
 
@@ -51,14 +52,14 @@ class PerformanceMonitor:
     # -----------------------
     # Decorators
     # -----------------------
-    def time_function(self, func: Callable) -> Callable:
+    def time_function(self, func: Callable[..., T]) -> Callable[..., T]:
         """Decorator to measure elapsed time for a function call.
 
         Records a metric entry under the function name with start/end/duration.
         """
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             start = time.time()
             try:
                 return func(*args, **kwargs)
@@ -77,14 +78,14 @@ class PerformanceMonitor:
 
         return wrapper
 
-    def monitor_memory(self, func: Callable) -> Callable:
+    def monitor_memory(self, func: Callable[..., T]) -> Callable[..., T]:
         """Decorator to record memory usage before/after function execution.
 
         When psutil is not available this decorator falls back to timing only.
         """
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             if not _PSUTIL_AVAILABLE or self._process is None:
                 # Fallback to timing-only
                 return self.time_function(func)(*args, **kwargs)
@@ -118,7 +119,7 @@ class PerformanceMonitor:
     # Context managers
     # -----------------------
     @contextmanager
-    def time_block(self, name: str):
+    def time_block(self, name: str) -> Iterator[None]:
         """Context manager to time a block of code.
 
         Example:
@@ -142,7 +143,7 @@ class PerformanceMonitor:
             )
 
     @contextmanager
-    def monitor_block(self, name: str):
+    def monitor_block(self, name: str) -> Iterator[None]:
         """Context manager to measure time and memory for a block of code.
 
         If psutil is unavailable, falls back to time_block behavior.
@@ -277,20 +278,20 @@ def time_function(func: Callable) -> Callable:
     return performance_monitor.time_function(func)
 
 
-def monitor_memory(func: Callable) -> Callable:
+def monitor_memory(func: Callable[..., T]) -> Callable[..., T]:
     """Module-level convenience decorator for memory monitoring."""
     return performance_monitor.monitor_memory(func)
 
 
 @contextlib.contextmanager
-def time_block(name: str):
+def time_block(name: str) -> Iterator[None]:
     """Module-level convenience context manager to time a block."""
     with performance_monitor.time_block(name):
         yield
 
 
 @contextlib.contextmanager
-def monitor_block(name: str):
+def monitor_block(name: str) -> Iterator[None]:
     """Module-level convenience context manager to monitor time & memory for a block."""
     with performance_monitor.monitor_block(name):
         yield

@@ -193,7 +193,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Prepare .env for CI
-        run: |
+        run: |  # pragma: allowlist secret
           set -eux
           cp .env.example .env
           # Replace placeholders with repository secrets (ensure secrets exist)

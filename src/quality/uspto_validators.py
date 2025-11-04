@@ -36,19 +36,19 @@ LOG = logging.getLogger(__name__)
 
 # Optional heavy deps: attempted imports will be handled at runtime
 try:
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:
-    pd = None  # type: ignore
+    pd = None  # type: ignore[assignment, unused-ignore]
 
 try:
-    import pyreadstat  # type: ignore
+    import pyreadstat
 except Exception:
-    pyreadstat = None  # type: ignore
+    pyreadstat = None  # type: ignore[assignment, unused-ignore]
 
 try:
-    import pyarrow.parquet as pq  # type: ignore
+    import pyarrow.parquet as pq
 except Exception:
-    pq = None  # type: ignore
+    pq = None  # type: ignore[assignment, unused-ignore]
 
 
 @dataclass
@@ -128,10 +128,10 @@ def _iter_rows_from_dta(
     if pd is not None:
         # try iterator-based pandas read_stata if supported
         try:
-            reader = pd.read_stata(str(path), iterator=True, convert_categoricals=False)  # type: ignore
+            reader = pd.read_stata(str(path), iterator=True, convert_categoricals=False)
             while True:
                 try:
-                    chunk = reader.get_chunk(chunk_size)  # type: ignore
+                    chunk = reader.get_chunk(chunk_size)
                 except StopIteration:
                     break
                 for rec in chunk.to_dict(orient="records"):
@@ -139,7 +139,7 @@ def _iter_rows_from_dta(
             return
         except Exception:
             # last resort: read entirely
-            df = pd.read_stata(str(path), convert_categoricals=False)  # type: ignore
+            df = pd.read_stata(str(path), convert_categoricals=False)
             for i in range(0, len(df), chunk_size):
                 chunk = df.iloc[i : i + chunk_size]
                 for rec in chunk.to_dict(orient="records"):
@@ -372,7 +372,7 @@ def validate_referential_integrity(
 
         # Second pass: check child FKs
         LOG.info("Validating child foreign keys from %s", child_file_path)
-        orphaned_records = []
+        orphaned_records: list[dict[str, Any]] = []
         total_child_rows = 0
         orphaned_count = 0
         missing_fk_count = 0
@@ -449,24 +449,34 @@ def validate_field_completeness(
             total_rows += 1
             for field in required_fields:
                 val = row.get(field)
+                stats = field_stats[field]
                 if val is not None and str(val).strip():
-                    field_stats[field]["present"] += 1
+                    present_count = stats.get("present", 0)
+                    if isinstance(present_count, int):
+                        stats["present"] = present_count + 1
                 else:
-                    field_stats[field]["missing"] += 1
+                    missing_count = stats.get("missing", 0)
+                    if isinstance(missing_count, int):
+                        stats["missing"] = missing_count + 1
 
         # Calculate completeness rates
-        completeness_rates = {}
-        failed_fields = []
+        completeness_rates: dict[str, float] = {}
+        failed_fields: list[str] = []
 
         for field, stats in field_stats.items():
-            rate = stats["present"] / max(total_rows, 1)
-            completeness_rates[field] = rate
-            if rate < completeness_threshold:
-                failed_fields.append(field)
+            present_count = stats.get("present", 0)
+            if isinstance(present_count, int):
+                rate = float(present_count) / max(total_rows, 1)
+                completeness_rates[field] = rate
+                if rate < completeness_threshold:
+                    failed_fields.append(field)
 
-        overall_completeness = sum(stats["present"] for stats in field_stats.values()) / max(
-            total_rows * len(required_fields), 1
-        )
+        total_present = 0
+        for stats in field_stats.values():
+            present_count = stats.get("present", 0)
+            if isinstance(present_count, int):
+                total_present += present_count
+        overall_completeness = float(total_present) / max(total_rows * len(required_fields), 1)
 
         success = len(failed_fields) == 0
 
@@ -522,7 +532,7 @@ def validate_date_fields(
     from datetime import datetime
 
     try:
-        field_stats = {
+        field_stats: dict[str, dict[str, int | list[dict[str, Any]]]] = {
             field: {
                 "valid": 0,
                 "invalid_format": 0,
@@ -560,7 +570,15 @@ def validate_date_fields(
             # Try pandas-style timestamp parsing
             try:
                 if pd is not None:
-                    return pd.to_datetime(val_str)
+                    pd_date = pd.to_datetime(val_str)
+                    # Convert pandas Timestamp to datetime
+                    if hasattr(pd_date, "to_pydatetime"):
+                        py_date = pd_date.to_pydatetime()
+                        return py_date if isinstance(py_date, datetime) else None
+                    # Fallback: convert to datetime if it's already a datetime-like object
+                    if hasattr(pd_date, "timestamp"):
+                        return datetime.fromtimestamp(pd_date.timestamp())
+                    return None
             except Exception:
                 pass
 
@@ -572,15 +590,22 @@ def validate_date_fields(
                 val = row.get(field)
 
                 if val is None or str(val).strip() == "":
-                    field_stats[field]["missing"] += 1
+                    stats = field_stats[field]
+                    missing_count = stats.get("missing", 0)
+                    if isinstance(missing_count, int):
+                        stats["missing"] = missing_count + 1
                     continue
 
                 parsed_date = parse_date(val)
 
                 if parsed_date is None:
-                    field_stats[field]["invalid_format"] += 1
-                    if len(field_stats[field]["invalid_samples"]) < sample_limit:
-                        field_stats[field]["invalid_samples"].append(
+                    stats = field_stats[field]
+                    invalid_count = stats.get("invalid_format", 0)
+                    if isinstance(invalid_count, int):
+                        stats["invalid_format"] = invalid_count + 1
+                    samples = stats.get("invalid_samples", [])
+                    if isinstance(samples, list) and len(samples) < sample_limit:
+                        samples.append(
                             {
                                 "field": field,
                                 "value": str(val),
@@ -588,9 +613,13 @@ def validate_date_fields(
                             }
                         )
                 elif parsed_date.year < min_year or parsed_date.year > max_year:
-                    field_stats[field]["out_of_range"] += 1
-                    if len(field_stats[field]["invalid_samples"]) < sample_limit:
-                        field_stats[field]["invalid_samples"].append(
+                    stats = field_stats[field]
+                    out_of_range_count = stats.get("out_of_range", 0)
+                    if isinstance(out_of_range_count, int):
+                        stats["out_of_range"] = out_of_range_count + 1
+                    samples = stats.get("invalid_samples", [])
+                    if isinstance(samples, list) and len(samples) < sample_limit:
+                        samples.append(
                             {
                                 "field": field,
                                 "value": str(val),
@@ -599,25 +628,34 @@ def validate_date_fields(
                             }
                         )
                 else:
-                    field_stats[field]["valid"] += 1
+                    stats = field_stats[field]
+                    valid_count = stats.get("valid", 0)
+                    if isinstance(valid_count, int):
+                        stats["valid"] = valid_count + 1
 
         # Calculate validation rates
-        validation_rates = {}
-        failed_fields = []
+        validation_rates: dict[str, float] = {}
+        failed_fields: list[str] = []
 
         for field, stats in field_stats.items():
-            total_non_missing = total_rows - stats["missing"]
-            if total_non_missing > 0:
-                rate = stats["valid"] / total_non_missing
-                validation_rates[field] = rate
-                if rate < 0.95:  # 95% validity threshold
-                    failed_fields.append(field)
-            else:
-                validation_rates[field] = 0.0
+            missing_count = stats.get("missing", 0)
+            valid_count = stats.get("valid", 0)
+            if isinstance(missing_count, int) and isinstance(valid_count, int):
+                total_non_missing = total_rows - missing_count
+                if total_non_missing > 0:
+                    rate = float(valid_count) / total_non_missing
+                    validation_rates[field] = rate
+                    if rate < 0.95:  # 95% validity threshold
+                        failed_fields.append(field)
+                else:
+                    validation_rates[field] = 0.0
 
-        total_invalid = sum(
-            stats["invalid_format"] + stats["out_of_range"] for stats in field_stats.values()
-        )
+        total_invalid = 0
+        for stats in field_stats.values():
+            invalid_format = stats.get("invalid_format", 0)
+            out_of_range = stats.get("out_of_range", 0)
+            if isinstance(invalid_format, int) and isinstance(out_of_range, int):
+                total_invalid += invalid_format + out_of_range
 
         success = total_invalid == 0
 
@@ -639,7 +677,9 @@ def validate_date_fields(
             "invalid_samples": [
                 sample
                 for stats in field_stats.values()
-                for sample in stats["invalid_samples"][:sample_limit]
+                for invalid_samples_list in [stats.get("invalid_samples", [])]
+                if isinstance(invalid_samples_list, list)
+                for sample in invalid_samples_list[:sample_limit]
             ],
             "failed_fields": failed_fields,
         }
@@ -677,7 +717,7 @@ def validate_duplicate_records(
     """
     try:
         seen_keys: dict[str, int] = {}
-        duplicate_samples = []
+        duplicate_samples: list[dict[str, Any]] = []
         total_rows = 0
         missing_key_count = 0
 
@@ -1017,7 +1057,7 @@ class USPTODataQualityValidator:
                 "files": len(results),
                 "files_passing": sum(1 for success in file_successes if success),
                 "pass_rate": (
-                    sum(1 for success in file_successes if success) / max(len(file_successes), 1)
+                    float(sum(1 for success in file_successes if success)) / max(len(file_successes), 1)
                 ),
             }
 

@@ -712,7 +712,7 @@ jobs:
           NEO4J_URI: ${{ env.NEO4J_URI }}
           NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}  # pragma: allowlist secret
-        run: |
+        run: |  # pragma: allowlist secret
           set -eux
           poetry run python - << 'PY'
           import os

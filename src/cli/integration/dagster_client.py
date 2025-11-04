@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from dagster import AssetKey, DagsterInstance, Definitions, materialize
+from dagster import AssetKey, DagsterInstance, Definitions, DagsterEventType, materialize
 from dagster._core.definitions.asset_selection import AssetSelection
+from dagster._core.events import EventRecordsFilter
 from loguru import logger
 from rich.console import Console
 
@@ -90,13 +91,23 @@ class DagsterClient:
             List of asset dictionaries with key, group, description, etc.
         """
         assets_info = []
+        if self.defs.assets is None:
+            return assets_info
         for asset in self.defs.assets:
+            # Handle different asset types
+            if hasattr(asset, "key"):
+                asset_key = str(asset.key)
+            else:
+                continue
+            group_name = getattr(asset, "group_name", None) or ""
+            description = getattr(asset, "description", None) or ""
+            is_source = getattr(asset, "is_source", False)
             assets_info.append(
                 {
-                    "key": str(asset.key),
-                    "group": asset.group_name,
-                    "description": asset.description or "",
-                    "is_source": asset.is_source,
+                    "key": asset_key,
+                    "group": group_name,
+                    "description": description,
+                    "is_source": is_source,
                 }
             )
         return assets_info
@@ -112,17 +123,19 @@ class DagsterClient:
         """
         try:
             # Get asset materializations from instance
-            key = AssetKey.from_string(asset_key) if isinstance(asset_key, str) else asset_key
-            materializations = self.instance.get_event_records(
-                event_type="ASSET_MATERIALIZATION",
-                asset_key=key,
+            key = AssetKey.from_user_string(asset_key) if isinstance(asset_key, str) else asset_key
+            materializations = self.instance.get_event_records(  # type: ignore[call-overload]
+                EventRecordsFilter(
+                    event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                    asset_key=key,
+                ),
                 limit=1,
             )
 
             if materializations:
                 latest = materializations[0]
-                event = latest.event
-                metadata = event.dagster_event.metadata if event.dagster_event else {}
+                event = latest.dagster_event if hasattr(latest, "dagster_event") else None  # type: ignore[attr-defined]
+                metadata = event.dagster_event.metadata if event and hasattr(event, "dagster_event") and event.dagster_event else {}  # type: ignore[attr-defined]
 
                 return AssetStatus(
                     asset_key=asset_key,
@@ -173,15 +186,16 @@ class DagsterClient:
         try:
             # Build asset selection
             if asset_keys:
-                selection = AssetSelection.keys([AssetKey.from_string(k) for k in asset_keys])
+                selection = AssetSelection.keys([AssetKey.from_user_string(k) for k in asset_keys])
             elif asset_groups:
                 selection = AssetSelection.groups(*asset_groups)
             else:
                 selection = AssetSelection.all()
 
             # Materialize assets
+            resolved_assets = selection.resolve(assets=self.defs.assets) if self.defs.assets else []
             result = materialize(
-                selection.resolve(assets=self.defs.assets),
+                resolved_assets,
                 instance=self.instance,
                 **kwargs,
             )
@@ -210,11 +224,14 @@ class DagsterClient:
             if run is None:
                 return {"status": "not_found", "run_id": run_id}
 
+            status_value = run.status.value if hasattr(run, "status") and hasattr(run.status, "value") else "unknown"
+            start_time = run.run_start_time.isoformat() if hasattr(run, "run_start_time") and run.run_start_time else None
+            end_time = run.run_end_time.isoformat() if hasattr(run, "run_end_time") and run.run_end_time else None
             return {
                 "run_id": run_id,
-                "status": run.status.value if hasattr(run, "status") else "unknown",
-                "start_time": run.start_time.isoformat() if run.start_time else None,
-                "end_time": run.end_time.isoformat() if run.end_time else None,
+                "status": status_value,
+                "start_time": start_time,
+                "end_time": end_time,
             }
 
         except Exception as e:

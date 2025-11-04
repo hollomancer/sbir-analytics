@@ -222,7 +222,7 @@ class ValidationReport:
     passed: bool = True
     validation_time: datetime = field(default_factory=datetime.now)
 
-    def add_issue(self, issue: ValidationIssue):
+    def add_issue(self, issue: ValidationIssue) -> None:
         """Add a validation issue."""
         self.issues.append(issue)
         if issue.severity == "ERROR":

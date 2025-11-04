@@ -11,12 +11,12 @@ class NAICSToBEAMapper:
             bea_excel_path
             or "data/reference/BEA-Industry-and-Commodity-Codes-and-NAICS-Concordance.xlsx"
         )
-        self.map = {}  # prefix -> bea_sector
-        self.multi_map = {}  # bea_code -> List[naics_code]
+        self.map: dict[str, str] = {}  # prefix -> bea_sector
+        self.multi_map: dict[str, list[str]] = {}  # bea_code -> List[naics_code]
         self._load()
         self._load_bea_excel()
 
-    def _load(self):
+    def _load(self) -> None:
         p = Path(self.mapping_path)
         if not p.exists():
             return
@@ -28,7 +28,7 @@ class NAICSToBEAMapper:
                 if pref and bea:
                     self.map[pref.strip()] = bea.strip()
 
-    def _load_bea_excel(self):
+    def _load_bea_excel(self) -> None:
         p = Path(self.bea_excel_path)
         if not p.exists():
             return
@@ -66,9 +66,9 @@ class NAICSToBEAMapper:
         for L in range(len(code), 1, -1):
             prefix = code[:L]
             if prefix in self.map:
-                return self.map[prefix]
+                return str(self.map[prefix])
         if len(code) >= 2 and code[:2] in self.map:
-            return self.map[code[:2]]
+            return str(self.map[code[:2]])
         return None
 
 

@@ -75,7 +75,7 @@ if (
             neo4j_award_cet_enrichment.key,  # type: ignore[attr-defined]
             neo4j_company_cet_enrichment.key,  # type: ignore[attr-defined]
             neo4j_award_cet_relationships.key,  # type: ignore[attr-defined]
-            neo4j_company_cet_relationships.key,  # type: ignore[attr-defined]
+            neo4j_company_cet_relationships.key,
         ),
         description=(
             "Materialize the CET pipeline end-to-end: taxonomy -> award classification -> "
@@ -124,6 +124,7 @@ if (
         },
     )
 else:
+    # This branch is reachable when assets fail to import at module load time
     cet_full_pipeline_job = define_asset_job(
         name="cet_full_pipeline_job_placeholder",
         selection=AssetSelection.keys(),

@@ -427,7 +427,7 @@ updated_at: DateTime
 ```cypher
 CREATE (co:Company {
   company_id: "company_abc123",
-  uei: "ABC123DEF456",
+  uei: "ABC123DEF456",  # pragma: allowlist secret
   name: "Acme AI Inc.",
   headquarters_state: "VA",
   business_size: "SMALL_BUSINESS"

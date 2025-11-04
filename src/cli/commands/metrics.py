@@ -212,7 +212,7 @@ def export(
                 return
 
             # Get all keys from first metric
-            fieldnames = set()
+            fieldnames: set[str] = set()
             for metric in metrics:
                 fieldnames.update(metric.keys())
 
