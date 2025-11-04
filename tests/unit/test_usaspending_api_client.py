@@ -280,17 +280,21 @@ class TestRetryLogic:
             mock_response.raise_for_status = MagicMock()
 
             # First calls timeout, last succeeds (tenacity will retry)
+            # The retry decorator stops after 3 attempts, so we need success within 3 attempts
             mock_client.get.side_effect = [
                 TimeoutException("Request timeout"),
                 TimeoutException("Request timeout"),
-                mock_response,
+                mock_response,  # Success on 3rd attempt
             ]
 
             # Should eventually succeed after retries (tenacity will handle retries)
+            # The retry decorator will retry on TimeoutException up to 3 attempts
+            # With our fix, TimeoutException propagates so retry decorator can catch it
+            # After 2 timeouts, the 3rd attempt should succeed
             response = await api_client._make_request("GET", "/test/")
             assert response["success"] is True
             # Verify multiple attempts were made (retry happened)
-            assert mock_client.get.call_count >= 2
+            assert mock_client.get.call_count == 3
 
     @pytest.mark.asyncio
     async def test_rate_limit_error_raised(self, api_client):
@@ -375,12 +379,13 @@ class TestEnrichAward:
 
                 result = await api_client.enrich_award(
                     award_id="AWARD-001",
-                    uei=None,
+                    uei=None,  # When uei is None, get_recipient_by_uei should not be called
                     duns="123456789",
                 )
 
                 assert result["success"] is True
-                mock_uei.assert_called_once()
+                # When uei is None, get_recipient_by_uei is not called (due to `if uei:` check)
+                mock_uei.assert_not_called()
                 mock_duns.assert_called_once()
 
     @pytest.mark.asyncio

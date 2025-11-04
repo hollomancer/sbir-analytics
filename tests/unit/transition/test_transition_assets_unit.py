@@ -110,15 +110,8 @@ def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH", str(sample_path))
 
     ctx = build_asset_context()
-    # Access underlying compute function when Dagster is installed
-    sample_asset = validated_contracts_sample
-    if hasattr(sample_asset, "node_def") and hasattr(sample_asset.node_def, "compute_fn"):
-        sample_fn = sample_asset.node_def.compute_fn
-    elif hasattr(sample_asset, "compute_fn"):
-        sample_fn = sample_asset.compute_fn
-    else:
-        sample_fn = sample_asset
-    result = sample_fn(ctx)
+    # Call the asset directly - Dagster assets are callable
+    result = validated_contracts_sample(context=ctx)
     sample_df, metadata = _unwrap_output(result)
 
     assert isinstance(sample_df, pd.DataFrame)
@@ -185,15 +178,10 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     )
 
     ctx = build_asset_context()
-    # Access underlying compute function when Dagster is installed
-    vendor_asset = enriched_vendor_resolution
-    if hasattr(vendor_asset, "node_def") and hasattr(vendor_asset.node_def, "compute_fn"):
-        vendor_fn = vendor_asset.node_def.compute_fn
-    elif hasattr(vendor_asset, "compute_fn"):
-        vendor_fn = vendor_asset.compute_fn
-    else:
-        vendor_fn = vendor_asset
-    result = vendor_fn(ctx, contracts_df, awards_df)
+    # Call the asset directly - Dagster assets are callable
+    result = enriched_vendor_resolution(
+        context=ctx, validated_contracts_sample=contracts_df, enriched_sbir_awards=awards_df
+    )
     resolved_df, _ = _unwrap_output(result)
 
     # Basic shape expectations
@@ -277,15 +265,13 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     )
 
     ctx = build_asset_context()
-    # Access underlying compute function when Dagster is installed
-    scores_asset = transformed_transition_scores
-    if hasattr(scores_asset, "node_def") and hasattr(scores_asset.node_def, "compute_fn"):
-        scores_fn = scores_asset.node_def.compute_fn
-    elif hasattr(scores_asset, "compute_fn"):
-        scores_fn = scores_asset.compute_fn
-    else:
-        scores_fn = scores_asset
-    scores_out = scores_fn(ctx, vendor_res_df, contracts_df, awards_df)
+    # Call the asset directly - Dagster assets are callable
+    scores_out = transformed_transition_scores(
+        context=ctx,
+        enriched_vendor_resolution=vendor_res_df,
+        validated_contracts_sample=contracts_df,
+        enriched_sbir_awards=awards_df,
+    )
     scores_df, _ = _unwrap_output(scores_out)
 
     # Expect 2 candidates (A1↔C1 via UEI, A2↔C2 via fuzzy)
@@ -306,14 +292,10 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     assert abs(float(s2["score"]) - 0.7) < 1e-6
 
     # Evidence generation should produce one NDJSON line per candidate
-    evidence_asset = transformed_transition_evidence
-    if hasattr(evidence_asset, "node_def") and hasattr(evidence_asset.node_def, "compute_fn"):
-        evidence_fn = evidence_asset.node_def.compute_fn
-    elif hasattr(evidence_asset, "compute_fn"):
-        evidence_fn = evidence_asset.compute_fn
-    else:
-        evidence_fn = evidence_asset
-    ev_out = evidence_fn(ctx, scores_df, contracts_df)
+    # Call the asset directly - Dagster assets are callable
+    ev_out = transformed_transition_evidence(
+        context=ctx, transformed_transition_scores=scores_df, validated_contracts_sample=contracts_df
+    )
     ev_path, _ = _unwrap_output(ev_out)
     ev_path = Path(ev_path)
     assert ev_path.exists()
@@ -387,15 +369,9 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
     )
 
     ctx = build_asset_context()
-    # Access underlying compute function when Dagster is installed
-    detections_asset = transformed_transition_detections
-    if hasattr(detections_asset, "node_def") and hasattr(detections_asset.node_def, "compute_fn"):
-        detections_fn = detections_asset.node_def.compute_fn
-    elif hasattr(detections_asset, "compute_fn"):
-        detections_fn = detections_asset.compute_fn
-    else:
-        detections_fn = detections_asset
-    detections_df, metadata = _unwrap_output(detections_fn(ctx, scores_df))
+    # Call the asset directly - Dagster assets are callable
+    result = transformed_transition_detections(context=ctx, transformed_transition_scores=scores_df)
+    detections_df, metadata = _unwrap_output(result)
 
     assert isinstance(detections_df, pd.DataFrame)
     assert len(detections_df) == 1
@@ -462,15 +438,9 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
     )
 
     ctx = build_asset_context()
-    # Access underlying compute function when Dagster is installed
-    detections_asset = transformed_transition_detections
-    if hasattr(detections_asset, "node_def") and hasattr(detections_asset.node_def, "compute_fn"):
-        detections_fn = detections_asset.node_def.compute_fn
-    elif hasattr(detections_asset, "compute_fn"):
-        detections_fn = detections_asset.compute_fn
-    else:
-        detections_fn = detections_asset
-    detections_df, metadata = _unwrap_output(detections_fn(ctx, scores_df))
+    # Call the asset directly - Dagster assets are callable
+    result = transformed_transition_detections(context=ctx, transformed_transition_scores=scores_df)
+    detections_df, metadata = _unwrap_output(result)
 
     assert isinstance(detections_df, pd.DataFrame)
     assert detections_df.empty

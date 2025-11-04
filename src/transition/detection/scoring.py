@@ -487,8 +487,9 @@ class TransitionScorer:
         # Score CET alignment
         cet_signal = self.score_cet_alignment(cet_data)
 
-        # Optional text similarity
-        text_similarity = self.score_text_similarity(contract.text_similarity_score)
+        # Optional text similarity (not stored on contract; would need to be computed)
+        # For now, pass None since text similarity is disabled by default
+        text_similarity = self.score_text_similarity(None)
 
         return TransitionSignals(
             agency=agency_signal,

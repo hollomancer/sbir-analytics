@@ -27,6 +27,14 @@ def mock_neo4j_driver():
     """Create a mock Neo4j driver."""
     driver = MagicMock()
     session = MagicMock()
+    
+    # Create a mock result object that returns a single record
+    def create_mock_result(count_value=1):
+        result = MagicMock()
+        result.single.return_value = {"created": count_value}
+        return result
+    
+    session.run.return_value = create_mock_result()
     driver.session.return_value.__enter__ = MagicMock(return_value=session)
     driver.session.return_value.__exit__ = MagicMock(return_value=None)
     return driver
@@ -41,31 +49,43 @@ def sample_transitions_df():
                 "transition_id": "TRANS-001",
                 "award_id": "AWARD-A1",
                 "contract_id": "CONTRACT-C1",
-                "score": 0.85,
+                "likelihood_score": 0.85,
                 "method": "agency_continuity",
-                "computed_at": "2024-01-15T10:30:00Z",
+                "detected_at": "2024-01-15T10:30:00Z",
                 "signals": '["agency_continuity", "timing_proximity"]',
                 "confidence": "high",
+                "evidence": '{"type": "agency_continuity"}',
+                "vendor_match_score": 0.9,
+                "cet_area": "AI",
+                "cet_alignment_score": 0.8,
             },
             {
                 "transition_id": "TRANS-002",
                 "award_id": "AWARD-A2",
                 "contract_id": "CONTRACT-C2",
-                "score": 0.72,
+                "likelihood_score": 0.72,
                 "method": "timing_proximity",
-                "computed_at": "2024-01-15T10:31:00Z",
+                "detected_at": "2024-01-15T10:31:00Z",
                 "signals": '["timing_proximity"]',
                 "confidence": "likely",
+                "evidence": '{"type": "timing_proximity"}',
+                "vendor_match_score": 0.75,
+                "cet_area": "Cybersecurity",
+                "cet_alignment_score": 0.65,
             },
             {
                 "transition_id": "TRANS-003",
                 "award_id": "AWARD-A3",
                 "contract_id": "CONTRACT-C3",
-                "score": 0.55,
+                "likelihood_score": 0.55,
                 "method": "competition_type",
-                "computed_at": "2024-01-15T10:32:00Z",
+                "detected_at": "2024-01-15T10:32:00Z",
                 "signals": '["competition_type"]',
                 "confidence": "possible",
+                "evidence": '{"type": "competition_type"}',
+                "vendor_match_score": 0.6,
+                "cet_area": None,
+                "cet_alignment_score": None,
             },
         ]
     )
@@ -141,6 +161,9 @@ class TestTransitionNodeLoading:
     def test_load_transition_nodes_basic(self, mock_neo4j_driver, sample_transitions_df):
         """Test loading transition nodes with basic DataFrame."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -156,6 +179,9 @@ class TestTransitionNodeLoading:
     def test_load_transition_nodes_batch_processing(self, mock_neo4j_driver, sample_transitions_df):
         """Test batch processing of transition nodes."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver, batch_size=2)
@@ -181,6 +207,9 @@ class TestTransitionNodeLoading:
     ):
         """Test that loaded nodes have proper properties."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -193,7 +222,7 @@ class TestTransitionNodeLoading:
         # Check that properties are being set
         properties_found = False
         for query in cypher_queries:
-            if all(prop in query for prop in ["likelihood_score", "confidence", "detection_date"]):
+            if all(prop in query for prop in ["likelihood_score", "confidence", "detected_at"]):
                 properties_found = True
                 break
 
@@ -206,6 +235,9 @@ class TestRelationshipCreation:
     def test_create_transitioned_to_relationships(self, mock_neo4j_driver, sample_transitions_df):
         """Test creating TRANSITIONED_TO relationships."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -218,6 +250,9 @@ class TestRelationshipCreation:
     def test_create_resulted_in_relationships(self, mock_neo4j_driver, sample_transitions_df):
         """Test creating RESULTED_IN relationships."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -229,10 +264,21 @@ class TestRelationshipCreation:
     def test_create_enabled_by_relationships(self, mock_neo4j_driver, sample_transitions_df):
         """Test creating ENABLED_BY relationships for patent-backed transitions."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
+        # Create patent transitions DataFrame
+        patents_df = pd.DataFrame(
+            [
+                {"transition_id": "TRANS-001", "patent_id": "PAT-001", "patent_contribution": 0.8},
+                {"transition_id": "TRANS-002", "patent_id": "PAT-002", "patent_contribution": 0.7},
+            ]
+        )
+
         loader = TransitionLoader(driver=mock_neo4j_driver)
-        loader.create_enabled_by_relationships(sample_transitions_df)
+        loader.create_enabled_by_relationships(sample_transitions_df, patents_df)
 
         # Verify relationships were created
         session.run.assert_called()

@@ -90,12 +90,6 @@ class USAspendingAPIClient:
 
         self.request_times.append(datetime.now())
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=2.0, min=2, max=30),
-        retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
-        reraise=True,
-    )
     async def _make_request(
         self,
         method: str,
@@ -118,41 +112,57 @@ class USAspendingAPIClient:
             USAspendingAPIError: If request fails
             USAspendingRateLimitError: If rate limit exceeded
         """
-        await self._wait_for_rate_limit()
+        # Inner function that does the actual request (will be wrapped by retry decorator)
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=2.0, min=2, max=30),
+            retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+            reraise=True,
+        )
+        async def _do_request() -> dict[str, Any]:
+            await self._wait_for_rate_limit()
 
-        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        default_headers = {
-            "Accept": "application/json",
-            "User-Agent": "SBIR-ETL/0.1.0",
-        }
-        if headers:
-            default_headers.update(headers)
+            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+            default_headers = {
+                "Accept": "application/json",
+                "User-Agent": "SBIR-ETL/0.1.0",
+            }
+            if headers:
+                default_headers.update(headers)
 
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    if method.upper() == "GET":
+                        response = await client.get(url, params=params, headers=default_headers)
+                    elif method.upper() == "POST":
+                        response = await client.post(url, json=params, headers=default_headers)
+                    else:
+                        raise ValueError(f"Unsupported HTTP method: {method}")
+
+                    response.raise_for_status()
+
+                    # Handle rate limiting
+                    if response.status_code == 429:
+                        raise USAspendingRateLimitError(f"Rate limit exceeded: {response.text}")
+
+                    return response.json()
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    raise USAspendingRateLimitError(f"Rate limit exceeded: {e.response.text}") from e
+                raise USAspendingAPIError(f"HTTP {e.response.status_code}: {e.response.text}") from e
+            except httpx.TimeoutException as e:
+                # Let TimeoutException propagate so retry decorator can catch it
+                raise
+            except httpx.RequestError as e:
+                raise USAspendingAPIError(f"Request error: {e}") from e
+
+        # Call the retry-wrapped function and wrap TimeoutException after retries exhausted
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                if method.upper() == "GET":
-                    response = await client.get(url, params=params, headers=default_headers)
-                elif method.upper() == "POST":
-                    response = await client.post(url, json=params, headers=default_headers)
-                else:
-                    raise ValueError(f"Unsupported HTTP method: {method}")
-
-                response.raise_for_status()
-
-                # Handle rate limiting
-                if response.status_code == 429:
-                    raise USAspendingRateLimitError(f"Rate limit exceeded: {response.text}")
-
-                return response.json()
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                raise USAspendingRateLimitError(f"Rate limit exceeded: {e.response.text}") from e
-            raise USAspendingAPIError(f"HTTP {e.response.status_code}: {e.response.text}") from e
+            return await _do_request()
         except httpx.TimeoutException as e:
+            # After all retries exhausted, wrap TimeoutException for consistent API
             raise USAspendingAPIError(f"Request timeout: {e}") from e
-        except httpx.RequestError as e:
-            raise USAspendingAPIError(f"Request error: {e}") from e
 
     def _compute_payload_hash(self, payload: dict[str, Any]) -> str:
         """Compute deterministic SHA256 hash of JSON payload.

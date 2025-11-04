@@ -77,7 +77,7 @@ class TestAgencyScoring:
     def test_same_agency_bonus(self, scorer):
         """Same agency should provide maximum agency bonus."""
         award_data = {"agency": "DOD"}
-        contract = FederalContract(agency="DOD")
+        contract = FederalContract(contract_id="TEST-001", agency="DOD")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is True
@@ -87,7 +87,7 @@ class TestAgencyScoring:
     def test_different_agency_same_department(self, scorer):
         """Different agency, same department should provide cross-service bonus."""
         award_data = {"agency": "Army", "department": "DOD"}
-        contract = FederalContract(agency="Navy", sub_agency="DOD")
+        contract = FederalContract(contract_id="TEST-002", agency="Navy", sub_agency="DOD")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
@@ -98,7 +98,7 @@ class TestAgencyScoring:
     def test_different_department(self, scorer):
         """Different department should provide minimal bonus."""
         award_data = {"agency": "DOD", "department": "DOD"}
-        contract = FederalContract(agency="NASA", sub_agency="NASA")
+        contract = FederalContract(contract_id="TEST-003", agency="NASA", sub_agency="NASA")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
@@ -109,7 +109,7 @@ class TestAgencyScoring:
     def test_case_insensitive_matching(self, scorer):
         """Agency matching should be case-insensitive."""
         award_data = {"agency": "dod"}
-        contract = FederalContract(agency="DOD")
+        contract = FederalContract(contract_id="TEST-004", agency="DOD")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is True
@@ -117,7 +117,7 @@ class TestAgencyScoring:
     def test_missing_agency_data(self, scorer):
         """Missing agency data should return zero score."""
         award_data = {}
-        contract = FederalContract(agency="DOD")
+        contract = FederalContract(contract_id="TEST-005", agency="DOD")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         assert signal.same_agency is False
@@ -130,7 +130,7 @@ class TestTimingScoring:
     def test_immediate_timing(self, scorer):
         """Contract within 0-3 months should get maximum timing score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(start_date=date(2023, 2, 1))  # 31 days later
+        contract = FederalContract(contract_id="TEST-006", start_date=date(2023, 2, 1))  # 31 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -142,7 +142,7 @@ class TestTimingScoring:
     def test_medium_timing(self, scorer):
         """Contract within 3-12 months should get reduced score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(start_date=date(2023, 7, 1))  # ~180 days later
+        contract = FederalContract(contract_id="TEST-007", start_date=date(2023, 7, 1))  # ~180 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -153,7 +153,7 @@ class TestTimingScoring:
     def test_long_timing(self, scorer):
         """Contract within 12-24 months should get low score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(start_date=date(2024, 1, 1))  # 365 days later
+        contract = FederalContract(contract_id="TEST-008", start_date=date(2024, 1, 1))  # 365 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -163,7 +163,7 @@ class TestTimingScoring:
     def test_contract_before_award(self, scorer):
         """Contract before award completion should return zero score."""
         award_data = {"completion_date": date(2023, 6, 1)}
-        contract = FederalContract(start_date=date(2023, 1, 1))  # Before award
+        contract = FederalContract(contract_id="TEST-009", start_date=date(2023, 1, 1))  # Before award
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -173,7 +173,7 @@ class TestTimingScoring:
     def test_missing_dates(self, scorer):
         """Missing date data should return zero score."""
         award_data = {}
-        contract = FederalContract(start_date=date(2023, 1, 1))
+        contract = FederalContract(contract_id="TEST-010", start_date=date(2023, 1, 1))
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
         assert signal.timing_score == 0.0
@@ -184,7 +184,7 @@ class TestCompetitionScoring:
 
     def test_sole_source_bonus(self, scorer):
         """Sole source should provide maximum competition bonus."""
-        contract = FederalContract(competition_type=CompetitionType.SOLE_SOURCE)
+        contract = FederalContract(contract_id="TEST-011", competition_type=CompetitionType.SOLE_SOURCE)
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.SOLE_SOURCE
@@ -193,7 +193,7 @@ class TestCompetitionScoring:
 
     def test_limited_competition_bonus(self, scorer):
         """Limited competition should provide medium bonus."""
-        contract = FederalContract(competition_type=CompetitionType.LIMITED)
+        contract = FederalContract(contract_id="TEST-012", competition_type=CompetitionType.LIMITED)
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.LIMITED
@@ -202,7 +202,7 @@ class TestCompetitionScoring:
 
     def test_full_and_open_no_bonus(self, scorer):
         """Full and open should provide no bonus."""
-        contract = FederalContract(competition_type=CompetitionType.FULL_AND_OPEN)
+        contract = FederalContract(contract_id="TEST-013", competition_type=CompetitionType.FULL_AND_OPEN)
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.FULL_AND_OPEN
@@ -210,7 +210,7 @@ class TestCompetitionScoring:
 
     def test_missing_competition_type(self, scorer):
         """Missing competition type should default to OTHER with zero score."""
-        contract = FederalContract()
+        contract = FederalContract(contract_id="TEST-014")
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.OTHER
@@ -327,6 +327,7 @@ class TestCompositeScoring:
             "cet": "AI/Machine Learning",
         }
         contract = FederalContract(
+            contract_id="TEST-015",
             agency="DOD",
             start_date=date(2023, 2, 1),  # 1 month later
             competition_type=CompetitionType.SOLE_SOURCE,
@@ -368,6 +369,7 @@ class TestCompositeScoring:
             "completion_date": date(2023, 1, 1),
         }
         contract = FederalContract(
+            contract_id="TEST-016",
             agency="DOD",
             start_date=date(2023, 3, 1),  # 2 months later
             competition_type=CompetitionType.LIMITED,
@@ -401,7 +403,7 @@ class TestEdgeCases:
 
         # Score with same agency (would be 5.0 * 1.0 = 5.0 without capping)
         award_data = {"agency": "DOD"}
-        contract = FederalContract(agency="DOD")
+        contract = FederalContract(contract_id="TEST-017", agency="DOD")
         signal = scorer.score_agency_continuity(award_data=award_data, contract=contract)
 
         # Should be capped at 1.0
@@ -431,7 +433,7 @@ class TestEdgeCases:
         scorer = TransitionScorer(config)
 
         award_data = {"agency": "DOD"}
-        contract = FederalContract(agency="DOD")
+        contract = FederalContract(contract_id="TEST-018", agency="DOD")
 
         signals, final_score, _ = scorer.score_and_classify(award_data, contract)
 

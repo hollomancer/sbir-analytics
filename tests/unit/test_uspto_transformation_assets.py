@@ -20,11 +20,25 @@ transformation_assets = pytest.importorskip(
 
 def _get_compute_fn(asset_def):
     """Helper to get the underlying compute function from an asset definition."""
+    # Try different ways to access the compute function depending on Dagster version
     if hasattr(asset_def, "node_def") and hasattr(asset_def.node_def, "compute_fn"):
-        return asset_def.node_def.compute_fn
+        fn = asset_def.node_def.compute_fn
+        # Unwrap if it's a DecoratedOpFunction
+        if hasattr(fn, "decorated_fn"):
+            return fn.decorated_fn
+        return fn
     elif hasattr(asset_def, "compute_fn"):
-        return asset_def.compute_fn
+        fn = asset_def.compute_fn
+        if hasattr(fn, "decorated_fn"):
+            return fn.decorated_fn
+        return fn
+    elif hasattr(asset_def, "op") and hasattr(asset_def.op, "compute_fn"):
+        fn = asset_def.op.compute_fn
+        if hasattr(fn, "decorated_fn"):
+            return fn.decorated_fn
+        return fn
     else:
+        # If it's already a function, return it directly
         return asset_def
 
 
