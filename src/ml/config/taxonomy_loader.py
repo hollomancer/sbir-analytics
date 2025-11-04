@@ -127,7 +127,7 @@ class TaxonomyLoader:
         description = raw_config.get("description", "")
         if not isinstance(description, str):
             description = str(description) if description is not None else ""
-        
+
         taxonomy = TaxonomyConfig(
             version=raw_config["version"],
             last_updated=raw_config["last_updated"],

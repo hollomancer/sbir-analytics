@@ -161,7 +161,7 @@ class Neo4jPatentCETLoader:
         ]
         with self._driver.session(database=self._db) as session:
             for cypher in stmts:
-                session.execute_write(lambda tx: tx.run(cypher).consume())
+                session.execute_write(lambda tx, c=cypher: tx.run(c).consume())
 
     # -----------------------
     # Upserts (MERGE)
@@ -367,6 +367,6 @@ class Neo4jPatentCETLoader:
         with self._driver.session(database=self._db) as session:
             for i in range(0, len(rows), batch_size):
                 chunk = rows[i : i + batch_size]
-                session.execute_write(lambda tx: tx.run(cypher, rows=chunk).consume())
+                session.execute_write(lambda tx, c=chunk: tx.run(cypher, rows=c).consume())
                 total += len(chunk)
         return total

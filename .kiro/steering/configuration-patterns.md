@@ -330,7 +330,7 @@ Example:
 neo4j:
   uri_env_var: "NEO4J_URI"
   user_env_var: "NEO4J_USER"
-  password_env_var: "NEO4J_PASSWORD"
+  password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
 ```
 
 You can either set raw secrets:
@@ -345,7 +345,7 @@ Or override resolved values directly via SBIR_ETL overrides:
 
 ```bash
 export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
-export SBIR_ETL__NEO4J__PASSWORD="dev_password"
+export SBIR_ETL__NEO4J__PASSWORD="dev_password"  # pragma: allowlist secret
 ```
 
 Prefer SBIR_ETL overrides in development/CI for clarity and portability; use raw env secrets where infrastructure already manages them.

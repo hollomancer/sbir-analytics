@@ -627,7 +627,7 @@ Each signal contains:
     "agency": "Department of Defense",
     "sub_agency": "Department of the Air Force",
     "vendor_name": "Acme AI Inc.",
-    "vendor_uei": "ABC123DEF456",
+    "vendor_uei": "ABC123DEF456",  # pragma: allowlist secret
     "action_date": "2023-03-01",
     "obligated_amount": 500000,
     "competition_type": "SOLE_SOURCE",

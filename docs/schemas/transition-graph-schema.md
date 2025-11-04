@@ -258,7 +258,7 @@ CREATE (c:Contract {
   obligated_amount: 500000,
   competition_type: "SOLE_SOURCE",
   vendor_name: "Acme AI Inc.",
-  vendor_uei: "ABC123DEF456"
+  vendor_uei: "ABC123DEF456"  # pragma: allowlist secret
 })
 ```
 

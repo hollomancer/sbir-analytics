@@ -133,19 +133,13 @@ runs:
           const summaryRaw = `Checks summary: ${{ steps.evaluate.outputs.summary }}`;
           const title = `**${{ inputs.comment-title }}**`;
           const summaryJson = ${{ steps.evaluate.outputs.summary }};
-          const codeBlock = '```json';
-          const codeBlockEnd = '```';
-          const body = `${title}
-
-The CET taxonomy completeness checks reported issues that require attention. Summary:
-
-${codeBlock}
-${summaryJson}
-${codeBlockEnd}
-
-Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
-
-Artifacts: the checks JSON has been uploaded by the CI job for inspection.`;
+          const body = title + '\n\n' +
+            'The CET taxonomy completeness checks reported issues that require attention. Summary:\n\n' +
+            '```json\n' +
+            summaryJson + '\n' +
+            '```\n\n' +
+            'Please review the taxonomy at `config/cet/taxonomy.yaml` and address missing keywords, definitions, or update taxonomy versioning as appropriate.\n\n' +
+            'Artifacts: the checks JSON has been uploaded by the CI job for inspection.';
           if (!pr) {
             core.warning('No PR number found in context; skipping PR comment.');
             return;

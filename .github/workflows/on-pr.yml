@@ -227,7 +227,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Prepare .env for CI
-        run: |
+        run: |  # pragma: allowlist secret
           set -eux
           cp .env.example .env
           # Replace placeholders with repository secrets (ensure secrets exist)
@@ -638,7 +638,7 @@ jobs:
       # Neo4j connection for smoke script
       NEO4J_URI: "bolt://localhost:7687"
       NEO4J_USERNAME: "neo4j"
-      NEO4J_PASSWORD: "password"
+      NEO4J_PASSWORD: "password"  # pragma: allowlist secret
 
     steps:
       - name: Checkout repository
