@@ -1197,6 +1197,69 @@ GitHub Actions workflows:
 - **Schemas**: `docs/schemas/patent-neo4j-schema.md`
 - **Specifications**: `.kiro/specs/` (Kiro specification system) - see `AGENTS.md` for workflow guidance
 
+## Error Handling
+
+The SBIR ETL pipeline uses a comprehensive exception hierarchy for structured error handling and debugging. All custom exceptions provide rich context including component, operation, details, and retry guidance.
+
+### Exception Hierarchy
+
+```
+SBIRETLError (base)
+├── ExtractionError              # Data extraction failures
+├── ValidationError              # Schema/quality validation
+│   └── DataQualityError         # Quality thresholds not met
+├── EnrichmentError              # Enrichment stage failures
+│   └── APIError                 # External API failures
+│       └── RateLimitError       # Rate limits exceeded
+├── TransformationError          # Transformation failures
+│   ├── TransitionDetectionError
+│   ├── FiscalAnalysisError
+│   ├── CETClassificationError
+│   └── PatentProcessingError
+├── LoadError                    # Loading stage failures
+│   └── Neo4jError               # Neo4j operations
+├── ConfigurationError           # Config issues
+├── FileSystemError              # File I/O operations
+└── DependencyError              # Missing dependencies
+    └── RFunctionError           # R function failures
+```
+
+### Usage Example
+
+```python
+from src.exceptions import ValidationError, APIError, wrap_exception
+
+# Raise with structured context
+raise ValidationError(
+    "Award amount must be positive",
+    component="validators.sbir",
+    operation="validate_award",
+    details={"award_id": "A001", "amount": -1000}
+)
+
+# Wrap external exceptions
+try:
+    response = httpx.get(url)
+    response.raise_for_status()
+except httpx.HTTPError as e:
+    raise wrap_exception(
+        e, APIError,
+        api_name="usaspending",
+        endpoint=url,
+        http_status=e.response.status_code
+    )
+```
+
+### Key Features
+
+- **Structured Context**: Every exception includes component, operation, and contextual details
+- **Retry Guidance**: `retryable` flag indicates whether operations should be retried
+- **Error Codes**: Numeric categorization (1xxx-5xxx) for programmatic handling
+- **Cause Chains**: Preserves original exception context via `cause` parameter
+- **Logging Integration**: Exceptions serialize to JSON for structured logging
+
+For detailed guidelines, see [Exception Handling Guide](docs/development/exception-handling.md) and [CONTRIBUTING.md](CONTRIBUTING.md#exception-handling).
+
 ## Contributing
 
 1. Follow code quality standards (black, ruff, mypy, bandit)
