@@ -123,7 +123,6 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.20.0}
     container_name: ${NEO4J_CONTAINER_NAME:-sbir-neo4j}
     profiles:
-      - dev
       - prod
       - cet-staging
       - ci-test
