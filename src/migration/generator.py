@@ -4,8 +4,9 @@ Kiro Spec Generator
 This module generates Kiro specification files from transformed content.
 """
 
-import logging
 from pathlib import Path
+
+from loguru import logger
 
 from .models import FileSystemError, GeneratedSpec, KiroContent, KiroSpec
 
@@ -16,11 +17,10 @@ class KiroSpecGenerator:
     def __init__(self, kiro_path: Path):
         """Initialize generator with Kiro specs path."""
         self.kiro_path = kiro_path
-        self.logger = logging.getLogger(__name__)
 
     def generate_kiro_specs(self, kiro_content: KiroContent) -> list[GeneratedSpec]:
         """Generate all Kiro spec files."""
-        self.logger.info(f"Generating {len(kiro_content.specs)} Kiro specs")
+        logger.info(f"Generating {len(kiro_content.specs)} Kiro specs")
 
         generated_specs = []
 
@@ -28,9 +28,9 @@ class KiroSpecGenerator:
             try:
                 generated_spec = self._generate_single_spec(spec)
                 generated_specs.append(generated_spec)
-                self.logger.debug(f"Generated spec: {spec.name}")
+                logger.debug(f"Generated spec: {spec.name}")
             except Exception as e:
-                self.logger.error(f"Failed to generate spec {spec.name}: {e}")
+                logger.error(f"Failed to generate spec {spec.name}: {e}")
                 raise FileSystemError(f"Failed to generate spec {spec.name}: {e}")
 
         return generated_specs

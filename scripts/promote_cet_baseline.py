@@ -40,9 +40,10 @@ Notes:
 
 from __future__ import annotations
 
+from loguru import logger
+
 import argparse
 import json
-import logging
 import os
 import subprocess
 import sys
@@ -55,8 +56,6 @@ from typing import Any
 # Default paths (relative to repository root)
 DEFAULT_CANDIDATE = Path("reports/benchmarks/cet_baseline_distributions_current.json")
 DEFAULT_BASELINE = Path("reports/benchmarks/cet_baseline_distributions.json")
-
-LOG = logging.getLogger("promote_cet_baseline")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
@@ -66,7 +65,7 @@ def load_json_safe(path: Path) -> dict[str, Any] | None:
         with path.open("r", encoding="utf-8") as fh:
             return json.load(fh)
     except Exception as exc:
-        LOG.error("Failed to load JSON from %s: %s", path, exc)
+        logger.error("Failed to load JSON from %s: %s", path, exc)
         return None
 
 
@@ -79,15 +78,15 @@ def validate_baseline_structure(obj: dict[str, Any]) -> bool:
     This is intentionally permissive — we only want to catch obvious errors.
     """
     if not isinstance(obj, dict):
-        LOG.error("Baseline object is not a JSON object")
+        logger.error("Baseline object is not a JSON object")
         return False
 
     # Accept either explicit keys or nested shapes; prefer presence of either pmf key
     if "label_pmf" in obj and not isinstance(obj["label_pmf"], dict):
-        LOG.error("Baseline 'label_pmf' present but not an object")
+        logger.error("Baseline 'label_pmf' present but not an object")
         return False
     if "score_pmf" in obj and not isinstance(obj["score_pmf"], dict):
-        LOG.error("Baseline 'score_pmf' present but not an object")
+        logger.error("Baseline 'score_pmf' present but not an object")
         return False
 
     # If neither key exists, but object contains plausible keys, accept len>0
@@ -95,7 +94,7 @@ def validate_baseline_structure(obj: dict[str, Any]) -> bool:
         # allow older shapes: check for any dict-like entries
         plausible = any(isinstance(v, dict) for v in obj.values())
         if not plausible:
-            LOG.warning(
+            logger.warning(
                 "Baseline JSON does not contain explicit 'label_pmf' or 'score_pmf' keys; "
                 "promotion will proceed but verify baseline contents."
             )
@@ -131,35 +130,35 @@ def run_git_commit_and_push(paths: [Path], message: str, push: bool = False) -> 
     try:
         subprocess.run(["git", "--version"], check=True, stdout=subprocess.DEVNULL)
     except Exception as exc:
-        LOG.error("Git is not available or not in PATH: %s", exc)
+        logger.error("Git is not available or not in PATH: %s", exc)
         return 2
 
     # Add files
     add_cmd = ["git", "add"] + [str(p) for p in paths]
     try:
-        LOG.info("Running: %s", " ".join(add_cmd))
+        logger.info("Running: %s", " ".join(add_cmd))
         subprocess.run(add_cmd, check=True)
     except subprocess.CalledProcessError as exc:
-        LOG.error("Git add failed: %s", exc)
+        logger.error("Git add failed: %s", exc)
         return exc.returncode
 
     # Commit
     commit_cmd = ["git", "commit", "-m", message]
     try:
-        LOG.info("Committing baseline with message: %s", message)
+        logger.info("Committing baseline with message: %s", message)
         subprocess.run(commit_cmd, check=True)
     except subprocess.CalledProcessError as exc:
-        LOG.error("Git commit failed (maybe nothing to commit): %s", exc)
+        logger.error("Git commit failed (maybe nothing to commit): %s", exc)
         # If commit fails because nothing to commit, treat as success (no-op)
         return exc.returncode
 
     # Push (optional)
     if push:
         try:
-            LOG.info("Pushing commit to origin (current branch)")
+            logger.info("Pushing commit to origin (current branch)")
             subprocess.run(["git", "push"], check=True)
         except subprocess.CalledProcessError as exc:
-            LOG.error("Git push failed: %s", exc)
+            logger.error("Git push failed: %s", exc)
             return exc.returncode
 
     return 0
@@ -175,45 +174,45 @@ def promote_candidate(
     Promote the candidate baseline to the canonical baseline path.
     Returns 0 on success, non-zero on error.
     """
-    LOG.info("Promote candidate: %s -> %s", candidate_path, baseline_path)
+    logger.info("Promote candidate: %s -> %s", candidate_path, baseline_path)
 
     if not candidate_path.exists():
-        LOG.error("Candidate baseline not found at: %s", candidate_path)
+        logger.error("Candidate baseline not found at: %s", candidate_path)
         return 3
 
     candidate = load_json_safe(candidate_path)
     if candidate is None:
-        LOG.error("Failed to load candidate baseline JSON; aborting promotion")
+        logger.error("Failed to load candidate baseline JSON; aborting promotion")
         return 4
 
     if not validate_baseline_structure(candidate):
-        LOG.error("Candidate baseline failed structure validation; aborting")
+        logger.error("Candidate baseline failed structure validation; aborting")
         return 5
 
     if baseline_path.exists() and not force:
-        LOG.info("Baseline already exists at %s", baseline_path)
+        logger.info("Baseline already exists at %s", baseline_path)
         # If the baseline content is identical, skip
         existing = load_json_safe(baseline_path)
         if existing == candidate:
-            LOG.info("Existing baseline is identical to candidate. Nothing to do.")
+            logger.info("Existing baseline is identical to candidate. Nothing to do.")
             return 0
         # Otherwise, if not forced, require explicit confirmation by caller
-        LOG.warning(
+        logger.warning(
             "Baseline at %s differs from candidate. Use --force to overwrite or run in interactive mode.",
             baseline_path,
         )
         return 6
 
     if dry_run:
-        LOG.info("Dry-run: validated candidate baseline; no file written.")
+        logger.info("Dry-run: validated candidate baseline; no file written.")
         return 0
 
     # Atomic write
     try:
         atomic_write_json(baseline_path, candidate)
-        LOG.info("Candidate promoted to baseline at %s", baseline_path)
+        logger.info("Candidate promoted to baseline at %s", baseline_path)
     except Exception as exc:
-        LOG.error("Failed to write baseline file: %s", exc)
+        logger.error("Failed to write baseline file: %s", exc)
         return 7
 
     return 0
@@ -278,19 +277,19 @@ def main(argv: list | None = None) -> int:
 
     # Confirm overwrite if baseline exists and not forced and not non-interactive
     if baseline_path.exists() and not args.force and not args.yes:
-        LOG.warning("Baseline already exists at %s", baseline_path)
+        logger.warning("Baseline already exists at %s", baseline_path)
         try:
             resp = input("Overwrite existing baseline? [y/N]: ").strip().lower()
         except Exception:
             resp = "n"
         if resp not in ("y", "yes"):
-            LOG.info("Promotion aborted by user.")
+            logger.info("Promotion aborted by user.")
             return 1
 
     # Perform promotion
     rc = promote_candidate(candidate_path, baseline_path, dry_run=args.dry_run, force=args.force)
     if rc != 0:
-        LOG.error("Promotion failed with code %d", rc)
+        logger.error("Promotion failed with code %d", rc)
         return rc
 
     # Optionally commit and push
@@ -299,11 +298,11 @@ def main(argv: list | None = None) -> int:
         # We will git add the baseline path relative to repo root
         git_rc = run_git_commit_and_push([baseline_path], commit_msg, push=args.push)
         if git_rc != 0:
-            LOG.error("Git operations failed with code %d", git_rc)
+            logger.error("Git operations failed with code %d", git_rc)
             return git_rc
-        LOG.info("Git commit (and push if requested) completed successfully.")
+        logger.info("Git commit (and push if requested) completed successfully.")
 
-    LOG.info("Promotion complete.")
+    logger.info("Promotion complete.")
     return 0
 
 
@@ -311,6 +310,6 @@ if __name__ == "__main__":
     try:
         rc = main()
     except KeyboardInterrupt:
-        LOG.error("Promotion cancelled by user (KeyboardInterrupt).")
+        logger.error("Promotion cancelled by user (KeyboardInterrupt).")
         rc = 130
     sys.exit(rc)

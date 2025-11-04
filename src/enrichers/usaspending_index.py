@@ -12,13 +12,11 @@ It avoids requiring a running Postgres instance to restore the SQL dump.
 
 from __future__ import annotations
 
+from loguru import logger
+
 import gzip
 import io
-import logging
 import zipfile
-
-
-logger = logging.getLogger(__name__)
 
 
 def _read_toc_strings(zip_path: str) -> list[str]:

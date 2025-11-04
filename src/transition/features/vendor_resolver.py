@@ -32,7 +32,8 @@ print(match)
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
@@ -45,8 +46,6 @@ try:
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:
     _RAPIDFUZZ_AVAILABLE = False
-
-LOG = logging.getLogger(__name__)
 
 
 @dataclass
@@ -176,7 +175,7 @@ class VendorResolver:
                     self._duns_index[key] = r
             nm = self._normalize_name(r.name)
             self._name_index.setdefault(nm, []).append(r)
-        LOG.info("VendorResolver loaded %d vendor records", count)
+        logger.info("VendorResolver loaded %d vendor records", count)
 
     # -----------------------------
     # Exact identifier match methods
@@ -397,7 +396,7 @@ class VendorResolver:
             lst = self._name_index.get(nm, [])
             self._name_index[nm] = [r for r in lst if r is not rec]
         except Exception:
-            LOG.exception("Error removing record from indices for uei=%s", uei)
+            logger.exception("Error removing record from indices for uei=%s", uei)
         self._cache.clear()
         return True
 

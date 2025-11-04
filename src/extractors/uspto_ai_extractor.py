@@ -38,15 +38,13 @@ from __future__ import annotations
 
 import csv
 import json
-import logging
 import os
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-
-LOG = logging.getLogger(__name__)
+from loguru import logger
 
 # Optional imports - gracefully degrade when not available
 try:  # pragma: no cover - optional
@@ -112,7 +110,7 @@ class USPTOAIExtractor:
         else:
             for ext in SUPPORTED_EXTENSIONS:
                 files.extend(sorted(self.input_dir.rglob(f"*{ext}")))
-        LOG.info("Discovered %d USPTO AI files under %s", len(files), self.input_dir)
+        logger.info("Discovered %d USPTO AI files under %s", len(files), self.input_dir)
         return files
 
     # ----------------------------
@@ -262,7 +260,7 @@ class USPTOAIExtractor:
                         continue
                     emitted += 1
                     if self._need_progress_log(emitted):
-                        LOG.info(
+                        logger.info(
                             "Streaming %s (ndjson): %s rows processed",
                             path.name,
                             emitted,
@@ -294,7 +292,7 @@ class USPTOAIExtractor:
                         continue
                     emitted += 1
                     if self._need_progress_log(emitted):
-                        LOG.info(
+                        logger.info(
                             "Streaming %s (csv): %s rows processed",
                             path.name,
                             emitted,
@@ -341,12 +339,12 @@ class USPTOAIExtractor:
                 except StopIteration:
                     break
                 except Exception as e:
-                    LOG.debug("pandas get_chunk failed for %s: %s", path, e)
+                    logger.debug("pandas get_chunk failed for %s: %s", path, e)
                     raise
                 for rec in chunk.to_dict(orient="records"):
                     emitted += 1
                     if self._need_progress_log(emitted):
-                        LOG.info("Streaming %s (dta:pandas): %s rows", path.name, emitted)
+                        logger.info("Streaming %s (dta:pandas): %s rows", path.name, emitted)
                     if emitted % max(1, chunk_size) == 0:
                         offset += chunk_size
                         self._save_checkpoint(path, offset)
@@ -355,7 +353,7 @@ class USPTOAIExtractor:
             self._save_checkpoint(path, offset)
             return
         except Exception:
-            LOG.debug("pandas iterator failed for %s; trying pyreadstat or fallback", path)
+            logger.debug("pandas iterator failed for %s; trying pyreadstat or fallback", path)
 
         # 2) pyreadstat stride if available
         if pyreadstat is not None:
@@ -376,7 +374,7 @@ class USPTOAIExtractor:
                     for rec in recs:
                         emitted += 1
                         if self._need_progress_log(emitted):
-                            LOG.info(
+                            logger.info(
                                 "Streaming %s (dta:pyreadstat): %s rows (total hint=%s)",
                                 path.name,
                                 emitted,
@@ -390,10 +388,10 @@ class USPTOAIExtractor:
                 self._save_checkpoint(path, row_off)
                 return
             except Exception:
-                LOG.debug("pyreadstat streaming failed for %s; trying full pandas read", path)
+                logger.debug("pyreadstat streaming failed for %s; trying full pandas read", path)
 
         # 3) Last resort: full pandas read
-        LOG.warning("Falling back to reading entire .dta into memory for %s", path)
+        logger.warning("Falling back to reading entire .dta into memory for %s", path)
         df_full = pd.read_stata(path, convert_categoricals=False)  # type: ignore
         n = len(df_full)
         i = offset
@@ -434,7 +432,7 @@ class USPTOAIExtractor:
                         for rec in chunk.to_dict(orient="records"):
                             emitted += 1
                             if self._need_progress_log(emitted):
-                                LOG.info(
+                                logger.info(
                                     "Streaming %s (parquet:pyarrow): %s rows",
                                     path.name,
                                     emitted,
@@ -446,7 +444,7 @@ class USPTOAIExtractor:
                 self._save_checkpoint(path, cur)
                 return
             except Exception:
-                LOG.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
+                logger.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
 
         if pd is None:
             raise RuntimeError("pandas is required to read parquet files (fallback)")
@@ -492,11 +490,11 @@ class USPTOAIExtractor:
             ck.parent.mkdir(parents=True, exist_ok=True)
             ck.write_text(str(int(last_offset)), encoding="utf-8")
         except Exception:
-            LOG.debug("Failed to write checkpoint for %s (offset=%s)", path, last_offset)
+            logger.debug("Failed to write checkpoint for %s (offset=%s)", path, last_offset)
 
     def _handle_error(self, path: Path, msg: str) -> None:
         if self.continue_on_error:
-            LOG.warning("Continuing after error in %s: %s", path, msg)
+            logger.warning("Continuing after error in %s: %s", path, msg)
         else:
             raise RuntimeError(f"{path}: {msg}")
 

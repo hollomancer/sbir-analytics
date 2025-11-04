@@ -14,7 +14,8 @@ Capabilities:
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -36,8 +37,6 @@ try:
     )
 except Exception as e:  # pragma: no cover
     raise RuntimeError("Required module src.ml.models.patent_classifier is not available") from e
-
-logger = logging.getLogger(__name__)
 
 
 def _ensure_pandas() -> None:

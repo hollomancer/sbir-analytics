@@ -16,8 +16,9 @@ Design goals:
 
 from __future__ import annotations
 
+from loguru import logger
+
 import dataclasses
-import logging
 import os
 from typing import Any
 
@@ -210,8 +211,7 @@ try:
     _MODULE_CONFIG = load_config()
 except Exception:
     # Avoid failing import if config parsing fails; fall back to defaults
-    LOG = logging.getLogger(__name__)
-    LOG.debug("Failed to load transition config at import time; using defaults.")
+    logger.debug("Failed to load transition config at import time; using defaults.")
     _MODULE_CONFIG = Config()
 
 

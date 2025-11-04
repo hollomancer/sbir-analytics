@@ -20,9 +20,10 @@ multi-GB USPTO data files into memory.
 
 from __future__ import annotations
 
+from loguru import logger
+
 import csv
 import json
-import logging
 from collections import defaultdict
 from collections.abc import Generator, Iterable
 from copy import deepcopy
@@ -30,9 +31,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-
-LOG = logging.getLogger(__name__)
 
 # Optional heavy deps: attempted imports will be handled at runtime
 try:
@@ -116,7 +114,7 @@ def _iter_rows_from_dta(
             try:
                 df, meta = pyreadstat.read_dta(str(path), row_limit=chunk_size, row_offset=offset)
             except Exception as exc:
-                LOG.debug("pyreadstat read_dta chunk failed at offset %s: %s", offset, exc)
+                logger.debug("pyreadstat read_dta chunk failed at offset %s: %s", offset, exc)
                 raise
             if df is None or df.shape[0] == 0:
                 break
@@ -304,7 +302,7 @@ def validate_rf_id_uniqueness(
         )
         return result
     except Exception as exc:
-        LOG.exception("validate_rf_id_uniqueness failed for %s: %s", p, exc)
+        logger.exception("validate_rf_id_uniqueness failed for %s: %s", p, exc)
         return ValidatorResult(
             success=False,
             summary={"error": str(exc)},
@@ -319,10 +317,10 @@ def main_validate_rf_id_uniqueness(file_path: str | Path) -> tuple[bool, dict[st
     Returns (success, summary_dict)
     """
     res = validate_rf_id_uniqueness(file_path)
-    LOG.info("RF ID uniqueness validation result for %s: success=%s", file_path, res.success)
-    LOG.info("Summary: %s", res.summary)
+    logger.info("RF ID uniqueness validation result for %s: success=%s", file_path, res.success)
+    logger.info("Summary: %s", res.summary)
     if not res.success:
-        LOG.info("Details (duplicates sample): %s", res.details.get("duplicate_samples"))
+        logger.info("Details (duplicates sample): %s", res.details.get("duplicate_samples"))
     return res.success, res.summary
 
 
@@ -359,7 +357,7 @@ def validate_referential_integrity(
         parent_paths = _ensure_path_list(parent_file_path)
 
         # First pass: collect all parent keys
-        LOG.info(
+        logger.info(
             "Loading parent keys from %s",
             ", ".join(str(p) for p in parent_paths),
         )
@@ -371,7 +369,7 @@ def validate_referential_integrity(
                     parent_keys.add(str(pk_val).strip())
 
         # Second pass: check child FKs
-        LOG.info("Validating child foreign keys from %s", child_file_path)
+        logger.info("Validating child foreign keys from %s", child_file_path)
         orphaned_records: list[dict[str, Any]] = []
         total_child_rows = 0
         orphaned_count = 0
@@ -413,7 +411,7 @@ def validate_referential_integrity(
         return ValidatorResult(success=success, summary=summary, details=details)
 
     except Exception as exc:
-        LOG.exception("validate_referential_integrity failed: %s", exc)
+        logger.exception("validate_referential_integrity failed: %s", exc)
         return ValidatorResult(
             success=False,
             summary={"error": str(exc)},
@@ -497,7 +495,7 @@ def validate_field_completeness(
         return ValidatorResult(success=success, summary=summary, details=details)
 
     except Exception as exc:
-        LOG.exception("validate_field_completeness failed: %s", exc)
+        logger.exception("validate_field_completeness failed: %s", exc)
         return ValidatorResult(
             success=False,
             summary={"error": str(exc)},
@@ -687,7 +685,7 @@ def validate_date_fields(
         return ValidatorResult(success=success, summary=summary, details=details)
 
     except Exception as exc:
-        LOG.exception("validate_date_fields failed: %s", exc)
+        logger.exception("validate_date_fields failed: %s", exc)
         return ValidatorResult(
             success=False,
             summary={"error": str(exc)},
@@ -773,7 +771,7 @@ def validate_duplicate_records(
         return ValidatorResult(success=success, summary=summary, details=details)
 
     except Exception as exc:
-        LOG.exception("validate_duplicate_records failed: %s", exc)
+        logger.exception("validate_duplicate_records failed: %s", exc)
         return ValidatorResult(
             success=False,
             summary={"error": str(exc)},
@@ -862,7 +860,7 @@ class USPTODataQualityValidator:
             with path.open("w", encoding="utf-8") as fh:
                 json.dump(sample, fh, ensure_ascii=False, indent=2, default=str)
         except Exception as exc:  # pragma: no cover - IO guard
-            LOG.exception("Failed to write failure sample %s: %s", path, exc)
+            logger.exception("Failed to write failure sample %s: %s", path, exc)
             return None
 
         record = {"label": label, "path": str(path), "sample_size": len(sample)}
@@ -1130,7 +1128,7 @@ class USPTODataQualityValidator:
             with report_path.open("w", encoding="utf-8") as fh:
                 json.dump(report, fh, ensure_ascii=False, indent=2, default=str)
         except Exception as exc:  # pragma: no cover - IO guard
-            LOG.exception("Failed to write validation report %s: %s", report_path, exc)
+            logger.exception("Failed to write validation report %s: %s", report_path, exc)
             return None
         return str(report_path)
 

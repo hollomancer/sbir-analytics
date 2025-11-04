@@ -1,3 +1,5 @@
+from loguru import logger
+
 #!/usr/bin/env python3
 """
 OpenSpec to Kiro Migration Script
@@ -12,7 +14,6 @@ Usage:
 
 import argparse
 import json
-import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -60,42 +61,42 @@ class OpenSpecToKiroMigrator:
 
     def migrate(self) -> MigrationReport:
         """Execute complete migration process."""
-        self.logger.info("Starting OpenSpec to Kiro migration")
-        self.logger.info(f"OpenSpec path: {self.config.openspec_path}")
-        self.logger.info(f"Kiro path: {self.config.kiro_path}")
+        logger.info("Starting OpenSpec to Kiro migration")
+        logger.info(f"OpenSpec path: {self.config.openspec_path}")
+        logger.info(f"Kiro path: {self.config.kiro_path}")
 
         try:
             # Phase 1: Analysis
-            self.logger.info("Phase 1: Analyzing OpenSpec content")
+            logger.info("Phase 1: Analyzing OpenSpec content")
             self.progress_tracker.update("analysis", "started")
             openspec_content = self.analyzer.analyze_openspec_structure()
             self.progress_tracker.update("analysis", "completed")
 
             # Phase 2: Transformation
-            self.logger.info("Phase 2: Transforming content to Kiro format")
+            logger.info("Phase 2: Transforming content to Kiro format")
             self.progress_tracker.update("transformation", "started")
             kiro_content = self.transformer.transform_content(openspec_content)
             self.progress_tracker.update("transformation", "completed")
 
             # Phase 3: Generation
-            self.logger.info("Phase 3: Generating Kiro specification files")
+            logger.info("Phase 3: Generating Kiro specification files")
             self.progress_tracker.update("generation", "started")
             if not self.config.dry_run:
                 generated_specs = self.generator.generate_kiro_specs(kiro_content)
             else:
-                self.logger.info("DRY RUN: Would generate Kiro specs")
+                logger.info("DRY RUN: Would generate Kiro specs")
                 generated_specs = []
             self.progress_tracker.update("generation", "completed")
 
             # Phase 4: Validation
-            self.logger.info("Phase 4: Validating migration")
+            logger.info("Phase 4: Validating migration")
             self.progress_tracker.update("validation", "started")
             validation_report = self.validator.validate_migration(generated_specs, openspec_content)
             self.progress_tracker.update("validation", "completed")
 
             # Phase 5: Historical Preservation
             if not self.config.dry_run and self.config.preserve_history:
-                self.logger.info("Phase 5: Preserving OpenSpec history")
+                logger.info("Phase 5: Preserving OpenSpec history")
                 self.progress_tracker.update("preservation", "started")
                 self.preserver.archive_openspec(
                     self.config.openspec_path, self.config.archive_path, generated_specs
@@ -117,24 +118,23 @@ class OpenSpecToKiroMigrator:
             self._write_migration_report(migration_report)
 
             if validation_report.passed:
-                self.logger.info("Migration completed successfully!")
+                logger.info("Migration completed successfully!")
             else:
-                self.logger.warning(
+                logger.warning(
                     f"Migration completed with {len(validation_report.issues)} validation issues"
                 )
 
             return migration_report
 
         except (ContentParsingError, TransformationError, ValidationError, FileSystemError) as e:
-            self.logger.error(f"Migration failed during {type(e).__name__}: {e}")
+            logger.error(f"Migration failed during {type(e).__name__}: {e}")
             raise
         except Exception as e:
-            self.logger.error(f"Unexpected migration failure: {e}", exc_info=True)
+            logger.error(f"Unexpected migration failure: {e}", exc_info=True)
             raise MigrationError(f"Migration failed with unexpected error: {e}") from e
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for migration process."""
-        logger = logging.getLogger("openspec_migration")
 
         # Clear any existing handlers to avoid duplicates
         logger.handlers.clear()
@@ -181,7 +181,7 @@ class OpenSpecToKiroMigrator:
         with open(report_file, "w") as f:
             json.dump(report.to_dict(), f, indent=2, default=str)
 
-        self.logger.info(f"Migration report written to: {report_file}")
+        logger.info(f"Migration report written to: {report_file}")
 
     def _validate_config(self):
         """Validate migration configuration."""
@@ -200,7 +200,7 @@ class OpenSpecToKiroMigrator:
                 missing_paths.append(path_name)
 
         if missing_paths:
-            self.logger.warning(
+            logger.warning(
                 f"OpenSpec structure incomplete. Missing: {', '.join(missing_paths)}"
             )
 
