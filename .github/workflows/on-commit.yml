@@ -55,7 +55,7 @@ jobs:
           pip install pre-commit detect-secrets
       - name: Run pre-commit hooks (detect-secrets + other configured hooks)
         id: precommit
-        run: |
+        run: |  # pragma: allowlist secret
           set -eux
           if [ -f .pre-commit-config.yaml ]; then
             pre-commit run --all-files || exit_code=$? && true
