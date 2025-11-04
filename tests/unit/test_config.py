@@ -12,7 +12,6 @@ import yaml
 pytestmark = pytest.mark.fast
 
 from src.config.loader import (
-    ConfigurationError,
     _apply_env_overrides,
     _convert_env_value,
     _deep_merge_dicts,
@@ -21,6 +20,7 @@ from src.config.loader import (
     reload_config,
 )
 from src.config.schemas import PipelineConfig
+from src.exceptions import ConfigurationError
 
 
 class TestDeepMergeDicts:
