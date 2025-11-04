@@ -221,9 +221,9 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
         AssetExecutionContext,
-        transition_evidence_v1,
-        transition_scores_v1,
-        vendor_resolution,
+        transformed_transition_evidence,
+        transformed_transition_scores,
+        enriched_vendor_resolution,
     )
 
     # Contracts sample:
@@ -269,7 +269,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     ctx = AssetExecutionContext()
 
     # 1) Vendor resolution
-    vendor_res_out = vendor_resolution(ctx, contracts_df, awards_df)
+    vendor_res_out = enriched_vendor_resolution(ctx, contracts_df, awards_df)
     vendor_res_df, vendor_meta = _unwrap_output(vendor_res_out)
     assert isinstance(vendor_res_df, pd.DataFrame)
     assert {"contract_id", "matched_vendor_id", "match_method", "confidence"}.issubset(
@@ -295,7 +295,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert Path("data/processed/vendor_resolution.checks.json").exists()
 
     # 2) Transition scores
-    scores_out = transition_scores_v1(ctx, vendor_res_df, contracts_df, awards_df)
+    scores_out = transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df)
     scores_df, scores_meta = _unwrap_output(scores_out)
     assert isinstance(scores_df, pd.DataFrame)
     assert {"award_id", "contract_id", "score", "method", "computed_at"}.issubset(
@@ -320,7 +320,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     assert Path("data/processed/transitions.checks.json").exists()
 
     # 3) Evidence emission
-    evidence_out = transition_evidence_v1(ctx, scores_df, contracts_df)
+    evidence_out = transformed_transition_evidence(ctx, scores_df, contracts_df)
     evidence_path_str, evidence_meta = _unwrap_output(evidence_out)
     ev_path = Path(evidence_path_str)
     assert ev_path.exists()
@@ -351,9 +351,9 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
-        transition_evidence_v1,
-        transition_scores_v1,
-        vendor_resolution,
+        transformed_transition_evidence,
+        transformed_transition_scores,
+        enriched_vendor_resolution,
     )
 
     # Tiny fixtures (same as the shimmed chain test)
@@ -392,9 +392,9 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     ctx = AssetExecutionContext()
 
     # Run chain
-    vr_df, _ = _unwrap_output(vendor_resolution(ctx, contracts_df, awards_df))
-    scores_df, _ = _unwrap_output(transition_scores_v1(ctx, vr_df, contracts_df, awards_df))
-    ev_path_str, _ = _unwrap_output(transition_evidence_v1(ctx, scores_df, contracts_df))
+    vr_df, _ = _unwrap_output(enriched_vendor_resolution(ctx, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(transformed_transition_scores(ctx, vr_df, contracts_df, awards_df))
+    ev_path_str, _ = _unwrap_output(transformed_transition_evidence(ctx, scores_df, contracts_df))
     ev_path = Path(ev_path_str)
 
     # Normalize transitions (actual)
@@ -483,9 +483,9 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
-        transition_analytics,
-        transition_scores_v1,
-        vendor_resolution,
+        transformed_transition_analytics,
+        transformed_transition_scores,
+        enriched_vendor_resolution,
     )
 
     # Reuse tiny fixtures
@@ -524,11 +524,11 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
 
     # Run chain subset up to analytics
     ctx = AssetExecutionContext()
-    vr_df, _ = _unwrap_output(vendor_resolution(ctx, contracts_df, awards_df))
-    scores_df, _ = _unwrap_output(transition_scores_v1(ctx, vr_df, contracts_df, awards_df))
+    vr_df, _ = _unwrap_output(enriched_vendor_resolution(ctx, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(transformed_transition_scores(ctx, vr_df, contracts_df, awards_df))
 
     analytics_path, meta = _unwrap_output(
-        transition_analytics(ctx, awards_df, scores_df, contracts_df)
+        transformed_transition_analytics(ctx, awards_df, scores_df, contracts_df)
     )
     p = Path(analytics_path)
     assert p.exists()

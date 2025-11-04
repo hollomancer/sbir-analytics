@@ -897,7 +897,8 @@ created_at: DateTime
 
 ```cypher
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
-MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
+# pragma: allowlist secret
+MATCH (co:Company {uei: "ABC123DEF456"})
 CREATE (a)-[:FUNDED_BY {recipient_role: "PRIME"}]->(co)
 ```
 

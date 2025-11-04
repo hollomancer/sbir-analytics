@@ -8,7 +8,7 @@ from typing import Any
 
 from dagster import AssetKey, DagsterEventType, DagsterInstance, Definitions, materialize
 from dagster._core.definitions.asset_selection import AssetSelection
-from dagster._core.events import EventRecordsFilter
+from dagster._core.event_api import EventRecordsFilter
 from loguru import logger
 from rich.console import Console
 

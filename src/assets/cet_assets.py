@@ -551,17 +551,46 @@ def enriched_cet_award_classifications() -> Output:
     checks_path = output_path.with_suffix(".checks.json")
 
     # Load taxonomy and classification config (required for EvidenceExtractor and thresholds)
-    loader = TaxonomyLoader()
-    taxonomy = loader.load_taxonomy()
+    try:
+        loader = TaxonomyLoader()
+        taxonomy = loader.load_taxonomy()
+    except Exception:
+        logger.exception("Failed to load taxonomy; writing empty output")
+        import pandas as pd
+        df_empty = pd.DataFrame(
+            columns=[
+                "award_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "evidence",
+                "classified_at",
+                "taxonomy_version",
+            ]
+        )
+        try:
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            out_json = output_path.with_suffix(".json")
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+        checks = {"ok": False, "reason": "taxonomy_load_failed", "num_awards": 0}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
+    
     try:
         classification_config = loader.load_classification_config()
     except Exception:
         # If classification config cannot be loaded, fall back to defaults
-        classification_config = (
-            loader.load_classification_config()
-            if hasattr(loader, "load_classification_config")
-            else {}
-        )
+        logger.warning("Could not load classification config; using defaults")
+        classification_config = {}
 
     # Prepare EvidenceExtractor if available
     extractor = None
@@ -713,13 +742,77 @@ def enriched_cet_award_classifications() -> Output:
         texts.append(combined)
         award_ids.append(a.get("award_id") or "")
 
+    # Handle empty awards list
+    if not texts or not award_ids:
+        logger.warning("No award texts to classify; writing empty output")
+        df_empty = pd.DataFrame(
+            columns=[
+                "award_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "evidence",
+                "classified_at",
+                "taxonomy_version",
+            ]
+        )
+        try:
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            out_json = output_path.with_suffix(".json")
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+        checks = {"ok": False, "reason": "no_awards_to_classify", "num_awards": len(awards)}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "model_present": True,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
+
     batch_size = (
         classification_config.get("batch", {}).get("size", 1000)
         if isinstance(classification_config, dict)
         else 1000
     )
 
-    classifications_by_award = model.classify_batch(texts, batch_size=batch_size)
+    # Perform batch classification with error handling
+    try:
+        classifications_by_award = model.classify_batch(texts, batch_size=batch_size)
+    except Exception:
+        logger.exception("Batch classification failed; writing empty output")
+        df_empty = pd.DataFrame(
+            columns=[
+                "award_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "evidence",
+                "classified_at",
+                "taxonomy_version",
+            ]
+        )
+        try:
+            save_dataframe_parquet(df_empty, output_path)
+        except Exception:
+            out_json = output_path.with_suffix(".json")
+            with open(out_json, "w", encoding="utf-8") as fh:
+                fh.write("")
+        checks = {"ok": False, "reason": "classification_failed", "num_awards": len(awards)}
+        checks_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(checks_path, "w", encoding="utf-8") as fh:
+            json.dump(checks, fh, indent=2)
+        metadata = {
+            "path": str(output_path),
+            "rows": 0,
+            "model_present": True,
+            "checks_path": str(checks_path),
+        }
+        return Output(value=str(output_path), metadata=metadata)
 
     # Attach evidence if extractor available
     if extractor is not None:

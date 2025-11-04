@@ -382,7 +382,8 @@ jobs:
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USERNAME: ${{ secrets.NEO4J_USER || 'neo4j' }}
       NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD || 'password' }}
-      IMAGE_NAME: sbir-etl:dev-${{ github.sha }}
+      IMAGE_NAME: sbir-etl
+      IMAGE_TAG: dev-${{ github.sha }}
       STARTUP_TIMEOUT: 120
 
     steps:
@@ -414,7 +415,7 @@ jobs:
       - name: Build runtime image
         run: |
           set -eux
-          docker build --target runtime -t "${IMAGE_NAME}" .
+          docker build --target runtime -t "${IMAGE_NAME}:${IMAGE_TAG}" .
 
       - name: Start development compose stack (dev profile)
         run: |

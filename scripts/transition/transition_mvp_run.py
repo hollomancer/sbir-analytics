@@ -145,10 +145,10 @@ def main(argv: list[str] | None = None) -> int:
     # Import assets (import-safe; works without Dagster installed)
     try:
         from src.assets.transition_assets import AssetExecutionContext  # type: ignore
-        from src.assets.transition_assets import contracts_sample as a_contracts_sample
-        from src.assets.transition_assets import transition_evidence_v1 as a_transition_evidence_v1
-        from src.assets.transition_assets import transition_scores_v1 as a_transition_scores_v1
-        from src.assets.transition_assets import vendor_resolution as a_vendor_resolution
+        from src.assets.transition_assets import validated_contracts_sample as a_contracts_sample
+        from src.assets.transition_assets import transformed_transition_evidence as a_transition_evidence_v1
+        from src.assets.transition_assets import transformed_transition_scores as a_transition_scores_v1
+        from src.assets.transition_assets import enriched_vendor_resolution as a_vendor_resolution
     except Exception as exc:
         print(f"[error] Failed to import transition assets: {exc}", file=sys.stderr)
         return 2
@@ -227,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
         print("[run] Materializing transition_analytics")
     try:
         from src.assets.transition_assets import (  # type: ignore
-            transition_analytics as a_transition_analytics,
+            transformed_transition_analytics as a_transition_analytics,
         )
 
         analytics_out = a_transition_analytics(ctx, awards_df, scores_df, contracts_df)

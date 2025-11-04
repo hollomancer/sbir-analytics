@@ -71,7 +71,7 @@ def _write_detection_config(base_dir: Path) -> Path:
 def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition_assets import AssetExecutionContext, contracts_sample  # type: ignore
+    from src.assets.transition_assets import AssetExecutionContext, validated_contracts_sample  # type: ignore
 
     sample_path = Path("data/processed/contracts_sample.parquet")
     sample_path.parent.mkdir(parents=True, exist_ok=True)
@@ -104,7 +104,7 @@ def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH", str(sample_path))
 
     ctx = AssetExecutionContext()
-    result = contracts_sample(ctx)
+    result = validated_contracts_sample(ctx)
     sample_df, metadata = _unwrap_output(result)
 
     assert isinstance(sample_df, pd.DataFrame)
@@ -128,7 +128,7 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import locally so env/working dir changes apply
-    from src.assets.transition_assets import AssetExecutionContext, vendor_resolution
+    from src.assets.transition_assets import AssetExecutionContext, enriched_vendor_resolution
 
     # Prepare a tiny contracts_sample DataFrame:
     # - C1 matches UEI exactly
@@ -171,7 +171,7 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     )
 
     ctx = AssetExecutionContext()
-    result = vendor_resolution(ctx, contracts_df, awards_df)
+    result = enriched_vendor_resolution(ctx, contracts_df, awards_df)
     resolved_df, _ = _unwrap_output(result)
 
     # Basic shape expectations
@@ -201,8 +201,8 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
 
     from src.assets.transition_assets import (
         AssetExecutionContext,
-        transition_evidence_v1,
-        transition_scores_v1,
+        transformed_transition_evidence,
+        transformed_transition_scores,
     )
 
     # Reuse consistent fixtures (contracts + awards + vendor_resolution outputs)
@@ -256,7 +256,7 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     )
 
     ctx = AssetExecutionContext()
-    scores_out = transition_scores_v1(ctx, vendor_res_df, contracts_df, awards_df)
+    scores_out = transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df)
     scores_df, _ = _unwrap_output(scores_out)
 
     # Expect 2 candidates (A1↔C1 via UEI, A2↔C2 via fuzzy)
@@ -277,7 +277,7 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     assert abs(float(s2["score"]) - 0.7) < 1e-6
 
     # Evidence generation should produce one NDJSON line per candidate
-    ev_out = transition_evidence_v1(ctx, scores_df, contracts_df)
+    ev_out = transformed_transition_evidence(ctx, scores_df, contracts_df)
     ev_path, _ = _unwrap_output(ev_out)
     ev_path = Path(ev_path)
     assert ev_path.exists()
