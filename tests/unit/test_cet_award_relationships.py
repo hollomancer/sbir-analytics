@@ -11,27 +11,29 @@ pytestmark = pytest.mark.fast
 # -----------------------------
 # Helpers for asset invocation
 # -----------------------------
+class DummyLog:
+    def info(self, *args, **kwargs):
+        pass
+
+    def warning(self, *args, **kwargs):
+        pass
+
+    def exception(self, *args, **kwargs):
+        pass
+
+
+class DummyContext:
+    def __init__(self, op_config: dict[str, Any] | None = None):
+        self.op_config = op_config or {}
+        self.log = DummyLog()
+
+
 try:
     from dagster import build_asset_context
 
     HAVE_BUILD_CONTEXT = True
 except Exception:  # pragma: no cover
     HAVE_BUILD_CONTEXT = False
-
-    class DummyLog:
-        def info(self, *args, **kwargs):
-            pass
-
-        def warning(self, *args, **kwargs):
-            pass
-
-        def exception(self, *args, **kwargs):
-            pass
-
-    class DummyContext:
-        def __init__(self, op_config: dict[str, Any] | None = None):
-            self.op_config = op_config or {}
-            self.log = DummyLog()
 
 
 # -----------------------------
@@ -205,14 +207,9 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     monkeypatch.setattr(mod, "CETLoader", FakeLoader)
     monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
-    # Execute asset - use build_asset_context if available, otherwise DummyContext
-    if HAVE_BUILD_CONTEXT:
-        # build_asset_context() returns a real Dagster context where op_config is read-only
-        # Use DummyContext instead so we can control the config
-        ctx = DummyContext()
-    else:
-        ctx = DummyContext()
-    result = mod.neo4j_award_cet_relationships(ctx, None, None)
+    # Execute asset - use the shim AssetExecutionContext from cet_assets which accepts op_config
+    ctx = mod.AssetExecutionContext(op_config={})
+    result = mod.loaded_award_cet_relationships(ctx, None, None, None)
 
     assert result["status"] == "success"
     assert result["relationships_type"] == "APPLICABLE_TO"

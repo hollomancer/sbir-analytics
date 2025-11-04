@@ -18,27 +18,29 @@ from src.loaders.neo4j_client import LoadMetrics  # type: ignore
 # -----------------------------
 # Helpers for asset invocation
 # -----------------------------
+class DummyLog:
+    def info(self, *args, **kwargs):
+        pass
+
+    def warning(self, *args, **kwargs):
+        pass
+
+    def exception(self, *args, **kwargs):
+        pass
+
+
+class DummyContext:
+    def __init__(self, op_config: dict[str, Any] | None = None):
+        self.op_config = op_config or {}
+        self.log = DummyLog()
+
+
 try:
     from dagster import build_asset_context
 
     HAVE_BUILD_CONTEXT = True
 except Exception:  # pragma: no cover
     HAVE_BUILD_CONTEXT = False
-
-    class DummyLog:
-        def info(self, *args, **kwargs):
-            pass
-
-        def warning(self, *args, **kwargs):
-            pass
-
-        def exception(self, *args, **kwargs):
-            pass
-
-    class DummyContext:
-        def __init__(self, op_config: dict[str, Any] | None = None):
-            self.op_config = op_config or {}
-            self.log = DummyLog()
 
 
 # -----------------------------
