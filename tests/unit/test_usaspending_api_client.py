@@ -11,11 +11,9 @@ import pytest
 pytestmark = pytest.mark.fast
 from httpx import HTTPStatusError, TimeoutException
 
-from src.enrichers.usaspending_api_client import (
-    USAspendingAPIClient,
-    USAspendingAPIError,
-    USAspendingRateLimitError,
-)
+from src.enrichers.usaspending_api_client import USAspendingAPIClient
+from src.exceptions import APIError as USAspendingAPIError
+from src.exceptions import RateLimitError as USAspendingRateLimitError
 from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 
 

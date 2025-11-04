@@ -55,6 +55,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from ..exceptions import ConfigurationError, DependencyError
+
 
 # Import neo4j lazily; avoid import error at module import time
 try:
@@ -122,11 +124,24 @@ class Neo4jPatentCETLoader:
         """
         if driver is None:
             if GraphDatabase is None:  # pragma: no cover
-                raise RuntimeError(
-                    "Neo4j driver is not available. Install the 'neo4j' package to use this loader."
+                raise DependencyError(
+                    "Neo4j driver is not available. Install the 'neo4j' package to use this loader.",
+                    dependency_name="neo4j",
+                    component="loader.neo4j_patent",
+                    details={"install_command": "pip install neo4j"},
                 )
             if not (uri and user and password):
-                raise ValueError("Provide either a driver or uri/user/password")
+                raise ConfigurationError(
+                    "Provide either a driver or uri/user/password",
+                    component="loader.neo4j_patent",
+                    operation="__init__",
+                    details={
+                        "driver_provided": driver is not None,
+                        "uri_provided": uri is not None,
+                        "user_provided": user is not None,
+                        "password_provided": password is not None,
+                    },
+                )
             self._driver = GraphDatabase.driver(
                 uri, auth=(user, password), max_connection_lifetime=max_connection_lifetime
             )

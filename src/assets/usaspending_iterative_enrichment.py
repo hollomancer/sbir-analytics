@@ -24,6 +24,7 @@ from pydantic import Field
 
 from ..config.loader import get_config
 from ..enrichers.usaspending_api_client import USAspendingAPIClient
+from ..exceptions import ValidationError
 from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 from ..utils.enrichment_metrics import EnrichmentMetricsCollector
 
@@ -162,7 +163,15 @@ def usaspending_refresh_batch(
             break
 
     if not award_id_col:
-        raise ValueError("Could not find award ID column")
+        raise ValidationError(
+            "Could not find award ID column",
+            component="assets.usaspending_iterative_enrichment",
+            operation="enrich_stale_usaspending_records",
+            details={
+                "expected_columns": ["award_id", "Award_ID", "id", "ID"],
+                "available_columns": list(stale_awards_batch.columns),
+            },
+        )
 
     uei_col = None
     for col in ["UEI", "uei", "company_uei", "recipient_uei"]:

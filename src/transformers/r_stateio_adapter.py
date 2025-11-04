@@ -17,6 +17,7 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
+from ..exceptions import DependencyError
 from ..utils.r_helpers import validate_r_input
 from .economic_model_interface import EconomicModelInterface
 
@@ -356,9 +357,13 @@ class RStateIOAdapter(EconomicModelInterface):
             RFunctionError: If R function calls fail
         """
         if self.stateio is None:
-            raise RuntimeError(
+            raise DependencyError(
                 "StateIO R package not loaded. Install in R with: "
-                "remotes::install_github('USEPA/stateio')"
+                "remotes::install_github('USEPA/stateio')",
+                dependency_name="stateior",
+                component="transformer.r_stateio_adapter",
+                operation="calculate_impacts_stateio",
+                details={"install_command": "remotes::install_github('USEPA/stateio')"},
             )
 
         # Validate input before conversion
@@ -430,7 +435,13 @@ class RStateIOAdapter(EconomicModelInterface):
         from rpy2.robjects.conversion import localconverter
 
         if self.useeio is None:
-            raise RuntimeError("USEEIOR package not loaded")
+            raise DependencyError(
+                "USEEIOR package not loaded",
+                dependency_name="useeior",
+                component="transformer.r_stateio_adapter",
+                operation="calculate_impacts_useeior",
+                details={"install_command": "remotes::install_github('USEPA/useeior')"},
+            )
 
         # Get year from shocks (assume all same year)
         year = int(shocks_df["fiscal_year"].iloc[0])
@@ -615,7 +626,13 @@ class RStateIOAdapter(EconomicModelInterface):
             raise ImportError("r_stateio_functions module not available")
 
         if self.stateio is None:
-            raise RuntimeError("StateIO package not loaded")
+            raise DependencyError(
+                "StateIO package not loaded",
+                dependency_name="stateior",
+                component="transformer.r_stateio_adapter",
+                operation="_calculate_impacts_stateio_fallback",
+                details={"install_command": "remotes::install_github('USEPA/stateio')"},
+            )
 
         year = int(shocks_df["fiscal_year"].iloc[0])
         states = shocks_df["state"].unique().tolist()

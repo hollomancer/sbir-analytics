@@ -14,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 
+from ..exceptions import ValidationError
+
 
 @dataclass
 class EconomicImpactResult:
@@ -97,15 +99,41 @@ class EconomicModelInterface(ABC):
         required_columns = ["state", "bea_sector", "fiscal_year", "shock_amount"]
         missing = [col for col in required_columns if col not in shocks_df.columns]
         if missing:
-            raise ValueError(f"Missing required columns: {missing}")
+            raise ValidationError(
+                f"Missing required columns: {missing}",
+                component="transformer.economic_model",
+                operation="validate_shocks_input",
+                details={
+                    "missing_columns": missing,
+                    "required_columns": required_columns,
+                    "provided_columns": list(shocks_df.columns),
+                },
+            )
 
         # Validate state codes are 2 letters
         if not shocks_df["state"].astype(str).str.len().eq(2).all():
-            raise ValueError("State codes must be exactly 2 letters")
+            invalid_states = shocks_df[~shocks_df["state"].astype(str).str.len().eq(2)][
+                "state"
+            ].unique()
+            raise ValidationError(
+                "State codes must be exactly 2 letters",
+                component="transformer.economic_model",
+                operation="validate_shocks_input",
+                details={"invalid_states": list(invalid_states[:10])},  # First 10
+            )
 
         # Validate shock amounts are non-negative
         if (shocks_df["shock_amount"] < 0).any():
-            raise ValueError("Shock amounts must be non-negative")
+            negative_count = (shocks_df["shock_amount"] < 0).sum()
+            raise ValidationError(
+                "Shock amounts must be non-negative",
+                component="transformer.economic_model",
+                operation="validate_shocks_input",
+                details={
+                    "negative_count": int(negative_count),
+                    "total_rows": len(shocks_df),
+                },
+            )
 
     @abstractmethod
     def is_available(self) -> bool:

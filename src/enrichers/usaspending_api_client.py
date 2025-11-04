@@ -18,19 +18,13 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..config.loader import get_config
+from ..exceptions import APIError, ConfigurationError, RateLimitError
 from ..models.enrichment import EnrichmentFreshnessRecord
 
-
-class USAspendingAPIError(Exception):
-    """Raised when USAspending API request fails."""
-
-    pass
-
-
-class USAspendingRateLimitError(USAspendingAPIError):
-    """Raised when rate limit is exceeded."""
-
-    pass
+# Backward compatibility: Alias to central exception classes
+# TODO: Update all usages to use APIError/RateLimitError directly, then remove these aliases
+USAspendingAPIError = APIError
+USAspendingRateLimitError = RateLimitError
 
 
 class USAspendingAPIClient:
@@ -137,32 +131,75 @@ class USAspendingAPIClient:
                     elif method.upper() == "POST":
                         response = await client.post(url, json=params, headers=default_headers)
                     else:
-                        raise ValueError(f"Unsupported HTTP method: {method}")
+                        raise ConfigurationError(
+                            f"Unsupported HTTP method: {method}",
+                            component="enricher.usaspending",
+                            operation="_make_request",
+                            details={
+                                "method": method,
+                                "supported_methods": ["GET", "POST"],
+                                "endpoint": endpoint,
+                            },
+                        )
 
                     response.raise_for_status()
 
                     # Handle rate limiting
                     if response.status_code == 429:
-                        raise USAspendingRateLimitError(f"Rate limit exceeded: {response.text}")
+                        raise RateLimitError(
+                            "Rate limit exceeded",
+                            api_name="usaspending",
+                            endpoint=endpoint,
+                            details={"response_text": response.text[:200]},
+                        )
 
                     return response.json()
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    raise USAspendingRateLimitError(f"Rate limit exceeded: {e.response.text}") from e
-                raise USAspendingAPIError(f"HTTP {e.response.status_code}: {e.response.text}") from e
+                    raise RateLimitError(
+                        "Rate limit exceeded",
+                        api_name="usaspending",
+                        endpoint=endpoint,
+                        http_status=e.response.status_code,
+                        details={"response_text": e.response.text[:200]},
+                        cause=e,
+                    ) from e
+                raise APIError(
+                    f"HTTP {e.response.status_code}: {e.response.text[:200]}",
+                    api_name="usaspending",
+                    endpoint=endpoint,
+                    http_status=e.response.status_code,
+                    operation="_make_request",
+                    cause=e,
+                ) from e
             except httpx.TimeoutException as e:
                 # Let TimeoutException propagate so retry decorator can catch it
                 raise
             except httpx.RequestError as e:
-                raise USAspendingAPIError(f"Request error: {e}") from e
+                raise APIError(
+                    f"Request error: {str(e)}",
+                    api_name="usaspending",
+                    endpoint=endpoint,
+                    operation="_make_request",
+                    retryable=True,
+                    cause=e,
+                ) from e
 
         # Call the retry-wrapped function and wrap TimeoutException after retries exhausted
         try:
             return await _do_request()
         except httpx.TimeoutException as e:
             # After all retries exhausted, wrap TimeoutException for consistent API
-            raise USAspendingAPIError(f"Request timeout: {e}") from e
+            raise APIError(
+                "Request timeout after retries",
+                api_name="usaspending",
+                endpoint=endpoint,
+                http_status=408,  # Timeout status code
+                operation="_make_request",
+                retryable=False,  # Already retried, don't retry again
+                cause=e,
+            ) from e
 
     def _compute_payload_hash(self, payload: dict[str, Any]) -> str:
         """Compute deterministic SHA256 hash of JSON payload.

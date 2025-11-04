@@ -9,6 +9,7 @@ import duckdb
 import pandas as pd
 
 from ..config.loader import get_config
+from ..exceptions import FileSystemError
 from .logging_config import log_with_context
 
 
@@ -151,7 +152,12 @@ class DuckDBClient:
             logger.info(f"Importing CSV {csv_path} into table {table_name}")
 
             if not csv_path.exists():
-                raise FileNotFoundError(f"CSV file not found: {csv_path}")
+                raise FileSystemError(
+                    f"CSV file not found: {csv_path}",
+                    file_path=str(csv_path),
+                    operation="import_csv",
+                    component="utils.duckdb_client",
+                )
 
             table_identifier = self.escape_identifier(table_name)
             csv_literal = self.escape_literal(str(csv_path))
@@ -205,7 +211,12 @@ class DuckDBClient:
             logger.info(f"Importing PostgreSQL dump {dump_path} into table {table_name}")
 
             if not dump_path.exists():
-                raise FileNotFoundError(f"Dump file not found: {dump_path}")
+                raise FileSystemError(
+                    f"Dump file not found: {dump_path}",
+                    file_path=str(dump_path),
+                    operation="import_postgres_dump",
+                    component="utils.duckdb_client",
+                )
 
             try:
                 # For now, assume the dump is a CSV-like format
@@ -384,7 +395,12 @@ class DuckDBClient:
             table_identifier = self.escape_identifier(table_name)
 
             if not csv_path.exists():
-                raise FileNotFoundError(f"CSV file not found: {csv_path}")
+                raise FileSystemError(
+                    f"CSV file not found: {csv_path}",
+                    file_path=str(csv_path),
+                    operation="import_csv",
+                    component="utils.duckdb_client",
+                )
 
             try:
                 with self.connection() as conn:
