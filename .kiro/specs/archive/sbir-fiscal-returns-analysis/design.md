@@ -4,7 +4,7 @@
 
 The SBIR Fiscal Returns Analysis system operationalizes economic impact analysis to compute federal fiscal returns and ROI from SBIR program spending. This system implements a comprehensive pipeline that transforms SBIR award data through economic multiplier analysis to estimate induced federal tax receipts, providing quantitative assessment of the program's return on investment to the U.S. Treasury.
 
-The design follows the existing ETL pipeline architecture using Dagster assets, integrating with the current SBIR data infrastructure while adding specialized economic modeling capabilities. The system reproduces and extends analysis from the sibling `sbir-fiscal-returns` R-based repository, implementing it as production-ready Python assets with comprehensive quality gates and audit trails.
+The design follows the existing ETL pipeline architecture using Dagster assets, integrating with the current SBIR data infrastructure while adding specialized economic modeling capabilities.
 
 ## Architecture
 
