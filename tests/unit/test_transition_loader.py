@@ -431,6 +431,9 @@ class TestIdempotency:
     def test_merge_operations_idempotent(self, mock_neo4j_driver, sample_transitions_df):
         """Test that MERGE operations ensure idempotency."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)

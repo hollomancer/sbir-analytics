@@ -390,9 +390,8 @@ class TestBundleGeneration:
         bundle = generator.generate_bundle(
             signals=sample_signals,
             award_data=sample_award_data,
-            contract_data=sample_contract_data,
-            vendor_match=sample_vendor_match,
             contract=sample_contract,
+            vendor_match=sample_vendor_match,
         )
 
         # Check bundle has expected items
@@ -418,12 +417,13 @@ class TestBundleGeneration:
         sample_signals,
         sample_award_data,
         sample_contract_data,
+        sample_contract,
     ):
         """Test evidence bundle JSON serialization."""
         bundle = generator.generate_bundle(
             signals=sample_signals,
             award_data=sample_award_data,
-            contract_data=sample_contract_data,
+            contract=sample_contract,
         )
 
         # Serialize to JSON

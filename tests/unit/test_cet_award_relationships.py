@@ -207,10 +207,9 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
 
     # Execute asset - use build_asset_context if available, otherwise DummyContext
     if HAVE_BUILD_CONTEXT:
-        ctx = build_asset_context()
-        # Set op_config if not already set
-        if not hasattr(ctx, "op_config") or ctx.op_config is None:
-            ctx.op_config = {}
+        # build_asset_context() returns a real Dagster context where op_config is read-only
+        # Use DummyContext instead so we can control the config
+        ctx = DummyContext()
     else:
         ctx = DummyContext()
     result = mod.neo4j_award_cet_relationships(ctx, None, None)
