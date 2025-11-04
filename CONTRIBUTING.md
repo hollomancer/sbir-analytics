@@ -186,11 +186,75 @@ Then create a pull request on the repository.
 
 ```text
 tests/
-├── unit/           # Unit tests for individual components
+├── unit/           # Unit tests for individual components (fast)
 ├── integration/    # Integration tests for multiple components
-├── e2e/            # End-to-end pipeline tests
+├── e2e/            # End-to-end pipeline tests (compute-intensive)
 └── fixtures/       # Test data and fixtures
 ```
+
+### Test Categories and Markers
+
+Tests are categorized using pytest markers to optimize CI/CD runtime:
+
+1. **Unit Tests** (default): Fast, isolated component tests
+   - No marker required
+   - Run on every PR and commit
+   - Should complete in < 1 second per test
+
+2. **Integration Tests** (`@pytest.mark.integration`): Multi-component tests
+   - Test interactions between modules
+   - May require external services (Neo4j, etc.)
+   - Run on PR and nightly builds
+
+3. **Slow Tests** (`@pytest.mark.slow`): Long-running tests (>5 seconds)
+   - ML model training tests
+   - Large dataset processing
+   - Run only in nightly builds
+
+4. **E2E Tests** (`@pytest.mark.e2e`): Full pipeline tests
+   - Test complete workflows end-to-end
+   - Run only in nightly builds
+
+5. **Compute-Intensive Tests** (`@pytest.mark.compute_intensive`):
+   - Large-scale simulations (252K+ records)
+   - Full dataset processing
+   - Memory-intensive operations
+   - Run only in nightly builds
+
+### Running Tests by Category
+
+```bash
+# Run all fast tests (unit and fast integration)
+pytest -m "not slow and not e2e and not compute_intensive"
+
+# Run only unit tests
+pytest tests/unit/
+
+# Run only integration tests
+pytest -m integration
+
+# Run all tests except compute-intensive
+pytest -m "not compute_intensive"
+
+# Run all tests (including slow and compute-intensive)
+pytest
+
+# Run specific test file
+pytest tests/unit/test_validators.py
+
+# Run with coverage
+pytest --cov=src --cov-report=term-missing
+
+# Run tests in parallel
+pytest -n auto
+```
+
+### CI/CD Test Strategy
+
+- **On Commit** (`on-commit.yml`): Static analysis only (linting, type checking, security scans)
+- **On PR** (`on-pr.yml`): Fast tests excluding slow, e2e, and compute_intensive
+- **On Push to Main** (`on-push-main.yml`): Comprehensive suite excluding only compute_intensive
+- **Nightly** (`nightly.yml`): All tests including slow and compute_intensive tests
 
 ### Writing Tests
 
@@ -206,39 +270,30 @@ tests/
 2. **Integration Tests**: Test component interactions
 
    ```python
+   @pytest.mark.integration
    def test_neo4j_batch_upsert(neo4j_client):
        nodes = [{"uei": "UEI001", "name": "Company A"}]
        metrics = neo4j_client.batch_upsert_nodes("Company", "uei", nodes)
        assert metrics.nodes_created["Company"] == 1
    ```
 
-3. **Test Coverage**: Aim for ≥85% code coverage
+3. **Slow/Compute-Intensive Tests**: Mark appropriately
+
+   ```python
+   @pytest.mark.slow
+   @pytest.mark.compute_intensive
+   def test_ml_training_large_dataset():
+       # Train model on large synthetic dataset
+       model = train_model(dataset_size=10000)
+       assert model.score() > 0.85
+   ```
+
+4. **Test Coverage**: Aim for ≥85% code coverage
 
    ```bash
    pytest --cov=src --cov-report=html
    # View coverage report: open htmlcov/index.html
    ```
-
-### Running Tests
-
-```bash
-
-## Run all tests
-
-pytest
-
-## Run specific test file
-
-pytest tests/unit/test_validators.py
-
-## Run with coverage
-
-pytest --cov=src --cov-report=term-missing
-
-## Run tests in parallel
-
-pytest -n auto
-```
 
 ## SBIR Data Ingestion Guidelines
 
