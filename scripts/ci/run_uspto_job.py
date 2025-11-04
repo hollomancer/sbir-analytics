@@ -26,9 +26,12 @@ from typing import Any
 
 
 # Configure basic logging so CI logs show what's happening
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+logger.remove()  # Remove default handler
+logger.add(
+    sys.stderr,
+    level="INFO",
+    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+    colorize=False,  # Disable colors for CI logs
 )
 
 
