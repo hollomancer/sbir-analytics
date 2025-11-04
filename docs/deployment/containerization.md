@@ -57,18 +57,14 @@ make docker-clean       # remove containers and volumes
 
 | Profile | Use Case | Key Features |
 |---------|----------|--------------|
-| `dev` | Local development | Bind mounts, live reload, debug logging |
-| `prod` | Production-like | Named volumes, tightened resource limits |
-| `cet-staging` | CET staging environment | Artifact mounts, staging configs |
-| `ci-test` | GitHub Actions CI | Ephemeral volumes, deterministic resources |
-| `e2e` | End-to-end testing | MacBook Air-optimized Neo4j & memory guards |
-| `neo4j-standalone` | Graph debugging | Standalone Neo4j with custom overrides |
-| `tools` | Utility containers | Lightweight shell / maintenance helpers |
+| `dev` | Local development | Bind mounts, live reload, debug logging, persistent Neo4j data |
+| `ci` | CI/testing environment | Ephemeral volumes, test execution, E2E test support |
 
 Select profiles via `COMPOSE_PROFILES` or the `--profile` flag:
 
 ```bash
-docker compose --profile dev --profile tools up --build
+docker compose --profile dev up --build    # Development
+docker compose --profile ci up --build     # CI Testing
 ```
 
 ## Configuration Layering
@@ -94,17 +90,12 @@ The project previously kept six Compose files (`docker-compose.yml`, `docker-com
 ```yaml
 services:
   neo4j:
-    profiles: [dev, prod, cet-staging, ci-test, e2e, neo4j-standalone]
+    profiles: [ci, dev]
     environment: *common-environment
-    volumes: *common-volumes
-
-  neo4j-dev:
-    extends: neo4j
-    profiles: [dev]
     volumes:
-      <<: *common-volumes
-
-      - ./neo4j:/data
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
 ```
 
 ### Shared Anchors

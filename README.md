@@ -629,7 +629,8 @@ See **docs/transition/mvp.md** for full documentation, scoring signals, and trou
 Deployment
 
 - Containerization guide: docs/deployment/containerization.md
-- Staging profile: `docker compose --profile cet-staging up` (bind mounts; .env for NEO4J_*/CET_MODEL_PATH)
+- Development: `docker compose --profile dev up` (bind mounts, live reload)
+- CI Testing: `docker compose --profile ci up` (ephemeral, test execution)
 - Neo4j server guide: docs/neo4j/server.md
 
 This repository includes an end-to-end CET pipeline that classifies SBIR awards into CET areas, aggregates company-level CET profiles, and loads both enrichment properties and relationships into Neo4j.
@@ -1036,7 +1037,7 @@ poetry run pytest tests/e2e/ -v
 
 make docker-test
 
-## E2E tests (containerized - recommended)
+## E2E tests (containerized - recommended, uses ci profile)
 
 make docker-e2e-minimal      # Quick smoke test (< 2 min)
 make docker-e2e-standard     # Full validation (5-8 min)
@@ -1055,7 +1056,7 @@ python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 - 29+ tests across unit, integration, and E2E
 - Coverage target: ≥80% (CI enforced)
 - Serial execution: ~8-12 minutes in CI
-- E2E tests: MacBook Air optimized with Docker Compose
+- E2E tests: MacBook Air optimized, runs via ci profile
   - Minimal scenario: < 2 minutes, ~2GB memory
   - Standard scenario: 5-8 minutes, ~4GB memory  
   - Large scenario: 8-10 minutes, ~6GB memory

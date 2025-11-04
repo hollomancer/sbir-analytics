@@ -227,14 +227,14 @@ jobs:
         run: |
           set -eux
           # Use profile-based compose to bring up ephemeral neo4j + app (app configured to run pytest)
-          docker compose --profile ci-test up --abort-on-container-exit --build neo4j-ci app-ci
+          docker compose --profile ci up --abort-on-container-exit --build neo4j app
         timeout-minutes: 30
 
       - name: Tear down test compose (cleanup)
         if: always()
         run: |
           set -eux
-          docker compose --profile ci-test down --remove-orphans --volumes || true
+          docker compose --profile ci down --remove-orphans --volumes || true
 
       - name: Upload logs on failure
         if: failure()

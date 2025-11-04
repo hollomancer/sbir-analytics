@@ -389,8 +389,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      COMPOSE_FILE: docker-compose.yml:docker/neo4j.compose.override.yml
-      PROFILE: neo4j
+      PROFILE: dev
       # Use dry-run mode for scheduled runs, live mode for manual dispatch with input
       MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'dry-run' }}
 
@@ -448,10 +447,10 @@ jobs:
           # Build the runtime target so we can run schema scripts inside a container attached to the compose network.
           docker build --target runtime -t sbir-etl:smoke .
 
-      - name: Start Neo4j (compose, neo4j profile)
+      - name: Start Neo4j (compose, dev profile)
         run: |
           set -eux
-          docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j up -d --build
+          docker compose --profile dev up -d neo4j
 
       - name: Wait for Neo4j health (make neo4j-check or docker inspect)
         # In live mode we run the Makefile health check which uses cypher-shell (requires credentials).
@@ -540,7 +539,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -eux
-          docker compose -f docker-compose.yml -f docker/neo4j.compose.override.yml --profile neo4j down --remove-orphans
+          docker compose --profile dev down --remove-orphans --volumes
 
       - name: Upload logs and artifacts on failure
         if: ${{ failure() }}

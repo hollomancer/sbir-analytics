@@ -123,7 +123,7 @@ ci:
   # CI-specific knobs used by workflows or helper scripts.
   workflow_file: ".github/workflows/container-ci.yml"
   build_script: "scripts/ci/build_container.sh"
-  test_profile: "ci-test"  # Use --profile ci-test with consolidated docker-compose.yml
+  test_profile: "ci"  # Use --profile ci with consolidated docker-compose.yml
   smoke_test_cmd: "dagster --version"
   # When publishing to GHCR/GCR/ACR, set registry.host and repository_prefix via CI pipeline secrets.
 

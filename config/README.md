@@ -107,9 +107,7 @@ The project supports running inside Docker Compose for local development, CI, an
 - The consolidated `docker-compose.yml` uses profile-based configuration:
   - Base compose: `docker-compose.yml`
   - Development: `docker compose --profile dev up --build` (bind-mounts, hot-reload)
-  - CI Testing: `docker compose --profile ci-test up --build` (ephemeral services)
-  - Production: `docker compose --profile prod up --build`
-  - Other profiles: `e2e`, `cet-staging`, `neo4j-standalone`, `tools`
+  - CI Testing: `docker compose --profile ci up --build` (ephemeral services, test execution)
 - Use the Makefile helpers rather than raw compose commands:
   - `make docker-build` — build the image locally
   - `make docker-up-dev` — start the dev stack (bind mounts, watch/reload)

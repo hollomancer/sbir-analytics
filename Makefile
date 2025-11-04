@@ -145,23 +145,12 @@ docker-up-dev: env-check ## Start the development stack (profile=dev)
 	$(call run,$(COMPOSE) --profile dev ps)
 	@$(call success,Development stack ready)
 
-.PHONY: docker-up-prod
-docker-up-prod: env-check ## Start the production stack (profile=prod)
-	@$(call info,Starting production stack (profile: prod))
-	$(call run,$(COMPOSE) --profile prod up -d --build)
-	$(call run,$(COMPOSE) --profile prod ps)
-
-.PHONY: docker-up-cet-staging
-docker-up-cet-staging: env-check ## Start CET staging stack (profile=cet-staging)
-	@$(call info,Starting CET staging stack (profile: cet-staging))
-	$(call run,$(COMPOSE) --profile cet-staging up -d --build)
-	$(call run,$(COMPOSE) --profile cet-staging ps)
 
 .PHONY: docker-up-tools
-docker-up-tools: env-check ## Start the tools profile (debug helpers)
-	@$(call info,Starting tools container (profile: tools))
-	$(call run,$(COMPOSE) --profile tools up -d --build)
-	$(call run,$(COMPOSE) --profile tools ps)
+docker-up-tools: env-check ## Start the tools container (profile=dev)
+	@$(call info,Starting tools container (profile: dev))
+	$(call run,$(COMPOSE) --profile dev up -d tools)
+	$(call run,$(COMPOSE) --profile dev ps tools)
 
 .PHONY: docker-down
 docker-down: ## Stop all services and remove volumes
@@ -202,39 +191,39 @@ docker-exec: ## Execute CMD (default sh) in SERVICE
 # -----------------------------------------------------------------------------
 
 .PHONY: docker-test
-docker-test: env-check ## Run containerised CI tests (profile=ci-test)
+docker-test: env-check ## Run containerised CI tests (profile=ci)
 	@set -euo pipefail; \
-	 $(call info,Running containerised tests (profile: ci-test)); \
-	 $(call print-cmd,$(COMPOSE) --profile ci-test up --abort-on-container-exit --build); \
+	 $(call info,Running containerised tests (profile: ci)); \
+	 $(call print-cmd,$(COMPOSE) --profile ci up --abort-on-container-exit --build); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile ci-test up --abort-on-container-exit --build; then STATUS=$$?; fi; \
-	 $(call print-cmd,$(COMPOSE) --profile ci-test down --remove-orphans --volumes); \
-	 $(COMPOSE) --profile ci-test down --remove-orphans --volumes || true; \
+	 if ! $(COMPOSE) --profile ci up --abort-on-container-exit --build; then STATUS=$$?; fi; \
+	 $(call print-cmd,$(COMPOSE) --profile ci down --remove-orphans --volumes); \
+	 $(COMPOSE) --profile ci down --remove-orphans --volumes || true; \
 	 if [ $$STATUS -eq 0 ]; then \
 	   $(call success,Tests passed); \
 	 else \
 	   $(call error,Tests failed (exit $$STATUS)); \
-	   $(call warn,View logs with: make docker-logs SERVICE=test-runner); \
+	   $(call warn,View logs with: make docker-logs SERVICE=app); \
 	 fi; \
 	 exit $$STATUS
 
 .PHONY: docker-e2e
-docker-e2e: env-check ## Run full end-to-end test suite (profile=e2e)
+docker-e2e: env-check ## Run full end-to-end test suite (profile=ci)
 	@set -euo pipefail; \
-	 $(call info,Running E2E tests (profile: e2e)); \
-	 $(call print-cmd,$(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator); \
+	 $(call info,Running E2E tests (profile: ci)); \
+	 $(call print-cmd,$(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile e2e up --build --abort-on-container-exit neo4j-e2e e2e-orchestrator 2>&1; then STATUS=$$?; fi; \
+	 if ! $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=$$?; fi; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
 	 if [ $$STATUS -ne 0 ]; then \
 	   $(call error,E2E tests failed with exit code $$STATUS); \
 	   $(call info,Showing recent logs from failed containers...); \
-	   $(COMPOSE) --profile e2e logs --tail=50 e2e-orchestrator 2>&1 || true; \
-	   $(COMPOSE) --profile e2e logs --tail=20 neo4j-e2e 2>&1 || true; \
+	   $(COMPOSE) --profile ci logs --tail=50 app 2>&1 || true; \
+	   $(COMPOSE) --profile ci logs --tail=20 neo4j 2>&1 || true; \
 	 else \
 	   $(call success,E2E tests passed – containers left running for inspection); \
 	 fi; \
-	 $(call warn,Use 'make docker-logs SERVICE=e2e-orchestrator' to view orchestrator logs); \
+	 $(call warn,Use 'make docker-logs SERVICE=app' to view test logs); \
 	 $(call warn,Use 'make docker-e2e-clean' to tear down when finished); \
 	 exit $$STATUS
 
@@ -242,9 +231,9 @@ docker-e2e: env-check ## Run full end-to-end test suite (profile=e2e)
 docker-e2e-clean: ## Tear down the E2E environment
 	@set -euo pipefail; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) Cleaning up E2E test environment\n"; fi; \
-	 printf "$(GRAY)$ %s$(RESET)\n" "$(COMPOSE) --profile e2e down --remove-orphans --volumes"; \
+	 printf "$(GRAY)$ %s$(RESET)\n" "$(COMPOSE) --profile ci down --remove-orphans --volumes"; \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile e2e down --remove-orphans --volumes; then STATUS=$$?; fi; \
+	 if ! $(COMPOSE) --profile ci down --remove-orphans --volumes; then STATUS=$$?; fi; \
 	 if [ $$STATUS -eq 0 ]; then \
 	   if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "E2E environment cleaned up successfully"; fi; \
 	 else \
@@ -273,23 +262,23 @@ docker-e2e-edge-cases: env-check ## Run the edge-case E2E scenario
 	@E2E_TEST_SCENARIO=edge-cases $(MAKE) docker-e2e
 
 .PHONY: docker-e2e-debug
-docker-e2e-debug: env-check ## Open an interactive shell in the E2E orchestrator
-	@$(call info,Opening interactive shell in e2e orchestrator)
-	$(call run,$(COMPOSE) --profile e2e run --rm e2e-orchestrator sh)
+docker-e2e-debug: env-check ## Open an interactive shell in the CI test container
+	@$(call info,Opening interactive shell in CI test container)
+	$(call run,$(COMPOSE) --profile ci run --rm app sh)
 
 # -----------------------------------------------------------------------------
 # Neo4j helpers                                                                   
 # -----------------------------------------------------------------------------
 
 .PHONY: neo4j-up
-neo4j-up: env-check ## Start the standalone Neo4j profile
-	$(call info,Starting standalone Neo4j (profile: neo4j-standalone))
-	$(call run,$(COMPOSE) --profile neo4j-standalone up -d --build)
+neo4j-up: env-check ## Start Neo4j only (profile=dev)
+	$(call info,Starting Neo4j (profile: dev))
+	$(call run,$(COMPOSE) --profile dev up -d neo4j)
 
 .PHONY: neo4j-down
-neo4j-down: ## Stop the standalone Neo4j profile
-	$(call info,Stopping Neo4j (profile: neo4j-standalone))
-	$(call run,$(COMPOSE) --profile neo4j-standalone down --remove-orphans --volumes)
+neo4j-down: ## Stop Neo4j (profile=dev)
+	$(call info,Stopping Neo4j (profile: dev))
+	$(call run,$(COMPOSE) --profile dev stop neo4j)
 
 .PHONY: neo4j-reset
 neo4j-reset: neo4j-down ## Reset Neo4j with fresh volumes
@@ -302,7 +291,7 @@ neo4j-reset: neo4j-down ## Reset Neo4j with fresh volumes
 neo4j-check: env-check ## Run the Neo4j health check
 	$(call info,Checking Neo4j health via cypher-shell)
 	@set -euo pipefail; \
-	 if $(COMPOSE) --profile neo4j-standalone exec neo4j \
+	 if $(COMPOSE) --profile dev exec neo4j \
 	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1; then \
 	   $(call success,Neo4j responded successfully); \
 	 else \
@@ -342,8 +331,7 @@ transition-mvp-clean: ## Clean up Transition MVP artifacts
 ## docker-check / docker-check-install: Docker diagnostics
 ## docker-e2e-* targets: Convenience wrappers around docker-e2e
 
-.PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-prod \
-	docker-up-cet-staging docker-up-tools docker-down docker-rebuild docker-test \
+.PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-tools docker-down docker-rebuild docker-test \
 	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
 	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
 	docker-exec env-check docker-check docker-check-install neo4j-up \

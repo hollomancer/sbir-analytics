@@ -1,39 +1,21 @@
 # Consolidated Docker Compose Configuration for SBIR ETL Pipeline
 # 
-# This file consolidates all Docker Compose configurations using profiles and environment-based overrides
-# to eliminate duplication while maintaining all functionality from the original files:
-# - docker-compose.yml (base)
-# - docker-compose.cet-staging.yml (staging)
-# - docker/docker-compose.dev.yml (development)
-# - docker/docker-compose.e2e.yml (e2e testing)
-# - docker/docker-compose.test.yml (ci testing)
-# - docker/neo4j.compose.override.yml (standalone neo4j)
+# This file provides a simplified two-profile configuration:
+# - dev: Development environment with bind mounts for live editing
+# - ci: CI/testing environment with named volumes for isolation
 #
 # Usage Examples:
-#   # Development (replaces docker/docker-compose.dev.yml)
+#   # Development (bind mounts, live reload)
 #   docker compose --profile dev up --build
 #
-#   # Production (replaces docker-compose.yml)
-#   docker compose --profile prod up --build
-#
-#   # CET Staging (replaces docker-compose.cet-staging.yml)
-#   docker compose --profile cet-staging up --build
-#
-#   # CI Testing (replaces docker/docker-compose.test.yml)
-#   docker compose --profile ci-test up --build
-#
-#   # E2E Testing (replaces docker/docker-compose.e2e.yml)
-#   docker compose --profile e2e up --build
-#
-#   # Standalone Neo4j (replaces docker/neo4j.compose.override.yml)
-#   docker compose --profile neo4j-standalone up --build
+#   # CI Testing (ephemeral volumes, test execution)
+#   docker compose --profile ci up --build
 #
 # Environment Variables (set via .env file):
 #   - COMPOSE_PROFILES: Comma-separated list of profiles to activate
-#   - ENVIRONMENT: dev|test|staging|prod|e2e-test
+#   - ENVIRONMENT: dev|test (controls behavior)
 #   - NEO4J_USER / NEO4J_PASSWORD: Database credentials
 #   - IMAGE_NAME / IMAGE_TAG: Container image configuration
-#   - Various service-specific overrides (see individual service sections)
 
 x-common-environment: &common-environment
   ENVIRONMENT: ${ENVIRONMENT:-dev}
@@ -47,28 +29,17 @@ x-common-environment: &common-environment
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
 
-x-common-volumes: &common-volumes
-  - reports:/app/reports
-  - logs:/app/logs
-  - data:/app/data
-  - config:/app/config
+x-dev-environment: &dev-environment
+  <<: *common-environment
+  ENVIRONMENT: "dev"
+  NEO4J_USER: "${NEO4J_USER:-neo4j}"
+  NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
 
-x-dev-volumes: &dev-volumes
-  # Development bind mounts for live editing
-  - ./src:/app/src:rw
-  - ./config:/app/config:rw
-  - ./.env:/app/.env:ro
-  - ./reports:/app/reports:rw
-  - ./logs:/app/logs:rw
-  - ./data:/app/data:rw
-
-x-staging-volumes: &staging-volumes
-  # Staging bind mounts
-  - ./reports:/app/reports
-  - ./logs:/app/logs
-  - ./data:/app/data
-  - ./artifacts:/app/artifacts
-  - ./config:/app/config
+x-ci-environment: &ci-environment
+  <<: *common-environment
+  ENVIRONMENT: "test"
+  NEO4J_USER: "${NEO4J_USER}"
+  NEO4J_PASSWORD: "${NEO4J_PASSWORD}"
 
 x-healthcheck-neo4j: &healthcheck-neo4j
   test:
@@ -95,7 +66,7 @@ x-healthcheck-daemon: &healthcheck-daemon
   retries: 3
   start_period: 10s
 
-x-resource-limits-dev: &resource-limits-dev
+x-resource-limits: &resource-limits
   deploy:
     resources:
       limits:
@@ -105,16 +76,6 @@ x-resource-limits-dev: &resource-limits-dev
         memory: 1G
         cpus: '0.5'
 
-x-resource-limits-e2e: &resource-limits-e2e
-  deploy:
-    resources:
-      limits:
-        memory: 4G
-        cpus: '2.0'
-      reservations:
-        memory: 2G
-        cpus: '1.0'
-
 services:
   # =============================================================================
   # Neo4j Database Service
@@ -123,18 +84,13 @@ services:
     image: neo4j:${NEO4J_VERSION:-5.20.0}
     container_name: ${NEO4J_CONTAINER_NAME:-sbir-neo4j}
     profiles:
-      - prod
-      - cet-staging
-      - ci-test
-      - e2e
-      - neo4j-standalone
+      - ci
+      - dev
     environment:
       # Prefer explicit NEO4J_AUTH if set, otherwise construct from user/password
       - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      # Plugins configuration
       - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
-      # Memory configuration (environment-specific)
       - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
       - NEO4J_server_memory_heap_initial__size=${NEO4J_server_memory_heap_initial__size:-512M}
       - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-256M}
@@ -143,94 +99,20 @@ services:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
-      # Production/staging volumes (named volumes)
+      # Use named volumes for isolation (works for both dev and CI)
+      # Dev can override via .env or use bind mounts by mounting ./data/neo4j
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
-      # Development volumes (bind mounts) - override in dev profile
-    networks:
-      - sbir-network
-    healthcheck: *healthcheck-neo4j
-    restart: ${NEO4J_RESTART_POLICY:-unless-stopped}
-    <<: *resource-limits-dev
-
-  # Development Neo4j override with bind mounts
-  neo4j-dev:
-    extends: neo4j
-    container_name: sbir-neo4j-dev
-    profiles:
-      - dev
-    environment:
-      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/test}
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-    volumes:
-      # Development bind mounts for persistent local development
-      - ./data/neo4j:/data
-      - ./data/neo4j/import:/var/lib/neo4j/import
-      - ./logs/neo4j:/logs
-      # Optional configuration overrides
+      # Optional configuration overrides (if files exist)
       - ./config/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf:ro
       - ./config/neo4j/certs:/certs:ro
       - ./config/neo4j/plugins:/plugins:rw
     networks:
-      - sbir-dev-network
-
-  # E2E Neo4j with optimized settings
-  neo4j-e2e:
-    extends: neo4j
-    container_name: sbir-neo4j-e2e
-    profiles:
-      - e2e
-    environment:
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-e2e-password}
-      - NEO4J_PLUGINS=["apoc"]
-      # E2E optimized memory settings
-      - NEO4J_server_memory_heap_max__size=1G
-      - NEO4J_server_memory_heap_initial__size=512M
-      - NEO4J_server_memory_pagecache_size=256M
-      - NEO4J_db_logs_query_enabled=OFF
-    ports:
-      - "${NEO4J_E2E_HTTP_PORT:-7475}:7474"
-      - "${NEO4J_E2E_BOLT_PORT:-7688}:7687"
-    volumes:
-      - e2e_neo4j_data:/data
-      - e2e_neo4j_logs:/logs
-      - e2e_neo4j_import:/var/lib/neo4j/import
-    networks:
-      - e2e-network
-    healthcheck:
-      <<: *healthcheck-neo4j
-      start_period: 60s
-      retries: 18
-    <<: *resource-limits-e2e
-    restart: "no"
-
-  # CI Neo4j with ephemeral volumes
-  neo4j-ci:
-    extends: neo4j
-    container_name: sbir-neo4j-ci
-    profiles:
-      - ci-test
-    environment:
-      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
-      - NEO4J_PLUGINS=${NEO4J_PLUGINS:-'["apoc"]'}
-      # CI optimized memory settings
-      - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-256M}
-      - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
-      - NEO4J_server_memory_heap_initial__size=512M
-      - NEO4J_db_logs_query_enabled=OFF
-    volumes:
-      - neo4j_data_ci:/data
-      - neo4j_logs_ci:/logs
-      - neo4j_import_ci:/var/lib/neo4j/import
-    networks:
-      - sbir-test-network
-    healthcheck:
-      <<: *healthcheck-neo4j
-      timeout: 10s
-      retries: 15
-      start_period: 30s
-    restart: "no"
+      - sbir-network
+    healthcheck: *healthcheck-neo4j
+    restart: ${NEO4J_RESTART_POLICY:-unless-stopped}
+    <<: *resource-limits
 
   # =============================================================================
   # Dagster Webserver Service
@@ -243,52 +125,16 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_WEBSERVER_CONTAINER_NAME:-sbir-dagster-web}
     profiles:
-      - prod
-      - cet-staging
+      - ci
+      - dev
     environment:
       <<: *common-environment
-      # Dagster-specific environment
       ENABLE_WATCHFILES: ${ENABLE_WATCHFILES:-0}
       ENV_DAGSTER_CMD: ${ENV_DAGSTER_CMD:-dagster dev -h 0.0.0.0 -p 3000}
       HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
       HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
-      # CET model configuration (for staging)
-      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
     volumes:
-      - reports:/app/reports
-      - logs:/app/logs
-      - data:/app/data
-      - config:/app/config
-    ports:
-      - "${DAGSTER_PORT:-3000}:3000"
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    healthcheck: *healthcheck-dagster
-    networks:
-      - sbir-network
-    restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
-
-  # Development Dagster webserver with bind mounts and watch files
-  dagster-webserver-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
-    container_name: sbir-dagster-web-dev
-    profiles:
-      - dev
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: "dev"
-      NEO4J_USER: "${NEO4J_USER:-neo4j}"
-      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
-      ENABLE_WATCHFILES: "1"
-      ENV_DAGSTER_CMD: "${ENV_DAGSTER_CMD:-dagster dev -h 0.0.0.0 -p 3000}"
-      HEALTHCHECK_PORT: ${DAGSTER_PORT:-3000}
-      HEALTHCHECK_PATH: ${DAGSTER_HEALTH_PATH:-/server_info}
-    volumes:
+      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/app/src:rw
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
@@ -298,32 +144,12 @@ services:
     ports:
       - "${DAGSTER_PORT:-3000}:3000"
     depends_on:
-      neo4j-dev:
+      neo4j:
         condition: service_healthy
     healthcheck: *healthcheck-dagster
     networks:
-      - sbir-dev-network
+      - sbir-network
     restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
-
-  # CET Staging Dagster webserver
-  dagster-webserver-staging:
-    extends: dagster-webserver
-    container_name: cet-staging-dagster-web
-    profiles:
-      - cet-staging
-    env_file:
-      - ./.env
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: ${ENVIRONMENT:-staging}
-      ENV_DAGSTER_CMD: ${ENV_DAGSTER_CMD:-dagster-webserver -h 0.0.0.0 -p 3000}
-    volumes:
-      - ./reports:/app/reports
-      - ./logs:/app/logs
-      - ./data:/app/data
-      - ./artifacts:/app/artifacts
-      - ./config:/app/config
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
 
   # =============================================================================
   # Dagster Daemon Service
@@ -336,14 +162,17 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_DAEMON_CONTAINER_NAME:-sbir-dagster-daemon}
     profiles:
-      - prod
-      - cet-staging
+      - ci
+      - dev
     environment: *common-environment
     volumes:
-      - reports:/app/reports
-      - logs:/app/logs
-      - data:/app/data
-      - config:/app/config
+      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
+      - ./src:/app/src:rw
+      - ./config:/app/config:rw
+      - ./.env:/app/.env:ro
+      - ./reports:/app/reports:rw
+      - ./logs:/app/logs:rw
+      - ./data:/app/data:rw
     depends_on:
       neo4j:
         condition: service_healthy
@@ -354,64 +183,6 @@ services:
     networks:
       - sbir-network
     restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
-
-  # Development Dagster daemon
-  dagster-daemon-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
-    container_name: sbir-dagster-daemon-dev
-    profiles:
-      - dev
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: "dev"
-      NEO4J_USER: "${NEO4J_USER:-neo4j}"
-      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
-    volumes:
-      - ./src:/app/src:rw
-      - ./config:/app/config:rw
-      - ./.env:/app/.env:ro
-      - ./reports:/app/reports:rw
-      - ./logs:/app/logs:rw
-    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
-    depends_on:
-      neo4j-dev:
-        condition: service_healthy
-      dagster-webserver-dev:
-        condition: service_healthy
-    healthcheck: *healthcheck-daemon
-    networks:
-      - sbir-dev-network
-    restart: ${DAGSTER_RESTART_POLICY:-unless-stopped}
-
-  # CET Staging Dagster daemon
-  dagster-daemon-staging:
-    extends: dagster-daemon
-    container_name: cet-staging-dagster-daemon
-    profiles:
-      - cet-staging
-    env_file:
-      - ./.env
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: ${ENVIRONMENT:-staging}
-      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
-    volumes:
-      - ./reports:/app/reports
-      - ./logs:/app/logs
-      - ./data:/app/data
-      - ./artifacts:/app/artifacts
-      - ./config:/app/config
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
-    command: ["dagster-daemon"]
-    depends_on:
-      neo4j:
-        condition: service_healthy
-      dagster-webserver-staging:
-        condition: service_healthy
 
   # =============================================================================
   # ETL Runner Service
@@ -424,14 +195,17 @@ services:
     image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
     container_name: ${ETL_RUNNER_CONTAINER_NAME:-sbir-etl-runner}
     profiles:
-      - prod
-      - cet-staging
+      - ci
+      - dev
     environment: *common-environment
     volumes:
-      - reports:/app/reports
-      - logs:/app/logs
-      - data:/app/data
-      - config:/app/config
+      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
+      - ./src:/app/src:rw
+      - ./config:/app/config:rw
+      - ./.env:/app/.env:ro
+      - ./reports:/app/reports:rw
+      - ./logs:/app/logs:rw
+      - ./data:/app/data:rw
       - ./:/app:ro
     entrypoint: ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner"]
     command:
@@ -446,83 +220,23 @@ services:
       - sbir-network
     restart: "no"
 
-  # Development ETL runner
-  etl-runner-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
-    container_name: sbir-etl-runner-dev
-    profiles:
-      - dev
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: "dev"
-      NEO4J_USER: "${NEO4J_USER:-neo4j}"
-      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
-    volumes:
-      - ./src:/app/src:rw
-      - ./config:/app/config:rw
-      - ./.env:/app/.env:ro
-      - ./reports:/app/reports:rw
-      - ./logs:/app/logs:rw
-    entrypoint: ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner"]
-    command:
-      - "--"
-      - "sh"
-      - "-c"
-      - "echo 'etl-runner ready; run with docker compose run etl-runner-dev -- <cmd>' && sleep infinity"
-    depends_on:
-      neo4j-dev:
-        condition: service_healthy
-    networks:
-      - sbir-dev-network
-    restart: "no"
-
-  # CET Staging ETL runner
-  etl-runner-staging:
-    extends: etl-runner
-    container_name: cet-staging-etl-runner
-    profiles:
-      - cet-staging
-    env_file:
-      - ./.env
-    environment:
-      <<: *common-environment
-      ENVIRONMENT: ${ENVIRONMENT:-staging}
-      CET_MODEL_PATH: ${CET_MODEL_PATH:-/app/artifacts/models/cet_classifier_v1.pkl}
-    volumes:
-      - ./reports:/app/reports
-      - ./logs:/app/logs
-      - ./data:/app/data
-      - ./artifacts:/app/artifacts
-      - ./config:/app/config
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-staging}
-    command:
-      - "etl-runner"
-      - "--"
-      - "sh"
-      - "-c"
-      - "echo 'etl-runner ready; run with: docker compose --profile cet-staging run --rm etl-runner-staging -- dagster job execute -f src/definitions.py -j cet_full_pipeline_job' && sleep infinity"
-
   # =============================================================================
   # CI Test App Service
   # =============================================================================
-  app-ci:
+  app:
     image: sbir-etl:ci-${GITHUB_SHA:-latest}
     container_name: sbir-app-test
     profiles:
-      - ci-test
+      - ci
     env_file:
       - .env
     environment:
       - ENVIRONMENT=test
       - PYTHONPATH=/app
-      - NEO4J_URI=bolt://neo4j-ci:7687
+      - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USERNAME=${NEO4J_USER}
       - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j-ci:7687
+      - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j:7687
       - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER}
       - SBIR_ETL__NEO4J__PASSWORD=${NEO4J_PASSWORD}
       - SBIR_ETL__USPTO__RAW_DIR=/app/data/raw/uspto
@@ -530,12 +244,19 @@ services:
       - COVERAGE_FILE=/tmp/.coverage
       - COVERAGE_HTML_DIR=/tmp/htmlcov
       - TEST_TIMEOUT=${TEST_TIMEOUT:-600}
+      # E2E test variables (only run if E2E_TEST_SCENARIO is explicitly set)
+      - E2E_TEST_SCENARIO=${E2E_TEST_SCENARIO:-}
+      - E2E_TEST_TIMEOUT=${E2E_TEST_TIMEOUT:-600}
+      - MACBOOK_AIR_MODE=${MACBOOK_AIR_MODE:-true}
+      - E2E_TEST_DATA_DIR=/app/test-data
+      - E2E_ARTIFACTS_DIR=/app/artifacts
+      - E2E_REPORTS_DIR=/app/reports
     depends_on:
-      neo4j-ci:
+      neo4j:
         condition: service_healthy
     networks:
-      - sbir-test-network
-    <<: *resource-limits-e2e
+      - sbir-network
+    <<: *resource-limits
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import sys; sys.exit(0)'"]
       interval: 30s
@@ -551,115 +272,19 @@ services:
         pytest -m fast -q;
         echo 'Running Dagster uspto_validation_job runner (in-process)';
         python /app/scripts/ci/run_uspto_job.py;
+        if [ -n \"$${E2E_TEST_SCENARIO}\" ] && [ \"$${E2E_TEST_SCENARIO}\" != \"none\" ]; then
+          echo 'Running E2E tests...';
+          python scripts/e2e_health_check.py;
+          python scripts/run_e2e_tests.py --scenario $${E2E_TEST_SCENARIO} --timeout $${E2E_TEST_TIMEOUT:-600};
+        fi;
       "
     working_dir: /app
     volumes:
       - ./:/app:ro
       - ./data/raw/uspto:/app/data/raw/uspto:rw
-    restart: "no"
-
-  # =============================================================================
-  # E2E Test Orchestrator Service
-  # =============================================================================
-  e2e-orchestrator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: sbir-etl:e2e-local
-    container_name: sbir-e2e-orchestrator
-    profiles:
-      - e2e
-    environment:
-      - ENVIRONMENT=e2e-test
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-      - NEO4J_URI=bolt://neo4j-e2e:7687
-      - NEO4J_USERNAME=${NEO4J_USER:-neo4j}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-e2e-password}
-      - SBIR_ETL__NEO4J__BOLT_URL=bolt://neo4j-e2e:7687
-      - SBIR_ETL__NEO4J__USERNAME=${NEO4J_USER:-neo4j}
-      - SBIR_ETL__NEO4J__PASSWORD=${NEO4J_PASSWORD:-e2e-password}
-      - E2E_TEST_SCENARIO=${E2E_TEST_SCENARIO:-standard}
-      - E2E_TEST_TIMEOUT=${E2E_TEST_TIMEOUT:-600}
-      - MACBOOK_AIR_MODE=${MACBOOK_AIR_MODE:-true}
-      - E2E_TEST_DATA_DIR=/app/test-data
-      - E2E_ARTIFACTS_DIR=/app/artifacts
-      - E2E_REPORTS_DIR=/app/reports
-      - MEMORY_LIMIT_GB=${MEMORY_LIMIT_GB:-8}
-      - CPU_LIMIT=${CPU_LIMIT:-2.0}
-    depends_on:
-      neo4j-e2e:
-        condition: service_healthy
-    volumes:
       - ./tests/fixtures:/app/test-data:ro
-      - ./data/raw:/app/data/raw:ro
-      - e2e_artifacts:/app/artifacts
-      - e2e_reports:/app/reports
       - ./src:/app/src:ro
       - ./config:/app/config:ro
-      - ./.env:/app/.env:ro
-    networks:
-      - e2e-network
-    <<: *resource-limits-e2e
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import sys; sys.exit(0)'"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    command: >
-      sh -c "
-        echo 'E2E Test Orchestrator starting...';
-        echo 'Scenario: $${E2E_TEST_SCENARIO:-standard}';
-        echo 'Timeout: $${E2E_TEST_TIMEOUT:-600}s';
-        echo 'MacBook Air Mode: $${MACBOOK_AIR_MODE:-true}';
-        echo '';
-        echo 'Running environment health checks...';
-        python scripts/e2e_health_check.py;
-        health_status=$$?;
-        if [ $$health_status -ne 0 ]; then
-          echo 'Health checks failed. Exiting.';
-          exit $$health_status;
-        fi;
-        echo '';
-        echo 'Health checks passed. Starting E2E tests...';
-        python scripts/run_e2e_tests.py --scenario $${E2E_TEST_SCENARIO:-standard} --timeout $${E2E_TEST_TIMEOUT:-600};
-        test_status=$$?;
-        echo '';
-        echo 'E2E tests completed with exit code: '$$test_status;
-        echo 'Container will remain running for artifact inspection.';
-        if [ $$test_status -eq 0 ]; then
-          echo '🎉 All tests passed!';
-        else
-          echo '💥 Some tests failed. Check logs for details.';
-        fi;
-        tail -f /dev/null;
-      "
-    restart: "no"
-
-  # =============================================================================
-  # DuckDB E2E Service (Optional)
-  # =============================================================================
-  duckdb-e2e:
-    image: python:3.11-slim
-    container_name: sbir-duckdb-e2e
-    profiles:
-      - e2e-full
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DUCKDB_DATABASE_PATH=/app/data/e2e_test.duckdb
-    volumes:
-      - e2e_duckdb_data:/app/data
-      - ./tests/fixtures:/app/test-data:ro
-    networks:
-      - e2e-network
-    command: >
-      sh -c "
-        pip install --no-cache-dir duckdb pandas pyarrow;
-        echo 'DuckDB E2E service ready';
-        tail -f /dev/null;
-      "
     restart: "no"
 
   # =============================================================================
@@ -669,43 +294,30 @@ services:
     image: python:3.11-slim
     container_name: ${TOOLS_CONTAINER_NAME:-sbir-tools}
     profiles:
-      - tools
+      - ci
       - dev
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       PYTHONUNBUFFERED: 1
     volumes:
-      - ./:/workspace:rw
-      - data:/workspace/data:rw
-      - reports:/workspace/reports:rw
-      - logs:/workspace/logs:rw
-    working_dir: /workspace
-    command: ["tail", "-f", "/dev/null"]
-    networks:
-      - sbir-network
-    restart: "no"
-
-  # Development tools with dev network
-  tools-dev:
-    extends: tools
-    container_name: sbir-tools-dev
-    profiles:
-      - dev
-    volumes:
+      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
       - ./src:/workspace/src:rw
       - ./config:/workspace/config:rw
       - ./.env:/workspace/.env:ro
       - ./data:/workspace/data:rw
       - ./reports:/workspace/reports:rw
       - ./logs:/workspace/logs:rw
+      - ./:/workspace:rw
+    working_dir: /workspace
+    command: ["tail", "-f", "/dev/null"]
     networks:
-      - sbir-dev-network
+      - sbir-network
+    restart: "no"
 
 # =============================================================================
 # Named Volumes
 # =============================================================================
 volumes:
-  # Production/base volumes
   neo4j_data:
     driver: local
   neo4j_logs:
@@ -723,95 +335,10 @@ volumes:
   metrics:
     driver: local
 
-  # CI test volumes (ephemeral)
-  neo4j_data_ci:
-    driver: local
-  neo4j_logs_ci:
-    driver: local
-  neo4j_import_ci:
-    driver: local
-
-  # E2E test volumes
-  e2e_neo4j_data:
-    driver: local
-  e2e_neo4j_logs:
-    driver: local
-  e2e_neo4j_import:
-    driver: local
-  e2e_artifacts:
-    driver: local
-  e2e_reports:
-    driver: local
-  e2e_duckdb_data:
-    driver: local
-
 # =============================================================================
 # Networks
 # =============================================================================
 networks:
-  # Default network for production/staging
   sbir-network:
     name: sbir-network
     driver: bridge
-
-  # Development network
-  sbir-dev-network:
-    name: sbir-dev-network
-    driver: bridge
-
-  # CI test network
-  sbir-test-network:
-    name: sbir-test-network
-    driver: bridge
-
-  # E2E test network
-  e2e-network:
-    name: sbir-e2e-network
-    driver: bridge
-
-# =============================================================================
-# Usage Examples and Migration Guide
-# =============================================================================
-#
-# This consolidated file replaces all previous Docker Compose configurations:
-#
-# 1. Development (replaces docker/docker-compose.dev.yml):
-#    docker compose --profile dev up --build
-#    # Includes: neo4j-dev, dagster-webserver-dev, dagster-daemon-dev, etl-runner-dev, tools-dev
-#
-# 2. Production (replaces docker-compose.yml):
-#    docker compose --profile prod up --build
-#    # Includes: neo4j, dagster-webserver, dagster-daemon, etl-runner
-#
-# 3. CET Staging (replaces docker-compose.cet-staging.yml):
-#    docker compose --profile cet-staging up --build
-#    # Includes: neo4j, dagster-webserver-staging, dagster-daemon-staging, etl-runner-staging
-#
-# 4. CI Testing (replaces docker/docker-compose.test.yml):
-#    docker compose --profile ci-test up --build
-#    # Includes: neo4j-ci, app-ci
-#
-# 5. E2E Testing (replaces docker/docker-compose.e2e.yml):
-#    docker compose --profile e2e up --build
-#    # Includes: neo4j-e2e, e2e-orchestrator
-#    # Add --profile e2e-full for DuckDB service
-#
-# 6. Standalone Neo4j (replaces docker/neo4j.compose.override.yml):
-#    docker compose --profile neo4j-standalone up --build
-#    # Includes: neo4j only
-#
-# 7. Tools only:
-#    docker compose --profile tools up --build
-#    # Includes: tools service for debugging
-#
-# Environment Variable Configuration:
-# - Set COMPOSE_PROFILES in .env to automatically activate profiles
-# - Use profile-specific environment variables for customization
-# - All original environment variables are supported with backward compatibility
-#
-# Migration Benefits:
-# - Eliminates ~60% duplication across Docker Compose files
-# - Standardizes environment variable patterns with SBIR_ETL__ prefix
-# - Unifies container resource limits and health check configurations
-# - Consolidates volume and network configurations
-# - Maintains all original functionality while improving maintainability

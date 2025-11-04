@@ -5,8 +5,8 @@ set -e
 
 echo "🔍 Validating consolidated Docker Compose configuration..."
 
-COMPOSE_FILE="docker-compose.consolidated.yml"
-PROFILES=("dev" "prod" "cet-staging" "ci-test" "e2e" "neo4j-standalone" "tools")
+COMPOSE_FILE="docker-compose.yml"
+PROFILES=("dev" "ci")
 
 # Check if consolidated file exists
 if [ ! -f "$COMPOSE_FILE" ]; then
@@ -63,18 +63,11 @@ echo "   ✅ Found $profile_count services with profile definitions"
 # Test multi-profile combinations
 echo "🔀 Testing multi-profile combinations..."
 
-# Test dev + tools
-if docker compose --profile dev --profile tools -f "$COMPOSE_FILE" config --quiet 2>/dev/null; then
-    echo "   ✅ Multi-profile combination 'dev + tools' works"
+# Test dev + ci (should work as services are shared)
+if docker compose --profile dev --profile ci -f "$COMPOSE_FILE" config --quiet 2>/dev/null; then
+    echo "   ✅ Multi-profile combination 'dev + ci' works"
 else
-    echo "   ❌ Multi-profile combination 'dev + tools' failed"
-fi
-
-# Test e2e + e2e-full
-if docker compose --profile e2e --profile e2e-full -f "$COMPOSE_FILE" config --quiet 2>/dev/null; then
-    echo "   ✅ Multi-profile combination 'e2e + e2e-full' works"
-else
-    echo "   ⚠️  Multi-profile combination 'e2e + e2e-full' failed (may be expected if e2e-full profile doesn't exist)"
+    echo "   ⚠️  Multi-profile combination 'dev + ci' failed (may be expected)"
 fi
 
 echo ""
@@ -82,9 +75,6 @@ echo "✅ Consolidated Docker Compose configuration validation completed success
 echo ""
 echo "📋 Usage examples:"
 echo "   docker compose --profile dev up --build          # Development"
-echo "   docker compose --profile prod up --build         # Production"
-echo "   docker compose --profile cet-staging up --build  # CET Staging"
-echo "   docker compose --profile ci-test up --build      # CI Testing"
-echo "   docker compose --profile e2e up --build          # E2E Testing"
+echo "   docker compose --profile ci up --build           # CI Testing"
 echo ""
 echo "💡 Set COMPOSE_PROFILES in .env to automatically activate profiles"
