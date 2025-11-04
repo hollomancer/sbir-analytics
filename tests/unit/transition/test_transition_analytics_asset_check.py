@@ -49,8 +49,18 @@ def test_transition_analytics_quality_check_passes_with_valid_rates(monkeypatch,
     monkeypatch.delenv("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", raising=False)
 
     # Act
-    ctx = AssetExecutionContext()
-    result = transition_analytics_quality_check(ctx)
+    pytest.importorskip("dagster")
+    from dagster import build_asset_context
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    check_asset = transition_analytics_quality_check
+    if hasattr(check_asset, "node_def") and hasattr(check_asset.node_def, "compute_fn"):
+        check_fn = check_asset.node_def.compute_fn
+    elif hasattr(check_asset, "compute_fn"):
+        check_fn = check_asset.compute_fn
+    else:
+        check_fn = check_asset
+    result = check_fn(ctx)
 
     # Assert
     assert hasattr(result, "passed")
@@ -78,8 +88,16 @@ def test_transition_analytics_quality_check_fails_with_min_thresholds(monkeypatc
     monkeypatch.setenv("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", "0.40")
 
     # Act
-    ctx = AssetExecutionContext()
-    result = transition_analytics_quality_check(ctx)
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    check_asset = transition_analytics_quality_check
+    if hasattr(check_asset, "node_def") and hasattr(check_asset.node_def, "compute_fn"):
+        check_fn = check_asset.node_def.compute_fn
+    elif hasattr(check_asset, "compute_fn"):
+        check_fn = check_asset.compute_fn
+    else:
+        check_fn = check_asset
+    result = check_fn(ctx)
 
     # Assert
     assert hasattr(result, "passed")
@@ -106,15 +124,17 @@ def test_transition_analytics_quality_check_fails_on_zero_denominators(monkeypat
     )
 
     # Act
-    ctx = AssetExecutionContext()
-    result = transition_analytics_quality_check(ctx)
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    check_asset = transition_analytics_quality_check
+    if hasattr(check_asset, "node_def") and hasattr(check_asset.node_def, "compute_fn"):
+        check_fn = check_asset.node_def.compute_fn
+    elif hasattr(check_asset, "compute_fn"):
+        check_fn = check_asset.compute_fn
+    else:
+        check_fn = check_asset
+    result = check_fn(ctx)
 
     # Assert
     assert hasattr(result, "passed")
     assert bool(result.passed) is False
-
-import json
-from pathlib import Path
-import pytest
-
-pytestmark = pytest.mark.fast

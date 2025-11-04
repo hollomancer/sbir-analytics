@@ -6,6 +6,9 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
+pytest.importorskip("dagster")
+from dagster import build_asset_context
+
 
 def _unwrap_output(result):
     """
@@ -108,8 +111,16 @@ def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     df.to_csv(csv_path, index=False)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH", str(sample_path))
 
-    ctx = AssetExecutionContext()
-    result = validated_contracts_sample(ctx)
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    sample_asset = validated_contracts_sample
+    if hasattr(sample_asset, "node_def") and hasattr(sample_asset.node_def, "compute_fn"):
+        sample_fn = sample_asset.node_def.compute_fn
+    elif hasattr(sample_asset, "compute_fn"):
+        sample_fn = sample_asset.compute_fn
+    else:
+        sample_fn = sample_asset
+    result = sample_fn(ctx)
     sample_df, metadata = _unwrap_output(result)
 
     assert isinstance(sample_df, pd.DataFrame)
@@ -175,8 +186,16 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
         ]
     )
 
-    ctx = AssetExecutionContext()
-    result = enriched_vendor_resolution(ctx, contracts_df, awards_df)
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    vendor_asset = enriched_vendor_resolution
+    if hasattr(vendor_asset, "node_def") and hasattr(vendor_asset.node_def, "compute_fn"):
+        vendor_fn = vendor_asset.node_def.compute_fn
+    elif hasattr(vendor_asset, "compute_fn"):
+        vendor_fn = vendor_asset.compute_fn
+    else:
+        vendor_fn = vendor_asset
+    result = vendor_fn(ctx, contracts_df, awards_df)
     resolved_df, _ = _unwrap_output(result)
 
     # Basic shape expectations
@@ -260,8 +279,16 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
         ]
     )
 
-    ctx = AssetExecutionContext()
-    scores_out = transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df)
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    scores_asset = transformed_transition_scores
+    if hasattr(scores_asset, "node_def") and hasattr(scores_asset.node_def, "compute_fn"):
+        scores_fn = scores_asset.node_def.compute_fn
+    elif hasattr(scores_asset, "compute_fn"):
+        scores_fn = scores_asset.compute_fn
+    else:
+        scores_fn = scores_asset
+    scores_out = scores_fn(ctx, vendor_res_df, contracts_df, awards_df)
     scores_df, _ = _unwrap_output(scores_out)
 
     # Expect 2 candidates (A1↔C1 via UEI, A2↔C2 via fuzzy)
@@ -282,7 +309,14 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     assert abs(float(s2["score"]) - 0.7) < 1e-6
 
     # Evidence generation should produce one NDJSON line per candidate
-    ev_out = transformed_transition_evidence(ctx, scores_df, contracts_df)
+    evidence_asset = transformed_transition_evidence
+    if hasattr(evidence_asset, "node_def") and hasattr(evidence_asset.node_def, "compute_fn"):
+        evidence_fn = evidence_asset.node_def.compute_fn
+    elif hasattr(evidence_asset, "compute_fn"):
+        evidence_fn = evidence_asset.compute_fn
+    else:
+        evidence_fn = evidence_asset
+    ev_out = evidence_fn(ctx, scores_df, contracts_df)
     ev_path, _ = _unwrap_output(ev_out)
     ev_path = Path(ev_path)
     assert ev_path.exists()
@@ -302,7 +336,7 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
-        transition_detections,
+        transformed_transition_detections,
     )
 
     awards_df = pd.DataFrame(
@@ -358,9 +392,17 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
         ]
     )
 
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    detections_asset = transformed_transition_detections
+    if hasattr(detections_asset, "node_def") and hasattr(detections_asset.node_def, "compute_fn"):
+        detections_fn = detections_asset.node_def.compute_fn
+    elif hasattr(detections_asset, "compute_fn"):
+        detections_fn = detections_asset.compute_fn
+    else:
+        detections_fn = detections_asset
     detections_df, metadata = _unwrap_output(
-        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+        detections_fn(ctx, scores_df)
     )
 
     assert isinstance(detections_df, pd.DataFrame)
@@ -386,7 +428,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
-        transition_detections,
+        transformed_transition_detections,
     )
 
     awards_df = pd.DataFrame(
@@ -432,9 +474,17 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
         ]
     )
 
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    detections_asset = transformed_transition_detections
+    if hasattr(detections_asset, "node_def") and hasattr(detections_asset.node_def, "compute_fn"):
+        detections_fn = detections_asset.node_def.compute_fn
+    elif hasattr(detections_asset, "compute_fn"):
+        detections_fn = detections_asset.compute_fn
+    else:
+        detections_fn = detections_asset
     detections_df, metadata = _unwrap_output(
-        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+        detections_fn(ctx, scores_df)
     )
 
     assert isinstance(detections_df, pd.DataFrame)

@@ -29,11 +29,35 @@ try:
     from dagster import (
         AssetCheckResult,
         AssetCheckSeverity,
-        AssetExecutionContext,
+        AssetExecutionContext as _RealAssetExecutionContext,
         AssetIn,
         asset,
         asset_check,
     )  # type: ignore
+
+    # Wrap the real AssetExecutionContext to accept no args for testing
+    class AssetExecutionContext:  # type: ignore
+        def __init__(self, op_execution_context=None) -> None:
+            if op_execution_context is None:
+                # For testing: create a minimal mock-like object
+                class _L:
+                    def info(self, *a, **kw):  # noqa: D401
+                        print(*a)
+
+                    def warning(self, *a, **kw):
+                        print(*a)
+
+                    def error(self, *a, **kw):
+                        print(*a)
+
+                self.log = _L()
+                self._is_shim = True
+            else:
+                # For real usage: use the real Dagster context
+                self._real_context = _RealAssetExecutionContext(op_execution_context)
+                self.log = self._real_context.log
+                self._is_shim = False
+
 except Exception:  # pragma: no cover
 
     def asset(*args, **kwargs):  # type: ignore
@@ -63,17 +87,21 @@ except Exception:  # pragma: no cover
         WARN = "WARN"
 
     class AssetExecutionContext:  # type: ignore
-        class _L:
-            def info(self, *a, **kw):  # noqa: D401
-                print(*a)
+        def __init__(self, op_execution_context=None) -> None:
+            class _L:
+                def info(self, *a, **kw):  # noqa: D401
+                    print(*a)
 
-            def warning(self, *a, **kw):
-                print(*a)
+                def warning(self, *a, **kw):
+                    print(*a)
 
-            def error(self, *a, **kw):
-                print(*a)
+                def error(self, *a, **kw):
+                    print(*a)
 
-        log = _L()
+            self.log = _L()
+            if op_execution_context:
+                # Store if provided for compatibility
+                self._op_execution_context = op_execution_context
 
 
 # Statistical reporting imports

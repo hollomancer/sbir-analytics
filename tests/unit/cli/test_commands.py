@@ -40,17 +40,12 @@ class TestStatusCommands:
             records_processed=None,
         )
 
-        # Create command context
-        typer.Context(
-            command=Mock(),
-            params={"group": None},
-            info_name="status assets",
-            obj=mock_context,
-        )
-
-        # Test - would need to call the function directly or use CliRunner
-        # For now, just verify the structure exists
+        # Verify the command function exists and is callable
         assert hasattr(status, "assets")
+        assert callable(status.assets)
+        
+        # The function signature requires a typer context, which is complex to mock
+        # This test verifies the command exists and is properly structured
 
     def test_neo4j_command(self, mock_context: Mock) -> None:
         """Test status neo4j command."""

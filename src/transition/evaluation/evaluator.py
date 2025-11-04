@@ -198,7 +198,14 @@ class TransitionEvaluator:
             f1=0.0,
             support=0,
             confusion=ConfusionMatrix(),
+            by_confidence={},
             thresholds={"score": self.score_threshold},
+            metadata={
+                "detections_total": 0,
+                "ground_truth_total": 0,
+                "score_threshold": self.score_threshold,
+                "positive_confidence_levels": self.positive_confidence_levels,
+            },
         )
 
     def _extract_pairs(

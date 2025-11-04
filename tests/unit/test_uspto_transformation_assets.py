@@ -17,6 +17,16 @@ transformation_assets = pytest.importorskip(
 )
 
 
+def _get_compute_fn(asset_def):
+    """Helper to get the underlying compute function from an asset definition."""
+    if hasattr(asset_def, "node_def") and hasattr(asset_def.node_def, "compute_fn"):
+        return asset_def.node_def.compute_fn
+    elif hasattr(asset_def, "compute_fn"):
+        return asset_def.compute_fn
+    else:
+        return asset_def
+
+
 def _write_csv(tmp_path: Path, name: str, rows):
     path = tmp_path / name
     headers = list(rows[0].keys()) if rows else []
@@ -92,11 +102,11 @@ def test_transformation_assets_pipeline(tmp_path: Path):
         [{"rf_id": "RF1", "convey_ty": "assignment", "employer_assign": True}],
     )
 
-    assignment_ctx = build_asset_context(
-        op_config={"output_dir": str(tmp_path / "out"), "chunk_size": 5, "sample_limit": 2}
-    )
+    assignment_ctx = build_asset_context()
 
-    transformed_result = transformation_assets.transformed_patent_assignments(
+    # Access underlying compute function when Dagster is installed
+    transformed_assignments_fn = _get_compute_fn(transformation_assets.transformed_patent_assignments)
+    transformed_result = transformed_assignments_fn(
         assignment_ctx,
         [assignment_path],
         [assignee_path],
@@ -110,23 +120,21 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     assert Path(transformed_result["output_path"]).exists()
     assert transformed_result["error_count"] == 0
 
-    patents_ctx = build_asset_context(op_config={"output_dir": str(tmp_path / "out")})
-    patents_result = transformation_assets.transformed_patents(patents_ctx, transformed_result)
+    patents_ctx = build_asset_context()
+    patents_fn = _get_compute_fn(transformation_assets.transformed_patents)
+    patents_result = patents_fn(patents_ctx, transformed_result)
     assert patents_result["patent_count"] == 1
 
-    entities_ctx = build_asset_context(op_config={"output_dir": str(tmp_path / "out")})
-    entities_result = transformation_assets.transformed_patent_entities(
-        entities_ctx, transformed_result
-    )
+    entities_ctx = build_asset_context()
+    entities_fn = _get_compute_fn(transformation_assets.transformed_patent_entities)
+    entities_result = entities_fn(entities_ctx, transformed_result)
     assert entities_result["entity_count"] >= 1
 
-    success_check = transformation_assets.uspto_transformation_success_check(
-        build_asset_context(), transformed_result
-    )
+    success_check_fn = _get_compute_fn(transformation_assets.uspto_transformation_success_check)
+    success_check = success_check_fn(build_asset_context(), transformed_result)
     assert success_check.passed is True
 
-    linkage_check = transformation_assets.uspto_company_linkage_check(
-        build_asset_context(), transformed_result
-    )
+    linkage_check_fn = _get_compute_fn(transformation_assets.uspto_company_linkage_check)
+    linkage_check = linkage_check_fn(build_asset_context(), transformed_result)
     # No SBIR linkage data provided, so expect the linkage check to fail (coverage < target)
     assert linkage_check.passed is False

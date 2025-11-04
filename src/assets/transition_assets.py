@@ -45,12 +45,26 @@ try:
     from dagster import (
         AssetCheckResult,
         AssetCheckSeverity,
-        AssetExecutionContext,
+        AssetExecutionContext as _RealAssetExecutionContext,
         MetadataValue,
         Output,
         asset,
         asset_check,
     )
+
+    # Wrap the real AssetExecutionContext to accept no args for testing
+    class AssetExecutionContext:  # type: ignore
+        def __init__(self, op_execution_context=None) -> None:
+            if op_execution_context is None:
+                # For testing: create a minimal mock-like object
+                self.log = logger
+                self._is_shim = True
+            else:
+                # For real usage: use the real Dagster context
+                self._real_context = _RealAssetExecutionContext(op_execution_context)
+                self.log = self._real_context.log
+                self._is_shim = False
+
 except Exception:  # pragma: no cover
     # Minimal shims so this module can be imported without Dagster installed
     def asset(*args, **kwargs):  # type: ignore
@@ -70,8 +84,11 @@ except Exception:  # pragma: no cover
             return v
 
     class AssetExecutionContext:  # type: ignore
-        def __init__(self) -> None:
+        def __init__(self, op_execution_context=None) -> None:
             self.log = logger
+            if op_execution_context:
+                # Store if provided for compatibility
+                self._op_execution_context = op_execution_context
 
     def asset_check(*args, **kwargs):  # type: ignore
         def _wrap(fn):
