@@ -360,7 +360,7 @@ class TestPatentEntityNodeLoading:
             }
         ]
 
-        result = loader.load_patent_entities(entities)
+        result = loader.load_patent_entities(entities, entity_type="ASSIGNEE")
 
         assert result.errors == 1
 
@@ -382,7 +382,7 @@ class TestPatentEntityNodeLoading:
             }
         ]
 
-        loader.load_patent_entities(entities)
+        loader.load_patent_entities(entities, entity_type="ASSIGNEE")
 
         call_args = mock_client.batch_upsert_nodes.call_args
         nodes = call_args[1]["nodes"]
@@ -617,7 +617,7 @@ class TestEdgeCases:
         # All should handle empty lists without calling batch_upsert_nodes
         loader.load_patents([])
         loader.load_patent_assignments([])
-        loader.load_patent_entities([])
+        loader.load_patent_entities([], entity_type="ASSIGNEE")
 
         # batch_upsert_nodes should not be called
         mock_client.batch_upsert_nodes.assert_not_called()

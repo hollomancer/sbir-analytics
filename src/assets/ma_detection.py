@@ -46,3 +46,5 @@ def company_mergers_and_acquisitions(
         f.write(
             json.dumps([event.model_dump() for event in potential_ma_events], indent=4, default=str)
         )
+
+    return potential_ma_events

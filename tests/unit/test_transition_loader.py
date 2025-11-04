@@ -288,6 +288,9 @@ class TestRelationshipCreation:
     ):
         """Test creating INVOLVES_TECHNOLOGY relationships."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -299,6 +302,9 @@ class TestRelationshipCreation:
     def test_relationships_batch_processing(self, mock_neo4j_driver, sample_transitions_df):
         """Test batch processing of relationships."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver, batch_size=1)
@@ -314,6 +320,9 @@ class TestOrchestration:
     def test_load_transitions_orchestration(self, mock_neo4j_driver, sample_transitions_df):
         """Test full transition loading orchestration."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         loader = TransitionLoader(driver=mock_neo4j_driver)
@@ -328,12 +337,15 @@ class TestOrchestration:
     def test_load_transitions_with_patents(self, mock_neo4j_driver, sample_transitions_df):
         """Test transition loading with patent data."""
         session = MagicMock()
+        result_obj = MagicMock()
+        result_obj.single.return_value = {"created": 1}
+        session.run.return_value = result_obj
         mock_neo4j_driver.session.return_value.__enter__.return_value = session
 
         patents_df = pd.DataFrame(
             [
-                {"award_id": "AWARD-A1", "patent_id": "PAT-001"},
-                {"award_id": "AWARD-A2", "patent_id": "PAT-002"},
+                {"transition_id": "TRANS-001", "patent_id": "PAT-001", "patent_contribution": 0.8},
+                {"transition_id": "TRANS-002", "patent_id": "PAT-002", "patent_contribution": 0.7},
             ]
         )
 
