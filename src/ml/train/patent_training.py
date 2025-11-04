@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 # pandas is optional at import-time; fail only when training is invoked
 try:
     import pandas as pd  # type: ignore

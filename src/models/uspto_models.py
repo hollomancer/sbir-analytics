@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """
 Pydantic models for USPTO patent data used by the SBIR ETL transition pipeline.
 
@@ -25,6 +26,7 @@ from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
+
 
 # ---- Utilities ----
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

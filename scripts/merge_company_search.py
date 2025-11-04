@@ -40,6 +40,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+
 try:
     import pandas as pd
 except Exception as e:  # pragma: no cover - runtime guard

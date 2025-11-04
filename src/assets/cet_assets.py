@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+
 # Import-safe shims for Dagster asset checks
 try:
     from dagster import (
@@ -278,6 +279,7 @@ from collections.abc import Iterable
 
 import pandas as pd
 
+
 try:
     from dagster import AssetKey, MetadataValue, Output, asset
 except Exception:  # pragma: no cover - fallback stubs when dagster is not installed
@@ -314,6 +316,7 @@ from loguru import logger
 
 from src.ml.config.taxonomy_loader import TaxonomyLoader
 from src.models.cet_models import CETArea
+
 
 # Default output location for processed taxonomy
 DEFAULT_OUTPUT_PATH = Path("data/processed/cet_taxonomy.parquet")
@@ -1488,10 +1491,7 @@ def cet_award_training_dataset() -> Output:
 
     # Load dataset using the training loader
     try:
-        from src.ml.data.award_training_loader import (
-            AwardTrainingLoader,
-            save_dataset_ndjson,
-        )
+        from src.ml.data.award_training_loader import AwardTrainingLoader, save_dataset_ndjson
 
         atl = AwardTrainingLoader(taxonomy_version=taxonomy_version or "unknown")
         # Dispatch based on extension

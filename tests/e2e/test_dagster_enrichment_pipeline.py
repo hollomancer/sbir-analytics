@@ -6,11 +6,7 @@ data flows correctly between stages.
 """
 
 import pandas as pd
-from dagster import (
-    DagsterEventType,
-    build_asset_context,
-    materialize,
-)
+from dagster import DagsterEventType, build_asset_context, materialize
 from dagster._core.definitions.asset_selection import AssetSelection
 
 from src.assets.sbir_ingestion import raw_sbir_awards, validated_sbir_awards

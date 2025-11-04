@@ -20,6 +20,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+
 try:
     import duckdb
 

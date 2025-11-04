@@ -20,6 +20,7 @@ from loguru import logger
 
 from src.models.cet_models import CETArea, EvidenceStatement
 
+
 try:
     import spacy
     from spacy.language import Language

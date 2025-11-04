@@ -3,8 +3,10 @@ import copy
 
 import pytest
 
+
 pytest.importorskip("dagster")
 from dagster import build_asset_context
+
 
 # Attempt to import the asset checks under test; skip if module missing.
 uspto_validation_assets = pytest.importorskip(

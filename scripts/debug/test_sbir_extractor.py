@@ -3,6 +3,7 @@
 
 from src.extractors.sbir import SbirDuckDBExtractor
 
+
 print("=" * 70)
 print("TESTING SBIR DUCKDB EXTRACTOR")
 print("=" * 70)

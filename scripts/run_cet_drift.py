@@ -39,6 +39,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 # Optional imports
 try:
     import numpy as np  # type: ignore

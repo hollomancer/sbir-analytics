@@ -10,6 +10,7 @@ This module provides tools for:
 
 from __future__ import annotations
 
+
 __all__ = [
     "ContractAnalytics",
     "VendorFilteredContracts",

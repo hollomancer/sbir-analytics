@@ -14,6 +14,7 @@ import random
 
 import pytest
 
+
 # Integration / slow markers
 pytest.importorskip("sklearn", reason="scikit-learn required for integration training")
 pytest.importorskip("pandas", reason="pandas required for integration training")

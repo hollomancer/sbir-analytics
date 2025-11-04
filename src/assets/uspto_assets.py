@@ -49,15 +49,9 @@ from itertools import product
 from pathlib import Path
 from typing import Any
 
-from dagster import (
-    AssetCheckResult,
-    AssetCheckSeverity,
-    AssetIn,
-    MetadataValue,
-    asset,
-    asset_check,
-)
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import

@@ -9,4 +9,5 @@ This package provides:
 
 from .scoring import TransitionScorer
 
+
 __all__ = ["TransitionScorer"]

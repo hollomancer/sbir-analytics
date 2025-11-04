@@ -30,6 +30,7 @@ from collections.abc import Sequence
 
 import pandas as pd
 
+
 try:
     from rapidfuzz import fuzz, process
 except Exception as e:  # pragma: no cover - defensive runtime behavior

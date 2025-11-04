@@ -6,6 +6,7 @@ from typing import Any
 
 from loguru import logger
 
+
 # Conditional rpy2 import
 try:
     import rpy2.robjects as ro

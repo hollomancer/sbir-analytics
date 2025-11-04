@@ -15,6 +15,7 @@ import reprlib
 import sys
 from pathlib import Path
 
+
 try:
     import duckdb
 except Exception as e:

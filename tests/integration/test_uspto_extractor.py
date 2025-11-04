@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+
 # Integration test requires pandas for CSV reading in the extractor; skip if not present.
 pytest.importorskip("pandas")
 

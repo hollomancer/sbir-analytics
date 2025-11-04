@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 # Defensive imports (may be None in minimal CI environments)
 try:
     import numpy as np  # type: ignore
@@ -40,6 +41,7 @@ except Exception:  # pragma: no cover - defensive import
 import logging
 import pickle
 
+
 # Define optional placeholders so static analysis doesn't flag undefined names before lazy import
 extract_features = None  # type: ignore
 PatentFeatureVector = None  # type: ignore
@@ -48,9 +50,7 @@ PatentFeatureVector = None  # type: ignore
 # Attempt a local import to ensure names exist when the features module is
 # available, but do not raise if it's missing in minimal CI environments.
 try:
-    from src.ml.features.patent_features import (
-        PatentFeatureVector as _PatentFeatureVector,
-    )
+    from src.ml.features.patent_features import PatentFeatureVector as _PatentFeatureVector
     from src.ml.features.patent_features import (
         extract_features as _extract_features,
     )  # type: ignore

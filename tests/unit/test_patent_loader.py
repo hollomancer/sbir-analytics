@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
 # Import the modules under test; skip if dependencies unavailable
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 Neo4jClient = pytest.importorskip(

@@ -22,6 +22,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+
 try:
     import numpy as np  # used for numeric safety
     import pandas as pd

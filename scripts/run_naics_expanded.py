@@ -3,6 +3,7 @@ import json
 import sys
 from pathlib import Path
 
+
 # ensure repo root on path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -12,6 +13,7 @@ naics_path = ROOT / "src" / "enrichers" / "naics_enricher.py"
 spec = importlib.util.spec_from_file_location("naics_enricher_mod", str(naics_path))
 naics_mod = importlib.util.module_from_spec(spec)
 import sys as _sys
+
 
 _sys.modules[spec.name] = naics_mod
 spec.loader.exec_module(naics_mod)

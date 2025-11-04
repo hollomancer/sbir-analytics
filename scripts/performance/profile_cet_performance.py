@@ -41,6 +41,7 @@ from typing import Any
 
 from loguru import logger
 
+
 # Defensive optional imports
 try:
     import pandas as pd  # type: ignore

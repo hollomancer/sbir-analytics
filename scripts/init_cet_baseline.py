@@ -38,6 +38,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 logger = logging.getLogger("init_cet_baseline")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 

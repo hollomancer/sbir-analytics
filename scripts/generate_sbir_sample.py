@@ -8,6 +8,7 @@ Creates 100 representative records with edge cases and invalid data.
 import csv
 import random
 
+
 # CSV columns (42 total)
 COLUMNS = [
     "Company",

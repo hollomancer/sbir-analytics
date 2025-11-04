@@ -66,7 +66,7 @@ The system SHALL create RESULTED_IN relationships from Transitions to Contract n
 
 - **WHEN** loading a contract that doesn't exist in Neo4j yet
 - **THEN** the system creates a Contract node with properties:
-  - piid: "ABC123456" (unique identifier)
+  - piid: "ABC123456" (unique identifier)  # pragma: allowlist secret
   - agency: "DOD"
   - start_date: date("2021-09-15")
   - amount: 2500000

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+
 # Import the modules under test; if they are not available skip the tests gracefully.
 pytest.importorskip("pandas")
 PatentAssignmentTransformer = pytest.importorskip(

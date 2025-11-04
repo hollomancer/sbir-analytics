@@ -17,10 +17,9 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..utils.r_helpers import (
-    validate_r_input,
-)
+from ..utils.r_helpers import validate_r_input
 from .economic_model_interface import EconomicModelInterface
+
 
 # Try to import StateIO function wrappers (may not be available if import fails)
 try:

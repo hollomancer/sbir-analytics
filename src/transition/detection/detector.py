@@ -25,12 +25,7 @@ from uuid import uuid4
 from loguru import logger
 from tqdm import tqdm
 
-from src.models.transition_models import (
-    ConfidenceLevel,
-    FederalContract,
-    Transition,
-    VendorMatch,
-)
+from src.models.transition_models import ConfidenceLevel, FederalContract, Transition, VendorMatch
 from src.transition.detection.evidence import EvidenceGenerator
 from src.transition.detection.scoring import TransitionScorer
 from src.transition.features.vendor_resolver import VendorResolver

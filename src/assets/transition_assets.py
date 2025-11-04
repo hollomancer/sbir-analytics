@@ -25,6 +25,7 @@ from uuid import uuid4
 import pandas as pd
 from loguru import logger
 
+
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
@@ -37,6 +38,7 @@ except Exception:
 
 from ..extractors.contract_extractor import ContractExtractor
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
+
 
 # Import-safe shims for Dagster
 try:

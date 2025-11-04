@@ -16,6 +16,7 @@ first access and cache it for subsequent lookups.
 from importlib import import_module
 from typing import Any
 
+
 # Public API exported by this package. Keep this list in sync with the lazy mapping below.
 __all__: list[str] = [
     "raw_sbir_data",

@@ -642,7 +642,7 @@ Each signal contains:
     "sub_agency": "Department of the Air Force",
     "award_amount": 150000,
     "recipient_name": "Acme AI Inc.",
-    "recipient_uei": "ABC123DEF456",
+    "recipient_uei": "ABC123DEF456",  # pragma: allowlist secret
     "award_date": "2021-09-01",
     "completion_date": "2023-01-15",
     "cet_area": "AI & Machine Learning",

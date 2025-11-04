@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 
+
 if TYPE_CHECKING:
     from src.config.schemas import PipelineConfig
 

@@ -71,10 +71,7 @@ def _write_detection_config(base_dir: Path) -> Path:
 def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition_assets import (  # type: ignore
-        AssetExecutionContext,
-        contracts_sample,
-    )
+    from src.assets.transition_assets import AssetExecutionContext, contracts_sample  # type: ignore
 
     sample_path = Path("data/processed/contracts_sample.parquet")
     sample_path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,10 +128,7 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import locally so env/working dir changes apply
-    from src.assets.transition_assets import (
-        AssetExecutionContext,
-        vendor_resolution,
-    )
+    from src.assets.transition_assets import AssetExecutionContext, vendor_resolution
 
     # Prepare a tiny contracts_sample DataFrame:
     # - C1 matches UEI exactly

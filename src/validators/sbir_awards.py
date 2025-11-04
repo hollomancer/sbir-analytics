@@ -9,6 +9,7 @@ from loguru import logger
 
 from ..models.quality import QualityIssue, QualityReport, QualitySeverity
 
+
 # US State codes for validation
 VALID_US_STATES = {
     "AL",

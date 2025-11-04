@@ -9,6 +9,7 @@ from rich.text import Text
 
 from ..context import CommandContext
 
+
 app = typer.Typer(name="status", help="Display pipeline and system status")
 
 

@@ -23,6 +23,7 @@ import sys
 import traceback
 from typing import Any
 
+
 # Configure basic logging so CI logs show what's happening
 logging.basicConfig(
     level=logging.INFO,

@@ -7,7 +7,6 @@ relationships to Awards, Contracts, Patents, and CET areas.
 
 import pandas as pd
 from loguru import logger
-
 from neo4j import Driver
 
 

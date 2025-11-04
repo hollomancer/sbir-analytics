@@ -73,6 +73,17 @@ ignore = [
     "E402", # module level import not at top - OK for conditional imports after version checks
 ]
 
+[tool.ruff.lint.isort]
+# Treat neo4j as a known third-party library that gets its own group
+known-third-party = ["neo4j"]
+# Your project imports
+known-first-party = ["src"]
+# Allow more flexibility in grouping
+split-on-trailing-comma = false
+force-single-line = false
+# Consistent blank line behavior
+lines-after-imports = 2
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true

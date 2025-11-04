@@ -43,6 +43,7 @@ from src.models.statistical_reports import (
 from src.utils.metrics import MetricsCollector
 from src.utils.performance_monitor import performance_monitor
 
+
 try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots

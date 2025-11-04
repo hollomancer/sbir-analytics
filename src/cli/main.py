@@ -13,6 +13,7 @@ from rich.console import Console
 
 from .display.errors import handle_error
 
+
 # Initialize Typer app
 app = typer.Typer(
     name="sbir-cli",
@@ -74,6 +75,7 @@ def main(
 
 # Register commands
 from .commands import dashboard, enrich, ingest, metrics, status
+
 
 status.register_command(app)
 metrics.register_command(app)

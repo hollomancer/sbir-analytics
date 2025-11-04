@@ -2,6 +2,7 @@
 
 from dagster import AssetSelection, define_asset_job
 
+
 # Define fiscal returns MVP job (core pipeline without sensitivity analysis)
 fiscal_returns_mvp_job = define_asset_job(
     name="fiscal_returns_mvp_job",

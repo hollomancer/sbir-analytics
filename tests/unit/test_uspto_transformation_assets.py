@@ -3,8 +3,10 @@ from pathlib import Path
 
 import pytest
 
+
 pytest.importorskip("dagster")
 from dagster import build_asset_context
+
 
 pytest.importorskip("pandas")
 

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+
 # Optional imports with graceful skipping
 pytest.importorskip("pandas", reason="pandas missing")
 

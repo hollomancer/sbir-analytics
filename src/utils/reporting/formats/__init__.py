@@ -12,6 +12,7 @@ from .html_processor import HtmlReportProcessor
 from .json_processor import JsonReportProcessor
 from .markdown_processor import MarkdownProcessor
 
+
 registry.register(ReportFormat.HTML, HtmlReportProcessor)
 registry.register(ReportFormat.JSON, JsonReportProcessor)
 registry.register(ReportFormat.MARKDOWN, MarkdownProcessor)

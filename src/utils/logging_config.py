@@ -8,6 +8,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 
+
 # Context variables for structured logging
 stage_context: ContextVar[str | None] = ContextVar("stage", default=None)
 run_id_context: ContextVar[str | None] = ContextVar("run_id", default=None)

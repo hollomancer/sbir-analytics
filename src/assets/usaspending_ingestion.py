@@ -5,12 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from dagster import (
-    AssetExecutionContext,
-    MetadataValue,
-    Output,
-    asset,
-)
+from dagster import AssetExecutionContext, MetadataValue, Output, asset
 
 from ..config.loader import get_config
 from ..extractors.usaspending import DuckDBUSAspendingExtractor

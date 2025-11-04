@@ -1,13 +1,7 @@
 """Example Dagster assets demonstrating the ETL pipeline structure."""
 
 import pandas as pd
-from dagster import (
-    AssetCheckResult,
-    AssetCheckSeverity,
-    AssetExecutionContext,
-    asset,
-    asset_check,
-)
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, asset, asset_check
 from loguru import logger
 
 from ..models.quality import QualitySeverity

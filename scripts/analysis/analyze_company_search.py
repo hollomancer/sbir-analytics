@@ -35,6 +35,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+
 # Optional dependencies
 try:
     import pandas as pd

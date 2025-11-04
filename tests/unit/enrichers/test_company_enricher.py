@@ -3,10 +3,7 @@ import json
 import pandas as pd
 import pytest
 
-from src.enrichers.company_enricher import (
-    enrich_awards_with_companies,
-    normalize_company_name,
-)
+from src.enrichers.company_enricher import enrich_awards_with_companies, normalize_company_name
 
 
 def test_normalize_company_name_basic():

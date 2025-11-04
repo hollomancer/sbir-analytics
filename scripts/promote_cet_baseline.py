@@ -51,6 +51,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 # Default paths (relative to repository root)
 DEFAULT_CANDIDATE = Path("reports/benchmarks/cet_baseline_distributions_current.json")
 DEFAULT_BASELINE = Path("reports/benchmarks/cet_baseline_distributions.json")

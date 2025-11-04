@@ -22,6 +22,7 @@ import json
 
 import pandas as pd
 
+
 try:
     from rapidfuzz import fuzz, process
 except ImportError:

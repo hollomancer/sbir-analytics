@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
+from neo4j import GraphDatabase
 from rich.console import Console
 
-from neo4j import GraphDatabase
 from src.config.schemas import PipelineConfig
 
 

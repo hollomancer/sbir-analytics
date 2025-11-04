@@ -28,6 +28,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any
 
+
 # psutil is optional; when available we record memory usage
 try:
     import psutil

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from ...models.transition_models import CETSignal
 
+
 # CET Area Keyword Mappings
 # Maps CET areas to keywords commonly found in contract descriptions
 CET_KEYWORD_MAPPINGS = {

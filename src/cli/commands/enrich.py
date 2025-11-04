@@ -8,6 +8,7 @@ from rich.table import Table
 from ..context import CommandContext
 from ..display.progress import create_progress_tracker
 
+
 app = typer.Typer(name="enrich", help="Execute enrichment workflows")
 
 

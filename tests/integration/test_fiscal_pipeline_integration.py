@@ -6,9 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from dagster import (
-    build_asset_context,
-)
+from dagster import build_asset_context
 from dagster._core.definitions import load_assets_from_modules
 
 from src.assets import fiscal_assets

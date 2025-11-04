@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
 # Add workspace root to path for imports
 _script_dir = Path(__file__).resolve().parent
 _workspace_root = _script_dir.parent.parent

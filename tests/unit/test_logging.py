@@ -128,12 +128,7 @@ class TestLogFunctions:
 
     def test_log_functions_no_exception(self):
         """Test that log functions don't raise exceptions."""
-        from src.utils.logging_config import (
-            log_debug,
-            log_error,
-            log_info,
-            log_warning,
-        )
+        from src.utils.logging_config import log_debug, log_error, log_info, log_warning
 
         # These should not raise exceptions
         log_debug("Test debug message")

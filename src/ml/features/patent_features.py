@@ -25,6 +25,7 @@ import re
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 
+
 # Simple default English stopwords (small subset) to keep import-free and deterministic.
 DEFAULT_STOPWORDS = frozenset(
     [

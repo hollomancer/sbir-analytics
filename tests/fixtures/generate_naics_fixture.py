@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
+
 out = Path("tests/fixtures/naics_index_fixture.parquet")
 out.parent.mkdir(parents=True, exist_ok=True)
 

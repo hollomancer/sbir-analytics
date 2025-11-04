@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
 # Skip if neo4j driver isn't available, consistent with existing unit test patterns
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 

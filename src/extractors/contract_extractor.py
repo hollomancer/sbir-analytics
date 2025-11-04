@@ -22,6 +22,7 @@ from pydantic import ValidationError
 
 from src.models.transition_models import CompetitionType, FederalContract
 
+
 # USAspending transaction_normalized column mapping
 # Based on actual .dat.gz file structure observed from subset database
 # File 5530.dat.gz contains the transaction_normalized table

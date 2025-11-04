@@ -12,6 +12,7 @@ from typing import Any
 from src.models.statistical_reports import PipelineMetrics, ReportArtifact, ReportFormat
 from src.utils.reporting.formats.base import BaseReportProcessor
 
+
 # Optional Plotly imports
 try:
     import plotly.graph_objects as go

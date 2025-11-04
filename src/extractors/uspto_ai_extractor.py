@@ -45,6 +45,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+
 LOG = logging.getLogger(__name__)
 
 # Optional imports - gracefully degrade when not available

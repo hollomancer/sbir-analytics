@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -18,6 +19,7 @@ from typer import Option
 
 from src.config.loader import get_config
 from src.utils.enrichment_freshness import FreshnessStore
+
 
 app = typer.Typer(help="USAspending enrichment refresh utility")
 

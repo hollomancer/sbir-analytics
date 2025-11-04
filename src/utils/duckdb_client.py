@@ -11,6 +11,7 @@ import pandas as pd
 from ..config.loader import get_config
 from .logging_config import log_with_context
 
+
 if TYPE_CHECKING:
     # For type checkers we still reference pandas types
     import pandas as pd

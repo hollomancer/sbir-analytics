@@ -2,6 +2,7 @@
 
 from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
+
 __all__ = [
     "ClassificationConfig",
     "TaxonomyConfig",

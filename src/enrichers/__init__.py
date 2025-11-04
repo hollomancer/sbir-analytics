@@ -17,6 +17,7 @@ from .company_enricher import enrich_awards_with_companies
 from .search_providers.base import BaseSearchProvider, ProviderResponse, ProviderResult
 from .usaspending_enricher import enrich_sbir_with_usaspending
 
+
 __all__ = [
     "ChunkedEnricher",
     "create_dynamic_outputs_enrichment",

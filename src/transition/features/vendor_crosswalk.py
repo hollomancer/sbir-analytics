@@ -34,6 +34,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
 
+
 LOG = logging.getLogger(__name__)
 
 # Optional dependencies

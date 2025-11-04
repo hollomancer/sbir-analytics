@@ -12,10 +12,7 @@ from src.models.enrichment import (
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
 )
-from src.utils.enrichment_freshness import (
-    FreshnessStore,
-    update_freshness_ledger,
-)
+from src.utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 
 
 @pytest.fixture

@@ -20,6 +20,7 @@ from pathlib import Path
 
 from loguru import logger
 
+
 try:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots

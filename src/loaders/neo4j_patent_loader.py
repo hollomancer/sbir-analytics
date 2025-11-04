@@ -55,6 +55,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+
 # Import neo4j lazily; avoid import error at module import time
 try:
     from neo4j import Driver, GraphDatabase, Transaction  # type: ignore

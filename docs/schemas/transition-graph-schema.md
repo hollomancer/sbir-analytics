@@ -374,7 +374,7 @@ company_id: String (UNIQUE, PRIMARY KEY)
 
 uei: String (nullable, UNIQUE)
   # Unique Entity Identifier
-  # Example: "ABC123DEF456"
+  # Example: "ABC123DEF456"  # pragma: allowlist secret
 
 cage: String (nullable, UNIQUE)
   # CAGE code

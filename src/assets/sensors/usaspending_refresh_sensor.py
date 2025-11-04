@@ -5,13 +5,7 @@ Triggers refresh job after bulk enrichment completes successfully.
 
 from datetime import datetime
 
-from dagster import (
-    RunRequest,
-    SensorEvaluationContext,
-    SensorResult,
-    SkipReason,
-    sensor,
-)
+from dagster import RunRequest, SensorEvaluationContext, SensorResult, SkipReason, sensor
 
 from ..jobs.usaspending_iterative_job import usaspending_iterative_enrichment_job
 

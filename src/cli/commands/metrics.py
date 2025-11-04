@@ -10,6 +10,7 @@ from rich.table import Table
 
 from ..context import CommandContext
 
+
 app = typer.Typer(name="metrics", help="Display pipeline performance metrics")
 
 

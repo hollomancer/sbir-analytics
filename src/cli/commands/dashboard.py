@@ -16,6 +16,7 @@ from rich.text import Text
 from ..context import CommandContext
 from ..display.status import create_asset_status_table, get_health_indicator
 
+
 app = typer.Typer(name="dashboard", help="Interactive real-time monitoring dashboard")
 
 

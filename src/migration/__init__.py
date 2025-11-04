@@ -7,6 +7,7 @@ to Kiro specification system.
 
 from .models import KiroContent, MigrationConfig, MigrationReport, OpenSpecContent, ValidationReport
 
+
 __all__ = [
     "MigrationConfig",
     "MigrationReport",

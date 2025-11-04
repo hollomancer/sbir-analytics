@@ -2,6 +2,7 @@
 
 from dagster import AssetSelection, define_asset_job
 
+
 # Define transition MVP job (core transition detection chain)
 transition_mvp_job = define_asset_job(
     name="transition_mvp_job",

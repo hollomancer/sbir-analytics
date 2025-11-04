@@ -23,16 +23,14 @@ from .assets import (
     uspto_assets,
 )
 from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
-from .assets.jobs.fiscal_returns_job import (
-    fiscal_returns_full_job,
-    fiscal_returns_mvp_job,
-)
+from .assets.jobs.fiscal_returns_job import fiscal_returns_full_job, fiscal_returns_mvp_job
 from .assets.jobs.transition_job import (
     transition_analytics_job,
     transition_full_job,
     transition_mvp_job,
 )
 from .assets.jobs.usaspending_iterative_job import usaspending_iterative_enrichment_job
+
 
 # Load all assets and checks from modules
 all_assets = load_assets_from_modules(
@@ -110,6 +108,7 @@ cet_drift_schedule = ScheduleDefinition(
 
 # Load sensors directly
 from .assets.sensors import usaspending_refresh_sensor
+
 
 all_sensors = [usaspending_refresh_sensor]
 

@@ -22,6 +22,7 @@ from difflib import SequenceMatcher
 from typing import Any
 from urllib.parse import urlparse
 
+
 # Import project-normalized types when available to keep type hints helpful.
 # If unavailable at runtime in some contexts, callers can still use the
 # functions by passing plain dicts / objects that have the expected attributes.

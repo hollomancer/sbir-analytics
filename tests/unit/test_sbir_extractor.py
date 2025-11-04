@@ -7,6 +7,7 @@ import pytest
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.models.award import RawAward
 
+
 FIXTURE_CSV = Path("tests/fixtures/sbir_sample.csv")
 
 

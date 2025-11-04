@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+
 # Skip entire module - vectorizers have been removed/refactored
 pytestmark = pytest.mark.skip(
     reason="Vectorizers module is empty - functionality removed/refactored"

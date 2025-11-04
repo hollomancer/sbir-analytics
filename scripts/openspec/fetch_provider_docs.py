@@ -41,6 +41,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+
 # Reasonable defaults
 USER_AGENT = "sbir-etl-docs-fetcher/1.0 (+https://github.com/your-org/sbir-etl)"
 DEFAULT_TIMEOUT = 15  # seconds

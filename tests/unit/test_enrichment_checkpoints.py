@@ -6,10 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from src.utils.enrichment_checkpoints import (
-    CheckpointStore,
-    EnrichmentCheckpoint,
-)
+from src.utils.enrichment_checkpoints import CheckpointStore, EnrichmentCheckpoint
 
 
 @pytest.fixture

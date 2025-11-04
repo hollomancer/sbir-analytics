@@ -20,6 +20,7 @@ import argparse
 import csv
 from pathlib import Path
 
+
 HEADER = [
     "Company",
     "Address1",

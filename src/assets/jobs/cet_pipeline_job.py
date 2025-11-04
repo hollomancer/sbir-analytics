@@ -20,6 +20,7 @@ Notes:
 
 from dagster import AssetSelection, define_asset_job
 
+
 # Import CET production assets
 try:
     from ..cet_assets import (  # type: ignore

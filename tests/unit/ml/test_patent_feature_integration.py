@@ -2,12 +2,14 @@
 
 import pytest
 
+
 # These tests exercise integration between the lightweight patent feature
 # extractor and the PatentCETClassifier training flow using DummyPipeline.
 pd = pytest.importorskip("pandas")
 
 from src.ml.models.dummy_pipeline import DummyPipeline
 from src.ml.models.patent_classifier import PatentCETClassifier
+
 
 # Feature helpers are optional in some environments; skip the integration test if not present.
 pytest.importorskip("src.ml.features.patent_features")

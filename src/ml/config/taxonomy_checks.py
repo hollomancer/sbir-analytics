@@ -28,6 +28,7 @@ from typing import Any
 # depends on the project's models (Pydantic) to validate the taxonomy.
 from src.ml.config.taxonomy_loader import TaxonomyConfig, TaxonomyLoader
 
+
 logger = logging.getLogger("taxonomy_checks")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 

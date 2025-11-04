@@ -2,17 +2,20 @@ import json
 import sys
 from pathlib import Path
 
+
 # ensure workspace root is on sys.path so `src` can be imported when running as a script
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import importlib.util
 
+
 # load the naics_enricher module directly to avoid package-level import dependencies
 naics_path = ROOT / "src" / "enrichers" / "naics_enricher.py"
 spec = importlib.util.spec_from_file_location("naics_enricher_mod", str(naics_path))
 naics_mod = importlib.util.module_from_spec(spec)
 import sys
+
 
 sys.modules[spec.name] = naics_mod
 spec.loader.exec_module(naics_mod)
