@@ -6,7 +6,7 @@ from typing import Any
 
 from loguru import logger
 
-from ..exceptions import RFunctionError  # Import from central exceptions
+from ..exceptions import DependencyError, RFunctionError, ValidationError  # Import from central exceptions
 
 
 # Conditional rpy2 import
@@ -63,7 +63,12 @@ def call_r_function(
         RuntimeError: If rpy2 is not available
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
+        raise DependencyError(
+            "rpy2 is not installed. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="utils.r_helpers",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     if package is None:
         raise RFunctionError(
@@ -126,18 +131,41 @@ def validate_r_input(
         ValueError: If validation fails
     """
     if hasattr(data, "__len__") and len(data) < min_rows:
-        raise ValueError(f"Data must have at least {min_rows} row(s)")
+        raise ValidationError(
+            f"Data must have at least {min_rows} row(s)",
+            component="utils.r_helpers",
+            operation="validate_r_input",
+            details={"actual_rows": len(data), "min_rows": min_rows},
+        )
 
     if required_columns:
         if hasattr(data, "columns"):
             missing = [col for col in required_columns if col not in data.columns]
             if missing:
-                raise ValueError(f"Missing required columns: {missing}")
+                raise ValidationError(
+                    f"Missing required columns: {missing}",
+                    component="utils.r_helpers",
+                    operation="validate_r_input",
+                    details={
+                        "missing_columns": missing,
+                        "required_columns": required_columns,
+                        "available_columns": list(data.columns),
+                    },
+                )
         elif hasattr(data, "keys"):
             # dict-like object
             missing = [col for col in required_columns if col not in data.keys()]
             if missing:
-                raise ValueError(f"Missing required keys: {missing}")
+                raise ValidationError(
+                    f"Missing required keys: {missing}",
+                    component="utils.r_helpers",
+                    operation="validate_r_input",
+                    details={
+                        "missing_keys": missing,
+                        "required_keys": required_columns,
+                        "available_keys": list(data.keys()),
+                    },
+                )
 
 
 def extract_r_result(
@@ -159,7 +187,12 @@ def extract_r_result(
     # Result extraction depends on actual R return type
     # This is a placeholder - actual implementation depends on StateIO API
     if r_result is None:
-        raise ValueError("R function returned None")
+        raise ValidationError(
+            "R function returned None",
+            component="utils.r_helpers",
+            operation="extract_r_result",
+            details={"expected_type": "DataFrame or dict"},
+        )
 
     # If r_result is already a DataFrame (converted by pandas2ri), return as-is
     # Otherwise, conversion happens in _convert_r_to_pandas
@@ -188,7 +221,12 @@ def safe_r_eval(r_code: str) -> Any:
         RFunctionError: If evaluation fails
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
+        raise DependencyError(
+            "rpy2 is not installed. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="utils.r_helpers",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     try:
         result = ro.r(r_code)  # type: ignore

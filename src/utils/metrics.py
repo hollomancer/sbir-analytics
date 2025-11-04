@@ -9,6 +9,8 @@ from typing import Any
 
 from loguru import logger
 
+from ..exceptions import ValidationError
+
 
 @dataclass
 class PipelineMetrics:
@@ -174,7 +176,12 @@ class MetricsCollector:
         metrics = self.metrics.get(key)
 
         if metrics is None:
-            raise ValueError(f"No metrics found for {key}")
+            raise ValidationError(
+                f"No metrics found for {key}",
+                component="utils.metrics",
+                operation="export_to_json",
+                details={"run_id": run_id, "stage": stage, "available_keys": list(self.metrics.keys())},
+            )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{run_id}_{stage}_{timestamp}.json"
