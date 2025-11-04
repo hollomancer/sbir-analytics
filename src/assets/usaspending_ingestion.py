@@ -8,6 +8,7 @@ import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
 
 from ..config.loader import get_config
+from ..exceptions import ExtractionError, FileSystemError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
 
 
@@ -45,7 +46,12 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     success = extractor.import_postgres_dump(dump_path, table_name)
 
     if not success:
-        raise RuntimeError("Failed to import USAspending dump")
+        raise ExtractionError(
+            "Failed to import USAspending dump",
+            component="assets.usaspending_ingestion",
+            operation="import_dump",
+            details={"dump_path": str(dump_path), "table_name": table_name},
+        )
 
     # Get table info
     table_info = extractor.get_table_info(f"{table_name}_5412")  # recipient_lookup OID
@@ -110,7 +116,12 @@ def raw_usaspending_transactions(context: AssetExecutionContext) -> Output[pd.Da
     success = extractor.import_postgres_dump(dump_path, table_name)
 
     if not success:
-        raise RuntimeError("Failed to import USAspending dump")
+        raise ExtractionError(
+            "Failed to import USAspending dump",
+            component="assets.usaspending_ingestion",
+            operation="import_dump",
+            details={"dump_path": str(dump_path), "table_name": table_name},
+        )
 
     # Get table info
     table_info = extractor.get_table_info(f"{table_name}_5420")  # transaction_normalized OID
@@ -156,7 +167,12 @@ def usaspending_profile_report(context: AssetExecutionContext) -> Output[dict[st
     profile_path = Path("reports/usaspending_subset_profile.json")
 
     if not profile_path.exists():
-        raise FileNotFoundError(f"Profile report not found: {profile_path}")
+        raise FileSystemError(
+            f"Profile report not found: {profile_path}",
+            file_path=str(profile_path),
+            operation="load_profile_report",
+            component="assets.usaspending_ingestion",
+        )
 
     with open(profile_path) as f:
         report = json.load(f)

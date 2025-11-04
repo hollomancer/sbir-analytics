@@ -6,6 +6,8 @@ from typing import Any
 
 from loguru import logger
 
+from ..exceptions import DependencyError, RFunctionError, ValidationError  # Import from central exceptions
+
 
 # Conditional rpy2 import
 try:
@@ -17,20 +19,6 @@ except ImportError:
     RPY2_AVAILABLE = False
     ro = None  # type: ignore
     importr = None  # type: ignore
-
-
-class RFunctionError(Exception):
-    """Error raised when R function call fails."""
-
-    def __init__(self, message: str, r_error: str | None = None):
-        """Initialize R function error.
-
-        Args:
-            message: Human-readable error message
-            r_error: Raw R error message if available
-        """
-        super().__init__(message)
-        self.r_error = r_error
 
 
 def check_r_package(package_name: str) -> bool:
@@ -75,10 +63,19 @@ def call_r_function(
         RuntimeError: If rpy2 is not available
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
+        raise DependencyError(
+            "rpy2 is not installed. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="utils.r_helpers",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     if package is None:
-        raise RFunctionError(f"R package not loaded. Cannot call {function_name}.")
+        raise RFunctionError(
+            f"R package not loaded. Cannot call {function_name}.",
+            function_name=function_name,
+            operation="call_r_function",
+        )
 
     try:
         # Get function from package
@@ -101,9 +98,20 @@ def call_r_function(
         if hasattr(e, "args") and len(e.args) > 0:
             r_error = str(e.args[0])
 
+        details = {}
+        if r_error:
+            details["r_error"] = r_error
+        if args:
+            details["args_count"] = len(args)
+        if kwargs:
+            details["kwargs_keys"] = list(kwargs.keys())
+
         raise RFunctionError(
             f"R function {function_name} call failed: {error_msg}",
-            r_error=r_error,
+            function_name=function_name,
+            operation="call_r_function",
+            details=details,
+            cause=e,
         ) from e
 
 
@@ -123,18 +131,41 @@ def validate_r_input(
         ValueError: If validation fails
     """
     if hasattr(data, "__len__") and len(data) < min_rows:
-        raise ValueError(f"Data must have at least {min_rows} row(s)")
+        raise ValidationError(
+            f"Data must have at least {min_rows} row(s)",
+            component="utils.r_helpers",
+            operation="validate_r_input",
+            details={"actual_rows": len(data), "min_rows": min_rows},
+        )
 
     if required_columns:
         if hasattr(data, "columns"):
             missing = [col for col in required_columns if col not in data.columns]
             if missing:
-                raise ValueError(f"Missing required columns: {missing}")
+                raise ValidationError(
+                    f"Missing required columns: {missing}",
+                    component="utils.r_helpers",
+                    operation="validate_r_input",
+                    details={
+                        "missing_columns": missing,
+                        "required_columns": required_columns,
+                        "available_columns": list(data.columns),
+                    },
+                )
         elif hasattr(data, "keys"):
             # dict-like object
             missing = [col for col in required_columns if col not in data.keys()]
             if missing:
-                raise ValueError(f"Missing required keys: {missing}")
+                raise ValidationError(
+                    f"Missing required keys: {missing}",
+                    component="utils.r_helpers",
+                    operation="validate_r_input",
+                    details={
+                        "missing_keys": missing,
+                        "required_keys": required_columns,
+                        "available_keys": list(data.keys()),
+                    },
+                )
 
 
 def extract_r_result(
@@ -156,7 +187,12 @@ def extract_r_result(
     # Result extraction depends on actual R return type
     # This is a placeholder - actual implementation depends on StateIO API
     if r_result is None:
-        raise ValueError("R function returned None")
+        raise ValidationError(
+            "R function returned None",
+            component="utils.r_helpers",
+            operation="extract_r_result",
+            details={"expected_type": "DataFrame or dict"},
+        )
 
     # If r_result is already a DataFrame (converted by pandas2ri), return as-is
     # Otherwise, conversion happens in _convert_r_to_pandas
@@ -185,7 +221,12 @@ def safe_r_eval(r_code: str) -> Any:
         RFunctionError: If evaluation fails
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
+        raise DependencyError(
+            "rpy2 is not installed. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="utils.r_helpers",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     try:
         result = ro.r(r_code)  # type: ignore
@@ -193,7 +234,13 @@ def safe_r_eval(r_code: str) -> Any:
     except Exception as e:
         error_msg = str(e)
         logger.error(f"R code evaluation failed: {error_msg}")
-        raise RFunctionError(f"R code evaluation failed: {error_msg}") from e
+        raise RFunctionError(
+            f"R code evaluation failed: {error_msg}",
+            function_name="eval",
+            operation="safe_r_eval",
+            details={"r_code_preview": r_code[:100]},  # First 100 chars
+            cause=e,
+        ) from e
 
 
 def get_r_package_version(package_name: str) -> str | None:

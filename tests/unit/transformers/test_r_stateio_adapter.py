@@ -12,8 +12,8 @@ pytestmark = pytest.mark.fast
 # Skip all tests if rpy2 is not available
 rpy2 = pytest.importorskip("rpy2", reason="rpy2 is required for R adapter tests")
 
+from src.exceptions import RFunctionError
 from src.transformers.r_stateio_adapter import RStateIOAdapter
-from src.utils.r_helpers import RFunctionError
 
 
 @pytest.fixture

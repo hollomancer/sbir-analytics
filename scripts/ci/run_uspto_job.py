@@ -25,6 +25,16 @@ import traceback
 from typing import Any
 
 
+# Configure basic logging so CI logs show what's happening
+logger.remove()  # Remove default handler
+logger.add(
+    sys.stderr,
+    level="INFO",
+    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+    colorize=False,  # Disable colors for CI logs
+)
+
+
 def _print_result_summary(result: Any) -> None:
     """
     Print a compact, human-readable summary of the Dagster job result.

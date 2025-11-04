@@ -15,11 +15,8 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from ..exceptions import ConfigurationError
 from .schemas import PipelineConfig
-
-
-class ConfigurationError(Exception):
-    """Raised when configuration loading or validation fails."""
 
 
 def _deep_merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -96,13 +93,22 @@ def load_config_from_files(
 
     base_file = Path(config_dir) / "base.yaml"
     if not base_file.exists():
-        raise ConfigurationError(f"Base configuration file not found: {base_file}")
+        raise ConfigurationError(
+            f"Base configuration file not found: {base_file}",
+            operation="load_config_from_files",
+            details={"file_path": str(base_file), "config_dir": str(config_dir)},
+        )
 
     try:
         with open(base_file, encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
     except yaml.YAMLError as e:
-        raise ConfigurationError(f"Failed to parse base config: {e}") from e
+        raise ConfigurationError(
+            f"Failed to parse base config: {e}",
+            operation="load_config_from_files",
+            details={"file_path": str(base_file)},
+            cause=e,
+        ) from e
 
     if environment:
         env_file = Path(config_dir) / f"{environment}.yaml"
@@ -112,7 +118,12 @@ def load_config_from_files(
                     env_config = yaml.safe_load(f) or {}
                 config = _deep_merge_dicts(config, env_config)
             except yaml.YAMLError as e:
-                raise ConfigurationError(f"Failed to parse {environment} config: {e}") from e
+                raise ConfigurationError(
+                    f"Failed to parse {environment} config: {e}",
+                    operation="load_config_from_files",
+                    details={"file_path": str(env_file), "environment": environment},
+                    cause=e,
+                ) from e
 
     return config
 
@@ -205,9 +216,19 @@ def get_config(
         return config
 
     except ValidationError as e:
-        raise ConfigurationError(f"Configuration validation failed: {e}") from e
+        raise ConfigurationError(
+            f"Configuration validation failed: {e}",
+            operation="get_config",
+            details={"environment": environment or "development"},
+            cause=e,
+        ) from e
     except Exception as e:
-        raise ConfigurationError(f"Configuration loading failed: {e}") from e
+        raise ConfigurationError(
+            f"Configuration loading failed: {e}",
+            operation="get_config",
+            details={"environment": environment or "development"},
+            cause=e,
+        ) from e
 
 
 def reload_config() -> None:

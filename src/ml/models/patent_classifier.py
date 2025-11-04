@@ -42,6 +42,8 @@ except Exception:  # pragma: no cover - defensive import
 
 import pickle
 
+from src.exceptions import CETClassificationError, DependencyError, FileSystemError, ValidationError
+
 
 # Define optional placeholders so static analysis doesn't flag undefined names before lazy import
 extract_features = None  # type: ignore
@@ -96,8 +98,12 @@ class PatentFeatureExtractor:
         try:
             pass  # type: ignore
         except Exception:
-            raise RuntimeError(
-                "pandas is required for PatentFeatureExtractor.features_for_dataframe"
+            raise DependencyError(
+                "pandas is required for PatentFeatureExtractor.features_for_dataframe",
+                dependency_name="pandas",
+                component="ml.patent_classifier",
+                operation="features_for_dataframe",
+                details={"install_command": "poetry install"},
             )
 
         texts: list[str] = []
@@ -230,10 +236,24 @@ class PatentCETClassifier:
         with X = list of combined text strings and y = binary labels per CET.
         """
         if pd is None:
-            raise RuntimeError("pandas is required for train_from_dataframe")
+            raise DependencyError(
+                "pandas is required for train_from_dataframe",
+                dependency_name="pandas",
+                component="ml.patent_classifier",
+                operation="train_from_dataframe",
+                details={"install_command": "poetry install"},
+            )
 
         if cet_label_col not in df.columns or title_col not in df.columns:
-            raise ValueError("DataFrame must contain title and cet label columns")
+            raise ValidationError(
+                "DataFrame must contain title and cet label columns",
+                component="ml.patent_classifier",
+                operation="train_from_dataframe",
+                details={
+                    "required_columns": [title_col, cet_label_col],
+                    "available_columns": list(df.columns),
+                },
+            )
 
         # Use PatentFeatureExtractor to derive training texts and feature vectors.
         # The pipelines consume text; the extractor normalizes titles and adds simple
@@ -272,8 +292,11 @@ class PatentCETClassifier:
                 if pipelines_factory is not None:
                     self.pipelines[cet] = pipelines_factory(cet)
                 else:
-                    raise RuntimeError(
-                        f"No pipeline for CET '{cet}' and no pipelines_factory provided"
+                    raise CETClassificationError(
+                        f"No pipeline for CET '{cet}' and no pipelines_factory provided",
+                        component="ml.patent_classifier",
+                        operation="train_from_dataframe",
+                        details={"cet_id": cet, "available_pipelines": list(self.pipelines.keys())},
                     )
 
         # Train each pipeline with binary labels
@@ -313,7 +336,12 @@ class PatentCETClassifier:
     # -----------------------
     def _ensure_model_ready(self) -> None:
         if not self.pipelines:
-            raise RuntimeError("No pipelines available for classification")
+            raise CETClassificationError(
+                "No pipelines available for classification",
+                component="ml.patent_classifier",
+                operation="classify",
+                details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
+            )
 
     def _text_from_record(self, title: str, assignee: str | None = None) -> str:
         # Combine title and assignee for extra signal
@@ -348,7 +376,13 @@ class PatentCETClassifier:
         if hasattr(pipeline, "predict"):
             preds = pipeline.predict(texts)
             return [float(bool(p)) for p in preds]
-        raise RuntimeError("Pipeline does not implement predict_proba or predict")
+        raise DependencyError(
+            "Pipeline does not implement predict_proba or predict",
+            dependency_name="pipeline",
+            component="ml.patent_classifier",
+            operation="_score_with_pipeline",
+            details={"pipeline_type": type(pipeline).__name__},
+        )
 
     def classify(
         self, title: str, assignee: str | None = None, top_k: int = 3
@@ -388,7 +422,12 @@ class PatentCETClassifier:
         if assignees is None:
             assignees = [None] * n
         if len(assignees) != n:
-            raise ValueError("titles and assignees must have the same length")
+            raise ValidationError(
+                "titles and assignees must have the same length",
+                component="ml.patent_classifier",
+                operation="classify_batch",
+                details={"titles_length": n, "assignees_length": len(assignees)},
+            )
         # If no pipelines configured, return empty lists per input
         if not self.pipelines:
             return [[] for _ in range(n)]
@@ -463,7 +502,12 @@ class PatentCETClassifier:
         """
         path = Path(path)
         if not path.exists():
-            raise FileNotFoundError(f"Model file not found: {path}")
+            raise FileSystemError(
+                f"Model file not found: {path}",
+                file_path=str(path),
+                operation="load_model",
+                component="ml.patent_classifier",
+            )
         with open(path, "rb") as fh:
             payload = pickle.load(fh)
         pipelines = payload.get("pipelines", {})

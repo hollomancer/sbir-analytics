@@ -11,6 +11,7 @@ import yaml
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
+from src.exceptions import FileSystemError
 from src.models.cet_models import CETArea
 
 
@@ -95,9 +96,19 @@ class TaxonomyLoader:
 
         # Validate config files exist
         if not self.taxonomy_path.exists():
-            raise FileNotFoundError(f"Taxonomy file not found: {self.taxonomy_path}")
+            raise FileSystemError(
+                f"Taxonomy file not found: {self.taxonomy_path}",
+                file_path=str(self.taxonomy_path),
+                operation="load_taxonomy",
+                component="ml.taxonomy_loader",
+            )
         if not self.classification_path.exists():
-            raise FileNotFoundError(f"Classification config not found: {self.classification_path}")
+            raise FileSystemError(
+                f"Classification config not found: {self.classification_path}",
+                file_path=str(self.classification_path),
+                operation="load_classification_config",
+                component="ml.taxonomy_loader",
+            )
 
         logger.info("Initialized TaxonomyLoader", extra={"config_dir": str(self.config_dir)})
 

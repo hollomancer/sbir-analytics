@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from ..exceptions import DependencyError
 from ..utils.r_helpers import RFunctionError, call_r_function
 
 
@@ -47,7 +48,12 @@ def build_state_model(
         RFunctionError: If model building fails
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not available")
+        raise DependencyError(
+            "rpy2 is not available. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="transformer.r_stateio_functions",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     if specs is None:
         specs = {"BaseIOSchema": "2017"}
@@ -255,7 +261,12 @@ def format_demand_vector_from_shocks(
         RFunctionError: If formatting fails
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not available")
+        raise DependencyError(
+            "rpy2 is not available. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="transformer.r_stateio_functions",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     # Extract sectors and amounts
     sectors = shocks_df[sector_col].astype(str).tolist()
@@ -295,7 +306,12 @@ def extract_economic_components_from_impacts(
         DataFrame with impact components by sector
     """
     if not RPY2_AVAILABLE:
-        raise RuntimeError("rpy2 is not available")
+        raise DependencyError(
+            "rpy2 is not available. Install with: poetry install --extras r",
+            dependency_name="rpy2",
+            component="transformer.r_stateio_functions",
+            details={"install_command": "poetry install --extras r"},
+        )
 
     # Extract production impacts from N matrix (commodity outputs)
     try:

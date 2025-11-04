@@ -36,6 +36,7 @@ except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
 
+from ..exceptions import FileSystemError
 from ..extractors.contract_extractor import ContractExtractor
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
 
@@ -392,9 +393,19 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     stats_snapshot: dict[str, Any] | None = None
 
     if not dump_dir.exists():
-        raise FileNotFoundError(f"USAspending dump directory not found: {dump_dir}")
+        raise FileSystemError(
+            f"USAspending dump directory not found: {dump_dir}",
+            file_path=str(dump_dir),
+            operation="contracts_sample",
+            component="assets.transition_assets",
+        )
     if not vendor_filter_path.exists():
-        raise FileNotFoundError(f"Vendor filter file not found: {vendor_filter_path}")
+        raise FileSystemError(
+            f"Vendor filter file not found: {vendor_filter_path}",
+            file_path=str(vendor_filter_path),
+            operation="contracts_sample",
+            component="assets.transition_assets",
+        )
 
     needs_extract = force_refresh or not output_path.exists()
     if needs_extract:
@@ -419,7 +430,12 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         )
 
     if not output_path.exists():
-        raise FileNotFoundError(f"Expected contracts output at {output_path}")
+        raise FileSystemError(
+            f"Expected contracts output at {output_path}",
+            file_path=str(output_path),
+            operation="contracts_sample",
+            component="assets.transition_assets",
+        )
 
     df = pd.read_parquet(output_path)
     total_rows = len(df)

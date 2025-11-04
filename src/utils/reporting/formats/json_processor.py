@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from src.exceptions import ValidationError
 from src.models.statistical_reports import PipelineMetrics, ReportArtifact, ReportFormat
 from src.utils.reporting.formats.base import BaseReportProcessor
 
@@ -159,7 +160,13 @@ class JsonReportProcessor(BaseReportProcessor):
         if hasattr(obj, "__str__"):
             return str(obj)
 
-        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        # Use ValidationError since this is about validating JSON serializability
+        raise ValidationError(
+            f"Object of type {type(obj)} is not JSON serializable",
+            component="utils.json_processor",
+            operation="_json_serial",
+            details={"object_type": str(type(obj)), "object_repr": repr(obj)[:100]},
+        )
 
     def _validate_json_schema(self, json_data: dict[str, Any]) -> None:
         """Validate JSON data against a schema (placeholder for future implementation).
@@ -176,7 +183,16 @@ class JsonReportProcessor(BaseReportProcessor):
         required_fields = ["run_id", "timestamp", "total_records_processed"]
         for field in required_fields:
             if field not in json_data:
-                raise ValueError(f"Required field '{field}' missing from JSON data")
+                raise ValidationError(
+                    f"Required field '{field}' missing from JSON data",
+                    component="utils.json_processor",
+                    operation="_validate_json_schema",
+                    details={
+                        "missing_field": field,
+                        "required_fields": required_fields,
+                        "available_fields": list(json_data.keys()),
+                    },
+                )
 
     def _get_interactive_flag(self) -> bool:
         """JSON reports are not interactive."""
