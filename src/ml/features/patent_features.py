@@ -496,7 +496,7 @@ def extract_features(
             # Convert to appropriate type for guess_assignee_type
             if isinstance(field_value, str):
                 assignee_field = field_value
-            elif isinstance(field_value, (list, tuple)):
+            elif isinstance(field_value, list | tuple):
                 assignee_field = [str(item) for item in field_value]
             else:
                 assignee_field = str(field_value) if field_value else None

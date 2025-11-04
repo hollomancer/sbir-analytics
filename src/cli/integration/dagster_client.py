@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from dagster import AssetKey, DagsterInstance, Definitions, DagsterEventType, materialize
+from dagster import AssetKey, DagsterEventType, DagsterInstance, Definitions, materialize
 from dagster._core.definitions.asset_selection import AssetSelection
 from dagster._core.events import EventRecordsFilter
 from loguru import logger

@@ -897,7 +897,7 @@ created_at: DateTime
 
 ```cypher
 MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
-MATCH (co:Company {uei: "ABC123DEF456"})
+MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
 CREATE (a)-[:FUNDED_BY {recipient_role: "PRIME"}]->(co)
 ```
 
@@ -941,7 +941,7 @@ created_at: DateTime
 ### Example Cypher
 
 ```cypher
-MATCH (co:Company {uei: "ABC123DEF456"})
+MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
 MATCH (c:Contract {contract_id: "FA1234-20-C-0001"})
 CREATE (co)-[:AWARDED_CONTRACT {vendor_role: "PRIME"}]->(c)
 ```
@@ -1126,7 +1126,7 @@ RETURN a, co, p, t, c
 
 ## Company-level view
 
-MATCH (co:Company {uei: "ABC123DEF456"})
+MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
       <-[:FUNDED_BY]-(a:Award)
 
       -[:TRANSITIONED_TO]->(t:Transition)

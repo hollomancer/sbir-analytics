@@ -28,6 +28,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any, TypeVar
 
+
 T = TypeVar("T")
 
 # psutil is optional; when available we record memory usage
