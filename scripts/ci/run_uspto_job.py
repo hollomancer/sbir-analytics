@@ -25,13 +25,6 @@ import traceback
 from typing import Any
 
 
-# Configure basic logging so CI logs show what's happening
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-
-
 def _print_result_summary(result: Any) -> None:
     """
     Print a compact, human-readable summary of the Dagster job result.
