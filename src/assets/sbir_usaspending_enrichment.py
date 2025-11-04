@@ -109,6 +109,21 @@ def enriched_sbir_awards(
         },
     )
 
+    # Get performance metrics before creating module_data
+    if not enrichment_metrics:
+        perf_summary = performance_monitor.get_metrics_summary()
+        enrichment_perf = perf_summary.get("enrichment_core", {})
+        duration = enrichment_perf.get("total_duration", 0.0)
+        avg_memory_delta = enrichment_perf.get("avg_memory_delta_mb", 0.0)
+        max_peak_memory = enrichment_perf.get("max_peak_memory_mb", 0.0)
+        records_per_second = (total_awards / duration) if duration > 0 else 0
+    else:
+        # Use metrics from chunked processing
+        duration = enrichment_metrics.get("total_duration_seconds", 0.0)
+        avg_memory_delta = enrichment_metrics.get("avg_memory_delta_mb", 0.0)
+        max_peak_memory = enrichment_metrics.get("peak_memory_mb", 0.0)
+        records_per_second = enrichment_metrics.get("records_per_second", 0.0)
+
     # Perform statistical analysis with SBIR analyzer
     analyzer = SbirEnrichmentAnalyzer()
     run_context = {
@@ -149,21 +164,6 @@ def enriched_sbir_awards(
             else None,
         },
     )
-
-    # Get performance metrics
-    if not enrichment_metrics:
-        perf_summary = performance_monitor.get_metrics_summary()
-        enrichment_perf = perf_summary.get("enrichment_core", {})
-        duration = enrichment_perf.get("total_duration", 0.0)
-        avg_memory_delta = enrichment_perf.get("avg_memory_delta_mb", 0.0)
-        max_peak_memory = enrichment_perf.get("max_peak_memory_mb", 0.0)
-        records_per_second = (total_awards / duration) if duration > 0 else 0
-    else:
-        # Use metrics from chunked processing
-        duration = enrichment_metrics.get("total_duration_seconds", 0.0)
-        avg_memory_delta = enrichment_metrics.get("avg_memory_delta_mb", 0.0)
-        max_peak_memory = enrichment_metrics.get("peak_memory_mb", 0.0)
-        records_per_second = enrichment_metrics.get("records_per_second", 0.0)
 
     # Create metadata
     metadata = {

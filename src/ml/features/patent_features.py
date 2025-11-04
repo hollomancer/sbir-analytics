@@ -117,12 +117,23 @@ def remove_stopwords(tokens: Iterable[str], stopwords: Iterable[str] | None = No
     Remove stopwords from an iterable of tokens.
 
     stopwords: iterable of lowercased tokens to drop. Defaults to DEFAULT_STOPWORDS.
+    Also removes single alphabetic characters (but keeps numeric single characters).
     Returned tokens preserve original token order.
     """
     if tokens is None:
         return []
     sw = set(stopwords) if stopwords is not None else DEFAULT_STOPWORDS
-    return [t for t in tokens if t.lower() not in sw]
+    filtered = []
+    for t in tokens:
+        t_lower = t.lower()
+        # Remove stopwords
+        if t_lower in sw:
+            continue
+        # Remove single alphabetic characters (but keep numeric single chars like '3')
+        if len(t) == 1 and t.isalpha():
+            continue
+        filtered.append(t)
+    return filtered
 
 
 def extract_ipc_cpc(
@@ -149,11 +160,29 @@ def extract_ipc_cpc(
         for key in ("ipc", "ipc_codes", "ipc_code", "ipc_class"):
             if key in metadata_or_text and metadata_or_text[key]:
                 raw = metadata_or_text[key]
-                ipc_list.extend(_coerce_to_list_of_str(raw))
+                raw_list = _coerce_to_list_of_str(raw)
+                ipc_list.extend(raw_list)
+                # Also extract base classes from full codes (e.g., "G06F 17/30" -> "G06F")
+                for code in raw_list:
+                    # Extract base class if code contains a space (e.g., "G06F 17/30")
+                    parts = code.split()
+                    if parts:
+                        base_class = parts[0].upper()
+                        if base_class not in ipc_list:
+                            ipc_list.append(base_class)
         for key in ("cpc", "cpc_codes", "cpc_code", "cpc_class"):
             if key in metadata_or_text and metadata_or_text[key]:
                 raw = metadata_or_text[key]
-                cpc_list.extend(_coerce_to_list_of_str(raw))
+                raw_list = _coerce_to_list_of_str(raw)
+                cpc_list.extend(raw_list)
+                # Also extract base classes from full codes (e.g., "G06F 17/30" -> "G06F")
+                for code in raw_list:
+                    # Extract base class if code contains a space (e.g., "G06F 17/30")
+                    parts = code.split()
+                    if parts:
+                        base_class = parts[0].upper()
+                        if base_class not in cpc_list:
+                            cpc_list.append(base_class)
 
         # If not found in keys, try scanning a 'description' or 'title' field.
         if not ipc_list and "description" in metadata_or_text:
@@ -197,11 +226,33 @@ def _coerce_to_list_of_str(value: object) -> list[str]:
 
 
 def _find_ipc_in_text(text: str) -> list[str]:
-    return [m.group(1) for m in _ipc_token_re.finditer(text)]
+    """Extract IPC codes from text. Returns both base class (e.g., G06F) and full codes (e.g., G06F 17/30)."""
+    codes = []
+    for m in _ipc_token_re.finditer(text):
+        base_class = m.group(1).upper()
+        full_match = m.group(0).upper()
+        # Add base class
+        if base_class not in codes:
+            codes.append(base_class)
+        # Add full code if different from base class
+        if full_match != base_class and full_match not in codes:
+            codes.append(full_match)
+    return codes
 
 
 def _find_cpc_in_text(text: str) -> list[str]:
-    return [m.group(1) for m in _cpc_token_re.finditer(text)]
+    """Extract CPC codes from text. Returns both base class (e.g., G06F) and full codes (e.g., G06F 17/30)."""
+    codes = []
+    for m in _cpc_token_re.finditer(text):
+        base_class = m.group(1).upper()
+        full_match = m.group(0).upper()
+        # Add base class
+        if base_class not in codes:
+            codes.append(base_class)
+        # Add full code if different from base class
+        if full_match != base_class and full_match not in codes:
+            codes.append(full_match)
+    return codes
 
 
 def _unique_preserve_order(items: Iterable[str]) -> list[str]:

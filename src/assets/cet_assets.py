@@ -2056,7 +2056,7 @@ def validated_cet_iaa_report() -> Output:
         if not paired:
             return None
         labels = list({x for ab in paired for x in ab})
-        label_to_idx = {l: i for i, l in enumerate(labels)}
+        label_to_idx = {label: i for i, label in enumerate(labels)}
         n = len(paired)
         # Confusion counts
         counts = [[0] * len(labels) for _ in labels]
