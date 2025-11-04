@@ -112,9 +112,11 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 markers = [
-    "integration: integration tests",
-    "slow: long-running tests",
-    "e2e: end-to-end tests"
+    "unit: fast unit tests (default)",
+    "integration: integration tests that combine components",
+    "slow: long-running tests (ML training, large datasets)",
+    "e2e: end-to-end pipeline tests",
+    "compute_intensive: tests requiring significant compute resources"
 ]
 testpaths = ["tests", "sbir-etl/tests"]
 python_files = ["test_*.py"]

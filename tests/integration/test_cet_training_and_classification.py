@@ -7,6 +7,7 @@ from src.models.cet_models import CETArea
 
 @pytest.mark.integration
 @pytest.mark.slow
+@pytest.mark.compute_intensive
 def test_cet_classifier_training_and_classification_synthetic():
     """
     Synthetic integration test that trains the CET ApplicabilityModel on a tiny dataset

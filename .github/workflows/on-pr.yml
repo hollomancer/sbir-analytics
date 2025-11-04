@@ -137,8 +137,8 @@ jobs:
           python "$PYFILE"
           rm -f "$PYFILE"
 
-      - name: Run tests
-        run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
+      - name: Run tests (unit and fast integration tests)
+        run: poetry run pytest -m "not slow and not e2e and not compute_intensive" --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

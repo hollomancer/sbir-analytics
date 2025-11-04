@@ -110,7 +110,8 @@ class TestDagsterPipelineMaterialization:
         assert transition_scores_v1 is not None
         assert transition_detections is not None
 
-
+@pytest.mark.e2e
+@pytest.mark.compute_intensive
 class TestFullDatasetDetection:
     """E2E test: Full FY2020-2024 detection (252K awards) - Task 21.2"""
 
@@ -533,6 +534,8 @@ class TestQualityMetricsValidation:
         assert "F1 Score" in report
 
 
+@pytest.mark.e2e
+@pytest.mark.compute_intensive
 class TestEndToEndIntegration:
     """Full end-to-end integration tests."""
 
@@ -615,6 +618,8 @@ class TestEndToEndIntegration:
         assert checks_json.exists()
 
 
+@pytest.mark.e2e
+@pytest.mark.compute_intensive
 class TestFullScaleDatasetSimulation:
     """E2E test: Simulate full FY2020-2024 dataset (Task 21.2)"""
 

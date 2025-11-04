@@ -103,8 +103,8 @@ jobs:
           python "$PYFILE"
           rm -f "$PYFILE"
 
-      - name: Run tests
-        run: poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing
+      - name: Run tests (comprehensive suite excluding only compute_intensive)
+        run: poetry run pytest -m "not compute_intensive" --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

@@ -14,6 +14,7 @@ from src.assets.sbir_usaspending_enrichment import enriched_sbir_awards
 from src.definitions import defs
 
 
+@pytest.mark.e2e
 class TestEnrichmentPipelineSmokeTests:
     """Smoke tests for the complete enrichment pipeline."""
 

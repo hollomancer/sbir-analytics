@@ -68,11 +68,11 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run tests
+      - name: Run tests (comprehensive - all tests including slow and e2e)
         id: test
         run: |
           set -o pipefail
-          poetry run pytest -q 2>&1 | tee test.log
+          poetry run pytest -v --tb=short 2>&1 | tee test.log
         continue-on-error: true
 
       - name: Upload logs

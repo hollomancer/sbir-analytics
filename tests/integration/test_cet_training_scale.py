@@ -28,6 +28,7 @@ from src.models.cet_models import CETArea  # type: ignore
 
 @pytest.mark.integration
 @pytest.mark.slow
+@pytest.mark.compute_intensive
 def test_cet_training_scale_synthetic():
     """
     Train ApplicabilityModel on a synthetic dataset of configurable size and verify
