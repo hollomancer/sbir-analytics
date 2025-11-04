@@ -221,9 +221,9 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
         AssetExecutionContext,
+        enriched_vendor_resolution,
         transformed_transition_evidence,
         transformed_transition_scores,
-        enriched_vendor_resolution,
     )
 
     # Contracts sample:
@@ -351,9 +351,9 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
+        enriched_vendor_resolution,
         transformed_transition_evidence,
         transformed_transition_scores,
-        enriched_vendor_resolution,
     )
 
     # Tiny fixtures (same as the shimmed chain test)
@@ -483,9 +483,9 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     _install_dagster_shim(monkeypatch)
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
+        enriched_vendor_resolution,
         transformed_transition_analytics,
         transformed_transition_scores,
-        enriched_vendor_resolution,
     )
 
     # Reuse tiny fixtures

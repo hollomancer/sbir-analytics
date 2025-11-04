@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pandas as pd
@@ -155,7 +156,32 @@ def main(argv: list[str] | None = None) -> int:
 
     if verbose:
         print("[run] Initializing context")
-    ctx = AssetExecutionContext()
+    
+    # Create context - handle both shim (no args) and real Dagster (requires op_execution_context)
+    try:
+        ctx = AssetExecutionContext()
+    except TypeError as e:
+        if "op_execution_context" in str(e):
+            # Real Dagster AssetExecutionContext requires op_execution_context
+            # Create minimal mock that satisfies Dagster's requirements
+            mock_run = SimpleNamespace()
+            mock_run.run_id = "mock-run-id"
+            
+            mock_op_ctx = SimpleNamespace()
+            # Add minimal attributes that Dagster might expect
+            mock_op_ctx.log = type("Log", (), {
+                "info": lambda self, *args, **kwargs: None,
+                "warning": lambda self, *args, **kwargs: None,
+                "error": lambda self, *args, **kwargs: None,
+                "exception": lambda self, *args, **kwargs: None,
+            })()
+            mock_op_ctx.instance = None
+            mock_op_ctx.resources = SimpleNamespace()
+            mock_op_ctx.run = mock_run
+            mock_op_ctx.run_id = "mock-run-id"
+            ctx = AssetExecutionContext(mock_op_ctx)
+        else:
+            raise
 
     # 1) contracts_sample (reads the configured path internally)
     if verbose:

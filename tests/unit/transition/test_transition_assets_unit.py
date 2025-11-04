@@ -71,7 +71,10 @@ def _write_detection_config(base_dir: Path) -> Path:
 def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition_assets import AssetExecutionContext, validated_contracts_sample  # type: ignore
+    from src.assets.transition_assets import (  # type: ignore
+        AssetExecutionContext,
+        validated_contracts_sample,
+    )
 
     sample_path = Path("data/processed/contracts_sample.parquet")
     sample_path.parent.mkdir(parents=True, exist_ok=True)

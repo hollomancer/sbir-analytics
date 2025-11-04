@@ -584,7 +584,7 @@ def enriched_cet_award_classifications() -> Output:
             "checks_path": str(checks_path),
         }
         return Output(value=str(output_path), metadata=metadata)
-    
+
     try:
         classification_config = loader.load_classification_config()
     except Exception:
