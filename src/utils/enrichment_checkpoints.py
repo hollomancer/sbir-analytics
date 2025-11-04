@@ -87,6 +87,11 @@ class CheckpointStore:
         checkpoint_dict = checkpoint.to_dict()
         new_row = pd.DataFrame([checkpoint_dict])
 
+        # Convert datetime string columns back to datetime objects for proper Parquet storage
+        for col in ["last_success_timestamp", "checkpoint_timestamp"]:
+            if col in new_row.columns and new_row[col].dtype == "object":
+                new_row[col] = pd.to_datetime(new_row[col], errors="coerce")
+
         # Check if checkpoint exists (by partition_id + source)
         if not df.empty:
             mask = (df["partition_id"] == checkpoint.partition_id) & (
