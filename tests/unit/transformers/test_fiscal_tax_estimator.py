@@ -5,6 +5,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal_tax_estimator import FiscalTaxEstimator, TaxEstimationStats

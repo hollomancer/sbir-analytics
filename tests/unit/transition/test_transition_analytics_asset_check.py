@@ -31,10 +31,7 @@ def test_transition_analytics_quality_check_passes_with_valid_rates(monkeypatch,
     monkeypatch.chdir(tmp_path)
 
     # Import the asset check and a context logger shim (import-safe without Dagster)
-    from src.assets.transition_assets import (  # type: ignore
-        AssetExecutionContext,
-        transition_analytics_quality_check,
-    )
+    from src.assets.transition_assets import transition_analytics_quality_check  # type: ignore
 
     # Write a valid checks JSON with positive denominators and rates within [0,1]
     checks_path = Path("data/processed/transition_analytics.checks.json")
@@ -70,10 +67,7 @@ def test_transition_analytics_quality_check_passes_with_valid_rates(monkeypatch,
 def test_transition_analytics_quality_check_fails_with_min_thresholds(monkeypatch, tmp_path):
     # Arrange
     monkeypatch.chdir(tmp_path)
-    from src.assets.transition_assets import (  # type: ignore
-        AssetExecutionContext,
-        transition_analytics_quality_check,
-    )
+    from src.assets.transition_assets import transition_analytics_quality_check  # type: ignore
 
     checks_path = Path("data/processed/transition_analytics.checks.json")
     # Rates are below the thresholds we'll set next
@@ -110,10 +104,7 @@ def test_transition_analytics_quality_check_fails_with_min_thresholds(monkeypatc
 def test_transition_analytics_quality_check_fails_on_zero_denominators(monkeypatch, tmp_path):
     # Arrange
     monkeypatch.chdir(tmp_path)
-    from src.assets.transition_assets import (  # type: ignore
-        AssetExecutionContext,
-        transition_analytics_quality_check,
-    )
+    from src.assets.transition_assets import transition_analytics_quality_check  # type: ignore
 
     checks_path = Path("data/processed/transition_analytics.checks.json")
     # Zero denominators should cause the check to fail

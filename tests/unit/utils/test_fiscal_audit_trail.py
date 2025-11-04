@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.fiscal_audit_trail import FiscalAuditTrail, create_audit_trail

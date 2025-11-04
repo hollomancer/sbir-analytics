@@ -463,7 +463,7 @@ This module tests the pipeline validator functionality to ensure
 comprehensive validation of ETL pipeline stages.
 """
 
-from unittest.mock import Mock
 import pytest
+
 
 pytestmark = pytest.mark.e2e

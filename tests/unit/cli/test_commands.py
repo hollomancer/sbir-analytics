@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
-import typer
 
 from src.cli.commands import enrich, ingest, metrics, status
 from src.cli.context import CommandContext
@@ -43,7 +43,7 @@ class TestStatusCommands:
         # Verify the command function exists and is callable
         assert hasattr(status, "assets")
         assert callable(status.assets)
-        
+
         # The function signature requires a typer context, which is complex to mock
         # This test verifies the command exists and is properly structured
 

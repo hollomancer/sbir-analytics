@@ -249,10 +249,9 @@ def test_cet_award_asset_classifies_with_synthetic_model(tmp_path, monkeypatch):
     assert mapping["award_001"] == "artificial_intelligence"
     assert mapping["award_002"] == "quantum_information_science"
 
-import json
-import pickle
-from datetime import datetime
 from pathlib import Path
+
 import pytest
+
 
 pytestmark = pytest.mark.fast

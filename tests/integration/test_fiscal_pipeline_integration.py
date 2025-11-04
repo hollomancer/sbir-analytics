@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.integration
 from dagster import build_asset_context
 from dagster._core.definitions import load_assets_from_modules

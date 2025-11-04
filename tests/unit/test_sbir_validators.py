@@ -5,6 +5,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.models.quality import QualitySeverity

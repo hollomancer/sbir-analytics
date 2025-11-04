@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 # Skip all tests if rpy2 is not available

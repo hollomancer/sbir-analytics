@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 pytest.importorskip("dagster")
@@ -47,9 +48,7 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
     monkeypatch.chdir(tmp_path)
 
     # Import the asset locally (import-safe without Dagster installed)
-    from src.assets.transition_assets import (  # type: ignore
-        transformed_transition_scores,
-    )
+    from src.assets.transition_assets import transformed_transition_scores  # type: ignore
 
     # Award A1 identified by name (no UEI/DUNS), so vendor id becomes "name:acme co"
     awards_df = pd.DataFrame(
@@ -167,5 +166,6 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
 
 import pandas as pd
 import pytest
+
 
 pytestmark = pytest.mark.fast

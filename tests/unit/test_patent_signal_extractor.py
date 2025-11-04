@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.models.patent import Patent

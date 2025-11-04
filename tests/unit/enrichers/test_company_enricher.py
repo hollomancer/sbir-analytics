@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.enrichers.company_enricher import enrich_awards_with_companies, normalize_company_name

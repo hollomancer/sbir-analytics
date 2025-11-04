@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.ml.features.evidence_extractor import EvidenceExtractor

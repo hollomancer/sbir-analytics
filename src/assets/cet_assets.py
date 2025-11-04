@@ -29,11 +29,11 @@ try:
     from dagster import (
         AssetCheckResult,
         AssetCheckSeverity,
-        AssetExecutionContext as _RealAssetExecutionContext,
         AssetIn,
         asset,
         asset_check,
     )  # type: ignore
+    from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:  # type: ignore

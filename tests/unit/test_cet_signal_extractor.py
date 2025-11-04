@@ -7,6 +7,7 @@ and batch processing for transition detection signals.
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.transition.features.cet_analyzer import (

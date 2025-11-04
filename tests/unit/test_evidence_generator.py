@@ -10,6 +10,7 @@ from datetime import date
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.models.transition_models import (

@@ -20,6 +20,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.e2e
 
 

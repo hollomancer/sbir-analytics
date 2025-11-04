@@ -8,6 +8,7 @@ from datetime import datetime
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 from pydantic import ValidationError
 

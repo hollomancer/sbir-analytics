@@ -2,6 +2,7 @@
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.cli.display.metrics import create_metrics_table, format_threshold_indicator

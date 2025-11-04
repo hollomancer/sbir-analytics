@@ -5,6 +5,7 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal_component_calculator import (
@@ -67,8 +68,8 @@ class TestFiscalComponentCalculator:
         assert result_df.iloc[1]["component_total"] == Decimal("200000")
 
         # Check validation passed
-        assert result_df.iloc[0]["component_valid"] == True
-        assert result_df.iloc[1]["component_valid"] == True
+        assert result_df.iloc[0]["component_valid"] is True
+        assert result_df.iloc[1]["component_valid"] is True
 
     def test_extract_components_empty_df(self, calculator):
         """Test component extraction with empty DataFrame."""
@@ -135,7 +136,7 @@ class TestFiscalComponentCalculator:
 
         result_df = calculator.extract_components(impacts_df)
         # Component should be invalid due to large mismatch (>50% difference)
-        assert result_df.iloc[0]["component_valid"] == False
+        assert result_df.iloc[0]["component_valid"] is False
 
     def test_negative_components(self, calculator):
         """Test validation rejects negative components."""
@@ -154,4 +155,4 @@ class TestFiscalComponentCalculator:
         )
 
         result_df = calculator.extract_components(impacts_df)
-        assert result_df.iloc[0]["component_valid"] == False
+        assert result_df.iloc[0]["component_valid"] is False

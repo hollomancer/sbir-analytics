@@ -259,7 +259,7 @@ def test_summarize_compiles_minimal_payloads():
     assert isinstance(summary.get("phase_effectiveness", []), list)
     assert isinstance(summary.get("avg_time_to_transition_by_agency", []), list)
 
-import pandas as pd
 import pytest
+
 
 pytestmark = pytest.mark.fast

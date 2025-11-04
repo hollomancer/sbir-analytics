@@ -110,8 +110,7 @@ def test_no_pipelines_returns_empty_lists():
 # sbir-etl/tests/unit/ml/test_patent_classifier.py
 
 
-from src.ml.models.dummy_pipeline import DummyPipeline
-from src.ml.models.patent_classifier import PatentCETClassifier, PatentClassification
 import pytest
+
 
 pytestmark = pytest.mark.fast

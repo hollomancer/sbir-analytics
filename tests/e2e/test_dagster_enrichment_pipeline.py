@@ -432,9 +432,7 @@ to final output validation, ensuring all assets materialize successfully and
 data flows correctly between stages.
 """
 
-import pandas as pd
-from dagster import DagsterEventType, build_asset_context, materialize
-from dagster._core.definitions.asset_selection import AssetSelection
 import pytest
+
 
 pytestmark = pytest.mark.e2e

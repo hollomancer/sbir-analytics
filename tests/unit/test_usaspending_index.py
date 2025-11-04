@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.enrichers.usaspending_index import extract_table_sample, parse_toc_table_dat_map

@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.loaders.transition_loader import TransitionLoader

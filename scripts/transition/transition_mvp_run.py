@@ -146,17 +146,21 @@ def main(argv: list[str] | None = None) -> int:
     # Import assets (import-safe; works without Dagster installed)
     try:
         from src.assets.transition_assets import AssetExecutionContext  # type: ignore
-        from src.assets.transition_assets import validated_contracts_sample as a_contracts_sample
-        from src.assets.transition_assets import transformed_transition_evidence as a_transition_evidence_v1
-        from src.assets.transition_assets import transformed_transition_scores as a_transition_scores_v1
         from src.assets.transition_assets import enriched_vendor_resolution as a_vendor_resolution
+        from src.assets.transition_assets import (
+            transformed_transition_evidence as a_transition_evidence_v1,
+        )
+        from src.assets.transition_assets import (
+            transformed_transition_scores as a_transition_scores_v1,
+        )
+        from src.assets.transition_assets import validated_contracts_sample as a_contracts_sample
     except Exception as exc:
         print(f"[error] Failed to import transition assets: {exc}", file=sys.stderr)
         return 2
 
     if verbose:
         print("[run] Initializing context")
-    
+
     # Create context - handle both shim (no args) and real Dagster (requires op_execution_context)
     try:
         ctx = AssetExecutionContext()
@@ -166,7 +170,7 @@ def main(argv: list[str] | None = None) -> int:
             # Create minimal mock that satisfies Dagster's requirements
             mock_run = SimpleNamespace()
             mock_run.run_id = "mock-run-id"
-            
+
             mock_op_ctx = SimpleNamespace()
             # Add minimal attributes that Dagster might expect
             mock_op_ctx.log = type("Log", (), {
