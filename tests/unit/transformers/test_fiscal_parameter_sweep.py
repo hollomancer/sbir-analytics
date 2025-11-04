@@ -3,6 +3,8 @@
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.transformers.fiscal_parameter_sweep import (
     FiscalParameterSweep,
     ParameterRange,

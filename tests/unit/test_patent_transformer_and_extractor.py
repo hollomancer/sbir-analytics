@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 # Import the modules under test; if they are not available skip the tests gracefully.
 pytest.importorskip("pandas")

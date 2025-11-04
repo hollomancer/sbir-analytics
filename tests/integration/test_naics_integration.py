@@ -5,6 +5,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 def _load_naics_module():
     # locate module relative to repo

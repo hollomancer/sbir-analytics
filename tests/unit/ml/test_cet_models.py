@@ -7,6 +7,8 @@ Tests validation logic, constraints, and business rules for CET data models.
 from datetime import datetime
 
 import pytest
+
+pytestmark = pytest.mark.fast
 from pydantic import ValidationError
 
 from src.models.cet_models import (

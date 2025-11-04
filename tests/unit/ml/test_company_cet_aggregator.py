@@ -3,6 +3,8 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.transformers.company_cet_aggregator import CompanyCETAggregator
 
 

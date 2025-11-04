@@ -18,6 +18,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 class TestFullDetectionPipeline:
     """Integration test: Full detection pipeline (awards + contracts → detections) - Task 20.1"""

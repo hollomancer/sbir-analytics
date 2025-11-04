@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 @pytest.mark.unit
 def test_ingest_dta_to_duckdb(tmp_path: Path):

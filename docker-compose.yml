@@ -523,8 +523,8 @@ services:
         set -eux;
         echo 'Installing CI test dependencies (pip) inside container';
         pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
-        echo 'Running pytest inside container';
-        pytest -q;
+        echo 'Running fast tests inside container';
+        pytest -m fast -q;
         echo 'Running Dagster uspto_validation_job runner (in-process)';
         python /app/scripts/ci/run_uspto_job.py;
       "

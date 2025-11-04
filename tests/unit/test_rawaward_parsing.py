@@ -1,5 +1,6 @@
 import pytest
 
+pytestmark = pytest.mark.fast
 
 """Tests for RawAward -> Award parsing and coercion."""
 from datetime import date

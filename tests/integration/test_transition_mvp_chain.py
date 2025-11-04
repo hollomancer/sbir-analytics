@@ -552,3 +552,12 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     counts = checks["counts"]
     assert counts.get("total_awards", 0) >= 1
     assert counts.get("total_companies", 0) >= 1
+
+import json
+import os
+import sys
+import types
+from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.integration

@@ -194,3 +194,10 @@ class TestEnrichmentDeltaEvent:
         assert event.changed_fields == []
         assert event.metadata == {}
         assert event.timestamp is not None  # Should be auto-generated
+
+"""Unit tests for enrichment models."""
+
+from __future__ import annotations
+import pytest
+
+pytestmark = pytest.mark.fast

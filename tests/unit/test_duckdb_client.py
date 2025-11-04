@@ -1,6 +1,9 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
+
+pytestmark = pytest.mark.fast
 
 from src.utils.duckdb_client import DuckDBClient
 

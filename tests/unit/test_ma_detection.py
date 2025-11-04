@@ -40,3 +40,8 @@ def test_company_mergers_and_acquisitions():
     # Test case with no M&A event
     no_ma_events = company_mergers_and_acquisitions(sbir_awards, uspto_patent_assignments_no_ma)
     assert len(no_ma_events) == 0
+
+from datetime import date
+import pytest
+
+pytestmark = pytest.mark.fast

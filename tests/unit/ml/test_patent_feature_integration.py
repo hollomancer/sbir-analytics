@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 
 # These tests exercise integration between the lightweight patent feature
 # extractor and the PatentCETClassifier training flow using DummyPipeline.

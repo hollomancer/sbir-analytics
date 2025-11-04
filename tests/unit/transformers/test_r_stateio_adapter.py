@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.transformers.r_stateio_adapter import RStateIOAdapter
 from src.utils.r_helpers import RFunctionError
 

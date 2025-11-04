@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from src.config.loader import get_config, reload_config
 from src.config.schemas import PipelineConfig
 

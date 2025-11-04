@@ -111,6 +111,41 @@ jobs:
             .secrets.baseline
           if-no-files-found: ignore
 
+  test:
+    name: Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-3.11-
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+      - name: Install project
+        run: poetry install --no-interaction
+      - name: Install duckdb and pyreadstat
+        run: |
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+      - name: Run fast tests
+        run: poetry run pytest -m fast -v
+
   docs-link-check:
     name: Docs Link Check
     runs-on: ubuntu-latest

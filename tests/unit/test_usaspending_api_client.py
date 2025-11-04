@@ -6,6 +6,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.fast
 from httpx import HTTPStatusError, TimeoutException
 
 from src.enrichers.usaspending_api_client import (

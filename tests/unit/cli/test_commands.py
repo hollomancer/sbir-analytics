@@ -3,6 +3,8 @@
 from unittest.mock import Mock
 
 import pytest
+
+pytestmark = pytest.mark.fast
 import typer
 
 from src.cli.commands import enrich, ingest, metrics, status

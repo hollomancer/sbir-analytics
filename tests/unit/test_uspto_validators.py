@@ -184,3 +184,9 @@ def test_uspto_data_quality_validator_generates_report(tmp_path: Path):
     report_path = report.get("report_path")
     if report_path:
         assert Path(report_path).exists()
+
+import csv
+from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.fast

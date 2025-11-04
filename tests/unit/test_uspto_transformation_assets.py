@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 pytest.importorskip("dagster")
 from dagster import build_asset_context

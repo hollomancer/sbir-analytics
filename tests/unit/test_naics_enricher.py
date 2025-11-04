@@ -6,6 +6,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 def _find_naics_path():
     p = Path(__file__).resolve().parent

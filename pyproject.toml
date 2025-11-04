@@ -112,6 +112,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 markers = [
+    "fast: fast unit tests (< 1 second each)",
     "integration: integration tests",
     "slow: long-running tests",
     "e2e: end-to-end tests"

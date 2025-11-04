@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 # Optional imports with graceful skipping
 pytest.importorskip("pandas", reason="pandas missing")

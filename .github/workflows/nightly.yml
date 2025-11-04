@@ -35,8 +35,8 @@ env:
   REPAIR_MAX_RUNTIME_MIN: "15"
 
 jobs:
-  diagnose:
-    name: Run tests and capture logs
+  test-unit:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -68,18 +68,24 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run tests
+      - name: Install duckdb and pyreadstat
+        run: |
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+
+      - name: Run unit tests
         id: test
         run: |
           set -o pipefail
-          poetry run pytest -q 2>&1 | tee test.log
+          poetry run pytest tests/unit/ -v 2>&1 | tee test-unit.log
         continue-on-error: true
 
       - name: Upload logs
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: nightly-test-logs
-          path: test.log
+          name: nightly-unit-test-logs
+          path: test-unit.log
 
       - name: Set failure flag
         id: flags
@@ -89,6 +95,168 @@ jobs:
           else
             echo "failed=false" >> $GITHUB_OUTPUT
           fi
+
+  test-integration:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/password
+        options: >-
+          --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: password
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-3.11-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Install duckdb and pyreadstat
+        run: |
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+
+      - name: Wait for Neo4j
+        run: |
+          echo "Waiting for Neo4j to be ready..."
+          until curl -s -f -o /dev/null "http://localhost:7474"; do
+            echo "Neo4j not ready, sleeping..."
+            sleep 5
+          done
+          echo "Neo4j is ready!"
+
+      - name: Run integration tests
+        id: test
+        run: |
+          set -o pipefail
+          poetry run pytest tests/integration/ -v 2>&1 | tee test-integration.log
+        continue-on-error: true
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-integration-test-logs
+          path: test-integration.log
+
+      - name: Set failure flag
+        id: flags
+        run: |
+          if [ "${{ steps.test.outcome }}" != "success" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+  test-e2e:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry virtual environment
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-3.11-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Install duckdb and pyreadstat
+        run: |
+          poetry run python -m pip install --upgrade pip
+          poetry run pip install duckdb pyreadstat
+
+      - name: Run E2E tests
+        id: test
+        run: |
+          set -o pipefail
+          poetry run pytest tests/e2e/ -v 2>&1 | tee test-e2e.log
+        continue-on-error: true
+
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-e2e-test-logs
+          path: test-e2e.log
+
+      - name: Set failure flag
+        id: flags
+        run: |
+          if [ "${{ steps.test.outcome }}" != "success" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+  diagnose:
+    name: Diagnose Test Failures
+    needs: [test-unit, test-integration, test-e2e]
+    runs-on: ubuntu-latest
+    if: |
+      needs.test-unit.outputs.failed == 'true' ||
+      needs.test-integration.outputs.failed == 'true' ||
+      needs.test-e2e.outputs.failed == 'true'
+    steps:
+      - name: Set failure flag
+        id: flags
+        run: |
+          echo "failed=true" >> $GITHUB_OUTPUT
 
   attempt_repair:
     name: Attempt minimal, reversible fixes
@@ -146,7 +314,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Re-run tests locally
+      - name: Re-run fast tests locally
         id: retest
         if: steps.commit.outputs.changed == 'true'
         run: |
@@ -154,7 +322,7 @@ jobs:
           # Need to install dependencies before running tests
           curl -sSL https://install.python-poetry.org | python3 -
           poetry install --no-interaction
-          poetry run pytest -q 2>&1 | tee test-after-fix.log
+          poetry run pytest -m fast -q 2>&1 | tee test-after-fix.log
         continue-on-error: true
 
       - name: Upload post-fix logs

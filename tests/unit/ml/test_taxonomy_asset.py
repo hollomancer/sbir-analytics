@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
+pytestmark = pytest.mark.fast
 import yaml
 
 import src.assets.cet_assets as cet_assets

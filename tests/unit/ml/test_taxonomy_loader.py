@@ -7,6 +7,8 @@ Tests configuration loading, validation, and error handling.
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.fast
 from pydantic import ValidationError
 
 from src.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader

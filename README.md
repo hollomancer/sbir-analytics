@@ -966,11 +966,44 @@ export SBIR_ETL__CORE__DEBUG=true
 
 ## Testing
 
+### CI Test Execution Strategy
+
+The CI system optimizes test runtime by separating fast tests (for PR/commit workflows) from long-running tests (for nightly builds):
+
+- **PR/Commit Workflows**: Run only fast tests (`pytest -m fast`) - completes in < 5 minutes
+- **Nightly Builds**: Run comprehensive test suite in parallel:
+  - Unit tests (fast + slow)
+  - Integration tests
+  - E2E tests
+- **Test Markers**:
+  - `@pytest.mark.fast` - Fast unit tests (< 1 second each)
+  - `@pytest.mark.slow` - Slow unit tests (ML training, heavy computation)
+  - `@pytest.mark.integration` - Integration tests
+  - `@pytest.mark.e2e` - End-to-end tests
+
+### Running Tests Locally
+
 ```bash
 
 ## Run all tests
 
 poetry run pytest
+
+## Run fast tests only (matches PR/commit CI)
+
+poetry run pytest -m fast
+
+## Run slow tests only
+
+poetry run pytest -m slow
+
+## Run integration tests
+
+poetry run pytest -m integration
+
+## Run E2E tests
+
+poetry run pytest -m e2e
 
 ## Run with coverage
 

@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 import yaml
 
+pytestmark = pytest.mark.fast
+
 from src.config.loader import (
     ConfigurationError,
     _apply_env_overrides,

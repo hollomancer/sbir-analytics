@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.cli.display.metrics import create_metrics_table, format_threshold_indicator
 from src.cli.display.progress import PipelineProgressTracker, create_progress_tracker
 from src.cli.display.status import (

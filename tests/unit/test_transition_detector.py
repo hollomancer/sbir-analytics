@@ -9,6 +9,8 @@ from datetime import date, timedelta
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.models.transition_models import (
     CompetitionType,
     ConfidenceLevel,

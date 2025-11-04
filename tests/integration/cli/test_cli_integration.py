@@ -3,6 +3,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
+
+pytestmark = pytest.mark.integration
 from typer.testing import CliRunner
 
 from src.cli.main import app

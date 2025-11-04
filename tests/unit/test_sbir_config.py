@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.config.schemas import (
     DataQualityConfig,
     ExtractionConfig,

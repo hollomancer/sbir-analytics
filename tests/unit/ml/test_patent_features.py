@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.ml.features.patent_features import (
     DEFAULT_KEYWORDS_MAP,
     PatentFeatureVector,

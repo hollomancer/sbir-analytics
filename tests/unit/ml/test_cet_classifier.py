@@ -16,6 +16,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from src.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
 from src.models.cet_models import CETArea, ClassificationLevel
 

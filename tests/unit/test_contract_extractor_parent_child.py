@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.extractors.contract_extractor import ContractExtractor
 from src.models.transition_models import FederalContract
 

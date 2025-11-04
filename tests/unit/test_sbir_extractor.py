@@ -4,6 +4,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.models.award import RawAward
 

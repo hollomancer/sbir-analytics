@@ -8,6 +8,8 @@ from datetime import date
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
 from src.transition.detection.scoring import TransitionScorer
 

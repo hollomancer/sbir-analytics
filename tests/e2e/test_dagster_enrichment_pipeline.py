@@ -424,3 +424,17 @@ class TestPipelineEdgeCases:
         # Metadata should show 0% match rate
         metadata = enriched_result.metadata
         assert "0.0%" in metadata["match_rate"] or metadata["match_rate"] == "0.0%"
+
+"""End-to-end Dagster pipeline smoke tests for SBIR-USAspending enrichment.
+
+Tests the complete enrichment pipeline from data ingestion through enrichment
+to final output validation, ensuring all assets materialize successfully and
+data flows correctly between stages.
+"""
+
+import pandas as pd
+from dagster import DagsterEventType, build_asset_context, materialize
+from dagster._core.definitions.asset_selection import AssetSelection
+import pytest
+
+pytestmark = pytest.mark.e2e

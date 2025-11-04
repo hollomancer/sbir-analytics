@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 

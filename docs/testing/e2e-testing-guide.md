@@ -107,6 +107,31 @@ make docker-test
 
 ## CI/CD Integration
 
+### Test Execution Strategy
+
+The CI system optimizes runtime by separating fast tests from long-running tests:
+
+- **PR/Commit Workflows** (`on-pr.yml`, `on-commit.yml`, `on-push-main.yml`):
+  - Run only fast tests (`pytest -m fast`)
+  - Completes in < 5 minutes for quick developer feedback
+  - Includes ML unit tests (merged into main test job)
+
+- **Nightly Builds** (`nightly.yml`):
+  - Runs comprehensive test suite in parallel:
+    - `test-unit`: All unit tests (fast + slow)
+    - `test-integration`: Integration tests with Neo4j service
+    - `test-e2e`: End-to-end tests
+  - Completes in ~10-15 minutes total
+  - All tests run in parallel for faster completion
+
+- **Test Markers**:
+  - `@pytest.mark.fast` - Fast unit tests (< 1 second each)
+  - `@pytest.mark.slow` - Slow unit tests (ML training, heavy computation)
+  - `@pytest.mark.integration` - Integration tests
+  - `@pytest.mark.e2e` - End-to-end tests
+
+### Workflow Files
+
 - `container-ci.yml` runs the containerized suites in GitHub Actions
 - `neo4j-smoke.yml` validates graph connectivity and schema expectations
 - `performance-regression-check.yml` compares benchmark artifacts and alerts on drift

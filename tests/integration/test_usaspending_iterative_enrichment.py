@@ -15,6 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from src.enrichers.usaspending_api_client import USAspendingAPIClient
 from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
 from src.utils.enrichment_checkpoints import CheckpointStore

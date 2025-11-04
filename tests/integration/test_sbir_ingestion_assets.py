@@ -136,3 +136,10 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
     except Exception:
         # ignore if not empty or removal fails
         pass
+
+import json
+from pathlib import Path
+from types import SimpleNamespace
+import pytest
+
+pytestmark = pytest.mark.integration

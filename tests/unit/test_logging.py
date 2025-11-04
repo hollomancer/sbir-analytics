@@ -1,8 +1,11 @@
 """Unit tests for logging configuration."""
 
+import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+
+pytestmark = pytest.mark.fast
 
 from src.utils.logging_config import (
     LogContext,

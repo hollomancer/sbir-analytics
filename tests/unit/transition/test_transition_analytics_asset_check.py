@@ -112,3 +112,9 @@ def test_transition_analytics_quality_check_fails_on_zero_denominators(monkeypat
     # Assert
     assert hasattr(result, "passed")
     assert bool(result.passed) is False
+
+import json
+from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.fast

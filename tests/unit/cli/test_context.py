@@ -1,6 +1,9 @@
 """Unit tests for CLI CommandContext."""
 
+import pytest
 from unittest.mock import Mock, patch
+
+pytestmark = pytest.mark.fast
 
 from rich.console import Console
 

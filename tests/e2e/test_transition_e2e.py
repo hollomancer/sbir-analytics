@@ -20,6 +20,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.e2e
+
 
 class TestDagsterPipelineMaterialization:
     """E2E test: Dagster pipeline materialization (all transition assets) - Task 21.1"""

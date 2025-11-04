@@ -106,3 +106,12 @@ def test_no_pipelines_returns_empty_lists():
     assert len(results) == len(titles)
     # Each entry should be an empty list when no pipelines are configured
     assert all(isinstance(r, list) and len(r) == 0 for r in results)
+
+# sbir-etl/tests/unit/ml/test_patent_classifier.py
+
+
+from src.ml.models.dummy_pipeline import DummyPipeline
+from src.ml.models.patent_classifier import PatentCETClassifier, PatentClassification
+import pytest
+
+pytestmark = pytest.mark.fast

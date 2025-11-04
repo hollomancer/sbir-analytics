@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 # -----------------------------
 # Helpers for asset invocation

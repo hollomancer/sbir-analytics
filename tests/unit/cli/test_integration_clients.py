@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 from src.cli.integration.dagster_client import DagsterClient
 from src.cli.integration.metrics_collector import MetricsCollector
 from src.cli.integration.neo4j_client import Neo4jClient

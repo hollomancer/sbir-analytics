@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.fast
+
 
 # Loader tests require neo4j driver availability in the environment (match existing project pattern)
 pytest.importorskip("neo4j", reason="neo4j driver missing")
