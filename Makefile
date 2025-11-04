@@ -312,6 +312,28 @@ neo4j-check: env-check ## Run the Neo4j health check
 	 fi
 
 # -----------------------------------------------------------------------------
+# Transition MVP                                                                    
+# -----------------------------------------------------------------------------
+
+.PHONY: transition-mvp-run
+transition-mvp-run: ## Run the Transition MVP pipeline locally (no Dagster required)
+	@$(call info,Running Transition MVP pipeline)
+	$(call run,poetry run python scripts/transition/transition_mvp_run.py)
+	@$(call success,Transition MVP pipeline completed)
+
+.PHONY: transition-mvp-clean
+transition-mvp-clean: ## Clean up Transition MVP artifacts
+	@$(call info,Cleaning up Transition MVP artifacts)
+	@set -euo pipefail; \
+	 FILES="data/processed/contracts_sample.* data/processed/vendor_resolution.* data/processed/transitions.* data/processed/transitions_evidence.* reports/validation/transition_mvp.json"; \
+	 if ls $$FILES >/dev/null 2>&1; then \
+	   rm -f $$FILES; \
+	   $(call success,Transition MVP artifacts cleaned); \
+	 else \
+	   $(call warn,No Transition MVP artifacts found to clean); \
+	 fi
+
+# -----------------------------------------------------------------------------
 # Convenience targets                                                              
 # -----------------------------------------------------------------------------
 
@@ -326,4 +348,4 @@ neo4j-check: env-check ## Run the Neo4j health check
 	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
 	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
 	docker-exec env-check docker-check docker-check-install neo4j-up \
-	neo4j-down neo4j-reset neo4j-check
+	neo4j-down neo4j-reset neo4j-check transition-mvp-run transition-mvp-clean
