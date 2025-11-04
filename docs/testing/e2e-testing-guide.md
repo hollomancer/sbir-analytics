@@ -109,12 +109,34 @@ make docker-test
 
 ### Test Execution Strategy
 
-The CI system optimizes runtime by separating fast tests from long-running tests:
+The CI system optimizes runtime by separating fast tests from long-running tests and prioritizing jobs:
+
+#### Job Priority Tiers
+
+CI jobs are organized into three priority tiers:
+
+1. **Tier 1 (Speed)**: Fast tests run first for immediate feedback
+   - `test` job runs fast unit tests (`pytest -m fast`)
+   - Completes in < 5 minutes
+   - All subsequent tiers depend on this passing
+
+2. **Tier 2 (User Stories)**: Core functionality tests run after speed tier
+   - `container-build-test` - Containerized deployment validation
+   - `cet-dev-e2e` - CET pipeline E2E test (key feature)
+   - `transition-mvp` - Transition detection pipeline (key feature)
+   - These run in parallel after Tier 1 passes
+
+3. **Tier 3 (Performance)**: Performance checks run last (non-blocking)
+   - `performance-check` - Performance regression detection
+   - Uses `continue-on-error: true` to not block workflow
+   - Provides metrics but doesn't prevent merges
+
+#### Workflow-Specific Behavior
 
 - **PR/Commit Workflows** (`on-pr.yml`, `on-commit.yml`, `on-push-main.yml`):
-  - Run only fast tests (`pytest -m fast`)
-  - Completes in < 5 minutes for quick developer feedback
-  - Includes ML unit tests (merged into main test job)
+  - Tier 1: Fast tests run immediately
+  - Tier 2: User story jobs run conditionally (based on path filters for PRs)
+  - Tier 3: Performance checks run last, non-blocking
 
 - **Nightly Builds** (`nightly.yml`):
   - Runs comprehensive test suite in parallel:

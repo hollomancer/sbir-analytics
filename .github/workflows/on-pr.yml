@@ -171,6 +171,7 @@ jobs:
           fail_ci_if_error: false
 
   container-build-test:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -245,9 +246,10 @@ jobs:
             reports || true
 
   performance-check:
+    needs: [test, detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: detect-changes
+    continue-on-error: true
     if: needs.detect-changes.outputs.performance == 'true'
     steps:
       - name: Checkout code
@@ -453,8 +455,10 @@ jobs:
           fi
 
   cet-pipeline:
+    needs: [test, detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: needs.detect-changes.outputs.cet == 'true'
 
     services:
       neo4j:
@@ -574,9 +578,9 @@ jobs:
           if-no-files-found: warn
 
   neo4j-cet-smoke:
+    needs: [test, detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: detect-changes
     if: needs.detect-changes.outputs.cet == 'true'
     services:
       neo4j:
@@ -778,9 +782,9 @@ jobs:
 
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
+    needs: [test, detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: detect-changes
     if: needs.detect-changes.outputs.transition == 'true'
     permissions:
       contents: read

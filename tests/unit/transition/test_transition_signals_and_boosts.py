@@ -29,7 +29,7 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
     # Import locally so env/working dir changes apply
     from src.assets.transition_assets import (  # noqa: WPS433
         AssetExecutionContext,
-        transition_scores_v1,
+        transformed_transition_scores,
     )
 
     # Contracts sample: one contract intended to match A2 by fuzzy name; include fields for all boosts
@@ -80,7 +80,7 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
     )
 
     ctx = AssetExecutionContext()
-    scores_out = transition_scores_v1(ctx, vendor_res_df, contracts_df, awards_df)
+    scores_out = transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df)
     scores_df, _ = _unwrap_output(scores_out)
 
     # Expect 1 candidate: A2↔C2 via fuzzy + all boosts

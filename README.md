@@ -968,13 +968,30 @@ export SBIR_ETL__CORE__DEBUG=true
 
 ### CI Test Execution Strategy
 
-The CI system optimizes test runtime by separating fast tests (for PR/commit workflows) from long-running tests (for nightly builds):
+The CI system optimizes test runtime with prioritized job tiers:
 
-- **PR/Commit Workflows**: Run only fast tests (`pytest -m fast`) - completes in < 5 minutes
-- **Nightly Builds**: Run comprehensive test suite in parallel:
-  - Unit tests (fast + slow)
-  - Integration tests
-  - E2E tests
+#### Job Priority Tiers
+
+1. **Tier 1 (Speed)**: Fast tests run first
+   - Fast unit tests (`pytest -m fast`) - completes in < 5 minutes
+   - Provides immediate feedback to developers
+   - All subsequent tiers depend on this passing
+
+2. **Tier 2 (User Stories)**: Core functionality tests
+   - Containerized deployment validation
+   - CET pipeline E2E tests
+   - Transition detection pipeline tests
+   - Runs in parallel after Tier 1 passes
+
+3. **Tier 3 (Performance)**: Performance checks (non-blocking)
+   - Performance regression detection
+   - Runs after user story tests
+   - Does not block merges but provides valuable metrics
+
+#### Workflow Behavior
+
+- **PR/Commit Workflows**: Run Tier 1 immediately, Tier 2 conditionally, Tier 3 last
+- **Nightly Builds**: Run comprehensive test suite in parallel (all tiers)
 - **Test Markers**:
   - `@pytest.mark.fast` - Fast unit tests (< 1 second each)
   - `@pytest.mark.slow` - Slow unit tests (ML training, heavy computation)
