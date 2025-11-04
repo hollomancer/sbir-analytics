@@ -1,4 +1,10 @@
 import pandas as pd
+import pytest
+
+pytestmark = pytest.mark.fast
+
+pytest.importorskip("dagster")
+from dagster import build_asset_context
 
 
 def _unwrap_output(result):
@@ -40,9 +46,8 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
     # Isolate all IO under a temp working directory
     monkeypatch.chdir(tmp_path)
 
-    # Import the asset and shim context locally (import-safe without Dagster installed)
+    # Import the asset locally (import-safe without Dagster installed)
     from src.assets.transition_assets import (  # type: ignore
-        AssetExecutionContext,
         transformed_transition_scores,
     )
 
@@ -112,20 +117,28 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
         ]
     )
 
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
+    # Access underlying compute function when Dagster is installed
+    scores_asset = transformed_transition_scores
+    if hasattr(scores_asset, "node_def") and hasattr(scores_asset.node_def, "compute_fn"):
+        scores_fn = scores_asset.node_def.compute_fn
+    elif hasattr(scores_asset, "compute_fn"):
+        scores_fn = scores_asset.compute_fn
+    else:
+        scores_fn = scores_asset
 
     # Run 1: original order
-    out1, _ = _unwrap_output(transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df))
+    out1, _ = _unwrap_output(scores_fn(ctx, vendor_res_df, contracts_df, awards_df))
     out1 = _drop_dynamic_columns(out1)
 
     # Run 2: vendor_resolution rows reversed
     vr_rev = vendor_res_df.iloc[::-1].reset_index(drop=True)
-    out2, _ = _unwrap_output(transformed_transition_scores(ctx, vr_rev, contracts_df, awards_df))
+    out2, _ = _unwrap_output(scores_fn(ctx, vr_rev, contracts_df, awards_df))
     out2 = _drop_dynamic_columns(out2)
 
     # Run 3: contracts rows reversed
     contracts_rev = contracts_df.iloc[::-1].reset_index(drop=True)
-    out3, _ = _unwrap_output(transformed_transition_scores(ctx, vendor_res_df, contracts_rev, awards_df))
+    out3, _ = _unwrap_output(scores_fn(ctx, vendor_res_df, contracts_rev, awards_df))
     out3 = _drop_dynamic_columns(out3)
 
     # Helper to extract the ordered top-k for award A1 as emitted by the asset
@@ -145,7 +158,7 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
     assert top1 == top2 == top3
 
     # Idempotence on identical inputs: running again should yield same rows (ignoring dynamic fields)
-    out1b, _ = _unwrap_output(transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df))
+    out1b, _ = _unwrap_output(scores_fn(ctx, vendor_res_df, contracts_df, awards_df))
     out1b = _drop_dynamic_columns(out1b)
     # Compare as lists of row dicts for robustness
     rows1 = out1.to_dict(orient="records")
