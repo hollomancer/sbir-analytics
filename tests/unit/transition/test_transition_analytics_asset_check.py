@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pandas as pd  # noqa: F401  # kept for parity with other transition tests using pandas
+import pytest
 
 
 def _write_checks(path: Path, award, company) -> None:
@@ -47,7 +48,8 @@ def test_transition_analytics_quality_check_passes_with_valid_rates(monkeypatch,
 
     # Act
     pytest.importorskip("dagster")
-    from dagster import build_asset_context
+    from dagster import build_asset_context  # noqa: PLC0415
+
     ctx = build_asset_context()
     # Access underlying compute function when Dagster is installed
     check_asset = transition_analytics_quality_check
@@ -82,6 +84,9 @@ def test_transition_analytics_quality_check_fails_with_min_thresholds(monkeypatc
     monkeypatch.setenv("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", "0.40")
 
     # Act
+    pytest.importorskip("dagster")
+    from dagster import build_asset_context  # noqa: PLC0415
+
     ctx = build_asset_context()
     # Access underlying compute function when Dagster is installed
     check_asset = transition_analytics_quality_check
@@ -115,6 +120,9 @@ def test_transition_analytics_quality_check_fails_on_zero_denominators(monkeypat
     )
 
     # Act
+    pytest.importorskip("dagster")
+    from dagster import build_asset_context  # noqa: PLC0415
+
     ctx = build_asset_context()
     # Access underlying compute function when Dagster is installed
     check_asset = transition_analytics_quality_check

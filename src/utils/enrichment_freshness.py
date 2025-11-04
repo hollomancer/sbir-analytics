@@ -66,15 +66,24 @@ class FreshnessStore:
         # Convert to Pydantic model for serialization
         model = EnrichmentFreshnessRecordModel.from_dataclass(record)
 
+        # Convert metadata dict to JSON string for Parquet compatibility (handles empty dicts)
+        import json
+
+        model_dict = model.model_dump()
+        if "metadata" in model_dict and isinstance(model_dict["metadata"], dict):
+            model_dict["metadata"] = json.dumps(model_dict["metadata"]) if model_dict["metadata"] else "{}"
+
         # Create DataFrame from single record
-        new_row = pd.DataFrame([model.model_dump()])
+        new_row = pd.DataFrame([model_dict])
 
         # Check if record exists (by award_id + source)
         if not df.empty:
             mask = (df["award_id"] == record.award_id) & (df["source"] == record.source)
             if mask.any():
-                # Update existing record
-                df.loc[mask, new_row.columns] = new_row.iloc[0]
+                # Update existing record - replace the entire row
+                idx = df[mask].index[0]
+                for col in new_row.columns:
+                    df.loc[idx, col] = new_row[col].iloc[0]
             else:
                 # Append new record
                 df = pd.concat([df, new_row], ignore_index=True)
@@ -95,15 +104,27 @@ class FreshnessStore:
         df = self.load_all()
 
         # Convert all records to Pydantic models
+        import json
+
         models = [EnrichmentFreshnessRecordModel.from_dataclass(r) for r in records]
-        new_rows = pd.DataFrame([m.model_dump() for m in models])
+        # Convert metadata dicts to JSON strings for Parquet compatibility
+        model_dicts = []
+        for m in models:
+            d = m.model_dump()
+            if "metadata" in d and isinstance(d["metadata"], dict):
+                d["metadata"] = json.dumps(d["metadata"]) if d["metadata"] else "{}"
+            model_dicts.append(d)
+        new_rows = pd.DataFrame(model_dicts)
 
         if not df.empty:
             # Update existing records and append new ones
             for _idx, new_row in new_rows.iterrows():
                 mask = (df["award_id"] == new_row["award_id"]) & (df["source"] == new_row["source"])
                 if mask.any():
-                    df.loc[mask, new_row.index] = new_row.values
+                    # Update existing record - replace the entire row
+                    idx = df[mask].index[0]
+                    for col in new_row.index:
+                        df.loc[idx, col] = new_row[col]
                 else:
                     df = pd.concat([df, new_row.to_frame().T], ignore_index=True)
         else:
@@ -144,7 +165,13 @@ class FreshnessStore:
             return None
 
         row = df[mask].iloc[0]
-        model = EnrichmentFreshnessRecordModel(**row.to_dict())
+        row_dict = row.to_dict()
+        # Convert metadata JSON string back to dict if present
+        import json
+
+        if "metadata" in row_dict and isinstance(row_dict["metadata"], str):
+            row_dict["metadata"] = json.loads(row_dict["metadata"]) if row_dict["metadata"] else {}
+        model = EnrichmentFreshnessRecordModel(**row_dict)
         return model.to_dataclass()
 
     def get_stale_records(self, source: str, sla_days: int) -> list[EnrichmentFreshnessRecord]:
@@ -170,19 +197,25 @@ class FreshnessStore:
         now = datetime.now()
         cutoff = now - timedelta(days=sla_days)
 
+        import json
+
         stale_records = []
         for _, row in df_source.iterrows():
             last_success = row.get("last_success_at")
+            row_dict = row.to_dict()
+            # Convert metadata JSON string back to dict if present
+            if "metadata" in row_dict and isinstance(row_dict["metadata"], str):
+                row_dict["metadata"] = json.loads(row_dict["metadata"]) if row_dict["metadata"] else {}
             if pd.isna(last_success):
                 # No successful enrichment yet
-                stale_records.append(EnrichmentFreshnessRecordModel(**row.to_dict()).to_dataclass())
+                stale_records.append(EnrichmentFreshnessRecordModel(**row_dict).to_dataclass())
             else:
                 # Check if last success is before cutoff
                 if isinstance(last_success, pd.Timestamp):
                     last_success = last_success.to_pydatetime()
                 if last_success < cutoff:
                     stale_records.append(
-                        EnrichmentFreshnessRecordModel(**row.to_dict()).to_dataclass()
+                        EnrichmentFreshnessRecordModel(**row_dict).to_dataclass()
                     )
 
         return stale_records

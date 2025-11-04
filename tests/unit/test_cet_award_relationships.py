@@ -11,21 +11,27 @@ pytestmark = pytest.mark.fast
 # -----------------------------
 # Helpers for asset invocation
 # -----------------------------
-class DummyLog:
-    def info(self, *args, **kwargs):
-        pass
+try:
+    from dagster import build_asset_context
 
-    def warning(self, *args, **kwargs):
-        pass
+    HAVE_BUILD_CONTEXT = True
+except Exception:  # pragma: no cover
+    HAVE_BUILD_CONTEXT = False
 
-    def exception(self, *args, **kwargs):
-        pass
+    class DummyLog:
+        def info(self, *args, **kwargs):
+            pass
 
+        def warning(self, *args, **kwargs):
+            pass
 
-class DummyContext:
-    def __init__(self, op_config: dict[str, Any] | None = None):
-        self.op_config = op_config or {}
-        self.log = DummyLog()
+        def exception(self, *args, **kwargs):
+            pass
+
+    class DummyContext:
+        def __init__(self, op_config: dict[str, Any] | None = None):
+            self.op_config = op_config or {}
+            self.log = DummyLog()
 
 
 # -----------------------------
@@ -199,8 +205,15 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     monkeypatch.setattr(mod, "CETLoader", FakeLoader)
     monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
-    # Execute asset
-    result = mod.neo4j_award_cet_relationships(DummyContext(), None, None)
+    # Execute asset - use build_asset_context if available, otherwise DummyContext
+    if HAVE_BUILD_CONTEXT:
+        ctx = build_asset_context()
+        # Set op_config if not already set
+        if not hasattr(ctx, "op_config") or ctx.op_config is None:
+            ctx.op_config = {}
+    else:
+        ctx = DummyContext()
+    result = mod.neo4j_award_cet_relationships(ctx, None, None)
 
     assert result["status"] == "success"
     assert result["relationships_type"] == "APPLICABLE_TO"

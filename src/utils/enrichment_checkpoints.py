@@ -31,20 +31,32 @@ class EnrichmentCheckpoint:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert checkpoint to dictionary for serialization."""
+        import json
+
         data = asdict(self)
         # Convert datetime to ISO string
+        # Convert metadata dict to JSON string for Parquet compatibility
         for key, value in data.items():
             if isinstance(value, datetime):
                 data[key] = value.isoformat()
+            elif key == "metadata" and isinstance(value, dict):
+                # Convert dict to JSON string for Parquet compatibility (handles empty dicts)
+                data[key] = json.dumps(value) if value else "{}"
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EnrichmentCheckpoint:
         """Create checkpoint from dictionary."""
+        import json
+
         # Convert ISO strings to datetime
+        # Convert metadata JSON string back to dict
         for key in ["last_success_timestamp", "checkpoint_timestamp"]:
             if key in data and data[key] and isinstance(data[key], str):
                 data[key] = datetime.fromisoformat(data[key])
+        if "metadata" in data and isinstance(data["metadata"], str):
+            # Parse JSON string back to dict
+            data["metadata"] = json.loads(data["metadata"]) if data["metadata"] else {}
         return cls(**data)
 
 
@@ -81,8 +93,12 @@ class CheckpointStore:
                 df["source"] == checkpoint.source
             )
             if mask.any():
-                # Update existing checkpoint
-                df.loc[mask, new_row.columns] = new_row.iloc[0]
+                # Update existing checkpoint - replace the entire row
+                # Find the index of the matching row
+                idx = df[mask].index[0]
+                # Update all columns from new_row
+                for col in new_row.columns:
+                    df.loc[idx, col] = new_row[col].iloc[0]
             else:
                 # Append new checkpoint
                 df = pd.concat([df, new_row], ignore_index=True)
@@ -112,6 +128,11 @@ class CheckpointStore:
 
         row = df[mask].iloc[0]
         checkpoint_dict = row.to_dict()
+        # Ensure metadata is handled correctly (it's stored as JSON string)
+        if "metadata" in checkpoint_dict and isinstance(checkpoint_dict["metadata"], str):
+            import json
+
+            checkpoint_dict["metadata"] = json.loads(checkpoint_dict["metadata"]) if checkpoint_dict["metadata"] else {}
         return EnrichmentCheckpoint.from_dict(checkpoint_dict)
 
     def load_all(self) -> pd.DataFrame:
@@ -129,6 +150,8 @@ class CheckpointStore:
             for col in ["last_success_timestamp", "checkpoint_timestamp"]:
                 if col in df.columns:
                     df[col] = pd.to_datetime(df[col])
+            # metadata is stored as JSON string, keep as string for now
+            # (will be parsed in from_dict)
             return df
         except Exception as e:
             logger.error(f"Failed to load checkpoints: {e}")

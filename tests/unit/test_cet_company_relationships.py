@@ -18,21 +18,27 @@ from src.loaders.neo4j_client import LoadMetrics  # type: ignore
 # -----------------------------
 # Helpers for asset invocation
 # -----------------------------
-class DummyLog:
-    def info(self, *args, **kwargs):
-        pass
+try:
+    from dagster import build_asset_context
 
-    def warning(self, *args, **kwargs):
-        pass
+    HAVE_BUILD_CONTEXT = True
+except Exception:  # pragma: no cover
+    HAVE_BUILD_CONTEXT = False
 
-    def exception(self, *args, **kwargs):
-        pass
+    class DummyLog:
+        def info(self, *args, **kwargs):
+            pass
 
+        def warning(self, *args, **kwargs):
+            pass
 
-class DummyContext:
-    def __init__(self, op_config: dict[str, Any] | None = None):
-        self.op_config = op_config or {}
-        self.log = DummyLog()
+        def exception(self, *args, **kwargs):
+            pass
+
+    class DummyContext:
+        def __init__(self, op_config: dict[str, Any] | None = None):
+            self.op_config = op_config or {}
+            self.log = DummyLog()
 
 
 # -----------------------------
@@ -157,9 +163,9 @@ def test_create_company_cet_relationships_missing_key_and_missing_cet_are_skippe
 
     def _fake_batch_create_relationships(*, relationships, metrics):
         captured["relationships"] = relationships
-        m = LoadMetrics()
-        m.relationships_created = {"SPECIALIZES_IN": len(relationships)}
-        return m
+        # Use the metrics object passed in (preserves errors already counted by loader)
+        metrics.relationships_created = {"SPECIALIZES_IN": len(relationships)}
+        return metrics
 
     mock_client = MagicMock()
     mock_client.batch_create_relationships.side_effect = _fake_batch_create_relationships
@@ -264,8 +270,15 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     monkeypatch.setattr(mod, "CETLoader", FakeLoader)
     monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
-    # Execute asset
-    result = mod.neo4j_company_cet_relationships(DummyContext(), None, None)
+    # Execute asset - use build_asset_context if available, otherwise DummyContext
+    if HAVE_BUILD_CONTEXT:
+        ctx = build_asset_context()
+        # Set op_config if not already set
+        if not hasattr(ctx, "op_config") or ctx.op_config is None:
+            ctx.op_config = {}
+    else:
+        ctx = DummyContext()
+    result = mod.neo4j_company_cet_relationships(ctx, None, None)
 
     assert result["status"] == "success"
     assert result["relationships_type"] == "SPECIALIZES_IN"
@@ -330,7 +343,11 @@ def test_asset_neo4j_company_cet_relationships_fallback_key_property(monkeypatch
     monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
     # Force initial key_property to 'uei' to test fallback behavior
-    ctx = DummyContext(op_config={"key_property": "uei"})
+    if HAVE_BUILD_CONTEXT:
+        ctx = build_asset_context()
+        ctx.op_config = {"key_property": "uei"}
+    else:
+        ctx = DummyContext(op_config={"key_property": "uei"})
     result = mod.neo4j_company_cet_relationships(ctx, None, None)
 
     assert result["status"] == "success"

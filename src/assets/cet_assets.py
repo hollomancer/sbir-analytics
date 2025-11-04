@@ -37,7 +37,7 @@ try:
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
+        def __init__(self, op_execution_context=None, op_config=None) -> None:
             if op_execution_context is None:
                 # For testing: create a minimal mock-like object
                 class _L:
@@ -51,11 +51,19 @@ try:
                         print(*a)
 
                 self.log = _L()
+                self.op_config = op_config or {}
                 self._is_shim = True
             else:
                 # For real usage: use the real Dagster context
                 self._real_context = _RealAssetExecutionContext(op_execution_context)
                 self.log = self._real_context.log
+                # Try to get op_config from the real context if available
+                if hasattr(self._real_context, "op_config"):
+                    self.op_config = self._real_context.op_config
+                elif hasattr(op_execution_context, "op_config"):
+                    self.op_config = op_execution_context.op_config
+                else:
+                    self.op_config = op_config or {}
                 self._is_shim = False
 
 except Exception:  # pragma: no cover

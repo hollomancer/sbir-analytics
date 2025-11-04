@@ -63,14 +63,13 @@ class TestDagsterClient:
             "records_processed": Mock(value=1000),
         }
         # The code accesses: event.dagster_event.metadata where event = latest.dagster_event
-        # So we need: record.dagster_event.dagster_event.metadata
-        mock_inner_dagster_event = Mock()
-        mock_inner_dagster_event.metadata = mock_metadata
-        mock_dagster_event = Mock()
-        mock_dagster_event.dagster_event = mock_inner_dagster_event
+        # Looking at line 138: metadata = event.dagster_event.metadata if event and hasattr(event, "dagster_event") and event.dagster_event else {}
+        # So latest has dagster_event, and latest.dagster_event is the event, and event.dagster_event.metadata is the metadata
+        mock_event = Mock()
+        mock_event.dagster_event = Mock()
+        mock_event.dagster_event.metadata = mock_metadata
         mock_event_record = Mock()
-        # Set dagster_event attribute on the record
-        mock_event_record.dagster_event = mock_dagster_event
+        mock_event_record.dagster_event = mock_event
         mock_event_record.timestamp = datetime.now().timestamp()
         mock_instance.get_event_records.return_value = [mock_event_record]
         client._instance = mock_instance
@@ -268,15 +267,14 @@ class TestMetricsCollector:
         """Test getting metrics from files."""
         # Setup mocks
         mock_exists.return_value = True
-        mock_json_load.return_value = [
-            {
-                "timestamp": "2024-01-01T00:00:00",
-                "asset_key": "test_asset",
-                "duration_seconds": 10.0,
-                "records_processed": 100,
-                "success": True,
-            }
-        ]
+        # json.load should return a dict (not a list) for each file
+        mock_json_load.return_value = {
+            "timestamp": "2024-01-01T00:00:00",
+            "asset_key": "test_asset",
+            "duration_seconds": 10.0,
+            "records_processed": 100,
+            "success": True,
+        }
 
         # Mock Path.glob
         mock_file = Mock()
