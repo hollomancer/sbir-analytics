@@ -201,7 +201,9 @@ class TestAPICalls:
         with patch.object(api_client, "_make_request", new_callable=AsyncMock) as mock_request:
             mock_request.return_value = sample_recipient_response
 
-            result = await api_client.get_recipient_by_uei("ABC123DEF456")  # pragma: allowlist secret
+            result = await api_client.get_recipient_by_uei(
+                "ABC123DEF456"
+            )  # pragma: allowlist secret
 
             assert result == sample_recipient_response
             mock_request.assert_called_once()

@@ -1,6 +1,5 @@
 """Unit tests for CLI display components."""
 
-
 import pytest
 
 from src.cli.display.metrics import create_metrics_table, format_threshold_indicator

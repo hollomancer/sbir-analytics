@@ -28,6 +28,7 @@ try:
         enriched_cet_award_classifications,
         transformed_cet_company_profiles,
     )
+
     # Create aliases for backward compatibility
     cet_award_classifications = enriched_cet_award_classifications  # type: ignore
     cet_company_profiles = transformed_cet_company_profiles  # type: ignore

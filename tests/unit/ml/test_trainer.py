@@ -227,9 +227,7 @@ class TestModelTraining:
                 taxonomy_version="NSTC-2025Q1",
             )
 
-            trainer.train(
-                sample_training_dataset, perform_cv=False, perform_calibration=False
-            )
+            trainer.train(sample_training_dataset, perform_cv=False, perform_calibration=False)
 
             # Verify model was created and trained
             MockModel.assert_called_once()
@@ -255,9 +253,7 @@ class TestModelTraining:
                 taxonomy_version="NSTC-2025Q1",
             )
 
-            trainer.train(
-                sample_training_dataset, perform_cv=True, perform_calibration=False
-            )
+            trainer.train(sample_training_dataset, perform_cv=True, perform_calibration=False)
 
             # Verify hyperparameters were tuned
             assert "hyperparameters" in trainer.metrics

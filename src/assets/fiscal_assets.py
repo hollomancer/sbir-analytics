@@ -1,6 +1,5 @@
 """Dagster assets for fiscal analysis pipeline."""
 
-
 import pandas as pd
 from dagster import (
     AssetCheckResult,

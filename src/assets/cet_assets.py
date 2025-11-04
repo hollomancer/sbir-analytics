@@ -2885,14 +2885,22 @@ def transformed_cet_company_profiles() -> Output:
                         join_cols = [award_id_col, company_id_col]
                         if company_name_col and company_name_col not in join_cols:
                             join_cols.append(company_name_col)
-                        df_join = df_awards[[col for col in join_cols if col in df_awards.columns]].copy()
-                        df_join = df_join.rename(columns={award_id_col: "award_id", company_id_col: "company_id"})
+                        df_join = df_awards[
+                            [col for col in join_cols if col in df_awards.columns]
+                        ].copy()
+                        df_join = df_join.rename(
+                            columns={award_id_col: "award_id", company_id_col: "company_id"}
+                        )
                         if company_name_col and company_name_col != "company_id":
                             df_join = df_join.rename(columns={company_name_col: "company_name"})
                         df_cls = df_cls.merge(df_join, on="award_id", how="left")
-                        logger.info(f"Joined classifications with enriched awards to get company info (joined {df_cls['company_id'].notna().sum()} rows)")
+                        logger.info(
+                            f"Joined classifications with enriched awards to get company info (joined {df_cls['company_id'].notna().sum()} rows)"
+                        )
         except Exception:
-            logger.exception("Failed to join classifications with enriched awards; proceeding without company info")
+            logger.exception(
+                "Failed to join classifications with enriched awards; proceeding without company info"
+            )
 
     # Ensure company_id and company_name columns exist (CompanyCETAggregator expects them)
     if not df_cls.empty:

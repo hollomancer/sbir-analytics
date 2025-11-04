@@ -49,9 +49,7 @@ class NAICSToBEAMapper:
                 self.multi_map[bea_code] = []
             self.multi_map[bea_code].extend(codes)
 
-    def map_code(
-        self, naics_code: str, vintage: str | None = None
-    ) -> str | list[str] | None:
+    def map_code(self, naics_code: str, vintage: str | None = None) -> str | list[str] | None:
         """Map a NAICS code to BEA sector using longest-prefix match or multi-vintage mapping.
 
         If vintage is None, use default mapping. If vintage is 'bea', use BEA concordance spreadsheet.

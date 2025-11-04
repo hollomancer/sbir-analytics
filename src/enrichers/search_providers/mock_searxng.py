@@ -15,6 +15,7 @@ Configuration keys (passed via the `config` dict):
 - seed: Optional[int] seed for deterministic random behavior.
 - include_titles: bool (default True) whether synthesized results include titles.
 """
+
 from __future__ import annotations
 
 import json
