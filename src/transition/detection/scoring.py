@@ -369,7 +369,7 @@ class TransitionScorer:
             cet_alignment_score=min(score, 1.0),
         )
 
-    def score_text_similarity(self, similarity_score: Optional[float]) -> float:
+    def score_text_similarity(self, similarity_score: float | None) -> float:
         """
         Score optional text similarity between award and contract descriptions.
 

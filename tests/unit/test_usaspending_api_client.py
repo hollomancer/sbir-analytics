@@ -323,7 +323,7 @@ class TestEnrichAward:
 
             result = await api_client.enrich_award(
                 award_id="AWARD-001",
-                uei="ABC123DEF456",
+                uei="ABC123DEF456",  # pragma: allowlist secret
             )
 
             assert result["success"] is True
@@ -350,7 +350,7 @@ class TestEnrichAward:
 
             result = await api_client.enrich_award(
                 award_id="AWARD-001",
-                uei="ABC123DEF456",
+                uei="ABC123DEF456",  # pragma: allowlist secret
                 freshness_record=freshness_record,
             )
 
@@ -400,7 +400,7 @@ class TestEnrichAward:
 
             result = await api_client.enrich_award(
                 award_id="AWARD-001",
-                uei="ABC123DEF456",
+                uei="ABC123DEF456",  # pragma: allowlist secret
             )
 
             assert result["success"] is False

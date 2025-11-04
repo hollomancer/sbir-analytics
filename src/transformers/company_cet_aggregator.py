@@ -240,7 +240,7 @@ class CompanyCETAggregator:
         )
         # awards_with_cet: count distinct award_id per company where has_cet is True
         awards_with_cet = (
-            flat.loc[flat["has_cet"] == True]
+            flat.loc[flat["has_cet"]]
             .groupby("company_id")["award_id"]
             .nunique()
             .rename("awards_with_cet")

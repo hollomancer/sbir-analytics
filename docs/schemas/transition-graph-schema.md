@@ -80,7 +80,7 @@ recipient_name: String
 
 recipient_uei: String
   # Unique Entity Identifier
-  # Example: "ABC123DEF456"
+  # Example: "ABC123DEF456"  # pragma: allowlist secret
 
 recipient_duns: String (nullable)
   # DUNS number (legacy)

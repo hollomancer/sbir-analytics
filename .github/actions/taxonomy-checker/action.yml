@@ -134,12 +134,13 @@ runs:
           const title = `**${{ inputs.comment-title }}**`;
           const codeBlockStart = '```json';
           const codeBlockEnd = '```';
+          const summary = ${{ steps.evaluate.outputs.summary }};
           const body = `${title}
 
 The CET taxonomy completeness checks reported issues that require attention. Summary:
 
 ${codeBlockStart}
-${{ steps.evaluate.outputs.summary }}
+${summary}
 ${codeBlockEnd}
 
 Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.

@@ -402,7 +402,7 @@ Each signal contains:
     "sub_agency": "Department of the Air Force",
     "sub_agency_code": "5700",
     "vendor_name": "Acme AI Inc.",
-    "vendor_uei": "ABC123DEF456",
+    "vendor_uei": "ABC123DEF456",  # pragma: allowlist secret
     "vendor_cage": null,
     "vendor_duns": null,
     "action_date": "2023-03-01",

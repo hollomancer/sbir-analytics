@@ -23,9 +23,9 @@ from dagster import AssetSelection, define_asset_job
 # Import CET production assets
 try:
     from ..cet_assets import (  # type: ignore
+        cet_taxonomy,
         enriched_cet_award_classifications,
         transformed_cet_company_profiles,
-        cet_taxonomy,
     )
     # Create aliases for backward compatibility
     cet_award_classifications = enriched_cet_award_classifications  # type: ignore
@@ -79,6 +79,47 @@ if (
             "Materialize the CET pipeline end-to-end: taxonomy -> award classification -> "
             "company aggregation -> Neo4j nodes/enrichment -> relationships."
         ),
+        config={
+            "ops": {
+                "loaded_cet_areas": {
+                    "config": {
+                        "taxonomy_parquet": "data/processed/cet_taxonomy.parquet",
+                        "taxonomy_json": "data/processed/cet_taxonomy.json",
+                        "create_constraints": True,
+                        "create_indexes": True,
+                        "batch_size": 1000,
+                    }
+                },
+                "loaded_award_cet_enrichment": {
+                    "config": {
+                        "award_class_parquet": "data/processed/cet_award_classifications.parquet",
+                        "award_class_json": "data/processed/cet_award_classifications.json",
+                        "batch_size": 1000,
+                    }
+                },
+                "loaded_award_cet_relationships": {
+                    "config": {
+                        "award_class_parquet": "data/processed/cet_award_classifications.parquet",
+                        "award_class_json": "data/processed/cet_award_classifications.json",
+                        "batch_size": 1000,
+                    }
+                },
+                "loaded_company_cet_enrichment": {
+                    "config": {
+                        "company_profiles_parquet": "data/processed/cet_company_profiles.parquet",
+                        "company_profiles_json": "data/processed/cet_company_profiles.json",
+                        "batch_size": 1000,
+                    }
+                },
+                "loaded_company_cet_relationships": {
+                    "config": {
+                        "company_profiles_parquet": "data/processed/cet_company_profiles.parquet",
+                        "company_profiles_json": "data/processed/cet_company_profiles.json",
+                        "batch_size": 1000,
+                    }
+                },
+            }
+        },
     )
 else:
     cet_full_pipeline_job = define_asset_job(
