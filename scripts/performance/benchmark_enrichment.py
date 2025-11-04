@@ -31,10 +31,6 @@ if _workspace_root_str not in sys.path:
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
-from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
-from src.utils.performance_monitor import performance_monitor
-
 from scripts.lib.cli_utils import (
     add_baseline_argument,
     add_output_file_argument,
@@ -46,6 +42,9 @@ from scripts.lib.cli_utils import (
     save_json_output,
     setup_logging_for_script,
 )
+from src.config.loader import get_config
+from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from src.utils.performance_monitor import performance_monitor
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:

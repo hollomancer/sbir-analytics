@@ -132,16 +132,14 @@ runs:
           const pr = context.issue.number || (context.payload.pull_request && context.payload.pull_request.number);
           const summaryRaw = `Checks summary: ${{ steps.evaluate.outputs.summary }}`;
           const title = `**${{ inputs.comment-title }}**`;
-          const codeBlockStart = '```json';
-          const codeBlockEnd = '```';
-          const summary = ${{ steps.evaluate.outputs.summary }};
+          const summaryJson = ${{ steps.evaluate.outputs.summary }};
           const body = `${title}
 
 The CET taxonomy completeness checks reported issues that require attention. Summary:
 
-${codeBlockStart}
-${summary}
-${codeBlockEnd}
+\`\`\`json
+${summaryJson}
+\`\`\`
 
 Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
 

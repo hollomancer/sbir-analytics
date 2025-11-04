@@ -45,7 +45,6 @@ def fix_list_blank_lines(content: str) -> str:
     """Fix MD032: Lists should be surrounded by blank lines."""
     lines = content.split("\n")
     result = []
-    in_list = False
     prev_was_list = False
 
     for i, line in enumerate(lines):
@@ -105,12 +104,11 @@ def fix_code_fence_blank_lines(content: str) -> str:
 def fix_code_fence_language(content: str) -> str:
     """Fix MD040: Fenced code blocks should have a language specified."""
     # Pattern to match code fences without language
-    pattern = r"^(\s*)```(\s*)$"
     lines = content.split("\n")
     result = []
     in_code_block = False
 
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("```") and not in_code_block:
             # Check if it has a language tag

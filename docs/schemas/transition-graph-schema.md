@@ -138,7 +138,7 @@ CREATE (a:Award {
   completion_date: date("2023-01-15"),
   award_amount: 150000,
   recipient_name: "Acme AI Inc.",
-  recipient_uei: "ABC123DEF456",
+  recipient_uei: "ABC123DEF456",  # pragma: allowlist secret
   cet_area: "AI & Machine Learning"
 })
 ```

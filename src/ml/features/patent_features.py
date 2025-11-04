@@ -286,7 +286,7 @@ def guess_assignee_type(assignee: str | Sequence[str] | None) -> str:
     def _guess_one(name: str) -> str:
         s = name.lower()
         words = s.split()
-        
+
         # Check for individual names first (short names, typically 2 words or less)
         # This must come before government check to avoid matching surnames like "Doe"
         if len(words) <= 2 and any(c.isalpha() for c in s):
@@ -324,7 +324,7 @@ def guess_assignee_type(assignee: str | Sequence[str] | None) -> str:
             ) or (s.strip() == "doe" or "department of energy" in s)
             if not (has_corporate or has_academic or has_government):
                 return "individual"
-        
+
         if any(
             k in s for k in ("univ", "university", "college", "institute", "school", "research")
         ):

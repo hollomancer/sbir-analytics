@@ -460,7 +460,7 @@ Each signal contains:
     "sub_agency_code": "5700",
     "award_amount": 150000,
     "recipient_name": "Acme AI Inc.",
-    "recipient_uei": "ABC123DEF456",
+    "recipient_uei": "ABC123DEF456",  # pragma: allowlist secret
     "recipient_duns": null,
     "recipient_state": "VA",
     "award_date": "2021-09-01",
