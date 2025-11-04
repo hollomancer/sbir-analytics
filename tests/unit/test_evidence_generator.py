@@ -442,13 +442,14 @@ class TestBundleGeneration:
         sample_signals,
         sample_award_data,
         sample_contract_data,
+        sample_contract,
     ):
         """Test evidence bundle JSON deserialization."""
         # Create and serialize bundle
         original_bundle = generator.generate_bundle(
             signals=sample_signals,
             award_data=sample_award_data,
-            contract_data=sample_contract_data,
+            contract=sample_contract,
         )
         json_str = generator.serialize_bundle(original_bundle)
 
@@ -464,12 +465,13 @@ class TestBundleGeneration:
         sample_signals,
         sample_award_data,
         sample_contract_data,
+        sample_contract,
     ):
         """Test validation of valid evidence bundle."""
         bundle = generator.generate_bundle(
             signals=sample_signals,
             award_data=sample_award_data,
-            contract_data=sample_contract_data,
+            contract=sample_contract,
         )
 
         assert generator.validate_bundle(bundle) is True
@@ -486,12 +488,13 @@ class TestBundleGeneration:
         sample_signals,
         sample_award_data,
         sample_contract_data,
+        sample_contract,
     ):
         """Test bundle total score calculation."""
         bundle = generator.generate_bundle(
             signals=sample_signals,
             award_data=sample_award_data,
-            contract_data=sample_contract_data,
+            contract=sample_contract,
         )
 
         total_score = bundle.total_score()
@@ -508,10 +511,16 @@ class TestEdgeCases:
             agency=AgencySignal(same_agency=False, agency_score=0.0),
         )
 
+        # Create minimal contract from dict
+        minimal_contract = FederalContract(
+            contract_id="TEST",
+            agency=None,
+        )
+
         bundle = generator.generate_bundle(
             signals=minimal_signals,
             award_data={"award_id": "TEST"},
-            contract_data={"contract_id": "TEST"},
+            contract=minimal_contract,
         )
 
         assert len(bundle.items) >= 1

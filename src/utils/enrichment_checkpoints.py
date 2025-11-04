@@ -147,11 +147,17 @@ class CheckpointStore:
             return pd.DataFrame()
 
         try:
+            # Read parquet with string type for datetime columns to avoid PyArrow type errors
+            # We'll convert to datetime after reading
             df = pd.read_parquet(self.parquet_path)
-            # Convert datetime columns
+            # Convert datetime columns from ISO strings to datetime objects
             for col in ["last_success_timestamp", "checkpoint_timestamp"]:
                 if col in df.columns:
-                    df[col] = pd.to_datetime(df[col])
+                    # Handle both string (ISO format) and datetime types
+                    if df[col].dtype == "object" or pd.api.types.is_string_dtype(df[col]):
+                        df[col] = pd.to_datetime(df[col], errors="coerce")
+                    elif not pd.api.types.is_datetime64_any_dtype(df[col]):
+                        df[col] = pd.to_datetime(df[col], errors="coerce")
             # metadata is stored as JSON string, keep as string for now
             # (will be parsed in from_dict)
             return df
