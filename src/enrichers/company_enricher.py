@@ -30,6 +30,8 @@ from collections.abc import Sequence
 
 import pandas as pd
 
+from ..exceptions import ValidationError
+
 
 try:
     from rapidfuzz import fuzz, process
@@ -207,9 +209,25 @@ def enrich_awards_with_companies(
 
     # If either column is still missing after attempted fallbacks, raise a clear error.
     if award_company_col not in awards_df.columns:
-        raise KeyError(f"award_company_col '{award_company_col}' not in awards_df")
+        raise ValidationError(
+            f"award_company_col '{award_company_col}' not in awards_df",
+            component="enricher.company",
+            operation="enrich_companies",
+            details={
+                "award_company_col": award_company_col,
+                "available_columns": list(awards_df.columns),
+            },
+        )
     if company_name_col not in companies_df.columns:
-        raise KeyError(f"company_name_col '{company_name_col}' not in companies_df")
+        raise ValidationError(
+            f"company_name_col '{company_name_col}' not in companies_df",
+            component="enricher.company",
+            operation="enrich_companies",
+            details={
+                "company_name_col": company_name_col,
+                "available_columns": list(companies_df.columns),
+            },
+        )
 
     # Defensive copies
     awards = awards_df.copy()

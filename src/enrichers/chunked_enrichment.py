@@ -25,6 +25,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from ..exceptions import EnrichmentError
 from ..utils.performance_monitor import performance_monitor
 
 
@@ -481,8 +482,18 @@ class ChunkedEnricher:
                 else:
                     logger.error(f"Chunk {chunk_num} failed after {max_retries} attempts: {e}")
 
-        raise RuntimeError(
-            f"Failed to enrich chunk {chunk_num} after {max_retries} attempts: {last_error}"
+        raise EnrichmentError(
+            f"Failed to enrich chunk {chunk_num} after {max_retries} attempts: {last_error}",
+            component="enricher.chunked_usaspending",
+            operation="process_chunk_with_retry",
+            details={
+                "chunk_num": chunk_num,
+                "max_retries": max_retries,
+                "chunk_size": len(chunk_df),
+                "last_error": str(last_error),
+            },
+            retryable=False,  # Already retried
+            cause=last_error,
         )
 
     @staticmethod

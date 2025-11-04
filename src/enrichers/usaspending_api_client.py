@@ -18,7 +18,7 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..config.loader import get_config
-from ..exceptions import APIError, RateLimitError
+from ..exceptions import APIError, ConfigurationError, RateLimitError
 from ..models.enrichment import EnrichmentFreshnessRecord
 
 # Backward compatibility: Alias to central exception classes
@@ -131,7 +131,16 @@ class USAspendingAPIClient:
                     elif method.upper() == "POST":
                         response = await client.post(url, json=params, headers=default_headers)
                     else:
-                        raise ValueError(f"Unsupported HTTP method: {method}")
+                        raise ConfigurationError(
+                            f"Unsupported HTTP method: {method}",
+                            component="enricher.usaspending",
+                            operation="_make_request",
+                            details={
+                                "method": method,
+                                "supported_methods": ["GET", "POST"],
+                                "endpoint": endpoint,
+                            },
+                        )
 
                     response.raise_for_status()
 
