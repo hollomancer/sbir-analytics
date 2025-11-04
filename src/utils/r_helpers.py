@@ -6,6 +6,8 @@ from typing import Any
 
 from loguru import logger
 
+from ..exceptions import RFunctionError  # Import from central exceptions
+
 
 # Conditional rpy2 import
 try:
@@ -17,20 +19,6 @@ except ImportError:
     RPY2_AVAILABLE = False
     ro = None  # type: ignore
     importr = None  # type: ignore
-
-
-class RFunctionError(Exception):
-    """Error raised when R function call fails."""
-
-    def __init__(self, message: str, r_error: str | None = None):
-        """Initialize R function error.
-
-        Args:
-            message: Human-readable error message
-            r_error: Raw R error message if available
-        """
-        super().__init__(message)
-        self.r_error = r_error
 
 
 def check_r_package(package_name: str) -> bool:
@@ -78,7 +66,11 @@ def call_r_function(
         raise RuntimeError("rpy2 is not installed. Install with: poetry install --extras r")
 
     if package is None:
-        raise RFunctionError(f"R package not loaded. Cannot call {function_name}.")
+        raise RFunctionError(
+            f"R package not loaded. Cannot call {function_name}.",
+            function_name=function_name,
+            operation="call_r_function",
+        )
 
     try:
         # Get function from package
@@ -101,9 +93,20 @@ def call_r_function(
         if hasattr(e, "args") and len(e.args) > 0:
             r_error = str(e.args[0])
 
+        details = {}
+        if r_error:
+            details["r_error"] = r_error
+        if args:
+            details["args_count"] = len(args)
+        if kwargs:
+            details["kwargs_keys"] = list(kwargs.keys())
+
         raise RFunctionError(
             f"R function {function_name} call failed: {error_msg}",
-            r_error=r_error,
+            function_name=function_name,
+            operation="call_r_function",
+            details=details,
+            cause=e,
         ) from e
 
 
@@ -193,7 +196,13 @@ def safe_r_eval(r_code: str) -> Any:
     except Exception as e:
         error_msg = str(e)
         logger.error(f"R code evaluation failed: {error_msg}")
-        raise RFunctionError(f"R code evaluation failed: {error_msg}") from e
+        raise RFunctionError(
+            f"R code evaluation failed: {error_msg}",
+            function_name="eval",
+            operation="safe_r_eval",
+            details={"r_code_preview": r_code[:100]},  # First 100 chars
+            cause=e,
+        ) from e
 
 
 def get_r_package_version(package_name: str) -> str | None:
