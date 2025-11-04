@@ -207,9 +207,16 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     monkeypatch.setattr(mod, "CETLoader", FakeLoader)
     monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
-    # Execute asset - use the shim AssetExecutionContext from cet_assets which accepts op_config
+    # Execute asset - access the underlying op from the AssetsDefinition
+    # Dagster wraps the function in an AssetsDefinition, we need to get the op
+    asset_def = mod.loaded_award_cet_relationships
+    # Get the op definition which contains the actual compute function
+    op_def = asset_def.op
+    # Get the compute function from the op
+    compute_fn = op_def.compute_fn
+    
     ctx = mod.AssetExecutionContext(op_config={})
-    result = mod.loaded_award_cet_relationships(ctx, None, None, None)
+    result = compute_fn(ctx, None, None, None)
 
     assert result["status"] == "success"
     assert result["relationships_type"] == "APPLICABLE_TO"
