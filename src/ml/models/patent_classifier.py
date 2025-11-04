@@ -21,6 +21,8 @@ Notes
 
 from __future__ import annotations
 
+from loguru import logger
+
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -38,7 +40,6 @@ try:
 except Exception:  # pragma: no cover - defensive import
     pd = None  # type: ignore
 
-import logging
 import pickle
 
 from src.exceptions import CETClassificationError, DependencyError, FileSystemError, ValidationError
@@ -70,8 +71,6 @@ try:
     from src.ml.features.vectorizers import create_feature_matrix_builder
 except Exception:  # pragma: no cover - optional import
     create_feature_matrix_builder = None  # type: ignore
-
-logger = logging.getLogger(__name__)
 
 
 class PatentFeatureExtractor:

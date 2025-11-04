@@ -41,13 +41,11 @@ Example:
 
 from __future__ import annotations
 
-import logging
 import time
 from collections.abc import Generator, Iterable
 from pathlib import Path
 
-
-LOG = logging.getLogger(__name__)
+from loguru import logger
 
 # Optional imports - fallbacks are handled at runtime
 try:
@@ -103,7 +101,7 @@ class USPTOExtractor:
         self.file_globs = list(file_globs) if file_globs else []
         self.continue_on_error = continue_on_error
         self.log_every = max(0, int(log_every))
-        LOG.debug("Initialized USPTOExtractor on %s", self.input_dir)
+        logger.debug("Initialized USPTOExtractor on {}", self.input_dir)
 
     def discover_files(self) -> list[Path]:
         """
@@ -117,7 +115,7 @@ class USPTOExtractor:
         else:
             for ext in SUPPORTED_EXTENSIONS:
                 files.extend(sorted(self.input_dir.rglob(f"*{ext}")))
-        LOG.info("Discovered %d USPTO files under %s", len(files), self.input_dir)
+        logger.info("Discovered %d USPTO files under %s", len(files), self.input_dir)
         return files
 
     # ----------------------------
@@ -142,7 +140,7 @@ class USPTOExtractor:
                 yielded += 1
                 if self.log_every and yielded % self.log_every == 0:
                     elapsed = max(time.perf_counter() - start, 1e-6)
-                    LOG.info(
+                    logger.info(
                         "Streaming %s (%s rows processed, %.1f rows/sec)",
                         path.name,
                         yielded,
@@ -150,14 +148,14 @@ class USPTOExtractor:
                     )
                 yield rec
         except Exception as exc:
-            LOG.exception("Failed streaming %s: %s", path, exc)
+            logger.exception("Failed streaming %s: %s", path, exc)
             if self.continue_on_error:
                 yield {"_error": str(exc), "_file": str(path)}
             else:
                 raise
         finally:
             elapsed = max(time.perf_counter() - start, 1e-6)
-            LOG.info(
+            logger.info(
                 "Completed streaming %s: %s rows in %.2fs (%.1f rows/sec)",
                 path.name,
                 yielded,
@@ -250,7 +248,7 @@ class USPTOExtractor:
                     )
                     yield pa
                 except Exception as e:
-                    LOG.debug("Failed to construct PatentAssignment for row: %s", e)
+                    logger.debug("Failed to construct PatentAssignment for row: %s", e)
                     # attach error info and yield raw row for later inspection
                     row_with_err = dict(row)
                     row_with_err["_error"] = str(e)
@@ -264,12 +262,12 @@ class USPTOExtractor:
     def _stream_csv(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
         if pd is None:
             raise RuntimeError("pandas is required to read CSV files for USPTO extraction")
-        LOG.debug("Streaming CSV %s with chunk_size=%d", path, chunk_size)
+        logger.debug("Streaming CSV %s with chunk_size=%d", path, chunk_size)
         try:
             for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True):
                 yield from chunk.to_dict(orient="records")
         except Exception:
-            LOG.exception("CSV streaming failed for %s", path)
+            logger.exception("CSV streaming failed for %s", path)
             raise
 
     def _stream_dta(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
@@ -348,7 +346,7 @@ class USPTOExtractor:
             try:
                 release_hint = _detect_stata_release_with_pyreadstat(path)
                 if release_hint:
-                    LOG.debug("Detected Stata format/version for %s: %s", path, release_hint)
+                    logger.debug("Detected Stata format/version for %s: %s", path, release_hint)
             except Exception:
                 release_hint = None
 
@@ -361,13 +359,13 @@ class USPTOExtractor:
             if release_numeric is None:
                 release_numeric = self._detect_stata_release(path)
                 if release_numeric:
-                    LOG.debug("Header-based Stata release for %s: %s", path, release_numeric)
+                    logger.debug("Header-based Stata release for %s: %s", path, release_numeric)
 
             skip_pandas = release_numeric is not None and release_numeric >= 118
 
             # Try pandas iterator approach first (fast for many .dta files)
             if not skip_pandas:
-                LOG.debug("Attempting pandas read_stata iterator for %s", path)
+                logger.debug("Attempting pandas read_stata iterator for %s", path)
                 try:
                     reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
                     while True:
@@ -377,17 +375,17 @@ class USPTOExtractor:
                             break
                         except Exception as e:
                             # pandas iterator may raise for some .dta versions; fallback to pyreadstat
-                            LOG.debug("pandas iterator get_chunk error: %s", e)
+                            logger.debug("pandas iterator get_chunk error: %s", e)
                             raise
                         for rec in chunk.to_dict(orient="records"):
                             yield _normalize_row_keys(rec)
                     return
                 except Exception:
-                    LOG.debug(
+                    logger.debug(
                         "pandas iterator approach failed for %s; trying pyreadstat fallback", path
                     )
             else:
-                LOG.debug(
+                logger.debug(
                     "Skipping pandas iterator for %s (Stata release=%s not fully supported)",
                     path,
                     release_numeric,
@@ -395,7 +393,7 @@ class USPTOExtractor:
 
             # Fallback: pyreadstat if available - use row_limit and row_offset for chunked reads
             if pyreadstat is not None:
-                LOG.debug("Using pyreadstat.read_dta row_limit for %s", path)
+                logger.debug("Using pyreadstat.read_dta row_limit for %s", path)
                 offset = 0
                 rows_yielded = 0
                 total_rows = None
@@ -414,7 +412,7 @@ class USPTOExtractor:
                             str(path), row_limit=chunk_size, row_offset=offset
                         )
                     except Exception as e:
-                        LOG.debug("pyreadstat read failed at offset %s: %s", offset, e)
+                        logger.debug("pyreadstat read failed at offset %s: %s", offset, e)
                         raise
                     if df is None or df.shape[0] == 0:
                         break
@@ -427,7 +425,7 @@ class USPTOExtractor:
                         if total_rows:
                             try:
                                 pct = rows_yielded / int(total_rows) * 100.0
-                                LOG.info(
+                                logger.info(
                                     "Streaming %s via pyreadstat: %d/%s rows (%.1f%%)",
                                     path.name,
                                     rows_yielded,
@@ -435,13 +433,13 @@ class USPTOExtractor:
                                     pct,
                                 )
                             except Exception:
-                                LOG.info(
+                                logger.info(
                                     "Streaming %s via pyreadstat: %d rows processed (total unknown)",
                                     path.name,
                                     rows_yielded,
                                 )
                         else:
-                            LOG.info(
+                            logger.info(
                                 "Streaming %s via pyreadstat: %d rows processed",
                                 path.name,
                                 rows_yielded,
@@ -449,7 +447,7 @@ class USPTOExtractor:
                 return
 
             # Last resort: read entire file (may be large) - but attempt to rename columns using heuristics
-            LOG.warning(
+            logger.warning(
                 "Falling back to reading entire .dta file into memory for %s (last resort)", path
             )
             df_full = pd.read_stata(path, convert_categoricals=False)
@@ -462,7 +460,7 @@ class USPTOExtractor:
             return
 
         except Exception as e:
-            LOG.exception("Failed streaming .dta file %s: %s", path, e)
+            logger.exception("Failed streaming .dta file %s: %s", path, e)
             raise
 
     def _stream_parquet(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
@@ -471,7 +469,7 @@ class USPTOExtractor:
         """
         if pq is not None and pa is not None:
             try:
-                LOG.debug("Streaming parquet via pyarrow for %s", path)
+                logger.debug("Streaming parquet via pyarrow for %s", path)
                 pf = pq.ParquetFile(path)
                 # iterate row groups and then batch within row group to chunk_size
                 for rg_index in range(pf.num_row_groups):
@@ -483,7 +481,7 @@ class USPTOExtractor:
                             yield rec
                 return
             except Exception:
-                LOG.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
+                logger.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
         # pandas fallback
         if pd is None:
             raise RuntimeError("pandas is required to read parquet files (fallback)")
@@ -494,7 +492,7 @@ class USPTOExtractor:
                 for rec in chunk.to_dict(orient="records"):
                     yield rec
         except Exception:
-            LOG.exception("Failed streaming parquet %s", path)
+            logger.exception("Failed streaming parquet %s", path)
             raise
 
     # ----------------------------
@@ -588,5 +586,5 @@ class USPTOExtractor:
         for f in files:
             by_ext.setdefault(f.suffix.lower(), 0)
             by_ext[f.suffix.lower()] += 1
-        LOG.info("USPTO files discovered: %s", by_ext)
+        logger.info("USPTO files discovered: %s", by_ext)
         return by_ext

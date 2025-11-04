@@ -6,10 +6,11 @@ and creating migration mapping documentation.
 """
 
 import json
-import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
+
+from loguru import logger
 
 from .models import FileSystemError, GeneratedSpec
 
@@ -19,13 +20,13 @@ class HistoricalPreserver:
 
     def __init__(self):
         """Initialize preserver."""
-        self.logger = logging.getLogger(__name__)
+        pass
 
     def archive_openspec(
         self, openspec_path: Path, archive_path: Path, generated_specs: list[GeneratedSpec]
     ):
         """Archive complete OpenSpec directory structure."""
-        self.logger.info(f"Archiving OpenSpec content to {archive_path}")
+        logger.info(f"Archiving OpenSpec content to {archive_path}")
 
         try:
             # Create archive directory
@@ -37,7 +38,7 @@ class HistoricalPreserver:
                 shutil.rmtree(openspec_archive)
 
             shutil.copytree(openspec_path, openspec_archive)
-            self.logger.info(f"Copied OpenSpec directory to {openspec_archive}")
+            logger.info(f"Copied OpenSpec directory to {openspec_archive}")
 
             # Create migration mapping
             self._create_migration_mapping(archive_path, generated_specs)
@@ -45,14 +46,14 @@ class HistoricalPreserver:
             # Create README for archived content
             self._create_archive_readme(archive_path)
 
-            self.logger.info("OpenSpec archival complete")
+            logger.info("OpenSpec archival complete")
 
         except Exception as e:
             raise FileSystemError(f"Failed to archive OpenSpec content: {e}")
 
     def _create_migration_mapping(self, archive_path: Path, generated_specs: list[GeneratedSpec]):
         """Create mapping from OpenSpec to Kiro specs."""
-        self.logger.info("Creating migration mapping")
+        logger.info("Creating migration mapping")
 
         mapping = {
             "migration_metadata": {
@@ -80,7 +81,7 @@ class HistoricalPreserver:
         with open(mapping_file, "w", encoding="utf-8") as f:
             json.dump(mapping, f, indent=2, ensure_ascii=False)
 
-        self.logger.info(f"Migration mapping created: {mapping_file}")
+        logger.info(f"Migration mapping created: {mapping_file}")
 
     def _build_spec_mapping(self, generated_specs: list[GeneratedSpec]) -> dict:
         """Build mapping between OpenSpec changes and Kiro specs."""
@@ -157,4 +158,4 @@ consult the migration mapping and archived files in this directory.
         readme_file = archive_path / "README.md"
         readme_file.write_text(readme_content, encoding="utf-8")
 
-        self.logger.info(f"Archive README created: {readme_file}")
+        logger.info(f"Archive README created: {readme_file}")

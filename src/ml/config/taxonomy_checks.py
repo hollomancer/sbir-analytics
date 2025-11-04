@@ -17,9 +17,10 @@ in CI containers that have the project installed.
 
 from __future__ import annotations
 
+from loguru import logger
+
 import argparse
 import json
-import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,9 +28,6 @@ from typing import Any
 # Import the project's TaxonomyLoader. This module lives under src/ml/config and
 # depends on the project's models (Pydantic) to validate the taxonomy.
 from src.ml.config.taxonomy_loader import TaxonomyConfig, TaxonomyLoader
-
-
-logger = logging.getLogger("taxonomy_checks")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 

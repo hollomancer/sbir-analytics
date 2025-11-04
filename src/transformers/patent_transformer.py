@@ -23,7 +23,8 @@ for assignment in transformer.transform_chunk(rows):
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
@@ -58,8 +59,6 @@ except Exception:
     PatentAssignor = None  # type: ignore
     PatentConveyance = None  # type: ignore
     ConveyanceType = None  # type: ignore
-
-LOG = logging.getLogger(__name__)
 
 # Keywords heuristics for conveyance type detection
 _CONVEYANCE_KEYWORDS = {
@@ -99,7 +98,7 @@ class PatentAssignmentTransformer:
     ) -> None:
         self.sbir_index = sbir_company_grant_index or {}
         self.options = options or PatentTransformOptions()
-        LOG.debug(
+        logger.debug(
             "PatentAssignmentTransformer initialized: sbir_index_keys=%d, options=%s",
             len(self.sbir_index),
             self.options,
@@ -344,7 +343,7 @@ class PatentAssignmentTransformer:
                 raw=row,
             )
         except Exception as e:
-            LOG.debug("Document construction failed: %s", e)
+            logger.debug("Document construction failed: %s", e)
             # proceed but keep raw doc dict
             doc = {"_error": f"document_build_failed: {e}"}
 
@@ -390,7 +389,7 @@ class PatentAssignmentTransformer:
                 metadata={},
             )
         except Exception as e:
-            LOG.debug("Assignee construction failed: %s", e)
+            logger.debug("Assignee construction failed: %s", e)
             assignee = {"_error": f"assignee_build_failed: {e}"}
 
         try:
@@ -402,7 +401,7 @@ class PatentAssignmentTransformer:
                 metadata={},
             )
         except Exception as e:
-            LOG.debug("Assignor construction failed: %s", e)
+            logger.debug("Assignor construction failed: %s", e)
             assignor = {"_error": f"assignor_build_failed: {e}"}
 
         # Conveyance inference
@@ -419,7 +418,7 @@ class PatentAssignmentTransformer:
                 metadata={},
             )
         except Exception as e:
-            LOG.debug("Conveyance build failed: %s", e)
+            logger.debug("Conveyance build failed: %s", e)
             conveyance = {"_error": f"conveyance_build_failed: {e}"}
 
         # Build main assignment
@@ -438,7 +437,7 @@ class PatentAssignmentTransformer:
                 metadata={"_raw": row},
             )
         except Exception as e:
-            LOG.exception("PatentAssignment model build failed: %s", e)
+            logger.exception("PatentAssignment model build failed: %s", e)
             row_with_err = dict(row)
             row_with_err["_error"] = f"model_build_failed: {e}"
             return row_with_err

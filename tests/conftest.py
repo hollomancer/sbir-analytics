@@ -11,11 +11,11 @@
 # fixture providing the repo root path for use in tests.
 from __future__ import annotations
 
-import logging
 import sys
 from pathlib import Path
 
 import pytest
+from loguru import logger
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -57,14 +57,15 @@ _repo_root_str = str(_repo_root)
 if _repo_root_str not in sys.path:
     sys.path.insert(0, _repo_root_str)
 
-# Configure test logging to be moderately verbose by default
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+# Configure test logging using loguru for consistency with application code
+logger.remove()  # Remove default handler
+logger.add(
+    sys.stderr,
+    level="INFO",
+    format="{time:YYYY-MM-DD HH:mm:ss} {level} {name}: {message}",
 )
 
-logger = logging.getLogger(__name__)
-logger.debug("Added repository root to sys.path: %s", _repo_root_str)
+logger.debug("Added repository root to sys.path: {}", _repo_root_str)
 
 
 @pytest.fixture(scope="session")

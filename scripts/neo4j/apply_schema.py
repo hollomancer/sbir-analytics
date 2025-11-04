@@ -24,8 +24,9 @@ Notes:
 
 from __future__ import annotations
 
+from loguru import logger
+
 import argparse
-import logging
 import os
 import sys
 
@@ -36,8 +37,6 @@ try:
 except Exception:  # pragma: no cover - graceful fallback if dependency missing
     GraphDatabase = None
     Neo4jError = Exception  # type: ignore
-
-LOG = logging.getLogger("apply_schema")
 
 
 # Minimal list of schema statements that are useful for the project.
@@ -61,7 +60,7 @@ SCHEMA_STATEMENTS: list[str] = [
 def get_env_variable(name: str, default: str | None = None) -> str | None:
     val = os.getenv(name, default)
     if val is None:
-        LOG.debug("Environment variable %s is not set and no default provided", name)
+        logger.debug("Environment variable %s is not set and no default provided", name)
     return val
 
 
@@ -70,7 +69,7 @@ def connect(uri: str, user: str, password: str):
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
-    LOG.debug("Creating Neo4j driver for URI=%s user=%s", uri, user)
+    logger.debug("Creating Neo4j driver for URI=%s user=%s", uri, user)
     driver = GraphDatabase.driver(uri, auth=(user, password))
     return driver
 
@@ -81,7 +80,7 @@ def run_statements(driver, statements: list[str], dry_run: bool = False) -> int:
     Returns the number of statements successfully applied (best-effort).
     """
     if dry_run:
-        LOG.info("Dry-run mode: the following statements would be executed:")
+        logger.info("Dry-run mode: the following statements would be executed:")
         for s in statements:
             print(s)
         return 0
@@ -90,7 +89,7 @@ def run_statements(driver, statements: list[str], dry_run: bool = False) -> int:
     with driver.session() as session:
         for stmt in statements:
             try:
-                LOG.info("Executing schema statement:\n%s", stmt)
+                logger.info("Executing schema statement:\n%s", stmt)
                 # run in a write transaction so server-side planning/locking is handled properly
                 result = session.write_transaction(lambda tx, q: tx.run(q), stmt)
                 # consume result to ensure execution and potential server-side errors surface
@@ -104,7 +103,7 @@ def run_statements(driver, statements: list[str], dry_run: bool = False) -> int:
             except Neo4jError as e:
                 # If the error indicates the constraint/index already exists, skip; otherwise log and continue.
                 msg = str(e)
-                LOG.warning("Neo4jError while executing statement: %s", msg)
+                logger.warning("Neo4jError while executing statement: %s", msg)
                 # Heuristics: server error messages for "already exists" differ by version;
                 # do not abort on such errors.
                 lowered = msg.lower()
@@ -113,14 +112,14 @@ def run_statements(driver, statements: list[str], dry_run: bool = False) -> int:
                     or "already an index" in lowered
                     or "exists with name" in lowered
                 ):
-                    LOG.info("Schema artifact already exists; continuing to next statement.")
+                    logger.info("Schema artifact already exists; continuing to next statement.")
                     continue
                 else:
-                    LOG.error("Failed to apply statement. Error: %s", msg)
+                    logger.error("Failed to apply statement. Error: %s", msg)
                     # Continue to next statement rather than aborting entirely
                     continue
             except Exception as e:  # pragma: no cover - defensive
-                LOG.exception("Unexpected exception while applying schema: %s", e)
+                logger.exception("Unexpected exception while applying schema: %s", e)
                 continue
     return applied
 
@@ -160,10 +159,10 @@ def load_statements_from_file(path: str) -> list[str]:
             lines = [
                 line.strip() for line in fh if line.strip() and not line.strip().startswith("#")
             ]
-        LOG.info("Loaded %d statements from %s", len(lines), path)
+        logger.info("Loaded %d statements from %s", len(lines), path)
         return lines
     except Exception as e:
-        LOG.error("Failed to load statements from %s: %s", path, e)
+        logger.error("Failed to load statements from %s: %s", path, e)
         return []
 
 
@@ -180,7 +179,7 @@ def main() -> int:
     password = get_env_variable("NEO4J_PASSWORD", None)
 
     if not password and not args.dry_run:
-        LOG.error(
+        logger.error(
             "NEO4J_PASSWORD is not set in environment. For safety, set it or run with --dry-run."
         )
         return 2
@@ -191,11 +190,11 @@ def main() -> int:
         statements += load_statements_from_file(args.statements_file)
 
     if not statements:
-        LOG.info("No schema statements to apply; exiting.")
+        logger.info("No schema statements to apply; exiting.")
         return 0
 
     if args.dry_run:
-        LOG.info("Dry-run: listing planned schema statements")
+        logger.info("Dry-run: listing planned schema statements")
         for s in statements:
             print(s)
         return 0
@@ -203,12 +202,12 @@ def main() -> int:
     try:
         driver = connect(uri, user, password)  # may raise
     except Exception as exc:  # pragma: no cover - connection error path
-        LOG.exception("Failed to create Neo4j driver: %s", exc)
+        logger.exception("Failed to create Neo4j driver: %s", exc)
         return 3
 
     try:
         applied = run_statements(driver, statements, dry_run=args.dry_run)
-        LOG.info(
+        logger.info(
             "Schema apply completed: attempted %d statements, applied (or attempted) %d",
             len(statements),
             applied,

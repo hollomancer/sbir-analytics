@@ -12,18 +12,16 @@ for fast joins in downstream enrichment.
 
 from __future__ import annotations
 
+from loguru import logger
+
 import gzip
 import json
-import logging
 import re
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
-
-
-logger = logging.getLogger(__name__)
 
 
 NAICS_RE = re.compile(r"\b(\d{2,6})\b")

@@ -5,8 +5,9 @@ This module transforms OpenSpec content to Kiro format, including
 EARS pattern conversion and user story generation.
 """
 
-import logging
 import re
+
+from loguru import logger
 
 from .models import (
     KiroContent,
@@ -26,12 +27,11 @@ class ContentTransformer:
 
     def __init__(self):
         """Initialize transformer."""
-        self.logger = logging.getLogger(__name__)
         self.ears_converter = EARSConverter()
 
     def transform_content(self, openspec_content: OpenSpecContent) -> KiroContent:
         """Transform all OpenSpec content to Kiro format."""
-        self.logger.info("Starting content transformation")
+        logger.info("Starting content transformation")
 
         try:
             kiro_content = KiroContent(
@@ -45,7 +45,7 @@ class ContentTransformer:
             consolidated_specs = self._consolidate_specs(openspec_content.specifications)
             kiro_content.specs.extend(consolidated_specs)
 
-            self.logger.info(
+            logger.info(
                 f"Transformation complete: {len(kiro_content.specs)} Kiro specs generated"
             )
 
@@ -62,9 +62,9 @@ class ContentTransformer:
             try:
                 spec = self._convert_single_change(change)
                 kiro_specs.append(spec)
-                self.logger.debug(f"Converted change {change.id} to spec {spec.name}")
+                logger.debug(f"Converted change {change.id} to spec {spec.name}")
             except Exception as e:
-                self.logger.error(f"Failed to convert change {change.id}: {e}")
+                logger.error(f"Failed to convert change {change.id}: {e}")
 
         return kiro_specs
 

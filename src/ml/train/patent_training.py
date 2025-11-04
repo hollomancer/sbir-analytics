@@ -14,7 +14,8 @@ Capabilities:
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -44,8 +45,6 @@ except Exception as e:  # pragma: no cover
         operation="import",
         cause=e,
     ) from e
-
-logger = logging.getLogger(__name__)
 
 
 def _ensure_pandas() -> None:

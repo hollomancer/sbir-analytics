@@ -1,3 +1,5 @@
+from loguru import logger
+
 #!/usr/bin/env python3
 """
 Deployment validation script for USPTO Patent ETL pipeline.
@@ -17,7 +19,6 @@ Usage:
 """
 
 import json
-import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -25,10 +26,6 @@ from typing import Any
 
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
 
 
 class PatentETLValidator:

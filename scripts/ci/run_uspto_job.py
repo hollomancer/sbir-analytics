@@ -18,7 +18,8 @@ Exit codes:
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
+
 import sys
 import traceback
 from typing import Any
@@ -29,7 +30,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
-logger = logging.getLogger("ci.run_uspto_job")
 
 
 def _print_result_summary(result: Any) -> None:

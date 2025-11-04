@@ -5,9 +5,10 @@ This module provides functionality to analyze and parse existing OpenSpec
 content structure, extracting all changes, specifications, and metadata.
 """
 
-import logging
 import re
 from pathlib import Path
+
+from loguru import logger
 
 from .models import (
     ContentParsingError,
@@ -28,11 +29,10 @@ class OpenSpecAnalyzer:
     def __init__(self, openspec_path: Path):
         """Initialize analyzer with OpenSpec directory path."""
         self.openspec_path = openspec_path
-        self.logger = logging.getLogger(__name__)
 
     def analyze_openspec_structure(self) -> OpenSpecContent:
         """Scan and catalog all OpenSpec content."""
-        self.logger.info("Starting OpenSpec content analysis")
+        logger.info("Starting OpenSpec content analysis")
 
         try:
             content = OpenSpecContent(
@@ -43,7 +43,7 @@ class OpenSpecAnalyzer:
                 archived_changes=self._list_archived_changes(),
             )
 
-            self.logger.info(
+            logger.info(
                 f"Analysis complete: {len(content.active_changes)} active changes, "
                 f"{len(content.specifications)} specs, "
                 f"{len(content.archived_changes)} archived changes"
@@ -60,7 +60,7 @@ class OpenSpecAnalyzer:
         changes_path = self.openspec_path / "changes"
 
         if not changes_path.exists():
-            self.logger.warning(f"Changes directory not found: {changes_path}")
+            logger.warning(f"Changes directory not found: {changes_path}")
             return changes
 
         for change_dir in changes_path.iterdir():
@@ -68,9 +68,9 @@ class OpenSpecAnalyzer:
                 try:
                     change = self._parse_change(change_dir)
                     changes.append(change)
-                    self.logger.debug(f"Parsed change: {change.id}")
+                    logger.debug(f"Parsed change: {change.id}")
                 except Exception as e:
-                    self.logger.error(f"Failed to parse change {change_dir.name}: {e}")
+                    logger.error(f"Failed to parse change {change_dir.name}: {e}")
 
         return changes
 
@@ -244,7 +244,7 @@ class OpenSpecAnalyzer:
         specs_path = self.openspec_path / "specs"
 
         if not specs_path.exists():
-            self.logger.warning(f"Specs directory not found: {specs_path}")
+            logger.warning(f"Specs directory not found: {specs_path}")
             return specs
 
         for spec_dir in specs_path.iterdir():
@@ -252,9 +252,9 @@ class OpenSpecAnalyzer:
                 try:
                     spec = self._parse_spec(spec_dir)
                     specs.append(spec)
-                    self.logger.debug(f"Parsed spec: {spec.name}")
+                    logger.debug(f"Parsed spec: {spec.name}")
                 except Exception as e:
-                    self.logger.error(f"Failed to parse spec {spec_dir.name}: {e}")
+                    logger.error(f"Failed to parse spec {spec_dir.name}: {e}")
 
         return specs
 

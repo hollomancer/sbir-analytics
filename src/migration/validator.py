@@ -5,9 +5,10 @@ This module validates migration completeness and accuracy,
 including EARS pattern validation and content verification.
 """
 
-import logging
 import re
 from pathlib import Path
+
+from loguru import logger
 
 from .models import (
     GeneratedSpec,
@@ -23,14 +24,13 @@ class MigrationValidator:
 
     def __init__(self):
         """Initialize validator."""
-        self.logger = logging.getLogger(__name__)
         self.ears_validator = EARSValidator()
 
     def validate_migration(
         self, generated_specs: list[GeneratedSpec], openspec_content: OpenSpecContent
     ) -> ValidationReport:
         """Comprehensive migration validation."""
-        self.logger.info(f"Validating migration of {len(generated_specs)} specs")
+        logger.info(f"Validating migration of {len(generated_specs)} specs")
 
         report = ValidationReport(total_specs=len(generated_specs))
 
@@ -47,7 +47,7 @@ class MigrationValidator:
             # Task structure validation
             self._validate_task_structure(report, generated_specs)
 
-            self.logger.info(f"Validation complete: {len(report.issues)} issues found")
+            logger.info(f"Validation complete: {len(report.issues)} issues found")
 
         except Exception as e:
             raise ValidationError(f"Validation failed: {e}")

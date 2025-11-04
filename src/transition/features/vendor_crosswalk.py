@@ -24,8 +24,9 @@ Usage (examples):
 
 from __future__ import annotations
 
+from loguru import logger
+
 import json
-import logging
 import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
@@ -33,9 +34,6 @@ from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
-
-
-LOG = logging.getLogger(__name__)
 
 # Optional dependencies
 try:
@@ -204,7 +202,7 @@ class VendorCrosswalk:
         ):
             if ident and ident in idx:
                 existing_id = idx[ident]
-                LOG.debug(
+                logger.debug(
                     "Merging record %s into existing %s (by ident %s)",
                     rec.canonical_id,
                     existing_id,
@@ -214,7 +212,7 @@ class VendorCrosswalk:
 
         # If canonical_id exists - treat as update
         if rec.canonical_id in self.records:
-            LOG.debug("Updating existing record by canonical_id: %s", rec.canonical_id)
+            logger.debug("Updating existing record by canonical_id: %s", rec.canonical_id)
             return self._merge_into(rec.canonical_id, rec)
 
         # Insert new
@@ -228,7 +226,7 @@ class VendorCrosswalk:
         nm = _normalize_name(rec.canonical_name)
         if nm:
             self._name_index.setdefault(nm, []).append(rec.canonical_id)
-        LOG.info("Added new crosswalk record: %s (%s)", rec.canonical_id, rec.canonical_name)
+        logger.info("Added new crosswalk record: %s (%s)", rec.canonical_id, rec.canonical_name)
         return rec
 
     def _merge_into(self, canonical_id: str, rec: CrosswalkRecord) -> CrosswalkRecord:
@@ -260,7 +258,7 @@ class VendorCrosswalk:
             alias_name = _normalize_name(rec.canonical_name) or rec.canonical_name
             if alias_name and alias_name not in existing_alias_names:
                 base.aliases.append(AliasRecord(name=alias_name, note="merged-canonical"))
-        LOG.info("Merged record %s into %s", rec.canonical_id, canonical_id)
+        logger.info("Merged record %s into %s", rec.canonical_id, canonical_id)
         return base
 
     def remove(self, canonical_id: str) -> bool:
@@ -279,7 +277,7 @@ class VendorCrosswalk:
             self._name_index[nm] = [cid for cid in self._name_index[nm] if cid != canonical_id]
             if not self._name_index[nm]:
                 self._name_index.pop(nm, None)
-        LOG.info("Removed crosswalk record %s", canonical_id)
+        logger.info("Removed crosswalk record %s", canonical_id)
         return True
 
     # ---------------------------
@@ -389,7 +387,7 @@ class VendorCrosswalk:
         rec.aliases.append(ad)
         # update name index
         self._name_index.setdefault(alias_name_norm, []).append(canonical_id)
-        LOG.info("Added alias '%s' to %s", alias_name, canonical_id)
+        logger.info("Added alias '%s' to %s", alias_name, canonical_id)
         return True
 
     def handle_acquisition(
@@ -410,7 +408,7 @@ class VendorCrosswalk:
         If merge=False, add acquisition alias on acquirer and mark acquired record with metadata about being acquired.
         """
         if acquirer_id not in self.records or acquired_id not in self.records:
-            LOG.warning("Acquirer or acquired id not found: %s, %s", acquirer_id, acquired_id)
+            logger.warning("Acquirer or acquired id not found: %s, %s", acquirer_id, acquired_id)
             return False
         acq = self.records[acquirer_id]
         target = self.records[acquired_id]
@@ -432,7 +430,7 @@ class VendorCrosswalk:
             pass
         if merge:
             # merge identifiers and aliases
-            LOG.info("Merging acquired %s into acquirer %s", acquired_id, acquirer_id)
+            logger.info("Merging acquired %s into acquirer %s", acquired_id, acquirer_id)
             self._merge_into(acquirer_id, target)
             # remove acquired record after merge and keep provenance in metadata
             self.remove(acquired_id)
@@ -459,7 +457,7 @@ class VendorCrosswalk:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(path, index=False)
-        LOG.info("VendorCrosswalk saved to parquet: %s", path)
+        logger.info("VendorCrosswalk saved to parquet: %s", path)
 
     def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
@@ -467,7 +465,7 @@ class VendorCrosswalk:
         with open(path, "w", encoding="utf-8") as fh:
             for rec in self.to_list_of_dicts():
                 fh.write(json.dumps(rec, default=str) + "\n")
-        LOG.info("VendorCrosswalk saved to jsonl: %s", path)
+        logger.info("VendorCrosswalk saved to jsonl: %s", path)
 
     def load_jsonl(self, path: str | Path) -> None:
         path = Path(path)
@@ -500,7 +498,7 @@ class VendorCrosswalk:
                     metadata=j.get("metadata", {}),
                 )
                 self.add_or_merge(rec)
-        LOG.info("VendorCrosswalk loaded from jsonl: %s", path)
+        logger.info("VendorCrosswalk loaded from jsonl: %s", path)
 
     def save_duckdb_table(self, db_path: str, table_name: str = "vendor_crosswalk") -> None:
         if duckdb is None or pd is None:
@@ -511,7 +509,7 @@ class VendorCrosswalk:
         conn.register("tmp_crosswalk", df)
         conn.execute(f"create or replace table {table_name} as select * from tmp_crosswalk")
         conn.close()
-        LOG.info("VendorCrosswalk saved to duckdb table %s in %s", table_name, db_path)
+        logger.info("VendorCrosswalk saved to duckdb table %s in %s", table_name, db_path)
 
     def load_duckdb_table(self, db_path: str, table_name: str = "vendor_crosswalk") -> None:
         if duckdb is None or pd is None:
@@ -546,7 +544,7 @@ class VendorCrosswalk:
                 metadata=r.get("metadata", {}) or {},
             )
             self.add_or_merge(rec)
-        LOG.info("VendorCrosswalk loaded from duckdb table %s in %s", table_name, db_path)
+        logger.info("VendorCrosswalk loaded from duckdb table %s in %s", table_name, db_path)
 
     # ---------------------------
     # Utilities

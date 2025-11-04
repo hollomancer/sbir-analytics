@@ -36,9 +36,10 @@ Outputs
 
 from __future__ import annotations
 
+from loguru import logger
+
 import argparse
 import json
-import logging
 import os
 import sys
 import time
@@ -57,8 +58,6 @@ try:
     import pyreadstat  # type: ignore
 except Exception:
     pyreadstat = None  # type: ignore
-
-LOG = logging.getLogger("analyze_uspto_structure")
 DEFAULT_SAMPLE = 5000
 SUPPORTED_EXT = [".dta", ".csv", ".parquet"]
 
@@ -84,7 +83,7 @@ def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
         raise RuntimeError("pandas is required for this script. Install with: pip install pandas")
 
     suffix = path.suffix.lower()
-    LOG.debug("Reading sample for %s with pandas (nrows=%s)", path, nrows)
+    logger.debug("Reading sample for %s with pandas (nrows=%s)", path, nrows)
     if suffix == ".csv":
         df = pd.read_csv(path, nrows=nrows)
         # for CSV we can't know total rows cheaply except by scanning; leave as None
@@ -97,7 +96,7 @@ def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
             df = pd.read_parquet(path)
             return df.head(nrows), len(df)
         else:
-            LOG.warning(
+            logger.warning(
                 "Large parquet file (~%.1f MB). Attempting to read only first %d rows via pyarrow if available.",
                 size_mb,
                 nrows,
@@ -120,12 +119,12 @@ def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
                 df = reader.get_chunk(nrows)
             except Exception:
                 # fallback to reading normally but only a sample subset (pandas doesn't support skiprows for stata)
-                LOG.debug("Iterator get_chunk failed; trying pyreadstat fallback if available")
+                logger.debug("Iterator get_chunk failed; trying pyreadstat fallback if available")
                 raise
             # No easy way to get total rows for stata via pandas
             return df, None
         except Exception:
-            LOG.debug("pandas.read_stata iterator approach failed; trying pyreadstat if available")
+            logger.debug("pandas.read_stata iterator approach failed; trying pyreadstat if available")
             if pyreadstat is not None:
                 try:
                     # pyreadstat provides a row_limit kwarg for reading in a subset (best-effort)
@@ -140,10 +139,10 @@ def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
                         total_rows = None
                     return df, total_rows
                 except Exception as e:
-                    LOG.debug("pyreadstat read failed: %s", e)
+                    logger.debug("pyreadstat read failed: %s", e)
                     # fallback to attempt full pandas read (dangerous for huge files)
             # Final fallback - attempt full read with pandas (may OOM on very large files)
-            LOG.warning(
+            logger.warning(
                 "Falling back to reading entire .dta file into memory with pandas - may fail for large files."
             )
             df = pd.read_stata(path)
@@ -233,12 +232,12 @@ def detect_key_candidates(df, approx_total_rows: int | None = None) -> list[str]
 
 
 def analyze_file(path: Path, sample_size: int, out_dir: Path) -> dict[str, Any]:
-    LOG.info("Analyzing file: %s", path)
+    logger.info("Analyzing file: %s", path)
     start = time.time()
     try:
         df_sample, approx_total = read_sample_with_pandas(path, sample_size)
     except Exception as e:
-        LOG.exception("Failed to read sample for %s: %s", path, e)
+        logger.exception("Failed to read sample for %s: %s", path, e)
         return {"file": str(path), "error": str(e)}
 
     meta: dict[str, Any] = {
@@ -311,7 +310,7 @@ def analyze_file(path: Path, sample_size: int, out_dir: Path) -> dict[str, Any]:
         mf.write("\n\n")
 
     took = time.time() - start
-    LOG.info("Analyzed %s in %.2fs; report: %s", path.name, took, json_path)
+    logger.info("Analyzed %s in %.2fs; report: %s", path.name, took, json_path)
     meta["elapsed_seconds"] = took
     return meta
 
@@ -361,12 +360,12 @@ def main():
     out_dir = Path(args.out_dir)
 
     if not input_dir.exists():
-        LOG.error("Input directory does not exist: %s", input_dir)
+        logger.error("Input directory does not exist: %s", input_dir)
         sys.exit(2)
 
     files = find_uspto_files(input_dir)
     if not files:
-        LOG.warning("No supported files found under %s (extensions: %s)", input_dir, SUPPORTED_EXT)
+        logger.warning("No supported files found under %s (extensions: %s)", input_dir, SUPPORTED_EXT)
         sys.exit(0)
 
     # Filter skip extensions
@@ -376,14 +375,14 @@ def main():
         }
         files = [f for f in files if f.suffix.lower() not in skip_set]
 
-    LOG.info("Found %d files to analyze", len(files))
+    logger.info("Found %d files to analyze", len(files))
     summary: list[dict[str, Any]] = []
     for fp in files:
         try:
             meta = analyze_file(fp, args.sample_size, out_dir=out_dir)
             summary.append(meta)
         except Exception as e:
-            LOG.exception("Error analyzing file %s: %s", fp, e)
+            logger.exception("Error analyzing file %s: %s", fp, e)
             summary.append({"file": str(fp), "error": str(e)})
 
     # Write run-level summary
@@ -397,7 +396,7 @@ def main():
     with open(out_dir / "run_summary.json", "w", encoding="utf-8") as fh:
         json.dump({"run": run_summary, "details": summary}, fh, indent=2, ensure_ascii=False)
 
-    LOG.info("Completed analysis. Reports written under %s", out_dir)
+    logger.info("Completed analysis. Reports written under %s", out_dir)
     print("Completed analysis. Reports written under", out_dir)
 
 
