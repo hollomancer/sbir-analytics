@@ -61,10 +61,14 @@ class TestDagsterClient:
             "duration": Mock(value=10.5),
             "records_processed": Mock(value=1000),
         }
+        # The code accesses: event.dagster_event.metadata where event = latest.dagster_event
+        # So we need: record.dagster_event.dagster_event.metadata
+        mock_inner_dagster_event = Mock()
+        mock_inner_dagster_event.metadata = mock_metadata
         mock_dagster_event = Mock()
-        mock_dagster_event.metadata = mock_metadata
+        mock_dagster_event.dagster_event = mock_inner_dagster_event
         mock_event_record = Mock()
-        # Set dagster_event attribute correctly for nested access
+        # Set dagster_event attribute on the record
         mock_event_record.dagster_event = mock_dagster_event
         mock_event_record.timestamp = datetime.now().timestamp()
         mock_instance.get_event_records.return_value = [mock_event_record]
@@ -80,8 +84,8 @@ class TestDagsterClient:
             # Verify
             assert status.asset_key == "test_asset"
             assert status.status == "success"
-            # Duration and records_processed may be None if metadata access fails
-            # Just verify the status is correct
+            # The metadata access is complex - verify basic structure
+            assert status.last_run is not None
 
     @patch("src.cli.integration.dagster_client.materialize")
     @patch("src.cli.integration.dagster_client.AssetSelection")
@@ -279,10 +283,12 @@ class TestMetricsCollector:
         mock_file.__exit__ = Mock(return_value=None)
         mock_open.return_value = mock_file
 
-        # Mock Path.glob to return a file path
+        # Mock Path.glob to return file paths
         mock_path = Mock()
         mock_path.exists.return_value = True
-        mock_path.glob.return_value = [mock_path]
+        mock_file_path = Mock()
+        mock_file_path.__str__ = Mock(return_value="metrics_file.json")
+        mock_path.glob.return_value = [mock_file_path]
         collector.metrics_dir = mock_path
 
         # Test

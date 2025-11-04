@@ -108,11 +108,11 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     assert Path(transformed_result["output_path"]).exists()
     assert transformed_result["error_count"] == 0
 
-    patents_ctx = build_asset_context(op_config={"output_dir": str(tmp_path / "out")})
+    patents_ctx = build_asset_context()
     patents_result = transformation_assets.transformed_patents(patents_ctx, transformed_result)
     assert patents_result["patent_count"] == 1
 
-    entities_ctx = build_asset_context(op_config={"output_dir": str(tmp_path / "out")})
+    entities_ctx = build_asset_context()
     entities_result = transformation_assets.transformed_patent_entities(
         entities_ctx, transformed_result
     )
