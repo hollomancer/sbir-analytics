@@ -23,8 +23,8 @@ jobs:
               - 'src/assets/**'
               - 'src/utils/performance_monitor.py'
               - 'src/extractors/**'
-              - 'scripts/benchmark_enrichment.py'
-              - 'scripts/detect_performance_regression.py'
+              - 'scripts/performance/benchmark_enrichment.py'
+              - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
             cet:
               - 'src/**'
@@ -332,7 +332,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p reports/benchmarks
-          python scripts/detect_performance_regression.py \
+          python scripts/performance/detect_performance_regression.py \
             --sample-size 500 \
             --output-json /tmp/regression.json \
             --output-markdown /tmp/report.md \
@@ -356,7 +356,7 @@ jobs:
       - name: Create baseline if needed
         if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
         run: |
-          python scripts/benchmark_enrichment.py \
+          python scripts/performance/benchmark_enrichment.py \
             --sample-size 500 \
             --save-as-baseline
 

@@ -492,6 +492,10 @@ def raw_cet_taxonomy() -> Output:
     return Output(value=str(output_path), metadata=metadata)
 
 
+# Alias for backward compatibility and simpler test interface
+cet_taxonomy = raw_cet_taxonomy
+
+
 @asset(
     name="enriched_cet_award_classifications",
     key_prefix=["ml"],
