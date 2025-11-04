@@ -10,6 +10,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+# Import central exceptions for migration-specific exceptions to inherit from
+from ..exceptions import (
+    FileSystemError as BaseFileSystemError,
+)
+from ..exceptions import (
+    TransformationError as BaseTransformationError,
+)
+from ..exceptions import (
+    ValidationError as BaseValidationError,
+)
+
 
 # Migration Configuration
 @dataclass
@@ -287,31 +298,42 @@ class MigrationReport:
 
 
 # Migration Exceptions
-class MigrationError(Exception):
-    """Base exception for migration errors."""
+# These inherit from central exception hierarchy but keep specific names for migration context
 
-    pass
+
+class MigrationError(BaseTransformationError):
+    """Base exception for migration errors.
+
+    Inherits from TransformationError since migration is a transformation process.
+    """
+
+    def __init__(self, message: str, **kwargs: Any):
+        super().__init__(message, component="migration.openspec_to_kiro", **kwargs)
 
 
 class ContentParsingError(MigrationError):
     """Error parsing OpenSpec content."""
 
-    pass
+    def __init__(self, message: str, **kwargs: Any):
+        super().__init__(message, operation="parse_content", **kwargs)
 
 
 class TransformationError(MigrationError):
     """Error transforming content to Kiro format."""
 
-    pass
+    def __init__(self, message: str, **kwargs: Any):
+        super().__init__(message, operation="transform_content", **kwargs)
 
 
 class ValidationError(MigrationError):
     """Error validating migrated content."""
 
-    pass
+    def __init__(self, message: str, **kwargs: Any):
+        super().__init__(message, operation="validate_content", **kwargs)
 
 
 class FileSystemError(MigrationError):
     """Error with file operations during migration."""
 
-    pass
+    def __init__(self, message: str, **kwargs: Any):
+        super().__init__(message, operation="file_operation", **kwargs)
