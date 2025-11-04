@@ -165,17 +165,16 @@ docker-up-tools: env-check ## Start the tools profile (debug helpers)
 
 .PHONY: docker-down
 docker-down: ## Stop all services and remove volumes
-	@set -euo pipefail; \
-	 $(call info,Stopping all services and removing volumes); \
-	 $(call print-cmd,$(COMPOSE) down --remove-orphans --volumes); \
-	 STATUS=0; \
-	 if ! $(COMPOSE) down --remove-orphans --volumes; then STATUS=$$?; fi; \
-	 if [ $$STATUS -eq 0 ]; then \
-	   $(call success,Services stopped and cleaned up); \
-	 else \
-	   $(call warn,Cleanup exited with code $$STATUS (this can happen if nothing was running)); \
-	 fi; \
-	 exit $$STATUS
+	@$(call info,Stopping all services and removing volumes)
+	$(call print-cmd,$(COMPOSE) down --remove-orphans --volumes)
+	@STATUS=0; \
+	if ! $(COMPOSE) down --remove-orphans --volumes; then STATUS=$$?; fi; \
+	if [ $$STATUS -eq 0 ]; then \
+		$(call success,Services stopped and cleaned up); \
+	else \
+		$(call warn,Cleanup exited with code $$STATUS (this can happen if nothing was running)); \
+	fi; \
+	exit $$STATUS
 
 .PHONY: docker-rebuild
 docker-rebuild: docker-down docker-build docker-up-dev ## Rebuild the image and restart the dev stack
