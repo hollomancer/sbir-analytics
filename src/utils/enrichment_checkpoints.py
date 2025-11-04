@@ -132,7 +132,9 @@ class CheckpointStore:
         if "metadata" in checkpoint_dict and isinstance(checkpoint_dict["metadata"], str):
             import json
 
-            checkpoint_dict["metadata"] = json.loads(checkpoint_dict["metadata"]) if checkpoint_dict["metadata"] else {}
+            checkpoint_dict["metadata"] = (
+                json.loads(checkpoint_dict["metadata"]) if checkpoint_dict["metadata"] else {}
+            )
         return EnrichmentCheckpoint.from_dict(checkpoint_dict)
 
     def load_all(self) -> pd.DataFrame:

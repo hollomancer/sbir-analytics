@@ -593,6 +593,7 @@ def enriched_cet_award_classifications() -> Output:
     except Exception:
         logger.exception("Failed to load taxonomy; writing empty output")
         import pandas as pd
+
         df_empty = pd.DataFrame(
             columns=[
                 "award_id",

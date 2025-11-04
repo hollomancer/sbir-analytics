@@ -124,6 +124,7 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
     # Basic sanity: enrichment should not alter total row count
     assert len(enriched) == len(raw_df)
 
+
 from pathlib import Path
 
 import pytest

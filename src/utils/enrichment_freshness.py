@@ -71,7 +71,9 @@ class FreshnessStore:
 
         model_dict = model.model_dump()
         if "metadata" in model_dict and isinstance(model_dict["metadata"], dict):
-            model_dict["metadata"] = json.dumps(model_dict["metadata"]) if model_dict["metadata"] else "{}"
+            model_dict["metadata"] = (
+                json.dumps(model_dict["metadata"]) if model_dict["metadata"] else "{}"
+            )
 
         # Create DataFrame from single record
         new_row = pd.DataFrame([model_dict])
@@ -205,7 +207,9 @@ class FreshnessStore:
             row_dict = row.to_dict()
             # Convert metadata JSON string back to dict if present
             if "metadata" in row_dict and isinstance(row_dict["metadata"], str):
-                row_dict["metadata"] = json.loads(row_dict["metadata"]) if row_dict["metadata"] else {}
+                row_dict["metadata"] = (
+                    json.loads(row_dict["metadata"]) if row_dict["metadata"] else {}
+                )
             if pd.isna(last_success):
                 # No successful enrichment yet
                 stale_records.append(EnrichmentFreshnessRecordModel(**row_dict).to_dataclass())
@@ -214,9 +218,7 @@ class FreshnessStore:
                 if isinstance(last_success, pd.Timestamp):
                     last_success = last_success.to_pydatetime()
                 if last_success < cutoff:
-                    stale_records.append(
-                        EnrichmentFreshnessRecordModel(**row_dict).to_dataclass()
-                    )
+                    stale_records.append(EnrichmentFreshnessRecordModel(**row_dict).to_dataclass())
 
         return stale_records
 

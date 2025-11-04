@@ -457,6 +457,7 @@ class TestIntegration:
         success_rec = next((r for r in report.recommendations if r.category == "success"), None)
         assert success_rec is not None
 
+
 """Tests for the E2E pipeline validator.
 
 This module tests the pipeline validator functionality to ensure

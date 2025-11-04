@@ -41,6 +41,7 @@ def test_company_mergers_and_acquisitions():
     no_ma_events = company_mergers_and_acquisitions(sbir_awards, uspto_patent_assignments_no_ma)
     assert len(no_ma_events) == 0
 
+
 import pytest
 
 

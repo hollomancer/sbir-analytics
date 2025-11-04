@@ -1057,7 +1057,8 @@ class USPTODataQualityValidator:
                 "files": len(results),
                 "files_passing": sum(1 for success in file_successes if success),
                 "pass_rate": (
-                    float(sum(1 for success in file_successes if success)) / max(len(file_successes), 1)
+                    float(sum(1 for success in file_successes if success))
+                    / max(len(file_successes), 1)
                 ),
             }
 

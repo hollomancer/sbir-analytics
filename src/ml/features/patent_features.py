@@ -113,7 +113,9 @@ def tokenize(text: str | None) -> list[str]:
     return [m.group(0) for m in _token_re.finditer(text)]
 
 
-def remove_stopwords(tokens: Iterable[str] | None, stopwords: Iterable[str] | None = None) -> list[str]:
+def remove_stopwords(
+    tokens: Iterable[str] | None, stopwords: Iterable[str] | None = None
+) -> list[str]:
     """
     Remove stopwords from an iterable of tokens.
 

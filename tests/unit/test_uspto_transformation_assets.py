@@ -106,7 +106,9 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     assignment_ctx = build_asset_context()
 
     # Access underlying compute function when Dagster is installed
-    transformed_assignments_fn = _get_compute_fn(transformation_assets.transformed_patent_assignments)
+    transformed_assignments_fn = _get_compute_fn(
+        transformation_assets.transformed_patent_assignments
+    )
     transformed_result = transformed_assignments_fn(
         assignment_ctx,
         [assignment_path],

@@ -185,6 +185,7 @@ def test_uspto_data_quality_validator_generates_report(tmp_path: Path):
     if report_path:
         assert Path(report_path).exists()
 
+
 from pathlib import Path
 
 import pytest

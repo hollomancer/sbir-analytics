@@ -164,6 +164,7 @@ def test_transition_scores_topk_deterministic_across_runs(monkeypatch, tmp_path)
     rows1b = out1b.to_dict(orient="records")
     assert rows1 == rows1b
 
+
 import pandas as pd
 import pytest
 

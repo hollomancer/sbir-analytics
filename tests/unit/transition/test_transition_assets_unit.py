@@ -395,9 +395,7 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
         detections_fn = detections_asset.compute_fn
     else:
         detections_fn = detections_asset
-    detections_df, metadata = _unwrap_output(
-        detections_fn(ctx, scores_df)
-    )
+    detections_df, metadata = _unwrap_output(detections_fn(ctx, scores_df))
 
     assert isinstance(detections_df, pd.DataFrame)
     assert len(detections_df) == 1
@@ -434,9 +432,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
             }
         ]
     )
-    pd.DataFrame(
-        columns=["contract_id", "matched_vendor_id", "match_method", "confidence"]
-    )
+    pd.DataFrame(columns=["contract_id", "matched_vendor_id", "match_method", "confidence"])
     pd.DataFrame(
         [
             {
@@ -474,9 +470,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
         detections_fn = detections_asset.compute_fn
     else:
         detections_fn = detections_asset
-    detections_df, metadata = _unwrap_output(
-        detections_fn(ctx, scores_df)
-    )
+    detections_df, metadata = _unwrap_output(detections_fn(ctx, scores_df))
 
     assert isinstance(detections_df, pd.DataFrame)
     assert detections_df.empty

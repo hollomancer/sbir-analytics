@@ -93,9 +93,7 @@ def _company_id_series(awards_df: pd.DataFrame) -> pd.Series:
     if name_col:
         # Check for valid name values (not empty, not "None", not "nan")
         names_valid = (names != "") & (~names.isin(["None", "nan", "NaN"]))
-        company_id = company_id.mask(
-            (~company_id.astype(bool)) & names_valid, "name:" + names
-        )
+        company_id = company_id.mask((~company_id.astype(bool)) & names_valid, "name:" + names)
 
     # Last resort: row index as id to avoid empties
     company_id = company_id.where(company_id.astype(bool), "row:" + awards_df.index.astype(str))

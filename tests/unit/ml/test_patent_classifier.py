@@ -107,6 +107,7 @@ def test_no_pipelines_returns_empty_lists():
     # Each entry should be an empty list when no pipelines are configured
     assert all(isinstance(r, list) and len(r) == 0 for r in results)
 
+
 # sbir-etl/tests/unit/ml/test_patent_classifier.py
 
 

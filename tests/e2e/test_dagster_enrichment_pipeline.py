@@ -425,6 +425,7 @@ class TestPipelineEdgeCases:
         metadata = enriched_result.metadata
         assert "0.0%" in metadata["match_rate"] or metadata["match_rate"] == "0.0%"
 
+
 """End-to-end Dagster pipeline smoke tests for SBIR-USAspending enrichment.
 
 Tests the complete enrichment pipeline from data ingestion through enrichment

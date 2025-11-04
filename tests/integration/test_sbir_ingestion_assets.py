@@ -137,6 +137,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
         # ignore if not empty or removal fails
         pass
 
+
 from pathlib import Path
 
 import pytest

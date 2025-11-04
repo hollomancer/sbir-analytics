@@ -135,7 +135,11 @@ class DagsterClient:
             if materializations:
                 latest = materializations[0]
                 event = latest.dagster_event if hasattr(latest, "dagster_event") else None  # type: ignore[attr-defined]
-                metadata = event.dagster_event.metadata if event and hasattr(event, "dagster_event") and event.dagster_event else {}  # type: ignore[attr-defined]
+                metadata = (
+                    event.dagster_event.metadata
+                    if event and hasattr(event, "dagster_event") and event.dagster_event
+                    else {}
+                )  # type: ignore[attr-defined]
 
                 return AssetStatus(
                     asset_key=asset_key,
@@ -224,9 +228,21 @@ class DagsterClient:
             if run is None:
                 return {"status": "not_found", "run_id": run_id}
 
-            status_value = run.status.value if hasattr(run, "status") and hasattr(run.status, "value") else "unknown"
-            start_time = run.run_start_time.isoformat() if hasattr(run, "run_start_time") and run.run_start_time else None
-            end_time = run.run_end_time.isoformat() if hasattr(run, "run_end_time") and run.run_end_time else None
+            status_value = (
+                run.status.value
+                if hasattr(run, "status") and hasattr(run.status, "value")
+                else "unknown"
+            )
+            start_time = (
+                run.run_start_time.isoformat()
+                if hasattr(run, "run_start_time") and run.run_start_time
+                else None
+            )
+            end_time = (
+                run.run_end_time.isoformat()
+                if hasattr(run, "run_end_time") and run.run_end_time
+                else None
+            )
             return {
                 "run_id": run_id,
                 "status": status_value,

@@ -393,7 +393,9 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
 
     # Run chain
     vr_df, _ = _unwrap_output(enriched_vendor_resolution(ctx, contracts_df, awards_df))
-    scores_df, _ = _unwrap_output(transformed_transition_scores(ctx, vr_df, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(
+        transformed_transition_scores(ctx, vr_df, contracts_df, awards_df)
+    )
     ev_path_str, _ = _unwrap_output(transformed_transition_evidence(ctx, scores_df, contracts_df))
     ev_path = Path(ev_path_str)
 
@@ -525,7 +527,9 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     # Run chain subset up to analytics
     ctx = AssetExecutionContext()
     vr_df, _ = _unwrap_output(enriched_vendor_resolution(ctx, contracts_df, awards_df))
-    scores_df, _ = _unwrap_output(transformed_transition_scores(ctx, vr_df, contracts_df, awards_df))
+    scores_df, _ = _unwrap_output(
+        transformed_transition_scores(ctx, vr_df, contracts_df, awards_df)
+    )
 
     analytics_path, meta = _unwrap_output(
         transformed_transition_analytics(ctx, awards_df, scores_df, contracts_df)
@@ -552,6 +556,7 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     counts = checks["counts"]
     assert counts.get("total_awards", 0) >= 1
     assert counts.get("total_companies", 0) >= 1
+
 
 from pathlib import Path
 
