@@ -83,12 +83,18 @@ def _company_id_series(awards_df: pd.DataFrame) -> pd.Series:
     # Build canonical id with prefixes to avoid collisions between ID systems
     company_id = pd.Series([""] * len(awards_df), index=awards_df.index, dtype="object")
     if uei_col:
-        company_id = company_id.mask(uei.astype(bool), "uei:" + uei)
+        # Check for valid UEI values (not empty, not "None", not "nan")
+        uei_valid = (uei != "") & (~uei.isin(["None", "nan", "NaN"]))
+        company_id = company_id.mask(uei_valid, "uei:" + uei)
     if duns_col:
-        company_id = company_id.mask((~company_id.astype(bool)) & duns.astype(bool), "duns:" + duns)
+        # Check for valid DUNS values (not empty, not "None", not "nan")
+        duns_valid = (duns != "") & (~duns.isin(["None", "nan", "NaN"]))
+        company_id = company_id.mask((~company_id.astype(bool)) & duns_valid, "duns:" + duns)
     if name_col:
+        # Check for valid name values (not empty, not "None", not "nan")
+        names_valid = (names != "") & (~names.isin(["None", "nan", "NaN"]))
         company_id = company_id.mask(
-            (~company_id.astype(bool)) & names.astype(bool), "name:" + names
+            (~company_id.astype(bool)) & names_valid, "name:" + names
         )
 
     # Last resort: row index as id to avoid empties

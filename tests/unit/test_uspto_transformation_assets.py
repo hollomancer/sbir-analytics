@@ -92,9 +92,7 @@ def test_transformation_assets_pipeline(tmp_path: Path):
         [{"rf_id": "RF1", "convey_ty": "assignment", "employer_assign": True}],
     )
 
-    assignment_ctx = build_asset_context(
-        op_config={"output_dir": str(tmp_path / "out"), "chunk_size": 5, "sample_limit": 2}
-    )
+    assignment_ctx = build_asset_context()
 
     transformed_result = transformation_assets.transformed_patent_assignments(
         assignment_ctx,

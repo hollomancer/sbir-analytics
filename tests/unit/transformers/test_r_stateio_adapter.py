@@ -8,6 +8,9 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
+# Skip all tests if rpy2 is not available
+rpy2 = pytest.importorskip("rpy2", reason="rpy2 is required for R adapter tests")
+
 from src.transformers.r_stateio_adapter import RStateIOAdapter
 from src.utils.r_helpers import RFunctionError
 
@@ -204,7 +207,7 @@ class TestRStateIOAdapterImpactComputation:
     @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_adapter.importr")
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.transformers.r_stateio_adapter.call_r_function")
+    @patch("src.utils.r_helpers.call_r_function")
     def test_compute_impacts_success(
         self,
         mock_call_r_function,
@@ -242,7 +245,7 @@ class TestRStateIOAdapterImpactComputation:
     @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_adapter.importr")
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.transformers.r_stateio_adapter.call_r_function")
+    @patch("src.utils.r_helpers.call_r_function")
     def test_compute_impacts_fallback_to_placeholder(
         self,
         mock_call_r_function,
@@ -327,7 +330,7 @@ class TestRStateIOAdapterIntegration:
     @patch("src.transformers.r_stateio_adapter.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_adapter.importr")
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
-    @patch("src.transformers.r_stateio_adapter.call_r_function")
+    @patch("src.utils.r_helpers.call_r_function")
     def test_compute_impacts_with_cache(
         self,
         mock_call_r_function,

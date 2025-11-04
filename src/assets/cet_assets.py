@@ -63,17 +63,21 @@ except Exception:  # pragma: no cover
         WARN = "WARN"
 
     class AssetExecutionContext:  # type: ignore
-        class _L:
-            def info(self, *a, **kw):  # noqa: D401
-                print(*a)
+        def __init__(self, op_execution_context=None) -> None:
+            class _L:
+                def info(self, *a, **kw):  # noqa: D401
+                    print(*a)
 
-            def warning(self, *a, **kw):
-                print(*a)
+                def warning(self, *a, **kw):
+                    print(*a)
 
-            def error(self, *a, **kw):
-                print(*a)
+                def error(self, *a, **kw):
+                    print(*a)
 
-        log = _L()
+            self.log = _L()
+            if op_execution_context:
+                # Store if provided for compatibility
+                self._op_execution_context = op_execution_context
 
 
 # Statistical reporting imports

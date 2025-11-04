@@ -302,7 +302,7 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
-        transition_detections,
+        transformed_transition_detections,
     )
 
     awards_df = pd.DataFrame(
@@ -360,7 +360,7 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
 
     ctx = AssetExecutionContext()
     detections_df, metadata = _unwrap_output(
-        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+        transformed_transition_detections(ctx, scores_df)
     )
 
     assert isinstance(detections_df, pd.DataFrame)
@@ -386,7 +386,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
 
     from src.assets.transition_assets import (  # type: ignore
         AssetExecutionContext,
-        transition_detections,
+        transformed_transition_detections,
     )
 
     awards_df = pd.DataFrame(
@@ -434,7 +434,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
 
     ctx = AssetExecutionContext()
     detections_df, metadata = _unwrap_output(
-        transition_detections(ctx, awards_df, vendor_res_df, contracts_df, scores_df)
+        transformed_transition_detections(ctx, scores_df)
     )
 
     assert isinstance(detections_df, pd.DataFrame)

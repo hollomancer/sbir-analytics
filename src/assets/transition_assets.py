@@ -70,8 +70,11 @@ except Exception:  # pragma: no cover
             return v
 
     class AssetExecutionContext:  # type: ignore
-        def __init__(self) -> None:
+        def __init__(self, op_execution_context=None) -> None:
             self.log = logger
+            if op_execution_context:
+                # Store if provided for compatibility
+                self._op_execution_context = op_execution_context
 
     def asset_check(*args, **kwargs):  # type: ignore
         def _wrap(fn):
