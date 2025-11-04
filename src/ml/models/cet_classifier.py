@@ -26,6 +26,7 @@ from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
+from src.exceptions import CETClassificationError, FileSystemError, ValidationError
 from src.models.cet_models import CETArea, CETClassification, ClassificationLevel
 
 
@@ -248,7 +249,12 @@ class ApplicabilityModel:
         logger.info(f"Training CET classification models on {len(X_train)} documents")
 
         if len(X_train) != len(y_train):
-            raise ValueError("X_train and y_train must have same length")
+            raise ValidationError(
+                "X_train and y_train must have same length",
+                component="ml.cet_classifier",
+                operation="train",
+                details={"X_train_length": len(X_train), "y_train_length": len(y_train)},
+            )
 
         metrics = {}
 
@@ -332,7 +338,12 @@ class ApplicabilityModel:
             List of CETClassification objects sorted by score (descending)
         """
         if not self.is_trained:
-            raise RuntimeError("Model must be trained before classification")
+            raise CETClassificationError(
+                "Model must be trained before classification",
+                component="ml.cet_classifier",
+                operation="classify",
+                details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
+            )
 
         scores = self._get_scores([text])[0]
 
@@ -392,7 +403,12 @@ class ApplicabilityModel:
             List of classification lists (one per document)
         """
         if not self.is_trained:
-            raise RuntimeError("Model must be trained before classification")
+            raise CETClassificationError(
+                "Model must be trained before classification",
+                component="ml.cet_classifier",
+                operation="classify",
+                details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
+            )
 
         if batch_size is None:
             batch_size = self.config.get("batch", {}).get("size", 1000)
@@ -498,7 +514,12 @@ class ApplicabilityModel:
             filepath: Path to save model file (.pkl)
         """
         if not self.is_trained:
-            raise RuntimeError("Cannot save untrained model")
+            raise CETClassificationError(
+                "Cannot save untrained model",
+                component="ml.cet_classifier",
+                operation="save",
+                details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
+            )
 
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -532,7 +553,12 @@ class ApplicabilityModel:
         filepath = Path(filepath)
 
         if not filepath.exists():
-            raise FileNotFoundError(f"Model file not found: {filepath}")
+            raise FileSystemError(
+                f"Model file not found: {filepath}",
+                file_path=str(filepath),
+                operation="load_model",
+                component="ml.cet_classifier",
+            )
 
         with open(filepath, "rb") as f:
             model_data = pickle.load(f)

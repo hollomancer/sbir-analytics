@@ -20,6 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.exceptions import DependencyError, ValidationError
+
 
 # pandas is optional at import-time; fail only when training is invoked
 try:
@@ -35,14 +37,26 @@ try:
         PatentFeatureExtractor,
     )
 except Exception as e:  # pragma: no cover
-    raise RuntimeError("Required module src.ml.models.patent_classifier is not available") from e
+    raise DependencyError(
+        "Required module src.ml.models.patent_classifier is not available",
+        dependency_name="patent_classifier",
+        component="ml.patent_training",
+        operation="import",
+        cause=e,
+    ) from e
 
 logger = logging.getLogger(__name__)
 
 
 def _ensure_pandas() -> None:
     if pd is None:  # type: ignore
-        raise RuntimeError("pandas is required for patent classifier training")
+        raise DependencyError(
+            "pandas is required for patent classifier training",
+            dependency_name="pandas",
+            component="ml.patent_training",
+            operation="train",
+            details={"install_command": "poetry install"},
+        )
 
 
 def _normalize_labels_column(df: pd.DataFrame, cet_label_col: str) -> list[set[str]]:
@@ -162,11 +176,25 @@ def train_patent_classifier(
     _ensure_pandas()
 
     if df is None or len(df) == 0:
-        raise ValueError("Training DataFrame is empty or None")
+        raise ValidationError(
+            "Training DataFrame is empty or None",
+            component="ml.patent_training",
+            operation="train_patent_classifier",
+            details={"df_length": len(df) if df is not None else 0},
+        )
 
     missing_cols = [c for c in [title_col, cet_label_col] if c not in df.columns]
     if missing_cols:
-        raise ValueError(f"Training DataFrame missing required columns: {missing_cols}")
+        raise ValidationError(
+            f"Training DataFrame missing required columns: {missing_cols}",
+            component="ml.patent_training",
+            operation="train_patent_classifier",
+            details={
+                "missing_columns": missing_cols,
+                "required_columns": [title_col, cet_label_col],
+                "available_columns": list(df.columns),
+            },
+        )
 
     # Prepare labels
     _normalize_labels_column(df, cet_label_col)
@@ -221,7 +249,12 @@ def precision_recall_at_k(
     - y_pred_ranked: iterable of ranked predictions (PatentClassification) per record
     """
     if k <= 0:
-        raise ValueError("k must be >= 1")
+        raise ValidationError(
+            "k must be >= 1",
+            component="ml.patent_training",
+            operation="precision_recall_at_k",
+            details={"k": k, "valid_range": "k >= 1"},
+        )
 
     total_pred = 0
     total_true = 0

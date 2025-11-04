@@ -18,6 +18,7 @@ from typing import Any
 
 from loguru import logger
 
+from src.exceptions import ValidationError
 from src.models.cet_models import CETArea, EvidenceStatement
 
 
@@ -334,7 +335,15 @@ class EvidenceExtractor:
             List of classification lists with evidence populated
         """
         if len(classifications_list) != len(document_parts_list):
-            raise ValueError("classifications and document_parts_list must have same length")
+            raise ValidationError(
+                "classifications and document_parts_list must have same length",
+                component="ml.evidence_extractor",
+                operation="extract_batch_evidence",
+                details={
+                    "classifications_length": len(classifications_list),
+                    "document_parts_length": len(document_parts_list),
+                },
+            )
 
         logger.info(f"Extracting evidence for {len(classifications_list)} classifications")
 
