@@ -95,7 +95,7 @@ enrichment:
       enabled: true
       priority: 3
       confidence: 0.85
-      api_key_env: "SAM_GOV_API_KEY"
+      api_key_env: "SAM_GOV_API_KEY"  # pragma: allowlist secret
       rate_limit: 60
       timeout_seconds: 30
       
@@ -187,7 +187,7 @@ neo4j:
   # Connection configuration
   uri_env_var: "NEO4J_URI"
   user_env_var: "NEO4J_USER"
-  password_env_var: "NEO4J_PASSWORD"
+  password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
   
   # Loading configuration
   loading:
@@ -294,11 +294,11 @@ export SBIR_ETL__PIPELINE__CHUNK_SIZE=5000
 ## Database connections
 
 export SBIR_ETL__NEO4J__URI="bolt://production-neo4j:7687"
-export SBIR_ETL__NEO4J__PASSWORD="secure_password"
+export SBIR_ETL__NEO4J__PASSWORD="secure_password"  # pragma: allowlist secret
 
 ## API keys
 
-export SBIR_ETL__ENRICHMENT__SAM_GOV_API_KEY="your_api_key"
+export SBIR_ETL__ENRICHMENT__SAM_GOV_API_KEY="your_api_key"  # pragma: allowlist secret
 
 ## Performance tuning
 
@@ -338,7 +338,7 @@ You can either set raw secrets:
 ```bash
 export NEO4J_URI="bolt://localhost:7687"
 export NEO4J_USER="neo4j"
-export NEO4J_PASSWORD="dev_password"
+export NEO4J_PASSWORD="dev_password"  # pragma: allowlist secret
 ```
 
 Or override resolved values directly via SBIR_ETL overrides:

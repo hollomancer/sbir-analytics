@@ -54,7 +54,7 @@ The system SHALL create RESULTED_IN relationships from Transitions to Contract n
 
 #### Scenario: Link transition to contract
 
-- **WHEN** a transition results from contract PIID="ABC123456"
+- **WHEN** a transition results from contract PIID="ABC123456"  # pragma: allowlist secret
 - **THEN** the system creates: (Transition)-[:RESULTED_IN]->(Contract {piid: "ABC123456"})
 - **AND** relationship properties include:
   - contract_start_date: date("2021-09-15")

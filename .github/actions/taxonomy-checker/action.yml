@@ -133,13 +133,15 @@ runs:
           const summaryRaw = `Checks summary: ${{ steps.evaluate.outputs.summary }}`;
           const title = `**${{ inputs.comment-title }}**`;
           const summaryJson = ${{ steps.evaluate.outputs.summary }};
+          const codeBlock = '```json';
+          const codeBlockEnd = '```';
           const body = `${title}
 
 The CET taxonomy completeness checks reported issues that require attention. Summary:
 
-\`\`\`json
+${codeBlock}
 ${summaryJson}
-\`\`\`
+${codeBlockEnd}
 
 Please review the taxonomy at \`config/cet/taxonomy.yaml\` and address missing keywords, definitions, or update taxonomy versioning as appropriate.
 

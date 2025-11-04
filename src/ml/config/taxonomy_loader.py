@@ -19,7 +19,7 @@ class TaxonomyConfig(BaseModel):
 
     version: str = Field(..., description="Taxonomy version (e.g., 'NSTC-2025Q1')")
     last_updated: str = Field(..., description="Last update date")
-    description: str = Field(..., description="Taxonomy description")
+    description: str = Field(default="", description="Taxonomy description")
     cet_areas: list[CETArea] = Field(..., description="List of CET areas")
 
     @field_validator("cet_areas")
@@ -124,10 +124,14 @@ class TaxonomyLoader:
         ]
 
         # Build validated config
+        description = raw_config.get("description", "")
+        if not isinstance(description, str):
+            description = str(description) if description is not None else ""
+        
         taxonomy = TaxonomyConfig(
             version=raw_config["version"],
             last_updated=raw_config["last_updated"],
-            description=raw_config.get("description", ""),
+            description=description,
             cet_areas=cet_areas,
         )
 

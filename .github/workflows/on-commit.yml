@@ -73,7 +73,7 @@ jobs:
             fi
           fi
       - name: Fallback grep scan for common patterns
-        run: |
+        run: |  # pragma: allowlist secret
           set -eux
           PATTERNS=(
             "NEO4J_PASSWORD"

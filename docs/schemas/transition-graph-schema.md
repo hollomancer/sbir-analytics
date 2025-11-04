@@ -208,7 +208,7 @@ vendor_name: String
 
 vendor_uei: String (nullable)
   # Contractor UEI
-  # Example: "ABC123DEF456"
+  # Example: "ABC123DEF456"  # pragma: allowlist secret
 
 description: Text
   # Statement of work or description

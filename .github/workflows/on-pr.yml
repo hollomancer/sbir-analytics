@@ -516,7 +516,7 @@ jobs:
       # Neo4j connection for CET assets
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USERNAME: neo4j
-      NEO4J_PASSWORD: password
+      NEO4J_PASSWORD: password  # pragma: allowlist secret
 
     steps:
       - name: Checkout repository
@@ -711,7 +711,7 @@ jobs:
         env:
           NEO4J_URI: ${{ env.NEO4J_URI }}
           NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
-          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}  # pragma: allowlist secret
         run: |
           set -eux
           poetry run python - << 'PY'

@@ -166,7 +166,7 @@ class EvidenceExtractor:
 
         # Convert to EvidenceStatement objects
         evidence_statements = []
-        for sentence, source, keywords, score in top_candidates:
+        for sentence, source, keywords, _score in top_candidates:
             excerpt = self._truncate_excerpt(sentence)
             rationale = self._generate_rationale(keywords)
 
