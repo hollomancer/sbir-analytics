@@ -14,6 +14,13 @@ import duckdb
 import pandas as pd
 from loguru import logger
 
+# Import config loader for default paths
+try:
+    from src.config.loader import get_config
+    _config_available = True
+except ImportError:
+    _config_available = False
+
 
 class USAspendingCoverageAssessor:
     """Assesses USAspending coverage for SBIR enrichment."""
@@ -387,6 +394,15 @@ class USAspendingCoverageAssessor:
 
 def main():
     """Main entry point."""
+    # Determine default dump path from config if available
+    default_dump_path = Path("data/usaspending/usaspending-db_20251006.zip")
+    if _config_available:
+        try:
+            config = get_config()
+            default_dump_path = config.paths.resolve_path("usaspending_dump_file")
+        except Exception:
+            pass  # Fall back to hardcoded default
+
     parser = argparse.ArgumentParser(description="Assess USAspending coverage for SBIR enrichment")
     parser.add_argument(
         "--sbir-sample",
@@ -397,7 +413,7 @@ def main():
     parser.add_argument(
         "--usaspending-dump",
         type=Path,
-        default=Path("/Volumes/X10 Pro/projects/usaspending-db-subset_20251006.zip"),
+        default=default_dump_path,
         help="Path to USAspending dump",
     )
     parser.add_argument(

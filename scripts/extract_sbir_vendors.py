@@ -16,6 +16,13 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+# Import config loader for default paths
+try:
+    from src.config.loader import get_config
+    _config_available = True
+except ImportError:
+    _config_available = False
+
 
 def extract_vendors(
     awards_file: Path,
@@ -97,7 +104,15 @@ def main():
     # Paths
     project_root = Path(__file__).parent.parent
     awards_file = project_root / "data" / "raw" / "sbir" / "awards_data.csv"
-    output_file = Path("/Volumes/X10 Pro/projects/sbir-etl-data/sbir_vendor_filters.json")
+
+    # Determine output file from config if available
+    output_file = project_root / "data" / "transition" / "sbir_vendor_filters.json"
+    if _config_available:
+        try:
+            config = get_config()
+            output_file = config.paths.resolve_path("transition_vendor_filters")
+        except Exception:
+            pass  # Fall back to default
 
     # Check if awards file exists
     if not awards_file.exists():

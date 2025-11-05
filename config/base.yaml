@@ -7,6 +7,29 @@ pipeline:
   version: "0.1.0"
   environment: "development" # overridden by environment
 
+# File system paths configuration
+# All paths are relative to project root by default
+# Override via environment variables: SBIR_ETL__PATHS__<KEY>
+# Examples:
+#   export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
+#   export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/path/to/dump.zip
+paths:
+  # Root data directory (all other paths relative to this)
+  data_root: "data"
+  raw_data: "data/raw"
+
+  # USAspending database dumps
+  usaspending_dump_dir: "data/usaspending"
+  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
+
+  # Transition detection outputs
+  transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  transition_dump_dir: "data/transition/pruned_data_store_api_dump"
+  transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
+
+  # Scripts output
+  scripts_output: "data/scripts_output"
+
 data_quality:
   sbir_awards:
     # SBIR-specific validation thresholds
