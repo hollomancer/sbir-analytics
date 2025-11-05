@@ -39,16 +39,18 @@ try:
     class AssetExecutionContext:  # type: ignore
         def __init__(self, op_execution_context=None, op_config=None) -> None:
             if op_execution_context is None:
-                # For testing: create a minimal mock-like object
+                # For testing: create a minimal mock-like object with loguru
+                from loguru import logger as _logger
+
                 class _L:
                     def info(self, *a, **kw):  # noqa: D401
-                        print(*a)
+                        _logger.info(*a, **kw)
 
                     def warning(self, *a, **kw):
-                        print(*a)
+                        _logger.warning(*a, **kw)
 
                     def error(self, *a, **kw):
-                        print(*a)
+                        _logger.error(*a, **kw)
 
                 self.log = _L()
                 self.op_config = op_config or {}
@@ -96,15 +98,17 @@ except Exception:  # pragma: no cover
 
     class AssetExecutionContext:  # type: ignore
         def __init__(self, op_execution_context=None) -> None:
+            from loguru import logger as _logger
+
             class _L:
                 def info(self, *a, **kw):  # noqa: D401
-                    print(*a)
+                    _logger.info(*a, **kw)
 
                 def warning(self, *a, **kw):
-                    print(*a)
+                    _logger.warning(*a, **kw)
 
                 def error(self, *a, **kw):
-                    print(*a)
+                    _logger.error(*a, **kw)
 
             self.log = _L()
             if op_execution_context:

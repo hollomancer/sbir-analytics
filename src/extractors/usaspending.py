@@ -479,18 +479,23 @@ def extract_usaspending_from_config(
     db_path = config.duckdb.database_path
     extractor = DuckDBUSAspendingExtractor(db_path)
 
-    # Import dump if it exists
+    # Import dump if it exists - check multiple locations:
+    # 1. Specified data_dir
     dump_file = data_dir / dump_filename
     if dump_file.exists():
         table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
         extractor.import_postgres_dump(dump_file, table_name)
     else:
-        # Try removable media location
-        removable_dump = Path("/Volumes/X10 Pro") / dump_filename
-        if removable_dump.exists():
+        # 2. Try configured path (supports environment variable overrides)
+        try:
+            configured_dump = config.paths.resolve_path("usaspending_dump_file")
+            if configured_dump.exists():
+                with log_with_context(stage="extract", run_id="usaspending_config") as logger:
+                    logger.info(f"Using dump from configured path: {configured_dump}")
+                    table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
+                    extractor.import_postgres_dump(configured_dump, table_name)
+        except Exception as e:
             with log_with_context(stage="extract", run_id="usaspending_config") as logger:
-                logger.info(f"Using dump from removable media: {removable_dump}")
-                table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
-                extractor.import_postgres_dump(removable_dump, table_name)
+                logger.debug(f"Configured dump path not available: {e}")
 
     return extractor

@@ -40,6 +40,48 @@ sbir-cli dashboard start
 
 See [CLI Reference Guide](docs/cli/README.md) for complete documentation.
 
+## Configuration
+
+### Path Configuration
+
+The pipeline uses a flexible, configuration-driven approach for file system paths. All paths can be configured via YAML files or environment variables.
+
+**Default paths** (relative to project root):
+```
+data/
+├── usaspending/              # USAspending database dumps
+├── transition/               # Transition detection outputs
+├── raw/                      # Raw input data
+└── scripts_output/          # Script outputs
+```
+
+**Environment variable overrides:**
+```bash
+# Override any path in configuration
+export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
+export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/path/to/dump.zip
+export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/path/to/contracts.parquet
+```
+
+**Configuration file** (`config/base.yaml`):
+```yaml
+paths:
+  data_root: "data"
+  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
+  transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  transition_dump_dir: "data/transition/pruned_data_store_api_dump"
+  transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
+  scripts_output: "data/scripts_output"
+```
+
+**Key benefits:**
+- ✅ **Portable**: No hardcoded paths - works across different environments
+- ✅ **Flexible**: Override via environment variables for different deployments
+- ✅ **Validated**: Automatic path validation on startup with helpful error messages
+- ✅ **Docker-ready**: Easy volume mounting and path configuration
+
+See [Path Configuration Guide](docs/configuration/paths.md) for complete documentation.
+
 ## Documentation Map
 
 - Specs (Kiro): `.kiro/specs/` (Active) | `.kiro/specs/archive/` (Completed)

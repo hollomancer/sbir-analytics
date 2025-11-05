@@ -36,6 +36,7 @@ except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
 
+from ..config.loader import get_config
 from ..exceptions import FileSystemError
 from ..extractors.contract_extractor import ContractExtractor
 from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
@@ -352,24 +353,13 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
     ),
 )
 def raw_contracts(context) -> Output[pd.DataFrame]:
-    output_path = Path(
-        os.getenv(
-            "SBIR_ETL__TRANSITION__CONTRACTS__OUTPUT_PATH",
-            "/Volumes/X10 Pro/projects/sbir-etl-data/contracts_ingestion.parquet",
-        )
-    )
-    dump_dir = Path(
-        os.getenv(
-            "SBIR_ETL__TRANSITION__CONTRACTS__DUMP_DIR",
-            "/Volumes/X10 Pro/projects/sbir-etl-data/pruned_data_store_api_dump",
-        )
-    )
-    vendor_filter_path = Path(
-        os.getenv(
-            "SBIR_ETL__TRANSITION__CONTRACTS__VENDOR_FILTER_PATH",
-            "/Volumes/X10 Pro/projects/sbir-etl-data/sbir_vendor_filters.json",
-        )
-    )
+    # Load configuration
+    config = get_config()
+
+    # Get paths from configuration (with environment variable override support)
+    output_path = config.paths.resolve_path("transition_contracts_output")
+    dump_dir = config.paths.resolve_path("transition_dump_dir")
+    vendor_filter_path = config.paths.resolve_path("transition_vendor_filters")
     table_files_env = os.getenv("SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES")
     table_files = (
         [item.strip() for item in table_files_env.split(",") if item.strip()]

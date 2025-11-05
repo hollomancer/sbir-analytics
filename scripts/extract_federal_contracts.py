@@ -18,6 +18,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from src.config.loader import get_config
 from src.extractors.contract_extractor import ContractExtractor
 
 
@@ -33,15 +34,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Load configuration for default paths
+    config = get_config()
+
     # Determine paths
     if args.dump_dir:
         dump_dir = args.dump_dir
     elif args.subset:
-        dump_dir = Path("/Volumes/X10 Pro/projects/sbir-etl-data/pruned_data_store_api_dump")
+        dump_dir = config.paths.resolve_path("transition_dump_dir")
     elif args.full:
-        dump_dir = Path(
-            "/Volumes/X10 Pro/projects/sbir-etl-data/full_dump"
-        )  # Will extract full zip
+        # Full dump directory (typically a parent of the subset)
+        dump_dir = config.paths.resolve_path("transition_dump_dir").parent / "full_dump"
     else:
         logger.error("Please specify --subset or --full (or provide --dump-dir)")
         return
@@ -49,9 +52,9 @@ def main():
     if args.output:
         output_file = args.output
     else:
-        output_file = Path("/Volumes/X10 Pro/projects/sbir-etl-data/filtered_contracts.parquet")
+        output_file = config.paths.resolve_path("transition_contracts_output")
 
-    vendor_filter_file = Path("/Volumes/X10 Pro/projects/sbir-etl-data/sbir_vendor_filters.json")
+    vendor_filter_file = config.paths.resolve_path("transition_vendor_filters")
 
     # Validate inputs
     if not dump_dir.exists():

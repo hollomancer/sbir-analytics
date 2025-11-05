@@ -7,7 +7,10 @@ model to allow extra keys (previously `extra = "forbid"`), since environment
 overrides and external config sources may supply heterogeneous types.
 """
 
+import os
+import re
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -725,6 +728,122 @@ class FiscalAnalysisConfig(BaseModel):
         return out
 
 
+class PathsConfig(BaseModel):
+    """File system paths configuration with environment variable expansion.
+
+    Supports variable substitution using ${section.key} syntax and environment
+    variable expansion. All paths can be overridden via SBIR_ETL__PATHS__* env vars.
+    """
+
+    data_root: str = Field(
+        default="data", description="Root data directory (relative to project root)"
+    )
+    raw_data: str = Field(default="data/raw", description="Raw data directory")
+
+    # USAspending paths
+    usaspending_dump_dir: str = Field(
+        default="data/usaspending", description="USAspending database dumps directory"
+    )
+    usaspending_dump_file: str = Field(
+        default="data/usaspending/usaspending-db_20251006.zip",
+        description="USAspending database dump file",
+    )
+
+    # Transition detection paths
+    transition_contracts_output: str = Field(
+        default="data/transition/contracts_ingestion.parquet",
+        description="Transition contracts output file",
+    )
+    transition_dump_dir: str = Field(
+        default="data/transition/pruned_data_store_api_dump",
+        description="Transition API dump directory",
+    )
+    transition_vendor_filters: str = Field(
+        default="data/transition/sbir_vendor_filters.json",
+        description="SBIR vendor filters file",
+    )
+
+    # Scripts output paths
+    scripts_output: str = Field(
+        default="data/scripts_output", description="Scripts output directory"
+    )
+
+    def _expand_variables(self, value: str, context: dict[str, Any]) -> str:
+        """Expand ${section.key} variable references in path strings.
+
+        Args:
+            value: Path string potentially containing ${var} references
+            context: Dictionary of available variables for substitution
+
+        Returns:
+            Expanded path string
+        """
+        # Match ${section.key} patterns
+        pattern = re.compile(r'\$\{([^}]+)\}')
+
+        def replacer(match: re.Match[str]) -> str:
+            var_path = match.group(1)
+            parts = var_path.split('.')
+
+            # Navigate through nested dict
+            current = context
+            for part in parts:
+                if isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    # Variable not found, return original
+                    return match.group(0)
+
+            return str(current)
+
+        return pattern.sub(replacer, value)
+
+    def resolve_path(
+        self,
+        path_key: str,
+        create_parent: bool = False,
+        project_root: Path | None = None
+    ) -> Path:
+        """Resolve a configured path to an absolute Path object.
+
+        Args:
+            path_key: Key name from PathsConfig (e.g., 'usaspending_dump_file')
+            create_parent: If True, create parent directories if they don't exist
+            project_root: Project root directory (defaults to current working directory)
+
+        Returns:
+            Resolved absolute Path object
+
+        Raises:
+            ValueError: If path_key doesn't exist in configuration
+        """
+        if not hasattr(self, path_key):
+            raise ValueError(f"Unknown path key: {path_key}")
+
+        path_str = getattr(self, path_key)
+
+        # Expand environment variables first
+        path_str = os.path.expandvars(path_str)
+
+        # Expand ~ for home directory
+        path_str = os.path.expanduser(path_str)
+
+        # Convert to Path object
+        path = Path(path_str)
+
+        # Make relative paths absolute (relative to project root)
+        if not path.is_absolute():
+            if project_root is None:
+                project_root = Path.cwd()
+            path = project_root / path
+
+        # Optionally create parent directories
+        if create_parent and not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+        return path.resolve()
+
+
 class PipelineConfig(BaseModel):
     """Root configuration model for the SBIR ETL pipeline."""
 
@@ -736,6 +855,7 @@ class PipelineConfig(BaseModel):
         }
     )
 
+    paths: PathsConfig = Field(default_factory=PathsConfig, description="File system paths")
     data_quality: DataQualityConfig = Field(default_factory=DataQualityConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
     enrichment_refresh: EnrichmentRefreshConfig = Field(

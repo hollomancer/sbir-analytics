@@ -17,18 +17,17 @@ in CI containers that have the project installed.
 
 from __future__ import annotations
 
-from loguru import logger
-
 import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 # Import the project's TaxonomyLoader. This module lives under src/ml/config and
 # depends on the project's models (Pydantic) to validate the taxonomy.
 from src.ml.config.taxonomy_loader import TaxonomyConfig, TaxonomyLoader
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def run_taxonomy_checks(config_dir: Path | None = None) -> dict[str, Any]:
