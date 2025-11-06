@@ -14,7 +14,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
-from ..enrichers.fiscal_naics_enricher import enrich_sbir_awards_with_fiscal_naics
+from ..enrichers.naics import enrich_sbir_awards_with_fiscal_naics
 from ..enrichers.inflation_adjuster import adjust_awards_for_inflation
 from ..transformers.fiscal import (
     FiscalComponentCalculator,
