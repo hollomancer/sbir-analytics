@@ -74,14 +74,14 @@ except Exception:
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j_client import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:
     Neo4jClient = None  # type: ignore
     Neo4jConfig = None  # type: ignore
     LoadMetrics = None  # type: ignore
 
 try:  # pragma: no cover - defensive import
-    from ..loaders.patent_loader import PatentLoader, PatentLoaderConfig  # type: ignore
+    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig  # type: ignore
 except Exception:
     PatentLoader = None  # type: ignore
     PatentLoaderConfig = None  # type: ignore

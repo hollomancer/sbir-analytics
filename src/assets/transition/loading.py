@@ -32,7 +32,7 @@ from .utils import (
 
 # Neo4j loader imports
 try:
-    from ...loaders.neo4j.transition_loader import TransitionLoader
+    from ...loaders.neo4j import TransitionLoader
 except Exception:
     TransitionLoader = None
 
