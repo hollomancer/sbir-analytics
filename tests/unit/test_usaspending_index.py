@@ -5,7 +5,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.enrichers.usaspending_index import extract_table_sample, parse_toc_table_dat_map
+from src.enrichers.usaspending.index import extract_table_sample, parse_toc_table_dat_map
 
 
 USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-subset_20251006.zip")

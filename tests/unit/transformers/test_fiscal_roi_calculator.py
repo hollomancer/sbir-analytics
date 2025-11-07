@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal_roi_calculator import FiscalROICalculator
+from src.transformers.fiscal.roi import FiscalROICalculator
 
 
 @pytest.fixture

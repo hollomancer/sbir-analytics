@@ -8,7 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal_tax_estimator import FiscalTaxEstimator, TaxEstimationStats
+from src.transformers.fiscal.taxes import FiscalTaxEstimator, TaxEstimationStats
 
 
 @pytest.fixture

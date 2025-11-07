@@ -55,7 +55,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from ..exceptions import ConfigurationError, DependencyError
+from ...exceptions import ConfigurationError, DependencyError
 
 
 # Import neo4j lazily; avoid import error at module import time
