@@ -22,6 +22,8 @@ import json
 
 import pandas as pd
 
+from ...utils.text_normalization import normalize_recipient_name
+
 
 try:
     from rapidfuzz import fuzz, process
@@ -29,29 +31,6 @@ except ImportError:
     # Fallback to simple string matching if rapidfuzz not available
     fuzz = None
     process = None
-
-
-def normalize_recipient_name(name: str | None) -> str:
-    """
-    Normalize recipient/company name for matching:
-    - Lowercase
-    - Remove punctuation
-    - Normalize common suffixes
-    - Collapse whitespace
-    """
-    if not name:
-        return ""
-    s = str(name).strip().lower()
-    # Replace punctuation with spaces
-    import re
-
-    s = re.sub(r"[^\w\s]", " ", s)
-    # Normalize common business suffixes
-    s = re.sub(
-        r"\b(incorporated|incorporation|inc|corp|corporation|llc|ltd|limited|co|company)\b", "", s
-    )
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
 
 
 def enrich_sbir_with_usaspending(
