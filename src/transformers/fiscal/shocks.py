@@ -15,8 +15,8 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from ..config.loader import get_config
-from ..models.fiscal_models import EconomicShock
+from ...config.loader import get_config
+from ...models.fiscal_models import EconomicShock
 
 
 @dataclass

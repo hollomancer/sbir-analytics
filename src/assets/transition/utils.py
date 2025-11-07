@@ -35,10 +35,10 @@ except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
 
-from ..config.loader import get_config
-from ..exceptions import FileSystemError
-from ..extractors.contract_extractor import ContractExtractor
-from ..transition.features.vendor_resolver import VendorRecord, VendorResolver
+from ...config.loader import get_config
+from ...exceptions import FileSystemError
+from ...extractors.contract_extractor import ContractExtractor
+from ...transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 # Import-safe shims for Dagster

@@ -17,9 +17,9 @@ import httpx
 from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from ..config.loader import get_config
-from ..exceptions import APIError, ConfigurationError, RateLimitError
-from ..models.enrichment import EnrichmentFreshnessRecord
+from ...config.loader import get_config
+from ...exceptions import APIError, ConfigurationError, RateLimitError
+from ...models.enrichment import EnrichmentFreshnessRecord
 
 # Backward compatibility: Alias to central exception classes
 # TODO: Update all usages to use APIError/RateLimitError directly, then remove these aliases
