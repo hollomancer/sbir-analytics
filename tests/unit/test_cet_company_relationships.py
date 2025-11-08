@@ -203,33 +203,32 @@ def test_create_company_cet_relationships_missing_key_and_missing_cet_are_skippe
 # -----------------------------
 # Asset tests (no neo4j needed)
 # -----------------------------
-@pytest.mark.skip(reason="Test needs to be updated for current Dagster asset invocation API")
 def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_path):
     """
     Validate that the Dagster asset:
     - Reads input rows via helper
-    - Invokes CETLoader.create_company_cet_relationships with those rows and returns serialized metrics
+    - Invokes CETLoader.load_company_cet_relationships with those rows and returns serialized metrics
     """
     import importlib
 
     monkeypatch.chdir(tmp_path)
     mod = importlib.import_module("src.assets.cet_assets")
 
-    # Prepare fake input rows
+    # Prepare fake input rows (using company_uei as expected by the asset)
     rows = [
         {
-            "uei": "UEI-1",
+            "company_uei": "UEI-1",
             "dominant_cet": "artificial_intelligence",
-            "dominant_score": 80.0,
             "specialization_score": 0.5,
-            "taxonomy_version": "TEST-2025Q1",
+            "award_count": 10,
+            "total_funding": 1000000,
         },
         {
-            "uei": "UEI-2",
-            "cet_dominant_id": "quantum_information_science",
-            "cet_dominant_score": 60.0,
-            "cet_specialization_score": 0.2,
-            "cet_taxonomy_version": "TEST-2025Q1",
+            "company_uei": "UEI-2",
+            "dominant_cet": "quantum_information_science",
+            "specialization_score": 0.3,
+            "award_count": 5,
+            "total_funding": 500000,
         },
     ]
 
@@ -237,51 +236,51 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
 
     # Fake Metrics and Loader
     class FakeMetrics:
-        def __init__(self, count: int, rel_type: str):
+        def __init__(self, count: int):
             self.nodes_created = {}
             self.nodes_updated = {}
-            self.relationships_created = {rel_type: count}
+            self.relationships_created = {"SPECIALIZES_IN": count}
             self.errors = 0
 
     class FakeLoader:
         def __init__(self, client, config):
             self.client = client
             self.config = config
-            self.rows = None
-            self.rel_type = None
-            self.key_property = None
+            self.rows_received = None
 
-        def create_company_cet_relationships(
-            self, rows_in, *, rel_type="SPECIALIZES_IN", key_property="uei"
-        ):
-            self.rows = list(rows_in)
-            self.rel_type = rel_type
-            self.key_property = key_property
-            # Count relationships as the number of rows with any dominant CET present
-            count = 0
-            for r in self.rows:
-                if r.get("dominant_cet") or r.get("cet_dominant_id"):
-                    count += 1
-            return FakeMetrics(count, rel_type)
+        def load_company_cet_relationships(self, rows_in):
+            """Match the actual method name in CETLoader."""
+            self.rows_received = list(rows_in)
+            # Count relationships as the number of rows with dominant CET present
+            count = sum(1 for r in self.rows_received if r.get("dominant_cet"))
+            return FakeMetrics(count)
+
+        def close(self):
+            pass
 
     # Patch asset internals to avoid real IO/Neo4j
-    monkeypatch.setattr(mod, "_get_neo4j_client", lambda: object())
-    monkeypatch.setattr(mod, "_read_parquet_or_ndjson", lambda *args, **kwargs: rows)
-    monkeypatch.setattr(mod, "CETLoader", FakeLoader)
-    monkeypatch.setattr(mod, "CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
+    monkeypatch.setattr("src.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
+    monkeypatch.setattr("src.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows)
+    monkeypatch.setattr("src.assets.cet.loading.CETLoader", FakeLoader)
+    monkeypatch.setattr("src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
-    # Execute asset - access the underlying op from the AssetsDefinition
-    asset_def = mod.loaded_company_cet_relationships
-    op_def = asset_def.op
-    compute_fn = op_def.compute_fn
+    # Execute asset using Dagster's proper context
+    from dagster import build_op_context
 
-    ctx = mod.AssetExecutionContext(op_config={})
-    result = compute_fn(ctx, None, None, None)
+    ctx = build_op_context(
+        config={
+            "company_profiles_parquet": "fake.parquet",
+            "company_profiles_json": "fake.json",
+            "batch_size": 100,
+        }
+    )
+
+    from src.assets.cet.loading import loaded_company_cet_relationships as asset_fn
+
+    result = asset_fn(ctx, None, None, None)
 
     assert result["status"] == "success"
-    assert result["relationships_type"] == "SPECIALIZES_IN"
-    assert result["input_rows"] == len(rows)
-    assert result["key_property"] == "uei"
+    assert result["companies"] == len(rows)
     assert result["metrics"]["relationships_created"]["SPECIALIZES_IN"] == expected_rels
 
     # If the asset created a checks file, validate JSON structure (best-effort)
@@ -292,13 +291,14 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
         with checks_path.open("r", encoding="utf-8") as fh:
             payload = json.load(fh)
         assert payload.get("status") == "success"
-        assert payload.get("relationships_type") == "SPECIALIZES_IN"
+        assert payload.get("companies") == len(rows)
 
 
-@pytest.mark.skip(reason="Test needs to be updated for current Dagster asset invocation API")
+@pytest.mark.skip(reason="Fallback key_property behavior no longer exists in current implementation")
 def test_asset_neo4j_company_cet_relationships_fallback_key_property(monkeypatch, tmp_path):
     """
-    When the configured key_property has no values in rows, asset should fallback to 'company_id'.
+    DEPRECATED: This test verified fallback behavior that no longer exists.
+    The current implementation uses company_uei directly without fallback logic.
     """
     import importlib
 
