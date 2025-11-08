@@ -30,6 +30,11 @@ except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
 
+# Re-export these imports for use by other transition modules
+from ...config.loader import get_config  # noqa: F401
+from ...exceptions import FileSystemError  # noqa: F401
+from ...extractors.contract_extractor import ContractExtractor  # noqa: F401
+from ...transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
 # Neo4j imports
 try:
@@ -54,8 +59,15 @@ TRANSITION_LOAD_SUCCESS_THRESHOLD = float(
 
 # Import-safe shims for Dagster
 try:
-    from dagster import AssetExecutionContext as _RealAssetExecutionContext
-    from dagster import MetadataValue, Output, asset, asset_check
+    from dagster import (
+        AssetCheckResult,
+        AssetCheckSeverity,
+        AssetExecutionContext as _RealAssetExecutionContext,
+        MetadataValue,
+        Output,
+        asset,
+        asset_check,
+    )
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:  # type: ignore

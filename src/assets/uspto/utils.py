@@ -16,7 +16,14 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue
+from dagster import (  # Re-export for other USPTO modules
+    AssetCheckResult,
+    AssetCheckSeverity,
+    AssetIn,  # noqa: F401
+    MetadataValue,
+    asset,  # noqa: F401
+    asset_check,  # noqa: F401
+)
 from loguru import logger
 
 from ...exceptions import DependencyError
