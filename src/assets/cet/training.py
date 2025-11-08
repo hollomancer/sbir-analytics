@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ...ml.config.taxonomy_loader import TaxonomyLoader
 from .utils import Output, asset, save_dataframe_parquet
 
 

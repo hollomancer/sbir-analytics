@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
 from .utils import (
     ContractExtractor,
+    FileSystemError,
     MetadataValue,
     Output,
     _ensure_parent_dir,

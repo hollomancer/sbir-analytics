@@ -13,7 +13,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .utils import AssetCheckResult, AssetCheckSeverity, _env_float, _env_int, asset_check
+from .utils import (
+    AssetCheckResult,
+    AssetCheckSeverity,
+    _env_bool,
+    _env_float,
+    _env_int,
+    asset_check,
+)
 
 
 @asset_check(

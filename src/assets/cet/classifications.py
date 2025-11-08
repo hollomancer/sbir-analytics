@@ -2,7 +2,7 @@
 
 This module contains:
 - enriched_cet_award_classifications: Batch classify awards with CET taxonomy
-- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy  
+- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy
 - cet_award_classifications_quality_check: Quality validation for award classifications
 - Helper functions for classification processing
 """

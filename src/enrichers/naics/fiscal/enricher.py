@@ -137,7 +137,7 @@ class FiscalNAICSEnricher:
 
         # Enrich each award
         results = []
-        for idx, row in awards_df.iterrows():
+        for _idx, row in awards_df.iterrows():
             result = self.enrich_single_award(row)
             results.append(
                 {
