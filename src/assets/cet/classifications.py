@@ -13,7 +13,6 @@ import json
 import os
 from pathlib import Path
 
-import pandas as pd
 from loguru import logger
 
 from src.ml.config.taxonomy_loader import TaxonomyLoader
@@ -26,6 +25,7 @@ from .utils import (
     asset_check,
     save_dataframe_parquet,
 )
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -46,8 +46,6 @@ def cet_award_classifications_quality_check(context) -> AssetCheckResult:
     Consumes data/processed/cet_award_classifications.checks.json written by the asset.
     """
     import json
-    import os
-    from pathlib import Path
 
     checks_path = Path("data/processed/cet_award_classifications.checks.json")
     if not checks_path.exists():
@@ -158,8 +156,6 @@ def enriched_cet_award_classifications() -> Output:
     logger.info("Starting cet_award_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy imports for ML components (may be unavailable in minimal CI)
     try:
@@ -709,8 +705,6 @@ def enriched_cet_patent_classifications() -> Output:
     logger.info("Starting cet_patent_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy import of classifier implementation (may be unavailable in minimal CI)
     try:

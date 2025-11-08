@@ -10,13 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loguru import logger
-
-from .utils import (
-    Output,
-    asset,
-    save_dataframe_parquet,
-)
+from .utils import Output, asset, save_dataframe_parquet
 
 
 @asset(
@@ -39,8 +33,6 @@ def train_cet_patent_classifier() -> Output:
     - When training data or pandas is missing, writes a checks JSON with ok=False and
       returns the model path without creating the artifact.
     """
-    import json
-    from pathlib import Path
 
     model_path = Path("artifacts/models/patent_classifier_v1.pkl")
     checks_path = model_path.with_suffix(".checks.json")
@@ -168,8 +160,6 @@ def train_cet_patent_classifier() -> Output:
     ),
 )
 def cet_award_training_dataset() -> Output:
-    import json
-    from pathlib import Path
 
     output_path = Path("data/processed/cet_award_training.parquet")
     checks_path = output_path.with_suffix(".checks.json")

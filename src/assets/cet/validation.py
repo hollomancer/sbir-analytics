@@ -11,12 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loguru import logger
-
-from .utils import (
-    Output,
-    asset,
-)
+from .utils import Output, asset
 
 
 @asset(
@@ -39,7 +34,6 @@ def raw_cet_human_sampling() -> Output:
         - SBIR_ETL__CET__SAMPLE_SIZE (default: 50)
         - SBIR_ETL__CET__SAMPLE_SEED (default: 42)
     """
-    import json
     import os
     from pathlib import Path
     from random import Random
@@ -215,7 +209,6 @@ def validated_cet_iaa_report() -> Output:
         - Percent agreement on exact set equality across annotators
     - Writes `reports/analytics/cet_iaa_report.json` and returns a summary.
     """
-    import json
     from itertools import combinations
     from pathlib import Path
 
@@ -385,7 +378,6 @@ def validated_cet_drift_detection() -> Output:
         - reports/benchmarks/cet_drift_report.json  (summary & divergence values)
         - reports/alerts/cet_drift_alerts.json       (alerts if any)
     """
-    import json
     import os
     from datetime import datetime
     from pathlib import Path

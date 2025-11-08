@@ -11,10 +11,8 @@ import os
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 from .utils import (
-    AssetExecutionContext,
     ContractExtractor,
     MetadataValue,
     Output,
@@ -24,7 +22,6 @@ from .utils import (
     asset,
     get_config,
     now_utc_iso,
-    save_dataframe_parquet,
     write_json,
 )
 
