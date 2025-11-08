@@ -9,13 +9,8 @@ This module provides:
 
 from __future__ import annotations
 
-
-from __future__ import annotations
-
 import json
 import os
-import time
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -35,23 +30,32 @@ except Exception:
     ModuleReport = None  # type: ignore
     TransitionDetectionAnalyzer = None  # type: ignore
 
-from ...config.loader import get_config
-from ...exceptions import FileSystemError
-from ...extractors.contract_extractor import ContractExtractor
-from ...transition.features.vendor_resolver import VendorRecord, VendorResolver
 
+# Neo4j imports
+try:
+    from neo4j import Driver
+
+    from ...loaders import Neo4jClient
+except Exception:
+    Driver = None
+    Neo4jClient = None
+
+# Default Neo4j connection settings
+DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
+DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
+DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
+
+# Transition loading thresholds
+TRANSITION_MIN_NODE_COUNT = int(os.environ.get("SBIR_ETL__TRANSITION__MIN_NODE_COUNT", "1"))
+TRANSITION_LOAD_SUCCESS_THRESHOLD = float(
+    os.environ.get("SBIR_ETL__TRANSITION__LOAD_SUCCESS_THRESHOLD", "0.95")
+)
 
 # Import-safe shims for Dagster
 try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        MetadataValue,
-        Output,
-        asset,
-        asset_check,
-    )
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
+    from dagster import MetadataValue, Output, asset, asset_check
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:  # type: ignore
