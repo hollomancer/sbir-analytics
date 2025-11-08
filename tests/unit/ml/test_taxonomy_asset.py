@@ -152,12 +152,16 @@ def test_cet_taxonomy_asset_writes_parquet(tmp_path: Path, monkeypatch) -> None:
                 cet_areas=cet_areas,
             )
 
-    # Monkeypatch the TaxonomyLoader in the asset module to our fake loader
-    monkeypatch.setattr(cet_assets, "TaxonomyLoader", FakeLoader)
+        def validate_taxonomy_completeness(self, taxonomy):
+            # Return simple completeness check for test
+            return {"ok": True, "cet_count": len(cet_areas)}
+
+    # Monkeypatch the TaxonomyLoader in the actual taxonomy module where it's used
+    monkeypatch.setattr("src.assets.cet.taxonomy.TaxonomyLoader", FakeLoader)
 
     # Redirect DEFAULT_OUTPUT_PATH to a temp location so we don't write to repo paths
     temp_output = tmp_path / "data" / "processed" / "cet_taxonomy.parquet"
-    monkeypatch.setattr(cet_assets, "DEFAULT_OUTPUT_PATH", temp_output)
+    monkeypatch.setattr("src.assets.cet.taxonomy.DEFAULT_OUTPUT_PATH", temp_output)
 
     # Run the asset function. The decorated asset is a normal function that returns a dagster.Output
     cet_assets.cet_taxonomy()
