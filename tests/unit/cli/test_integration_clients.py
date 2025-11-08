@@ -56,6 +56,8 @@ class TestDagsterClient:
 
     def test_get_asset_status(self, client: DagsterClient) -> None:
         """Test getting asset status."""
+        from dagster import AssetKey
+
         # Mock instance
         mock_instance = Mock()
         mock_metadata = {
@@ -74,18 +76,14 @@ class TestDagsterClient:
         mock_instance.get_event_records.return_value = [mock_event_record]
         client._instance = mock_instance
 
-        # Mock AssetKey
-        with patch("src.cli.integration.dagster_client.AssetKey") as mock_key:
-            mock_key.from_user_string.return_value = Mock()
+        # Test
+        status = client.get_asset_status("test_asset")
 
-            # Test
-            status = client.get_asset_status("test_asset")
-
-            # Verify
-            assert status.asset_key == "test_asset"
-            assert status.status == "success"
-            # The metadata access is complex - verify basic structure
-            assert status.last_run is not None
+        # Verify
+        assert status.asset_key == "test_asset"
+        assert status.status == "success"
+        # The metadata access is complex - verify basic structure
+        assert status.last_run is not None
 
     @patch("src.cli.integration.dagster_client.materialize")
     @patch("src.cli.integration.dagster_client.AssetSelection")
