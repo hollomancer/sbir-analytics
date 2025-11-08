@@ -12,21 +12,15 @@ except Exception:
         return fn
 
 
-import importlib.util
-import sys
 from pathlib import Path
 
-
-def _load_naics_module():
-    p = Path(__file__).resolve().parent
-    # repo root
-    root = p.parent.parent
-    mod_path = root / "src" / "enrichers" / "naics_enricher.py"
-    spec = importlib.util.spec_from_file_location("naics_enricher_mod", str(mod_path))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
-    return mod
+# Import NAICS enricher from consolidated package
+try:
+    from src.enrichers.naics import NAICSEnricher, NAICSEnricherConfig
+except ImportError:
+    # Fallback for environments without enrichers installed
+    NAICSEnricher = None
+    NAICSEnricherConfig = None
 
 
 @asset
@@ -36,14 +30,9 @@ def fiscal_prepared_sbir_awards(raw_awards) -> dict | None:
     Expects `raw_awards` to be a pandas DataFrame-like object with columns `award_id` and `recipient_uei`.
     Returns the enriched DataFrame (dict representation) or None if index not available.
     """
-    try:
-        naics_mod = _load_naics_module()
-    except Exception:
+    if NAICSEnricher is None or NAICSEnricherConfig is None:
         # can't load enricher module
         return None
-
-    NAICSEnricher = naics_mod.NAICSEnricher
-    NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache_path = Path("data/processed/usaspending/naics_index.parquet")
     cfg = NAICSEnricherConfig(

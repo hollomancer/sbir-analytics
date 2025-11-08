@@ -55,11 +55,23 @@ from .cet import (
     neo4j_company_cet_relationships,
     # Utility functions
     save_dataframe_parquet,
+    # Testing utilities
+    AssetExecutionContext,
 )
+from .cet.taxonomy import DEFAULT_OUTPUT_PATH
 
 # Import helper functions for testing/mocking
 from .cet.company import _get_neo4j_client
 from .cet.utils import _read_parquet_or_ndjson
+
+# Import classes for testing/mocking
+from src.ml.config.taxonomy_loader import TaxonomyLoader
+
+try:
+    from src.loaders.neo4j import CETLoader, CETLoaderConfig
+except ImportError:
+    CETLoader = None
+    CETLoaderConfig = None
 
 
 __all__ = [
@@ -101,4 +113,10 @@ __all__ = [
     "save_dataframe_parquet",
     "_get_neo4j_client",
     "_read_parquet_or_ndjson",
+    # Classes for testing/mocking
+    "TaxonomyLoader",
+    "CETLoader",
+    "CETLoaderConfig",
+    "AssetExecutionContext",
+    "DEFAULT_OUTPUT_PATH",
 ]
