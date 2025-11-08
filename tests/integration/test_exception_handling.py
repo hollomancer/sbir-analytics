@@ -24,6 +24,7 @@ from tests.utils.exception_helpers import (
     assert_retryable_exception,
 )
 
+
 pytestmark = pytest.mark.integration
 
 
@@ -85,9 +86,7 @@ class TestAPIErrorHandling:
                 "rate_limit_per_minute": 120,
                 "state_file": "/tmp/state.json",
             }
-            mock_cfg.enrichment.usaspending_api = {
-                "base_url": "https://api.usaspending.gov/api/v2"
-            }
+            mock_cfg.enrichment.usaspending_api = {"base_url": "https://api.usaspending.gov/api/v2"}
             mock_config.return_value = mock_cfg
 
             client = USAspendingAPIClient()

@@ -24,8 +24,6 @@ Usage (examples):
 
 from __future__ import annotations
 
-from loguru import logger
-
 import json
 import re
 from collections.abc import Iterable
@@ -34,6 +32,9 @@ from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
+
+from loguru import logger
+
 
 # Optional dependencies
 try:

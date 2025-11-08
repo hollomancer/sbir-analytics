@@ -492,7 +492,9 @@ def extract_usaspending_from_config(
             if configured_dump.exists():
                 with log_with_context(stage="extract", run_id="usaspending_config") as logger:
                     logger.info(f"Using dump from configured path: {configured_dump}")
-                    table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
+                    table_name = config.extraction.usaspending.get(
+                        "table_name", "usaspending_awards"
+                    )
                     extractor.import_postgres_dump(configured_dump, table_name)
         except Exception as e:
             with log_with_context(stage="extract", run_id="usaspending_config") as logger:

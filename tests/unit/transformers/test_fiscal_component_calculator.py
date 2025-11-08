@@ -8,10 +8,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal.components import (
-    ComponentValidationResult,
-    FiscalComponentCalculator,
-)
+from src.transformers.fiscal.components import ComponentValidationResult, FiscalComponentCalculator
 
 
 @pytest.fixture

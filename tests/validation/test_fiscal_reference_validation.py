@@ -10,7 +10,11 @@ from decimal import Decimal
 import pandas as pd
 import pytest
 
-from src.transformers.fiscal import FiscalComponentCalculator, FiscalROICalculator, FiscalTaxEstimator
+from src.transformers.fiscal import (
+    FiscalComponentCalculator,
+    FiscalROICalculator,
+    FiscalTaxEstimator,
+)
 
 
 class TestBoundaryConditions:

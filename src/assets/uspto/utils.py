@@ -9,17 +9,10 @@ This module provides:
 
 from __future__ import annotations
 
-
-from __future__ import annotations
-
 import json
 import os
-import time
-from collections import defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import date, datetime
-from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -137,8 +130,6 @@ LINKAGE_TARGET = float(os.environ.get("SBIR_ETL__USPTO__LINKAGE_TARGET", "0.60")
 LOAD_SUCCESS_THRESHOLD = float(os.environ.get("SBIR_ETL__USPTO__LOAD_SUCCESS_THRESHOLD", "0.99"))
 
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
-
-
 
 
 def _get_input_dir(context) -> Path:
@@ -320,7 +311,6 @@ def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict
     return (report or {}).get("tables", {}).get(table, {}) or {}
 
 
-
 def _now_suffix() -> str:
     return datetime.utcnow().strftime("%Y%m%dT%H%M%S")
 
@@ -407,8 +397,6 @@ def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
                 continue
 
 
-
-
 def _ensure_output_dir() -> Path:
     """Ensure output directory exists."""
     DEFAULT_NEO4J_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -474,8 +462,6 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
 # ============================================================================
 
 
-
-
 def _ensure_dir_ai(p: Path) -> None:
     """Ensure directory exists for AI assets (duplicate name resolved)."""
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -514,5 +500,3 @@ def _batch_to_dataframe(batch: list[dict]):
             }
         )
     return pd.DataFrame(rows)
-
-

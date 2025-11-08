@@ -10,15 +10,7 @@ This module contains:
 
 from __future__ import annotations
 
-from loguru import logger
-
-from .utils import (
-    AssetIn,
-    _attempt_parse_sample,
-    _discover_table_files,
-    _make_parsing_check,
-    asset,
-)
+from .utils import AssetIn, _attempt_parse_sample, asset
 
 
 @asset(

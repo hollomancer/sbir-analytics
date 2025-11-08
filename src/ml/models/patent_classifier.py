@@ -21,12 +21,12 @@ Notes
 
 from __future__ import annotations
 
-from loguru import logger
-
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 
 # Defensive imports (may be None in minimal CI environments)

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from loguru import logger
 
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -199,9 +200,7 @@ class OpenSpecToKiroMigrator:
                 missing_paths.append(path_name)
 
         if missing_paths:
-            logger.warning(
-                f"OpenSpec structure incomplete. Missing: {', '.join(missing_paths)}"
-            )
+            logger.warning(f"OpenSpec structure incomplete. Missing: {', '.join(missing_paths)}")
 
         # Validate output paths are writable
         try:

@@ -6,7 +6,11 @@ from typing import Any
 
 from loguru import logger
 
-from ..exceptions import DependencyError, RFunctionError, ValidationError  # Import from central exceptions
+from ..exceptions import (
+    DependencyError,
+    RFunctionError,
+    ValidationError,
+)  # Import from central exceptions
 
 
 # Conditional rpy2 import

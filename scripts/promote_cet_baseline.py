@@ -40,8 +40,6 @@ Notes:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import argparse
 import json
 import os
@@ -51,6 +49,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 
 # Default paths (relative to repository root)

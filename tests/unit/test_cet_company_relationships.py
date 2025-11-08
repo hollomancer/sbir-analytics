@@ -35,8 +35,6 @@ class DummyContext:
 
 
 try:
-    from dagster import build_asset_context
-
     HAVE_BUILD_CONTEXT = True
 except Exception:  # pragma: no cover
     HAVE_BUILD_CONTEXT = False
@@ -275,7 +273,7 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     asset_def = mod.loaded_company_cet_relationships
     op_def = asset_def.op
     compute_fn = op_def.compute_fn
-    
+
     ctx = mod.AssetExecutionContext(op_config={})
     result = compute_fn(ctx, None, None, None)
 
@@ -346,7 +344,7 @@ def test_asset_neo4j_company_cet_relationships_fallback_key_property(monkeypatch
     asset_def = mod.loaded_company_cet_relationships
     op_def = asset_def.op
     compute_fn = op_def.compute_fn
-    
+
     ctx = mod.AssetExecutionContext(op_config={"key_property": "uei"})
     result = compute_fn(ctx, None, None, None)
 

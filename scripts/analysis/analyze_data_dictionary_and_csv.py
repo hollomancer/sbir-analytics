@@ -377,9 +377,7 @@ def compare_dictionary_and_csv(
     dict_cols = [spec.name for spec in dict_specs]
     missing_in_csv = [c for c in dict_cols if c not in csv_cols]
     extra_in_csv = [c for c in csv_cols if c not in dict_cols]
-    [
-        c for c in dict_cols if c in csv_cols and dict_cols.index(c) != csv_cols.index(c)
-    ]
+    [c for c in dict_cols if c in csv_cols and dict_cols.index(c) != csv_cols.index(c)]
     # order_mismatches above is simplistic; instead compute positional diffs
     positional_diff = []
     for i, c in enumerate(dict_cols):

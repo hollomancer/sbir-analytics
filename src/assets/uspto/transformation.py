@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +26,6 @@ from .utils import (
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
-    _coerce_str,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -175,7 +172,6 @@ class USPTOAssignmentJoiner:
                     merged = self._merge_rows(assignment, ass_row, asr_row, doc_row, conv_row)
                     merged["_source_assignment_file"] = str(path)
                     yield JoinedRow(merged, rf_key)
-
 
 
 @asset(
@@ -490,5 +486,3 @@ def _get_neo4j_client() -> Neo4jClient | None:
     except Exception as e:
         logger.error(f"Failed to create Neo4j client: {e}")
         return None
-
-

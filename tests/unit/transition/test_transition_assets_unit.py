@@ -294,7 +294,9 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     # Evidence generation should produce one NDJSON line per candidate
     # Call the asset directly - Dagster assets are callable
     ev_out = transformed_transition_evidence(
-        context=ctx, transformed_transition_scores=scores_df, validated_contracts_sample=contracts_df
+        context=ctx,
+        transformed_transition_scores=scores_df,
+        validated_contracts_sample=contracts_df,
     )
     ev_path, _ = _unwrap_output(ev_out)
     ev_path = Path(ev_path)

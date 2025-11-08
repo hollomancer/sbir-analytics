@@ -33,39 +33,23 @@ Exported Classes:
 
 from __future__ import annotations
 
-# Client module
-from .client import (
-    LoadMetrics,
-    Neo4jClient,
-    Neo4jConfig,
-)
+# CET module
+from .cet import CETLoader, CETLoaderConfig
 
-# Patents module (USPTO assignments)
-from .patents import (
-    PatentLoader,
-    PatentLoaderConfig,
-)
+# Client module
+from .client import LoadMetrics, Neo4jClient, Neo4jConfig
 
 # Patent CET module (patent classifications)
-from .patent_cet import (
-    Neo4jPatentCETLoader,
-)
+from .patent_cet import Neo4jPatentCETLoader
 
-# CET module
-from .cet import (
-    CETLoader,
-    CETLoaderConfig,
-)
-
-# Transitions module
-from .transitions import (
-    TransitionLoader,
-)
+# Patents module (USPTO assignments)
+from .patents import PatentLoader, PatentLoaderConfig
 
 # Profiles module
-from .profiles import (
-    TransitionProfileLoader,
-)
+from .profiles import TransitionProfileLoader
+
+# Transitions module
+from .transitions import TransitionLoader
 
 
 __all__ = [

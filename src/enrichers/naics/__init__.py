@@ -36,17 +36,10 @@ Exported Functions:
 from __future__ import annotations
 
 # Core module (lightweight USAspending dump processing)
-from .core import (
-    NAICSEnricher,
-    NAICSEnricherConfig,
-)
+from .core import NAICSEnricher, NAICSEnricherConfig
 
 # Fiscal module (full-featured fiscal enrichment)
-from .fiscal import (
-    FiscalNAICSEnricher,
-    NAICSEnrichmentResult,
-    enrich_sbir_awards_with_fiscal_naics,
-)
+from .fiscal import FiscalNAICSEnricher, NAICSEnrichmentResult, enrich_sbir_awards_with_fiscal_naics
 
 
 __all__ = [

@@ -20,8 +20,6 @@ multi-GB USPTO data files into memory.
 
 from __future__ import annotations
 
-from loguru import logger
-
 import csv
 import json
 from collections import defaultdict
@@ -31,6 +29,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
+
 
 # Optional heavy deps: attempted imports will be handled at runtime
 try:

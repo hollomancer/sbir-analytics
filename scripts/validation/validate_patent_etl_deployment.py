@@ -1,5 +1,6 @@
 from loguru import logger
 
+
 #!/usr/bin/env python3
 """
 Deployment validation script for USPTO Patent ETL pipeline.

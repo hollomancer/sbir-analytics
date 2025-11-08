@@ -34,23 +34,13 @@ Exported Functions:
 from __future__ import annotations
 
 # Client module
-from .client import (
-    USAspendingAPIClient,
-    USAspendingAPIError,
-    USAspendingRateLimitError,
-)
+from .client import USAspendingAPIClient, USAspendingAPIError, USAspendingRateLimitError
 
 # Enricher module
-from .enricher import (
-    enrich_sbir_with_usaspending,
-    normalize_recipient_name,
-)
+from .enricher import enrich_sbir_with_usaspending, normalize_recipient_name
 
 # Index module
-from .index import (
-    extract_table_sample,
-    parse_toc_table_dat_map,
-)
+from .index import extract_table_sample, parse_toc_table_dat_map
 
 
 __all__ = [

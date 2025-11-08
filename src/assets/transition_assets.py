@@ -34,32 +34,32 @@ from __future__ import annotations
 
 # Import all assets from the modularized transition package
 from .transition import (
-    # Contracts
-    raw_contracts,
-    validated_contracts_sample,
-    # Vendor resolution
-    enriched_vendor_resolution,
-    # Scoring
-    transformed_transition_scores,
-    # Evidence
-    transformed_transition_evidence,
-    # Detections
-    transformed_transition_detections,
-    # Analytics
-    transformed_transition_analytics,
     # Checks
     contracts_sample_quality_check,
-    transition_analytics_quality_check,
-    transition_detections_quality_check,
-    transition_evidence_quality_check,
-    transition_scores_quality_check,
-    vendor_resolution_quality_check,
+    # Vendor resolution
+    enriched_vendor_resolution,
     # Loading
     loaded_transition_profiles,
     loaded_transition_relationships,
     loaded_transitions,
+    # Contracts
+    raw_contracts,
+    # Analytics
+    transformed_transition_analytics,
+    # Detections
+    transformed_transition_detections,
+    # Evidence
+    transformed_transition_evidence,
+    # Scoring
+    transformed_transition_scores,
+    transition_analytics_quality_check,
+    transition_detections_quality_check,
+    transition_evidence_quality_check,
     transition_node_count_check,
     transition_relationships_check,
+    transition_scores_quality_check,
+    validated_contracts_sample,
+    vendor_resolution_quality_check,
 )
 
 

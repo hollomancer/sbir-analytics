@@ -29,8 +29,6 @@ class DummyContext:
 
 
 try:
-    from dagster import build_asset_context
-
     HAVE_BUILD_CONTEXT = True
 except Exception:  # pragma: no cover
     HAVE_BUILD_CONTEXT = False
@@ -213,7 +211,7 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     op_def = asset_def.op
     # Get the compute function from the op
     compute_fn = op_def.compute_fn
-    
+
     ctx = mod.AssetExecutionContext(op_config={})
     result = compute_fn(ctx, None, None, None)
 
