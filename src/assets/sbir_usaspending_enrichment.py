@@ -17,7 +17,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.chunked_enrichment import ChunkedEnricher
-from ..enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from ..enrichers.usaspending import enrich_sbir_with_usaspending
 from ..utils.performance_monitor import performance_monitor
 from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 

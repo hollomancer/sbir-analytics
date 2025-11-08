@@ -22,7 +22,7 @@ from typing import Any
 
 from loguru import logger
 
-from .neo4j_client import LoadMetrics, Neo4jClient
+from .client import LoadMetrics, Neo4jClient
 
 
 @dataclass

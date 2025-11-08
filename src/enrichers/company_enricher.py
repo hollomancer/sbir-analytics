@@ -31,6 +31,7 @@ from collections.abc import Sequence
 import pandas as pd
 
 from ..exceptions import ValidationError
+from ..utils.text_normalization import normalize_company_name
 
 
 try:
@@ -52,27 +53,7 @@ def _coerce_int(value: object) -> int | None:
 # -------------------------
 # Normalization / blocking
 # -------------------------
-
-
-def normalize_company_name(name: str | None) -> str:
-    """
-    Normalize a company name string for fuzzy matching:
-    - Lowercase
-    - Replace punctuation with spaces
-    - Expand/normalize common suffixes minimally (incorporated -> inc)
-    - Collapse whitespace
-    """
-    if not name:
-        return ""
-    s = str(name).strip().lower()
-    # Replace punctuation with spaces
-    s = re.sub(r"[^\w\s]", " ", s)
-    # Normalize some common tokens, minimal and reversible
-    s = re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
-    s = re.sub(r"\b(company|co)\b", "company", s)
-    s = re.sub(r"\b(limited|ltd)\b", "ltd", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# Note: normalize_company_name() is now imported from utils.text_normalization
 
 
 def build_block_key(name_norm: str, prefix_len: int = 2) -> str:

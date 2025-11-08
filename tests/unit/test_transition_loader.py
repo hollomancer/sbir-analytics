@@ -19,7 +19,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.loaders.transition_loader import TransitionLoader
+from src.loaders.neo4j import TransitionLoader
 
 
 @pytest.fixture

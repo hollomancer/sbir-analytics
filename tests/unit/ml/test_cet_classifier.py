@@ -16,6 +16,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from src.exceptions import CETClassificationError, ValidationError
+
 
 pytestmark = pytest.mark.slow
 
@@ -419,7 +421,7 @@ class TestApplicabilityModel:
             taxonomy_version="NSTC-2025Q1",
         )
 
-        with pytest.raises(RuntimeError, match="must be trained"):
+        with pytest.raises(CETClassificationError, match="must be trained"):
             model.classify("test text")
 
     def test_save_untrained_model_raises_error(self, sample_cet_areas, sample_config):
@@ -433,7 +435,7 @@ class TestApplicabilityModel:
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "test_model.pkl"
 
-            with pytest.raises(RuntimeError, match="Cannot save untrained model"):
+            with pytest.raises(CETClassificationError, match="Cannot save untrained model"):
                 model.save(model_path)
 
     def test_training_with_mismatched_labels(self, sample_cet_areas, sample_config):
@@ -451,7 +453,7 @@ class TestApplicabilityModel:
             }
         )
 
-        with pytest.raises(ValueError, match="same length"):
+        with pytest.raises(ValidationError, match="same length"):
             model.train(X_train, y_train)
 
     def test_classification_scores_sorted(

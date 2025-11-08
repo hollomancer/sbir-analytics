@@ -11,8 +11,7 @@ pytestmark = pytest.mark.fast
 # Loader tests require neo4j driver availability in the environment (match existing project pattern)
 pytest.importorskip("neo4j", reason="neo4j driver missing")
 
-from src.loaders.cet_loader import CETLoader  # type: ignore
-from src.loaders.neo4j_client import LoadMetrics  # type: ignore
+from src.loaders.neo4j import CETLoader, LoadMetrics  # type: ignore
 
 
 # -----------------------------

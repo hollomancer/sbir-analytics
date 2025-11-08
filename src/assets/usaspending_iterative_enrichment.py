@@ -23,7 +23,7 @@ from loguru import logger
 from pydantic import Field
 
 from ..config.loader import get_config
-from ..enrichers.usaspending_api_client import USAspendingAPIClient
+from ..enrichers.usaspending import USAspendingAPIClient
 from ..exceptions import ValidationError
 from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 from ..utils.enrichment_metrics import EnrichmentMetricsCollector

@@ -11,7 +11,7 @@ import pytest
 pytestmark = pytest.mark.fast
 from httpx import HTTPStatusError, TimeoutException
 
-from src.enrichers.usaspending_api_client import USAspendingAPIClient
+from src.enrichers.usaspending.client import USAspendingAPIClient
 from src.exceptions import APIError as USAspendingAPIError
 from src.exceptions import RateLimitError as USAspendingRateLimitError
 from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
@@ -32,7 +32,7 @@ def mock_config():
 @pytest.fixture
 def api_client(mock_config, tmp_path):
     """Create USAspending API client for testing."""
-    with patch("src.enrichers.usaspending_api_client.get_config") as mock_get_config:
+    with patch("src.enrichers.usaspending.client.get_config") as mock_get_config:
         mock_cfg = MagicMock()
         mock_cfg.enrichment_refresh.usaspending.model_dump.return_value = {
             "timeout_seconds": 30,

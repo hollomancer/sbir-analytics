@@ -49,8 +49,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 @pytest.mark.skipif(not HAVE_NEO4J, reason="neo4j driver missing")
 def test_create_award_cet_relationships_builds_primary_and_supporting():
-    from src.loaders.cet_loader import CETLoader
-    from src.loaders.neo4j_client import LoadMetrics
+    from src.loaders.neo4j import CETLoader, LoadMetrics
 
     # Arrange: mock client with capture of relationships
     captured: dict[str, Any] = {}
@@ -123,7 +122,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting():
 
 @pytest.mark.skipif(not HAVE_NEO4J, reason="neo4j driver missing")
 def test_create_award_cet_relationships_missing_award_id_skips_and_errors():
-    from src.loaders.cet_loader import CETLoader
+    from src.loaders.neo4j import CETLoader
 
     mock_client = MagicMock()
     loader = CETLoader(mock_client)

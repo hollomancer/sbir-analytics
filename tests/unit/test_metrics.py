@@ -7,10 +7,11 @@ from pathlib import Path
 
 import pytest
 
+from src.exceptions import ValidationError
+from src.utils.metrics import MetricsCollector, PipelineMetrics
+
 
 pytestmark = pytest.mark.fast
-
-from src.utils.metrics import MetricsCollector, PipelineMetrics
 
 
 class TestPipelineMetrics:
@@ -203,10 +204,10 @@ class TestMetricsCollector:
                 assert data["records_processed"] == 100
 
     def test_persist_metrics_not_found_raises(self):
-        """Test persisting metrics that don't exist raises ValueError."""
+        """Test persisting metrics that don't exist raises ValidationError."""
         collector = MetricsCollector()
 
-        with pytest.raises(ValueError, match="No metrics found"):
+        with pytest.raises(ValidationError, match="No metrics found"):
             collector.persist_metrics("run-123", "nonexistent")
 
     def test_persist_all_metrics(self):
