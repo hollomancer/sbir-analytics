@@ -56,8 +56,6 @@ class TestDagsterClient:
 
     def test_get_asset_status(self, client: DagsterClient) -> None:
         """Test getting asset status."""
-        from dagster import AssetKey
-
         # Mock instance
         mock_instance = Mock()
         mock_metadata = {

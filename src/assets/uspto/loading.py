@@ -12,9 +12,13 @@ This module contains:
 
 from __future__ import annotations
 
+import json
+import time
 from typing import Any
 
 from .utils import (
+    DEFAULT_TRANSFORMED_DIR,
+    LOAD_SUCCESS_THRESHOLD,
     AssetCheckResult,
     AssetCheckSeverity,
     _convert_dates_to_iso,
@@ -28,10 +32,27 @@ from .utils import (
 
 # Neo4j loader imports
 try:
+    from ...loaders import LoadMetrics
     from ...loaders.neo4j.patent_loader import PatentLoader, PatentLoaderConfig
 except Exception:
+    LoadMetrics = None
     PatentLoader = None
     PatentLoaderConfig = None
+
+# Import _get_neo4j_client from transformation module
+try:
+    from .transformation import _get_neo4j_client
+except Exception:
+
+    def _get_neo4j_client():
+        return None
+
+
+# Optional analyzer import
+try:
+    from ...utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer
+except Exception:
+    PatentAnalysisAnalyzer = None
 
 
 @asset(

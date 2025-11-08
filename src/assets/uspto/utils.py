@@ -16,7 +16,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
+from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue
 from loguru import logger
 
 from ...exceptions import DependencyError

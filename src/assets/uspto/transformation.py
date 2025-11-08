@@ -14,18 +14,27 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Iterable
+from itertools import product
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from .utils import (
+    DEFAULT_NEO4J_DATABASE,
+    DEFAULT_NEO4J_PASSWORD,
+    DEFAULT_NEO4J_URI,
+    DEFAULT_NEO4J_USER,
+    LINKAGE_TARGET,
+    TRANSFORM_SUCCESS_THRESHOLD,
     AssetCheckResult,
     AssetCheckSeverity,
     AssetIn,
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
+    USPTOExtractor,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -37,6 +46,14 @@ from .utils import (
     asset,
     asset_check,
 )
+
+
+# Neo4j imports
+try:
+    from ...loaders import Neo4jClient, Neo4jConfig
+except Exception:
+    Neo4jClient = None
+    Neo4jConfig = None
 
 
 class JoinedRow:
