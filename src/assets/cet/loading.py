@@ -14,6 +14,7 @@ from typing import Any
 
 from loguru import logger
 
+from .company import _get_neo4j_client
 from .utils import (
     AssetIn,
     _read_parquet_or_ndjson,

@@ -57,6 +57,10 @@ from .cet import (
     save_dataframe_parquet,
 )
 
+# Import helper functions for testing/mocking
+from .cet.company import _get_neo4j_client
+from .cet.utils import _read_parquet_or_ndjson
+
 
 __all__ = [
     # Taxonomy
@@ -95,4 +99,6 @@ __all__ = [
     "neo4j_company_cet_relationships",
     # Utility functions
     "save_dataframe_parquet",
+    "_get_neo4j_client",
+    "_read_parquet_or_ndjson",
 ]
