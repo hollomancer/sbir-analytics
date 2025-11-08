@@ -20,6 +20,7 @@ from typing import Any
 from loguru import logger
 
 from .utils import (
+    AssetIn,
     MetadataValue,
     USPTOAIExtractor,
     _batch_to_dataframe,

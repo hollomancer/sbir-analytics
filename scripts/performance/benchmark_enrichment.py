@@ -44,7 +44,7 @@ from scripts.lib.cli_utils import (
     setup_logging_for_script,
 )
 from src.config.loader import get_config
-from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from src.enrichers.usaspending import enrich_sbir_with_usaspending
 from src.utils.performance_monitor import performance_monitor
 
 

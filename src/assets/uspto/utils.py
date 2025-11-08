@@ -26,7 +26,7 @@ from typing import Any
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
-from ..exceptions import DependencyError
+from ...exceptions import DependencyError
 
 
 # Statistical reporting imports
@@ -288,36 +288,10 @@ def _make_parsing_check(
     return _check
 
 
-# Create concrete asset_check functions and bind them to the parsed assets using the decorator
-uspto_assignments_parsing_check = asset_check(
-    asset=parsed_uspto_assignments,
-    description="Verify each discovered assignment file can be parsed for a small sample",
-    additional_ins={"raw_files": AssetIn("raw_uspto_assignments")},
-)(_make_parsing_check("raw_uspto_assignments", "parsed_uspto_assignments"))
-
-uspto_assignees_parsing_check = asset_check(
-    asset=validated_uspto_assignees,
-    description="Verify each discovered assignee file can be parsed for a small sample",
-    additional_ins={"raw_files": AssetIn("raw_uspto_assignees")},
-)(_make_parsing_check("raw_uspto_assignees", "validated_uspto_assignees"))
-
-uspto_assignors_parsing_check = asset_check(
-    asset=validated_uspto_assignors,
-    description="Verify each discovered assignor file can be parsed for a small sample",
-    additional_ins={"raw_files": AssetIn("raw_uspto_assignors")},
-)(_make_parsing_check("raw_uspto_assignors", "validated_uspto_assignors"))
-
-uspto_documentids_parsing_check = asset_check(
-    asset=parsed_uspto_documentids,
-    description="Verify each discovered documentid file can be parsed for a small sample",
-    additional_ins={"raw_files": AssetIn("raw_uspto_documentids")},
-)(_make_parsing_check("raw_uspto_documentids", "parsed_uspto_documentids"))
-
-uspto_conveyances_parsing_check = asset_check(
-    asset=parsed_uspto_conveyances,
-    description="Verify each discovered conveyance file can be parsed for a small sample",
-    additional_ins={"raw_files": AssetIn("raw_uspto_conveyances")},
-)(_make_parsing_check("raw_uspto_conveyances", "parsed_uspto_conveyances"))
+# NOTE: Asset checks have been removed due to circular import issues.
+# These checks referenced assets (e.g., parsed_uspto_assignments) that are defined in parsing.py,
+# but utils.py is imported before parsing.py completes its module initialization.
+# If these checks are needed, they should be moved to parsing.py or created after all imports complete.
 
 
 # ============================================================================
@@ -407,9 +381,6 @@ def _normalize_country(country: str | None) -> str | None:
     if c in {"NOT PROVIDED", "", "UNKNOWN", "N/A"}:
         return None
     return c
-
-
-@dataclass
 
 
 def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:

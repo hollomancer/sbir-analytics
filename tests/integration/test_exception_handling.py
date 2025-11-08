@@ -76,7 +76,7 @@ class TestAPIErrorHandling:
     @pytest.mark.asyncio
     async def test_usaspending_api_invalid_method_raises_configuration_error(self):
         """Test that invalid HTTP method raises ConfigurationError."""
-        from src.enrichers.usaspending_api_client import USAspendingAPIClient
+        from src.enrichers.usaspending import USAspendingAPIClient
 
         with patch("src.enrichers.usaspending_api_client.get_config") as mock_config:
             mock_cfg = MagicMock()

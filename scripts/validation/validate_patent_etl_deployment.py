@@ -258,7 +258,7 @@ class PatentETLValidator:
             return True
 
         try:
-            from src.loaders.neo4j_client import Neo4jClient
+            from src.loaders import Neo4jClient
         except ImportError:
             logger.warning("Neo4j client not available - skipping connectivity check")
             self.validation_results["stages"]["neo4j_connectivity"] = {

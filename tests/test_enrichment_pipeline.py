@@ -18,7 +18,7 @@ import pytest
 from dagster import build_asset_context
 
 from src.assets import sbir_ingestion, sbir_usaspending_enrichment
-from src.enrichers.usaspending_enricher import enrich_sbir_with_usaspending
+from src.enrichers.usaspending import enrich_sbir_with_usaspending
 from src.utils.performance_monitor import PerformanceMonitor
 
 
