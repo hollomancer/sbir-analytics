@@ -16,11 +16,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
-pytestmark = pytest.mark.fast
-
+from src.exceptions import ValidationError
 from src.ml.features.evidence_extractor import EvidenceExtractor
 from src.models.cet_models import CETArea, CETClassification, ClassificationLevel, EvidenceStatement
+
+
+pytestmark = pytest.mark.fast
 
 
 @pytest.fixture
@@ -421,7 +422,7 @@ class TestBatchEvidenceExtraction:
         classifications_list = [[]]
         document_parts_list = [{}, {}]  # Different length
 
-        with pytest.raises(ValueError, match="must have same length"):
+        with pytest.raises(ValidationError, match="must have same length"):
             extractor_no_spacy.extract_batch_evidence(classifications_list, document_parts_list)
 
 

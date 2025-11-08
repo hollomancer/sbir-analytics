@@ -7,12 +7,13 @@ Tests configuration loading, validation, and error handling.
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
+
+from src.exceptions import FileSystemError
+from src.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
 pytestmark = pytest.mark.fast
-from pydantic import ValidationError
-
-from src.ml.config.taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
 class TestTaxonomyLoader:
@@ -82,7 +83,7 @@ analytics: {}
         # Only create classification.yaml, not taxonomy.yaml
         (cet_dir / "classification.yaml").write_text("model_version: v1.0.0\n")
 
-        with pytest.raises(FileNotFoundError, match="Taxonomy file not found"):
+        with pytest.raises(FileSystemError, match="Taxonomy file not found"):
             TaxonomyLoader(config_dir=cet_dir)
 
     def test_missing_classification_file(self, tmp_path: Path) -> None:
@@ -93,7 +94,7 @@ analytics: {}
         # Only create taxonomy.yaml
         (cet_dir / "taxonomy.yaml").write_text("version: v1.0.0\n")
 
-        with pytest.raises(FileNotFoundError, match="Classification config not found"):
+        with pytest.raises(FileSystemError, match="Classification config not found"):
             TaxonomyLoader(config_dir=cet_dir)
 
     def test_load_taxonomy(self) -> None:
