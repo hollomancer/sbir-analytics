@@ -345,9 +345,12 @@ class Neo4jError(LoadError):
         if query:
             details["query"] = query
 
+        # Use provided component or default to "neo4j"
+        component = kwargs.pop("component", "neo4j")
+
         super().__init__(
             message,
-            component="neo4j",
+            component=component,
             details=details,
             status_code=kwargs.pop("status_code", ErrorCode.NEO4J_QUERY_FAILED),
             **kwargs,
@@ -394,9 +397,12 @@ class APIError(EnrichmentError):
         if "retryable" not in kwargs and http_status:
             kwargs["retryable"] = http_status in [408, 429, 500, 502, 503, 504]
 
+        # Use provided component or construct from api_name
+        component = kwargs.pop("component", f"api.{api_name}" if api_name else "api")
+
         super().__init__(
             message,
-            component=f"api.{api_name}" if api_name else "api",
+            component=component,
             details=details,
             status_code=kwargs.pop("status_code", ErrorCode.API_REQUEST_FAILED),
             **kwargs,
@@ -457,9 +463,12 @@ class ConfigurationError(SBIRETLError):
         if config_key:
             details["config_key"] = config_key
 
+        # Use provided component or default to "config"
+        component = kwargs.pop("component", "config")
+
         super().__init__(
             message,
-            component="config",
+            component=component,
             details=details,
             status_code=kwargs.pop("status_code", ErrorCode.CONFIG_VALIDATION_FAILED),
             retryable=False,
@@ -490,9 +499,12 @@ class FileSystemError(SBIRETLError):
         if file_path:
             details["file_path"] = file_path
 
+        # Use provided component or default to "filesystem"
+        component = kwargs.pop("component", "filesystem")
+
         super().__init__(
             message,
-            component="filesystem",
+            component=component,
             details=details,
             status_code=kwargs.pop("status_code", ErrorCode.FILE_READ_FAILED),
             **kwargs,
@@ -518,7 +530,9 @@ class TransitionDetectionError(TransformationError):
     """
 
     def __init__(self, message: str, **kwargs: Any):
-        super().__init__(message, component="transition_detection", **kwargs)
+        # Use provided component or default to "transition_detection"
+        component = kwargs.pop("component", "transition_detection")
+        super().__init__(message, component=component, **kwargs)
 
 
 class FiscalAnalysisError(TransformationError):
@@ -535,7 +549,9 @@ class FiscalAnalysisError(TransformationError):
     """
 
     def __init__(self, message: str, **kwargs: Any):
-        super().__init__(message, component="fiscal_analysis", **kwargs)
+        # Use provided component or default to "fiscal_analysis"
+        component = kwargs.pop("component", "fiscal_analysis")
+        super().__init__(message, component=component, **kwargs)
 
 
 class CETClassificationError(TransformationError):
@@ -552,7 +568,9 @@ class CETClassificationError(TransformationError):
     """
 
     def __init__(self, message: str, **kwargs: Any):
-        super().__init__(message, component="cet_classification", **kwargs)
+        # Use provided component or default to "cet_classification"
+        component = kwargs.pop("component", "cet_classification")
+        super().__init__(message, component=component, **kwargs)
 
 
 class PatentProcessingError(TransformationError):
@@ -569,7 +587,9 @@ class PatentProcessingError(TransformationError):
     """
 
     def __init__(self, message: str, **kwargs: Any):
-        super().__init__(message, component="patent_processing", **kwargs)
+        # Use provided component or default to "patent_processing"
+        component = kwargs.pop("component", "patent_processing")
+        super().__init__(message, component=component, **kwargs)
 
 
 # ============================================================================
@@ -639,9 +659,12 @@ class DependencyError(SBIRETLError):
         if dependency_name:
             details["dependency_name"] = dependency_name
 
+        # Use provided component or default to "dependencies"
+        component = kwargs.pop("component", "dependencies")
+
         super().__init__(
             message,
-            component="dependencies",
+            component=component,
             details=details,
             retryable=False,
             **kwargs,
@@ -668,10 +691,13 @@ class RFunctionError(DependencyError):
         if function_name:
             details["function_name"] = function_name
 
+        # Use provided component or default to "r_interface"
+        component = kwargs.pop("component", "r_interface")
+
         super().__init__(
             message,
             dependency_name="R",
-            component="r_interface",
+            component=component,
             details=details,
             status_code=ErrorCode.R_FUNCTION_FAILED,
             **kwargs,

@@ -15,6 +15,7 @@ from .utils import (
     AssetExecutionContext,
     MetadataValue,
     Output,
+    TransitionDetectionAnalyzer,
     _env_bool,
     _env_float,
     asset,

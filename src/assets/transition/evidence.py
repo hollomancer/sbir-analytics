@@ -15,6 +15,7 @@ from .utils import (
     AssetExecutionContext,
     MetadataValue,
     Output,
+    _ensure_parent_dir,
     _env_int,
     asset,
     now_utc_iso,
