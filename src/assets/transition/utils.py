@@ -36,6 +36,7 @@ from ...exceptions import FileSystemError  # noqa: F401
 from ...extractors.contract_extractor import ContractExtractor  # noqa: F401
 from ...transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
+
 # Neo4j imports
 try:
     from neo4j import Driver
@@ -57,17 +58,17 @@ TRANSITION_LOAD_SUCCESS_THRESHOLD = float(
     os.environ.get("SBIR_ETL__TRANSITION__LOAD_SUCCESS_THRESHOLD", "0.95")
 )
 
-# Import-safe shims for Dagster
+# Import-safe shims for Dagster (re-export for other transition modules)
 try:
     from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        AssetExecutionContext as _RealAssetExecutionContext,
+        AssetCheckResult,  # noqa: F401
+        AssetCheckSeverity,  # noqa: F401
         MetadataValue,
         Output,
         asset,
         asset_check,
     )
+    from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:  # type: ignore
