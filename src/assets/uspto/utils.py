@@ -43,18 +43,18 @@ except Exception:
 
 # USPTO extractor and transformers
 try:  # pragma: no cover - defensive import
-    from ..extractors.uspto_extractor import USPTOExtractor  # type: ignore
+    from ...extractors.uspto_extractor import USPTOExtractor  # type: ignore
 except Exception:
     USPTOExtractor = None  # type: ignore
 
 try:  # pragma: no cover - defensive import
-    from ..extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
+    from ...extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
 except Exception:
     USPTOAIExtractor = None  # type: ignore
 
 # Validators
 try:  # pragma: no cover - defensive import
-    from ..quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
+    from ...quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
 except Exception:
     validate_rf_id_uniqueness = None  # type: ignore
     USPTODataQualityValidator = None  # type: ignore
@@ -62,19 +62,19 @@ except Exception:
 
 # Transformers
 try:  # pragma: no cover - defensive import
-    from ..transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
+    from ...transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
 except Exception:
     PatentAssignmentTransformer = None  # type: ignore
 
 # Models
 try:  # pragma: no cover - defensive import
-    from ..models.uspto_models import PatentAssignment  # type: ignore
+    from ...models.uspto_models import PatentAssignment  # type: ignore
 except Exception:
     PatentAssignment = None  # type: ignore
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from ...loaders import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:
     Neo4jClient = None  # type: ignore
     Neo4jConfig = None  # type: ignore

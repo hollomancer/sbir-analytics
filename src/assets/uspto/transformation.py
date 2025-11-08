@@ -56,6 +56,10 @@ except Exception:
     Neo4jConfig = None
 
 
+from dataclasses import dataclass
+
+
+@dataclass
 class JoinedRow:
     data: dict[str, Any]
     rf_id: str | None
@@ -463,12 +467,12 @@ def uspto_transformation_success_check(
 def uspto_company_linkage_check(
     context, transformed_assignments: dict[str, Any]
 ) -> AssetCheckResult:
-    linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
+    linkage_rate = transformed_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET
     metadata = {
         "linkage_rate": linkage_rate,
-        "linked_assignments": transformed_patent_assignments.get("linked_assignments", 0),
-        "success_count": transformed_patent_assignments.get("success_count", 0),
+        "linked_assignments": transformed_assignments.get("linked_assignments", 0),
+        "success_count": transformed_assignments.get("success_count", 0),
         "target": LINKAGE_TARGET,
     }
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
