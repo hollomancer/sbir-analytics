@@ -389,7 +389,7 @@ class USAspendingAPIClient:
             - success: Whether enrichment succeeded
             - error: Error message if failed
         """
-        result = {
+        result: Any = {
             "payload": None,
             "payload_hash": None,
             "delta_detected": True,

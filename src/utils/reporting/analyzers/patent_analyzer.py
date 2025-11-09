@@ -163,7 +163,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
         Returns:
             List of analysis insights and recommendations
         """
-        insights = []
+        insights: list[Any] = []
         patent_df = module_data.get("patent_df")
         validation_results = module_data.get("validation_results", {})
         loading_results = module_data.get("loading_results", {})

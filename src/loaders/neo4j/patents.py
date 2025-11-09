@@ -390,7 +390,7 @@ class PatentLoader:
         logger.info(f"Creating {len(assignments)} ASSIGNED_VIA relationships")
         start_time = time.time()
 
-        relationships = []
+        relationships: list[Any] = []
         for assignment in assignments:
             grant_doc_num = assignment.get("grant_doc_num")
             rf_id = assignment.get("rf_id")
@@ -610,7 +610,7 @@ class PatentLoader:
         logger.info(f"Creating {len(patent_awards)} GENERATED_FROM relationships")
         start_time = time.time()
 
-        relationships = []
+        relationships: list[Any] = []
         for pair in patent_awards:
             grant_doc_num = pair.get("grant_doc_num")
             award_id = pair.get("award_id")
@@ -674,7 +674,7 @@ class PatentLoader:
         logger.info(f"Creating {len(company_patents)} OWNS relationships")
         start_time = time.time()
 
-        relationships = []
+        relationships: list[Any] = []
         for pair in company_patents:
             uei = pair.get("uei")
             grant_doc_num = pair.get("grant_doc_num")
@@ -738,7 +738,7 @@ class PatentLoader:
         logger.info(f"Creating {len(assignment_chains)} CHAIN_OF relationships")
         start_time = time.time()
 
-        relationships = []
+        relationships: list[Any] = []
         for chain in assignment_chains:
             current_rf_id = chain.get("current_rf_id")
             previous_rf_id = chain.get("previous_rf_id")

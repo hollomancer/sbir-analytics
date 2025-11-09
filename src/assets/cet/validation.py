@@ -255,7 +255,7 @@ def validated_cet_iaa_report() -> Output:
                 continue
 
     if not rows or pd is None:
-        payload = {
+        payload: Any = {
             "ok": True,
             "reason": "no_annotations" if not rows else "pandas_unavailable",
             "pairs": 0,

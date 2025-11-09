@@ -472,7 +472,7 @@ def enriched_cet_award_classifications() -> Output:
     # Flatten classification results into a DataFrame (one row per award)
     import pandas as pd
 
-    rows = []
+    rows: list[Any] = []
     for aid, cls_list in zip(award_ids, classifications_with_evidence, strict=False):
         if not cls_list:
             rows.append(
@@ -855,7 +855,7 @@ def enriched_cet_patent_classifications() -> Output:
     # Build texts for classification and perform batch classification
     titles = []
     patent_ids = []
-    assignees = []
+    assignees: list[Any] = []
     # Prefer PatentFeatureExtractor for normalized title strings if available
     try:
         from src.ml.features.patent_features import get_keywords_map
@@ -906,7 +906,7 @@ def enriched_cet_patent_classifications() -> Output:
     # Flatten classification results into a DataFrame (one row per patent)
     import pandas as pd
 
-    rows = []
+    rows: list[Any] = []
     for pid, cls_list in zip(patent_ids, classifications_by_patent, strict=False):
         if not cls_list:
             rows.append(

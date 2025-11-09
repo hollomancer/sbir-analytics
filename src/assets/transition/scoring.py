@@ -141,7 +141,7 @@ def transformed_transition_scores(
             score = base
 
             # Temporal and agency alignment boosts (best-effort; optional fields)
-            contract_row = contracts_by_id.get(contract_id, {})
+            contract_row: Any = contracts_by_id.get(contract_id, {})
             c_date = _parse_date_any(contract_row.get("action_date"))
             a_row: pd.Series | None = None
             try:

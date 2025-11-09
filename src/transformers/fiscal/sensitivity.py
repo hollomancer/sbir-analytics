@@ -191,7 +191,7 @@ class FiscalParameterSweep:
         # Generate LHS samples
         # Simple implementation: divide each parameter range into num_scenarios bins
         # and sample one value from each bin
-        scenarios = []
+        scenarios: list[Any] = []
 
         # Create bins for each parameter
         param_bins = {}

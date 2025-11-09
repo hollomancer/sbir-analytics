@@ -90,7 +90,7 @@ class DagsterClient:
         Returns:
             List of asset dictionaries with key, group, description, etc.
         """
-        assets_info = []
+        assets_info: list[Any] = []
         if self.defs.assets is None:
             return assets_info
         for asset in self.defs.assets:

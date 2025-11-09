@@ -444,7 +444,7 @@ def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
     )
     dta_files = sorted(dta_dir.glob("*.dta")) if dta_dir.exists() else []
 
-    result_summary = {
+    result_summary: Any = {
         "ok": False,
         "ingested": 0,
         "skipped": 0,

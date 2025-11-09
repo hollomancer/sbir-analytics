@@ -91,7 +91,7 @@ class DuckDBClient:
         Returns:
             List of result rows as dictionaries
         """
-        with self.connection() as conn:
+        with self.connection() as conn:  # type: Any
             if parameters:
                 result = conn.execute(query, parameters)
             else:
@@ -121,7 +121,7 @@ class DuckDBClient:
             pandas DataFrame with results
         """
 
-        with self.connection() as conn:
+        with self.connection() as conn:  # type: Any
             if parameters:
                 return conn.execute(query, parameters).fetchdf()
             else:
@@ -176,7 +176,7 @@ class DuckDBClient:
             """
 
             try:
-                with self.connection() as conn:
+                with self.connection() as conn:  # type: Any
                     conn.execute(query)
 
                     # Get row count using the same connection
@@ -246,7 +246,7 @@ class DuckDBClient:
             logger.info(f"Creating table {table_name} from DataFrame with {len(df)} rows")
 
             try:
-                with self.connection() as conn:
+                with self.connection() as conn:  # type: Any
                     # Register DataFrame
                     conn.register("temp_df", df)
                     table_identifier = self.escape_identifier(table_name)
@@ -275,7 +275,7 @@ class DuckDBClient:
         """
         try:
             table_identifier = self.escape_identifier(table_name)
-            with self.connection() as conn:
+            with self.connection() as conn:  # type: Any
                 # Get column information
                 describe_query = f"DESCRIBE {table_identifier}"  # nosec B608
                 columns_result = conn.execute(describe_query)
@@ -301,7 +301,7 @@ class DuckDBClient:
             True if table exists
         """
         try:
-            with self.connection() as conn:
+            with self.connection() as conn:  # type: Any
                 # Use information_schema for DuckDB table existence check
                 table_literal = self.escape_literal(table_name)
                 query = (
@@ -403,7 +403,7 @@ class DuckDBClient:
                 )
 
             try:
-                with self.connection() as conn:
+                with self.connection() as conn:  # type: Any
                     first_chunk = True
                     total_rows = 0
                     # pandas.read_csv will raise if CSV can't be parsed; let that bubble

@@ -494,7 +494,7 @@ class InflationAdjuster:
         )
 
         # Track adjustment statistics
-        method_counts = {}
+        method_counts: dict[Any, Any] = {}
         confidence_distribution = []
         successful_adjustments = 0
         total_original_amount = Decimal("0")
@@ -591,7 +591,7 @@ class InflationAdjuster:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-        flag_counts = {}
+        flag_counts: dict[Any, Any] = {}
         for flag in all_flags:
             flag_counts[flag] = flag_counts.get(flag, 0) + 1
 

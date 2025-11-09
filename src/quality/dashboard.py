@@ -74,7 +74,7 @@ class QualityDashboard:
         Returns:
             List of DashboardMetrics objects
         """
-        metrics_list = []
+        metrics_list: list[Any] = []
 
         if not history_file.exists():
             logger.warning(f"History file not found: {history_file}")

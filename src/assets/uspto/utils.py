@@ -456,7 +456,7 @@ def _ensure_output_dir() -> Path:
 
 def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
     """Load JSONL file of transformed records."""
-    records = []
+    records: list[Any] = []
     if not file_path.exists():
         logger.warning(f"Transformed file not found: {file_path}")
         return records
