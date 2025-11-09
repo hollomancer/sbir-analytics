@@ -119,7 +119,7 @@ def transformed_cet_company_profiles() -> Output:
 
     # If dependencies missing, write placeholder output & checks
     if pd is None or CompanyCETAggregator is None:
-        logger.warning(
+        logger.warning(  # type: ignore[unreachable]
             "Missing dependencies for company aggregation (pandas: %s, aggregator: %s). Writing placeholder output.",
             pd is not None,
             CompanyCETAggregator is not None,
@@ -378,7 +378,7 @@ DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "dat
 def _get_neo4j_client():
     """Get Neo4j client with error handling."""
     if Neo4jClient is None or Neo4jConfig is None:
-        return None
+        return None  # type: ignore[unreachable]
     try:
         config = Neo4jConfig(
             uri=DEFAULT_NEO4J_URI,
@@ -396,7 +396,7 @@ def _read_parquet_or_ndjson(
 ) -> list[dict]:
     """Read data from parquet or fallback to NDJSON."""
     if pd is None:
-        return []
+        return []  # type: ignore[unreachable]
 
     try:
         if parquet_path.exists():

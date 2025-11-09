@@ -166,7 +166,7 @@ class Award(BaseModel):
     def validate_program(cls, v: str) -> str:
         """Validate program is SBIR or STTR and normalize to uppercase."""
         if v is None:
-            return v
+            return v  # type: ignore[unreachable]
         if v.upper() not in ["SBIR", "STTR"]:
             raise ValueError("Program must be SBIR or STTR")
         return v.upper()

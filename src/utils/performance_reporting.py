@@ -97,7 +97,7 @@ class MetricComparison:
 
     def __post_init__(self) -> None:
         if self.regression_messages is None:
-            self.regression_messages = []
+            self.regression_messages = []  # type: ignore[unreachable]
 
 
 class PerformanceReporter:

@@ -545,7 +545,7 @@ class FiscalUncertaintyQuantifier:
                 # Use absolute value as sensitivity index
                 sensitivity_indices[param_col] = abs(float(correlation))
             else:
-                sensitivity_indices[param_col] = 0.0
+                sensitivity_indices[param_col] = 0.0  # type: ignore[unreachable]
 
         # Sort by sensitivity (highest first)
         sensitivity_indices = dict(

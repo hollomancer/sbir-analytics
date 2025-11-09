@@ -389,7 +389,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             Dictionary mapping sectors to transition rates
         """
         if awards_df is None or transitions_df is None:
-            return {}
+            return {}  # type: ignore[unreachable]
 
         # Try to find sector/agency columns
         sector_columns = ["agency", "awarding_agency", "agency_name", "sector", "agency_code"]

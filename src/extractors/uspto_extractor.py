@@ -256,7 +256,7 @@ class USPTOExtractor:
                     row_with_err["_error"] = str(e)
                     yield row_with_err
             else:
-                yield row
+                yield row  # type: ignore[unreachable]
 
     # ----------------------------
     # File format-specific readers

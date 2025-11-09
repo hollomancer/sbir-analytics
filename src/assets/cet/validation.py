@@ -440,7 +440,7 @@ def validated_cet_drift_detection() -> Output:
     # Read awards
     def _read_awards():
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if awards_parquet.exists():
             try:
                 return pd.read_parquet(awards_parquet)
@@ -601,7 +601,7 @@ def validated_cet_drift_detection() -> Output:
             return float(js)
         else:
             # Pure python fallback
-            import math
+            import math  # type: ignore[unreachable]
 
             def safe_log2(x):
                 return math.log(x, 2) if x > 0 else 0.0

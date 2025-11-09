@@ -155,9 +155,9 @@ class LogContext:
     def __exit__(self, exc_type: Any, exc_val, exc_tb: Any) -> None:
         """Reset context variables."""
         if self.stage_token is not None:
-            stage_context.reset(self.stage_token)
+            stage_context.reset(self.stage_token)  # type: ignore[unreachable]
         if self.run_id_token is not None:
-            run_id_context.reset(self.run_id_token)
+            run_id_context.reset(self.run_id_token)  # type: ignore[unreachable]
 
 
 def log_with_context(stage: str | None = None, run_id: str | None = None):

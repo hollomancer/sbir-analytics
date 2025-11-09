@@ -32,7 +32,7 @@ def fiscal_prepared_sbir_awards(raw_awards: Any) -> dict | None:
     """
     if NAICSEnricher is None or NAICSEnricherConfig is None:
         # can't load enricher module
-        return None
+        return None  # type: ignore[unreachable]
 
     cache_path = Path("data/processed/usaspending/naics_index.parquet")
     cfg = NAICSEnricherConfig(

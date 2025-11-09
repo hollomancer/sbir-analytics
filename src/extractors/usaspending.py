@@ -54,7 +54,7 @@ class DuckDBUSAspendingExtractor:
     def close(self) -> None:
         """Close database connection."""
         if self.connection:
-            self.connection.close()
+            self.connection.close()  # type: ignore[unreachable]
             self.connection = None
 
     def __enter__(self):

@@ -136,7 +136,7 @@ class VendorResolver:
     def _normalize_name(self, name: str) -> str:
         """Normalize company names for indexing and exact comparisons."""
         if name is None:
-            return ""
+            return ""  # type: ignore[unreachable]
         # Basic normalization: uppercase, trim, collapse whitespace, strip punctuation-ish chars
         n = " ".join(name.strip().split())
         n = n.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")

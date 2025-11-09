@@ -26,16 +26,23 @@ from .utils import (
     MetadataValue,
     Output,
     _env_int,
+    _get_neo4j_driver,
+    _prepare_transition_dataframe,
     asset,
     asset_check,
     get_config,
+    DEFAULT_NEO4J_DATABASE,
+    TRANSITION_MIN_NODE_COUNT,
+    TRANSITION_LOAD_SUCCESS_THRESHOLD,
 )
 
 # Neo4j loader imports
 try:
     from ...loaders.neo4j import TransitionLoader
+    from ...loaders.neo4j.transition_loader import TransitionProfileLoader
 except Exception:
     TransitionLoader = None
+    TransitionProfileLoader = None
 
 
 @asset(
@@ -63,7 +70,7 @@ def loaded_transitions(
         Output with statistics and metadata
     """
     if TransitionLoader is None:
-        context.log.warning("TransitionLoader unavailable; skipping Neo4j load")
+        context.log.warning("TransitionLoader unavailable; skipping Neo4j load")  # type: ignore[unreachable]
         return Output(
             {"skipped": True, "reason": "TransitionLoader unavailable"},
             metadata={"status": "skipped"},
@@ -226,7 +233,7 @@ def loaded_transition_relationships(
         Output with relationship statistics
     """
     if TransitionLoader is None:
-        context.log.warning("TransitionLoader unavailable; skipping relationships")
+        context.log.warning("TransitionLoader unavailable; skipping relationships")  # type: ignore[unreachable]
         return Output(
             {"skipped": True, "reason": "TransitionLoader unavailable"},
             metadata={"status": "skipped"},

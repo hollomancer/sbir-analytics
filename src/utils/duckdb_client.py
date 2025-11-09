@@ -105,7 +105,7 @@ class DuckDBClient:
     def close(self) -> None:
         """Close persistent connection if it exists."""
         if self._persistent_conn:
-            self._persistent_conn.close()
+            self._persistent_conn.close()  # type: ignore[unreachable]
             self._persistent_conn = None
 
     def execute_query_df(

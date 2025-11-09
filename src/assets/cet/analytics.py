@@ -62,7 +62,7 @@ def transformed_cet_analytics() -> Output:
     # Read helpers (parquet preferred, NDJSON fallback)
     def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if parquet_path.exists():
             try:
                 df = pd.read_parquet(parquet_path)
@@ -217,7 +217,7 @@ def transformed_cet_analytics_aggregates() -> Output:
     # Read helpers (parquet preferred, NDJSON fallback)
     def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if parquet_path.exists():
             try:
                 df = pd.read_parquet(parquet_path)

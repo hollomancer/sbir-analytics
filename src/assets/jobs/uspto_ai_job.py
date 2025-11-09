@@ -58,7 +58,7 @@ if (
         ),
     )
 else:
-    uspto_ai_extraction_job = build_assets_job(
+    uspto_ai_extraction_job = build_assets_job(  # type: ignore[unreachable]
         name="uspto_ai_extraction_job_placeholder",
         assets=[],
         description="Placeholder job (USPTO AI assets unavailable at import time).",

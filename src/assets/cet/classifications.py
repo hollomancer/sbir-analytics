@@ -544,7 +544,7 @@ def enriched_cet_award_classifications() -> Output:
     num_classified = sum(1 for r in rows if r.get("primary_cet"))
     # Precompute high confidence threshold to avoid complex inline conditional expressions
     if isinstance(classification_config, dict):
-        high_threshold = classification_config.get("confidence_thresholds", {}).get("high", 70.0)
+        high_threshold = classification_config.get("confidence_thresholds", {}).get("high", 70.0)  # type: ignore[unreachable]
     else:
         # classification_config may be a Pydantic model; attempt attribute access, fall back to default
         try:
@@ -677,7 +677,7 @@ def enriched_cet_award_classifications() -> Output:
         except Exception as e:
             logger.warning(f"CET classification analysis failed: {e}")
     else:
-        logger.info("CET analyzer not available; skipping statistical analysis")
+        logger.info("CET analyzer not available; skipping statistical analysis")  # type: ignore[unreachable]
 
     return Output(value=str(output_path), metadata=metadata)
 

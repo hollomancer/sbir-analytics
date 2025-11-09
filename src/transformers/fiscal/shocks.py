@@ -60,7 +60,7 @@ def calculate_fiscal_year(award_date: date | datetime | str | None) -> int | Non
             award_date = award_date.date()
 
         if not isinstance(award_date, date):
-            return None
+            return None  # type: ignore[unreachable]
 
         # Fiscal year calculation: if month is Oct-Dec, fiscal year is next calendar year
         year = award_date.year

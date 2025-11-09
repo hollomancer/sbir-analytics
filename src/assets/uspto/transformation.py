@@ -487,7 +487,7 @@ def uspto_company_linkage_check(
 def _get_neo4j_client() -> Neo4jClient | None:
     """Create and return a Neo4j client, or None if unavailable."""
     if Neo4jClient is None or Neo4jConfig is None:
-        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")
+        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")  # type: ignore[unreachable]
         return None
 
     try:

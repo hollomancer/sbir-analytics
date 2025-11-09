@@ -58,7 +58,7 @@ if raw_uspto_assignments is not None and validated_uspto_assignments is not None
 else:
     # Fallback placeholder job for environments where assets couldn't be imported.
     # This allows repository introspection without failing import in constrained environments.
-    uspto_validation_job = build_assets_job(
+    uspto_validation_job = build_assets_job(  # type: ignore[unreachable]
         name="uspto_validation_job_placeholder",
         assets=[],
         description="Placeholder job (USPTO assets unavailable at import time).",
