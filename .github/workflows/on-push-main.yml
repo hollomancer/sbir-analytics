@@ -373,7 +373,7 @@ jobs:
 
       - name: Export precision audit sample (CSV)
         run: |
-          poetry run python scripts/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
+          poetry run python scripts/transition/transition_precision_audit.py --export-csv reports/validation/vendor_resolution_audit_sample.csv
 
       - name: Upload precision audit sample
         if: always()
