@@ -148,10 +148,7 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     - Invokes CETLoader.load_award_cet_relationships with those rows
     - Returns a serialized metrics dict
     """
-    import importlib
-
     monkeypatch.chdir(tmp_path)
-    mod = importlib.import_module("src.assets.cet_assets")
 
     # Prepare fake input rows
     rows = [
@@ -207,7 +204,7 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     monkeypatch.setattr("src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
 
     # Execute asset using Dagster's materialization with mocked dependencies
-    from dagster import build_op_context, materialize
+    from dagster import build_op_context
 
     # Build context with config
     ctx = build_op_context(

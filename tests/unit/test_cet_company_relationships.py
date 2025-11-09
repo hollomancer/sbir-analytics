@@ -209,10 +209,7 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     - Reads input rows via helper
     - Invokes CETLoader.load_company_cet_relationships with those rows and returns serialized metrics
     """
-    import importlib
-
     monkeypatch.chdir(tmp_path)
-    mod = importlib.import_module("src.assets.cet_assets")
 
     # Prepare fake input rows (using company_uei as expected by the asset)
     rows = [
