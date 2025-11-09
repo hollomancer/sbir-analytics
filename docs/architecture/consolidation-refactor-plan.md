@@ -1,8 +1,8 @@
 # Codebase Consolidation Refactor Plan
 
-**Status**: Planning Phase  
-**Target Completion**: Q1 2025  
-**Estimated Effort**: 6-8 weeks  
+**Status**: Planning Phase
+**Target Completion**: Q1 2025
+**Estimated Effort**: 6-8 weeks
 
 ## Overview
 
@@ -251,6 +251,6 @@ src/
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 30, 2025  
+**Document Version**: 1.0
+**Last Updated**: October 30, 2025
 **Next Review**: After Phase 1 completion

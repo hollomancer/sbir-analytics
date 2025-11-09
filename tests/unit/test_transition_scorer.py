@@ -130,7 +130,9 @@ class TestTimingScoring:
     def test_immediate_timing(self, scorer):
         """Contract within 0-3 months should get maximum timing score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(contract_id="TEST-006", start_date=date(2023, 2, 1))  # 31 days later
+        contract = FederalContract(
+            contract_id="TEST-006", start_date=date(2023, 2, 1)
+        )  # 31 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -142,7 +144,9 @@ class TestTimingScoring:
     def test_medium_timing(self, scorer):
         """Contract within 3-12 months should get reduced score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(contract_id="TEST-007", start_date=date(2023, 7, 1))  # ~180 days later
+        contract = FederalContract(
+            contract_id="TEST-007", start_date=date(2023, 7, 1)
+        )  # ~180 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -153,7 +157,9 @@ class TestTimingScoring:
     def test_long_timing(self, scorer):
         """Contract within 12-24 months should get low score."""
         award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(contract_id="TEST-008", start_date=date(2024, 1, 1))  # 365 days later
+        contract = FederalContract(
+            contract_id="TEST-008", start_date=date(2024, 1, 1)
+        )  # 365 days later
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -163,7 +169,9 @@ class TestTimingScoring:
     def test_contract_before_award(self, scorer):
         """Contract before award completion should return zero score."""
         award_data = {"completion_date": date(2023, 6, 1)}
-        contract = FederalContract(contract_id="TEST-009", start_date=date(2023, 1, 1))  # Before award
+        contract = FederalContract(
+            contract_id="TEST-009", start_date=date(2023, 1, 1)
+        )  # Before award
 
         signal = scorer.score_timing_proximity(award_data=award_data, contract=contract)
 
@@ -184,7 +192,9 @@ class TestCompetitionScoring:
 
     def test_sole_source_bonus(self, scorer):
         """Sole source should provide maximum competition bonus."""
-        contract = FederalContract(contract_id="TEST-011", competition_type=CompetitionType.SOLE_SOURCE)
+        contract = FederalContract(
+            contract_id="TEST-011", competition_type=CompetitionType.SOLE_SOURCE
+        )
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.SOLE_SOURCE
@@ -202,7 +212,9 @@ class TestCompetitionScoring:
 
     def test_full_and_open_no_bonus(self, scorer):
         """Full and open should provide no bonus."""
-        contract = FederalContract(contract_id="TEST-013", competition_type=CompetitionType.FULL_AND_OPEN)
+        contract = FederalContract(
+            contract_id="TEST-013", competition_type=CompetitionType.FULL_AND_OPEN
+        )
         signal = scorer.score_competition_type(contract)
 
         assert signal.competition_type == CompetitionType.FULL_AND_OPEN

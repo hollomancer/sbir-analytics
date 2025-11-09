@@ -518,4 +518,3 @@ The system SHALL enforce data quality constraints on CET nodes and relationships
   - source_location (one of ["abstract", "keywords", "solicitation", "reviewer_notes"])
   - rationale_tag (non-empty string)
 - **AND** limits evidence array to ≤3 statements
-

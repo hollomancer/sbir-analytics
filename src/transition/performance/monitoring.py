@@ -131,7 +131,7 @@ def monitor_performance(
 
 
 @contextmanager
-def time_block(block_name: str, log_level: str = "info"):
+def time_block(block_name: str, log_level: str = "info") -> None:
     """
     Context manager to time a block of code.
 

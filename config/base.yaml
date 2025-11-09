@@ -129,29 +129,29 @@ enrichment:
       # Refresh cadence and SLA
       cadence_days: 1  # Daily refresh
       sla_staleness_days: 1  # Max 24 hours old before considered stale
-      
+
       # Batch processing configuration
       batch_size: 100  # Awards per batch
       max_concurrent_requests: 5  # Rate limit respect
       rate_limit_per_minute: 120  # Conservative default based on API documentation
-      
+
       # Delta detection
       enable_delta_detection: true  # Skip unchanged records based on payload hash
       hash_algorithm: "sha256"  # Algorithm for payload hashing
-      
+
       # Retry configuration
       retry_attempts: 3
       retry_backoff_seconds: 2
       retry_backoff_multiplier: 2.0  # Exponential backoff multiplier
-      
+
       # Timeout configuration
       timeout_seconds: 30
       connection_timeout_seconds: 10
-      
+
       # State management
       checkpoint_interval: 50  # Save checkpoint every N records
       state_file: "data/state/enrichment_refresh_state.json"
-      
+
       # Metrics
       enable_metrics: true
       metrics_file: "reports/metrics/enrichment_freshness.json"
@@ -312,7 +312,7 @@ statistical_reporting:
     formats: ["html", "json", "markdown", "executive"]
     output_directory: "reports/statistical"
     template_directory: "templates/reports"
-    
+
   # Module-specific reporting
   modules:
     sbir_enrichment:
@@ -331,7 +331,7 @@ statistical_reporting:
       enabled: true
       include_success_stories: true
       include_trend_analysis: true
-      
+
   # Insight generation
   insights:
     anomaly_detection:
@@ -344,7 +344,7 @@ statistical_reporting:
     success_stories:
       enabled: true
       min_impact_threshold: 0.8
-      
+
   # Output format configuration
   formats:
     html:
@@ -360,7 +360,7 @@ statistical_reporting:
     executive:
       include_visualizations: true
       focus_areas: ["impact", "quality", "trends"]
-      
+
   # CI/CD integration
   cicd:
     github_actions:
@@ -372,7 +372,7 @@ statistical_reporting:
       enabled: true
       baseline_comparison: true
       trend_analysis_periods: [7, 30, 90]
-      
+
   # Quality thresholds for reporting
   quality_thresholds:
     data_completeness_warning: 0.90
@@ -388,7 +388,7 @@ fiscal_analysis:
   inflation_source: "bea_gdp_deflator"
   naics_crosswalk_version: "2017"
   stateio_model_version: "v2.1"
-  
+
   # NAICS-to-BEA sector mapping configuration
   naics_to_bea:
     crosswalk_version: "2017"
@@ -397,7 +397,7 @@ fiscal_analysis:
     min_confidence_threshold: 0.50
     enable_weighted_allocation: true
     hierarchical_fallback: true  # 6→4→3→2 digit
-  
+
   # Tax calculation parameters
   tax_parameters:
     # Individual income tax parameters
@@ -412,24 +412,24 @@ fiscal_analysis:
         "35_percent": 0.35
         "37_percent": 0.37
       standard_deduction: 13850  # 2023 standard deduction (single)
-      
+
     # Payroll tax parameters
     payroll_tax:
       social_security_rate: 0.062  # Employee portion
       medicare_rate: 0.0145  # Employee portion
       unemployment_rate: 0.006  # FUTA rate
       wage_base_limit: 160200  # 2023 Social Security wage base
-      
+
     # Corporate income tax parameters
     corporate_income_tax:
       federal_rate: 0.21  # Federal corporate tax rate
       effective_rate: 0.18  # Average effective rate accounting for deductions
-      
+
     # Excise tax parameters
     excise_tax:
       fuel_tax_rate: 0.184  # Federal gasoline tax per gallon
       general_rate: 0.03  # General excise tax rate on goods
-  
+
   # Sensitivity analysis parameters
   sensitivity_parameters:
     # Parameter sweep configuration
@@ -438,7 +438,7 @@ fiscal_analysis:
       method: "monte_carlo"  # monte_carlo, latin_hypercube, grid_search
       num_scenarios: 1000
       random_seed: 42
-      
+
     # Uncertainty parameters
     uncertainty_parameters:
       tax_rates:
@@ -450,26 +450,26 @@ fiscal_analysis:
       inflation_adjustment:
         variation_percent: 0.05  # ±5% variation
         distribution: "normal"
-        
+
     # Confidence interval configuration
     confidence_intervals:
       levels: [0.90, 0.95, 0.99]  # 90%, 95%, 99% confidence intervals
       method: "percentile"  # percentile, bootstrap
       bootstrap_samples: 1000
-      
+
     # Performance thresholds
     performance:
       max_scenarios_parallel: 10
       timeout_seconds: 3600  # 1 hour timeout
       memory_limit_gb: 8
-  
+
   # Data quality thresholds
   quality_thresholds:
     naics_coverage_rate: 0.85  # 85% of awards must have NAICS codes
     geographic_resolution_rate: 0.90  # 90% must resolve to state level
     inflation_adjustment_success: 0.95  # 95% must have valid inflation data
     bea_sector_mapping_rate: 0.90  # 90% must map to BEA sectors
-  
+
   # Performance configuration
   performance:
     chunk_size: 10000
@@ -477,7 +477,7 @@ fiscal_analysis:
     max_workers: 4
     memory_limit_gb: 4
     timeout_seconds: 1800  # 30 minutes
-  
+
   # Output configuration
   output:
     formats: ["json", "csv", "html"]

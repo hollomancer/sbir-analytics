@@ -54,10 +54,10 @@ try:
     RPY2_AVAILABLE = True
 except ImportError:
     RPY2_AVAILABLE = False
-    ro = None  # type: ignore
-    pandas2ri = None  # type: ignore
-    localconverter = None  # type: ignore
-    importr = None  # type: ignore
+    ro = None
+    pandas2ri = None
+    localconverter = None
+    importr = None
 
 
 @dataclass
@@ -147,12 +147,12 @@ class RStateIOAdapter(EconomicModelInterface):
             try:
                 # Try new API (rpy2 >= 3.5.0): use context manager pattern
                 # pandas2ri.converter is available without activate
-                self._pandas_converter = pandas2ri.converter  # type: ignore
+                self._pandas_converter = pandas2ri.converter
                 logger.debug("Using rpy2 modern conversion API")
             except (AttributeError, TypeError):
                 # Fall back to old API if needed
                 try:
-                    pandas2ri.activate()  # type: ignore
+                    pandas2ri.activate()
                     self._pandas_converter = None
                     logger.debug("Using rpy2 legacy activate() method")
                 except (DeprecationWarning, Exception) as deprecation_e:
@@ -162,12 +162,12 @@ class RStateIOAdapter(EconomicModelInterface):
                     )
                     self._pandas_converter = (
                         pandas2ri.converter if hasattr(pandas2ri, "converter") else None
-                    )  # type: ignore
+                    )
 
             # Load StateIO and USEEIO packages
             # Note: These must be installed in R first
             try:
-                self.stateio = importr("stateior")  # type: ignore
+                self.stateio = importr("stateior")
                 logger.info("Loaded StateIO R package")
             except Exception as e:
                 logger.warning(f"Failed to load StateIO package: {e}")
@@ -177,7 +177,7 @@ class RStateIOAdapter(EconomicModelInterface):
                 self.stateio = None
 
             try:
-                self.useeio = importr("useeior")  # type: ignore
+                self.useeio = importr("useeior")
                 logger.info("Loaded USEEIO R package")
             except Exception as e:
                 logger.warning(f"Failed to load USEEIO package: {e}")
@@ -293,11 +293,11 @@ class RStateIOAdapter(EconomicModelInterface):
             # Use modern rpy2 conversion with context manager
             from rpy2.robjects.conversion import localconverter
 
-            with localconverter(ro.default_converter + self._pandas_converter):  # type: ignore
-                r_dataframe = ro.conversion.py2rpy(r_df)  # type: ignore
+            with localconverter(ro.default_converter + self._pandas_converter):
+                r_dataframe = ro.conversion.py2rpy(r_df)
         else:
             # Fall back to pandas2ri direct conversion
-            r_dataframe = pandas2ri.py2rpy(r_df)  # type: ignore
+            r_dataframe = pandas2ri.py2rpy(r_df)
 
         return r_dataframe
 
@@ -315,11 +315,11 @@ class RStateIOAdapter(EconomicModelInterface):
             # Use modern rpy2 conversion with context manager
             from rpy2.robjects.conversion import localconverter
 
-            with localconverter(ro.default_converter + self._pandas_converter):  # type: ignore
-                df = ro.conversion.rpy2py(r_result)  # type: ignore
+            with localconverter(ro.default_converter + self._pandas_converter):
+                df = ro.conversion.rpy2py(r_result)
         else:
             # Fall back to pandas2ri direct conversion
-            df = pandas2ri.rpy2py(r_result)  # type: ignore
+            df = pandas2ri.rpy2py(r_result)
 
         # Ensure Decimal types for monetary values
         monetary_cols = [
@@ -462,20 +462,20 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state models (cached per state/year)
                 # Note: This can be expensive - consider caching
-                state_models = build_useeior_state_models(  # type: ignore
+                state_models = build_useeior_state_models(
                     self.useeio, modelname, year=year
                 )
 
                 # Get state-specific model
-                state_model = state_models.rx2(state)  # type: ignore
+                state_model = state_models.rx2(state)
 
                 # Format shocks as demand vector
-                demand = format_demand_vector_from_shocks(  # type: ignore
+                demand = format_demand_vector_from_shocks(
                     self.useeio, state_model, state_shocks
                 )
 
                 # Calculate impacts
-                impacts = calculate_impacts_with_useeior(  # type: ignore
+                impacts = calculate_impacts_with_useeior(
                     self.useeio,
                     state_model,
                     demand,
@@ -486,17 +486,17 @@ class RStateIOAdapter(EconomicModelInterface):
                 # Extract production impacts from N matrix
                 # N contains commodity outputs per sector
                 try:
-                    n_matrix = impacts.rx2("N")  # type: ignore
+                    n_matrix = impacts.rx2("N")
                     # Convert N to pandas for easier manipulation
                     if self._pandas_converter is not None:
                         with localconverter(
-                            ro.default_converter + self._pandas_converter  # type: ignore
+                            ro.default_converter + self._pandas_converter
                         ):
-                            n_df = ro.conversion.rpy2py(n_matrix)  # type: ignore
+                            n_df = ro.conversion.rpy2py(n_matrix)
                     else:
                         import rpy2.robjects.pandas2ri as pandas2ri
 
-                        n_df = pandas2ri.rpy2py(n_matrix)  # type: ignore
+                        n_df = pandas2ri.rpy2py(n_matrix)
 
                     # Sum across commodities to get production per sector
                     if isinstance(n_df, pd.DataFrame):
@@ -515,7 +515,7 @@ class RStateIOAdapter(EconomicModelInterface):
                 va_components = {}
                 if self.stateio is not None:
                     try:
-                        va_components = get_state_value_added(  # type: ignore
+                        va_components = get_state_value_added(
                             self.stateio, state, year
                         )
                     except Exception as e:
@@ -646,12 +646,12 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state IO table
                 specs = {"BaseIOSchema": "2017"}
-                build_state_model(  # type: ignore
+                build_state_model(
                     self.stateio, state, year, specs
                 )
 
                 # Get value added components
-                get_state_value_added(  # type: ignore
+                get_state_value_added(
                     self.stateio, state, year, specs
                 )
 

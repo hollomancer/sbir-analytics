@@ -9,19 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 from .utils import (
-    AssetExecutionContext,
-    MetadataValue,
     Output,
     TransitionDetectionAnalyzer,
-    _env_bool,
     _env_float,
     asset,
     now_utc_iso,
     save_dataframe_parquet,
-    write_json,
 )
 
 
@@ -52,7 +47,7 @@ def transformed_transition_detections(
     scores = (
         pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
         if "score" in df.columns
-        else pd.Series([], dtype=float)  # type: ignore
+        else pd.Series([], dtype=float)
     )
     total = int(len(df))
     high_conf = int((scores >= threshold).sum()) if total > 0 else 0
@@ -165,5 +160,3 @@ def transformed_transition_detections(
         context.log.info("Transition analyzer not available; skipping statistical analysis")
 
     return Output(df, metadata=meta)
-
-

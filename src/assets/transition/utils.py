@@ -29,11 +29,11 @@ from loguru import logger
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
     from ..utils.reporting.analyzers.transition_analyzer import (
-        TransitionDetectionAnalyzer,  # type: ignore
+        TransitionDetectionAnalyzer,
     )
 except Exception:
-    ModuleReport = None  # type: ignore
-    TransitionDetectionAnalyzer = None  # type: ignore
+    ModuleReport = None
+    TransitionDetectionAnalyzer = None
 
 from ...config.loader import get_config
 from ...exceptions import FileSystemError
@@ -54,8 +54,8 @@ try:
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
-    class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
+    class AssetExecutionContext:
+        def __init__(self, op_execution_context: Any = None) -> None:
             if op_execution_context is None:
                 # For testing: create a minimal mock-like object
                 self.log = logger
@@ -75,7 +75,7 @@ except Exception:  # pragma: no cover
         return _wrap
 
     class Output:  # type: ignore
-        def __init__(self, value, metadata=None):
+        def __init__(self, value: Any, metadata = None) -> None:
             self.value = value
             self.metadata = metadata or {}
 
@@ -85,7 +85,7 @@ except Exception:  # pragma: no cover
             return v
 
     class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
+        def __init__(self, op_execution_context: Any = None) -> None:
             self.log = logger
             if op_execution_context:
                 # Store if provided for compatibility
@@ -126,7 +126,7 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
                     pass
             # NumPy scalars
             try:
-                import numpy as _np  # type: ignore
+                import numpy as _np
 
                 if isinstance(x, _np.generic):
                     try:

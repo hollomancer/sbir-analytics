@@ -193,4 +193,3 @@ From `calculateEEIOModel()` results:
 3. **Economic Components**: May need to extract value added components separately from environmental impacts
 4. **Perspective**: Use "DIRECT" for fiscal analysis (aligns with where production occurs)
 5. **Location Code**: Required for two-region models (e.g., "CA" for California)
-

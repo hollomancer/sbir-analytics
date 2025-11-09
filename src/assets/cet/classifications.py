@@ -2,7 +2,7 @@
 
 This module contains:
 - enriched_cet_award_classifications: Batch classify awards with CET taxonomy
-- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy  
+- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy
 - cet_award_classifications_quality_check: Quality validation for award classifications
 - Helper functions for classification processing
 """
@@ -12,8 +12,8 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
-import pandas as pd
 from loguru import logger
 
 from src.ml.config.taxonomy_loader import TaxonomyLoader
@@ -26,6 +26,7 @@ from .utils import (
     asset_check,
     save_dataframe_parquet,
 )
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -40,14 +41,12 @@ except Exception:
     asset="enriched_cet_award_classifications",
     description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
 )
-def cet_award_classifications_quality_check(context) -> AssetCheckResult:
+def cet_award_classifications_quality_check(context: Any) -> AssetCheckResult:
     """
     Validate CET award classification quality against targets.
     Consumes data/processed/cet_award_classifications.checks.json written by the asset.
     """
     import json
-    import os
-    from pathlib import Path
 
     checks_path = Path("data/processed/cet_award_classifications.checks.json")
     if not checks_path.exists():
@@ -158,8 +157,6 @@ def enriched_cet_award_classifications() -> Output:
     logger.info("Starting cet_award_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy imports for ML components (may be unavailable in minimal CI)
     try:
@@ -471,7 +468,7 @@ def enriched_cet_award_classifications() -> Output:
     # Flatten classification results into a DataFrame (one row per award)
     import pandas as pd
 
-    rows = []
+    rows: list[Any] = []
     for aid, cls_list in zip(award_ids, classifications_with_evidence, strict=False):
         if not cls_list:
             rows.append(
@@ -543,7 +540,7 @@ def enriched_cet_award_classifications() -> Output:
     num_classified = sum(1 for r in rows if r.get("primary_cet"))
     # Precompute high confidence threshold to avoid complex inline conditional expressions
     if isinstance(classification_config, dict):
-        high_threshold = classification_config.get("confidence_thresholds", {}).get("high", 70.0)
+        high_threshold = classification_config.get("confidence_thresholds", {}).get("high", 70.0)  # type: ignore[unreachable]
     else:
         # classification_config may be a Pydantic model; attempt attribute access, fall back to default
         try:
@@ -676,11 +673,9 @@ def enriched_cet_award_classifications() -> Output:
         except Exception as e:
             logger.warning(f"CET classification analysis failed: {e}")
     else:
-        logger.info("CET analyzer not available; skipping statistical analysis")
+        logger.info("CET analyzer not available; skipping statistical analysis")  # type: ignore[unreachable]
 
     return Output(value=str(output_path), metadata=metadata)
-
-
 
 
 @asset(
@@ -709,8 +704,6 @@ def enriched_cet_patent_classifications() -> Output:
     logger.info("Starting cet_patent_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy import of classifier implementation (may be unavailable in minimal CI)
     try:
@@ -854,16 +847,16 @@ def enriched_cet_patent_classifications() -> Output:
     # Build texts for classification and perform batch classification
     titles = []
     patent_ids = []
-    assignees = []
+    assignees: list[Any] = []
     # Prefer PatentFeatureExtractor for normalized title strings if available
     try:
-        from src.ml.features.patent_features import get_keywords_map  # type: ignore
-        from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
+        from src.ml.features.patent_features import get_keywords_map
+        from src.ml.models.patent_classifier import PatentFeatureExtractor
 
         kw_map = get_keywords_map()
         extractor = PatentFeatureExtractor(keywords_map=kw_map)
         if hasattr(extractor, "transform"):
-            feature_dicts = extractor.transform(patents)  # type: ignore
+            feature_dicts = extractor.transform(patents)
             for p, fv in zip(patents, feature_dicts, strict=False):
                 norm_title = (
                     fv.get("normalized_title")
@@ -876,7 +869,7 @@ def enriched_cet_patent_classifications() -> Output:
                 assignees.append(None)
         else:
             # Fallback to simple normalization when only DF-based extractor is available
-            from src.ml.features.patent_features import normalize_title  # type: ignore
+            from src.ml.features.patent_features import normalize_title
 
             for p in patents:
                 titles.append(normalize_title(p.get("title")))
@@ -905,7 +898,7 @@ def enriched_cet_patent_classifications() -> Output:
     # Flatten classification results into a DataFrame (one row per patent)
     import pandas as pd
 
-    rows = []
+    rows: list[Any] = []
     for pid, cls_list in zip(patent_ids, classifications_by_patent, strict=False):
         if not cls_list:
             rows.append(
@@ -983,5 +976,3 @@ def enriched_cet_patent_classifications() -> Output:
     )
 
     return Output(value=str(output_path), metadata=metadata)
-
-

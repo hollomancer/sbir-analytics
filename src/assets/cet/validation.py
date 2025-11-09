@@ -11,12 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loguru import logger
-
-from .utils import (
-    Output,
-    asset,
-)
+from .utils import Output, asset
 
 
 @asset(
@@ -39,13 +34,12 @@ def raw_cet_human_sampling() -> Output:
         - SBIR_ETL__CET__SAMPLE_SIZE (default: 50)
         - SBIR_ETL__CET__SAMPLE_SEED (default: 42)
     """
-    import json
     import os
     from pathlib import Path
     from random import Random
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -59,7 +53,7 @@ def raw_cet_human_sampling() -> Output:
     # Config
     sample_size = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SIZE", "50"))
     seed = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SEED", "42"))
-    Random(seed)
+    Random(seed)  # nosec B311 - Used for deterministic test data sampling, not cryptography
 
     def _read_awards():
         if pd is not None and input_parquet.exists():
@@ -190,8 +184,6 @@ def raw_cet_human_sampling() -> Output:
     )
 
 
-
-
 @asset(
     name="validated_cet_iaa_report",
     key_prefix=["ml"],
@@ -215,12 +207,11 @@ def validated_cet_iaa_report() -> Output:
         - Percent agreement on exact set equality across annotators
     - Writes `reports/analytics/cet_iaa_report.json` and returns a summary.
     """
-    import json
     from itertools import combinations
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -255,7 +246,7 @@ def validated_cet_iaa_report() -> Output:
                 continue
 
     if not rows or pd is None:
-        payload = {
+        payload: Any = {
             "ok": True,
             "reason": "no_annotations" if not rows else "pandas_unavailable",
             "pairs": 0,
@@ -354,8 +345,6 @@ def validated_cet_iaa_report() -> Output:
     return Output(value=str(out_path), metadata=payload)
 
 
-
-
 @asset(
     name="validated_cet_drift_detection",
     key_prefix=["ml"],
@@ -385,21 +374,20 @@ def validated_cet_drift_detection() -> Output:
         - reports/benchmarks/cet_drift_report.json  (summary & divergence values)
         - reports/alerts/cet_drift_alerts.json       (alerts if any)
     """
-    import json
     import os
     from datetime import datetime
     from pathlib import Path
 
     try:
-        import numpy as np  # type: ignore
-        import pandas as pd  # type: ignore
+        import numpy as np
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
         np = None  # type: ignore
 
     # Lazy import for AlertCollector (best-effort)
     try:
-        from src.utils.performance_alerts import (  # type: ignore
+        from src.utils.performance_alerts import (
             Alert,
             AlertCollector,
             AlertSeverity,
@@ -440,7 +428,7 @@ def validated_cet_drift_detection() -> Output:
     # Read awards
     def _read_awards():
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if awards_parquet.exists():
             try:
                 return pd.read_parquet(awards_parquet)
@@ -601,7 +589,7 @@ def validated_cet_drift_detection() -> Output:
             return float(js)
         else:
             # Pure python fallback
-            import math
+            import math  # type: ignore[unreachable]
 
             def safe_log2(x):
                 return math.log(x, 2) if x > 0 else 0.0
@@ -706,5 +694,3 @@ def validated_cet_drift_detection() -> Output:
     # Return the report as asset output
     metadata = {"drift_report": str(drift_report), "alerts": str(alerts_out)}
     return Output(value=report, metadata=metadata)
-
-

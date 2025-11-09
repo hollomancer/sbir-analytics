@@ -51,17 +51,17 @@ class DuckDBUSAspendingExtractor:
             self.connection.execute("SET enable_object_cache=true")
         return self.connection
 
-    def close(self):
+    def close(self) -> None:
         """Close database connection."""
         if self.connection:
-            self.connection.close()
+            self.connection.close()  # type: ignore[unreachable]
             self.connection = None
 
     def __enter__(self):
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val, exc_tb: Any) -> None:
         """Context manager exit."""
         self.close()
 
@@ -492,7 +492,9 @@ def extract_usaspending_from_config(
             if configured_dump.exists():
                 with log_with_context(stage="extract", run_id="usaspending_config") as logger:
                     logger.info(f"Using dump from configured path: {configured_dump}")
-                    table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
+                    table_name = config.extraction.usaspending.get(
+                        "table_name", "usaspending_awards"
+                    )
                     extractor.import_postgres_dump(configured_dump, table_name)
         except Exception as e:
             with log_with_context(stage="extract", run_id="usaspending_config") as logger:

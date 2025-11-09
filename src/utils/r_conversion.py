@@ -21,8 +21,8 @@ try:
     RPY2_AVAILABLE = True
 except ImportError:
     RPY2_AVAILABLE = False
-    ro = None  # type: ignore
-    pandas2ri = None  # type: ignore
+    ro = None
+    pandas2ri = None
 
 
 def pandas_to_r(df: pd.DataFrame, activate_conversion: bool = True) -> Any:
@@ -42,10 +42,10 @@ def pandas_to_r(df: pd.DataFrame, activate_conversion: bool = True) -> Any:
         raise ImportError("rpy2 is not installed. Install with: poetry install --extras r")
 
     if activate_conversion:
-        pandas2ri.activate()  # type: ignore
+        pandas2ri.activate()
 
     try:
-        r_df = pandas2ri.py2rpy(df)  # type: ignore
+        r_df = pandas2ri.py2rpy(df)
         return r_df
     except Exception as e:
         logger.error(f"Failed to convert pandas DataFrame to R: {e}")
@@ -69,7 +69,7 @@ def r_to_pandas(r_df: Any, preserve_types: bool = True) -> pd.DataFrame:
         raise ImportError("rpy2 is not installed. Install with: poetry install --extras r")
 
     try:
-        df = pandas2ri.rpy2py(r_df)  # type: ignore
+        df = pandas2ri.rpy2py(r_df)
 
         if preserve_types:
             # Attempt to preserve numeric types

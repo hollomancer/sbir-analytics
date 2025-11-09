@@ -274,7 +274,8 @@ class TestRetryLogic:
             # Setup client to eventually succeed after timeouts
             mock_response = AsyncMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {"success": True}
+            # httpx's .json() is a sync method, not async
+            mock_response.json = MagicMock(return_value={"success": True})
             mock_response.raise_for_status = MagicMock()
 
             # First calls timeout, last succeeds (tenacity will retry)

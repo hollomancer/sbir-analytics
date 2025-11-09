@@ -140,7 +140,7 @@ class Award(BaseModel):
 
     @field_validator("award_amount", mode="before")
     @classmethod
-    def validate_award_amount(cls, v) -> float:
+    def validate_award_amount(cls: Any, v) -> float:
         """Coerce award_amount from string to float (if needed) and validate it's positive.
 
         Accepts numeric strings like "1,234.56" and bare numbers.
@@ -166,7 +166,7 @@ class Award(BaseModel):
     def validate_program(cls, v: str) -> str:
         """Validate program is SBIR or STTR and normalize to uppercase."""
         if v is None:
-            return v
+            return v  # type: ignore[unreachable]
         if v.upper() not in ["SBIR", "STTR"]:
             raise ValueError("Program must be SBIR or STTR")
         return v.upper()
@@ -199,7 +199,7 @@ class Award(BaseModel):
 
     @field_validator("award_year")
     @classmethod
-    def validate_award_year_matches_date(cls, v: int | None, info) -> int | None:
+    def validate_award_year_matches_date(cls: Any, v: int | None, info: Any) -> int | None:
         """If award_year provided, ensure it matches award_date year when award_date exists."""
         if v is None:
             return v
@@ -271,7 +271,7 @@ class Award(BaseModel):
 
     @field_validator("number_of_employees", mode="before")
     @classmethod
-    def validate_number_of_employees(cls, v) -> int | None:
+    def validate_number_of_employees(cls: Any, v) -> int | None:
         """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative."""
         if v is None or v == "":
             return None
@@ -289,7 +289,7 @@ class Award(BaseModel):
 
     @field_validator("contract_end_date")
     @classmethod
-    def validate_date_order(cls, v: date | None, info) -> date | None:
+    def validate_date_order(cls: Any, v: date | None, info: Any) -> date | None:
         """If contract_end_date and proposal_award_date present, ensure consistency."""
         if v is None:
             return v

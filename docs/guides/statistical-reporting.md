@@ -210,11 +210,11 @@ statistical_reporting:
   # Output configuration
   output_directory: "reports/statistical"
   output_formats: ["html", "json", "markdown", "executive"]
-  
+
   # Report settings
   retention_days: 30
   verbosity_level: "detailed"  # minimal, standard, detailed
-  
+
   # Insight generation
   insights:
     enabled: true
@@ -224,14 +224,14 @@ statistical_reporting:
     success_stories:
       enabled: true
       min_impact_threshold: 0.8
-    
+
   # Executive reporting
   executive:
     include_success_stories: true
     include_roi_analysis: true
     include_comparative_benchmarks: true
     focus_areas: ["impact", "quality", "trends"]
-    
+
   # Visualization settings
   html:
     enable_plotly: true
@@ -309,8 +309,8 @@ PR-friendly format:
 
 ## Pipeline Statistical Report
 
-**Run ID**: run_20251030_143022  
-**Duration**: 5m 0.5s  
+**Run ID**: run_20251030_143022
+**Duration**: 5m 0.5s
 **Records Processed**: 150,000
 
 ### Data Quality
@@ -391,7 +391,7 @@ InsightRecommendation(
 
 InsightRecommendation(
     type="performance_anomaly",
-    severity="WARNING", 
+    severity="WARNING",
     title="Patent Validation Duration Increased",
     description="Validation duration (180s) significantly higher than baseline (120s)",
     recommendation="Review data volume changes or resource constraints",

@@ -28,14 +28,24 @@ from loguru import logger
 
 from ..exceptions import DependencyError
 
+# Import parsed/validated assets needed for asset_check decorators
+# These need to be imported before being referenced in asset_check() calls
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
     from ..utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
 except Exception:
-    ModuleReport = None  # type: ignore
-    PatentAnalysisAnalyzer = None  # type: ignore
+    ModuleReport = None
+    PatentAnalysisAnalyzer = None
 
 # ============================================================================
 # Optional imports - degrade gracefully when dependencies are unavailable
@@ -45,46 +55,46 @@ except Exception:
 try:  # pragma: no cover - defensive import
     from ..extractors.uspto_extractor import USPTOExtractor  # type: ignore
 except Exception:
-    USPTOExtractor = None  # type: ignore
+    USPTOExtractor = None
 
 try:  # pragma: no cover - defensive import
     from ..extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
 except Exception:
-    USPTOAIExtractor = None  # type: ignore
+    USPTOAIExtractor = None
 
 # Validators
 try:  # pragma: no cover - defensive import
     from ..quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
 except Exception:
-    validate_rf_id_uniqueness = None  # type: ignore
-    USPTODataQualityValidator = None  # type: ignore
-    USPTOValidationConfig = None  # type: ignore
+    validate_rf_id_uniqueness = None
+    USPTODataQualityValidator = None
+    USPTOValidationConfig = None
 
 # Transformers
 try:  # pragma: no cover - defensive import
     from ..transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
 except Exception:
-    PatentAssignmentTransformer = None  # type: ignore
+    PatentAssignmentTransformer = None
 
 # Models
 try:  # pragma: no cover - defensive import
     from ..models.uspto_models import PatentAssignment  # type: ignore
 except Exception:
-    PatentAssignment = None  # type: ignore
+    PatentAssignment = None
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
     from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:
-    Neo4jClient = None  # type: ignore
-    Neo4jConfig = None  # type: ignore
-    LoadMetrics = None  # type: ignore
+    Neo4jClient = None
+    Neo4jConfig = None
+    LoadMetrics = None
 
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig  # type: ignore
+    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig
 except Exception:
-    PatentLoader = None  # type: ignore
-    PatentLoaderConfig = None  # type: ignore
+    PatentLoader = None
+    PatentLoaderConfig = None
 
 # ============================================================================
 # Configuration Constants
@@ -141,7 +151,7 @@ _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
 
-def _get_input_dir(context) -> Path:
+def _get_input_dir(context: Any) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
     """
@@ -239,7 +249,7 @@ def _make_parsing_check(
     and fails the check if any file reported parsing failures.
     """
 
-    def _check(context, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
+    def _check(context: Any, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []
         errors = {}
@@ -325,10 +335,10 @@ uspto_conveyances_parsing_check = asset_check(
 # ============================================================================
 
 
-def _build_validator_config(context) -> USPTOValidationConfig:
+def _build_validator_config(context: Any) -> USPTOValidationConfig:
     """Build validation config from context op_config with defaults."""
     if USPTOValidationConfig is None:
-        return None  # type: ignore
+        return None
     cfg = getattr(context, "op_config", {}) or {}
     return USPTOValidationConfig(
         chunk_size=int(cfg.get("chunk_size", 10000)),
@@ -376,13 +386,13 @@ def _serialize_assignment(model: Any) -> dict[str, Any]:
     if model is None:
         return {}
     if hasattr(model, "model_dump"):
-        return model.model_dump(mode="json")  # type: ignore[attr-defined]
+        return model.model_dump(mode="json")
     if isinstance(model, dict):
         return model
     return dict(model.__dict__)
 
 
-def _iter_small_sample(store: list[Any], new_item: Any, limit: int) -> None:
+def _iter_small_sample(store: list[Any], new_item, limit: int) -> None:
     if len(store) < limit:
         store.append(new_item)
 
@@ -412,7 +422,7 @@ def _normalize_country(country: str | None) -> str | None:
 @dataclass
 
 
-def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
+def _resolve_output_paths(context: Any, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)
@@ -446,7 +456,7 @@ def _ensure_output_dir() -> Path:
 
 def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
     """Load JSONL file of transformed records."""
-    records = []
+    records: list[Any] = []
     if not file_path.exists():
         logger.warning(f"Transformed file not found: {file_path}")
         return records
@@ -520,7 +530,7 @@ def _batch_to_dataframe(batch: list[dict]):
       - extracted_at
     """
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception as exc:  # pragma: no cover
         raise DependencyError(
             "pandas is required to convert batches to DataFrame",

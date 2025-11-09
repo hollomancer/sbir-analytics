@@ -5,7 +5,6 @@ ensuring that required directories exist and files are accessible.
 """
 
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 
@@ -56,19 +55,13 @@ class PathValidator:
         for path_key in directory_paths:
             try:
                 path = self.paths_config.resolve_path(
-                    path_key,
-                    create_parent=False,
-                    project_root=self.project_root
+                    path_key, create_parent=False, project_root=self.project_root
                 )
                 self.validate_directory_path(
-                    path=path,
-                    path_key=path_key,
-                    create_if_missing=create_missing_dirs
+                    path=path, path_key=path_key, create_if_missing=create_missing_dirs
                 )
             except Exception as e:
-                self.validation_errors.append(
-                    f"Error validating directory '{path_key}': {e}"
-                )
+                self.validation_errors.append(f"Error validating directory '{path_key}': {e}")
 
         # Validate file paths (these may not exist yet, depending on pipeline stage)
         file_paths = [
@@ -80,19 +73,13 @@ class PathValidator:
         for path_key in file_paths:
             try:
                 path = self.paths_config.resolve_path(
-                    path_key,
-                    create_parent=create_missing_dirs,
-                    project_root=self.project_root
+                    path_key, create_parent=create_missing_dirs, project_root=self.project_root
                 )
                 self.validate_file_path(
-                    path=path,
-                    path_key=path_key,
-                    must_exist=require_files_exist
+                    path=path, path_key=path_key, must_exist=require_files_exist
                 )
             except Exception as e:
-                self.validation_errors.append(
-                    f"Error validating file '{path_key}': {e}"
-                )
+                self.validation_errors.append(f"Error validating file '{path_key}': {e}")
 
         # Log validation results
         if self.validation_errors:
@@ -100,22 +87,19 @@ class PathValidator:
                 "Path validation completed with errors",
                 extra={
                     "error_count": len(self.validation_errors),
-                    "errors": self.validation_errors
-                }
+                    "errors": self.validation_errors,
+                },
             )
             return False
         else:
             logger.info(
                 "Path validation completed successfully",
-                extra={"validated_paths": len(directory_paths) + len(file_paths)}
+                extra={"validated_paths": len(directory_paths) + len(file_paths)},
             )
             return True
 
     def validate_directory_path(
-        self,
-        path: Path,
-        path_key: str,
-        create_if_missing: bool = False
+        self, path: Path, path_key: str, create_if_missing: bool = False
     ) -> None:
         """Validate a single directory path.
 
@@ -132,8 +116,8 @@ class PathValidator:
                 try:
                     path.mkdir(parents=True, exist_ok=True)
                     logger.info(
-                        f"Created missing directory",
-                        extra={"path_key": path_key, "path": str(path)}
+                        "Created missing directory",
+                        extra={"path_key": path_key, "path": str(path)},
                     )
                 except OSError as e:
                     raise FileSystemError(
@@ -141,12 +125,11 @@ class PathValidator:
                         component="path_validator",
                         operation="create_directory",
                         details={"path": str(path), "error": str(e)},
-                        error_code=4003  # FILE_WRITE_FAILED
+                        error_code=4003,  # FILE_WRITE_FAILED
                     ) from e
             else:
                 logger.warning(
-                    f"Directory does not exist",
-                    extra={"path_key": path_key, "path": str(path)}
+                    "Directory does not exist", extra={"path_key": path_key, "path": str(path)}
                 )
         elif not path.is_dir():
             raise FileSystemError(
@@ -154,20 +137,14 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_directory",
                 details={"path": str(path)},
-                error_code=4001  # FILE_NOT_FOUND
+                error_code=4001,  # FILE_NOT_FOUND
             )
         else:
             logger.debug(
-                f"Directory validated successfully",
-                extra={"path_key": path_key, "path": str(path)}
+                "Directory validated successfully", extra={"path_key": path_key, "path": str(path)}
             )
 
-    def validate_file_path(
-        self,
-        path: Path,
-        path_key: str,
-        must_exist: bool = False
-    ) -> None:
+    def validate_file_path(self, path: Path, path_key: str, must_exist: bool = False) -> None:
         """Validate a single file path.
 
         Args:
@@ -186,7 +163,7 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_file",
                 details={"path": str(path), "parent": str(path.parent)},
-                error_code=4001  # FILE_NOT_FOUND
+                error_code=4001,  # FILE_NOT_FOUND
             )
 
         # Check file existence
@@ -197,12 +174,12 @@ class PathValidator:
                     component="path_validator",
                     operation="validate_file",
                     details={"path": str(path)},
-                    error_code=4001  # FILE_NOT_FOUND
+                    error_code=4001,  # FILE_NOT_FOUND
                 )
             else:
                 logger.debug(
-                    f"File does not exist (OK for outputs)",
-                    extra={"path_key": path_key, "path": str(path)}
+                    "File does not exist (OK for outputs)",
+                    extra={"path_key": path_key, "path": str(path)},
                 )
         elif path.is_dir():
             raise FileSystemError(
@@ -210,12 +187,11 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_file",
                 details={"path": str(path)},
-                error_code=4002  # FILE_READ_FAILED
+                error_code=4002,  # FILE_READ_FAILED
             )
         else:
             logger.debug(
-                f"File validated successfully",
-                extra={"path_key": path_key, "path": str(path)}
+                "File validated successfully", extra={"path_key": path_key, "path": str(path)}
             )
 
     def get_validation_errors(self) -> list[str]:
@@ -242,8 +218,7 @@ class PathValidator:
 
 
 def validate_paths_on_startup(
-    create_missing_dirs: bool = True,
-    require_files_exist: bool = False
+    create_missing_dirs: bool = True, require_files_exist: bool = False
 ) -> bool:
     """Convenience function to validate paths on application startup.
 
@@ -265,8 +240,7 @@ def validate_paths_on_startup(
     validator = PathValidator(config.paths)
 
     success = validator.validate_all_paths(
-        create_missing_dirs=create_missing_dirs,
-        require_files_exist=require_files_exist
+        create_missing_dirs=create_missing_dirs, require_files_exist=require_files_exist
     )
 
     if not success:

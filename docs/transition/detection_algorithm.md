@@ -82,7 +82,7 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
 1. **UEI (Unique Entity Identifier)** - Primary, highest confidence (0.99)
    - 12-character standard identifier
    - Used for federal awards and contracts since 2021
-   
+
 2. **CAGE Code** - Secondary, defense-specific (0.95)
    - Commercial and Government Entity code
    - Used primarily by DoD for procurement
@@ -182,8 +182,8 @@ The algorithm combines six independent signals, each with configurable weights s
 ### Scoring
 
 ```text
-patent_score = (has_patent × 0.05 + 
-                pre_contract × 0.03 + 
+patent_score = (has_patent × 0.05 +
+                pre_contract × 0.03 +
                 topic_match × 0.02) × 0.15 (weight)
 ```
 
@@ -229,11 +229,11 @@ patent_score = (has_patent × 0.05 +
 
 ```text
 final_score = base_score + (
-    agency_score + 
-    timing_score + 
-    competition_score + 
-    patent_score + 
-    cet_score + 
+    agency_score +
+    timing_score +
+    competition_score +
+    patent_score +
+    cet_score +
     text_similarity_score
 )
 ```

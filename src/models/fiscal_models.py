@@ -143,7 +143,7 @@ class TaxImpactEstimate(BaseModel):
             raise ValueError("Confidence interval low value must be <= high value")
         return v
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate that total tax receipt equals sum of components."""
         computed_total = (
             self.individual_income_tax

@@ -53,9 +53,9 @@ An **evidence bundle** is a comprehensive audit trail that documents how and why
   "confidence": "LIKELY",
   "detection_date": "2024-01-15T10:30:00Z",
   "detection_method": "transition_detector_v1",
-  
+
   "summary": "Award recipient Acme AI Inc. (UEI: ABC123) awarded Phase II contract from DoD within 6 months after completion",
-  
+
   "signals": {
     "agency_continuity": {...},
     "timing_proximity": {...},
@@ -64,11 +64,11 @@ An **evidence bundle** is a comprehensive audit trail that documents how and why
     "cet_alignment": {...},
     "vendor_match": {...}
   },
-  
+
   "contract_details": {...},
   "award_details": {...},
   "matcher_details": {...},
-  
+
   "validation": {
     "completeness": "PASS",
     "score_valid": true,
@@ -555,7 +555,7 @@ Each signal contains:
   "detection_date": "2024-01-15T10:30:00Z",
   "detection_method": "transition_detector_v1",
   "summary": "DoD Phase II award (Acme AI) → Air Force sole source contract 45 days post-completion",
-  
+
   "signals": {
     "agency_continuity": {
       "enabled": true,
@@ -621,7 +621,7 @@ Each signal contains:
       }
     }
   },
-  
+
   "contract_details": {
     "piid": "FA1234-20-C-0001",
     "agency": "Department of Defense",
@@ -633,7 +633,7 @@ Each signal contains:
     "competition_type": "SOLE_SOURCE",
     "description": "Development of AI-powered threat detection system"
   },
-  
+
   "award_details": {
     "award_id": "SBIR-2020-PHASE-II-001",
     "phase": "II",
@@ -648,7 +648,7 @@ Each signal contains:
     "cet_area": "AI & Machine Learning",
     "description": "Federated learning for distributed threat detection"
   },
-  
+
   "validation": {
     "completeness": "PASS",
     "score_valid": true,
@@ -682,7 +682,7 @@ Each signal contains:
   "confidence": "POSSIBLE",
   "detection_date": "2024-01-15T10:30:00Z",
   "summary": "NSF Phase II award → NSF contract 8 months later; fuzzy name match (0.82)",
-  
+
   "signals": {
     "agency_continuity": {
       "enabled": true,
@@ -748,7 +748,7 @@ Each signal contains:
       }
     }
   },
-  
+
   "contract_details": {
     "piid": "NSF-2020-1234567",
     "agency": "National Science Foundation",
@@ -758,7 +758,7 @@ Each signal contains:
     "competition_type": "FULL_AND_OPEN",
     "description": "Advanced materials research and commercialization"
   },
-  
+
   "award_details": {
     "award_id": "SBIR-2019-PHASE-II-042",
     "phase": "II",
@@ -771,7 +771,7 @@ Each signal contains:
     "completion_date": "2020-01-15",
     "description": "Development of advanced composite materials"
   },
-  
+
   "validation": {
     "completeness": "PASS",
     "score_valid": true,
@@ -843,14 +843,14 @@ RETURN t.evidence_bundle
 ```python
 def validate_bundle(bundle: dict) -> dict:
     """Validate evidence bundle structure."""
-    
+
     required_fields = [
         'transition_id', 'award_id', 'contract_id',
         'likelihood_score', 'confidence', 'detection_date'
     ]
-    
+
     missing = [f for f in required_fields if f not in bundle]
-    
+
     return {
         'valid': len(missing) == 0,
         'missing_fields': missing,
@@ -863,17 +863,17 @@ def validate_bundle(bundle: dict) -> dict:
 ```python
 def verify_score_calculation(bundle: dict) -> bool:
     """Verify likelihood score matches sum of signals."""
-    
+
     base_score = 0.15  # Assuming default
     signal_contributions = [
         bundle['signals'][sig].get('score_contribution', 0.0)
         for sig in bundle['signals'].keys()
         if bundle['signals'][sig].get('enabled', False)
     ]
-    
+
     expected_score = base_score + sum(signal_contributions)
     actual_score = bundle['likelihood_score']
-    
+
     return abs(expected_score - actual_score) < 0.001  # Allow floating point tolerance
 ```
 
@@ -906,7 +906,7 @@ agency_scores = [
 
 high_confidence_patent_backed = [
     b for b in bundles
-    if b['confidence'] == 'HIGH' and 
+    if b['confidence'] == 'HIGH' and
     b['signals']['patent_signal']['details']['patents_found'] > 0
 ]
 ```

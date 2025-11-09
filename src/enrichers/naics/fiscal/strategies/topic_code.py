@@ -13,7 +13,7 @@ from .base import EnrichmentStrategy, NAICSEnrichmentResult
 class TopicCodeStrategy(EnrichmentStrategy):
     """Map SBIR topic codes to NAICS codes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize topic code mappings."""
         # Topic code to NAICS mappings (agency-specific)
         self.topic_code_naics_mappings = {

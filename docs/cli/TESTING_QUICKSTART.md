@@ -95,7 +95,7 @@ poetry run sbir-cli ingest run --dry-run
 See `tests/unit/cli/test_integration_clients.py` for examples of mocking:
 
 - DagsterClient responses
-- Neo4jClient health checks  
+- Neo4jClient health checks
 - MetricsCollector data
 
 ### Option 3: Test Display Components
@@ -137,4 +137,3 @@ The CLI is **fully implemented and functional**. Test failures are primarily rel
 - Missing service dependencies for full integration tests
 
 The code works correctly - tests just need mock adjustments to achieve full coverage.
-

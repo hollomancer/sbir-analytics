@@ -23,15 +23,15 @@ from dagster import AssetSelection, define_asset_job
 
 # Import CET production assets
 try:
-    from ..cet_assets import (  # type: ignore
+    from ..cet_assets import (
         cet_taxonomy,
         enriched_cet_award_classifications,
         transformed_cet_company_profiles,
     )
 
     # Create aliases for backward compatibility
-    cet_award_classifications = enriched_cet_award_classifications  # type: ignore
-    cet_company_profiles = transformed_cet_company_profiles  # type: ignore
+    cet_award_classifications = enriched_cet_award_classifications
+    cet_company_profiles = transformed_cet_company_profiles
 except Exception:  # pragma: no cover - defensive import for repository load-time
     cet_taxonomy = None  # type: ignore
     cet_award_classifications = None  # type: ignore
@@ -39,7 +39,7 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
 
 # Import CET Neo4j loading/enrichment assets (consolidated)
 try:
-    from ..cet_assets import (  # type: ignore
+    from ..cet_assets import (
         neo4j_award_cet_enrichment,
         neo4j_award_cet_relationships,
         neo4j_cetarea_nodes,
@@ -68,13 +68,13 @@ if (
     cet_full_pipeline_job = define_asset_job(
         name="cet_full_pipeline_job",
         selection=AssetSelection.keys(
-            cet_taxonomy.key,  # type: ignore[attr-defined]
-            cet_award_classifications.key,  # type: ignore[attr-defined]
-            cet_company_profiles.key,  # type: ignore[attr-defined]
-            neo4j_cetarea_nodes.key,  # type: ignore[attr-defined]
-            neo4j_award_cet_enrichment.key,  # type: ignore[attr-defined]
-            neo4j_company_cet_enrichment.key,  # type: ignore[attr-defined]
-            neo4j_award_cet_relationships.key,  # type: ignore[attr-defined]
+            cet_taxonomy.key,
+            cet_award_classifications.key,
+            cet_company_profiles.key,
+            neo4j_cetarea_nodes.key,
+            neo4j_award_cet_enrichment.key,
+            neo4j_company_cet_enrichment.key,
+            neo4j_award_cet_relationships.key,
             neo4j_company_cet_relationships.key,
         ),
         description=(
@@ -125,7 +125,7 @@ if (
     )
 else:
     # This branch is reachable when assets fail to import at module load time
-    cet_full_pipeline_job = define_asset_job(
+    cet_full_pipeline_job = define_asset_job(  # type: ignore[unreachable]
         name="cet_full_pipeline_job_placeholder",
         selection=AssetSelection.keys(),
         description="Placeholder job (CET assets unavailable at import time).",

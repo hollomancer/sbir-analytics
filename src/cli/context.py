@@ -57,11 +57,13 @@ class CommandContext:
         self.logger = logger.bind(
             component="cli",
             run_id=self.run_id,
-            environment=self.config.pipeline.get("environment", "unknown")
+            environment=self.config.pipeline.get("environment", "unknown"),
         )
 
     @classmethod
-    def create(cls, config: PipelineConfig | None = None, run_id: str | None = None) -> CommandContext:
+    def create(
+        cls, config: PipelineConfig | None = None, run_id: str | None = None
+    ) -> CommandContext:
         """Create a CommandContext instance with default clients and structured logging.
 
         Args:
@@ -107,7 +109,7 @@ class CommandContext:
             extra={
                 "command": "unknown",  # Will be updated by command
                 "pid": __import__("os").getpid(),
-            }
+            },
         )
 
         return context

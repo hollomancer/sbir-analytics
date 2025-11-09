@@ -17,30 +17,24 @@ For backward compatibility, all assets are re-exported at the top level.
 
 from __future__ import annotations
 
+# Import classes for testing/mocking
+from src.ml.config.taxonomy_loader import TaxonomyLoader
+
 # Import all assets from the modularized cet package
 from .cet import (
+    # Testing utilities
+    AssetExecutionContext,
+    # Classifications
+    cet_award_classifications_quality_check,
+    # Training
+    cet_award_training_dataset,
+    # Company
+    cet_company_profiles_check,
     # Taxonomy
     cet_taxonomy,
     cet_taxonomy_completeness_check,
-    raw_cet_taxonomy,
-    taxonomy_to_dataframe,
-    # Classifications
-    cet_award_classifications_quality_check,
     enriched_cet_award_classifications,
     enriched_cet_patent_classifications,
-    # Training
-    cet_award_training_dataset,
-    train_cet_patent_classifier,
-    # Analytics
-    transformed_cet_analytics,
-    transformed_cet_analytics_aggregates,
-    # Validation
-    raw_cet_human_sampling,
-    validated_cet_drift_detection,
-    validated_cet_iaa_report,
-    # Company
-    cet_company_profiles_check,
-    transformed_cet_company_profiles,
     # Loading
     loaded_award_cet_enrichment,
     loaded_award_cet_relationships,
@@ -53,19 +47,26 @@ from .cet import (
     neo4j_cetarea_nodes,
     neo4j_company_cet_enrichment,
     neo4j_company_cet_relationships,
+    # Validation
+    raw_cet_human_sampling,
+    raw_cet_taxonomy,
     # Utility functions
     save_dataframe_parquet,
-    # Testing utilities
-    AssetExecutionContext,
+    taxonomy_to_dataframe,
+    train_cet_patent_classifier,
+    # Analytics
+    transformed_cet_analytics,
+    transformed_cet_analytics_aggregates,
+    transformed_cet_company_profiles,
+    validated_cet_drift_detection,
+    validated_cet_iaa_report,
 )
-from .cet.taxonomy import DEFAULT_OUTPUT_PATH
 
 # Import helper functions for testing/mocking
 from .cet.company import _get_neo4j_client
+from .cet.taxonomy import DEFAULT_OUTPUT_PATH
 from .cet.utils import _read_parquet_or_ndjson
 
-# Import classes for testing/mocking
-from src.ml.config.taxonomy_loader import TaxonomyLoader
 
 try:
     from src.loaders.neo4j import CETLoader, CETLoaderConfig

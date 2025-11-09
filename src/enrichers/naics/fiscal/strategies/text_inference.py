@@ -13,7 +13,7 @@ from .base import EnrichmentStrategy, NAICSEnrichmentResult
 class TextInferenceStrategy(EnrichmentStrategy):
     """Infer NAICS from award abstract/title text."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize keyword patterns."""
         # Keyword patterns for text-based NAICS inference
         self.naics_keyword_patterns = {

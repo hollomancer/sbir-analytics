@@ -292,7 +292,7 @@ class TransitionEvaluator:
 
         for confidence, group in df.groupby(confidence_column):
             if confidence is None:
-                confidence = "unknown"
+                confidence = "unknown"  # type: ignore[unreachable]
             pairs = [
                 tuple(str(group[col].iloc[i]).strip() for col in id_columns)
                 for i in range(len(group))

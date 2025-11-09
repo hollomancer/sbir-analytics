@@ -14,13 +14,13 @@ Goals:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
+
+from loguru import logger
 
 
 class ProviderError(RuntimeError):
@@ -110,7 +110,7 @@ class BaseSearchProvider(ABC):
 
     # --- Utilities for adapters ------------------------------------------------
 
-    def measure_latency(self, func: Callable[..., Any], *args, **kwargs) -> tuple[Any, float]:
+    def measure_latency(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> tuple[Any, float]:
         """Run `func` and measure elapsed time in milliseconds."""
         start = time.time()
         rv = func(*args, **kwargs)

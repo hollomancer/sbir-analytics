@@ -46,7 +46,7 @@ Usage:
 """
 
 from enum import IntEnum
-from typing import Any, Optional
+from typing import Any
 
 
 class ErrorCode(IntEnum):
@@ -120,12 +120,12 @@ class SBIRETLError(Exception):
     def __init__(
         self,
         message: str,
-        component: Optional[str] = None,
-        operation: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        component: str | None = None,
+        operation: str | None = None,
+        details: dict[str, Any] | None = None,
         retryable: bool = False,
-        status_code: Optional[ErrorCode] = None,
-        cause: Optional[Exception] = None,
+        status_code: ErrorCode | None = None,
+        cause: Exception | None = None,
     ):
         """Initialize SBIR ETL error.
 
@@ -340,7 +340,7 @@ class Neo4jError(LoadError):
         )
     """
 
-    def __init__(self, message: str, query: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str, query: str | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if query:
             details["query"] = query
@@ -381,9 +381,9 @@ class APIError(EnrichmentError):
     def __init__(
         self,
         message: str,
-        api_name: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        http_status: Optional[int] = None,
+        api_name: str | None = None,
+        endpoint: str | None = None,
+        http_status: int | None = None,
         **kwargs: Any,
     ):
         details = kwargs.pop("details", {})
@@ -423,9 +423,7 @@ class RateLimitError(APIError):
         )
     """
 
-    def __init__(
-        self, message: str, retry_after: Optional[int] = None, **kwargs: Any
-    ):
+    def __init__(self, message: str, retry_after: int | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if retry_after:
             details["retry_after_seconds"] = retry_after
@@ -458,7 +456,7 @@ class ConfigurationError(SBIRETLError):
         )
     """
 
-    def __init__(self, message: str, config_key: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str, config_key: str | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if config_key:
             details["config_key"] = config_key
@@ -494,7 +492,7 @@ class FileSystemError(SBIRETLError):
         )
     """
 
-    def __init__(self, message: str, file_path: Optional[str] = None, **kwargs: Any):
+    def __init__(self, message: str, file_path: str | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if file_path:
             details["file_path"] = file_path
@@ -615,8 +613,8 @@ class DataQualityError(ValidationError):
     def __init__(
         self,
         message: str,
-        threshold: Optional[float] = None,
-        actual_value: Optional[float] = None,
+        threshold: float | None = None,
+        actual_value: float | None = None,
         **kwargs: Any,
     ):
         details = kwargs.pop("details", {})
@@ -652,9 +650,7 @@ class DependencyError(SBIRETLError):
         )
     """
 
-    def __init__(
-        self, message: str, dependency_name: Optional[str] = None, **kwargs: Any
-    ):
+    def __init__(self, message: str, dependency_name: str | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if dependency_name:
             details["dependency_name"] = dependency_name
@@ -684,9 +680,7 @@ class RFunctionError(DependencyError):
         )
     """
 
-    def __init__(
-        self, message: str, function_name: Optional[str] = None, **kwargs: Any
-    ):
+    def __init__(self, message: str, function_name: str | None = None, **kwargs: Any):
         details = kwargs.pop("details", {})
         if function_name:
             details["function_name"] = function_name
@@ -712,7 +706,7 @@ class RFunctionError(DependencyError):
 def wrap_exception(
     original: Exception,
     error_class: type[SBIRETLError],
-    message: Optional[str] = None,
+    message: str | None = None,
     **kwargs: Any,
 ) -> SBIRETLError:
     """Wrap a generic exception in a structured SBIR ETL exception.
@@ -785,7 +779,7 @@ def is_retryable(exc: Exception) -> bool:
     return False
 
 
-def get_error_code(exc: Exception) -> Optional[int]:
+def get_error_code(exc: Exception) -> int | None:
     """Get error code from exception if available.
 
     Args:

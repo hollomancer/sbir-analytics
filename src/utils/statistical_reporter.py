@@ -802,7 +802,7 @@ class StatisticalReporter:
             elif format == ReportFormat.EXECUTIVE:
                 file_path = self._generate_executive_artifact(pipeline_metrics, collection)
             else:
-                logger.warning(f"Unsupported format: {format}")
+                logger.warning(f"Unsupported format: {format}")  # type: ignore[unreachable]
                 return None
 
             # Calculate file size

@@ -46,7 +46,10 @@ class SectorFallbackStrategy(EnrichmentStrategy):
                 source=self.strategy_name,
                 method="default_fallback",
                 timestamp=datetime.now(),
-                metadata={"fallback_code": self.fallback_code, "reason": "no_other_strategy_succeeded"},
+                metadata={
+                    "fallback_code": self.fallback_code,
+                    "reason": "no_other_strategy_succeeded",
+                },
             )
 
         # This should never happen unless fallback_code is invalid

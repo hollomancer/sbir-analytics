@@ -56,7 +56,7 @@ class OpenSpecAnalyzer:
 
     def _scan_changes(self) -> list[OpenSpecChange]:
         """Extract all active changes from openspec/changes/."""
-        changes = []
+        changes: list[Any] = []
         changes_path = self.openspec_path / "changes"
 
         if not changes_path.exists():
@@ -207,7 +207,7 @@ class OpenSpecAnalyzer:
         # Extract sections
         sections = {}
         current_section = None
-        current_content = []
+        current_content: list[Any] = []
 
         for line in content.split("\n"):
             if line.startswith("##"):
@@ -240,7 +240,7 @@ class OpenSpecAnalyzer:
 
     def _scan_specs(self) -> list[OpenSpecSpec]:
         """Extract all specifications from openspec/specs/."""
-        specs = []
+        specs: list[Any] = []
         specs_path = self.openspec_path / "specs"
 
         if not specs_path.exists():
@@ -270,7 +270,7 @@ class OpenSpecAnalyzer:
         # Extract sections similar to design parsing
         sections = {}
         current_section = None
-        current_content = []
+        current_content: list[Any] = []
 
         for line in content.split("\n"):
             if line.startswith("##"):

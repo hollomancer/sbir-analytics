@@ -12,6 +12,8 @@ This module contains:
 
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +27,14 @@ from .utils import (
     MetadataValue,
     _convert_dates_to_iso,
     _ensure_output_dir,
+    _get_neo4j_client,
     _load_transformed_file,
     _serialize_metrics,
     asset,
     asset_check,
+    DEFAULT_TRANSFORMED_DIR,
+    PatentAnalysisAnalyzer,
+    LoadMetrics,
 )
 
 # Neo4j loader imports
@@ -48,7 +54,7 @@ except Exception:
         "create_constraints": bool,
     },
 )
-def loaded_patents(context) -> dict[str, Any]:
+def loaded_patents(context: Any) -> dict[str, Any]:
     """Phase 1 Step 2: Load Patent nodes into Neo4j.
 
     Reads transformed patent documents and creates Patent nodes with:
@@ -228,7 +234,7 @@ def loaded_patents(context) -> dict[str, Any]:
     group_name="uspto_loading",
     deps=["transformed_patent_assignments"],
 )
-def loaded_patent_assignments(context) -> dict[str, Any]:
+def loaded_patent_assignments(context: Any) -> dict[str, Any]:
     """Phase 1 Step 1: Load PatentAssignment nodes into Neo4j.
 
     Reads transformed patent assignments and creates PatentAssignment nodes with:
@@ -324,7 +330,7 @@ def loaded_patent_assignments(context) -> dict[str, Any]:
     group_name="uspto_loading",
     deps=["neo4j_patients", "loaded_patent_assignments", "transformed_patent_entities"],
 )
-def loaded_patent_entities(context) -> dict[str, Any]:
+def loaded_patent_entities(context: Any) -> dict[str, Any]:
     """Phase 2 & 3: Load PatentEntity nodes and create relationships.
 
     Reads transformed patent entities (assignees and assignors), creates
@@ -576,7 +582,7 @@ def loaded_patent_relationships(
     asset=loaded_patents,
     description="Verify patent load success rate meets minimum threshold",
 )
-def patent_load_success_rate(context, neo4j_patents: dict[str, Any]) -> AssetCheckResult:
+def patent_load_success_rate(context: Any, neo4j_patents: dict[str, Any]) -> AssetCheckResult:
     """Check that patent loading success rate meets ≥99% threshold."""
     success_rate = neo4j_patents.get("success_rate", 0.0)
     total = neo4j_patents.get("total_patents", 0)

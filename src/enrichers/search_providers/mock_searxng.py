@@ -135,7 +135,7 @@ class MockSearxngProvider(BaseSearchProvider):
         # Measure wall-clock latency for the simulated request
         base_ms = float(self.config.get("simulated_latency_ms", 20.0))
         jitter_ms = float(self.config.get("jitter_ms", 10.0))
-        sleep_ms = max(0.0, base_ms + random.uniform(-jitter_ms, jitter_ms))
+        sleep_ms = max(0.0, base_ms + random.uniform(-jitter_ms, jitter_ms))  # nosec B311 - Mock latency simulation for testing
         start = time.time()
         time.sleep(sleep_ms / 1000.0)
 

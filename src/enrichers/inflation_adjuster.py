@@ -98,7 +98,7 @@ class InflationAdjuster:
             f"Initialized InflationAdjuster with base year {self.base_year} and {len(self.bea_gdp_deflator)} deflator values"
         )
 
-    def _normalize_deflator_to_base_year(self):
+    def _normalize_deflator_to_base_year(self) -> None:
         """Normalize deflator values to use configured base year as 100."""
         if self.base_year in self.bea_gdp_deflator:
             base_value = self.bea_gdp_deflator[self.base_year]
@@ -494,7 +494,7 @@ class InflationAdjuster:
         )
 
         # Track adjustment statistics
-        method_counts = {}
+        method_counts: dict[Any, Any] = {}
         confidence_distribution = []
         successful_adjustments = 0
         total_original_amount = Decimal("0")
@@ -591,7 +591,7 @@ class InflationAdjuster:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-        flag_counts = {}
+        flag_counts: dict[Any, Any] = {}
         for flag in all_flags:
             flag_counts[flag] = flag_counts.get(flag, 0) + 1
 

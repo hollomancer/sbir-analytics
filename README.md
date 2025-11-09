@@ -6,7 +6,7 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
 
 **Major codebase consolidation completed** (2025-01-01):
 - ✅ **30-60% Code Duplication Reduction** - Systematic consolidation across all modules
-- ✅ **Unified Configuration System** - Single hierarchical PipelineConfig with 16+ schemas  
+- ✅ **Unified Configuration System** - Single hierarchical PipelineConfig with 16+ schemas
 - ✅ **Consolidated Asset Architecture** - USPTO, CET, and transition assets unified
 - ✅ **Streamlined Docker Setup** - Single docker-compose.yml with profile-based configuration
 - ✅ **Unified Data Models** - Award model replaces separate implementations
@@ -445,10 +445,10 @@ For fiscal returns analysis with StateIO/USEEIOR economic models:
    ```bash
    # macOS
    brew install r
-   
+
    # Linux
    sudo apt-get update && sudo apt-get install r-base
-   
+
    # Windows: Download from https://cran.r-project.org/bin/windows/base/
    ```
 
@@ -494,7 +494,7 @@ The Statistical Reporting System provides comprehensive, multi-format reports fo
 
 ### Implementation Status
 - ✅ Core infrastructure: `StatisticalReporter`, data models, configuration schema
-- ✅ Multi-format report generation: HTML, JSON, Markdown, Executive dashboards  
+- ✅ Multi-format report generation: HTML, JSON, Markdown, Executive dashboards
 - ✅ CI/CD integration: GitHub Actions artifacts, PR comments
 - 🚧 Module-specific analyzers: SBIR enrichment, patent analysis, CET classification, transition detection
 - 🚧 Automated insights: Anomaly detection, quality recommendations, success story identification
@@ -568,7 +568,7 @@ statistical_reporting:
   output_formats: ["html", "json", "markdown", "executive"]
   output_directory: "reports/statistical"
   retention_days: 30
-  
+
   insights:
     quality_threshold: 0.95
     performance_threshold: 0.80
@@ -647,10 +647,10 @@ After the MVP run:
 
 ### Acceptance Criteria (Task 25.1-25.6)
 
-✓ Sample size: 1k–10k records  
-✓ Action date coverage: ≥ 90%  
-✓ Identifier coverage (UEI|DUNS|PIID): ≥ 60%  
-✓ Vendor resolution rate: ≥ 70%  
+✓ Sample size: 1k–10k records
+✓ Action date coverage: ≥ 90%
+✓ Identifier coverage (UEI|DUNS|PIID): ≥ 60%
+✓ Vendor resolution rate: ≥ 70%
 ⏳ Quality gate: 30-sample precision review ≥ 80% (awaiting manual assessment)
 
 ### Configuration
@@ -901,19 +901,19 @@ The project provides Docker Compose for a consistent development and testing env
    ```bash
    # Run comprehensive E2E tests (MacBook Air optimized)
    make docker-e2e-standard
-   
+
    # Quick smoke test (< 2 minutes)
    make docker-e2e-minimal
-   
+
    # Performance test with larger datasets
    make docker-e2e-large
-   
+
    # Edge case testing
    make docker-e2e-edge-cases
-   
+
    # Interactive debugging
    make docker-e2e-debug
-   
+
    # Cleanup E2E environment
    make docker-e2e-clean
    ```
@@ -1100,7 +1100,7 @@ python scripts/run_e2e_tests.py --scenario edge-cases # Robustness test
 - Serial execution: ~8-12 minutes in CI
 - E2E tests: MacBook Air optimized, runs via ci profile
   - Minimal scenario: < 2 minutes, ~2GB memory
-  - Standard scenario: 5-8 minutes, ~4GB memory  
+  - Standard scenario: 5-8 minutes, ~4GB memory
   - Large scenario: 8-10 minutes, ~6GB memory
   - Resource limits: 8GB total memory, 2 CPU cores
 

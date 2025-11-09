@@ -172,7 +172,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         Returns:
             List of analysis insights and recommendations
         """
-        insights = []
+        insights: list[Any] = []
         transitions_df = module_data.get("transitions_df")
         awards_df = module_data.get("awards_df")
         module_data.get("detection_results", {})
@@ -389,7 +389,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             Dictionary mapping sectors to transition rates
         """
         if awards_df is None or transitions_df is None:
-            return {}
+            return {}  # type: ignore[unreachable]
 
         # Try to find sector/agency columns
         sector_columns = ["agency", "awarding_agency", "agency_name", "sector", "agency_code"]
@@ -404,7 +404,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             return {"error": "No sector/agency column found"}
 
         # Get successful transitions by award_id
-        successful_award_ids = set()
+        successful_award_ids: set[Any] = set()
         award_id_columns = ["award_id", "award", "id"]
         for col in award_id_columns:
             if col in transitions_df.columns:

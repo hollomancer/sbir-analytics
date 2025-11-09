@@ -59,7 +59,7 @@ def run_taxonomy_checks(config_dir: Path | None = None) -> dict[str, Any]:
     return result
 
 
-def pretty_print_checks(checks: dict[str, Any], out=None) -> None:
+def pretty_print_checks(checks: dict[str, Any], out: Any = None) -> None:
     """
     Print a human-friendly summary of taxonomy checks.
 

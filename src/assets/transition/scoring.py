@@ -7,18 +7,16 @@ This module contains:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
-from loguru import logger
 
 from .utils import (
-    AssetExecutionContext,
     MetadataValue,
     Output,
     _env_float,
     _env_int,
     _norm_name,
-    _prepare_transition_dataframe,
     asset,
     now_utc_iso,
     save_dataframe_parquet,
@@ -141,7 +139,7 @@ def transformed_transition_scores(
             score = base
 
             # Temporal and agency alignment boosts (best-effort; optional fields)
-            contract_row = contracts_by_id.get(contract_id, {})
+            contract_row: Any = contracts_by_id.get(contract_id, {})
             c_date = _parse_date_any(contract_row.get("action_date"))
             a_row: pd.Series | None = None
             try:
@@ -234,6 +232,12 @@ def transformed_transition_scores(
             )
 
     df_out = pd.DataFrame(results)
+    # Sort for deterministic ordering: by award_id, then score (desc), then contract_id
+    # This ensures stable ordering when scores are tied
+    if len(df_out) > 0:
+        df_out = df_out.sort_values(
+            by=["award_id", "score", "contract_id"], ascending=[True, False, True]
+        ).reset_index(drop=True)
     save_dataframe_parquet(df_out, out_path)
 
     checks = {
@@ -260,5 +264,3 @@ def transformed_transition_scores(
 # -----------------------------
 # 4) transition_evidence_v1
 # -----------------------------
-
-

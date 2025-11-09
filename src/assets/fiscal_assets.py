@@ -14,8 +14,8 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
-from ..enrichers.naics import enrich_sbir_awards_with_fiscal_naics
 from ..enrichers.inflation_adjuster import adjust_awards_for_inflation
+from ..enrichers.naics import enrich_sbir_awards_with_fiscal_naics
 from ..transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalParameterSweep,
@@ -1094,7 +1094,7 @@ def fiscal_return_summary(
         "preview": MetadataValue.md(summary_df.to_markdown()),
     }
 
-    return Output(value=summary_df, metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=summary_df, metadata=metadata)
 
 
 # Task 6.4: Sensitivity Analysis Assets
@@ -1147,7 +1147,7 @@ def sensitivity_scenarios(
         else "No scenarios",
     }
 
-    return Output(value=scenarios_df, metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=scenarios_df, metadata=metadata)
 
 
 @asset(

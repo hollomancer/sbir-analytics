@@ -14,19 +14,19 @@ Capabilities:
 
 from __future__ import annotations
 
-from loguru import logger
-
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from src.exceptions import DependencyError, ValidationError
 
 
 # pandas is optional at import-time; fail only when training is invoked
 try:
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:  # pragma: no cover - optional import
     pd = None  # type: ignore
 
@@ -48,7 +48,7 @@ except Exception as e:  # pragma: no cover
 
 
 def _ensure_pandas() -> None:
-    if pd is None:  # type: ignore
+    if pd is None:
         raise DependencyError(
             "pandas is required for patent classifier training",
             dependency_name="pandas",
@@ -107,7 +107,7 @@ def build_training_inputs(
             # Convert feature vectors to plain dicts for portability/debugging
             for fv in feature_vectors:
                 try:
-                    features.append(fv.as_dict())  # type: ignore[attr-defined]
+                    features.append(fv.as_dict())
                 except Exception:
                     # Minimal fallback dict if PatentFeatureVector.as_dict isn't available
                     d = {

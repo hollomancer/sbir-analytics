@@ -435,7 +435,7 @@ class ChunkedEnricher:
 
         return resume_chunk
 
-    def clear_checkpoints(self):
+    def clear_checkpoints(self) -> None:
         """Clear all checkpoint files after successful completion.
 
         Call this after successful processing to clean up checkpoints.
@@ -489,7 +489,7 @@ class ChunkedEnricher:
             details={
                 "chunk_num": chunk_num,
                 "max_retries": max_retries,
-                "chunk_size": len(chunk_df),
+                "chunk_size": len(chunk),
                 "last_error": str(last_error),
             },
             retryable=False,  # Already retried

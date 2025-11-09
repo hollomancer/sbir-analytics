@@ -13,7 +13,7 @@ from .base import EnrichmentStrategy, NAICSEnrichmentResult
 class AgencyDefaultsStrategy(EnrichmentStrategy):
     """Use default NAICS codes based on funding agency."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize agency default mappings."""
         # Agency default NAICS mappings
         self.agency_defaults = {
@@ -86,7 +86,11 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
                             source=self.strategy_name,
                             method="agency_default_partial",
                             timestamp=datetime.now(),
-                            metadata={"agency": agency_value, "matched_key": agency_key, "column": col},
+                            metadata={
+                                "agency": agency_value,
+                                "matched_key": agency_key,
+                                "column": col,
+                            },
                         )
 
         return None

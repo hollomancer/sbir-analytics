@@ -111,7 +111,7 @@ class ReportProcessorRegistry:
     by their format type.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the registry."""
         self._processors: dict[ReportFormat, type[BaseReportProcessor]] = {}
 

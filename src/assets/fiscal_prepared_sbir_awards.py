@@ -14,6 +14,7 @@ except Exception:
 
 from pathlib import Path
 
+
 # Import NAICS enricher from consolidated package
 try:
     from src.enrichers.naics import NAICSEnricher, NAICSEnricherConfig
@@ -24,7 +25,7 @@ except ImportError:
 
 
 @asset
-def fiscal_prepared_sbir_awards(raw_awards) -> dict | None:
+def fiscal_prepared_sbir_awards(raw_awards: Any) -> dict | None:
     """Dagster asset: enrich raw_awards with NAICS using the persisted usaspending index.
 
     Expects `raw_awards` to be a pandas DataFrame-like object with columns `award_id` and `recipient_uei`.
@@ -32,7 +33,7 @@ def fiscal_prepared_sbir_awards(raw_awards) -> dict | None:
     """
     if NAICSEnricher is None or NAICSEnricherConfig is None:
         # can't load enricher module
-        return None
+        return None  # type: ignore[unreachable]
 
     cache_path = Path("data/processed/usaspending/naics_index.parquet")
     cfg = NAICSEnricherConfig(

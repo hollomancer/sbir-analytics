@@ -16,11 +16,11 @@ Design goals:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import dataclasses
 import os
 from typing import Any
+
+from loguru import logger
 
 from .evaluation.evaluator import ConfusionMatrix, EvaluationResult, TransitionEvaluator
 
@@ -101,7 +101,7 @@ def _load_yaml(path: str) -> dict[str, Any] | None:
     Falls back to None if YAML parsing is not available or the file cannot be read.
     """
     try:
-        import yaml  # type: ignore
+        import yaml
     except Exception:
         return None
 

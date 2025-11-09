@@ -36,6 +36,17 @@ Exported Assets:
 
 from __future__ import annotations
 
+# AI Extraction module
+from .ai_extraction import (
+    enriched_uspto_ai_patent_join,
+    raw_uspto_ai_extract,
+    raw_uspto_ai_human_sample,
+    raw_uspto_ai_human_sample_extraction,
+    raw_uspto_ai_predictions,
+    uspto_ai_deduplicate,
+    validated_uspto_ai_cache_stats,
+)
+
 # Extraction module
 from .extraction import (
     raw_uspto_assignees,
@@ -43,34 +54,6 @@ from .extraction import (
     raw_uspto_assignors,
     raw_uspto_conveyances,
     raw_uspto_documentids,
-)
-
-# Parsing module
-from .parsing import (
-    parsed_uspto_assignments,
-    parsed_uspto_conveyances,
-    parsed_uspto_documentids,
-    validated_uspto_assignees,
-    validated_uspto_assignors,
-)
-
-# Validation module
-from .validation import (
-    uspto_completeness_asset_check,
-    uspto_referential_asset_check,
-    uspto_rf_id_asset_check,
-    validated_uspto_assignments,
-)
-
-# Transformation module
-from .transformation import (
-    JoinedRow,
-    USPTOAssignmentJoiner,
-    transformed_patent_assignments,
-    transformed_patent_entities,
-    transformed_patents,
-    uspto_company_linkage_check,
-    uspto_transformation_success_check,
 )
 
 # Loading module
@@ -84,25 +67,35 @@ from .loading import (
     patent_relationship_cardinality,
 )
 
-# AI Extraction module
-from .ai_extraction import (
-    enriched_uspto_ai_patent_join,
-    raw_uspto_ai_extract,
-    raw_uspto_ai_human_sample,
-    raw_uspto_ai_human_sample_extraction,
-    raw_uspto_ai_predictions,
-    uspto_ai_deduplicate,
-    validated_uspto_ai_cache_stats,
+# Parsing module
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
+
+# Transformation module
+from .transformation import (
+    JoinedRow,
+    USPTOAssignmentJoiner,
+    transformed_patent_assignments,
+    transformed_patent_entities,
+    transformed_patents,
+    uspto_company_linkage_check,
+    uspto_transformation_success_check,
 )
 
 # Utility functions
-from .utils import (
-    AssetCheckResult,
-    AssetCheckSeverity,
-    AssetIn,
-    MetadataValue,
-    asset,
-    asset_check,
+from .utils import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
+
+# Validation module
+from .validation import (
+    uspto_completeness_asset_check,
+    uspto_referential_asset_check,
+    uspto_rf_id_asset_check,
+    validated_uspto_assignments,
 )
 
 

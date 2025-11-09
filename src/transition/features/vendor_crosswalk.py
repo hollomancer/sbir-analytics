@@ -24,8 +24,6 @@ Usage (examples):
 
 from __future__ import annotations
 
-from loguru import logger
-
 import json
 import re
 from collections.abc import Iterable
@@ -35,19 +33,22 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from uuid import uuid4
 
+from loguru import logger
+
+
 # Optional dependencies
 try:
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:
     pd = None  # type: ignore
 
 try:
-    import duckdb  # type: ignore
+    import duckdb
 except Exception:
     duckdb = None  # type: ignore
 
 try:
-    from rapidfuzz import fuzz  # type: ignore
+    from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:

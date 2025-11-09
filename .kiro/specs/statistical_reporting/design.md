@@ -17,24 +17,24 @@ graph TB
         A --> C[Quality Validator]
         A --> D[Asset Metadata]
     end
-    
+
     subgraph "Statistical Reporter"
         E[Report Generator] --> F[Module Analyzers]
         E --> G[Insight Engine]
         E --> H[Format Processors]
     end
-    
+
     subgraph "Output Formats"
         I[HTML Reports]
         J[JSON Reports]
         K[Markdown Summaries]
         L[Executive Dashboards]
     end
-    
+
     B --> E
     C --> E
     D --> E
-    
+
     F --> I
     F --> J
     G --> K
@@ -43,13 +43,13 @@ graph TB
     H --> J
     H --> K
     H --> L
-    
+
     subgraph "Integration Points"
         M[GitHub Actions]
         N[Artifact Storage]
         O[PR Comments]
     end
-    
+
     K --> M
     I --> N
     J --> N
@@ -263,7 +263,7 @@ statistical_reporting:
     formats: ["html", "json", "markdown", "executive"]
     output_directory: "reports/statistical"
     template_directory: "templates/reports"
-    
+
   # Module-specific reporting
   modules:
     sbir_enrichment:
@@ -282,7 +282,7 @@ statistical_reporting:
       enabled: true
       include_success_stories: true
       include_trend_analysis: true
-      
+
   # Insight generation
   insights:
     anomaly_detection:
@@ -295,7 +295,7 @@ statistical_reporting:
     success_stories:
       enabled: true
       min_impact_threshold: 0.8
-      
+
   # Output format configuration
   formats:
     html:
@@ -311,7 +311,7 @@ statistical_reporting:
     executive:
       include_visualizations: true
       focus_areas: ["impact", "quality", "trends"]
-      
+
   # CI/CD integration
   cicd:
     github_actions:
@@ -323,7 +323,7 @@ statistical_reporting:
       enabled: true
       baseline_comparison: true
       trend_analysis_periods: [7, 30, 90]
-      
+
   # Quality thresholds for reporting
   quality_thresholds:
     data_completeness_warning: 0.90

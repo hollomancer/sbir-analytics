@@ -10,11 +10,14 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
+from typing import Any
 
 from .utils import (
+
     AssetCheckResult,
     AssetCheckSeverity,
     Output,
@@ -28,7 +31,7 @@ from .utils import (
     asset="transformed_cet_company_profiles",
     description="Company CET profiles successfully generated (basic sanity from checks JSON)",
 )
-def cet_company_profiles_check(context) -> AssetCheckResult:
+def cet_company_profiles_check(context: Any) -> AssetCheckResult:
     """
     Ensure company CET profiles were produced without critical errors.
     Consumes data/processed/cet_company_profiles.checks.json written by the asset.
@@ -117,7 +120,7 @@ def transformed_cet_company_profiles() -> Output:
 
     # If dependencies missing, write placeholder output & checks
     if pd is None or CompanyCETAggregator is None:
-        logger.warning(
+        logger.warning(  # type: ignore[unreachable]
             "Missing dependencies for company aggregation (pandas: %s, aggregator: %s). Writing placeholder output.",
             pd is not None,
             CompanyCETAggregator is not None,
@@ -342,14 +345,14 @@ def transformed_cet_company_profiles() -> Output:
 
 # Neo4j loader imports (import-safe)
 try:
-    from src.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from src.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 except Exception:  # pragma: no cover
     Neo4jClient = None  # type: ignore
     Neo4jConfig = None  # type: ignore
     LoadMetrics = None  # type: ignore
 
 try:
-    from src.loaders.neo4j import CETLoader, CETLoaderConfig  # type: ignore
+    from src.loaders.neo4j import CETLoader, CETLoaderConfig
 except Exception:  # pragma: no cover
     CETLoader = None  # type: ignore
     CETLoaderConfig = None  # type: ignore
@@ -376,7 +379,7 @@ DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "dat
 def _get_neo4j_client():
     """Get Neo4j client with error handling."""
     if Neo4jClient is None or Neo4jConfig is None:
-        return None
+        return None  # type: ignore[unreachable]
     try:
         config = Neo4jConfig(
             uri=DEFAULT_NEO4J_URI,
@@ -394,7 +397,7 @@ def _read_parquet_or_ndjson(
 ) -> list[dict]:
     """Read data from parquet or fallback to NDJSON."""
     if pd is None:
-        return []
+        return []  # type: ignore[unreachable]
 
     try:
         if parquet_path.exists():
@@ -415,7 +418,7 @@ def _read_parquet_or_ndjson(
     return []
 
 
-def _serialize_metrics(metrics) -> dict[str, Any]:
+def _serialize_metrics(metrics: Any) -> dict[str, Any]:
     """Serialize LoadMetrics to dict."""
     if metrics is None:
         return {}
@@ -426,5 +429,3 @@ def _serialize_metrics(metrics) -> dict[str, Any]:
         "relationships_updated": getattr(metrics, "relationships_updated", 0),
         "execution_time_ms": getattr(metrics, "execution_time_ms", 0),
     }
-
-

@@ -18,11 +18,11 @@ Exit codes:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import sys
 import traceback
 from typing import Any
+
+from loguru import logger
 
 
 # Configure basic logging so CI logs show what's happening

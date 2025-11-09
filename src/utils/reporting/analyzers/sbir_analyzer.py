@@ -166,7 +166,7 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
         Returns:
             List of analysis insights and recommendations
         """
-        insights = []
+        insights: list[Any] = []
         enriched_df = module_data.get("enriched_df")
         enrichment_metrics = module_data.get("enrichment_metrics", {})
 

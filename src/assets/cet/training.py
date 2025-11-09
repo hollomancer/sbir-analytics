@@ -10,13 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loguru import logger
-
-from .utils import (
-    Output,
-    asset,
-    save_dataframe_parquet,
-)
+from ...ml.config.taxonomy_loader import TaxonomyLoader
+from .utils import Output, asset, save_dataframe_parquet
 
 
 @asset(
@@ -39,15 +34,13 @@ def train_cet_patent_classifier() -> Output:
     - When training data or pandas is missing, writes a checks JSON with ok=False and
       returns the model path without creating the artifact.
     """
-    import json
-    from pathlib import Path
 
     model_path = Path("artifacts/models/patent_classifier_v1.pkl")
     checks_path = model_path.with_suffix(".checks.json")
     train_data_parquet = Path("data/processed/cet_patent_training.parquet")
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         # Missing pandas; write checks and exit
         checks = {"ok": False, "reason": "pandas_missing", "model_path": str(model_path)}
@@ -168,9 +161,6 @@ def train_cet_patent_classifier() -> Output:
     ),
 )
 def cet_award_training_dataset() -> Output:
-    import json
-    from pathlib import Path
-
     output_path = Path("data/processed/cet_award_training.parquet")
     checks_path = output_path.with_suffix(".checks.json")
 
@@ -197,7 +187,7 @@ def cet_award_training_dataset() -> Output:
     # If no input, write empty output and checks
     if input_path is None:
         try:
-            import pandas as pd  # type: ignore
+            import pandas as pd
 
             df_empty = pd.DataFrame(
                 columns=[
@@ -268,7 +258,7 @@ def cet_award_training_dataset() -> Output:
     except Exception as e:
         # Failed to load training dataset; write checks and empty output
         try:
-            import pandas as pd  # type: ignore
+            import pandas as pd
 
             df_empty = pd.DataFrame(
                 columns=[
@@ -320,7 +310,7 @@ def cet_award_training_dataset() -> Output:
 
     # Persist dataset to parquet (preferred) with NDJSON fallback
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
 
         rows = []
         for ex in dataset.examples:
@@ -395,5 +385,3 @@ def cet_award_training_dataset() -> Output:
         "taxonomy_version": dataset.taxonomy_version,
     }
     return Output(value=str(output_path), metadata=metadata)
-
-

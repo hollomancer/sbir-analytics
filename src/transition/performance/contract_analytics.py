@@ -343,7 +343,7 @@ class PerformanceProfiler:
     Task 17.6: Profile detection performance (target: ≥10K detections/minute)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance profiler."""
         self.timings: dict[str, list[float]] = {}
         self.counters: dict[str, int] = {}

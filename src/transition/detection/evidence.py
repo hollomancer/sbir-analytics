@@ -58,7 +58,7 @@ class EvidenceGenerator:
         ```
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize evidence generator."""
         logger.debug("Initialized EvidenceGenerator")
 

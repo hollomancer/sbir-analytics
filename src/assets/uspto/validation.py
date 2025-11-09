@@ -9,11 +9,7 @@ This module contains:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
-
-from loguru import logger
 
 from .utils import (
     AssetCheckResult,
@@ -21,7 +17,6 @@ from .utils import (
     AssetIn,
     MetadataValue,
     USPTODataQualityValidator,
-    USPTOValidationConfig,
     _build_validator_config,
     _extract_table_results,
     asset,

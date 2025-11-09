@@ -36,7 +36,7 @@ We will **allow negative values** in the `obligation_amount` field and add an `i
 ```python
 class FederalContract(BaseModel):
     obligation_amount: Optional[float] = Field(
-        None, 
+        None,
         description="Contract obligation/award amount. Can be negative for deobligations."
     )
     is_deobligation: bool = Field(

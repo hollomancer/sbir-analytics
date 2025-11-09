@@ -297,7 +297,7 @@ class LoggingConfig(BaseModel):
         Accepts 'pretty'/'text' -> 'text', 'json'/'structured' -> 'json'.
         """
         if not isinstance(v, str):
-            return v
+            return v  # type: ignore[unreachable]
         vv = v.lower()
         if vv in ("pretty", "text", "plain"):
             return "text"
@@ -779,11 +779,11 @@ class PathsConfig(BaseModel):
             Expanded path string
         """
         # Match ${section.key} patterns
-        pattern = re.compile(r'\$\{([^}]+)\}')
+        pattern = re.compile(r"\$\{([^}]+)\}")
 
         def replacer(match: re.Match[str]) -> str:
             var_path = match.group(1)
-            parts = var_path.split('.')
+            parts = var_path.split(".")
 
             # Navigate through nested dict
             current = context
@@ -799,10 +799,7 @@ class PathsConfig(BaseModel):
         return pattern.sub(replacer, value)
 
     def resolve_path(
-        self,
-        path_key: str,
-        create_parent: bool = False,
-        project_root: Path | None = None
+        self, path_key: str, create_parent: bool = False, project_root: Path | None = None
     ) -> Path:
         """Resolve a configured path to an absolute Path object.
 

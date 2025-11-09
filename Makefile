@@ -12,7 +12,7 @@ SHELL := /bin/bash
 MAKEFLAGS += --warn-undefined-variables
 
 # -----------------------------------------------------------------------------
-# Configuration (overridable)                                                     
+# Configuration (overridable)
 # -----------------------------------------------------------------------------
 
 IMAGE_NAME        ?= sbir-etl:latest
@@ -29,7 +29,7 @@ QUIET             ?= 0
 COMPOSE := $(DOCKER_COMPOSE) -f $(COMPOSE_FILE)
 
 # -----------------------------------------------------------------------------
-# Colours + helpers                                                              
+# Colours + helpers
 # -----------------------------------------------------------------------------
 
 RESET  := \033[0m
@@ -51,7 +51,7 @@ define run
 endef
 
 # -----------------------------------------------------------------------------
-# Help                                                                           
+# Help
 # -----------------------------------------------------------------------------
 
 .PHONY: help
@@ -61,7 +61,7 @@ help: ## Show this help message
 	     $(MAKEFILE_LIST)
 
 # -----------------------------------------------------------------------------
-# Safety checks                                                                  
+# Safety checks
 # -----------------------------------------------------------------------------
 
 .PHONY: env-check
@@ -106,7 +106,7 @@ docker-check-install: ## Quick check for Docker CLI only
 	 fi
 
 # -----------------------------------------------------------------------------
-# Build + publish                                                                
+# Build + publish
 # -----------------------------------------------------------------------------
 
 .PHONY: docker-build
@@ -135,7 +135,7 @@ docker-push: docker-build ## Push the tagged image to DOCKER_REGISTRY (set DOCKE
 	 docker push "$$TARGET"
 
 # -----------------------------------------------------------------------------
-# Environment lifecycle                                                            
+# Environment lifecycle
 # -----------------------------------------------------------------------------
 
 .PHONY: docker-up-dev
@@ -170,7 +170,7 @@ docker-rebuild: docker-down docker-build docker-up-dev ## Rebuild the image and 
 	@$(call success,Development stack rebuilt and restarted)
 
 # -----------------------------------------------------------------------------
-# Logs & shell access                                                              
+# Logs & shell access
 # -----------------------------------------------------------------------------
 
 .PHONY: docker-logs
@@ -187,7 +187,7 @@ docker-exec: ## Execute CMD (default sh) in SERVICE
 	 $(call run,$(COMPOSE) exec $(SERVICE) sh -c "$$CMD")
 
 # -----------------------------------------------------------------------------
-# Testing & E2E                                                                    
+# Testing & E2E
 # -----------------------------------------------------------------------------
 
 .PHONY: docker-test
@@ -267,7 +267,7 @@ docker-e2e-debug: env-check ## Open an interactive shell in the CI test containe
 	$(call run,$(COMPOSE) --profile ci run --rm app sh)
 
 # -----------------------------------------------------------------------------
-# Neo4j helpers                                                                   
+# Neo4j helpers
 # -----------------------------------------------------------------------------
 
 .PHONY: neo4j-up
@@ -300,7 +300,7 @@ neo4j-check: env-check ## Run the Neo4j health check
 	 fi
 
 # -----------------------------------------------------------------------------
-# Transition MVP                                                                    
+# Transition MVP
 # -----------------------------------------------------------------------------
 
 .PHONY: transition-mvp-run
@@ -322,7 +322,7 @@ transition-mvp-clean: ## Clean up Transition MVP artifacts
 	 fi
 
 # -----------------------------------------------------------------------------
-# Convenience targets                                                              
+# Convenience targets
 # -----------------------------------------------------------------------------
 
 ## docker-logs SERVICE=name: Tail logs (default SERVICE=dagster-webserver)

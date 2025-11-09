@@ -443,7 +443,7 @@ class TestPerformanceThresholds:
         """Test component extraction completes within time limit."""
         import time
 
-        from src.transformers.fiscal_component_calculator import FiscalComponentCalculator
+        from src.transformers.fiscal import FiscalComponentCalculator
 
         # Create large impacts DataFrame
         impacts_df = pd.DataFrame(
