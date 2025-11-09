@@ -177,7 +177,12 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     awards_df = pd.DataFrame(
         [
             {"award_id": "A1", "Company": "UEI Vendor Inc", "UEI": "UEI123", "Duns": None},
-            {"award_id": "A2", "Company": "Acme Innovation", "UEI": None, "Duns": None},  # Changed to be similar but not exact
+            {
+                "award_id": "A2",
+                "Company": "Acme Innovation",
+                "UEI": None,
+                "Duns": None,
+            },  # Changed to be similar but not exact
         ]
     )
 

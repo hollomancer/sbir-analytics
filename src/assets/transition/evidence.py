@@ -229,5 +229,3 @@ def transformed_transition_evidence(
 # -----------------------------
 # 5) transition_analytics
 # -----------------------------
-
-

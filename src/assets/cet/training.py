@@ -161,7 +161,6 @@ def train_cet_patent_classifier() -> Output:
     ),
 )
 def cet_award_training_dataset() -> Output:
-
     output_path = Path("data/processed/cet_award_training.parquet")
     checks_path = output_path.with_suffix(".checks.json")
 
@@ -386,5 +385,3 @@ def cet_award_training_dataset() -> Output:
         "taxonomy_version": dataset.taxonomy_version,
     }
     return Output(value=str(output_path), metadata=metadata)
-
-

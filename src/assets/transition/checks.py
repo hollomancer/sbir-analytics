@@ -424,5 +424,3 @@ def transition_detections_quality_check(
             "columns_present": list(transition_detections.columns),
         },
     )
-
-

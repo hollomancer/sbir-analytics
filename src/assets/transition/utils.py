@@ -293,5 +293,3 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------
 # 0) contracts_ingestion
 # -----------------------------
-
-

@@ -199,9 +199,13 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
 
     # Patch asset internals in the loading module where they're used
     monkeypatch.setattr("src.assets.cet.loading._get_neo4j_client", lambda: FakeLoader(None, None))
-    monkeypatch.setattr("src.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows)
+    monkeypatch.setattr(
+        "src.assets.cet.loading._read_parquet_or_ndjson", lambda *args, **kwargs: rows
+    )
     monkeypatch.setattr("src.assets.cet.loading.CETLoader", FakeLoader)
-    monkeypatch.setattr("src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size})
+    monkeypatch.setattr(
+        "src.assets.cet.loading.CETLoaderConfig", lambda batch_size: {"batch_size": batch_size}
+    )
 
     # Execute asset using Dagster's materialization with mocked dependencies
     from dagster import build_op_context

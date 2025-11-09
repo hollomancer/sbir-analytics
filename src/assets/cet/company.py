@@ -427,5 +427,3 @@ def _serialize_metrics(metrics) -> dict[str, Any]:
         "relationships_updated": getattr(metrics, "relationships_updated", 0),
         "execution_time_ms": getattr(metrics, "execution_time_ms", 0),
     }
-
-

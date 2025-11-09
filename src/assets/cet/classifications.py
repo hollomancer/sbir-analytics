@@ -677,8 +677,6 @@ def enriched_cet_award_classifications() -> Output:
     return Output(value=str(output_path), metadata=metadata)
 
 
-
-
 @asset(
     name="enriched_cet_patent_classifications",
     key_prefix=["ml"],
@@ -977,5 +975,3 @@ def enriched_cet_patent_classifications() -> Output:
     )
 
     return Output(value=str(output_path), metadata=metadata)
-
-

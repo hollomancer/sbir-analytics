@@ -318,5 +318,3 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
 # -----------------------------
 # 2) vendor_resolution
 # -----------------------------
-
-

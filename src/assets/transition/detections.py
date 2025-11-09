@@ -160,5 +160,3 @@ def transformed_transition_detections(
         context.log.info("Transition analyzer not available; skipping statistical analysis")
 
     return Output(df, metadata=meta)
-
-

@@ -184,8 +184,6 @@ def raw_cet_human_sampling() -> Output:
     )
 
 
-
-
 @asset(
     name="validated_cet_iaa_report",
     key_prefix=["ml"],
@@ -345,8 +343,6 @@ def validated_cet_iaa_report() -> Output:
         json.dump(payload, fh, indent=2)
 
     return Output(value=str(out_path), metadata=payload)
-
-
 
 
 @asset(
@@ -698,5 +694,3 @@ def validated_cet_drift_detection() -> Output:
     # Return the report as asset output
     metadata = {"drift_report": str(drift_report), "alerts": str(alerts_out)}
     return Output(value=report, metadata=metadata)
-
-

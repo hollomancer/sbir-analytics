@@ -162,8 +162,6 @@ def transformed_cet_analytics() -> Output:
     return Output(value=metadata, metadata=metadata)
 
 
-
-
 @asset(
     name="transformed_cet_analytics_aggregates",
     key_prefix=["ml"],
@@ -394,5 +392,3 @@ def transformed_cet_analytics_aggregates() -> Output:
         "alerts_path": str(alerts_dir / "cet_analytics_aggregates.alerts.json"),
     }
     return Output(value=metadata, metadata=metadata)
-
-
