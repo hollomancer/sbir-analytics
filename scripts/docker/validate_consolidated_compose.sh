@@ -21,7 +21,7 @@ echo "🧪 Testing profile configurations..."
 
 for profile in "${PROFILES[@]}"; do
     echo "   Testing profile: $profile"
-    
+
     if docker compose --profile "$profile" -f "$COMPOSE_FILE" config --quiet 2>/dev/null; then
         echo "   ✅ Profile '$profile' configuration is valid"
     else

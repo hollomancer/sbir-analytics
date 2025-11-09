@@ -37,4 +37,3 @@
 - [ ] 1.17 Write integration tests for the M&A detection pipeline.
 
 - [ ] 1.18 Write integration tests for the enrichment pipeline.
-

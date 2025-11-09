@@ -21,5 +21,3 @@
 
 
 ## Testing Strategy
-
-

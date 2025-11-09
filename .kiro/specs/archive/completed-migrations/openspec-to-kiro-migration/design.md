@@ -16,15 +16,15 @@ graph TD
     D --> E[Validation & Quality Check]
     E --> F[Historical Archival]
     F --> G[Workflow Transition]
-    
+
     H[openspec/changes/] --> B
     I[openspec/specs/] --> B
     J[openspec/project.md] --> B
-    
+
     D --> K[.kiro/specs/requirements.md]
     D --> L[.kiro/specs/design.md]
     D --> M[.kiro/specs/tasks.md]
-    
+
     F --> N[archive/openspec/]
     G --> O[Updated Documentation]
 ```
@@ -45,7 +45,7 @@ graph TD
 ```python
 class OpenSpecToKiroMigrator:
     """Main migration orchestrator."""
-    
+
     def __init__(self, openspec_path: Path, kiro_path: Path):
         self.openspec_path = openspec_path
         self.kiro_path = kiro_path
@@ -53,21 +53,21 @@ class OpenSpecToKiroMigrator:
         self.transformer = ContentTransformer()
         self.generator = KiroSpecGenerator()
         self.validator = MigrationValidator()
-    
+
     def migrate(self) -> MigrationReport:
         """Execute complete migration process."""
         # Analysis
         openspec_content = self.analyzer.analyze_openspec_structure()
-        
+
         # Transformation
         kiro_content = self.transformer.transform_content(openspec_content)
-        
+
         # Generation
         specs = self.generator.generate_kiro_specs(kiro_content)
-        
+
         # Validation
         validation_report = self.validator.validate_migration(specs)
-        
+
         return MigrationReport(specs, validation_report)
 ```
 
@@ -76,7 +76,7 @@ class OpenSpecToKiroMigrator:
 ```python
 class OpenSpecAnalyzer:
     """Analyzes existing OpenSpec content structure."""
-    
+
     def analyze_openspec_structure(self) -> OpenSpecContent:
         """Scan and catalog all OpenSpec content."""
         return OpenSpecContent(
@@ -85,7 +85,7 @@ class OpenSpecAnalyzer:
             project_context=self._parse_project_md(),
             agent_instructions=self._parse_agents_md()
         )
-    
+
     def _scan_changes(self) -> List[OpenSpecChange]:
         """Extract all active changes from openspec/changes/."""
         changes = []
@@ -94,7 +94,7 @@ class OpenSpecAnalyzer:
                 change = self._parse_change(change_dir)
                 changes.append(change)
         return changes
-    
+
     def _scan_specs(self) -> List[OpenSpecSpec]:
         """Extract all specifications from openspec/specs/."""
         specs = []
@@ -109,14 +109,14 @@ class OpenSpecAnalyzer:
 ```python
 class ContentTransformer:
     """Transforms OpenSpec content to Kiro format."""
-    
+
     def transform_content(self, openspec_content: OpenSpecContent) -> KiroContent:
         """Transform all OpenSpec content to Kiro format."""
         return KiroContent(
             specs=self._consolidate_specs(openspec_content),
             migrations=self._convert_changes_to_specs(openspec_content.active_changes)
         )
-    
+
     def _convert_changes_to_specs(self, changes: List[OpenSpecChange]) -> List[KiroSpec]:
         """Convert OpenSpec changes to Kiro specs."""
         kiro_specs = []
@@ -129,19 +129,19 @@ class ContentTransformer:
             )
             kiro_specs.append(spec)
         return kiro_specs
-    
+
     def _convert_proposal_to_requirements(self, proposal: OpenSpecProposal) -> KiroRequirements:
         """Convert OpenSpec proposal to Kiro requirements with EARS patterns."""
         requirements = []
-        
+
         # Extract user stories from proposal content
         user_stories = self._extract_user_stories(proposal)
-        
+
         # Convert to EARS patterns
         for story in user_stories:
             requirement = self._convert_to_ears_requirement(story)
             requirements.append(requirement)
-        
+
         return KiroRequirements(
             introduction=self._generate_introduction(proposal),
             glossary=self._extract_glossary_terms(proposal),
@@ -154,32 +154,32 @@ class ContentTransformer:
 ```python
 class KiroSpecGenerator:
     """Generates Kiro specification files."""
-    
+
     def generate_kiro_specs(self, kiro_content: KiroContent) -> List[GeneratedSpec]:
         """Generate all Kiro spec files."""
         generated_specs = []
-        
+
         for spec in kiro_content.specs:
             spec_dir = self.kiro_path / "specs" / spec.name
             spec_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate requirements.md
             requirements_file = spec_dir / "requirements.md"
             self._write_requirements_file(requirements_file, spec.requirements)
-            
+
             # Generate design.md if present
             if spec.design:
                 design_file = spec_dir / "design.md"
                 self._write_design_file(design_file, spec.design)
-            
+
             # Generate tasks.md
             tasks_file = spec_dir / "tasks.md"
             self._write_tasks_file(tasks_file, spec.tasks)
-            
+
             generated_specs.append(GeneratedSpec(spec.name, spec_dir))
-        
+
         return generated_specs
-    
+
     def _write_requirements_file(self, file_path: Path, requirements: KiroRequirements):
         """Write requirements.md in proper Kiro format."""
         content = f"""# Requirements Document
@@ -304,22 +304,22 @@ class FileSystemError(MigrationError):
 ```python
 class MigrationErrorHandler:
     """Handles migration errors with recovery strategies."""
-    
+
     def handle_parsing_error(self, error: ContentParsingError, file_path: Path):
         """Handle content parsing errors."""
         logger.error(f"Failed to parse {file_path}: {error}")
-        
+
         # Attempt manual parsing with relaxed rules
         try:
             return self._parse_with_fallback(file_path)
         except Exception:
             # Create placeholder content for manual review
             return self._create_placeholder_content(file_path)
-    
+
     def handle_transformation_error(self, error: TransformationError, content: Any):
         """Handle content transformation errors."""
         logger.error(f"Failed to transform content: {error}")
-        
+
         # Create minimal valid Kiro spec for manual completion
         return self._create_minimal_kiro_spec(content)
 ```
@@ -338,7 +338,7 @@ class MigrationErrorHandler:
 ```python
 class MigrationTestData:
     """Provides test data for migration testing."""
-    
+
     @staticmethod
     def sample_openspec_change() -> OpenSpecChange:
         """Create sample OpenSpec change for testing."""
@@ -363,7 +363,7 @@ class MigrationTestData:
             design=None,
             spec_deltas=[]
         )
-    
+
     @staticmethod
     def expected_kiro_spec() -> KiroSpec:
         """Expected Kiro spec from sample OpenSpec change."""
@@ -422,33 +422,33 @@ class MigrationTestData:
 ```python
 class MigrationValidator:
     """Validates migration completeness and accuracy."""
-    
+
     def validate_migration(self, generated_specs: List[GeneratedSpec]) -> ValidationReport:
         """Comprehensive migration validation."""
         issues = []
-        
+
         # Content completeness validation
         issues.extend(self._validate_content_completeness(generated_specs))
-        
+
         # Format validation
         issues.extend(self._validate_kiro_format(generated_specs))
-        
+
         # EARS pattern validation
         issues.extend(self._validate_ears_patterns(generated_specs))
-        
+
         # Task structure validation
         issues.extend(self._validate_task_structure(generated_specs))
-        
+
         return ValidationReport(
             total_specs=len(generated_specs),
             validation_issues=issues,
             passed=len(issues) == 0
         )
-    
+
     def _validate_ears_patterns(self, specs: List[GeneratedSpec]) -> List[ValidationIssue]:
         """Validate that requirements follow EARS patterns."""
         issues = []
-        
+
         for spec in specs:
             requirements = self._parse_requirements(spec)
             for req in requirements:
@@ -458,7 +458,7 @@ class MigrationValidator:
                         type="ears_pattern",
                         message=f"Requirement {req.number} does not follow EARS patterns"
                     ))
-        
+
         return issues
 ```
 
@@ -469,20 +469,20 @@ class MigrationValidator:
 ```python
 class HistoricalPreserver:
     """Preserves OpenSpec content for historical reference."""
-    
+
     def archive_openspec(self, openspec_path: Path, archive_path: Path):
         """Archive complete OpenSpec directory structure."""
         archive_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Copy entire openspec directory
         shutil.copytree(openspec_path, archive_path / "openspec")
-        
+
         # Create migration mapping
         self._create_migration_mapping(archive_path)
-        
+
         # Create README for archived content
         self._create_archive_readme(archive_path)
-    
+
     def _create_migration_mapping(self, archive_path: Path):
         """Create mapping from OpenSpec to Kiro specs."""
         mapping = {
@@ -491,7 +491,7 @@ class HistoricalPreserver:
             "archived_changes": self._list_archived_changes(),
             "archived_specs": self._list_archived_specs()
         }
-        
+
         mapping_file = archive_path / "migration_mapping.json"
         mapping_file.write_text(json.dumps(mapping, indent=2))
 ```

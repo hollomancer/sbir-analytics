@@ -1,6 +1,6 @@
 # OpenSpec to Kiro Migration - COMPLETE
 
-**Migration Date**: October 30, 2025  
+**Migration Date**: October 30, 2025
 **Status**: ✅ COMPLETED SUCCESSFULLY
 
 ## Migration Summary
@@ -98,8 +98,8 @@ If critical issues are discovered:
 
 ---
 
-**Migration Team**: AI Assistant (Kiro)  
-**Migration Tool**: `scripts/migrate_openspec_to_kiro.py`  
+**Migration Team**: AI Assistant (Kiro)
+**Migration Tool**: `scripts/migrate_openspec_to_kiro.py`
 **Migration ID**: `migration_20251030_152650`
 
 The OpenSpec to Kiro migration is now complete. All future development should use the Kiro specification system.

@@ -306,40 +306,40 @@ cet_area, confidence = extractor.infer_contract_cet(contract_description)
 ### Example Inferences
 
 ```text
-Contract Description: "Development of AI-powered anomaly detection system 
+Contract Description: "Development of AI-powered anomaly detection system
   using deep neural networks for threat identification"
-  
+
 Keywords Found:
 
   - AI, Machine Learning: 2 hits
   - Advanced Computing: 0 hits
   - Quantum: 0 hits
-  
+
 Inferred CET: "AI & Machine Learning" (confidence: 0.92)
 ```
 
 ```text
-Contract Description: "Advanced materials development including composites 
+Contract Description: "Advanced materials development including composites
   and ceramics for aerospace applications"
-  
+
 Keywords Found:
 
   - Advanced Manufacturing: 2 hits
   - Hypersonics: 0 hits
   - Space: 1 hit (aerospace)
-  
+
 Inferred CET: "Advanced Manufacturing" (confidence: 0.75)
 ```
 
 ```text
-Contract Description: "Research into novel computational approaches and 
+Contract Description: "Research into novel computational approaches and
   optimization techniques"
-  
+
 Keywords Found:
 
   - Advanced Computing: 1 hit (computational)
   - AI & Machine Learning: 0 hits
-  
+
 Inferred CET: "Advanced Computing" (confidence: 0.50)
 ```
 
@@ -410,21 +410,21 @@ alignment_score = extractor.calculate_alignment(
 ```python
 def calculate_alignment(award_cet, contract_cet):
     """Calculate CET alignment between award and contract."""
-    
+
     if not award_cet or not contract_cet:
         return 0.0  # Missing data
-    
+
     award_norm = award_cet.upper().strip()
     contract_norm = contract_cet.upper().strip()
-    
+
     if award_norm == contract_norm:
         return 1.0  # Exact match
-    
+
     # Partial match (substring)
-    if (award_norm in contract_norm or 
+    if (award_norm in contract_norm or
         contract_norm in award_norm):
         return 0.5  # Partial match
-    
+
     return 0.0  # No match
 ```
 
@@ -519,7 +519,7 @@ Overall Transition Score:
   - Patent: 0.012 (2 patents, topic match)
   - CET: 0.005 (exact match) ← contributed here
   - Vendor: 0.01 (UEI match)
-  
+
   Total: 0.6825 → LIKELY confidence
 ```
 
@@ -536,17 +536,17 @@ cet_alignment:
   enabled: true
   weight: 0.10  # Contribution to overall score
   same_cet_bonus: 0.05  # Bonus for exact match
-  
+
 cet_inference:
   enabled: true
   algorithm: "keyword_matching"  # or "ml_classifier" in future
-  
+
   # Keyword matching configuration
   keyword_matching:
     min_confidence_threshold: 0.30  # Return CET if confidence ≥ 0.30
     normalize_keywords: true  # Uppercase, remove special chars
     precompiled_patterns: true  # Use regex for efficiency
-    
+
   # CET keyword lists
   keywords:
     ai_ml:
@@ -558,7 +558,7 @@ cet_inference:
       - "NLP"
       - "computer vision"
       - "AI"
-      
+
     advanced_computing:
 
       - "quantum computing"
@@ -566,7 +566,7 @@ cet_inference:
       - "high-performance computing"
       - "HPC"
       - "edge computing"
-      
+
     # ... more CET areas
 ```
 

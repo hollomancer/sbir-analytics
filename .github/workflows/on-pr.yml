@@ -979,4 +979,3 @@ jobs:
             data/processed/contracts_sample.*
           if-no-files-found: warn
           retention-days: 7
-

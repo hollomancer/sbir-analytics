@@ -1,8 +1,8 @@
 # Codebase Consolidation Migration Guide
 
-**Target Audience**: Developers working on the SBIR ETL pipeline  
-**Purpose**: Guide for migrating from current architecture to consolidated structure  
-**Status**: Planning Phase  
+**Target Audience**: Developers working on the SBIR ETL pipeline
+**Purpose**: Guide for migrating from current architecture to consolidated structure
+**Status**: Planning Phase
 
 ## Overview
 
@@ -151,10 +151,10 @@ from src.utils.performance_monitor import PerformanceMonitor
 def my_function():
     start_time = time.time()
     monitor = PerformanceMonitor()
-    
+
     # Function logic
     result = process_data()
-    
+
     # Manual monitoring
     duration = time.time() - start_time
     monitor.log_duration("my_function", duration)
@@ -171,11 +171,11 @@ from src.core.monitoring.metrics import UnifiedPerformanceMonitor
 
 def my_function():
     monitor = UnifiedPerformanceMonitor()
-    
+
     with monitor.track_execution("my_function"):
         # Function logic - monitoring is automatic
         result = process_data()
-    
+
     return result
 ```
 
@@ -240,7 +240,7 @@ class TestSBIRIngestion:
     def setup_method(self):
         self.mock_neo4j = Mock()
         self.config = load_sbir_config()
-    
+
     def test_ingestion(self):
         # Test-specific setup
         pass
@@ -400,7 +400,7 @@ def load_config(module_name: str, config_class):
         DeprecationWarning,
         stacklevel=2
     )
-    
+
     # Map old config to new structure
     pipeline_config = new_load_config("pipeline", PipelineConfig)
     return getattr(pipeline_config, module_name)
@@ -414,12 +414,12 @@ def load_config(module_name: str, config_class):
 
 class MigrationHelper:
     """Tools to assist with codebase migration."""
-    
+
     def migrate_asset_config(self, old_config: dict) -> PipelineConfig:
         """Migrate old configuration to new format."""
         # Migration logic
         pass
-    
+
     def validate_migration(self, component: str) -> MigrationReport:
         """Validate successful migration of component."""
         # Validation logic
@@ -444,7 +444,7 @@ class TestSBIRValidation:
     def setup_method(self):
         self.config = load_sbir_config()
         self.validator = SBIRValidator(self.config)
-    
+
     def test_award_validation(self):
         awards = create_test_awards()
         issues = self.validator.validate(awards)
@@ -485,7 +485,7 @@ def validate_migration():
         check_asset_dependencies(),
         check_test_patterns()
     ]
-    
+
     return all(checks)
 ```
 
@@ -511,6 +511,6 @@ def validate_migration():
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 30, 2025  
+**Document Version**: 1.0
+**Last Updated**: October 30, 2025
 **Next Review**: After Phase 1 completion

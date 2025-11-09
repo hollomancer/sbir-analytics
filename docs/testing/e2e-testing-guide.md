@@ -233,7 +233,7 @@ CI jobs are organized into three priority tiers:
 
 ### Standard Scenario (Default)
 
-- **Duration**: 5-8 minutes  
+- **Duration**: 5-8 minutes
 - **Data**: Representative datasets
 - **Purpose**: Full pipeline validation
 - **Memory**: ~4GB
@@ -450,7 +450,7 @@ make docker-e2e-debug
 
 docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs e2e-orchestrator
 
-## View Neo4j logs  
+## View Neo4j logs
 
 docker compose -f docker-compose.yml -f docker/docker-compose.e2e.yml logs neo4j-e2e
 

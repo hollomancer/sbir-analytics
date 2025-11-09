@@ -179,7 +179,7 @@ def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> Asset
     }
     min_coverage = min(coverage.values())
     passed = min_coverage >= 0.95
-    
+
     return AssetCheckResult(
         passed=passed,
         metadata={"min_coverage": min_coverage, "field_coverage": coverage}
@@ -193,7 +193,7 @@ def sbir_awards_completeness_check(validated_sbir_awards: pd.DataFrame) -> Asset
 def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
     enriched_count = enriched_sbir_awards["sam_gov_data"].notna().sum()
     enrichment_rate = enriched_count / len(enriched_sbir_awards)
-    
+
     return AssetCheckResult(
         passed=enrichment_rate >= 0.90,
         metadata={

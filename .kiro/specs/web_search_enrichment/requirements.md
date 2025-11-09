@@ -58,4 +58,3 @@ This specification implements Evaluate Web Search-Based Enrichment Providers.
 
 1. THE System SHALL support capture normalized scoring (precision/recall on targeted facts, freshness, citation quality) plus cost-per-1k queries and operational complexity
 2. THE System SHALL ensure proper operation of capture normalized scoring (precision/recall on targeted facts, freshness, citation quality) plus cost-per-1k queries and operational complexity
-

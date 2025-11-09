@@ -273,4 +273,3 @@ Common formats:
 5. **Value Added**: Use `getStateGVA()` or individual component functions
 6. **Integration**: Consider using USEEIOR's `buildTwoRegionModels()` for easier integration
 7. **Caching**: Model building can be expensive - cache results
-

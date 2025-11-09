@@ -178,4 +178,3 @@ jobs:
           args: --verbose --no-progress --accept 200,429 '**/*.md' '**/*.yaml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

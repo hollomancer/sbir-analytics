@@ -70,4 +70,3 @@ This specification implements Add Iterative API Enrichment Refresh Loop.
 
 1. THE System SHALL support partition work by api/source and record cohort (e.g., uei batches for sam.gov, award years for usaspending) so each run respects rate limits and can be retried independently
 2. THE System SHALL ensure proper operation of partition work by api/source and record cohort (e.g., uei batches for sam.gov, award years for usaspending) so each run respects rate limits and can be retried independently
-

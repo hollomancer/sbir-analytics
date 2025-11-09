@@ -46,24 +46,24 @@ data_quality:
     company_name: 0.95      # 95% required
     award_amount: 0.98      # 98% required
     naics_code: 0.85        # 85% required (enrichment target)
-    
+
   # Uniqueness requirements (no duplicates allowed)
   uniqueness:
     award_id: 1.00          # No duplicate award IDs
-    
+
   # Validity ranges
   validity:
     award_amount_min: 0.0
     award_amount_max: 5000000.0  # $5M max for Phase II
     award_date_min: "1983-01-01"
     award_date_max: "2025-12-31"
-    
+
   # Quality gates and thresholds
   thresholds:
     max_duplicate_rate: 0.10      # Block if >10% duplicates
     max_missing_rate: 0.15        # Warn if >15% missing
     min_enrichment_success: 0.90  # Target 90% enrichment
-    
+
   # Severity-based actions
   actions:
     on_error: "block"       # Block pipeline on errors
@@ -83,14 +83,14 @@ enrichment:
       enabled: true
       priority: 1
       confidence: 0.95
-      
+
     usaspending_api:
       enabled: true
       priority: 2
       confidence: 0.90
       rate_limit: 100
       timeout_seconds: 30
-      
+
     sam_gov_api:
       enabled: true
       priority: 3
@@ -98,37 +98,37 @@ enrichment:
       api_key_env: "SAM_GOV_API_KEY"  # pragma: allowlist secret
       rate_limit: 60
       timeout_seconds: 30
-      
+
     fuzzy_match:
       enabled: true
       priority: 4
       similarity_threshold: 0.80
       confidence_base: 0.70
-      
+
   # Batch processing configuration
   batch_size: 100              # Records per API call
   max_retries: 3               # Retry attempts
   timeout_seconds: 30          # Request timeout
   rate_limit_per_second: 10.0  # API rate limit
-  
+
   # Confidence thresholds
   confidence_thresholds:
     high: 0.80
     medium: 0.60
     low: 0.40
-    
+
   # Quality thresholds
   quality:
     min_success_rate: 0.90       # 90% enrichment target
     min_high_confidence: 0.75    # 75% high confidence target
     max_fallback_rate: 0.20      # Max 20% fallbacks
-    
+
   # Fallback rules
   fallback_rules:
     enable_agency_defaults: true
     enable_sector_fallback: true
     sector_fallback_code: "5415"
-    
+
     # Agency default mappings
     agency_defaults:
       DOD: "3364"    # Aerospace manufacturing
@@ -148,14 +148,14 @@ pipeline:
   memory_threshold_mb: 2048      # Memory pressure threshold
   timeout_seconds: 300           # Processing timeout per chunk
   enable_incremental: true       # Support incremental processing
-  
+
   # Asset execution configuration
   asset_execution:
     max_retries: 3
     retry_delay_seconds: 5
     enable_parallel: true
     max_parallel_assets: 4
-    
+
 ## Performance tuning
 
 performance:
@@ -163,13 +163,13 @@ performance:
   parallel_threads: 4           # Parallel processing threads
   retry_attempts: 3             # Retry failed operations
   backoff_strategy: exponential # Retry backoff strategy
-  
+
   # Memory management
   memory_monitoring:
     enabled: true
     warning_threshold_mb: 1500
     critical_threshold_mb: 2000
-    
+
   # Performance thresholds
   thresholds:
     duration_warning_seconds: 5.0
@@ -188,7 +188,7 @@ neo4j:
   uri_env_var: "NEO4J_URI"
   user_env_var: "NEO4J_USER"
   password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
-  
+
   # Loading configuration
   loading:
     batch_size: 1000
@@ -196,14 +196,14 @@ neo4j:
     transaction_timeout_seconds: 300
     retry_on_deadlock: true
     max_deadlock_retries: 3
-    
+
   # Performance optimization
   performance:
     create_indexes: true
     create_constraints: true
     batch_operations: true
     enable_query_cache: true
-    
+
   # Quality gates
   quality:
     load_success_threshold: 0.99 # 99% success rate required
@@ -222,7 +222,7 @@ cet:
     version: "NSTC-2025Q1"
     taxonomy_file: "config/cet/taxonomy.yaml"
     enable_hierarchy: true
-    
+
   # Classification configuration
   classification:
     # TF-IDF vectorization
@@ -233,13 +233,13 @@ cet:
       max_df: 0.95             # Maximum document frequency
       sublinear_tf: true       # Apply sublinear term frequency scaling
       norm: l2                 # L2 normalization
-      
+
     # Feature selection
     feature_selection:
       enabled: true
       method: chi2             # Chi-squared test
       k: 20000                 # Select top 20,000 features
-      
+
     # Classifier parameters
     classifier:
       max_iter: 500
@@ -247,14 +247,14 @@ cet:
       n_jobs: -1              # Use all CPU cores
       class_weight: balanced  # Handle imbalanced classes
       random_state: 42        # Reproducibility
-      
+
     # Probability calibration
     calibration:
       enabled: true
       method: sigmoid         # Platt scaling
       cv: 3                   # 3-fold cross-validation
       min_samples_per_class: 3
-      
+
     # Confidence scoring bands
     scoring:
       bands:
@@ -363,7 +363,7 @@ class DataQualityConfig(BaseModel):
     max_duplicate_rate: float = Field(0.10, ge=0.0, le=1.0)
     max_missing_rate: float = Field(0.15, ge=0.0, le=1.0)
     min_enrichment_success: float = Field(0.90, ge=0.0, le=1.0)
-    
+
     @field_validator('max_duplicate_rate')
     def validate_duplicate_rate(cls, v):
         if v > 0.5:
@@ -376,7 +376,7 @@ class EnrichmentConfig(BaseModel):
     max_retries: int = Field(3, ge=1, le=10)
     timeout_seconds: int = Field(30, ge=5, le=300)
     rate_limit_per_second: float = Field(10.0, ge=0.1)
-    
+
 class PipelineConfig(BaseModel):
     """Main pipeline configuration."""
     data_quality: DataQualityConfig
@@ -400,22 +400,22 @@ def load_config(env: str = None) -> PipelineConfig:
     """Load and merge configuration files with environment overrides."""
     env = env or os.getenv("SBIR_ETL_ENV", "dev")
     config_dir = Path(__file__).parent.parent.parent / "config"
-    
+
     # Load base configuration
     base_path = config_dir / "base.yaml"
     with open(base_path) as f:
         config_data = yaml.safe_load(f)
-    
+
     # Merge environment-specific overrides
     env_path = config_dir / f"{env}.yaml"
     if env_path.exists():
         with open(env_path) as f:
             env_config = yaml.safe_load(f)
             config_data = deep_merge(config_data, env_config)
-    
+
     # Apply environment variable overrides
     config_data = apply_env_overrides(config_data, prefix="SBIR_ETL__")
-    
+
     # Validate with Pydantic
     return PipelineConfig(**config_data)
 ```

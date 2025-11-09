@@ -1,5 +1,5 @@
 # Consolidated Docker Compose Configuration for SBIR ETL Pipeline
-# 
+#
 # This file provides a simplified two-profile configuration:
 # - dev: Development environment with bind mounts for live editing
 # - ci: CI/testing environment with named volumes for isolation

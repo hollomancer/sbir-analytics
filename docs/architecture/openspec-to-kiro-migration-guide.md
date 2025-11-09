@@ -1,7 +1,7 @@
 # OpenSpec to Kiro Migration Guide
 
-**Status**: Migration in Progress  
-**Target Completion**: Q1 2025  
+**Status**: Migration in Progress
+**Target Completion**: Q1 2025
 **Migration Spec**: [OpenSpec to Kiro Migration](.kiro/specs/openspec-to-kiro-migration/requirements.md)
 
 ## Overview
@@ -85,20 +85,20 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
    ```markdown
    # Requirements Document
-   
+
    ## Introduction
    [Context and problem statement]
-   
+
    ## Glossary
 
    - **Term**: Definition
-   
+
    ## Requirements
-   
+
    ### Requirement 1
 
    **User Story:** As a [user], I want [goal], so that [benefit].
-   
+
    #### Acceptance Criteria
 
    1. THE system SHALL [specific behavior]
@@ -109,9 +109,9 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
    ```markdown
    # Implementation Plan
-   
+
    ## 1. [Phase Name]
-   
+
    - [ ] 1.1 [Task description]
      - [Subtask details]
      - _Requirements: 1.1_
@@ -121,10 +121,10 @@ This project is migrating from OpenSpec to Kiro for specification-driven develop
 
    ```markdown
    # Design Document
-   
+
    ## Overview
    [Technical approach]
-   
+
    ## Architecture
    [System design]
    ```
@@ -245,6 +245,6 @@ Need to improve API performance
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: October 30, 2025  
+**Document Version**: 1.0
+**Last Updated**: October 30, 2025
 **Next Review**: After Phase 2 completion
