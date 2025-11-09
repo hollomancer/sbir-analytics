@@ -10,17 +10,22 @@ This module contains:
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
-from loguru import logger
-
-from .company import _get_neo4j_client
-from .utils import (
-    AssetIn,
-    _read_parquet_or_ndjson,
-    _serialize_metrics,
-    asset,
+from .company import (
+    DEFAULT_AWARD_CLASS_JSON,
+    DEFAULT_AWARD_CLASS_PARQUET,
+    DEFAULT_COMPANY_PROFILES_JSON,
+    DEFAULT_COMPANY_PROFILES_PARQUET,
+    DEFAULT_OUTPUT_DIR,
+    DEFAULT_TAXONOMY_JSON,
+    DEFAULT_TAXONOMY_PARQUET,
+    _get_neo4j_client,
 )
+from .utils import AssetIn, _read_parquet_or_ndjson, _serialize_metrics, asset
+
 
 # Neo4j loader imports
 try:

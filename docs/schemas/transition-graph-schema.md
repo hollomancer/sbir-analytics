@@ -22,7 +22,7 @@ The transition detection graph model represents SBIR awards, federal contracts, 
          |                          |
 
          +--[INVOLVES_TECHNOLOGY]->(CETArea)
-         
+
 (Company)-[ACHIEVED]->(TransitionProfile)
 (Transition)-[INVOLVES_TECHNOLOGY]->(CETArea)
 ```
@@ -1153,7 +1153,7 @@ ORDER BY t.likelihood_score DESC
 ## Transitions by CET area
 
 MATCH (t:Transition)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
-RETURN cet.name, 
+RETURN cet.name,
        count(t) as transition_count,
        avg(t.likelihood_score) as avg_score,
        max(t.likelihood_score) as max_score
@@ -1176,7 +1176,7 @@ ORDER BY success_rate_percent DESC
 ## Transitions by agency
 
 MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)
-RETURN a.agency_name, 
+RETURN a.agency_name,
        count(t) as transitions,
        count(DISTINCT a) as awards,
        round(100.0 * count(t) / count(DISTINCT a)) as transition_rate_percent

@@ -10,31 +10,32 @@ This module contains:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
+import time
 from typing import Any
 
 import pandas as pd
-from loguru import logger
 
 from .utils import (
+    DEFAULT_NEO4J_DATABASE,
+    TRANSITION_LOAD_SUCCESS_THRESHOLD,
+    TRANSITION_MIN_NODE_COUNT,
     AssetCheckResult,
     AssetCheckSeverity,
-    AssetExecutionContext,
-    FileSystemError,
-    MetadataValue,
     Output,
-    _env_int,
+    _get_neo4j_driver,
+    _prepare_transition_dataframe,
     asset,
     asset_check,
-    get_config,
 )
+
 
 # Neo4j loader imports
 try:
     from ...loaders.neo4j import TransitionLoader
+    from ...loaders.neo4j.transitions import TransitionProfileLoader
 except Exception:
     TransitionLoader = None
+    TransitionProfileLoader = None
 
 
 @asset(

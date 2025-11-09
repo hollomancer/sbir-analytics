@@ -233,16 +233,16 @@
 ### Completed
 - [x] 22.1 Detection algorithm documentation (460 lines)
   - Overview, core concept, scoring architecture, all 6 signals with examples, vendor resolution, processing pipeline, configuration, output formats, performance, validation, tuning, limitations, future enhancements
-  
+
 - [x] 22.2 Scoring guide (920 lines)
   - Quick reference, signal details with examples, composite score examples, confidence thresholds, 4 preset configurations, advanced tuning, validation checklists, troubleshooting, environment variables
-  
+
 - [x] 22.3 Vendor matching documentation (815 lines)
   - All 4 resolution methods (UEI, CAGE, DUNS, fuzzy), priority cascade strategy, vendor cross-walk, special cases (acquisitions, name changes), validation metrics, troubleshooting, configuration, performance, best practices
-  
+
 - [x] 22.4 Evidence bundles documentation (926 lines)
   - Overview, why evidence matters, high-level schema, all signal details, contract/award details, serialization, validation, interpretation examples, usage guide
-  
+
 - [x] 22.5 Neo4j graph schema (1268 lines)
   - 7 node types, 8 relationship types, all properties, constraints, indexes. Cypher examples, 13 query examples, data loading, performance, best practices
 

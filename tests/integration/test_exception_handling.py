@@ -24,6 +24,7 @@ from tests.utils.exception_helpers import (
     assert_retryable_exception,
 )
 
+
 pytestmark = pytest.mark.integration
 
 
@@ -76,7 +77,7 @@ class TestAPIErrorHandling:
     @pytest.mark.asyncio
     async def test_usaspending_api_invalid_method_raises_configuration_error(self):
         """Test that invalid HTTP method raises ConfigurationError."""
-        from src.enrichers.usaspending_api_client import USAspendingAPIClient
+        from src.enrichers.usaspending import USAspendingAPIClient
 
         with patch("src.enrichers.usaspending_api_client.get_config") as mock_config:
             mock_cfg = MagicMock()
@@ -85,9 +86,7 @@ class TestAPIErrorHandling:
                 "rate_limit_per_minute": 120,
                 "state_file": "/tmp/state.json",
             }
-            mock_cfg.enrichment.usaspending_api = {
-                "base_url": "https://api.usaspending.gov/api/v2"
-            }
+            mock_cfg.enrichment.usaspending_api = {"base_url": "https://api.usaspending.gov/api/v2"}
             mock_config.return_value = mock_cfg
 
             client = USAspendingAPIClient()

@@ -14,13 +14,13 @@ Goals:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
+
+from loguru import logger
 
 
 class ProviderError(RuntimeError):

@@ -27,13 +27,8 @@ Exported Assets:
 
 from __future__ import annotations
 
-# Taxonomy module
-from .taxonomy import (
-    cet_taxonomy,
-    cet_taxonomy_completeness_check,
-    raw_cet_taxonomy,
-    taxonomy_to_dataframe,
-)
+# Analytics module
+from .analytics import transformed_cet_analytics, transformed_cet_analytics_aggregates
 
 # Classifications module
 from .classifications import (
@@ -42,30 +37,8 @@ from .classifications import (
     enriched_cet_patent_classifications,
 )
 
-# Training module
-from .training import (
-    cet_award_training_dataset,
-    train_cet_patent_classifier,
-)
-
-# Analytics module
-from .analytics import (
-    transformed_cet_analytics,
-    transformed_cet_analytics_aggregates,
-)
-
-# Validation module
-from .validation import (
-    raw_cet_human_sampling,
-    validated_cet_drift_detection,
-    validated_cet_iaa_report,
-)
-
 # Company module
-from .company import (
-    cet_company_profiles_check,
-    transformed_cet_company_profiles,
-)
+from .company import cet_company_profiles_check, transformed_cet_company_profiles
 
 # Loading module
 from .loading import (
@@ -75,6 +48,17 @@ from .loading import (
     loaded_company_cet_enrichment,
     loaded_company_cet_relationships,
 )
+
+# Taxonomy module
+from .taxonomy import (
+    cet_taxonomy,
+    cet_taxonomy_completeness_check,
+    raw_cet_taxonomy,
+    taxonomy_to_dataframe,
+)
+
+# Training module
+from .training import cet_award_training_dataset, train_cet_patent_classifier
 
 # Utility functions for use by other modules
 from .utils import (
@@ -90,6 +74,13 @@ from .utils import (
     asset,
     asset_check,
     save_dataframe_parquet,
+)
+
+# Validation module
+from .validation import (
+    raw_cet_human_sampling,
+    validated_cet_drift_detection,
+    validated_cet_iaa_report,
 )
 
 

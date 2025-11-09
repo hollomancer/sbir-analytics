@@ -19,5 +19,3 @@
 - Confidence: Numeric score (0.0–1.0) indicating reliability of an enrichment result.
 - Batch size: Number of records processed per operation (API call, DB write, etc.).
 - Env var override: `SBIR_ETL__...` environment variable that overrides YAML config at runtime.
-
-

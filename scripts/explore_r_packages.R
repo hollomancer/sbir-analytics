@@ -19,15 +19,15 @@ try_load_package <- function(pkg_name) {
 # Function to list exported functions
 list_exported_functions <- function(pkg_name) {
   cat(sprintf("\n--- Exported Functions: %s ---\n", pkg_name))
-  
+
   tryCatch({
     # Get namespace exports
     ns <- getNamespace(pkg_name)
     exports <- getNamespaceExports(ns)
-    
+
     cat(sprintf("Total exported functions: %d\n", length(exports)))
     cat("\nFunction names:\n")
-    
+
     # List functions (limit to first 50 for readability)
     func_list <- sort(exports)
     if (length(func_list) > 50) {
@@ -37,21 +37,21 @@ list_exported_functions <- function(pkg_name) {
       cat(paste(func_list, collapse = ", "))
       cat("\n")
     }
-    
+
     # Look for key function patterns
     cat("\nKey function patterns:\n")
-    key_patterns <- c("build", "load", "model", "calculate", "compute", "impact", 
+    key_patterns <- c("build", "load", "model", "calculate", "compute", "impact",
                       "state", "sector", "shock", "demand", "result")
-    
+
     for (pattern in key_patterns) {
       matches <- grep(pattern, func_list, ignore.case = TRUE, value = TRUE)
       if (length(matches) > 0) {
         cat(sprintf("  '%s': %s\n", pattern, paste(matches, collapse = ", ")))
       }
     }
-    
+
     return(func_list)
-    
+
   }, error = function(e) {
     cat(sprintf("Error listing functions: %s\n", e$message))
     return(character(0))
@@ -98,17 +98,17 @@ cat(rep("=", 60), "\n\n")
 
 if (try_load_package("useeior")) {
   useeior_funcs <- list_exported_functions("useeior")
-  
+
   # Try to get more details on key functions
   cat("\n--- Key Function Details ---\n")
-  
+
   key_funcs <- grep("build|calculate|model|load", useeior_funcs, ignore.case = TRUE, value = TRUE)
   if (length(key_funcs) > 0) {
     for (func in head(key_funcs, 10)) {
       sig <- get_function_signature("useeior", func)
       if (!is.null(sig)) {
         cat(sprintf("\n%s\n", sig))
-        
+
         # Try to get help
         help_lines <- get_function_help(func)
         if (!is.null(help_lines) && length(help_lines) > 0) {
@@ -117,7 +117,7 @@ if (try_load_package("useeior")) {
       }
     }
   }
-  
+
   # Try to understand model structure
   cat("\n--- Testing Model Building ---\n")
   tryCatch({
@@ -125,12 +125,12 @@ if (try_load_package("useeior")) {
     if (exists("getModelSpecifications", envir = getNamespace("useeior"))) {
       cat("Found getModelSpecifications function\n")
     }
-    
+
     # Try to see example model specs
     if (exists("ModelSpecs", envir = getNamespace("useeior"))) {
       cat("Found ModelSpecs object\n")
     }
-    
+
   }, error = function(e) {
     cat(sprintf("Could not test model building: %s\n", e$message))
   })
@@ -147,20 +147,20 @@ cat(rep("=", 60), "\n\n")
 if (try_load_package("stateior") || try_load_package("stateio")) {
   # Try both naming conventions
   pkg_name <- if ("stateior" %in% loadedNamespaces()) "stateior" else "stateio"
-  
+
   stateio_funcs <- list_exported_functions(pkg_name)
-  
+
   # Try to get more details on key functions
   cat("\n--- Key Function Details ---\n")
-  
-  key_funcs <- grep("build|load|model|state|shock|impact|calculate|compute", 
+
+  key_funcs <- grep("build|load|model|state|shock|impact|calculate|compute",
                     stateio_funcs, ignore.case = TRUE, value = TRUE)
   if (length(key_funcs) > 0) {
     for (func in head(key_funcs, 10)) {
       sig <- get_function_signature(pkg_name, func)
       if (!is.null(sig)) {
         cat(sprintf("\n%s\n", sig))
-        
+
         # Try to get help
         help_lines <- get_function_help(func)
         if (!is.null(help_lines) && length(help_lines) > 0) {
@@ -169,7 +169,7 @@ if (try_load_package("stateior") || try_load_package("stateio")) {
       }
     }
   }
-  
+
   # Test with sample data if possible
   cat("\n--- Testing with Sample Data ---\n")
   tryCatch({
@@ -180,13 +180,13 @@ if (try_load_package("stateior") || try_load_package("stateio")) {
       amount = c(1000000, 500000),
       year = c(2023, 2023)
     )
-    
+
     cat("Sample shocks data created:\n")
     print(sample_shocks)
-    
+
     # Try to find functions that might work with this
     cat("\nLooking for functions that accept shocks or demand vectors...\n")
-    
+
   }, error = function(e) {
     cat(sprintf("Could not test with sample data: %s\n", e$message))
   })
@@ -204,7 +204,7 @@ cat("Looking for integration points between StateIO and USEEIOR...\n")
 
 if ("useeior" %in% loadedNamespaces() && ("stateior" %in% loadedNamespaces() || "stateio" %in% loadedNamespaces())) {
   cat("Both packages loaded - checking for integration functions...\n")
-  
+
   # Look for functions that mention both packages
   useeior_funcs <- getNamespaceExports(getNamespace("useeior"))
   stateio_funcs <- if ("stateior" %in% loadedNamespaces()) {
@@ -212,13 +212,13 @@ if ("useeior" %in% loadedNamespaces() && ("stateior" %in% loadedNamespaces() || 
   } else {
     getNamespaceExports(getNamespace("stateio"))
   }
-  
+
   # Check for state-related functions in USEEIOR
   state_in_useeior <- grep("state", useeior_funcs, ignore.case = TRUE, value = TRUE)
   if (length(state_in_useeior) > 0) {
     cat("USEEIOR functions with 'state':", paste(state_in_useeior, collapse = ", "), "\n")
   }
-  
+
   # Check for useeio-related functions in StateIO
   useeio_in_stateio <- grep("useeio|eeio", stateio_funcs, ignore.case = TRUE, value = TRUE)
   if (length(useeio_in_stateio) > 0) {
@@ -242,4 +242,3 @@ cat("1. Review function lists above\n")
 cat("2. Test key functions with sample data\n")
 cat("3. Document actual function signatures\n")
 cat("4. Create Python wrappers for discovered functions\n")
-

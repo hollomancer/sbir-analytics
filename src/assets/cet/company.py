@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -426,5 +427,3 @@ def _serialize_metrics(metrics) -> dict[str, Any]:
         "relationships_updated": getattr(metrics, "relationships_updated", 0),
         "execution_time_ms": getattr(metrics, "execution_time_ms", 0),
     }
-
-

@@ -118,6 +118,8 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     )
 
     assignment_ctx = build_asset_context()
+    # Mock add_output_metadata since it's not available when calling directly
+    assignment_ctx.add_output_metadata = lambda x: None
 
     # Access underlying compute function when Dagster is installed
     transformed_assignments_fn = _get_compute_fn(
@@ -138,11 +140,13 @@ def test_transformation_assets_pipeline(tmp_path: Path):
     assert transformed_result["error_count"] == 0
 
     patents_ctx = build_asset_context()
+    patents_ctx.add_output_metadata = lambda x: None
     patents_fn = _get_compute_fn(transformation_assets.transformed_patents)
     patents_result = patents_fn(patents_ctx, transformed_result)
     assert patents_result["patent_count"] == 1
 
     entities_ctx = build_asset_context()
+    entities_ctx.add_output_metadata = lambda x: None
     entities_fn = _get_compute_fn(transformation_assets.transformed_patent_entities)
     entities_result = entities_fn(entities_ctx, transformed_result)
     assert entities_result["entity_count"] >= 1

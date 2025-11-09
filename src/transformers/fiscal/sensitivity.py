@@ -143,7 +143,7 @@ class FiscalParameterSweep:
 
             for param_name, param_range in ranges.items():
                 if param_range.distribution == "uniform":
-                    value = random.uniform(param_range.min_value, param_range.max_value)
+                    value = random.uniform(param_range.min_value, param_range.max_value)  # nosec B311 - Monte Carlo sampling for sensitivity analysis
                 elif param_range.distribution == "normal":
                     # Use truncated normal (mean at center, std based on range)
                     mean = (param_range.min_value + param_range.max_value) / 2
@@ -153,7 +153,7 @@ class FiscalParameterSweep:
                     value = max(param_range.min_value, min(param_range.max_value, value))
                 else:
                     # Default to uniform
-                    value = random.uniform(param_range.min_value, param_range.max_value)
+                    value = random.uniform(param_range.min_value, param_range.max_value)  # nosec B311 - Monte Carlo sampling for sensitivity analysis
 
                 parameters[param_name] = float(value)
 
@@ -224,8 +224,8 @@ class FiscalParameterSweep:
             # Random permutation to break correlation
             if i > 0:
                 # Swap with random previous scenario for one parameter
-                swap_param = random.choice(param_names)
-                prev_idx = random.randint(0, i - 1)
+                swap_param = random.choice(param_names)  # nosec B311 - Latin Hypercube Sampling for sensitivity analysis
+                prev_idx = random.randint(0, i - 1)  # nosec B311 - Latin Hypercube Sampling for sensitivity analysis
                 temp = parameters[swap_param]
                 parameters[swap_param] = scenarios[prev_idx].parameters[swap_param]
                 scenarios[prev_idx].parameters[swap_param] = temp

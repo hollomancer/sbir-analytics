@@ -15,7 +15,7 @@ Documents (Patents/Awards)
     ↓
 Stage 1: Bayesian Classification Routing
     ↓ (Technology Categories + Uncertainty)
-Stage 2: Bayesian Similarity Routing  
+Stage 2: Bayesian Similarity Routing
     ↓ (Category-Aware Similarities + Uncertainty)
 Stage 3: Bayesian Embedding Routing
     ↓ (Domain-Specialized Embeddings + Uncertainty)
@@ -50,7 +50,7 @@ The system implements experts as **LoRA (Low-Rank Adaptation) adapters** rather 
 ### Benefits of LoRA Experts:
 
 - **Memory Efficiency**: Share base model weights, only store small adapter matrices
-- **Fast Switching**: Rapid adapter loading/unloading for dynamic expert selection  
+- **Fast Switching**: Rapid adapter loading/unloading for dynamic expert selection
 - **Training Efficiency**: Fine-tune only adapter parameters, not full model weights
 - **Modular Design**: Easy to add/remove domain-specific experts
 - **Cost Effective**: Minimal storage and compute overhead per expert
@@ -241,7 +241,7 @@ expert_id: string
 routing_probabilities: map<string, double>
 cpc_section: string
 cpc_confidence: double
-cet_area: string  
+cet_area: string
 cet_confidence: double
 epistemic_uncertainty: double
 aleatoric_uncertainty: double
@@ -325,7 +325,7 @@ class CalibrationMonitor:
 - Confidence interval coverage: > 90% empirical coverage
 - Uncertainty correlation: Pearson r > 0.7 with actual errors
 
-#### 2. Expert Performance Gates  
+#### 2. Expert Performance Gates
 
 - Individual expert accuracy: > 85% on validation set
 - Routing accuracy: > 90% expert selection correctness
@@ -403,5 +403,3 @@ def test_uncertainty_calibration():
 - Test uncertainty quality across different domains
 - Measure human review reduction effectiveness
 - Benchmark against deterministic baselines
-
-

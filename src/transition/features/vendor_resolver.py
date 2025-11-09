@@ -32,11 +32,11 @@ print(match)
 
 from __future__ import annotations
 
-from loguru import logger
-
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+
+from loguru import logger
 
 
 # Try to use rapidfuzz if installed for higher-quality fuzzy matching.

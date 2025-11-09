@@ -36,8 +36,6 @@ Outputs
 
 from __future__ import annotations
 
-from loguru import logger
-
 import argparse
 import json
 import os
@@ -46,6 +44,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 
 try:
@@ -124,7 +124,9 @@ def read_sample_with_pandas(path: Path, nrows: int) -> tuple[Any, int | None]:
             # No easy way to get total rows for stata via pandas
             return df, None
         except Exception:
-            logger.debug("pandas.read_stata iterator approach failed; trying pyreadstat if available")
+            logger.debug(
+                "pandas.read_stata iterator approach failed; trying pyreadstat if available"
+            )
             if pyreadstat is not None:
                 try:
                     # pyreadstat provides a row_limit kwarg for reading in a subset (best-effort)
@@ -365,7 +367,9 @@ def main():
 
     files = find_uspto_files(input_dir)
     if not files:
-        logger.warning("No supported files found under %s (extensions: %s)", input_dir, SUPPORTED_EXT)
+        logger.warning(
+            "No supported files found under %s (extensions: %s)", input_dir, SUPPORTED_EXT
+        )
         sys.exit(0)
 
     # Filter skip extensions

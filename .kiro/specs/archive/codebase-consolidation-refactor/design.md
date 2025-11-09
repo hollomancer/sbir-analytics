@@ -55,11 +55,11 @@ src/
 ```python
 class ConsolidatedAsset:
     """Base class for consolidated pipeline assets."""
-    
+
     def __init__(self, config: PipelineConfig, monitor: PerformanceMonitor):
         self.config = config
         self.monitor = monitor
-    
+
     def execute(self, context: AssetExecutionContext) -> AssetMaterialization:
         """Execute asset with unified monitoring and error handling."""
         pass
@@ -121,17 +121,17 @@ class ConsolidatedPipelineConfig(BaseModel):
 ```python
 class PipelineTestCase:
     """Base test case with common setup and utilities."""
-    
+
     @pytest.fixture
     def pipeline_config(self) -> PipelineConfig:
         """Provide test configuration."""
         pass
-    
+
     @pytest.fixture
     def mock_databases(self) -> DatabaseMocks:
         """Provide mocked database connections."""
         pass
-    
+
     @pytest.fixture
     def test_data_manager(self) -> TestDataManager:
         """Provide test data management."""
@@ -150,15 +150,15 @@ class PipelineTestCase:
 ```python
 class UnifiedPerformanceMonitor:
     """Centralized performance monitoring for all pipeline components."""
-    
+
     def track_asset_execution(self, asset_name: str) -> ContextManager:
         """Track asset execution with memory and timing."""
         pass
-    
+
     def track_database_operation(self, operation: str) -> ContextManager:
         """Track database operations."""
         pass
-    
+
     def generate_performance_report(self) -> PerformanceReport:
         """Generate comprehensive performance report."""
         pass
@@ -177,7 +177,7 @@ class UnifiedPerformanceMonitor:
 ```python
 class BaseDataModel(BaseModel):
     """Base model with common validation and serialization."""
-    
+
     class Config:
         validate_assignment = True
         str_strip_whitespace = True
@@ -213,11 +213,11 @@ services:
     environment:
       - SBIR_ETL_ENV=${COMPOSE_PROFILE:-dev}
     # Unified resource limits and health checks
-    
+
   neo4j:
     profiles: ["dev", "test", "prod"]
     # Standardized Neo4j configuration
-    
+
 # Environment-specific overrides via profiles
 ```
 
@@ -271,15 +271,15 @@ graph TD
 ```python
 class PipelineErrorHandler:
     """Centralized error handling for pipeline operations."""
-    
+
     def handle_validation_error(self, error: DataValidationError) -> ErrorResponse:
         """Handle data validation errors with recovery options."""
         pass
-    
+
     def handle_database_error(self, error: DatabaseError) -> ErrorResponse:
         """Handle database errors with retry logic."""
         pass
-    
+
     def handle_enrichment_error(self, error: EnrichmentError) -> ErrorResponse:
         """Handle enrichment errors with fallback strategies."""
         pass
@@ -324,15 +324,15 @@ class PipelineErrorHandler:
 ```python
 class TestDataManager:
     """Centralized test data management."""
-    
+
     def get_sample_awards(self, size: str = "small") -> List[SbirAward]:
         """Get sample SBIR awards for testing."""
         pass
-    
+
     def get_mock_usaspending_data(self) -> DataFrame:
         """Get mock USAspending data for enrichment testing."""
         pass
-    
+
     def setup_test_neo4j(self) -> Neo4jTestClient:
         """Setup isolated Neo4j instance for testing."""
         pass
@@ -392,11 +392,11 @@ class TestDataManager:
 ```python
 class MigrationHelper:
     """Tools to assist with codebase migration."""
-    
+
     def migrate_asset_config(self, old_config: dict) -> PipelineConfig:
         """Migrate old configuration to new format."""
         pass
-    
+
     def validate_migration(self, component: str) -> MigrationReport:
         """Validate successful migration of component."""
         pass

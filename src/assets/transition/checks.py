@@ -11,16 +11,12 @@ This module contains quality checks for transition assets:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pandas as pd
-from loguru import logger
 
 from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
-    AssetExecutionContext,
+    _env_bool,
     _env_float,
     _env_int,
     asset_check,
@@ -428,5 +424,3 @@ def transition_detections_quality_check(
             "columns_present": list(transition_detections.columns),
         },
     )
-
-

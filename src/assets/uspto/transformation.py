@@ -14,21 +14,27 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date, datetime
+from collections.abc import Iterable
+from itertools import product
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from .utils import (
+    DEFAULT_NEO4J_DATABASE,
+    DEFAULT_NEO4J_PASSWORD,
+    DEFAULT_NEO4J_URI,
+    DEFAULT_NEO4J_USER,
+    LINKAGE_TARGET,
+    TRANSFORM_SUCCESS_THRESHOLD,
     AssetCheckResult,
     AssetCheckSeverity,
     AssetIn,
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
-    _coerce_str,
+    USPTOExtractor,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -42,6 +48,18 @@ from .utils import (
 )
 
 
+# Neo4j imports
+try:
+    from ...loaders import Neo4jClient, Neo4jConfig
+except Exception:
+    Neo4jClient = None
+    Neo4jConfig = None
+
+
+from dataclasses import dataclass
+
+
+@dataclass
 class JoinedRow:
     data: dict[str, Any]
     rf_id: str | None
@@ -175,7 +193,6 @@ class USPTOAssignmentJoiner:
                     merged = self._merge_rows(assignment, ass_row, asr_row, doc_row, conv_row)
                     merged["_source_assignment_file"] = str(path)
                     yield JoinedRow(merged, rf_key)
-
 
 
 @asset(
@@ -450,12 +467,12 @@ def uspto_transformation_success_check(
 def uspto_company_linkage_check(
     context, transformed_assignments: dict[str, Any]
 ) -> AssetCheckResult:
-    linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
+    linkage_rate = transformed_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET
     metadata = {
         "linkage_rate": linkage_rate,
-        "linked_assignments": transformed_patent_assignments.get("linked_assignments", 0),
-        "success_count": transformed_patent_assignments.get("success_count", 0),
+        "linked_assignments": transformed_assignments.get("linked_assignments", 0),
+        "success_count": transformed_assignments.get("success_count", 0),
         "target": LINKAGE_TARGET,
     }
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
@@ -490,5 +507,3 @@ def _get_neo4j_client() -> Neo4jClient | None:
     except Exception as e:
         logger.error(f"Failed to create Neo4j client: {e}")
         return None
-
-

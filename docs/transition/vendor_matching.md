@@ -316,23 +316,23 @@ def resolve_by_name(
 ) -> tuple[bool, float, str]:
     """
     Fuzzy match company names.
-    
+
     Returns:
         (matched, confidence, threshold_used)
     """
     if not sbir_name or not contract_name:
         return False, 0.0, "N/A"
-    
+
     # Normalize
     sbir_norm = normalize_name(sbir_name)
     contract_norm = normalize_name(contract_name)
-    
+
     if sbir_norm == contract_norm:
         return True, 1.0, "exact"
-    
+
     # Calculate similarity
     similarity = fuzz.token_set_ratio(sbir_norm, contract_norm) / 100.0
-    
+
     # Apply thresholds
     if similarity >= primary_threshold:
         return True, similarity, "primary"
@@ -452,20 +452,20 @@ vendor_resolution:
     cage: true
     duns: true
     fuzzy_name: true
-  
+
   # Fuzzy matching parameters
   fuzzy_matching:
     algorithm: "token_set_ratio"  # or "token_sort_ratio", "ratio"
     primary_threshold: 0.85
     secondary_threshold: 0.70
-    
+
     # Name normalization
     normalize:
       uppercase: true
       remove_special_chars: true
       collapse_whitespace: true
       strip_whitespace: true
-  
+
   # Common legal suffixes to strip
   legal_suffixes:
 
@@ -478,7 +478,7 @@ vendor_resolution:
     - "Inc."
     - "Ltd."
     - "Inc., Ltd"
-  
+
   # Common abbreviations
   abbreviations:
 
@@ -486,7 +486,7 @@ vendor_resolution:
     - ["Software Development", "Software"]
     - ["Research and Development", "R&D"]
     - ["Science and Technology", "Sci & Tech"]
-  
+
   # Exclusion patterns (for filtering false matches)
   exclusions:
 

@@ -102,7 +102,8 @@ class USAspendingDataFrameStrategy(EnrichmentStrategy):
                             if normalized:
                                 return NAICSEnrichmentResult(
                                     naics_code=normalized,
-                                    confidence=self.confidence_level * 0.95,  # Slightly lower for DUNS
+                                    confidence=self.confidence_level
+                                    * 0.95,  # Slightly lower for DUNS
                                     source=self.strategy_name,
                                     method="duns_lookup",
                                     timestamp=datetime.now(),

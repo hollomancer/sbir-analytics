@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
-from loguru import logger
 
 from .utils import (
-    AssetExecutionContext,
     ContractExtractor,
+    FileSystemError,
     MetadataValue,
     Output,
     _ensure_parent_dir,
@@ -24,7 +24,6 @@ from .utils import (
     asset,
     get_config,
     now_utc_iso,
-    save_dataframe_parquet,
     write_json,
 )
 
@@ -319,5 +318,3 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
 # -----------------------------
 # 2) vendor_resolution
 # -----------------------------
-
-

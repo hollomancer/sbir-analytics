@@ -9,10 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.transformers.fiscal.sensitivity import (
-    FiscalUncertaintyQuantifier,
-    UncertaintyResult,
-)
+from src.transformers.fiscal.sensitivity import FiscalUncertaintyQuantifier, UncertaintyResult
 
 
 @pytest.fixture

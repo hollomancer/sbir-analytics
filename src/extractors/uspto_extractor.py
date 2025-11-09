@@ -47,6 +47,7 @@ from pathlib import Path
 
 from loguru import logger
 
+
 # Optional imports - fallbacks are handled at runtime
 try:
     import pandas as pd
@@ -481,7 +482,9 @@ class USPTOExtractor:
                             yield rec
                 return
             except Exception:
-                logger.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
+                logger.debug(
+                    "pyarrow parquet streaming failed for %s; falling back to pandas", path
+                )
         # pandas fallback
         if pd is None:
             raise RuntimeError("pandas is required to read parquet files (fallback)")

@@ -24,4 +24,3 @@
 - [ ] 4.2 Document go/no-go decision criteria and recommended next steps in `docs/enrichment/web-search-evaluation.md`.
 
 - [ ] 4.3 Produce a recommendation narrative identifying which providers advance to pilot integration (including dependency/cost implications) and which are deferred.
-

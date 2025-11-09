@@ -139,4 +139,3 @@ The system implements multi-signal scoring, vendor resolution across datasets, a
 3. THE Transition_Detection_System SHALL provide preset configurations for high-precision, balanced, and broad-discovery modes
 4. THE Transition_Detection_System SHALL integrate with Dagster pipeline orchestration as materialized assets
 5. THE Transition_Detection_System SHALL include comprehensive documentation for deployment, configuration, and troubleshooting
-

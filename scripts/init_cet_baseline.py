@@ -29,8 +29,6 @@ to read JSON/NDJSON/parquet where available and fall back to conservative defaul
 
 from __future__ import annotations
 
-from loguru import logger
-
 import argparse
 import json
 import math
@@ -38,6 +36,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
+
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 

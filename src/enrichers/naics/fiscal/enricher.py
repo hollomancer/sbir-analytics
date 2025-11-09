@@ -137,15 +137,17 @@ class FiscalNAICSEnricher:
 
         # Enrich each award
         results = []
-        for idx, row in awards_df.iterrows():
+        for _idx, row in awards_df.iterrows():
             result = self.enrich_single_award(row)
-            results.append({
-                "fiscal_naics_code": result.naics_code,
-                "fiscal_naics_source": result.source,
-                "fiscal_naics_method": result.method,
-                "fiscal_naics_confidence": result.confidence,
-                "fiscal_naics_metadata": result.metadata,
-            })
+            results.append(
+                {
+                    "fiscal_naics_code": result.naics_code,
+                    "fiscal_naics_source": result.source,
+                    "fiscal_naics_method": result.method,
+                    "fiscal_naics_confidence": result.confidence,
+                    "fiscal_naics_metadata": result.metadata,
+                }
+            )
 
         # Combine with original DataFrame
         enriched_df = pd.concat([awards_df.reset_index(drop=True), pd.DataFrame(results)], axis=1)

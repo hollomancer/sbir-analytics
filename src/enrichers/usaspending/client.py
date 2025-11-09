@@ -21,6 +21,7 @@ from ...config.loader import get_config
 from ...exceptions import APIError, ConfigurationError, RateLimitError
 from ...models.enrichment import EnrichmentFreshnessRecord
 
+
 # Backward compatibility: Alias to central exception classes
 # TODO: Update all usages to use APIError/RateLimitError directly, then remove these aliases
 USAspendingAPIError = APIError
@@ -106,6 +107,7 @@ class USAspendingAPIClient:
             USAspendingAPIError: If request fails
             USAspendingRateLimitError: If rate limit exceeded
         """
+
         # Inner function that does the actual request (will be wrapped by retry decorator)
         @retry(
             stop=stop_after_attempt(3),
@@ -173,7 +175,7 @@ class USAspendingAPIClient:
                     operation="_make_request",
                     cause=e,
                 ) from e
-            except httpx.TimeoutException as e:
+            except httpx.TimeoutException:
                 # Let TimeoutException propagate so retry decorator can catch it
                 raise
             except httpx.RequestError as e:
