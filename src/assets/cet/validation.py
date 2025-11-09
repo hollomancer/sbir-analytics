@@ -53,7 +53,7 @@ def raw_cet_human_sampling() -> Output:
     # Config
     sample_size = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SIZE", "50"))
     seed = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SEED", "42"))
-    Random(seed)
+    Random(seed)  # nosec B311 - Used for deterministic test data sampling, not cryptography
 
     def _read_awards():
         if pd is not None and input_parquet.exists():

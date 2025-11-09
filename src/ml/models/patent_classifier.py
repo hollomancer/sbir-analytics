@@ -40,7 +40,7 @@ try:
 except Exception:  # pragma: no cover - defensive import
     pd = None  # type: ignore
 
-import pickle
+import pickle  # nosec B403 - Used for loading internally-generated ML model files
 
 from src.exceptions import CETClassificationError, DependencyError, FileSystemError, ValidationError
 
@@ -509,7 +509,7 @@ class PatentCETClassifier:
                 component="ml.patent_classifier",
             )
         with open(path, "rb") as fh:
-            payload = pickle.load(fh)
+            payload = pickle.load(fh)  # nosec B301 - Loading trusted internally-generated model files
         pipelines = payload.get("pipelines", {})
         taxonomy_version = payload.get("taxonomy_version")
         config = payload.get("config", {})
