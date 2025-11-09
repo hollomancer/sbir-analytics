@@ -230,12 +230,13 @@ class OpenSpecAnalyzer:
 
     def _extract_change_metadata(self, change_dir: Path) -> dict:
         """Extract metadata from change directory."""
-        metadata = {"directory_name": change_dir.name, "files_present": []}
+        files_present: list[str] = []
+        metadata = {"directory_name": change_dir.name, "files_present": files_present}
 
         # List all files in change directory
         for file_path in change_dir.rglob("*"):
             if file_path.is_file():
-                metadata["files_present"].append(str(file_path.relative_to(change_dir)))
+                files_present.append(str(file_path.relative_to(change_dir)))
 
         return metadata
 

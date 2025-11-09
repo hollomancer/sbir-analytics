@@ -196,7 +196,8 @@ class DuckDBUSAspendingExtractor:
                             result = subprocess.run(extract_cmd, stdout=f, stderr=subprocess.PIPE)
 
                         if result.returncode != 0:
-                            logger.error(f"Failed to extract {filename}: {result.stderr.decode()}")
+                            stderr_msg = result.stderr.decode() if result.stderr else "unknown error"
+                            logger.error(f"Failed to extract {filename}: {stderr_msg}")
                             continue
 
                         # Decompress if gzipped

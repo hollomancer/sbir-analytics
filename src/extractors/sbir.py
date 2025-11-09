@@ -1,6 +1,7 @@
 """SBIR data extraction using DuckDB."""
 
 from collections.abc import Iterator
+from csv import QUOTE_MINIMAL
 from pathlib import Path
 
 import pandas as pd
@@ -162,7 +163,7 @@ class SbirDuckDBExtractor:
                             delimiter=delimiter,
                             header=0 if header else None,
                             encoding=encoding,
-                            quoting=pd.QUOTE_MINIMAL,
+                            quoting=QUOTE_MINIMAL,
                             escapechar="\\",
                             low_memory=False,
                         )
