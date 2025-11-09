@@ -176,7 +176,7 @@ def start(
     layout = create_dashboard_layout(context)
 
     # Signal handler for graceful shutdown
-    def signal_handler(sig: Any, frame: Any) -> None:
+    def signal_handler(sig: Any, frame) -> None:
         context.console.print("\n[yellow]Shutting down dashboard...[/yellow]")
         sys.exit(0)
 

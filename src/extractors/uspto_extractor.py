@@ -46,6 +46,8 @@ from collections.abc import Generator, Iterable
 from pathlib import Path
 
 from loguru import logger
+from typing import Any
+
 
 # Optional imports - fallbacks are handled at runtime
 try:
@@ -323,7 +325,7 @@ class USPTOExtractor:
                     normalized[k] = v
             return normalized
 
-        def _detect_stata_release_with_pyreadstat(p) -> str | None:
+        def _detect_stata_release_with_pyreadstat(p: Any) -> str | None:
             """Attempt to discover Stata file format/version via pyreadstat metadata, if available."""
             if pyreadstat is None:
                 return None

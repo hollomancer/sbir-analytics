@@ -123,7 +123,7 @@ try:
 except Exception:  # pragma: no cover - fallback stubs when dagster is not installed
     # Lightweight stubs so this module can be imported in environments without dagster.
     class Output:  # type: ignore[no-redef]
-        def __init__(self, value: Any, metadata: Any = None) -> None:
+        def __init__(self, value: Any, metadata = None) -> None:
             self.value = value
             self.metadata = metadata
 

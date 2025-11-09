@@ -43,7 +43,7 @@ except Exception:
         "batch_size": int,
     },
 )
-def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
+def loaded_cet_areas(context: Any, cet_taxonomy) -> dict[str, Any]:
     """Upsert CETArea nodes based on taxonomy output."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping CETArea loading")

@@ -151,7 +151,7 @@ _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
 
-def _get_input_dir(context) -> Path:
+def _get_input_dir(context: Any) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
     """
@@ -249,7 +249,7 @@ def _make_parsing_check(
     and fails the check if any file reported parsing failures.
     """
 
-    def _check(context, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
+    def _check(context: Any, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []
         errors = {}
@@ -335,7 +335,7 @@ uspto_conveyances_parsing_check = asset_check(
 # ============================================================================
 
 
-def _build_validator_config(context) -> USPTOValidationConfig:
+def _build_validator_config(context: Any) -> USPTOValidationConfig:
     """Build validation config from context op_config with defaults."""
     if USPTOValidationConfig is None:
         return None
@@ -392,7 +392,7 @@ def _serialize_assignment(model: Any) -> dict[str, Any]:
     return dict(model.__dict__)
 
 
-def _iter_small_sample(store: list[Any], new_item: Any, limit: int) -> None:
+def _iter_small_sample(store: list[Any], new_item, limit: int) -> None:
     if len(store) < limit:
         store.append(new_item)
 
@@ -422,7 +422,7 @@ def _normalize_country(country: str | None) -> str | None:
 @dataclass
 
 
-def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
+def _resolve_output_paths(context: Any, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)

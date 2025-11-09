@@ -54,7 +54,7 @@ class ContentTransformer:
         except Exception as e:
             raise TransformationError(f"Failed to transform content: {e}")
 
-    def _convert_changes_to_specs(self, changes) -> list[KiroSpec]:
+    def _convert_changes_to_specs(self, changes: Any) -> list[KiroSpec]:
         """Convert OpenSpec changes to Kiro specs."""
         kiro_specs = []
 
@@ -68,7 +68,7 @@ class ContentTransformer:
 
         return kiro_specs
 
-    def _convert_single_change(self, change) -> KiroSpec:
+    def _convert_single_change(self, change: Any) -> KiroSpec:
         """Convert single OpenSpec change to Kiro spec."""
         spec_name = self._generate_spec_name(change)
 
@@ -98,14 +98,14 @@ class ContentTransformer:
             },
         )
 
-    def _generate_spec_name(self, change) -> str:
+    def _generate_spec_name(self, change: Any) -> str:
         """Generate Kiro spec name from OpenSpec change."""
         # Convert change ID to spec name
         name = change.id.replace("add-", "").replace("evaluate-", "")
         name = name.replace("-", "_")
         return name
 
-    def _convert_proposal_to_requirements(self, proposal) -> KiroRequirements:
+    def _convert_proposal_to_requirements(self, proposal: Any) -> KiroRequirements:
         """Convert OpenSpec proposal to Kiro requirements with EARS patterns."""
         # Extract user stories from proposal content
         user_stories = self._extract_user_stories(proposal)
@@ -122,7 +122,7 @@ class ContentTransformer:
             requirements=requirements,
         )
 
-    def _extract_user_stories(self, proposal) -> list[dict]:
+    def _extract_user_stories(self, proposal: Any) -> list[dict]:
         """Extract user stories from proposal content."""
         stories = []
 
@@ -157,11 +157,11 @@ class ContentTransformer:
 
         return "address the requirements described in the proposal"
 
-    def _generate_introduction(self, proposal) -> str:
+    def _generate_introduction(self, proposal: Any) -> str:
         """Generate introduction from proposal."""
         return f"This specification implements {proposal.title}.\n\n{proposal.why}"
 
-    def _extract_glossary_terms(self, proposal) -> dict[str, str]:
+    def _extract_glossary_terms(self, proposal: Any) -> dict[str, str]:
         """Extract glossary terms from proposal."""
         glossary = {}
 
@@ -200,7 +200,7 @@ class ContentTransformer:
 
         return f"System component: {term}"
 
-    def _convert_design(self, design) -> KiroDesign:
+    def _convert_design(self, design: Any) -> KiroDesign:
         """Convert OpenSpec design to Kiro design."""
         return KiroDesign(
             overview=design.sections.get("Overview", ""),
@@ -212,7 +212,7 @@ class ContentTransformer:
             source_content=design.content,
         )
 
-    def _convert_tasks(self, tasks) -> KiroTasks:
+    def _convert_tasks(self, tasks: Any) -> KiroTasks:
         """Convert OpenSpec tasks to Kiro tasks."""
         kiro_tasks = []
 
@@ -228,7 +228,7 @@ class ContentTransformer:
 
         return KiroTasks(tasks=kiro_tasks)
 
-    def _plan_spec_consolidation(self, specifications) -> dict[str, list[str]]:
+    def _plan_spec_consolidation(self, specifications: Any) -> dict[str, list[str]]:
         """Plan consolidation of OpenSpec specifications."""
         consolidation_mapping = {}
 
@@ -265,7 +265,7 @@ class ContentTransformer:
 
         return consolidation_mapping
 
-    def _consolidate_specs(self, specifications) -> list[KiroSpec]:
+    def _consolidate_specs(self, specifications: Any) -> list[KiroSpec]:
         """Consolidate OpenSpec specifications into Kiro specs."""
         consolidated_specs = []
         consolidation_mapping = self._plan_spec_consolidation(specifications)
@@ -333,7 +333,7 @@ class ContentTransformer:
             requirements=[requirement],
         )
 
-    def _extract_consolidated_glossary(self, specs) -> dict[str, str]:
+    def _extract_consolidated_glossary(self, specs: Any) -> dict[str, str]:
         """Extract glossary terms from multiple specs."""
         glossary = {}
 

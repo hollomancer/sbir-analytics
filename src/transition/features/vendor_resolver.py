@@ -37,6 +37,8 @@ from loguru import logger
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+from typing import Any
+
 
 
 # Try to use rapidfuzz if installed for higher-quality fuzzy matching.
@@ -127,7 +129,7 @@ class VendorResolver:
         self._load_records(records)
 
     @classmethod
-    def from_records(cls, records: Iterable[VendorRecord], **kwargs) -> VendorResolver:
+    def from_records(cls: Any, records: Iterable[VendorRecord], **kwargs) -> VendorResolver:
         """Convenience constructor."""
         return cls(records, **kwargs)
 

@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from typing import Any
+
 from loguru import logger
 
 from .utils import (
@@ -58,7 +60,7 @@ def transformed_cet_analytics() -> Output:
     awards_json = processed_dir / "cet_award_classifications.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
             return None
         if parquet_path.exists():
@@ -213,7 +215,7 @@ def transformed_cet_analytics_aggregates() -> Output:
     companies_json = processed_dir / "cet_company_profiles.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
             return None
         if parquet_path.exists():

@@ -24,7 +24,7 @@ except ImportError:
 
 
 @asset
-def fiscal_prepared_sbir_awards(raw_awards) -> dict | None:
+def fiscal_prepared_sbir_awards(raw_awards: Any) -> dict | None:
     """Dagster asset: enrich raw_awards with NAICS using the persisted usaspending index.
 
     Expects `raw_awards` to be a pandas DataFrame-like object with columns `award_id` and `recipient_uei`.

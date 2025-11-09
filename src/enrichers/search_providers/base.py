@@ -110,7 +110,7 @@ class BaseSearchProvider(ABC):
 
     # --- Utilities for adapters ------------------------------------------------
 
-    def measure_latency(self, func: Callable[..., Any], *args, **kwargs) -> tuple[Any, float]:
+    def measure_latency(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> tuple[Any, float]:
         """Run `func` and measure elapsed time in milliseconds."""
         start = time.time()
         rv = func(*args, **kwargs)
