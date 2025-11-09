@@ -35,7 +35,7 @@ from typing import Any
 
 # Try to use rapidfuzz for fuzzy matching; fallback to difflib
 try:
-    from rapidfuzz import fuzz  # type: ignore
+    from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:

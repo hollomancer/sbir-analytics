@@ -31,12 +31,12 @@ from typing import Any
 
 # Defensive imports (may be None in minimal CI environments)
 try:
-    import numpy as np  # type: ignore
+    import numpy as np
 except Exception:  # pragma: no cover - defensive import
     np = None  # type: ignore
 
 try:
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:  # pragma: no cover - defensive import
     pd = None  # type: ignore
 
@@ -46,8 +46,8 @@ from src.exceptions import CETClassificationError, DependencyError, FileSystemEr
 
 
 # Define optional placeholders so static analysis doesn't flag undefined names before lazy import
-extract_features = None  # type: ignore
-PatentFeatureVector = None  # type: ignore
+extract_features = None
+PatentFeatureVector = None
 
 # Feature helpers are optional and may already have been imported above.
 # Attempt a local import to ensure names exist when the features module is
@@ -56,13 +56,13 @@ try:
     from src.ml.features.patent_features import PatentFeatureVector as _PatentFeatureVector
     from src.ml.features.patent_features import (
         extract_features as _extract_features,
-    )  # type: ignore
+    )
 
     # Populate module-level names only if not already present or None
-    if "extract_features" not in globals() or extract_features is None:  # type: ignore
-        extract_features = _extract_features  # type: ignore
-    if "PatentFeatureVector" not in globals() or PatentFeatureVector is None:  # type: ignore
-        PatentFeatureVector = _PatentFeatureVector  # type: ignore
+    if "extract_features" not in globals() or extract_features is None:
+        extract_features = _extract_features
+    if "PatentFeatureVector" not in globals() or PatentFeatureVector is None:
+        PatentFeatureVector = _PatentFeatureVector
 except Exception:
     # Optional feature module not available; keep extract_features / PatentFeatureVector as None
     pass
@@ -70,7 +70,7 @@ except Exception:
 try:
     from src.ml.features.vectorizers import create_feature_matrix_builder
 except Exception:  # pragma: no cover - optional import
-    create_feature_matrix_builder = None  # type: ignore
+    create_feature_matrix_builder = None
 
 
 class PatentFeatureExtractor:
@@ -96,7 +96,7 @@ class PatentFeatureExtractor:
         """
         # Local import to remain import-safe at module import time
         try:
-            pass  # type: ignore
+            pass
         except Exception:
             raise DependencyError(
                 "pandas is required for PatentFeatureExtractor.features_for_dataframe",

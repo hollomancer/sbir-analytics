@@ -41,7 +41,7 @@ from difflib import SequenceMatcher
 
 # Try to use rapidfuzz if installed for higher-quality fuzzy matching.
 try:
-    from rapidfuzz import fuzz  # type: ignore
+    from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:

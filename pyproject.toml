@@ -45,6 +45,8 @@ pyreadstat = "^1.1.4"
 pandas-stubs = "^2.2.0"
 types-psutil = "^5.9.0"
 types-PyYAML = "^6.0.0"
+types-tqdm = "^4.66.0"
+types-requests = "^2.31.0"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
@@ -108,6 +110,18 @@ module = [
     "dagster.*",
     "neo4j.*",
     "duckdb.*",
+    "rpy2.*",
+    "plotly.*",
+    "sklearn.*",
+    "spacy.*",
+    "loguru.*",
+    "rich.*",
+    "typer.*",
+    "rapidfuzz.*",
+    "pyreadstat.*",
+    "pyarrow.*",
+    "memory_profiler.*",
+    "tqdm.*",
 ]
 ignore_missing_imports = true
 

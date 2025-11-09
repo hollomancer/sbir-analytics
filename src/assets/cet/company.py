@@ -342,14 +342,14 @@ def transformed_cet_company_profiles() -> Output:
 
 # Neo4j loader imports (import-safe)
 try:
-    from src.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from src.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 except Exception:  # pragma: no cover
     Neo4jClient = None  # type: ignore
     Neo4jConfig = None  # type: ignore
     LoadMetrics = None  # type: ignore
 
 try:
-    from src.loaders.neo4j import CETLoader, CETLoaderConfig  # type: ignore
+    from src.loaders.neo4j import CETLoader, CETLoaderConfig
 except Exception:  # pragma: no cover
     CETLoader = None  # type: ignore
     CETLoaderConfig = None  # type: ignore

@@ -27,24 +27,24 @@ try:
         AssetIn,
         asset,
         asset_check,
-    )  # type: ignore
+    )
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
-    class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None, op_config=None) -> None:
+    class AssetExecutionContext:
+        def __init__(self, op_execution_context: Any = None, op_config: Any = None) -> None:
             if op_execution_context is None:
                 # For testing: create a minimal mock-like object with loguru
                 from loguru import logger as _logger
 
                 class _L:
-                    def info(self, *a, **kw):  # noqa: D401
+                    def info(self, *a: Any, **kw: Any) -> None:  # noqa: D401
                         _logger.info(*a, **kw)
 
-                    def warning(self, *a, **kw):
+                    def warning(self, *a: Any, **kw: Any) -> None:
                         _logger.warning(*a, **kw)
 
-                    def error(self, *a, **kw):
+                    def error(self, *a: Any, **kw: Any) -> None:
                         _logger.error(*a, **kw)
 
                 self.log = _L()
@@ -53,7 +53,7 @@ try:
             else:
                 # For real usage: use the real Dagster context
                 self._real_context = _RealAssetExecutionContext(op_execution_context)
-                self.log = self._real_context.log
+                self.log = self._real_context.log  # type: ignore[assignment]
                 # Try to get op_config from the real context if available
                 if hasattr(self._real_context, "op_config"):
                     self.op_config = self._real_context.op_config
@@ -65,44 +65,50 @@ try:
 
 except Exception:  # pragma: no cover
 
-    def asset(*args, **kwargs):  # type: ignore
-        def _wrap(fn):
+    def asset(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]
+        def _wrap(fn: Any) -> Any:
             return fn
 
         return _wrap
 
-    def asset_check(*args, **kwargs):  # type: ignore
-        def _wrap(fn):
+    def asset_check(*args: Any, **kwargs: Any) -> Any:
+        def _wrap(fn: Any) -> Any:
             return fn
 
         return _wrap
 
-    def AssetIn(*args, **kwargs):  # type: ignore
+    def AssetIn(*args: Any, **kwargs: Any) -> None:  # type: ignore[no-redef]
         return None
 
-    class AssetCheckResult:  # type: ignore
-        def __init__(self, passed: bool, severity=None, description=None, metadata=None):
+    class AssetCheckResult:  # type: ignore[no-redef]
+        def __init__(
+            self,
+            passed: bool,
+            severity: Any = None,
+            description: Any = None,
+            metadata: Any = None,
+        ) -> None:
             self.passed = passed
             self.severity = severity
             self.description = description
             self.metadata = metadata
 
-    class AssetCheckSeverity:  # type: ignore
+    class AssetCheckSeverity:  # type: ignore[no-redef]
         ERROR = "ERROR"
         WARN = "WARN"
 
-    class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
+    class AssetExecutionContext:  # type: ignore[no-redef]
+        def __init__(self, op_execution_context: Any = None) -> None:
             from loguru import logger as _logger
 
             class _L:
-                def info(self, *a, **kw):  # noqa: D401
+                def info(self, *a: Any, **kw: Any) -> None:  # noqa: D401
                     _logger.info(*a, **kw)
 
-                def warning(self, *a, **kw):
+                def warning(self, *a: Any, **kw: Any) -> None:
                     _logger.warning(*a, **kw)
 
-                def error(self, *a, **kw):
+                def error(self, *a: Any, **kw: Any) -> None:
                     _logger.error(*a, **kw)
 
             self.log = _L()
@@ -116,31 +122,31 @@ try:
     from dagster import AssetKey, MetadataValue, Output, asset
 except Exception:  # pragma: no cover - fallback stubs when dagster is not installed
     # Lightweight stubs so this module can be imported in environments without dagster.
-    class Output:  # type: ignore
-        def __init__(self, value, metadata=None):
+    class Output:  # type: ignore[no-redef]
+        def __init__(self, value: Any, metadata: Any = None) -> None:
             self.value = value
             self.metadata = metadata
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"Output(value={self.value!r}, metadata={self.metadata!r})"
 
-    def asset(*dargs, **dkwargs):  # type: ignore
+    def asset(*dargs: Any, **dkwargs: Any) -> Any:  # type: ignore[no-redef]
         # decorator passthrough: return the function unchanged
-        def _decorator(fn):
+        def _decorator(fn: Any) -> Any:
             return fn
 
         return _decorator
 
-    class AssetKey:  # type: ignore
-        def __init__(self, key):
+    class AssetKey:  # type: ignore[no-redef]
+        def __init__(self, key: Any) -> None:
             self.key = key
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return f"AssetKey({self.key!r})"
 
-    class MetadataValue:  # type: ignore
+    class MetadataValue:  # type: ignore[no-redef]
         @staticmethod
-        def text(s):
+        def text(s: Any) -> Any:
             return s
 
 
@@ -202,9 +208,6 @@ def _read_parquet_or_ndjson(
     parquet_path: Path, json_path: Path, expected_columns: tuple
 ) -> list[dict]:
     """Read data from parquet or fallback to NDJSON."""
-    if pd is None:
-        return []
-
     try:
         if parquet_path.exists():
             df = pd.read_parquet(parquet_path)
@@ -224,7 +227,7 @@ def _read_parquet_or_ndjson(
     return []
 
 
-def _serialize_metrics(metrics) -> dict[str, Any]:
+def _serialize_metrics(metrics: Any) -> dict[str, Any]:
     """Serialize LoadMetrics to dict."""
     if metrics is None:
         return {}

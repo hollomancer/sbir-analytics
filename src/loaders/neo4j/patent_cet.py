@@ -60,7 +60,7 @@ from ...exceptions import ConfigurationError, DependencyError
 
 # Import neo4j lazily; avoid import error at module import time
 try:
-    from neo4j import Driver, GraphDatabase, Transaction  # type: ignore
+    from neo4j import Driver, GraphDatabase, Transaction
 except Exception:  # pragma: no cover - optional dependency
     GraphDatabase = None  # type: ignore
     Driver = None  # type: ignore

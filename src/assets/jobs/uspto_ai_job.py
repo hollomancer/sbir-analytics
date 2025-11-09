@@ -21,7 +21,7 @@ from dagster import AssetSelection, build_assets_job
 # Import the USPTO AI asset definitions. These are expected to be defined in:
 #   src.assets.uspto_assets (consolidated module)
 try:
-    from src.assets.uspto_assets import (  # type: ignore
+    from src.assets.uspto_assets import (
         raw_uspto_ai_extract,
         raw_uspto_ai_human_sample_extraction,
         uspto_ai_deduplicate,
@@ -49,8 +49,8 @@ if (
         ],
         selection=AssetSelection.keys(
             raw_uspto_ai_extract.key,
-            uspto_ai_deduplicate.key,  # type: ignore[attr-defined]
-            raw_uspto_ai_human_sample_extraction.key,  # type: ignore[attr-defined]
+            uspto_ai_deduplicate.key,
+            raw_uspto_ai_human_sample_extraction.key,
         ),
         description=(
             "Materialize USPTO AI extraction -> deduplication -> sampling flow. "

@@ -17,8 +17,8 @@ try:
     RPY2_AVAILABLE = True
 except ImportError:
     RPY2_AVAILABLE = False
-    ro = None  # type: ignore
-    importr = None  # type: ignore
+    ro = None
+    importr = None
 
 
 def check_r_package(package_name: str) -> bool:
@@ -34,7 +34,7 @@ def check_r_package(package_name: str) -> bool:
         return False
 
     try:
-        package = importr(package_name)  # type: ignore
+        package = importr(package_name)
         return package is not None
     except Exception as e:
         logger.debug(f"R package {package_name} not available: {e}")
@@ -229,7 +229,7 @@ def safe_r_eval(r_code: str) -> Any:
         )
 
     try:
-        result = ro.r(r_code)  # type: ignore
+        result = ro.r(r_code)
         return result
     except Exception as e:
         error_msg = str(e)

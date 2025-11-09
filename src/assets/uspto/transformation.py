@@ -338,9 +338,9 @@ def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dic
 
     with output_path.open("w", encoding="utf-8") as fh:
         for entry in patents.values():
-            entry["assignee_names"] = sorted(entry["assignee_names"])  # type: ignore
-            entry["assignor_names"] = sorted(entry["assignor_names"])  # type: ignore
-            entry["linked_companies"] = sorted(entry["linked_companies"])  # type: ignore
+            entry["assignee_names"] = sorted(entry["assignee_names"])
+            entry["assignor_names"] = sorted(entry["assignor_names"])
+            entry["linked_companies"] = sorted(entry["linked_companies"])
             if entry["linked_companies"]:
                 linked += 1
             fh.write(json.dumps(entry) + "\n")
@@ -404,8 +404,8 @@ def transformed_patent_entities(context, transformed_assignments: dict[str, Any]
 
     with output_path.open("w", encoding="utf-8") as fh:
         for entry in entities.values():
-            entry["rf_ids"] = sorted(entry["rf_ids"])  # type: ignore
-            entry["linked_companies"] = sorted(entry["linked_companies"])  # type: ignore
+            entry["rf_ids"] = sorted(entry["rf_ids"])
+            entry["linked_companies"] = sorted(entry["linked_companies"])
             fh.write(json.dumps(entry) + "\n")
 
     metadata = {

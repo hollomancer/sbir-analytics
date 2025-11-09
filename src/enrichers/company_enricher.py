@@ -45,7 +45,7 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
 def _coerce_int(value: object) -> int | None:
     """Best-effort conversion to int without propagating errors."""
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)
     except (TypeError, ValueError):
         return None
 

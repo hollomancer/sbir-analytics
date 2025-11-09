@@ -857,13 +857,13 @@ def enriched_cet_patent_classifications() -> Output:
     assignees = []
     # Prefer PatentFeatureExtractor for normalized title strings if available
     try:
-        from src.ml.features.patent_features import get_keywords_map  # type: ignore
-        from src.ml.models.patent_classifier import PatentFeatureExtractor  # type: ignore
+        from src.ml.features.patent_features import get_keywords_map
+        from src.ml.models.patent_classifier import PatentFeatureExtractor
 
         kw_map = get_keywords_map()
         extractor = PatentFeatureExtractor(keywords_map=kw_map)
         if hasattr(extractor, "transform"):
-            feature_dicts = extractor.transform(patents)  # type: ignore
+            feature_dicts = extractor.transform(patents)
             for p, fv in zip(patents, feature_dicts, strict=False):
                 norm_title = (
                     fv.get("normalized_title")
@@ -876,7 +876,7 @@ def enriched_cet_patent_classifications() -> Output:
                 assignees.append(None)
         else:
             # Fallback to simple normalization when only DF-based extractor is available
-            from src.ml.features.patent_features import normalize_title  # type: ignore
+            from src.ml.features.patent_features import normalize_title
 
             for p in patents:
                 titles.append(normalize_title(p.get("title")))

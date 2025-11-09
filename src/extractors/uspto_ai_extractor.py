@@ -48,21 +48,21 @@ from loguru import logger
 
 # Optional imports - gracefully degrade when not available
 try:  # pragma: no cover - optional
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:  # pragma: no cover
     pd = None  # type: ignore
 
 try:  # pragma: no cover - optional
-    import pyreadstat  # type: ignore
+    import pyreadstat
 except Exception:  # pragma: no cover
-    pyreadstat = None  # type: ignore
+    pyreadstat = None
 
 try:  # pragma: no cover - optional
-    import pyarrow as pa  # type: ignore
-    import pyarrow.parquet as pq  # type: ignore
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 except Exception:  # pragma: no cover
-    pa = None  # type: ignore
-    pq = None  # type: ignore
+    pa = None
+    pq = None
 
 
 SUPPORTED_EXTENSIONS = (".ndjson", ".jsonl", ".csv", ".dta", ".parquet")
@@ -322,7 +322,7 @@ class USPTOAIExtractor:
 
         # 1) pandas iterator with resume (approximate by skipping initial chunks)
         try:
-            reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
+            reader = pd.read_stata(path, iterator=True, convert_categoricals=False)
             # fast-forward to offset
             to_skip = offset
             while to_skip > 0:
@@ -392,7 +392,7 @@ class USPTOAIExtractor:
 
         # 3) Last resort: full pandas read
         logger.warning("Falling back to reading entire .dta into memory for %s", path)
-        df_full = pd.read_stata(path, convert_categoricals=False)  # type: ignore
+        df_full = pd.read_stata(path, convert_categoricals=False)
         n = len(df_full)
         i = offset
         emitted = 0
@@ -449,7 +449,7 @@ class USPTOAIExtractor:
         if pd is None:
             raise RuntimeError("pandas is required to read parquet files (fallback)")
 
-        df = pd.read_parquet(path)  # type: ignore
+        df = pd.read_parquet(path)
         n = len(df)
         i = offset
         while i < n:

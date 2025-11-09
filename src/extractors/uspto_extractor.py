@@ -54,20 +54,20 @@ except Exception:  # pragma: no cover - environment may not have pandas
     pd = None  # type: ignore
 
 try:
-    import pyreadstat  # type: ignore
+    import pyreadstat
 except Exception:
-    pyreadstat = None  # type: ignore
+    pyreadstat = None
 
 try:
-    import pyarrow as pa  # type: ignore
-    import pyarrow.parquet as pq  # type: ignore
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 except Exception:
     pa = None
     pq = None
 
 # Import the PatentAssignment model if available; otherwise use a type alias to dict
 try:
-    from src.models.uspto_models import PatentAssignment  # type: ignore
+    from src.models.uspto_models import PatentAssignment
 except Exception:  # pragma: no cover - allow this module to exist even if models missing
     PatentAssignment = None  # type: ignore
 
@@ -367,7 +367,7 @@ class USPTOExtractor:
             if not skip_pandas:
                 logger.debug("Attempting pandas read_stata iterator for %s", path)
                 try:
-                    reader = pd.read_stata(path, iterator=True, convert_categoricals=False)  # type: ignore
+                    reader = pd.read_stata(path, iterator=True, convert_categoricals=False)
                     while True:
                         try:
                             chunk = reader.get_chunk(chunk_size)  # type: ignore

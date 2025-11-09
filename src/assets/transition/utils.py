@@ -29,11 +29,11 @@ from loguru import logger
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
     from ..utils.reporting.analyzers.transition_analyzer import (
-        TransitionDetectionAnalyzer,  # type: ignore
+        TransitionDetectionAnalyzer,
     )
 except Exception:
-    ModuleReport = None  # type: ignore
-    TransitionDetectionAnalyzer = None  # type: ignore
+    ModuleReport = None
+    TransitionDetectionAnalyzer = None
 
 from ...config.loader import get_config
 from ...exceptions import FileSystemError
@@ -54,7 +54,7 @@ try:
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
-    class AssetExecutionContext:  # type: ignore
+    class AssetExecutionContext:
         def __init__(self, op_execution_context=None) -> None:
             if op_execution_context is None:
                 # For testing: create a minimal mock-like object
@@ -126,7 +126,7 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
                     pass
             # NumPy scalars
             try:
-                import numpy as _np  # type: ignore
+                import numpy as _np
 
                 if isinstance(x, _np.generic):
                     try:

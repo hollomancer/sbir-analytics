@@ -47,7 +47,7 @@ def train_cet_patent_classifier() -> Output:
     train_data_parquet = Path("data/processed/cet_patent_training.parquet")
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         # Missing pandas; write checks and exit
         checks = {"ok": False, "reason": "pandas_missing", "model_path": str(model_path)}
@@ -197,7 +197,7 @@ def cet_award_training_dataset() -> Output:
     # If no input, write empty output and checks
     if input_path is None:
         try:
-            import pandas as pd  # type: ignore
+            import pandas as pd
 
             df_empty = pd.DataFrame(
                 columns=[
@@ -268,7 +268,7 @@ def cet_award_training_dataset() -> Output:
     except Exception as e:
         # Failed to load training dataset; write checks and empty output
         try:
-            import pandas as pd  # type: ignore
+            import pandas as pd
 
             df_empty = pd.DataFrame(
                 columns=[
@@ -320,7 +320,7 @@ def cet_award_training_dataset() -> Output:
 
     # Persist dataset to parquet (preferred) with NDJSON fallback
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
 
         rows = []
         for ex in dataset.examples:

@@ -37,13 +37,13 @@ def transformed_cet_analytics() -> Output:
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy imports at module import time
     try:
-        from src.utils.performance_alerts import AlertCollector  # type: ignore
+        from src.utils.performance_alerts import AlertCollector
     except Exception:
         AlertCollector = None  # type: ignore
 
@@ -188,13 +188,13 @@ def transformed_cet_analytics_aggregates() -> Output:
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy deps at module import time
     try:
-        from src.utils.performance_alerts import AlertCollector  # type: ignore
+        from src.utils.performance_alerts import AlertCollector
     except Exception:
         AlertCollector = None  # type: ignore
 

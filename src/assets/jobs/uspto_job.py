@@ -48,7 +48,7 @@ if raw_uspto_assignments is not None and validated_uspto_assignments is not None
         assets=[raw_uspto_assignments, validated_uspto_assignments],
         selection=AssetSelection.keys(
             raw_uspto_assignments.key,
-            validated_uspto_assignments.key,  # type: ignore[attr-defined]
+            validated_uspto_assignments.key,
         ),
         description=(
             "Materialize USPTO assignment assets and run basic validators (rf_id uniqueness). "

@@ -45,7 +45,7 @@ def raw_cet_human_sampling() -> Output:
     from random import Random
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -220,7 +220,7 @@ def validated_cet_iaa_report() -> Output:
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -391,15 +391,15 @@ def validated_cet_drift_detection() -> Output:
     from pathlib import Path
 
     try:
-        import numpy as np  # type: ignore
-        import pandas as pd  # type: ignore
+        import numpy as np
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
         np = None  # type: ignore
 
     # Lazy import for AlertCollector (best-effort)
     try:
-        from src.utils.performance_alerts import (  # type: ignore
+        from src.utils.performance_alerts import (
             Alert,
             AlertCollector,
             AlertSeverity,
