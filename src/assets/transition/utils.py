@@ -63,25 +63,12 @@ try:
     from dagster import (
         AssetCheckResult,  # noqa: F401
         AssetCheckSeverity,  # noqa: F401
+        AssetExecutionContext,  # noqa: F401
         MetadataValue,
         Output,
         asset,
         asset_check,
     )
-    from dagster import AssetExecutionContext as _RealAssetExecutionContext
-
-    # Wrap the real AssetExecutionContext to accept no args for testing
-    class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
-            if op_execution_context is None:
-                # For testing: create a minimal mock-like object
-                self.log = logger
-                self._is_shim = True
-            else:
-                # For real usage: use the real Dagster context
-                self._real_context = _RealAssetExecutionContext(op_execution_context)
-                self.log = self._real_context.log
-                self._is_shim = False
 
 except Exception:  # pragma: no cover
     # Minimal shims so this module can be imported without Dagster installed

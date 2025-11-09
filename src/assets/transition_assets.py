@@ -34,6 +34,14 @@ from __future__ import annotations
 
 # Import all assets from the modularized transition package
 from .transition import (
+    # Utility types (for backward compatibility)
+    AssetCheckResult,
+    AssetCheckSeverity,
+    AssetExecutionContext,
+    MetadataValue,
+    Output,
+    asset,
+    asset_check,
     # Checks
     contracts_sample_quality_check,
     # Vendor resolution
@@ -64,6 +72,14 @@ from .transition import (
 
 
 __all__ = [
+    # Utility types
+    "asset",
+    "asset_check",
+    "AssetCheckResult",
+    "AssetCheckSeverity",
+    "AssetExecutionContext",
+    "MetadataValue",
+    "Output",
     # Contracts
     "raw_contracts",
     "validated_contracts_sample",
