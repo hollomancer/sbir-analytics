@@ -8,6 +8,9 @@ on:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       performance: ${{ steps.filter.outputs.performance }}
       cet: ${{ steps.filter.outputs.cet }}
