@@ -13,6 +13,7 @@ Features:
 - Exportable reports
 """
 
+from typing import Any
 import json
 from dataclasses import dataclass
 from datetime import datetime

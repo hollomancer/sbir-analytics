@@ -15,9 +15,9 @@ from loguru import logger
 from typing import Any
 
 from .utils import (
-
     AssetExecutionContext,
     ContractExtractor,
+    FileSystemError,
     MetadataValue,
     Output,
     _ensure_parent_dir,

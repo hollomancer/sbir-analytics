@@ -6,6 +6,7 @@ EARS pattern conversion and user story generation.
 """
 
 import re
+from typing import Any
 
 from loguru import logger
 

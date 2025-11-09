@@ -40,6 +40,19 @@ from ...exceptions import FileSystemError
 from ...extractors.contract_extractor import ContractExtractor
 from ...transition.features.vendor_resolver import VendorRecord, VendorResolver
 
+# Neo4j imports
+try:
+    from neo4j import Driver
+    from ...loaders.neo4j.client import Neo4jClient
+except Exception:
+    Driver = None  # type: ignore
+    Neo4jClient = None  # type: ignore
+
+# Neo4j connection constants
+DEFAULT_NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+DEFAULT_NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+DEFAULT_NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+
 
 # Import-safe shims for Dagster
 try:

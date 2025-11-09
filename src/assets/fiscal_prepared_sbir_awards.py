@@ -12,6 +12,7 @@ except Exception:
         return fn
 
 
+from typing import Any
 from pathlib import Path
 
 

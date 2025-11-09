@@ -14,7 +14,7 @@ from loguru import logger
 from typing import Any
 
 from .utils import (
-
+    AssetIn,
     _attempt_parse_sample,
     _discover_table_files,
     _make_parsing_check,

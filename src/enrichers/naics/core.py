@@ -12,6 +12,7 @@ for fast joins in downstream enrichment.
 
 from __future__ import annotations
 
+from typing import Any
 import gzip
 import json
 import re

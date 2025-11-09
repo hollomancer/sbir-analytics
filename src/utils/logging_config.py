@@ -1,5 +1,6 @@
 """Structured logging configuration using loguru."""
 
+from typing import Any
 import sys
 from contextvars import ContextVar
 from pathlib import Path

@@ -4,6 +4,7 @@ This module provides functionality to extract USAspending data from compressed P
 Supports both direct DuckDB postgres_scanner access and pg_restore streaming for removable media workflows.
 """
 
+from typing import Any
 import subprocess
 import tempfile
 from pathlib import Path

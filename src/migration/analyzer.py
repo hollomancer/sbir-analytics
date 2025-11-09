@@ -5,6 +5,7 @@ This module provides functionality to analyze and parse existing OpenSpec
 content structure, extracting all changes, specifications, and metadata.
 """
 
+from typing import Any
 import re
 from pathlib import Path
 
