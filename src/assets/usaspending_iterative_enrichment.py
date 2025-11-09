@@ -198,12 +198,13 @@ def usaspending_refresh_batch(
             break
 
     # Process awards in batch
+    errors_list: list[str] = []
     stats = {
         "total": len(stale_awards_batch),
         "success": 0,
         "failed": 0,
         "unchanged": 0,
-        "errors": [],
+        "errors": errors_list,
     }
 
     async def process_award(row: pd.Series) -> None:
@@ -251,12 +252,12 @@ def usaspending_refresh_batch(
                     stats["unchanged"] += 1
             else:
                 stats["failed"] += 1
-                stats["errors"].append(f"{award_id}: {result.get('error', 'Unknown error')}")
+                errors_list.append(f"{award_id}: {result.get('error', 'Unknown error')}")
 
         except Exception as e:
             logger.error(f"Failed to refresh award {award_id}: {e}")
             stats["failed"] += 1
-            stats["errors"].append(f"{award_id}: {str(e)}")
+            errors_list.append(f"{award_id}: {str(e)}")
 
             # Record API error
             metrics_collector.record_api_call(source, error=True)

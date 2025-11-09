@@ -413,10 +413,16 @@ class VendorCrosswalk:
             return False
         acq = self.records[acquirer_id]
         target = self.records[acquired_id]
-        acq.metadata.setdefault("acquisitions", []).append(
+        if "acquisitions" not in acq.metadata:
+            acq.metadata["acquisitions"] = []
+        acquisitions: list = acq.metadata["acquisitions"]  # type: ignore[assignment]
+        acquisitions.append(
             {"acquired_id": acquired_id, "date": _iso_date(date_of_acquisition), "note": note}
         )
-        target.metadata.setdefault("acquired_by", []).append(
+        if "acquired_by" not in target.metadata:
+            target.metadata["acquired_by"] = []
+        acquired_by: list = target.metadata["acquired_by"]  # type: ignore[assignment]
+        acquired_by.append(
             {"acquirer_id": acquirer_id, "date": _iso_date(date_of_acquisition), "note": note}
         )
         # add acquired canonical name as alias on acquirer
