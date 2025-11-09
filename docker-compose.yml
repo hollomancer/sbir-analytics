@@ -105,7 +105,9 @@ services:
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
       # Optional configuration overrides (if files exist)
-      - ./config/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf:ro
+      # Note: Neo4j needs write access to conf directory during startup for ownership changes
+      # Use environment variables for configuration instead when possible
+      # - ./config/neo4j/neo4j.conf:/var/lib/neo4j/conf/neo4j.conf:ro
       - ./config/neo4j/certs:/certs:ro
       - ./config/neo4j/plugins:/plugins:rw
     networks:
