@@ -259,7 +259,7 @@ class SbirDuckDBExtractor:
 
         return metadata
 
-    def _ensure_imported(self):
+    def _ensure_imported(self) -> None:
         """Ensure CSV has been imported to DuckDB."""
         if not self._imported:
             if not self.duckdb_client.table_exists(self.table_name):

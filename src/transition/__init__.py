@@ -101,7 +101,7 @@ def _load_yaml(path: str) -> dict[str, Any] | None:
     Falls back to None if YAML parsing is not available or the file cannot be read.
     """
     try:
-        import yaml  # type: ignore
+        import yaml
     except Exception:
         return None
 

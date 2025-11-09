@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 # If unavailable at runtime in some contexts, callers can still use the
 # functions by passing plain dicts / objects that have the expected attributes.
 try:
-    from .base import ProviderResponse, ProviderResult  # type: ignore
+    from .base import ProviderResponse, ProviderResult
 except Exception:
     ProviderResponse = Any  # type: ignore
     ProviderResult = Any  # type: ignore
@@ -381,7 +381,7 @@ def aggregate_run_metrics(
         provider_name = (
             getattr(provider_response, "provider", "") or provider_response.__class__.__name__
         )
-        raw_results = getattr(provider_response, "results", [])  # type: ignore
+        raw_results = getattr(provider_response, "results", [])
 
     scored_results: list[ResultScore] = []
     for idx, rr in enumerate(raw_results, start=1):
@@ -400,7 +400,7 @@ def aggregate_run_metrics(
                 }
             )
         else:
-            rr_obj = rr  # type: ignore
+            rr_obj = rr
 
         # ensure rank metadata
         if not getattr(rr_obj, "metadata", None):

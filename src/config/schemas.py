@@ -297,7 +297,7 @@ class LoggingConfig(BaseModel):
         Accepts 'pretty'/'text' -> 'text', 'json'/'structured' -> 'json'.
         """
         if not isinstance(v, str):
-            return v
+            return v  # type: ignore[unreachable]
         vv = v.lower()
         if vv in ("pretty", "text", "plain"):
             return "text"

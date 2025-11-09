@@ -22,7 +22,7 @@ from .models import (
 class MigrationValidator:
     """Validates migration completeness and accuracy."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize validator."""
         self.ears_validator = EARSValidator()
 
@@ -79,7 +79,7 @@ class MigrationValidator:
                     )
                 )
 
-    def _validate_kiro_format(self, report: ValidationReport, generated_specs: list[GeneratedSpec]):
+    def _validate_kiro_format(self, report: ValidationReport, generated_specs: list[GeneratedSpec]) -> None:
         """Validate that generated specs follow Kiro format."""
         for spec in generated_specs:
             # Check that required files exist
@@ -96,7 +96,7 @@ class MigrationValidator:
             # Validate file structure
             self._validate_spec_files(report, spec)
 
-    def _validate_spec_files(self, report: ValidationReport, spec: GeneratedSpec):
+    def _validate_spec_files(self, report: ValidationReport, spec: GeneratedSpec) -> None:
         """Validate individual spec files."""
         # Validate requirements.md
         requirements_file = spec.path / "requirements.md"
@@ -146,7 +146,7 @@ class MigrationValidator:
                 )
             )
 
-    def _validate_tasks_file(self, report: ValidationReport, spec_name: str, file_path: Path):
+    def _validate_tasks_file(self, report: ValidationReport, spec_name: str, file_path: Path) -> None:
         """Validate tasks.md file structure."""
         try:
             content = file_path.read_text(encoding="utf-8")
@@ -194,7 +194,7 @@ class MigrationValidator:
             if tasks_file.exists():
                 self._validate_task_references(report, spec.name, tasks_file)
 
-    def _validate_task_references(self, report: ValidationReport, spec_name: str, tasks_file: Path):
+    def _validate_task_references(self, report: ValidationReport, spec_name: str, tasks_file: Path) -> None:
         """Validate that tasks reference requirements properly."""
         try:
             content = tasks_file.read_text(encoding="utf-8")
@@ -229,7 +229,7 @@ class MigrationValidator:
 class EARSValidator:
     """Validates EARS (Easy Approach to Requirements Syntax) patterns."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize EARS validator."""
         self.ears_patterns = [
             r"THE\s+\w+\s+SHALL\s+",  # Basic EARS pattern

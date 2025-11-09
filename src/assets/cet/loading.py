@@ -9,23 +9,26 @@ This module contains:
 """
 
 from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any
 
-from .company import (
-    DEFAULT_AWARD_CLASS_JSON,
-    DEFAULT_AWARD_CLASS_PARQUET,
-    DEFAULT_COMPANY_PROFILES_JSON,
-    DEFAULT_COMPANY_PROFILES_PARQUET,
-    DEFAULT_OUTPUT_DIR,
-    DEFAULT_TAXONOMY_JSON,
-    DEFAULT_TAXONOMY_PARQUET,
-    _get_neo4j_client,
-)
-from .utils import AssetIn, _read_parquet_or_ndjson, _serialize_metrics, asset
+from loguru import logger
 
+from .company import _get_neo4j_client
+from .utils import (
+    AssetIn,
+    _read_parquet_or_ndjson,
+    _serialize_metrics,
+    asset,
+    DEFAULT_TAXONOMY_PARQUET,
+    DEFAULT_TAXONOMY_JSON,
+    DEFAULT_AWARD_CLASS_PARQUET,
+    DEFAULT_AWARD_CLASS_JSON,
+    DEFAULT_COMPANY_PROFILES_PARQUET,
+    DEFAULT_COMPANY_PROFILES_JSON,
+    DEFAULT_OUTPUT_DIR,
+)
 
 # Neo4j loader imports
 try:
@@ -48,7 +51,7 @@ except Exception:
         "batch_size": int,
     },
 )
-def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
+def loaded_cet_areas(context: Any, cet_taxonomy) -> dict[str, Any]:
     """Upsert CETArea nodes based on taxonomy output."""
     if CETLoader is None or CETLoaderConfig is None:
         context.log.warning("CETLoader unavailable; skipping CETArea loading")

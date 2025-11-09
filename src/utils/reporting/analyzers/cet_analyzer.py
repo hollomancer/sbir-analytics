@@ -173,7 +173,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
         Returns:
             List of analysis insights and recommendations
         """
-        insights = []
+        insights: list[Any] = []
         classified_df = module_data.get("classified_df")
         classification_results = module_data.get("classification_results", {})
 
@@ -444,7 +444,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
         len(classified_df)
 
         # Get classified categories
-        classified_categories = set()
+        classified_categories: set[Any] = set()
         category_columns = ["primary_cet_area", "cet_classification", "technology_category"]
 
         for col in category_columns:

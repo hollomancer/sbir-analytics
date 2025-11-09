@@ -89,20 +89,20 @@ def validate_required_field(value: any, field_name: str, row_index: int) -> Qual
     Returns:
         QualityIssue if validation fails, None otherwise
     """
-    if pd.isna(value) or (isinstance(value, str) and value.strip() == ""):
+    if pd.isna(value) or (isinstance(value, str) and value.strip() == ""):  # type: ignore[unreachable]
         return QualityIssue(
             severity=QualitySeverity.ERROR,
             field=field_name,
             message=f"Required field '{field_name}' is missing",
             row_index=row_index,
         )
-    return None
+    return None  # type: ignore[unreachable]
 
 
 def validate_phase(phase: str, row_index: int) -> QualityIssue | None:
     """Validate Phase is one of the allowed values."""
     if pd.isna(phase):
-        return QualityIssue(
+        return QualityIssue(  # type: ignore[unreachable]
             severity=QualitySeverity.ERROR,
             field="Phase",
             message="Phase is required",
@@ -122,7 +122,7 @@ def validate_phase(phase: str, row_index: int) -> QualityIssue | None:
 def validate_program(program: str, row_index: int) -> QualityIssue | None:
     """Validate Program is SBIR or STTR."""
     if pd.isna(program):
-        return QualityIssue(
+        return QualityIssue(  # type: ignore[unreachable]
             severity=QualitySeverity.ERROR,
             field="Program",
             message="Program is required",
@@ -142,7 +142,7 @@ def validate_program(program: str, row_index: int) -> QualityIssue | None:
 def validate_award_year(year: int, row_index: int) -> QualityIssue | None:
     """Validate Award Year is within reasonable range."""
     if pd.isna(year):
-        return QualityIssue(
+        return QualityIssue(  # type: ignore[unreachable]
             severity=QualitySeverity.ERROR,
             field="Award Year",
             message="Award Year is required",
@@ -367,7 +367,7 @@ def validate_phase_program_consistency(
 ) -> QualityIssue | None:
     """Validate that Phase is consistent with Program."""
     if pd.isna(phase) or pd.isna(program):
-        return None
+        return None  # type: ignore[unreachable]
 
     valid_phases = {
         "SBIR": ["Phase I", "Phase II", "Phase III"],

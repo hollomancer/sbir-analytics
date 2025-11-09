@@ -9,8 +9,13 @@ This module provides:
 
 from __future__ import annotations
 
+
+from __future__ import annotations
+
 import json
 import os
+import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,139 +29,42 @@ from loguru import logger
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
     from ..utils.reporting.analyzers.transition_analyzer import (
-        TransitionDetectionAnalyzer,  # type: ignore
+        TransitionDetectionAnalyzer,
     )
 except Exception:
-    ModuleReport = None  # type: ignore
-    TransitionDetectionAnalyzer = None  # type: ignore
+    ModuleReport = None
+    TransitionDetectionAnalyzer = None
 
-# Re-export these imports for use by other transition modules
-from ...config.loader import get_config  # noqa: F401
-from ...exceptions import FileSystemError  # noqa: F401
-from ...extractors.contract_extractor import ContractExtractor  # noqa: F401
-from ...transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
+from ...config.loader import get_config
+from ...exceptions import FileSystemError
+from ...extractors.contract_extractor import ContractExtractor
+from ...transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
-# Neo4j imports
-try:
-    from neo4j import Driver
-
-    from ...loaders import Neo4jClient
-except Exception:
-    Driver = None
-    Neo4jClient = None
-
-# Default Neo4j connection settings
-DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
-DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
-
-# Transition loading thresholds
-TRANSITION_MIN_NODE_COUNT = int(os.environ.get("SBIR_ETL__TRANSITION__MIN_NODE_COUNT", "1"))
-TRANSITION_LOAD_SUCCESS_THRESHOLD = float(
-    os.environ.get("SBIR_ETL__TRANSITION__LOAD_SUCCESS_THRESHOLD", "0.95")
-)
-
-# Import-safe shims for Dagster (re-export for other transition modules)
+# Import-safe shims for Dagster
 try:
     from dagster import (
-        AssetCheckResult,  # noqa: F401
-        AssetCheckSeverity,  # noqa: F401
+        AssetCheckResult,
+        AssetCheckSeverity,
         MetadataValue,
         Output,
-        asset as _dagster_asset,
-        asset_check as _dagster_asset_check,
+        asset,
+        asset_check,
     )
+    from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
-    # Create wrapper decorators that allow direct invocation (for MVP scripts/tests)
-    def asset(*args, **kwargs):  # type: ignore
-        """Wrapper around Dagster @asset that allows direct function calls.
-
-        When used with Dagster runtime, behaves normally.
-        When called directly, the decorated function can be invoked as a regular function.
-        """
-        def decorator(fn):
-            # Apply the real Dagster decorator
-            dagster_fn = _dagster_asset(*args, **kwargs)(fn)
-
-            # But allow the original function to be called directly via __wrapped__
-            # This is a convention used by decorators to preserve the original function
-            dagster_fn.__wrapped__ = fn
-
-            # Make it callable - if invoked directly, use the wrapped function
-            def callable_wrapper(*call_args, **call_kwargs):
-                # Try to call the Dagster version, but if it fails with context error,
-                # fall back to the original function
-                try:
-                    return dagster_fn(*call_args, **call_kwargs)
-                except Exception as e:
-                    if "context" in str(e) and "no context was provided" in str(e).lower():
-                        # Direct invocation - use the original function
-                        return fn(*call_args, **call_kwargs)
-                    raise
-
-            # Copy over attributes from dagster_fn
-            callable_wrapper.__name__ = getattr(dagster_fn, '__name__', fn.__name__)
-            callable_wrapper.__doc__ = getattr(dagster_fn, '__doc__', fn.__doc__)
-            callable_wrapper.__wrapped__ = fn
-            callable_wrapper._dagster_asset = dagster_fn
-
-            return callable_wrapper
-
-        # Handle both @asset and @asset(...) usage
-        if len(args) == 1 and callable(args[0]) and not kwargs:
-            # @asset (no parens)
-            return decorator(args[0])
-        else:
-            # @asset(...) (with parens)
-            return decorator
-
-    def asset_check(*args, **kwargs):  # type: ignore
-        """Wrapper around Dagster @asset_check that allows direct function calls."""
-        def decorator(fn):
-            dagster_fn = _dagster_asset_check(*args, **kwargs)(fn)
-            dagster_fn.__wrapped__ = fn
-
-            def callable_wrapper(*call_args, **call_kwargs):
-                try:
-                    return dagster_fn(*call_args, **call_kwargs)
-                except Exception as e:
-                    if "context" in str(e) and "no context was provided" in str(e).lower():
-                        return fn(*call_args, **call_kwargs)
-                    raise
-
-            callable_wrapper.__name__ = getattr(dagster_fn, '__name__', fn.__name__)
-            callable_wrapper.__doc__ = getattr(dagster_fn, '__doc__', fn.__doc__)
-            callable_wrapper.__wrapped__ = fn
-            callable_wrapper._dagster_asset_check = dagster_fn
-
-            return callable_wrapper
-
-        if len(args) == 1 and callable(args[0]) and not kwargs:
-            return decorator(args[0])
-        else:
-            return decorator
-
-    # Create a test-friendly wrapper around Dagster context
-    class AssetExecutionContext:  # type: ignore
-        """Wrapper that can be instantiated without arguments for testing.
-
-        When Dagster is available:
-        - AssetExecutionContext() creates a shim with loguru logger
-        - AssetExecutionContext(None) creates a shim with loguru logger
-        - AssetExecutionContext(context) stores context but uses loguru
-
-        This allows MVP scripts and tests to run without real Dagster runtime.
-        """
-        def __init__(self, op_execution_context=None) -> None:
-            # Always use loguru for simplicity - the real Dagster runtime
-            # will use actual AssetExecutionContext, not this wrapper
-            self.log = logger
-            self._is_shim = True
-            if op_execution_context:
-                # Store for potential future use, but don't try to wrap
-                self._op_execution_context = op_execution_context
+    # Wrap the real AssetExecutionContext to accept no args for testing
+    class AssetExecutionContext:
+        def __init__(self, op_execution_context: Any = None) -> None:
+            if op_execution_context is None:
+                # For testing: create a minimal mock-like object
+                self.log = logger
+                self._is_shim = True
+            else:
+                # For real usage: use the real Dagster context
+                self._real_context = _RealAssetExecutionContext(op_execution_context)
+                self.log = self._real_context.log
+                self._is_shim = False
 
 except Exception:  # pragma: no cover
     # Minimal shims so this module can be imported without Dagster installed
@@ -167,7 +75,7 @@ except Exception:  # pragma: no cover
         return _wrap
 
     class Output:  # type: ignore
-        def __init__(self, value, metadata=None):
+        def __init__(self, value: Any, metadata = None) -> None:
             self.value = value
             self.metadata = metadata or {}
 
@@ -177,7 +85,7 @@ except Exception:  # pragma: no cover
             return v
 
     class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context=None) -> None:
+        def __init__(self, op_execution_context: Any = None) -> None:
             self.log = logger
             if op_execution_context:
                 # Store if provided for compatibility
@@ -218,7 +126,7 @@ def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
                     pass
             # NumPy scalars
             try:
-                import numpy as _np  # type: ignore
+                import numpy as _np
 
                 if isinstance(x, _np.generic):
                     try:
@@ -368,3 +276,5 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------
 # 0) contracts_ingestion
 # -----------------------------
+
+

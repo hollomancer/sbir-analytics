@@ -38,17 +38,17 @@ from loguru import logger
 
 # Optional dependencies
 try:
-    import pandas as pd  # type: ignore
+    import pandas as pd
 except Exception:
     pd = None  # type: ignore
 
 try:
-    import duckdb  # type: ignore
+    import duckdb
 except Exception:
     duckdb = None  # type: ignore
 
 try:
-    from rapidfuzz import fuzz  # type: ignore
+    from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:

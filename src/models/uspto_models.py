@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, field_validator
 DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-def _parse_date(value) -> date | None:
+def _parse_date(value: Any) -> date | None:
     if value is None or value == "":
         return None
     if isinstance(value, date):

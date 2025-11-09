@@ -9,24 +9,34 @@ This module provides:
 
 from __future__ import annotations
 
+
+from __future__ import annotations
+
 import json
 import os
+import time
+from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date, datetime
+from itertools import product
 from pathlib import Path
 from typing import Any
 
-from dagster import (  # Re-export for other USPTO modules
-    AssetCheckResult,
-    AssetCheckSeverity,
-    AssetIn,  # noqa: F401
-    MetadataValue,
-    asset,  # noqa: F401
-    asset_check,  # noqa: F401
-)
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
-from ...exceptions import DependencyError
+from ..exceptions import DependencyError
+
+# Import parsed/validated assets needed for asset_check decorators
+# These need to be imported before being referenced in asset_check() calls
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
 
 
 # Statistical reporting imports
@@ -34,8 +44,8 @@ try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
     from ..utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
 except Exception:
-    ModuleReport = None  # type: ignore
-    PatentAnalysisAnalyzer = None  # type: ignore
+    ModuleReport = None
+    PatentAnalysisAnalyzer = None
 
 # ============================================================================
 # Optional imports - degrade gracefully when dependencies are unavailable
@@ -43,48 +53,48 @@ except Exception:
 
 # USPTO extractor and transformers
 try:  # pragma: no cover - defensive import
-    from ...extractors.uspto_extractor import USPTOExtractor  # type: ignore
+    from ..extractors.uspto_extractor import USPTOExtractor  # type: ignore
 except Exception:
-    USPTOExtractor = None  # type: ignore
+    USPTOExtractor = None
 
 try:  # pragma: no cover - defensive import
-    from ...extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
+    from ..extractors.uspto_ai_extractor import USPTOAIExtractor  # type: ignore
 except Exception:
-    USPTOAIExtractor = None  # type: ignore
+    USPTOAIExtractor = None
 
 # Validators
 try:  # pragma: no cover - defensive import
-    from ...quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
+    from ..quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
 except Exception:
-    validate_rf_id_uniqueness = None  # type: ignore
-    USPTODataQualityValidator = None  # type: ignore
-    USPTOValidationConfig = None  # type: ignore
+    validate_rf_id_uniqueness = None
+    USPTODataQualityValidator = None
+    USPTOValidationConfig = None
 
 # Transformers
 try:  # pragma: no cover - defensive import
-    from ...transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
+    from ..transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
 except Exception:
-    PatentAssignmentTransformer = None  # type: ignore
+    PatentAssignmentTransformer = None
 
 # Models
 try:  # pragma: no cover - defensive import
-    from ...models.uspto_models import PatentAssignment  # type: ignore
+    from ..models.uspto_models import PatentAssignment  # type: ignore
 except Exception:
-    PatentAssignment = None  # type: ignore
+    PatentAssignment = None
 
 # Neo4j loaders
 try:  # pragma: no cover - defensive import
-    from ...loaders import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
+    from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
 except Exception:
-    Neo4jClient = None  # type: ignore
-    Neo4jConfig = None  # type: ignore
-    LoadMetrics = None  # type: ignore
+    Neo4jClient = None
+    Neo4jConfig = None
+    LoadMetrics = None
 
 try:  # pragma: no cover - defensive import
-    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig  # type: ignore
+    from ..loaders.neo4j import PatentLoader, PatentLoaderConfig
 except Exception:
-    PatentLoader = None  # type: ignore
-    PatentLoaderConfig = None  # type: ignore
+    PatentLoader = None
+    PatentLoaderConfig = None
 
 # ============================================================================
 # Configuration Constants
@@ -139,7 +149,9 @@ LOAD_SUCCESS_THRESHOLD = float(os.environ.get("SBIR_ETL__USPTO__LOAD_SUCCESS_THR
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
-def _get_input_dir(context) -> Path:
+
+
+def _get_input_dir(context: Any) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
     """
@@ -237,7 +249,7 @@ def _make_parsing_check(
     and fails the check if any file reported parsing failures.
     """
 
-    def _check(context, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
+    def _check(context: Any, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []
         errors = {}
@@ -286,10 +298,36 @@ def _make_parsing_check(
     return _check
 
 
-# NOTE: Asset checks have been removed due to circular import issues.
-# These checks referenced assets (e.g., parsed_uspto_assignments) that are defined in parsing.py,
-# but utils.py is imported before parsing.py completes its module initialization.
-# If these checks are needed, they should be moved to parsing.py or created after all imports complete.
+# Create concrete asset_check functions and bind them to the parsed assets using the decorator
+uspto_assignments_parsing_check = asset_check(
+    asset=parsed_uspto_assignments,
+    description="Verify each discovered assignment file can be parsed for a small sample",
+    additional_ins={"raw_files": AssetIn("raw_uspto_assignments")},
+)(_make_parsing_check("raw_uspto_assignments", "parsed_uspto_assignments"))
+
+uspto_assignees_parsing_check = asset_check(
+    asset=validated_uspto_assignees,
+    description="Verify each discovered assignee file can be parsed for a small sample",
+    additional_ins={"raw_files": AssetIn("raw_uspto_assignees")},
+)(_make_parsing_check("raw_uspto_assignees", "validated_uspto_assignees"))
+
+uspto_assignors_parsing_check = asset_check(
+    asset=validated_uspto_assignors,
+    description="Verify each discovered assignor file can be parsed for a small sample",
+    additional_ins={"raw_files": AssetIn("raw_uspto_assignors")},
+)(_make_parsing_check("raw_uspto_assignors", "validated_uspto_assignors"))
+
+uspto_documentids_parsing_check = asset_check(
+    asset=parsed_uspto_documentids,
+    description="Verify each discovered documentid file can be parsed for a small sample",
+    additional_ins={"raw_files": AssetIn("raw_uspto_documentids")},
+)(_make_parsing_check("raw_uspto_documentids", "parsed_uspto_documentids"))
+
+uspto_conveyances_parsing_check = asset_check(
+    asset=parsed_uspto_conveyances,
+    description="Verify each discovered conveyance file can be parsed for a small sample",
+    additional_ins={"raw_files": AssetIn("raw_uspto_conveyances")},
+)(_make_parsing_check("raw_uspto_conveyances", "parsed_uspto_conveyances"))
 
 
 # ============================================================================
@@ -297,10 +335,10 @@ def _make_parsing_check(
 # ============================================================================
 
 
-def _build_validator_config(context) -> USPTOValidationConfig:
+def _build_validator_config(context: Any) -> USPTOValidationConfig:
     """Build validation config from context op_config with defaults."""
     if USPTOValidationConfig is None:
-        return None  # type: ignore
+        return None
     cfg = getattr(context, "op_config", {}) or {}
     return USPTOValidationConfig(
         chunk_size=int(cfg.get("chunk_size", 10000)),
@@ -316,6 +354,7 @@ def _build_validator_config(context) -> USPTOValidationConfig:
 def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict[str, Any]]:
     """Extract table-specific results from validation report."""
     return (report or {}).get("tables", {}).get(table, {}) or {}
+
 
 
 def _now_suffix() -> str:
@@ -347,13 +386,13 @@ def _serialize_assignment(model: Any) -> dict[str, Any]:
     if model is None:
         return {}
     if hasattr(model, "model_dump"):
-        return model.model_dump(mode="json")  # type: ignore[attr-defined]
+        return model.model_dump(mode="json")
     if isinstance(model, dict):
         return model
     return dict(model.__dict__)
 
 
-def _iter_small_sample(store: list[Any], new_item: Any, limit: int) -> None:
+def _iter_small_sample(store: list[Any], new_item, limit: int) -> None:
     if len(store) < limit:
         store.append(new_item)
 
@@ -380,7 +419,10 @@ def _normalize_country(country: str | None) -> str | None:
     return c
 
 
-def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
+@dataclass
+
+
+def _resolve_output_paths(context: Any, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)
@@ -404,6 +446,8 @@ def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
                 continue
 
 
+
+
 def _ensure_output_dir() -> Path:
     """Ensure output directory exists."""
     DEFAULT_NEO4J_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -412,7 +456,7 @@ def _ensure_output_dir() -> Path:
 
 def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
     """Load JSONL file of transformed records."""
-    records = []
+    records: list[Any] = []
     if not file_path.exists():
         logger.warning(f"Transformed file not found: {file_path}")
         return records
@@ -469,6 +513,8 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
 # ============================================================================
 
 
+
+
 def _ensure_dir_ai(p: Path) -> None:
     """Ensure directory exists for AI assets (duplicate name resolved)."""
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -484,7 +530,7 @@ def _batch_to_dataframe(batch: list[dict]):
       - extracted_at
     """
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception as exc:  # pragma: no cover
         raise DependencyError(
             "pandas is required to convert batches to DataFrame",
@@ -507,3 +553,5 @@ def _batch_to_dataframe(batch: list[dict]):
             }
         )
     return pd.DataFrame(rows)
+
+

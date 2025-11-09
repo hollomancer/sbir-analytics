@@ -65,7 +65,7 @@ class NAICSEnricher:
                 key_type = row["key_type"]
                 key = row["key"]
                 raw = row["naics_candidates"]
-                naics = set()
+                naics: set[Any] = set()
                 if raw is None:
                     naics = set()
                 else:

@@ -23,8 +23,8 @@ try:
     RPY2_AVAILABLE = True
 except ImportError:
     RPY2_AVAILABLE = False
-    ro = None  # type: ignore
-    localconverter = None  # type: ignore
+    ro = None
+    localconverter = None
 
 
 def build_state_model(
@@ -59,7 +59,7 @@ def build_state_model(
         specs = {"BaseIOSchema": "2017"}
 
     # Convert specs dict to R list
-    r_specs = ro.ListVector(specs)  # type: ignore
+    r_specs = ro.ListVector(specs)
 
     try:
         model = call_r_function(
@@ -103,7 +103,7 @@ def get_state_value_added(
     if specs is None:
         specs = {"BaseIOSchema": "2017"}
 
-    r_specs = ro.ListVector(specs)  # type: ignore
+    r_specs = ro.ListVector(specs)
 
     components = {}
 
@@ -174,7 +174,7 @@ def build_useeior_state_models(
         kwargs["year"] = year
 
     if configpaths is not None:
-        kwargs["configpaths"] = ro.StrVector(configpaths)  # type: ignore
+        kwargs["configpaths"] = ro.StrVector(configpaths)
 
     try:
         models = call_r_function(useeior_pkg, "buildTwoRegionModels", **kwargs)
@@ -273,8 +273,8 @@ def format_demand_vector_from_shocks(
     amounts = shocks_df[amount_col].astype(float).tolist()
 
     # Create R named vector
-    r_vector = ro.FloatVector(amounts)  # type: ignore
-    r_vector.names = ro.StrVector(sectors)  # type: ignore
+    r_vector = ro.FloatVector(amounts)
+    r_vector.names = ro.StrVector(sectors)
 
     # Try to format using USEEIOR function if available
     try:
@@ -315,8 +315,8 @@ def extract_economic_components_from_impacts(
 
     # Extract production impacts from N matrix (commodity outputs)
     try:
-        with localconverter(ro.default_converter + converter):  # type: ignore
-            n_matrix = ro.conversion.rpy2py(impacts_result.rx2("N"))  # type: ignore
+        with localconverter(ro.default_converter + converter):
+            n_matrix = ro.conversion.rpy2py(impacts_result.rx2("N"))
 
         # N matrix contains commodity outputs
         # Sum by sector to get production impacts
@@ -401,7 +401,7 @@ def compute_impacts_via_useeior_state_models(
 
             # For now, try to use USEEIOR's buildTwoRegionModels and get state
             state_models = build_useeior_state_models(useeior_pkg, modelname, year)
-            state_model = state_models.rx2(state)  # type: ignore
+            state_model = state_models.rx2(state)
 
             # Format shocks as demand vector
             demand = format_demand_vector_from_shocks(useeior_pkg, state_model, state_shocks)

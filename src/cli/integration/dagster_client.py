@@ -90,7 +90,7 @@ class DagsterClient:
         Returns:
             List of asset dictionaries with key, group, description, etc.
         """
-        assets_info = []
+        assets_info: list[Any] = []
         if self.defs.assets is None:
             return assets_info
         for asset in self.defs.assets:
@@ -124,7 +124,7 @@ class DagsterClient:
         try:
             # Get asset materializations from instance
             key = AssetKey.from_user_string(asset_key) if isinstance(asset_key, str) else asset_key
-            materializations = self.instance.get_event_records(  # type: ignore[call-overload]
+            materializations = self.instance.get_event_records(
                 EventRecordsFilter(
                     event_type=DagsterEventType.ASSET_MATERIALIZATION,
                     asset_key=key,
@@ -139,7 +139,7 @@ class DagsterClient:
                     event.dagster_event.metadata
                     if event and hasattr(event, "dagster_event") and event.dagster_event
                     else {}
-                )  # type: ignore[attr-defined]
+                )
 
                 return AssetStatus(
                     asset_key=asset_key,

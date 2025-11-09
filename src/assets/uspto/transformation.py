@@ -14,27 +14,26 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import date, datetime
 from itertools import product
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from loguru import logger
 
+from src.extractors.uspto_extractor import USPTOExtractor
+from src.loaders.neo4j.client import Neo4jClient
+from src.config.schemas import Neo4jConfig
+
 from .utils import (
-    DEFAULT_NEO4J_DATABASE,
-    DEFAULT_NEO4J_PASSWORD,
-    DEFAULT_NEO4J_URI,
-    DEFAULT_NEO4J_USER,
-    LINKAGE_TARGET,
-    TRANSFORM_SUCCESS_THRESHOLD,
     AssetCheckResult,
     AssetCheckSeverity,
     AssetIn,
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
-    USPTOExtractor,
+    _coerce_str,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -47,19 +46,15 @@ from .utils import (
     asset_check,
 )
 
-
-# Neo4j imports
-try:
-    from ...loaders import Neo4jClient, Neo4jConfig
-except Exception:
-    Neo4jClient = None
-    Neo4jConfig = None
-
-
-from dataclasses import dataclass
+# Constants
+TRANSFORM_SUCCESS_THRESHOLD = 0.9
+LINKAGE_TARGET = 0.8
+DEFAULT_NEO4J_URI = "bolt://localhost:7687"
+DEFAULT_NEO4J_USER = "neo4j"
+DEFAULT_NEO4J_PASSWORD = "password"
+DEFAULT_NEO4J_DATABASE = "neo4j"
 
 
-@dataclass
 class JoinedRow:
     data: dict[str, Any]
     rf_id: str | None
@@ -195,6 +190,7 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
+
 @asset(
     description="Transform USPTO assignments into normalized PatentAssignment models",
     group_name="extraction",
@@ -307,7 +303,7 @@ def transformed_patent_assignments(
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
+def transformed_patents(context: Any, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, base_dir = _resolve_output_paths(context, "patents")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
@@ -355,9 +351,9 @@ def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dic
 
     with output_path.open("w", encoding="utf-8") as fh:
         for entry in patents.values():
-            entry["assignee_names"] = sorted(entry["assignee_names"])  # type: ignore
-            entry["assignor_names"] = sorted(entry["assignor_names"])  # type: ignore
-            entry["linked_companies"] = sorted(entry["linked_companies"])  # type: ignore
+            entry["assignee_names"] = sorted(entry["assignee_names"])
+            entry["assignor_names"] = sorted(entry["assignor_names"])
+            entry["linked_companies"] = sorted(entry["linked_companies"])
             if entry["linked_companies"]:
                 linked += 1
             fh.write(json.dumps(entry) + "\n")
@@ -377,7 +373,7 @@ def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dic
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patent_entities(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
+def transformed_patent_entities(context: Any, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
@@ -421,8 +417,8 @@ def transformed_patent_entities(context, transformed_assignments: dict[str, Any]
 
     with output_path.open("w", encoding="utf-8") as fh:
         for entry in entities.values():
-            entry["rf_ids"] = sorted(entry["rf_ids"])  # type: ignore
-            entry["linked_companies"] = sorted(entry["linked_companies"])  # type: ignore
+            entry["rf_ids"] = sorted(entry["rf_ids"])
+            entry["linked_companies"] = sorted(entry["linked_companies"])
             fh.write(json.dumps(entry) + "\n")
 
     metadata = {
@@ -467,12 +463,12 @@ def uspto_transformation_success_check(
 def uspto_company_linkage_check(
     context, transformed_assignments: dict[str, Any]
 ) -> AssetCheckResult:
-    linkage_rate = transformed_assignments.get("linkage_rate", 0.0)
+    linkage_rate = transformed_patent_assignments.get("linkage_rate", 0.0)
     passed = linkage_rate >= LINKAGE_TARGET
     metadata = {
         "linkage_rate": linkage_rate,
-        "linked_assignments": transformed_assignments.get("linked_assignments", 0),
-        "success_count": transformed_assignments.get("success_count", 0),
+        "linked_assignments": transformed_patent_assignments.get("linked_assignments", 0),
+        "success_count": transformed_patent_assignments.get("success_count", 0),
         "target": LINKAGE_TARGET,
     }
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
@@ -491,7 +487,7 @@ def uspto_company_linkage_check(
 def _get_neo4j_client() -> Neo4jClient | None:
     """Create and return a Neo4j client, or None if unavailable."""
     if Neo4jClient is None or Neo4jConfig is None:
-        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")
+        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")  # type: ignore[unreachable]
         return None
 
     try:
@@ -507,3 +503,5 @@ def _get_neo4j_client() -> Neo4jClient | None:
     except Exception as e:
         logger.error(f"Failed to create Neo4j client: {e}")
         return None
+
+

@@ -47,7 +47,7 @@ def transformed_transition_detections(
     scores = (
         pd.to_numeric(df["score"], errors="coerce").fillna(0.0)
         if "score" in df.columns
-        else pd.Series([], dtype=float)  # type: ignore
+        else pd.Series([], dtype=float)
     )
     total = int(len(df))
     high_conf = int((scores >= threshold).sum()) if total > 0 else 0

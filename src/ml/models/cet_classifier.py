@@ -54,7 +54,7 @@ class CETAwareTfidfVectorizer(TfidfVectorizer):
         self.keyword_boost_factor = keyword_boost_factor
 
         # Build flat keyword set for fast lookup
-        self.keyword_set = set()
+        self.keyword_set: set[Any] = set()
         for keywords in cet_keywords.values():
             self.keyword_set.update(k.lower() for k in keywords)
 
@@ -444,7 +444,7 @@ class ApplicabilityModel:
             List of score dictionaries (CET ID -> score)
         """
         # Initialize scores_list with empty dictionaries for each text
-        scores_list = [{} for _ in texts]
+        scores_list: Any = [{} for _ in texts]
 
         # Get prediction from each CET classifier for all texts at once
         for cet_id, pipeline in self.pipelines.items():

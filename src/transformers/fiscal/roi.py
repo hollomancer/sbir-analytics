@@ -245,7 +245,7 @@ class FiscalROICalculator:
         }
 
         # Sensitivity analysis placeholder (will be populated by sensitivity analysis asset)
-        sensitivity_analysis = {}
+        sensitivity_analysis: dict[Any, Any] = {}
 
         # Create summary
         summary = FiscalReturnSummary(

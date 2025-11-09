@@ -393,7 +393,7 @@ class AlertCollector:
 
         return md
 
-    def log_alerts(self):
+    def log_alerts(self) -> None:
         """Log all alerts with structured context."""
         for alert in self.alerts:
             log_dict = alert.to_log_dict()

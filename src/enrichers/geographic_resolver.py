@@ -475,7 +475,7 @@ class GeographicResolver:
         logger.info(f"Starting geographic resolution for {len(awards_df)} awards")
 
         # Track resolution statistics
-        source_counts = {}
+        source_counts: dict[Any, Any] = {}
         confidence_distribution = []
         resolved_count = 0
 

@@ -35,13 +35,15 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+from typing import Any
+
 
 from loguru import logger
 
 
 # Try to use rapidfuzz if installed for higher-quality fuzzy matching.
 try:
-    from rapidfuzz import fuzz  # type: ignore
+    from rapidfuzz import fuzz
 
     _RAPIDFUZZ_AVAILABLE = True
 except Exception:
@@ -127,14 +129,14 @@ class VendorResolver:
         self._load_records(records)
 
     @classmethod
-    def from_records(cls, records: Iterable[VendorRecord], **kwargs) -> VendorResolver:
+    def from_records(cls: Any, records: Iterable[VendorRecord], **kwargs) -> VendorResolver:
         """Convenience constructor."""
         return cls(records, **kwargs)
 
     def _normalize_name(self, name: str) -> str:
         """Normalize company names for indexing and exact comparisons."""
         if name is None:
-            return ""
+            return ""  # type: ignore[unreachable]
         # Basic normalization: uppercase, trim, collapse whitespace, strip punctuation-ish chars
         n = " ".join(name.strip().split())
         n = n.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")

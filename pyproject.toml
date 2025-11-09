@@ -45,6 +45,8 @@ pyreadstat = "^1.1.4"
 pandas-stubs = "^2.2.0"
 types-psutil = "^5.9.0"
 types-PyYAML = "^6.0.0"
+types-tqdm = "^4.66.0"
+types-requests = "^2.31.0"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
@@ -93,21 +95,18 @@ python_version = "3.11"
 warn_return_any = false
 warn_unused_configs = true
 # Relaxed settings to allow gradual typing of existing codebase
-# Set these to true once existing code is annotated
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-check_untyped_defs = false  # Don't check untyped code at all
+check_untyped_defs = false
 disallow_untyped_decorators = false
 no_implicit_optional = false
 warn_redundant_casts = false
-warn_unused_ignores = false  # Don't warn about unused type: ignore comments
+warn_unused_ignores = false
 warn_no_return = false
 warn_unreachable = false
 strict_equality = false
-# Allow untyped calls and definitions
 allow_untyped_calls = true
 allow_untyped_defs = true
-# Don't require Any explicit handling
 disallow_any_unimported = false
 disallow_any_generics = false
 
@@ -116,33 +115,21 @@ module = [
     "dagster.*",
     "neo4j.*",
     "duckdb.*",
-    "plotly.*",
     "rpy2.*",
+    "plotly.*",
     "sklearn.*",
     "scipy.*",
     "spacy.*",
+    "loguru.*",
+    "rich.*",
+    "typer.*",
+    "rapidfuzz.*",
+    "pyreadstat.*",
+    "pyarrow.*",
+    "memory_profiler.*",
+    "tqdm.*",
 ]
 ignore_missing_imports = true
-
-# Ignore errors in modules with pre-existing type issues
-# TODO: Fix these modules and remove from this list
-[[tool.mypy.overrides]]
-module = [
-    "src.transition.*",
-    "src.cli.*",
-    "src.assets.*",
-    "src.models.*",
-    "src.utils.*",
-    "src.loaders.*",
-    "src.validators.*",
-    "src.transformers.*",
-    "src.migration.*",
-    "src.quality.*",
-    "src.enrichers.*",
-    "src.ml.*",
-    "src.extractors.*",
-]
-ignore_errors = true
 
 [tool.pytest.ini_options]
 markers = [

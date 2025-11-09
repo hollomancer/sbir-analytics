@@ -39,7 +39,7 @@ def raw_cet_human_sampling() -> Output:
     from random import Random
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -211,7 +211,7 @@ def validated_cet_iaa_report() -> Output:
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
@@ -246,7 +246,7 @@ def validated_cet_iaa_report() -> Output:
                 continue
 
     if not rows or pd is None:
-        payload = {
+        payload: Any = {
             "ok": True,
             "reason": "no_annotations" if not rows else "pandas_unavailable",
             "pairs": 0,
@@ -379,15 +379,15 @@ def validated_cet_drift_detection() -> Output:
     from pathlib import Path
 
     try:
-        import numpy as np  # type: ignore
-        import pandas as pd  # type: ignore
+        import numpy as np
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
         np = None  # type: ignore
 
     # Lazy import for AlertCollector (best-effort)
     try:
-        from src.utils.performance_alerts import (  # type: ignore
+        from src.utils.performance_alerts import (
             Alert,
             AlertCollector,
             AlertSeverity,
@@ -428,7 +428,7 @@ def validated_cet_drift_detection() -> Output:
     # Read awards
     def _read_awards():
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if awards_parquet.exists():
             try:
                 return pd.read_parquet(awards_parquet)
@@ -589,7 +589,7 @@ def validated_cet_drift_detection() -> Output:
             return float(js)
         else:
             # Pure python fallback
-            import math
+            import math  # type: ignore[unreachable]
 
             def safe_log2(x):
                 return math.log(x, 2) if x > 0 else 0.0

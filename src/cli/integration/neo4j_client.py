@@ -65,7 +65,7 @@ class Neo4jClient:
     def close(self) -> None:
         """Close Neo4j driver connection."""
         if self._driver is not None:
-            self._driver.close()
+            self._driver.close()  # type: ignore[unreachable]
             self._driver = None
 
     def health_check(self) -> Neo4jHealthStatus:

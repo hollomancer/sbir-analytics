@@ -274,8 +274,8 @@ def sbir_validation_report(
     }
 
     # Group issues by severity and field
-    issues_by_severity = {}
-    issues_by_field = {}
+    issues_by_severity: dict[Any, Any] = {}
+    issues_by_field: dict[Any, Any] = {}
 
     for issue in quality_report.issues:
         severity = issue.severity.value

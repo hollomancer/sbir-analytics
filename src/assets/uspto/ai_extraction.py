@@ -11,29 +11,30 @@ This module contains:
 """
 
 from __future__ import annotations
+import os
 
 import json
-import os
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from .utils import (
-    DEFAULT_AI_CHECKPOINT_DIR,
-    DEFAULT_AI_DEDUP_TABLE,
-    DEFAULT_AI_DUCKDB,
-    DEFAULT_AI_PROCESSED_DIR,
-    DEFAULT_AI_RAW_DIR,
-    DEFAULT_AI_SAMPLE_PATH,
-    DEFAULT_AI_TABLE,
-    DEFAULT_DEDUP_CHECKS,
-    DEFAULT_EXTRACT_CHECKS,
     AssetIn,
+    MetadataValue,
     USPTOAIExtractor,
     _batch_to_dataframe,
     _ensure_dir,
     _ensure_dir_ai,
     asset,
+    DEFAULT_AI_DUCKDB,
+    DEFAULT_AI_RAW_DIR,
+    DEFAULT_AI_TABLE,
+    DEFAULT_AI_DEDUP_TABLE,
+    DEFAULT_AI_PROCESSED_DIR,
+    DEFAULT_EXTRACT_CHECKS,
+    DEFAULT_AI_CHECKPOINT_DIR,
 )
 
 
@@ -44,7 +45,7 @@ from .utils import (
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def raw_uspto_ai_extract(context) -> dict[str, object]:
+def raw_uspto_ai_extract(context: Any) -> dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -70,34 +71,34 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     """
     if USPTOAIExtractor is None:
         msg = "USPTOAIExtractor unavailable (import failed); cannot perform extraction"
-        context.log.warning(msg)  # type: ignore[attr-defined]
+        context.log.warning(msg)
         _ensure_dir(DEFAULT_EXTRACT_CHECKS)
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "extractor_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "extractor_unavailable"}
 
     # Resolve config
-    raw_dir = Path(getattr(context, "op_config", {}).get("raw_dir", DEFAULT_AI_RAW_DIR))  # type: ignore[attr-defined]
-    file_globs = getattr(context, "op_config", {}).get("file_globs")  # type: ignore[attr-defined]
-    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))  # type: ignore[attr-defined]
-    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)  # type: ignore[attr-defined]
+    raw_dir = Path(getattr(context, "op_config", {}).get("raw_dir", DEFAULT_AI_RAW_DIR))
+    file_globs = getattr(context, "op_config", {}).get("file_globs")
+    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
+    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)
     checkpoint_dir = Path(
-        getattr(context, "op_config", {}).get("checkpoint_dir", DEFAULT_AI_CHECKPOINT_DIR)  # type: ignore[attr-defined]
+        getattr(context, "op_config", {}).get("checkpoint_dir", DEFAULT_AI_CHECKPOINT_DIR)
     )
-    batch_size = int(getattr(context, "op_config", {}).get("batch_size", 5000))  # type: ignore[attr-defined]
-    resume = bool(getattr(context, "op_config", {}).get("resume", True))  # type: ignore[attr-defined]
-    dedupe = bool(getattr(context, "op_config", {}).get("dedupe", True))  # type: ignore[attr-defined]
-    id_candidates = getattr(context, "op_config", {}).get("id_candidates", None)  # type: ignore[attr-defined]
+    batch_size = int(getattr(context, "op_config", {}).get("batch_size", 5000))
+    resume = bool(getattr(context, "op_config", {}).get("resume", True))
+    dedupe = bool(getattr(context, "op_config", {}).get("dedupe", True))
+    id_candidates = getattr(context, "op_config", {}).get("id_candidates", None)
 
     _ensure_dir(DEFAULT_EXTRACT_CHECKS)
     DEFAULT_AI_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Connect to DuckDB
     try:
-        import duckdb  # type: ignore
+        import duckdb
     except Exception as exc:
         msg = f"duckdb unavailable: {exc}"
-        context.log.warning(msg)  # type: ignore[attr-defined]
+        context.log.warning(msg)
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "duckdb_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "duckdb_unavailable"}
@@ -119,7 +120,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
             """
         )
     except Exception as exc:
-        context.log.exception("Failed to ensure DuckDB table %s: %s", table, exc)  # type: ignore[attr-defined]
+        context.log.exception("Failed to ensure DuckDB table %s: %s", table, exc)
         try:
             con.close()
         except Exception:
@@ -137,7 +138,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
             log_every=100_000,
         )
     except Exception as exc:
-        context.log.exception("Failed to initialize USPTOAIExtractor: %s", exc)  # type: ignore[attr-defined]
+        context.log.exception("Failed to initialize USPTOAIExtractor: %s", exc)
         try:
             con.close()
         except Exception:
@@ -148,7 +149,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
 
     files = extractor.discover_files(file_globs=file_globs)
     if not files:
-        context.log.warning("No USPTO AI files found under %s", str(raw_dir))  # type: ignore[attr-defined]
+        context.log.warning("No USPTO AI files found under %s", str(raw_dir))
         with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": True, "ingested": 0, "files": []}, fh, indent=2)
         try:
@@ -164,7 +165,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     try:
         for fp in files:
             sources.append(str(fp))
-            context.log.info("Extracting USPTO AI from %s", str(fp))  # type: ignore[attr-defined]
+            context.log.info("Extracting USPTO AI from %s", str(fp))
             try:
                 for batch in extractor.stream_batches(
                     fp,
@@ -181,7 +182,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
                     try:
                         df = _batch_to_dataframe(batch)
                     except Exception as exc:
-                        context.log.exception("Failed to convert batch to DataFrame: %s", exc)  # type: ignore[attr-defined]
+                        context.log.exception("Failed to convert batch to DataFrame: %s", exc)
                         continue
 
                     try:
@@ -202,14 +203,14 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
                         total_ingested += len(df)
                         total_batches += 1
                     except Exception as exc:
-                        context.log.exception("Failed to append batch to DuckDB: %s", exc)  # type: ignore[attr-defined]
+                        context.log.exception("Failed to append batch to DuckDB: %s", exc)
                     finally:
                         try:
                             con.unregister("tmp_batch")
                         except Exception:
                             pass
             except Exception as exc:
-                context.log.exception("Extraction failed for %s: %s", str(fp), exc)  # type: ignore[attr-defined]
+                context.log.exception("Extraction failed for %s: %s", str(fp), exc)
                 # continue with next file
                 continue
     finally:
@@ -231,7 +232,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     }
     with DEFAULT_EXTRACT_CHECKS.open("w", encoding="utf-8") as fh:
         json.dump(checks, fh, indent=2)
-    context.log.info("USPTO AI extraction completed", extra=checks)  # type: ignore[attr-defined]
+    context.log.info("USPTO AI extraction completed", extra=checks)
     return checks
 
 
@@ -243,7 +244,7 @@ def raw_uspto_ai_extract(context) -> dict[str, object]:
     ),
     ins={"raw_uspto_ai_extract": AssetIn()},
 )
-def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
+def uspto_ai_deduplicate(context: Any, raw_uspto_ai_extract) -> dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
 
@@ -256,16 +257,16 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
       - Deduplicated DuckDB table
       - Checks JSON at data/processed/uspto_ai_deduplicate.checks.json
     """
-    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))  # type: ignore[attr-defined]
-    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)  # type: ignore[attr-defined]
-    dedup_table = getattr(context, "op_config", {}).get("dedup_table", DEFAULT_AI_DEDUP_TABLE)  # type: ignore[attr-defined]
+    duckdb_path = Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
+    table = getattr(context, "op_config", {}).get("table", DEFAULT_AI_TABLE)
+    dedup_table = getattr(context, "op_config", {}).get("dedup_table", DEFAULT_AI_DEDUP_TABLE)
 
     _ensure_dir(DEFAULT_DEDUP_CHECKS)
     try:
-        import duckdb  # type: ignore
+        import duckdb
     except Exception as exc:
         msg = f"duckdb unavailable: {exc}"
-        context.log.warning(msg)  # type: ignore[attr-defined]
+        context.log.warning(msg)
         with DEFAULT_DEDUP_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "duckdb_unavailable"}, fh, indent=2)
         return {"ok": False, "reason": "duckdb_unavailable"}
@@ -320,10 +321,10 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
         }
         with DEFAULT_DEDUP_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump(checks, fh, indent=2)
-        context.log.info("USPTO AI deduplication completed", extra=checks)  # type: ignore[attr-defined]
+        context.log.info("USPTO AI deduplication completed", extra=checks)
         return checks
     except Exception as exc:
-        context.log.exception("Deduplication failed: %s", exc)  # type: ignore[attr-defined]
+        context.log.exception("Deduplication failed: %s", exc)
         with DEFAULT_DEDUP_CHECKS.open("w", encoding="utf-8") as fh:
             json.dump({"ok": False, "reason": "dedup_failed"}, fh, indent=2)
         return {"ok": False, "reason": "dedup_failed"}
@@ -341,7 +342,7 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     ),
     ins={"uspto_ai_deduplicate": AssetIn()},
 )
-def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
+def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> str:
     """
     Implements Task 11.3 (human sampling) using DuckDB ORDER BY RANDOM() LIMIT N.
 
@@ -354,17 +355,17 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     Output:
       - Path to written NDJSON sample
     """
-    Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))  # type: ignore[attr-defined]
-    getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)  # type: ignore[attr-defined]
-    int(getattr(context, "op_config", {}).get("sample_n", 200))  # type: ignore[attr-defined]
+    Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
+    getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)
+    int(getattr(context, "op_config", {}).get("sample_n", 200))
     output_path = Path(
-        getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH)  # type: ignore[attr-defined]
+        getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH)
     )
 
     try:
-        pass  # type: ignore
+        pass
     except Exception as exc:
-        context.log.warning("duckdb unavailable; cannot sample: %s", exc)  # type: ignore[attr-defined]
+        context.log.warning("duckdb unavailable; cannot sample: %s", exc)
         _ensure_dir_ai(output_path)
         with output_path.open("w", encoding="utf-8") as fh:
             fh.write("")  # empty sentinel
@@ -384,7 +385,7 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
         "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
     ),
 )
-def raw_uspto_ai_predictions(context) -> dict[str, object]:
+def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
     """
     Dagster asset that ingests the raw USPTO AI NDJSON into the DuckDB cache.
 
@@ -443,7 +444,7 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
     )
     dta_files = sorted(dta_dir.glob("*.dta")) if dta_dir.exists() else []
 
-    result_summary = {
+    result_summary: Any = {
         "ok": False,
         "ingested": 0,
         "skipped": 0,
@@ -453,8 +454,8 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
     }
 
     try:
-        import duckdb  # type: ignore
-        import pandas as pd  # type: ignore
+        import duckdb
+        import pandas as pd
     except Exception as exc:
         logger.exception("duckdb and pandas are required for USPTO AI ingest: %s", exc)
         result_summary = {
@@ -605,7 +606,7 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
+def validated_uspto_ai_cache_stats(context: Any) -> dict[str, int | None]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """
@@ -628,7 +629,7 @@ def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
     )
 
     try:
-        import duckdb  # type: ignore
+        import duckdb
     except Exception:
         context.log.warning("duckdb is unavailable; cannot compute cache stats")
         return {"cache_count": None, "duckdb": str(duckdb_path)}
@@ -661,7 +662,7 @@ def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
         "Writes the sample to `data/processed/uspto_ai_human_sample.ndjson` (or path configured via op_config)."
     ),
 )
-def raw_uspto_ai_human_sample(context) -> str:
+def raw_uspto_ai_human_sample(context: Any) -> str:
     """
     Produce a human evaluation sample from the DuckDB cache.
     """
@@ -697,7 +698,7 @@ def raw_uspto_ai_human_sample(context) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        import duckdb  # type: ignore
+        import duckdb
     except Exception:
         context.log.warning("duckdb unavailable; cannot sample")
         with output_path.open("w", encoding="utf-8") as fh:
@@ -745,7 +746,7 @@ def raw_uspto_ai_human_sample(context) -> str:
         "and produce a summary checks JSON and an NDJSON of matches."
     ),
 )
-def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
+def enriched_uspto_ai_patent_join(context: Any) -> dict[str, object]:
     """
     Asset that links cached USPTO AI predictions to transformed patents for downstream
     validation and agreement analysis.
@@ -816,7 +817,7 @@ def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
     )
 
     try:
-        import duckdb  # type: ignore
+        import duckdb
     except Exception:
         msg = "duckdb unavailable; cannot perform patent join"
         context.log.warning(msg)
@@ -898,3 +899,50 @@ def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
 # ============================================================================
 # Exported symbols
 # ============================================================================
+
+__all__ = [
+    # Stage 1: Raw discovery and parsing
+    "raw_uspto_assignments",
+    "raw_uspto_assignees",
+    "raw_uspto_assignors",
+    "raw_uspto_documentids",
+    "raw_uspto_conveyances",
+    "parsed_uspto_assignments",
+    "validated_uspto_assignees",
+    "validated_uspto_assignors",
+    "parsed_uspto_documentids",
+    "parsed_uspto_conveyances",
+    "uspto_assignments_parsing_check",
+    "uspto_assignees_parsing_check",
+    "uspto_assignors_parsing_check",
+    "uspto_documentids_parsing_check",
+    "uspto_conveyances_parsing_check",
+    # Stage 2: Validation
+    "validated_uspto_assignments",
+    "uspto_rf_id_asset_check",
+    "uspto_completeness_asset_check",
+    "uspto_referential_asset_check",
+    # Stage 3: Transformation
+    "transformed_patent_assignments",
+    "transformed_patents",
+    "transformed_patent_entities",
+    "uspto_transformation_success_check",
+    "uspto_company_linkage_check",
+    # Stage 4: Neo4j Loading
+    "loaded_patents",
+    "loaded_patent_assignments",
+    "loaded_patent_entities",
+    "loaded_patent_relationships",
+    "patent_load_success_rate",
+    "assignment_load_success_rate",
+    "patent_relationship_cardinality",
+    # Stage 5: AI Extraction
+    "raw_uspto_ai_extract",
+    "uspto_ai_deduplicate",
+    "raw_uspto_ai_human_sample_extraction",
+    # Additional AI assets from consolidated uspto_ai_assets.py
+    "raw_uspto_ai_predictions",
+    "validated_uspto_ai_cache_stats",
+    "raw_uspto_ai_human_sample",
+    "enriched_uspto_ai_patent_join",
+]

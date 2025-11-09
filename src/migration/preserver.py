@@ -18,7 +18,7 @@ from .models import FileSystemError, GeneratedSpec
 class HistoricalPreserver:
     """Preserves OpenSpec content for historical reference."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize preserver."""
         pass
 
@@ -51,7 +51,7 @@ class HistoricalPreserver:
         except Exception as e:
             raise FileSystemError(f"Failed to archive OpenSpec content: {e}")
 
-    def _create_migration_mapping(self, archive_path: Path, generated_specs: list[GeneratedSpec]):
+    def _create_migration_mapping(self, archive_path: Path, generated_specs: list[GeneratedSpec]) -> None:
         """Create mapping from OpenSpec to Kiro specs."""
         logger.info("Creating migration mapping")
 
@@ -98,7 +98,7 @@ class HistoricalPreserver:
 
         return mapping
 
-    def _create_archive_readme(self, archive_path: Path):
+    def _create_archive_readme(self, archive_path: Path) -> None:
         """Create README for archived content."""
         readme_content = f"""# OpenSpec Archive
 

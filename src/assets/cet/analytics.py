@@ -10,7 +10,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .utils import Output, asset
+from typing import Any
+
+from loguru import logger
+
+from .utils import (
+    Output,
+    asset,
+)
 
 
 @asset(
@@ -27,17 +34,18 @@ def transformed_cet_analytics() -> Output:
     Emit alerts using AlertCollector when coverage falls below configured threshold.
     Write a checks JSON under reports/alerts/.
     """
+    import json
     from datetime import datetime
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy imports at module import time
     try:
-        from src.utils.performance_alerts import AlertCollector  # type: ignore
+        from src.utils.performance_alerts import AlertCollector
     except Exception:
         AlertCollector = None  # type: ignore
 
@@ -52,9 +60,9 @@ def transformed_cet_analytics() -> Output:
     awards_json = processed_dir / "cet_award_classifications.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if parquet_path.exists():
             try:
                 df = pd.read_parquet(parquet_path)
@@ -162,6 +170,8 @@ def transformed_cet_analytics() -> Output:
     return Output(value=metadata, metadata=metadata)
 
 
+
+
 @asset(
     name="transformed_cet_analytics_aggregates",
     key_prefix=["ml"],
@@ -175,17 +185,18 @@ def transformed_cet_analytics_aggregates() -> Output:
       - Compare latest-year coverage with a baseline in reports/benchmarks/baseline.json
       - Write dashboards under reports/analytics and alerts under reports/alerts
     """
+    import json
     from datetime import datetime
     from pathlib import Path
 
     try:
-        import pandas as pd  # type: ignore
+        import pandas as pd
     except Exception:
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy deps at module import time
     try:
-        from src.utils.performance_alerts import AlertCollector  # type: ignore
+        from src.utils.performance_alerts import AlertCollector
     except Exception:
         AlertCollector = None  # type: ignore
 
@@ -204,9 +215,9 @@ def transformed_cet_analytics_aggregates() -> Output:
     companies_json = processed_dir / "cet_company_profiles.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
         if pd is None:
-            return None
+            return None  # type: ignore[unreachable]
         if parquet_path.exists():
             try:
                 df = pd.read_parquet(parquet_path)
@@ -392,3 +403,5 @@ def transformed_cet_analytics_aggregates() -> Output:
         "alerts_path": str(alerts_dir / "cet_analytics_aggregates.alerts.json"),
     }
     return Output(value=metadata, metadata=metadata)
+
+
