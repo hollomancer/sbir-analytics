@@ -82,11 +82,11 @@ class PatentFeatureExtractor:
         texts, feature_vectors = extractor.features_for_dataframe(df, title_col="title")
     """
 
-    def __init__(self, keywords_map=None, stopwords=None):
+    def __init__(self, keywords_map=None, stopwords=None) -> None:
         self.keywords_map = keywords_map
         self.stopwords = stopwords
 
-    def features_for_dataframe(self, df, title_col: str = "title", assignee_col: str | None = None):
+    def features_for_dataframe(self, df, title_col: str = "title", assignee_col: str | None = None) -> None:
         """
         Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
           - texts: List[str] suitable to pass to classifier pipelines (combined normalized title + assignee hint)

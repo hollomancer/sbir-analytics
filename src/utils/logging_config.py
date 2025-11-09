@@ -152,7 +152,7 @@ class LogContext:
             return logger.bind(**extra)
         return logger
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Reset context variables."""
         if self.stage_token is not None:
             stage_context.reset(self.stage_token)

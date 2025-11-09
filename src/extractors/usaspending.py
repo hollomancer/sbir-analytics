@@ -51,7 +51,7 @@ class DuckDBUSAspendingExtractor:
             self.connection.execute("SET enable_object_cache=true")
         return self.connection
 
-    def close(self):
+    def close(self) -> None:
         """Close database connection."""
         if self.connection:
             self.connection.close()
@@ -61,7 +61,7 @@ class DuckDBUSAspendingExtractor:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""
         self.close()
 

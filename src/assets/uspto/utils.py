@@ -28,6 +28,16 @@ from loguru import logger
 
 from ..exceptions import DependencyError
 
+# Import parsed/validated assets needed for asset_check decorators
+# These need to be imported before being referenced in asset_check() calls
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import

@@ -98,7 +98,7 @@ class InflationAdjuster:
             f"Initialized InflationAdjuster with base year {self.base_year} and {len(self.bea_gdp_deflator)} deflator values"
         )
 
-    def _normalize_deflator_to_base_year(self):
+    def _normalize_deflator_to_base_year(self) -> None:
         """Normalize deflator values to use configured base year as 100."""
         if self.base_year in self.bea_gdp_deflator:
             base_value = self.bea_gdp_deflator[self.base_year]

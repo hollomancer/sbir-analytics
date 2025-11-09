@@ -68,7 +68,7 @@ class KiroSpecGenerator:
             source_specs=spec.source_mapping.get("openspec_specs", []),
         )
 
-    def _write_requirements_file(self, file_path: Path, requirements):
+    def _write_requirements_file(self, file_path: Path, requirements) -> None:
         """Write requirements.md in proper Kiro format."""
         content = f"""# Requirements Document
 
@@ -128,7 +128,7 @@ class KiroSpecGenerator:
 
         return "\n".join(lines)
 
-    def _write_design_file(self, file_path: Path, design):
+    def _write_design_file(self, file_path: Path, design) -> None:
         """Write design.md in proper Kiro format."""
         content = f"""# Design Document
 
@@ -158,7 +158,7 @@ class KiroSpecGenerator:
 """
         file_path.write_text(content, encoding="utf-8")
 
-    def _write_tasks_file(self, file_path: Path, tasks):
+    def _write_tasks_file(self, file_path: Path, tasks) -> None:
         """Write tasks.md in proper Kiro format."""
         content = f"""# Implementation Plan
 

@@ -25,7 +25,7 @@ from .models import (
 class ContentTransformer:
     """Transforms OpenSpec content to Kiro format."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize transformer."""
         self.ears_converter = EARSConverter()
 

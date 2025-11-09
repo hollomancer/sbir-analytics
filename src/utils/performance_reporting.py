@@ -95,7 +95,7 @@ class MetricComparison:
     regression_severity: str = "PASS"  # PASS, WARNING, FAILURE
     regression_messages: list[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.regression_messages is None:
             self.regression_messages = []
 

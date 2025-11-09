@@ -75,7 +75,7 @@ except Exception:  # pragma: no cover
         return _wrap
 
     class Output:  # type: ignore
-        def __init__(self, value, metadata=None):
+        def __init__(self, value, metadata=None) -> None:
             self.value = value
             self.metadata = metadata or {}
 

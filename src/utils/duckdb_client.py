@@ -54,7 +54,7 @@ class DuckDBClient:
             return "'" + escaped + "'"
 
     @contextmanager
-    def connection(self):
+    def connection(self) -> None:
         """Context manager for database connection."""
         if self.database_path == ":memory:":
             # For in-memory databases, use persistent connection
@@ -102,7 +102,7 @@ class DuckDBClient:
             rows = result.fetchall()
             return [dict(zip(columns, row, strict=False)) for row in rows]
 
-    def close(self):
+    def close(self) -> None:
         """Close persistent connection if it exists."""
         if self._persistent_conn:
             self._persistent_conn.close()
@@ -313,7 +313,7 @@ class DuckDBClient:
         except Exception:
             return False
 
-    def fetch_df_chunks(self, query: str, batch_size: int = 10000):
+    def fetch_df_chunks(self, query: str, batch_size: int = 10000) -> None:
         """
         Generator that yields pandas DataFrames for a SQL query in chunked pages.
 

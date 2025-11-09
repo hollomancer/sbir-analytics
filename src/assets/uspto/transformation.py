@@ -16,10 +16,15 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
+from itertools import product
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from loguru import logger
+
+from src.extractors.uspto_extractor import USPTOExtractor
+from src.loaders.neo4j.client import Neo4jClient
+from src.config.schemas import Neo4jConfig
 
 from .utils import (
     AssetCheckResult,
@@ -40,6 +45,14 @@ from .utils import (
     asset,
     asset_check,
 )
+
+# Constants
+TRANSFORM_SUCCESS_THRESHOLD = 0.9
+LINKAGE_TARGET = 0.8
+DEFAULT_NEO4J_URI = "bolt://localhost:7687"
+DEFAULT_NEO4J_USER = "neo4j"
+DEFAULT_NEO4J_PASSWORD = "password"
+DEFAULT_NEO4J_DATABASE = "neo4j"
 
 
 class JoinedRow:

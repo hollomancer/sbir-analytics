@@ -435,7 +435,7 @@ class ChunkedEnricher:
 
         return resume_chunk
 
-    def clear_checkpoints(self):
+    def clear_checkpoints(self) -> None:
         """Clear all checkpoint files after successful completion.
 
         Call this after successful processing to clean up checkpoints.
