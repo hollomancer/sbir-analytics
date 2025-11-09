@@ -16,7 +16,7 @@ graph TB
         CLI[E2E Test CLI]
         Reports[Test Reports & Artifacts]
     end
-    
+
     subgraph "Docker Compose Test Environment"
         subgraph "Test Orchestrator Container"
             TestRunner[E2E Test Runner]
@@ -24,18 +24,18 @@ graph TB
             Validator[Pipeline Validator]
             Monitor[Resource Monitor]
         end
-        
+
         subgraph "Service Containers"
             Neo4j[Neo4j Test Instance]
             App[SBIR ETL App]
         end
-        
+
         subgraph "Test Data Volumes"
             TestData[Sample Datasets]
             Artifacts[Test Artifacts]
         end
     end
-    
+
     CLI --> TestRunner
     TestRunner --> DataManager
     TestRunner --> Validator
@@ -313,7 +313,7 @@ services:
       - SBIR_ETL__PIPELINE__CHUNK_SIZE=1000  # Reduced for memory efficiency
 
     mem_limit: 4g  # MacBook Air memory constraint
-    
+
   neo4j:
     # Existing Neo4j service with E2E optimizations
     environment:
@@ -384,7 +384,7 @@ e2e_testing:
       dataset_sizes:
         sbir_records: 1000
         usaspending_records: 5000
-  
+
   resource_monitoring:
     memory_warning_threshold_gb: 6.0
     memory_critical_threshold_gb: 7.5

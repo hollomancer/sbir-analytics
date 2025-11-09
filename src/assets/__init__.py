@@ -29,11 +29,6 @@ __all__: list[str] = [
     "parsed_uspto_assignments",
     "parsed_uspto_documentids",
     "parsed_uspto_conveyances",
-    "uspto_assignments_parsing_check",
-    "uspto_assignees_parsing_check",
-    "uspto_assignors_parsing_check",
-    "uspto_documentids_parsing_check",
-    "uspto_conveyances_parsing_check",
     "validated_uspto_assignments",
     "uspto_rf_id_asset_check",
     "uspto_completeness_asset_check",
@@ -89,20 +84,6 @@ _lazy_mapping: dict[str, tuple[str, str]] = {
     "parsed_uspto_assignments": ("src.assets.uspto_assets", "parsed_uspto_assignments"),
     "parsed_uspto_documentids": ("src.assets.uspto_assets", "parsed_uspto_documentids"),
     "parsed_uspto_conveyances": ("src.assets.uspto_assets", "parsed_uspto_conveyances"),
-    "uspto_assignments_parsing_check": (
-        "src.assets.uspto_assets",
-        "uspto_assignments_parsing_check",
-    ),
-    "uspto_assignees_parsing_check": ("src.assets.uspto_assets", "uspto_assignees_parsing_check"),
-    "uspto_assignors_parsing_check": ("src.assets.uspto_assets", "uspto_assignors_parsing_check"),
-    "uspto_documentids_parsing_check": (
-        "src.assets.uspto_assets",
-        "uspto_documentids_parsing_check",
-    ),
-    "uspto_conveyances_parsing_check": (
-        "src.assets.uspto_assets",
-        "uspto_conveyances_parsing_check",
-    ),
     # uspto_validation_assets (consolidated)
     "validated_uspto_assignments": (
         "src.assets.uspto_assets",

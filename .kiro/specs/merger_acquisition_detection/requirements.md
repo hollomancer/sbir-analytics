@@ -56,4 +56,3 @@ Detecting merger and acquisition (M&A) activity involving SBIR awardee companies
 
 1. THE System SHALL support **data enrichment**: enrich m&a candidate events with data from sec edgar, gdelt, and newsapi
 2. THE System SHALL ensure proper operation of **data enrichment**: enrich m&a candidate events with data from sec edgar, gdelt, and newsapi
-

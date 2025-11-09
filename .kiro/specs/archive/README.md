@@ -5,7 +5,7 @@ This directory contains completed specifications that have been fully implemente
 ## Completed Specifications
 
 ### SBIR Fiscal Returns Analysis (sbir-fiscal-returns-analysis/)
-**Completed:** November 2025  
+**Completed:** November 2025
 **Status:** ✅ Fully Implemented
 
 A comprehensive fiscal returns analysis system that calculates the return on investment (ROI) of SBIR program funding by estimating federal tax receipts generated from economic impacts.

@@ -180,7 +180,11 @@ class MetricsCollector:
                 f"No metrics found for {key}",
                 component="utils.metrics",
                 operation="export_to_json",
-                details={"run_id": run_id, "stage": stage, "available_keys": list(self.metrics.keys())},
+                details={
+                    "run_id": run_id,
+                    "stage": stage,
+                    "available_keys": list(self.metrics.keys()),
+                },
             )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

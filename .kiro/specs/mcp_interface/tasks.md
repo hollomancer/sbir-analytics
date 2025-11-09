@@ -47,4 +47,3 @@
 - [ ] 6.3 Wire tests into CI, ensuring coverage is reported.
 
 - [ ] 6.4 Add structured logging hooks (JSON logs) and OpenTelemetry-ready spans for MCP requests.
-

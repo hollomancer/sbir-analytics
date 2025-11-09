@@ -2,7 +2,7 @@
 
 This module contains:
 - enriched_cet_award_classifications: Batch classify awards with CET taxonomy
-- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy  
+- enriched_cet_patent_classifications: Batch classify patents with CET taxonomy
 - cet_award_classifications_quality_check: Quality validation for award classifications
 - Helper functions for classification processing
 """
@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 from loguru import logger
 
 from src.ml.config.taxonomy_loader import TaxonomyLoader
@@ -27,6 +26,7 @@ from .utils import (
     asset_check,
     save_dataframe_parquet,
 )
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -47,8 +47,6 @@ def cet_award_classifications_quality_check(context: Any) -> AssetCheckResult:
     Consumes data/processed/cet_award_classifications.checks.json written by the asset.
     """
     import json
-    import os
-    from pathlib import Path
 
     checks_path = Path("data/processed/cet_award_classifications.checks.json")
     if not checks_path.exists():
@@ -159,8 +157,6 @@ def enriched_cet_award_classifications() -> Output:
     logger.info("Starting cet_award_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy imports for ML components (may be unavailable in minimal CI)
     try:
@@ -682,8 +678,6 @@ def enriched_cet_award_classifications() -> Output:
     return Output(value=str(output_path), metadata=metadata)
 
 
-
-
 @asset(
     name="enriched_cet_patent_classifications",
     key_prefix=["ml"],
@@ -710,8 +704,6 @@ def enriched_cet_patent_classifications() -> Output:
     logger.info("Starting cet_patent_classifications asset")
 
     # Local imports to keep module import-safe when optional deps are missing
-    import json
-    from pathlib import Path
 
     # Lazy import of classifier implementation (may be unavailable in minimal CI)
     try:
@@ -984,5 +976,3 @@ def enriched_cet_patent_classifications() -> Output:
     )
 
     return Output(value=str(output_path), metadata=metadata)
-
-

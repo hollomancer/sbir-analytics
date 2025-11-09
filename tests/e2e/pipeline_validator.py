@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 from neo4j import Session
 
-from src.loaders.neo4j_client import Neo4jClient
+from src.loaders import Neo4jClient
 from src.models.quality import QualitySeverity
 
 

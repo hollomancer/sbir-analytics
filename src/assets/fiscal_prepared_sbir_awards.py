@@ -14,6 +14,7 @@ except Exception:
 
 from pathlib import Path
 
+
 # Import NAICS enricher from consolidated package
 try:
     from src.enrichers.naics import NAICSEnricher, NAICSEnricherConfig

@@ -173,12 +173,16 @@ def main(argv: list[str] | None = None) -> int:
 
             mock_op_ctx = SimpleNamespace()
             # Add minimal attributes that Dagster might expect
-            mock_op_ctx.log = type("Log", (), {
-                "info": lambda self, *args, **kwargs: None,
-                "warning": lambda self, *args, **kwargs: None,
-                "error": lambda self, *args, **kwargs: None,
-                "exception": lambda self, *args, **kwargs: None,
-            })()
+            mock_op_ctx.log = type(
+                "Log",
+                (),
+                {
+                    "info": lambda self, *args, **kwargs: None,
+                    "warning": lambda self, *args, **kwargs: None,
+                    "error": lambda self, *args, **kwargs: None,
+                    "exception": lambda self, *args, **kwargs: None,
+                },
+            )()
             mock_op_ctx.instance = None
             mock_op_ctx.resources = SimpleNamespace()
             mock_op_ctx.run = mock_run

@@ -193,7 +193,7 @@ def test_new_command():
     # Setup
     mock_context = Mock()
     mock_context.client.method.return_value = {"data": "test"}
-    
+
     # Create command context
     ctx = typer.Context(
         command=Mock(),
@@ -201,7 +201,7 @@ def test_new_command():
         info_name="new-command",
         obj=mock_context,
     )
-    
+
     # Test command logic
     # ...
 ```
@@ -224,9 +224,9 @@ def test_metrics_table():
             "success": True,
         }
     ]
-    
+
     table = create_metrics_table(metrics, console)
-    
+
     assert table is not None
     assert len(table.columns) > 0
 ```
@@ -285,4 +285,3 @@ If `CliRunner` tests fail:
 - Ensure `ctx.obj` is set (CommandContext)
 - Verify command registration in `main.py`
 - Check for import errors in command modules
-

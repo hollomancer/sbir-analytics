@@ -381,13 +381,13 @@ Threshold: 0.7 (≥0.7 considered "topic match")
 ### Example
 
 ```text
-Patent Abstract: "Neural network-based object detection system 
+Patent Abstract: "Neural network-based object detection system
   optimized for edge computing devices using quantization techniques"
-  
-Contract Description: "Design and develop an AI-based object 
-  detection system for mobile edge devices with performance 
+
+Contract Description: "Design and develop an AI-based object
+  detection system for mobile edge devices with performance
   optimization for deployment"
-  
+
 Similarity Score: 0.78 (≥0.7 threshold)
 → Topic match bonus applied
 ```
@@ -456,10 +456,10 @@ has_patent_bonus: 0.10  # Higher bonus for patent presence
 Scenario 1: CET Alignment
   Award CET: AI & Machine Learning
   Award Title: "Federated learning for distributed edge inference"
-  
+
   Contract CET: Inferred from "AI-powered anomaly detection platform"
   Inferred CET: AI & Machine Learning (confidence: 0.92)
-  
+
   Match: Same CET Area
   Score: 0.05 × 0.10 = 0.005
   Interpretation: Technology area consistency
@@ -467,10 +467,10 @@ Scenario 1: CET Alignment
 Scenario 2: CET Mismatch
   Award CET: Quantum Computing
   Award Title: "Quantum algorithm development for optimization"
-  
+
   Contract Description: "Advanced manufacturing process automation"
   Inferred CET: Advanced Manufacturing
-  
+
   Match: Different CET Area
   Score: 0.0 × 0.10 = 0.0
   Interpretation: Technology areas diverged; unlikely related transition
@@ -478,7 +478,7 @@ Scenario 2: CET Mismatch
 Scenario 3: Missing CET Data
   Award CET: [Not specified]
   Contract CET: [Cannot infer]
-  
+
   Match: Unknown
   Score: 0.0 × 0.10 = 0.0
   Interpretation: Insufficient data; no contribution
@@ -499,16 +499,16 @@ Uses keyword matching on contract description:
 ### Keyword Examples
 
 ```text
-AI & Machine Learning: "machine learning", "neural network", "deep learning", 
+AI & Machine Learning: "machine learning", "neural network", "deep learning",
   "NLP", "computer vision", "model", "inference", "AI", "artificial intelligence"
-  
-Advanced Computing: "high-performance", "HPC", "quantum", "GPU", "parallel", 
+
+Advanced Computing: "high-performance", "HPC", "quantum", "GPU", "parallel",
   "computing", "supercomputer", "FPGA"
-  
-Quantum: "quantum algorithm", "qubit", "quantum computing", "quantum gate", 
+
+Quantum: "quantum algorithm", "qubit", "quantum computing", "quantum gate",
   "quantum hardware", "quantum simulation"
-  
-Microelectronics: "semiconductor", "chip", "photonics", "wafer", "transistor", 
+
+Microelectronics: "semiconductor", "chip", "photonics", "wafer", "transistor",
   "circuit", "microchip", "nanotechnology"
 ```
 
@@ -556,10 +556,10 @@ enabled: false
 ### Example
 
 ```text
-Award Description: "Machine learning models for predictive maintenance 
+Award Description: "Machine learning models for predictive maintenance
   of industrial equipment using vibration sensors"
 
-Contract Description: "Development of AI-based condition monitoring system 
+Contract Description: "Development of AI-based condition monitoring system
   for machinery predictive maintenance application"
 
 Similarity Score: 0.76

@@ -371,7 +371,7 @@ for cet_area in result.records:
 
 def get_dashboard_metrics():
     queries = TransitionPathwayQueries(driver)
-    
+
     return {
         "cet_performance": queries.transition_rates_by_cet_area(limit=10).records,
         "top_companies": queries.top_companies_by_success_rate(limit=20).records,
@@ -388,16 +388,16 @@ def get_dashboard_metrics():
 
 def track_award_journey(award_id):
     queries = TransitionPathwayQueries(driver)
-    
+
     # Basic transition
     basic = queries.award_to_transition_to_contract(award_id=award_id)
-    
+
     # Patent-backed component
     patent_backed = queries.award_to_patent_to_transition_to_contract(award_id=award_id)
-    
+
     # CET context
     cet_context = queries.award_to_cet_to_transition(cet_area=award.cet_area)
-    
+
     return {
         "direct_transitions": basic.records,
         "patent_transitions": patent_backed.records,
@@ -413,9 +413,9 @@ def track_award_journey(award_id):
 
 def analyze_company_performance(company_id):
     queries = TransitionPathwayQueries(driver)
-    
+
     profile = queries.company_to_transition_profile(company_id=company_id).records[0]
-    
+
     return {
         "profile": profile,
         "success_rate": profile["success_rate"],

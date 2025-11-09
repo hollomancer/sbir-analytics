@@ -16,9 +16,11 @@ import duckdb
 import pandas as pd
 from loguru import logger
 
+
 # Import config loader for default paths
 try:
     from src.config.loader import get_config
+
     _config_available = True
 except ImportError:
     _config_available = False

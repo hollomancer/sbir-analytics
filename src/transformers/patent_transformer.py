@@ -23,14 +23,14 @@ for assignment in transformer.transform_chunk(rows):
 
 from __future__ import annotations
 
-from loguru import logger
-
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
+
+from loguru import logger
 
 
 # Try to use rapidfuzz for fuzzy matching; fallback to difflib

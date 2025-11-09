@@ -86,7 +86,11 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
                             source=self.strategy_name,
                             method="agency_default_partial",
                             timestamp=datetime.now(),
-                            metadata={"agency": agency_value, "matched_key": agency_key, "column": col},
+                            metadata={
+                                "agency": agency_value,
+                                "matched_key": agency_key,
+                                "column": col,
+                            },
                         )
 
         return None

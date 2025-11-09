@@ -73,5 +73,3 @@ The system follows a five-stage ETL pipeline:
 - Precision/recall targets with ground truth data
 - Confidence band effectiveness analysis
 - False positive identification for algorithm tuning
-
-

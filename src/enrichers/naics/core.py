@@ -12,8 +12,6 @@ for fast joins in downstream enrichment.
 
 from __future__ import annotations
 
-from loguru import logger
-
 import gzip
 import json
 import re
@@ -22,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+from loguru import logger
 
 
 NAICS_RE = re.compile(r"\b(\d{2,6})\b")

@@ -50,7 +50,7 @@ This specification implements comprehensive statistical reporting for pipeline r
 #### Acceptance Criteria
 
 1. THE Statistical_Reporter SHALL generate separate reports for SBIR enrichment operations
-2. THE Statistical_Reporter SHALL generate separate reports for patent analysis operations  
+2. THE Statistical_Reporter SHALL generate separate reports for patent analysis operations
 3. THE Statistical_Reporter SHALL generate separate reports for CET classification operations
 4. THE Statistical_Reporter SHALL generate separate reports for transition detection operations
 5. THE Statistical_Reporter SHALL aggregate module reports into a unified pipeline report
@@ -168,4 +168,3 @@ This specification implements comprehensive statistical reporting for pipeline r
 - **THEN** the Statistical_Reporter identifies companies with successful technology transitions from SBIR to commercial markets
 - **AND** the report highlights patent portfolios that demonstrate clear innovation pathways
 - **AND** the report showcases examples of multi-phase SBIR funding leading to significant commercial outcomes
-

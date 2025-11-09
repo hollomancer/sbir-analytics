@@ -342,4 +342,3 @@ The system SHALL support multiple CET taxonomy versions to enable longitudinal a
 - **THEN** the system tracks category lineage
 - **AND** provides mapping from old to new category IDs
 - **AND** updates visualizations and queries to use new names while preserving historical data
-

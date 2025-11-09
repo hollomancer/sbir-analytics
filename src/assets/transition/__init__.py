@@ -35,36 +35,8 @@ Exported Assets:
 
 from __future__ import annotations
 
-# Contracts module
-from .contracts import (
-    raw_contracts,
-    validated_contracts_sample,
-)
-
-# Vendor resolution module
-from .vendor_resolution import (
-    enriched_vendor_resolution,
-)
-
-# Scoring module
-from .scoring import (
-    transformed_transition_scores,
-)
-
-# Evidence module
-from .evidence import (
-    transformed_transition_evidence,
-)
-
-# Detections module
-from .detections import (
-    transformed_transition_detections,
-)
-
 # Analytics module
-from .analytics import (
-    transformed_transition_analytics,
-)
+from .analytics import transformed_transition_analytics
 
 # Checks module
 from .checks import (
@@ -76,6 +48,15 @@ from .checks import (
     vendor_resolution_quality_check,
 )
 
+# Contracts module
+from .contracts import raw_contracts, validated_contracts_sample
+
+# Detections module
+from .detections import transformed_transition_detections
+
+# Evidence module
+from .evidence import transformed_transition_evidence
+
 # Loading module
 from .loading import (
     loaded_transition_profiles,
@@ -84,6 +65,9 @@ from .loading import (
     transition_node_count_check,
     transition_relationships_check,
 )
+
+# Scoring module
+from .scoring import transformed_transition_scores
 
 # Utility functions
 from .utils import (
@@ -95,6 +79,9 @@ from .utils import (
     asset,
     asset_check,
 )
+
+# Vendor resolution module
+from .vendor_resolution import enriched_vendor_resolution
 
 
 __all__ = [

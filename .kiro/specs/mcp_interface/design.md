@@ -144,7 +144,7 @@ class RunAssetAction:
     asset_key: str
     run_tags: Optional[Dict[str, str]] = None
     partition_key: Optional[str] = None
-    
+
 @dataclass
 class RunAssetResult:
     run_id: str
@@ -186,7 +186,7 @@ class Neo4jQueryAction:
     parameters: Dict[str, Any]
     read_only: bool = True
     timeout_seconds: Optional[int] = None
-    
+
 @dataclass
 class Neo4jQueryResult:
     records: List[Dict[str, Any]]
@@ -266,13 +266,13 @@ class Neo4jClient:
 class MCPConfig:
     # Server configuration
     server: ServerConfig
-    
+
     # Authentication settings
     auth: AuthConfig
-    
+
     # Rate limiting
     rate_limits: RateLimitConfig
-    
+
     # Backend connections
     dagster: DagsterConfig
     neo4j: Neo4jConfig
@@ -281,7 +281,7 @@ class MCPConfig:
 class AuthConfig:
     tokens: Dict[str, TokenConfig]  # token -> permissions
     audit_log_path: str
-    
+
 @dataclass
 class TokenConfig:
     name: str
@@ -300,18 +300,18 @@ class MCPResource:
     name: str
     description: str
     mime_type: str
-    
+
 @dataclass
 class MCPAction:
     name: str
     description: str
     input_schema: Dict[str, Any]  # JSON Schema
-    
+
 @dataclass
 class MCPRequest:
     method: str
     params: Dict[str, Any]
-    
+
 @dataclass
 class MCPResponse:
     result: Optional[Any] = None
@@ -337,7 +337,7 @@ class MCPError:
     code: int
     message: str
     details: Optional[Dict[str, Any]] = None
-    
+
 ## Standard error codes
 
 class ErrorCodes:

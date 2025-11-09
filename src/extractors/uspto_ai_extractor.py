@@ -46,6 +46,7 @@ from pathlib import Path
 
 from loguru import logger
 
+
 # Optional imports - gracefully degrade when not available
 try:  # pragma: no cover - optional
     import pandas as pd
@@ -444,7 +445,9 @@ class USPTOAIExtractor:
                 self._save_checkpoint(path, cur)
                 return
             except Exception:
-                logger.debug("pyarrow parquet streaming failed for %s; falling back to pandas", path)
+                logger.debug(
+                    "pyarrow parquet streaming failed for %s; falling back to pandas", path
+                )
 
         if pd is None:
             raise RuntimeError("pandas is required to read parquet files (fallback)")

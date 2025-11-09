@@ -11,15 +11,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 # Import central exceptions for migration-specific exceptions to inherit from
-from ..exceptions import (
-    FileSystemError as BaseFileSystemError,
-)
-from ..exceptions import (
-    TransformationError as BaseTransformationError,
-)
-from ..exceptions import (
-    ValidationError as BaseValidationError,
-)
+from ..exceptions import TransformationError as BaseTransformationError
 
 
 # Migration Configuration

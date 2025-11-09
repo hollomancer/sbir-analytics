@@ -16,11 +16,11 @@ Design goals:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import dataclasses
 import os
 from typing import Any
+
+from loguru import logger
 
 from .evaluation.evaluator import ConfusionMatrix, EvaluationResult, TransitionEvaluator
 

@@ -13,7 +13,7 @@ Key components:
 Based on the NSTC Critical and Emerging Technologies taxonomy (21 categories).
 """
 
-import pickle
+import pickle  # nosec B403 - Used for loading internally-generated ML model files
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -561,7 +561,7 @@ class ApplicabilityModel:
             )
 
         with open(filepath, "rb") as f:
-            model_data = pickle.load(f)
+            model_data = pickle.load(f)  # nosec B301 - Loading trusted internally-generated model files
 
         # Reconstruct CETArea objects
         cet_areas = [CETArea(**area_dict) for area_dict in model_data["cet_areas"]]

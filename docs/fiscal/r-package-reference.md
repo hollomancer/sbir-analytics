@@ -6,8 +6,8 @@ This document provides reference information for EPA's StateIO (`stateior`) and 
 
 ### StateIO (`stateior`)
 
-**Purpose**: State-level input-output economic modeling  
-**Repository**: https://github.com/USEPA/stateior  
+**Purpose**: State-level input-output economic modeling
+**Repository**: https://github.com/USEPA/stateior
 
 ### Installation
 
@@ -20,8 +20,8 @@ StateIO constructs two-region models for a specific state and the rest of the U.
 
 ### USEEIOR (`useeior`)
 
-**Purpose**: U.S. Environmentally-Extended Input-Output models  
-**Repository**: https://github.com/USEPA/useeior  
+**Purpose**: U.S. Environmentally-Extended Input-Output models
+**Repository**: https://github.com/USEPA/useeior
 
 ### Installation
 
@@ -315,7 +315,7 @@ ro.r('options(show.error.messages = TRUE)')  # Show error messages
 The actual functions were discovered by:
 
 1. Running `names(getNamespace("stateior"))` in R to list all exported functions
-2. Running `names(getNamespace("useeior"))` in R to list all exported functions  
+2. Running `names(getNamespace("useeior"))` in R to list all exported functions
 3. Examining function help with `help(function_name)` in R
 4. Testing with sample data
 
@@ -352,4 +352,3 @@ See `docs/fiscal/useeior-api-reference.md` and `docs/fiscal/stateio-api-referenc
 - StateIO GitHub: https://github.com/USEPA/stateio
 - USEEIOR GitHub: https://github.com/USEPA/useeior
 - rpy2 Documentation: https://rpy2.github.io/
-

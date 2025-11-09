@@ -16,7 +16,6 @@ def test_imports() -> bool:
     """Test that all CLI modules can be imported."""
     print("Testing CLI imports...")
     try:
-
         print("✓ All imports successful")
         return True
     except Exception as e:

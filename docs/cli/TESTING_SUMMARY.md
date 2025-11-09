@@ -189,4 +189,3 @@ If `CommandContext.create()` fails:
 - ⚠️ Command tests: **Structure correct, need mocking adjustments**
 
 The CLI is **fully functional** - test failures are primarily related to mocking strategies that need refinement, not actual functionality issues.
-

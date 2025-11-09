@@ -45,9 +45,7 @@ class ContentTransformer:
             consolidated_specs = self._consolidate_specs(openspec_content.specifications)
             kiro_content.specs.extend(consolidated_specs)
 
-            logger.info(
-                f"Transformation complete: {len(kiro_content.specs)} Kiro specs generated"
-            )
+            logger.info(f"Transformation complete: {len(kiro_content.specs)} Kiro specs generated")
 
             return kiro_content
 

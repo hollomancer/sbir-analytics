@@ -24,11 +24,11 @@ Notes:
 
 from __future__ import annotations
 
-from loguru import logger
-
 import argparse
 import os
 import sys
+
+from loguru import logger
 
 
 try:

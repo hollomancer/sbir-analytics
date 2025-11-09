@@ -280,12 +280,12 @@ cli:
   theme: "default"  # "default", "dark", "light"
   progress_refresh_rate: 0.1  # seconds
   dashboard_refresh_rate: 10  # seconds
-  
+
   # Output settings
   max_table_rows: 50
   truncate_long_text: true
   show_timestamps: true
-  
+
   # Performance settings
   api_timeout_seconds: 30
   max_concurrent_operations: 4

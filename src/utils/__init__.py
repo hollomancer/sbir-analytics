@@ -13,11 +13,7 @@ from .logging_config import (
     setup_logging,
 )
 from .metrics import MetricsCollector, PipelineMetrics
-from .text_normalization import (
-    normalize_company_name,
-    normalize_name,
-    normalize_recipient_name,
-)
+from .text_normalization import normalize_company_name, normalize_name, normalize_recipient_name
 
 
 __all__ = [

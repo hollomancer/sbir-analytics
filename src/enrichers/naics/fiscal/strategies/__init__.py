@@ -10,6 +10,7 @@ from .text_inference import TextInferenceStrategy
 from .topic_code import TopicCodeStrategy
 from .usaspending_dataframe import USAspendingDataFrameStrategy
 
+
 __all__ = [
     "EnrichmentStrategy",
     "NAICSEnrichmentResult",

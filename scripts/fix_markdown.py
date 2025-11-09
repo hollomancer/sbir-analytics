@@ -63,7 +63,11 @@ def fix_list_blank_lines(content: str) -> str:
         result.append(line)
 
         # Add blank line after list if needed
-        if is_list and next_line and not re.match(r"^\s*[-*+]|\s*\d+\.|^\s*$|^#+|\s*```", next_line):
+        if (
+            is_list
+            and next_line
+            and not re.match(r"^\s*[-*+]|\s*\d+\.|^\s*$|^#+|\s*```", next_line)
+        ):
             if i < len(lines) - 1:  # Not the last line
                 result.append("")
 
@@ -184,7 +188,7 @@ def fix_heading_increment(content: str) -> str:
             # If jump is more than 1, adjust it
             if current_level > prev_level + 1:
                 new_level = prev_level + 1
-                line = "#" * new_level + line[match.end():]
+                line = "#" * new_level + line[match.end() :]
             prev_level = len(re.match(r"^(#+)", line).group(1))
         result.append(line)
 
@@ -286,4 +290,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -27,13 +27,13 @@ def mock_neo4j_driver():
     """Create a mock Neo4j driver."""
     driver = MagicMock()
     session = MagicMock()
-    
+
     # Create a mock result object that returns a single record
     def create_mock_result(count_value=1):
         result = MagicMock()
         result.single.return_value = {"created": count_value}
         return result
-    
+
     session.run.return_value = create_mock_result()
     driver.session.return_value.__enter__ = MagicMock(return_value=session)
     driver.session.return_value.__exit__ = MagicMock(return_value=None)

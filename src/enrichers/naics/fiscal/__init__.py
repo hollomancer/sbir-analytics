@@ -28,6 +28,7 @@ import pandas as pd
 from .enricher import FiscalNAICSEnricher
 from .strategies import NAICSEnrichmentResult
 
+
 __all__ = [
     "FiscalNAICSEnricher",
     "NAICSEnrichmentResult",
