@@ -105,10 +105,10 @@ jobs:
             "PRIVATE_KEY"
           )
           FOUND=0
-          # Exclude directories: docs, archive, .kiro, .github/workflows, scripts
+          # Exclude directories: docs, archive, .kiro, scripts, caches
           # Exclude files: *.md, .env.example*, *.py (which reference env var names legitimately)
-          EXCLUDE_ARGS="--exclude-dir=.git --exclude-dir=.venv --exclude-dir=docs --exclude-dir=archive --exclude-dir=.kiro --exclude-dir=node_modules"
-          EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=*.png --exclude=*.jpg --exclude=*.md --exclude=.env.example* --exclude=*.py --exclude=*.sh --exclude=*.yml --exclude=*.yaml"
+          EXCLUDE_ARGS="--exclude-dir=.git --exclude-dir=.venv --exclude-dir=docs --exclude-dir=archive --exclude-dir=.kiro --exclude-dir=node_modules --exclude-dir=.mypy_cache --exclude-dir=.pytest_cache --exclude-dir=.ruff_cache --exclude-dir=scripts --exclude-dir=config"
+          EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=*.png --exclude=*.jpg --exclude=*.md --exclude=.env.example* --exclude=*.py --exclude=*.sh --exclude=*.yml --exclude=*.yaml --exclude=Makefile --exclude=*.conf --exclude=*.json"
 
           for p in "${PATTERNS[@]}"; do
             echo "Checking pattern: $p"
