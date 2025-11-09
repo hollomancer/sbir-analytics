@@ -9,6 +9,7 @@ This module contains:
 """
 
 from __future__ import annotations
+import time
 
 import json
 from pathlib import Path
