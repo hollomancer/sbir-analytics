@@ -65,10 +65,78 @@ try:
         AssetCheckSeverity,  # noqa: F401
         MetadataValue,
         Output,
-        asset,
-        asset_check,
+        asset as _dagster_asset,
+        asset_check as _dagster_asset_check,
     )
-    # Note: We create our own AssetExecutionContext wrapper below for testing compatibility
+
+    # Create wrapper decorators that allow direct invocation (for MVP scripts/tests)
+    def asset(*args, **kwargs):  # type: ignore
+        """Wrapper around Dagster @asset that allows direct function calls.
+
+        When used with Dagster runtime, behaves normally.
+        When called directly, the decorated function can be invoked as a regular function.
+        """
+        def decorator(fn):
+            # Apply the real Dagster decorator
+            dagster_fn = _dagster_asset(*args, **kwargs)(fn)
+
+            # But allow the original function to be called directly via __wrapped__
+            # This is a convention used by decorators to preserve the original function
+            dagster_fn.__wrapped__ = fn
+
+            # Make it callable - if invoked directly, use the wrapped function
+            def callable_wrapper(*call_args, **call_kwargs):
+                # Try to call the Dagster version, but if it fails with context error,
+                # fall back to the original function
+                try:
+                    return dagster_fn(*call_args, **call_kwargs)
+                except Exception as e:
+                    if "context" in str(e) and "no context was provided" in str(e).lower():
+                        # Direct invocation - use the original function
+                        return fn(*call_args, **call_kwargs)
+                    raise
+
+            # Copy over attributes from dagster_fn
+            callable_wrapper.__name__ = getattr(dagster_fn, '__name__', fn.__name__)
+            callable_wrapper.__doc__ = getattr(dagster_fn, '__doc__', fn.__doc__)
+            callable_wrapper.__wrapped__ = fn
+            callable_wrapper._dagster_asset = dagster_fn
+
+            return callable_wrapper
+
+        # Handle both @asset and @asset(...) usage
+        if len(args) == 1 and callable(args[0]) and not kwargs:
+            # @asset (no parens)
+            return decorator(args[0])
+        else:
+            # @asset(...) (with parens)
+            return decorator
+
+    def asset_check(*args, **kwargs):  # type: ignore
+        """Wrapper around Dagster @asset_check that allows direct function calls."""
+        def decorator(fn):
+            dagster_fn = _dagster_asset_check(*args, **kwargs)(fn)
+            dagster_fn.__wrapped__ = fn
+
+            def callable_wrapper(*call_args, **call_kwargs):
+                try:
+                    return dagster_fn(*call_args, **call_kwargs)
+                except Exception as e:
+                    if "context" in str(e) and "no context was provided" in str(e).lower():
+                        return fn(*call_args, **call_kwargs)
+                    raise
+
+            callable_wrapper.__name__ = getattr(dagster_fn, '__name__', fn.__name__)
+            callable_wrapper.__doc__ = getattr(dagster_fn, '__doc__', fn.__doc__)
+            callable_wrapper.__wrapped__ = fn
+            callable_wrapper._dagster_asset_check = dagster_fn
+
+            return callable_wrapper
+
+        if len(args) == 1 and callable(args[0]) and not kwargs:
+            return decorator(args[0])
+        else:
+            return decorator
 
     # Create a test-friendly wrapper around Dagster context
     class AssetExecutionContext:  # type: ignore
