@@ -15,6 +15,7 @@ Usage:
     python scripts/benchmark_enrichment.py [--sample-size 1000] [--output reports/benchmarks/baseline.json]
 """
 
+import argparse
 import json
 import sys
 from datetime import datetime
@@ -32,20 +33,61 @@ if _workspace_root_str not in sys.path:
 import pandas as pd
 from loguru import logger
 
-from scripts.lib.cli_utils import (
-    add_baseline_argument,
-    add_output_file_argument,
-    add_sample_size_argument,
-    add_save_as_baseline_argument,
-    create_parser,
-    print_header,
-    print_section,
-    save_json_output,
-    setup_logging_for_script,
-)
 from src.config.loader import get_config
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
 from src.utils.performance_monitor import performance_monitor
+
+
+# CLI utility functions (inline implementations)
+def setup_logging_for_script(script_name: str) -> None:
+    """Configure logging for the script."""
+    logger.remove()
+    logger.add(sys.stderr, format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>", level="INFO")
+
+
+def create_parser(description: str, prog: str) -> argparse.ArgumentParser:
+    """Create argument parser."""
+    return argparse.ArgumentParser(description=description, prog=prog)
+
+
+def add_sample_size_argument(parser: argparse.ArgumentParser) -> None:
+    """Add sample size argument."""
+    parser.add_argument("--sample-size", type=int, help="Number of records to process (default: all)")
+
+
+def add_output_file_argument(parser: argparse.ArgumentParser, name: str, default: str, help_text: str) -> None:
+    """Add output file argument."""
+    parser.add_argument(f"--{name}", type=str, default=default, help=help_text)
+
+
+def add_baseline_argument(parser: argparse.ArgumentParser) -> None:
+    """Add baseline file argument."""
+    parser.add_argument("--baseline", type=str, help="Path to baseline benchmark file for comparison")
+
+
+def add_save_as_baseline_argument(parser: argparse.ArgumentParser) -> None:
+    """Add save as baseline flag."""
+    parser.add_argument("--save-as-baseline", action="store_true", help="Save results as new baseline")
+
+
+def print_header(text: str) -> None:
+    """Print formatted header."""
+    logger.info("\n" + "=" * 80)
+    logger.info(text.center(80))
+    logger.info("=" * 80 + "\n")
+
+
+def print_section(text: str) -> None:
+    """Print formatted section header."""
+    logger.info(f"\n--- {text} ---")
+
+
+def save_json_output(data: dict[str, Any], path: Path) -> None:
+    """Save data to JSON file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, default=str)
+    logger.info(f"Saved to {path}")
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
