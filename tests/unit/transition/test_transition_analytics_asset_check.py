@@ -5,6 +5,10 @@ import pandas as pd  # noqa: F401  # kept for parity with other transition tests
 import pytest
 
 
+pytestmark = pytest.mark.fast
+
+
+
 def _write_checks(path: Path, award, company) -> None:
     """
     Helper to write a minimal transition_analytics.checks.json payload

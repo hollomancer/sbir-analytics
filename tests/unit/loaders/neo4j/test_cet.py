@@ -1,9 +1,15 @@
 """Tests for Neo4j CET loader."""
 
+import pytest
+
 from unittest.mock import MagicMock, Mock
 
 from src.loaders.neo4j.cet import CETLoader, CETLoaderConfig
 from src.loaders.neo4j.client import Neo4jClient
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestCETLoaderConfig:

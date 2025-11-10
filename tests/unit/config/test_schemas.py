@@ -29,6 +29,10 @@ from src.config.schemas import (
 )
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestSbirValidationConfig:
     """Tests for SbirValidationConfig model."""
 

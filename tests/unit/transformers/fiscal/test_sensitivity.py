@@ -1,5 +1,7 @@
 """Tests for fiscal sensitivity analysis."""
 
+import pytest
+
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -13,6 +15,10 @@ from src.transformers.fiscal.sensitivity import (
     ParameterScenario,
     UncertaintyResult,
 )
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestParameterRange:

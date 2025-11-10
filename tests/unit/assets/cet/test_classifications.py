@@ -16,6 +16,10 @@ from src.assets.cet.classifications import (
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def mock_context():
     """Mock Dagster context."""

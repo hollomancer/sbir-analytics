@@ -1,5 +1,7 @@
 """Tests for asset naming standards module."""
 
+import pytest
+
 from src.assets.asset_naming_standards import (
     ASSET_RENAMING_MAP,
     GROUP_RENAMING_MAP,
@@ -8,6 +10,10 @@ from src.assets.asset_naming_standards import (
     get_group_name,
     get_standardized_asset_name,
 )
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestPipelineStage:

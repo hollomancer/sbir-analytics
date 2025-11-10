@@ -1,5 +1,9 @@
 """Integration test: larger-scale synthetic training + classification for CET ApplicabilityModel.
 
+
+pytestmark = pytest.mark.integration
+
+
 This test intentionally marked as slow and integration-level. It creates a
 synthetic labeled dataset for a small set of CET areas, trains the
 ApplicabilityModel on the synthetic dataset, and verifies that held-out

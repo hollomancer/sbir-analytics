@@ -6,6 +6,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestAssetsPackageStructure:
     """Tests for assets package structure and constants."""
 

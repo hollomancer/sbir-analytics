@@ -1,5 +1,7 @@
 """Tests for SBIR award validation rules."""
 
+import pytest
+
 from datetime import date
 
 import pandas as pd
@@ -26,6 +28,10 @@ from src.validators.sbir_awards import (
     validate_uei_format,
     validate_zip_code,
 )
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestConstants:

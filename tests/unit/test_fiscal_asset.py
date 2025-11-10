@@ -1,9 +1,15 @@
+import pytest
+
 import shutil
 from pathlib import Path
 
 import pandas as pd
 
 from src.assets.fiscal_prepared_sbir_awards import fiscal_prepared_sbir_awards
+
+
+pytestmark = pytest.mark.fast
+
 
 
 def test_asset_uses_fixture(tmp_path):

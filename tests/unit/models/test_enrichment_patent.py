@@ -14,6 +14,10 @@ from src.models.enrichment import (
 from src.models.patent import Patent, PatentCitation, RawPatent
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestEnrichmentStatus:
     """Tests for EnrichmentStatus enum."""
 

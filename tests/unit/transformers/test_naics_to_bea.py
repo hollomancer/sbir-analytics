@@ -1,5 +1,7 @@
 """Tests for NAICS to BEA mapper."""
 
+import pytest
+
 import csv
 import tempfile
 from pathlib import Path
@@ -8,6 +10,10 @@ from unittest.mock import patch
 import pandas as pd
 
 from src.transformers.naics_to_bea import NAICSToBEAMapper
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestNAICSToBEAMapperInitialization:

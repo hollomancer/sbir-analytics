@@ -20,6 +20,10 @@ from src.utils.statistical_reporter import StatisticalReporter
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def temp_output_dir(tmp_path):
     """Temporary output directory for reports."""

@@ -8,6 +8,10 @@ from pydantic import ValidationError
 from src.models.award import Award, RawAward
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestAwardModel:
     """Tests for the Award Pydantic model."""
 

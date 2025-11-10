@@ -1,15 +1,24 @@
 """Unit tests for enrichment models."""
 
+import pytest
+
 from __future__ import annotations
 
 from datetime import datetime
 
 from src.models.enrichment import (
+
+
+pytestmark = pytest.mark.fast
+
     EnrichmentDeltaEvent,
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,
     EnrichmentStatus,
 )
+
+
+
 
 
 class TestEnrichmentStatus:

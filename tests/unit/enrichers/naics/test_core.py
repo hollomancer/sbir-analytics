@@ -15,6 +15,10 @@ from src.enrichers.naics.core import NAICS_RE, RECIPIENT_UEI_RE, NAICSEnricher, 
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def sample_config(tmp_path):
     """Sample NAICS enricher config."""

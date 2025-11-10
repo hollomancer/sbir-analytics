@@ -19,6 +19,10 @@ pytest.importorskip("src.ml.features.patent_features")
 from src.ml.features.patent_features import PatentFeatureVector, extract_features
 
 
+pytestmark = pytest.mark.fast
+
+
+
 def make_pipelines_factory():
     """
     Return a factory function that constructs DummyPipeline instances

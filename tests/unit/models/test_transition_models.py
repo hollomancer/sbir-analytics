@@ -23,6 +23,10 @@ from src.models.transition_models import (
 )
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestEnums:
     """Tests for enum types."""
 

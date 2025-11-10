@@ -1,5 +1,9 @@
 """End-to-end Dagster pipeline smoke tests for SBIR-USAspending enrichment.
 
+
+pytestmark = pytest.mark.e2e
+
+
 Tests the complete enrichment pipeline from data ingestion through enrichment
 to final output validation, ensuring all assets materialize successfully and
 data flows correctly between stages.
@@ -436,4 +440,3 @@ data flows correctly between stages.
 import pytest
 
 
-pytestmark = pytest.mark.e2e

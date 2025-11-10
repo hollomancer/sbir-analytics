@@ -24,6 +24,10 @@ from src.ml.models.trainer import CETModelTrainer
 from src.models.cet_models import CETArea, TrainingDataset, TrainingExample
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def sample_cet_areas():
     """Sample CET areas for testing."""

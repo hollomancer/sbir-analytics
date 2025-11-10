@@ -16,6 +16,10 @@ from src.transition.features.cet_analyzer import (
 )
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def extractor():
     """Default CETSignalExtractor for testing."""

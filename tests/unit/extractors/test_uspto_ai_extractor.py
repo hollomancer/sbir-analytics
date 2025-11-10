@@ -11,6 +11,10 @@ from src.extractors.uspto_ai_extractor import USPTOAIExtractor, _Checkpoint
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def temp_input_dir(tmp_path):
     """Temporary input directory."""

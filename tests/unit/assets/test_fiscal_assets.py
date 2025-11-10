@@ -30,6 +30,10 @@ from src.assets.fiscal_assets import (
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def mock_context():
     """Mock Dagster execution context."""

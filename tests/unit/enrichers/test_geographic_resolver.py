@@ -18,6 +18,10 @@ from src.enrichers.geographic_resolver import (
 )
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""

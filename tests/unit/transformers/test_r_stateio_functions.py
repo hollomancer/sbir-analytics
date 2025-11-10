@@ -11,6 +11,10 @@ from src.exceptions import DependencyError
 from src.utils.r_helpers import RFunctionError
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestBuildStateModel:
     """Tests for build_state_model function."""
 
