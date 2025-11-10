@@ -45,7 +45,7 @@ from .utils import (
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def raw_uspto_ai_extract(context: Any) -> dict[str, object]:
+def raw_uspto_ai_extract(context) -> dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -244,7 +244,7 @@ def raw_uspto_ai_extract(context: Any) -> dict[str, object]:
     ),
     ins={"raw_uspto_ai_extract": AssetIn()},
 )
-def uspto_ai_deduplicate(context: Any, raw_uspto_ai_extract) -> dict[str, object]:
+def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
 
@@ -342,7 +342,7 @@ def uspto_ai_deduplicate(context: Any, raw_uspto_ai_extract) -> dict[str, object
     ),
     ins={"uspto_ai_deduplicate": AssetIn()},
 )
-def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> str:
+def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     """
     Implements Task 11.3 (human sampling) using DuckDB ORDER BY RANDOM() LIMIT N.
 
@@ -383,7 +383,7 @@ def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> 
         "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
     ),
 )
-def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
+def raw_uspto_ai_predictions(context) -> dict[str, object]:
     """
     Dagster asset that ingests the raw USPTO AI NDJSON into the DuckDB cache.
 
@@ -604,7 +604,7 @@ def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context: Any) -> dict[str, int | None]:
+def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """
@@ -660,7 +660,7 @@ def validated_uspto_ai_cache_stats(context: Any) -> dict[str, int | None]:
         "Writes the sample to `data/processed/uspto_ai_human_sample.ndjson` (or path configured via op_config)."
     ),
 )
-def raw_uspto_ai_human_sample(context: Any) -> str:
+def raw_uspto_ai_human_sample(context) -> str:
     """
     Produce a human evaluation sample from the DuckDB cache.
     """
@@ -744,7 +744,7 @@ def raw_uspto_ai_human_sample(context: Any) -> str:
         "and produce a summary checks JSON and an NDJSON of matches."
     ),
 )
-def enriched_uspto_ai_patent_join(context: Any) -> dict[str, object]:
+def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
     """
     Asset that links cached USPTO AI predictions to transformed patents for downstream
     validation and agreement analysis.

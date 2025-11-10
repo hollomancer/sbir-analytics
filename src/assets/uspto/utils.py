@@ -143,7 +143,7 @@ LOAD_SUCCESS_THRESHOLD = float(os.environ.get("SBIR_ETL__USPTO__LOAD_SUCCESS_THR
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
-def _get_input_dir(context: Any) -> Path:
+def _get_input_dir(context) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
     """
@@ -241,7 +241,7 @@ def _make_parsing_check(
     and fails the check if any file reported parsing failures.
     """
 
-    def _check(context: Any, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
+    def _check(context, parsed: dict[str, dict], raw_files: list[str]) -> AssetCheckResult:
         total = len(raw_files)
         failed_files = []
         errors = {}
@@ -327,7 +327,7 @@ uspto_conveyances_parsing_check = asset_check(
 # ============================================================================
 
 
-def _build_validator_config(context: Any) -> USPTOValidationConfig:
+def _build_validator_config(context) -> USPTOValidationConfig:
     """Build validation config from context op_config with defaults."""
     if USPTOValidationConfig is None:
         return None
@@ -411,7 +411,7 @@ def _normalize_country(country: str | None) -> str | None:
 
 
 @dataclass
-def _resolve_output_paths(context: Any, prefix: str) -> tuple[Path, Path]:
+def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
     _ensure_dir(base_dir)

@@ -20,7 +20,7 @@ from .utils import AssetIn, _attempt_parse_sample, asset
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignments")},
 )
-def parsed_uspto_assignments(context: Any, raw_files: list[str]) -> dict[str, dict]:
+def parsed_uspto_assignments(context, raw_files: list[str]) -> dict[str, dict]:
     """
     For each discovered raw assignment file, parse a small sample and return per-file summaries.
     """
@@ -45,7 +45,7 @@ def parsed_uspto_assignments(context: Any, raw_files: list[str]) -> dict[str, di
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )
-def validated_uspto_assignees(context: Any, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignees(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignee files to parse")
@@ -67,7 +67,7 @@ def validated_uspto_assignees(context: Any, raw_files: list[str]) -> dict[str, d
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )
-def validated_uspto_assignors(context: Any, raw_files: list[str]) -> dict[str, dict]:
+def validated_uspto_assignors(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No assignor files to parse")
@@ -89,7 +89,7 @@ def validated_uspto_assignors(context: Any, raw_files: list[str]) -> dict[str, d
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_documentids")},
 )
-def parsed_uspto_documentids(context: Any, raw_files: list[str]) -> dict[str, dict]:
+def parsed_uspto_documentids(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No documentid files to parse")
@@ -111,7 +111,7 @@ def parsed_uspto_documentids(context: Any, raw_files: list[str]) -> dict[str, di
     group_name="extraction",
     ins={"raw_files": AssetIn("raw_uspto_conveyances")},
 )
-def parsed_uspto_conveyances(context: Any, raw_files: list[str]) -> dict[str, dict]:
+def parsed_uspto_conveyances(context, raw_files: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
     if not raw_files:
         context.log.info("No conveyance files to parse")

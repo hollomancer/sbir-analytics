@@ -176,7 +176,7 @@ def transition_scores_quality_check(
     asset="transformed_transition_analytics",
     description="Sanity checks for transition analytics: positive denominators and 0≤rates≤1 (optional min-rate thresholds via env).",
 )
-def transition_analytics_quality_check(context: Any) -> AssetCheckResult:
+def transition_analytics_quality_check(context) -> AssetCheckResult:
     """
     Validate transition_analytics KPIs using the emitted checks JSON.
 
@@ -274,7 +274,7 @@ def transition_analytics_quality_check(context: Any) -> AssetCheckResult:
     asset="transformed_transition_evidence",
     description="Evidence completeness for candidates with score ≥ configured threshold",
 )
-def transition_evidence_quality_check(context: Any) -> AssetCheckResult:
+def transition_evidence_quality_check(context) -> AssetCheckResult:
     """
     Check evidence completeness by consuming the checks JSON emitted by transition_evidence_v1.
 

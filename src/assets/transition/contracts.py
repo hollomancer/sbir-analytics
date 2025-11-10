@@ -38,7 +38,7 @@ from .utils import (
         "them to Parquet for downstream transition detection."
     ),
 )
-def raw_contracts(context: Any) -> Output[pd.DataFrame]:
+def raw_contracts(context) -> Output[pd.DataFrame]:
     # Load configuration
     config = get_config()
 
@@ -180,7 +180,7 @@ def raw_contracts(context: Any) -> Output[pd.DataFrame]:
         "Writes checks JSON with coverage metrics."
     ),
 )
-def validated_contracts_sample(context: Any) -> Output[pd.DataFrame]:
+def validated_contracts_sample(context) -> Output[pd.DataFrame]:
     contracts_parquet = Path(
         os.getenv(
             "SBIR_ETL__TRANSITION__CONTRACTS_SAMPLE__PATH",

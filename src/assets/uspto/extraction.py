@@ -19,7 +19,7 @@ from .utils import _discover_table_files, _get_input_dir, asset
     description="Discover raw USPTO assignment files",
     group_name="extraction",
 )
-def raw_uspto_assignments(context: Any) -> list[str]:
+def raw_uspto_assignments(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignment files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignment")
@@ -31,7 +31,7 @@ def raw_uspto_assignments(context: Any) -> list[str]:
     description="Discover raw USPTO assignee files",
     group_name="extraction",
 )
-def raw_uspto_assignees(context: Any) -> list[str]:
+def raw_uspto_assignees(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignee files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignee")
@@ -43,7 +43,7 @@ def raw_uspto_assignees(context: Any) -> list[str]:
     description="Discover raw USPTO assignor files",
     group_name="extraction",
 )
-def raw_uspto_assignors(context: Any) -> list[str]:
+def raw_uspto_assignors(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering assignor files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "assignor")
@@ -55,7 +55,7 @@ def raw_uspto_assignors(context: Any) -> list[str]:
     description="Discover raw USPTO documentid files",
     group_name="extraction",
 )
-def raw_uspto_documentids(context: Any) -> list[str]:
+def raw_uspto_documentids(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering documentid files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "documentid")
@@ -67,7 +67,7 @@ def raw_uspto_documentids(context: Any) -> list[str]:
     description="Discover raw USPTO conveyance files",
     group_name="extraction",
 )
-def raw_uspto_conveyances(context: Any) -> list[str]:
+def raw_uspto_conveyances(context) -> list[str]:
     input_dir = _get_input_dir(context)
     context.log.info("Discovering conveyance files", extra={"input_dir": str(input_dir)})
     files = _discover_table_files(input_dir, "conveyance")

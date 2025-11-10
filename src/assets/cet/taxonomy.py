@@ -81,7 +81,7 @@ def taxonomy_to_dataframe(cet_areas: Iterable[CETArea]) -> pd.DataFrame:
     asset="raw_cet_taxonomy",
     description="CET taxonomy completeness and schema validity based on companion checks JSON",
 )
-def cet_taxonomy_completeness_check(context: Any) -> AssetCheckResult:
+def cet_taxonomy_completeness_check(context) -> AssetCheckResult:
     """
     Verify CET taxonomy was materialized and validated successfully.
     Consumes data/processed/cet_taxonomy.checks.json written by the asset.
