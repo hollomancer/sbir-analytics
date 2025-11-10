@@ -10,8 +10,6 @@ This module contains:
 
 from __future__ import annotations
 
-from typing import Any
-
 from .utils import _discover_table_files, _get_input_dir, asset
 
 
