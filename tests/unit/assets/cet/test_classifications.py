@@ -319,7 +319,7 @@ class TestEnrichedCETAwardClassifications:
         mock_path.with_suffix.return_value = Mock()
         mock_path_class.return_value = mock_path
 
-        result = enriched_cet_award_classifications()
+        enriched_cet_award_classifications()
 
         # Should write empty output and checks JSON indicating failure
         assert mock_save.called
@@ -346,7 +346,7 @@ class TestEnrichedCETAwardClassifications:
 
         mock_path_class.side_effect = path_side_effect
 
-        result = enriched_cet_award_classifications()
+        enriched_cet_award_classifications()
 
         # Should handle gracefully and write output
         assert mock_save.called
@@ -387,7 +387,7 @@ class TestEnrichedCETAwardClassifications:
 
         mock_path_class.side_effect = path_side_effect
 
-        result = enriched_cet_award_classifications()
+        enriched_cet_award_classifications()
 
         # Should write checks JSON indicating model is missing
         mock_file.assert_called()
@@ -414,7 +414,7 @@ class TestEnrichedCETPatentClassifications:
         mock_path.with_suffix.return_value = Mock()
         mock_path_class.return_value = mock_path
 
-        result = enriched_cet_patent_classifications()
+        enriched_cet_patent_classifications()
 
         # Should write empty output
         assert mock_save.called
@@ -441,7 +441,7 @@ class TestEnrichedCETPatentClassifications:
 
         mock_path_class.side_effect = path_side_effect
 
-        result = enriched_cet_patent_classifications()
+        enriched_cet_patent_classifications()
 
         # Should handle gracefully
         assert mock_save.called
@@ -508,7 +508,7 @@ class TestEdgeCases:
         mock_path_class.return_value = mock_path
 
         # Should not raise, just log error
-        result = enriched_cet_award_classifications()
+        enriched_cet_award_classifications()
 
     def test_quality_check_file_permission_error(self, mock_context, tmp_path):
         """Test quality check handles file permission errors."""

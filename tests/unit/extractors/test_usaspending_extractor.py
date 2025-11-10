@@ -364,7 +364,7 @@ class TestQueryAwards:
         extractor.connection = mock_conn
 
         filters = {"fiscal_year": 2023}
-        result = extractor.query_awards(filters=filters)
+        extractor.query_awards(filters=filters)
 
         # Should have executed query with WHERE clause
         executed_query = str(mock_conn.execute.call_args[0][0])
@@ -382,7 +382,7 @@ class TestQueryAwards:
         extractor.connection = mock_conn
 
         columns = ["award_id", "amount"]
-        result = extractor.query_awards(columns=columns)
+        extractor.query_awards(columns=columns)
 
         # Should have selected specific columns
         executed_query = str(mock_conn.execute.call_args[0][0])
@@ -400,7 +400,7 @@ class TestQueryAwards:
         extractor = DuckDBUSAspendingExtractor()
         extractor.connection = mock_conn
 
-        result = extractor.query_awards(limit=10)
+        extractor.query_awards(limit=10)
 
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "LIMIT" in executed_query
@@ -574,7 +574,7 @@ class TestEdgeCases:
         mock_connect.return_value = mock_conn
 
         try:
-            with DuckDBUSAspendingExtractor() as extractor:
+            with DuckDBUSAspendingExtractor():
                 raise ValueError("Test exception")
         except ValueError:
             pass

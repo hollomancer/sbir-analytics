@@ -352,7 +352,7 @@ class TestExtractFromDump:
 
         # Don't specify table_files, should auto-select largest
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)
-        count = extractor.extract_from_dump(
+        extractor.extract_from_dump(
             dump_dir=dump_dir,
             output_file=output_file,
         )
@@ -367,7 +367,7 @@ class TestContractExtractorEdgeCasesIntegration:
     def test_empty_dat_gz_file(self, tmp_path, vendor_filter_file):
         """Test handling of empty .dat.gz file."""
         empty_file = tmp_path / "empty.dat.gz"
-        with gzip.open(empty_file, "wt", encoding="utf-8") as f:
+        with gzip.open(empty_file, "wt", encoding="utf-8"):
             pass  # Write nothing
 
         extractor = ContractExtractor(vendor_filter_file=vendor_filter_file)

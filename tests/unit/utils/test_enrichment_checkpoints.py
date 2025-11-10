@@ -151,7 +151,7 @@ class TestCheckpointStoreInitialization:
     def test_init_creates_directory(self, tmp_path):
         """Test that initialization creates parent directory."""
         checkpoint_path = tmp_path / "nested" / "path" / "checkpoints.parquet"
-        store = CheckpointStore(parquet_path=checkpoint_path)
+        CheckpointStore(parquet_path=checkpoint_path)
 
         assert checkpoint_path.parent.exists()
 

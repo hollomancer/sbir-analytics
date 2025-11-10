@@ -104,7 +104,7 @@ class TestNeo4jPatentCETLoaderInitialization:
         mock_driver = Mock()
         mock_graphdb.driver.return_value = mock_driver
 
-        loader = Neo4jPatentCETLoader(
+        Neo4jPatentCETLoader(
             uri="bolt://localhost:7687",
             user="neo4j",
             password="password",

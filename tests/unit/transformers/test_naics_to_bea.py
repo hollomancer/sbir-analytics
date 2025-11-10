@@ -40,7 +40,7 @@ class TestNAICSToBEAMapperInitialization:
         """Test that initialization calls load methods."""
         with patch.object(NAICSToBEAMapper, '_load') as mock_load:
             with patch.object(NAICSToBEAMapper, '_load_bea_excel') as mock_load_bea:
-                mapper = NAICSToBEAMapper()
+                NAICSToBEAMapper()
 
                 mock_load.assert_called_once()
                 mock_load_bea.assert_called_once()

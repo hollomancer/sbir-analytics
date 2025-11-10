@@ -350,7 +350,7 @@ class TestCompanyCETAggregatorEdgeCases:
 
         # All supporting_cets should be list-like
         for val in aggregator.df['supporting_cets']:
-            assert isinstance(val, (list, tuple))
+            assert isinstance(val, list | tuple)
 
     def test_zero_scores(self):
         """Test handling of zero scores."""

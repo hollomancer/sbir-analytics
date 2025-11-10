@@ -407,7 +407,7 @@ class TestResolveSingleAward:
         row = pd.Series({"State": None})  # Will be handled gracefully
 
         # Should not raise, should return None or continue to other methods
-        result = resolver.resolve_single_award(row)
+        resolver.resolve_single_award(row)
         # Result could be None or from another method
 
 

@@ -82,7 +82,7 @@ class TestUSPTOAIExtractorInitialization:
         checkpoint_dir = tmp_path / "new_checkpoints"
         assert not checkpoint_dir.exists()
 
-        extractor = USPTOAIExtractor(
+        USPTOAIExtractor(
             temp_input_dir,
             checkpoint_dir=checkpoint_dir,
         )

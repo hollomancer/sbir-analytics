@@ -76,7 +76,7 @@ class TestDeepMergeDicts:
         """Test merging does not mutate base dictionary."""
         base = {"a": 1, "b": {"c": 2}}
         override = {"b": {"d": 3}}
-        result = _deep_merge_dicts(base, override)
+        _deep_merge_dicts(base, override)
         assert base == {"a": 1, "b": {"c": 2}}  # Base unchanged
 
 

@@ -85,7 +85,7 @@ class TestUSPTOExtractorFileDiscovery:
 
     def test_finds_supported_files(self, sample_uspto_dir):
         """Test finding supported files in directory."""
-        extractor = USPTOExtractor(sample_uspto_dir)
+        USPTOExtractor(sample_uspto_dir)
 
         # Check if files exist
         dta_file = sample_uspto_dir / "assignment.dta"
@@ -98,7 +98,7 @@ class TestUSPTOExtractorFileDiscovery:
 
     def test_ignores_unsupported_files(self, sample_uspto_dir):
         """Test that unsupported files are in directory but not processed."""
-        extractor = USPTOExtractor(sample_uspto_dir)
+        USPTOExtractor(sample_uspto_dir)
 
         # Unsupported file exists but should be ignored
         txt_file = sample_uspto_dir / "readme.txt"
@@ -180,7 +180,7 @@ class TestUSPTOExtractorMultipleFiles:
 
     def test_directory_with_multiple_supported_files(self, sample_uspto_dir):
         """Test directory with multiple supported file types."""
-        extractor = USPTOExtractor(sample_uspto_dir)
+        USPTOExtractor(sample_uspto_dir)
 
         # Count supported files
         supported_files = [

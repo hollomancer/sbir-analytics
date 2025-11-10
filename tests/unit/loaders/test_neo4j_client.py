@@ -225,7 +225,7 @@ class TestNeo4jClientSessionManagement:
         client = Neo4jClient(neo4j_config)
 
         with pytest.raises(ValueError):
-            with client.session() as session:
+            with client.session():
                 raise ValueError("Test error")
 
         mock_session.close.assert_called_once()

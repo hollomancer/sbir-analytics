@@ -309,7 +309,7 @@ class TestTransitionLoaderNodeLoading:
             'vendor_match_score': [0.9],
         })
 
-        result = loader.load_transition_nodes(df)
+        loader.load_transition_nodes(df)
 
         # Should not raise, but should track errors
         assert loader.stats["errors"] == 1

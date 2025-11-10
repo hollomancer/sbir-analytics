@@ -551,7 +551,7 @@ class TestProgressTracking:
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
         chunks_processed = 0
-        for enriched_chunk, metrics in enricher.process_all_chunks():
+        for _enriched_chunk, _metrics in enricher.process_all_chunks():
             chunks_processed += 1
 
         # 5 records / 2 chunk_size = 3 chunks

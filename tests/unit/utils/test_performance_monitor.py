@@ -187,7 +187,7 @@ class TestTimeBlockContextManager:
     def test_time_block_basic(self, monitor):
         """Test timing a code block."""
         with monitor.time_block("test_block"):
-            x = 1 + 1
+            pass
 
         assert "test_block" in monitor.metrics
         metric = monitor.metrics["test_block"][0]
@@ -249,7 +249,7 @@ class TestMonitorBlockContextManager:
         monitor = PerformanceMonitor()
 
         with monitor.monitor_block("test_monitor"):
-            x = 1 + 1
+            pass
 
         assert "test_monitor" in monitor.metrics
         metric = monitor.metrics["test_monitor"][0]
@@ -260,7 +260,7 @@ class TestMonitorBlockContextManager:
     def test_monitor_block_without_psutil(self, monitor):
         """Test monitor block falls back to timing."""
         with monitor.monitor_block("fallback_block"):
-            x = 1 + 1
+            pass
 
         # Should record timing even without psutil
         assert "fallback_block" in monitor.metrics

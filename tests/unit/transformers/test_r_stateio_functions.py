@@ -585,7 +585,7 @@ class TestEdgeCases:
 
         df = pd.DataFrame({"bea_sector": [], "shock_amount": []})
 
-        result = r_stateio.format_demand_vector_from_shocks(Mock(), Mock(), df)
+        r_stateio.format_demand_vector_from_shocks(Mock(), Mock(), df)
 
         # Should create empty vectors
         mock_ro.FloatVector.assert_called_with([])

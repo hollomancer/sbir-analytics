@@ -159,7 +159,7 @@ class TestStatisticalReporterInitialization:
         nested_dir = tmp_path / "nested" / "reports"
         assert not nested_dir.exists()
 
-        reporter = StatisticalReporter(output_dir=nested_dir)
+        StatisticalReporter(output_dir=nested_dir)
 
         assert nested_dir.exists()
 

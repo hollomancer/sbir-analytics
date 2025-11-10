@@ -154,7 +154,7 @@ class TestNAICSEnricherInitialization:
 
     def test_initialization_with_reference_file(self, sample_config, tmp_path):
         """Test initialization with NAICS reference file."""
-        ref_file = Path("data/reference/naics_codes.txt")
+        Path("data/reference/naics_codes.txt")
         naics_codes = ["541511", "541512", "336411", "541330"]
 
         with patch("pathlib.Path.exists", return_value=True):

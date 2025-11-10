@@ -115,7 +115,7 @@ class TestSbirDuckDBExtractorImport:
         mock_duckdb_class.return_value = mock_duckdb_client
 
         extractor = SbirDuckDBExtractor(csv_path=sample_csv_file)
-        result = extractor.import_csv(incremental=True, batch_size=1000)
+        extractor.import_csv(incremental=True, batch_size=1000)
 
         mock_duckdb_client.import_csv_incremental.assert_called_once()
         call_args = mock_duckdb_client.import_csv_incremental.call_args

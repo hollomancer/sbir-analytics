@@ -72,7 +72,7 @@ class TestAssetsPackageStructure:
         """Test all lazy mapping modules are in src.assets package."""
         from src.assets import _lazy_mapping
 
-        for symbol, (module_path, attr_name) in _lazy_mapping.items():
+        for _symbol, (module_path, _attr_name) in _lazy_mapping.items():
             assert module_path.startswith("src.assets."), \
                 f"Module path {module_path} should start with 'src.assets.'"
 
@@ -131,7 +131,7 @@ class TestLazyImportMechanism:
         if module_name in sys.modules:
             # Save lazy mapping before reload
             from src.assets import _lazy_mapping
-            saved_mapping = _lazy_mapping.copy()
+            _lazy_mapping.copy()
 
             # Reload module
             importlib.reload(sys.modules[module_name])
@@ -150,7 +150,7 @@ class TestLazyImportMechanism:
         # Access a symbol from lazy mapping
         if "raw_sbir_data" in _lazy_mapping:
             # Call __getattr__ directly
-            result = __getattr__("raw_sbir_data")
+            __getattr__("raw_sbir_data")
 
             # Should have imported the module
             module_path, attr_name = _lazy_mapping["raw_sbir_data"]
@@ -297,7 +297,7 @@ class TestLazyImportBehavior:
 
         # Find symbols from the same module
         module_groups = {}
-        for symbol, (module_path, attr_name) in _lazy_mapping.items():
+        for symbol, (module_path, _attr_name) in _lazy_mapping.items():
             if module_path not in module_groups:
                 module_groups[module_path] = []
             module_groups[module_path].append(symbol)
@@ -360,7 +360,7 @@ class TestConsistencyChecks:
         """Test all lazy mapping attributes are valid Python identifiers."""
         from src.assets import _lazy_mapping
 
-        for symbol, (module_path, attr_name) in _lazy_mapping.items():
+        for symbol, (_module_path, attr_name) in _lazy_mapping.items():
             assert attr_name.isidentifier(), \
                 f"Attribute {attr_name} for {symbol} is not a valid Python identifier"
 
@@ -368,7 +368,7 @@ class TestConsistencyChecks:
         """Test all module paths use proper dot notation."""
         from src.assets import _lazy_mapping
 
-        for symbol, (module_path, attr_name) in _lazy_mapping.items():
+        for _symbol, (module_path, _attr_name) in _lazy_mapping.items():
             # Module paths should have at least 2 parts (src.assets.something)
             parts = module_path.split(".")
             assert len(parts) >= 3, f"Module path {module_path} should have at least 3 parts"

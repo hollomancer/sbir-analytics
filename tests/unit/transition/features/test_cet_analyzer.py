@@ -57,7 +57,7 @@ class TestCETSignalExtractorInitialization:
         assert len(extractor.compiled_patterns) > 0
 
         # Each area should have list of compiled patterns
-        for cet_area, patterns in extractor.compiled_patterns.items():
+        for _cet_area, patterns in extractor.compiled_patterns.items():
             assert isinstance(patterns, list)
             assert len(patterns) > 0
 
