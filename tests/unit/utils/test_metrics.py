@@ -12,11 +12,11 @@ Tests cover:
 import json
 import time
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
 from src.utils.metrics import MetricsCollector, PipelineMetrics
+
 
 pytestmark = pytest.mark.fast
 

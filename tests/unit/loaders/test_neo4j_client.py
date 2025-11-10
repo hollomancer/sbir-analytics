@@ -14,11 +14,12 @@ Tests cover:
 All tests use mocks to avoid requiring a real Neo4j instance.
 """
 
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+
 
 pytestmark = pytest.mark.fast
 

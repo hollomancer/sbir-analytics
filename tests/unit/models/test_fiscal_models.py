@@ -1,17 +1,18 @@
 """Tests for SBIR fiscal returns Pydantic models."""
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.fiscal_models import (
     EconomicShock,
-    TaxImpactEstimate,
     FiscalReturnSummary,
+    GeographicResolution,
     InflationAdjustment,
     NAICSMapping,
-    GeographicResolution,
+    TaxImpactEstimate,
 )
 
 

@@ -8,21 +8,18 @@ Tests for base analyzer class and all specialized analyzer implementations:
 - TransitionDetectionAnalyzer: Transition detection analysis
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
 import pytest
 
 from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
-from src.utils.reporting.analyzers.base_analyzer import (
-    AnalysisInsight,
-    ModuleAnalyzer,
-)
+from src.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 from src.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
 from src.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer
 from src.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 from src.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
+
 
 pytestmark = pytest.mark.fast
 

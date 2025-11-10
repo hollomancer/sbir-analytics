@@ -21,13 +21,7 @@ from loguru import logger
 # ============================================================================
 
 try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        AssetIn,
-        asset,
-        asset_check,
-    )
+    from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, asset, asset_check
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing

@@ -9,21 +9,15 @@ This module provides:
 
 from __future__ import annotations
 
-
-from __future__ import annotations
-
 import json
 import os
-import time
-from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
-from itertools import product
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset_check
 from loguru import logger
 
 from ..exceptions import DependencyError

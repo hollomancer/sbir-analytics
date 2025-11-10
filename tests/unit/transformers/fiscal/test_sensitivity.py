@@ -1,17 +1,17 @@
 """Tests for fiscal sensitivity analysis."""
 
-import pytest
-import pandas as pd
-import numpy as np
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+import numpy as np
+import pandas as pd
+
 from src.transformers.fiscal.sensitivity import (
+    FiscalParameterSweep,
+    FiscalUncertaintyQuantifier,
     ParameterRange,
     ParameterScenario,
-    FiscalParameterSweep,
     UncertaintyResult,
-    FiscalUncertaintyQuantifier,
 )
 
 
@@ -137,7 +137,7 @@ class TestGenerateMonteCarloScenarios:
         scenarios2 = sweep.generate_monte_carlo_scenarios(num_scenarios=5, random_seed=42)
 
         # Same parameters with same seed
-        for s1, s2 in zip(scenarios1, scenarios2):
+        for s1, s2 in zip(scenarios1, scenarios2, strict=False):
             assert s1.parameters == s2.parameters
 
     @patch('src.transformers.fiscal.sensitivity.get_config')
@@ -157,7 +157,7 @@ class TestGenerateMonteCarloScenarios:
         # Different parameters with different seeds (high probability)
         differences = sum(
             s1.parameters != s2.parameters
-            for s1, s2 in zip(scenarios1, scenarios2)
+            for s1, s2 in zip(scenarios1, scenarios2, strict=False)
         )
         assert differences > 0
 
@@ -218,7 +218,7 @@ class TestGenerateLatinHypercubeScenarios:
         )
 
         # Should be reproducible
-        for s1, s2 in zip(scenarios1, scenarios2):
+        for s1, s2 in zip(scenarios1, scenarios2, strict=False):
             for key in s1.parameters:
                 assert abs(s1.parameters[key] - s2.parameters[key]) < 1e-10
 

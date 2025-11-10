@@ -1,13 +1,14 @@
 """Tests for miscellaneous model files (transitions, ma_models, researcher, company)."""
 
-import pytest
 from datetime import date
+
+import pytest
 from pydantic import ValidationError
 
-from src.models.transitions import TransitionType, CompanyTransition
+from src.models.company import Company, CompanyMatch, RawCompany
 from src.models.ma_models import MAEvent
-from src.models.researcher import Researcher, RawResearcher
-from src.models.company import Company, RawCompany, CompanyMatch
+from src.models.researcher import RawResearcher, Researcher
+from src.models.transitions import CompanyTransition, TransitionType
 
 
 class TestTransitionModels:

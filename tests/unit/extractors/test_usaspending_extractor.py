@@ -1,16 +1,11 @@
 """Tests for USAspending DuckDB extractor."""
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 
-from src.extractors.usaspending import (
-    DuckDBUSAspendingExtractor,
-    extract_usaspending_from_config,
-)
+from src.extractors.usaspending import DuckDBUSAspendingExtractor, extract_usaspending_from_config
 
 
 # ==================== Fixtures ====================

@@ -4,11 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from src.validators.schemas import (
-    ValidationResult,
     CompletenessCheck,
     UniquenessCheck,
-    ValueRangeCheck,
     ValidationConfig,
+    ValidationResult,
+    ValueRangeCheck,
 )
 
 

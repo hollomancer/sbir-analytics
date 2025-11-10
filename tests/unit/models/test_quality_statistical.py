@@ -1,26 +1,27 @@
 """Tests for quality and statistical reporting models."""
 
-import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.quality import (
-    QualitySeverity,
+    ChangesSummary,
+    DataHygieneMetrics,
+    InsightRecommendation,
+    ModuleReport,
     QualityIssue,
     QualityReport,
-    InsightRecommendation,
-    DataHygieneMetrics,
-    ChangesSummary,
-    ModuleReport,
+    QualitySeverity,
 )
 from src.models.statistical_reports import (
-    ReportFormat,
-    PerformanceMetrics,
     ModuleMetrics,
+    PerformanceMetrics,
     PipelineMetrics,
     ReportArtifact,
     ReportCollection,
+    ReportFormat,
 )
 
 

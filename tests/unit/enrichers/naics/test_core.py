@@ -4,17 +4,12 @@ import gzip
 import json
 import zipfile
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
-from src.enrichers.naics.core import (
-    NAICS_RE,
-    NAICSEnricher,
-    NAICSEnricherConfig,
-    RECIPIENT_UEI_RE,
-)
+from src.enrichers.naics.core import NAICS_RE, RECIPIENT_UEI_RE, NAICSEnricher, NAICSEnricherConfig
 
 
 # ==================== Fixtures ====================
@@ -171,7 +166,7 @@ class TestNAICSEnricherInitialization:
     def test_initialization_handles_reference_file_error(self, sample_config):
         """Test initialization handles error reading reference file."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.read_text", side_effect=IOError("Read error")):
+            with patch("pathlib.Path.read_text", side_effect=OSError("Read error")):
                 enricher = NAICSEnricher(sample_config)
 
         # Should gracefully handle error and continue with empty set

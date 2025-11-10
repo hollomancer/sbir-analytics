@@ -1,24 +1,25 @@
 """Tests for transition detection Pydantic models."""
 
-import pytest
 from datetime import date, datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.transition_models import (
-    ConfidenceLevel,
-    CompetitionType,
     AgencySignal,
-    TimingSignal,
-    CompetitionSignal,
-    PatentSignal,
     CETSignal,
-    TransitionSignals,
-    EvidenceItem,
+    CompetitionSignal,
+    CompetitionType,
+    ConfidenceLevel,
     EvidenceBundle,
-    VendorMatch,
+    EvidenceItem,
     FederalContract,
+    PatentSignal,
+    TimingSignal,
     Transition,
     TransitionProfile,
+    TransitionSignals,
+    VendorMatch,
 )
 
 

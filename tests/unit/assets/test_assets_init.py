@@ -1,8 +1,9 @@
 """Tests for assets package __init__ lazy import mechanism."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 import importlib
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestAssetsPackageStructure:
@@ -104,8 +105,8 @@ class TestLazyImportMechanism:
 
     def test_dir_includes_all_symbols(self):
         """Test __dir__() includes all exported symbols."""
-        from src.assets import __all__
         import src.assets
+        from src.assets import __all__
 
         dir_result = src.assets.__dir__()
 
@@ -124,7 +125,6 @@ class TestLazyImportMechanism:
         """Test __getattr__ imports module on first access."""
         # Create a fresh module to avoid cached imports
         import sys
-        import importlib
 
         # Remove from cache if present
         module_name = 'src.assets'
@@ -285,7 +285,6 @@ class TestLazyImportBehavior:
             del sys.modules[module]
 
         # Import the assets package
-        import src.assets
 
         # Asset submodules should not be loaded yet
         # (They will be loaded on first access via __getattr__)

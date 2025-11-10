@@ -1,10 +1,9 @@
 """Tests for transition scoring algorithm."""
 
-import pytest
 from datetime import date
-from unittest.mock import Mock
 
-from src.transition.detection.scoring import TransitionScorer
+import pytest
+
 from src.models.transition_models import (
     AgencySignal,
     CETSignal,
@@ -16,6 +15,7 @@ from src.models.transition_models import (
     TimingSignal,
     TransitionSignals,
 )
+from src.transition.detection.scoring import TransitionScorer
 
 
 @pytest.fixture

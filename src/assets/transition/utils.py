@@ -9,13 +9,8 @@ This module provides:
 
 from __future__ import annotations
 
-
-from __future__ import annotations
-
 import json
 import os
-import time
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -28,30 +23,17 @@ from loguru import logger
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
     from ..models.quality import ModuleReport  # type: ignore
-    from ..utils.reporting.analyzers.transition_analyzer import (
-        TransitionDetectionAnalyzer,
-    )
+    from ..utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 except Exception:
     ModuleReport = None
     TransitionDetectionAnalyzer = None
 
-from ...config.loader import get_config
-from ...exceptions import FileSystemError
-from ...extractors.contract_extractor import ContractExtractor
-from ...transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 
 # Import-safe shims for Dagster
 try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        MetadataValue,
-        Output,
-        asset,
-        asset_check,
-    )
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
+    from dagster import MetadataValue, Output, asset, asset_check
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:
@@ -184,7 +166,21 @@ def _env_bool(key: str, default: bool) -> bool:
     return v.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _get_neo4j_driver() -> Driver | None:
+# Neo4j imports (import-safe)
+try:
+    from neo4j import Driver
+    from src.loaders.neo4j import Neo4jClient
+except Exception:
+    Driver = None  # type: ignore
+    Neo4jClient = None  # type: ignore
+
+# Neo4j configuration defaults
+DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
+DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
+
+
+def _get_neo4j_driver() -> Any:
     """Create and return a Neo4j driver, or None if unavailable."""
     if Driver is None or Neo4jClient is None:
         logger.warning("Neo4j driver unavailable; skipping Neo4j operations")

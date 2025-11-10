@@ -1,24 +1,25 @@
 """Tests for CET and USPTO patent models."""
 
-import pytest
 from datetime import date, datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.cet_models import (
-    ClassificationLevel,
     CETArea,
-    EvidenceStatement,
-    CETClassification,
     CETAssessment,
+    CETClassification,
+    ClassificationLevel,
     CompanyCETProfile,
+    EvidenceStatement,
     TrainingExample,
 )
 from src.models.uspto_models import (
     ConveyanceType,
-    PatentDocument,
     PatentAssignee,
     PatentAssignor,
     PatentConveyance,
+    PatentDocument,
 )
 
 

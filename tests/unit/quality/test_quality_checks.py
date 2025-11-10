@@ -20,6 +20,7 @@ from src.quality.checks import (
     validate_sbir_awards,
 )
 
+
 pytestmark = pytest.mark.fast
 
 

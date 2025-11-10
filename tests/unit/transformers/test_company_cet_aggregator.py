@@ -1,8 +1,6 @@
 """Tests for CompanyCETAggregator transformer."""
 
-import pytest
 import pandas as pd
-from datetime import datetime
 
 from src.transformers.company_cet_aggregator import CompanyCETAggregator
 

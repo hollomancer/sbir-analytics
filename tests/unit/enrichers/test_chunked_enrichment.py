@@ -2,15 +2,14 @@
 
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
 
 from src.enrichers.chunked_enrichment import (
-    ChunkProgress,
     ChunkedEnricher,
+    ChunkProgress,
     combine_enriched_chunks,
     create_dynamic_outputs_enrichment,
 )

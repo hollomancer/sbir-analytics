@@ -1,7 +1,8 @@
 """Tests for SBIR award Pydantic models."""
 
+from datetime import date
+
 import pytest
-from datetime import date, datetime
 from pydantic import ValidationError
 
 from src.models.award import Award, RawAward

@@ -1,14 +1,13 @@
 """Tests for asset naming standards module."""
 
-import pytest
 
 from src.assets.asset_naming_standards import (
-    PipelineStage,
-    AssetNamingStandards,
-    get_standardized_asset_name,
-    get_group_name,
     ASSET_RENAMING_MAP,
     GROUP_RENAMING_MAP,
+    AssetNamingStandards,
+    PipelineStage,
+    get_group_name,
+    get_standardized_asset_name,
 )
 
 

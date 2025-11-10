@@ -1,7 +1,6 @@
 """Tests for CET classification assets."""
 
 import json
-from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd

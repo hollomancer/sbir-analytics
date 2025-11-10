@@ -10,10 +10,7 @@ Tests cover:
 """
 
 import csv
-import gzip
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
@@ -28,6 +25,7 @@ from src.quality.uspto_validators import (
     validate_rf_id_uniqueness,
     validate_rf_id_uniqueness_from_iterator,
 )
+
 
 pytestmark = pytest.mark.fast
 

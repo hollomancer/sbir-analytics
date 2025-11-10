@@ -1,17 +1,18 @@
 """Tests for contract models."""
 
-import pytest
 from datetime import date, datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.contract_models import (
     CompetitionType,
-    ContractStatus,
-    VendorMatch,
-    ContractParty,
-    ContractValue,
-    ContractPeriod,
     ContractDescription,
+    ContractParty,
+    ContractPeriod,
+    ContractStatus,
+    ContractValue,
+    VendorMatch,
 )
 
 

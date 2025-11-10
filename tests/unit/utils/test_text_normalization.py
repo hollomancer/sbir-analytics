@@ -16,6 +16,7 @@ from src.utils.text_normalization import (
     normalize_recipient_name,
 )
 
+
 pytestmark = pytest.mark.fast
 
 

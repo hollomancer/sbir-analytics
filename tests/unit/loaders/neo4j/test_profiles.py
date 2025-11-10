@@ -1,9 +1,9 @@
 """Tests for Neo4j transition profile loader."""
 
-import pytest
-import pandas as pd
 from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
+
+import pandas as pd
 
 from src.loaders.neo4j.profiles import TransitionProfileLoader
 

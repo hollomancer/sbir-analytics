@@ -11,12 +11,11 @@ Tests cover:
 """
 
 import csv
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from src.utils.duckdb_client import DuckDBClient
+
 
 pytestmark = pytest.mark.fast
 

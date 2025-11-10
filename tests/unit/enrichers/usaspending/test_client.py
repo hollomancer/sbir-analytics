@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx

@@ -1,10 +1,11 @@
 """Tests for Neo4j Patent-CET loader."""
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-from src.loaders.neo4j.patent_cet import Neo4jPatentCETLoader, Neo4jConfig
-from src.exceptions import ConfigurationError, DependencyError
+import pytest
+
+from src.exceptions import ConfigurationError
+from src.loaders.neo4j.patent_cet import Neo4jConfig, Neo4jPatentCETLoader
 
 
 class TestNeo4jConfig:

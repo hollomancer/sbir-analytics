@@ -10,12 +10,12 @@ Tests cover end-to-end extraction scenarios:
 
 import gzip
 import json
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from src.extractors.contract_extractor import ContractExtractor
+
 
 pytestmark = pytest.mark.integration
 

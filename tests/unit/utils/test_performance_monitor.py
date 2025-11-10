@@ -18,6 +18,7 @@ import pytest
 
 from src.utils.performance_monitor import PerformanceMonitor
 
+
 pytestmark = pytest.mark.fast
 
 

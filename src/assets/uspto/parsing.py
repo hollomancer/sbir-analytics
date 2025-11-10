@@ -10,16 +10,9 @@ This module contains:
 
 from __future__ import annotations
 
-from loguru import logger
 from typing import Any
 
-from .utils import (
-
-    _attempt_parse_sample,
-    _discover_table_files,
-    _make_parsing_check,
-    asset,
-)
+from .utils import _attempt_parse_sample, asset
 
 
 @asset(

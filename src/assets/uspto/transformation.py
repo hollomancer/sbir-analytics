@@ -14,17 +14,16 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date, datetime
+from collections.abc import Iterable
 from itertools import product
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from loguru import logger
 
+from src.config.schemas import Neo4jConfig
 from src.extractors.uspto_extractor import USPTOExtractor
 from src.loaders.neo4j.client import Neo4jClient
-from src.config.schemas import Neo4jConfig
 
 from .utils import (
     AssetCheckResult,
@@ -33,7 +32,6 @@ from .utils import (
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
-    _coerce_str,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -45,6 +43,7 @@ from .utils import (
     asset,
     asset_check,
 )
+
 
 # Constants
 TRANSFORM_SUCCESS_THRESHOLD = 0.9

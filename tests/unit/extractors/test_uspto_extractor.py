@@ -8,11 +8,11 @@ Tests cover:
 """
 
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
-from src.extractors.uspto_extractor import USPTOExtractor, SUPPORTED_EXTENSIONS
+from src.extractors.uspto_extractor import SUPPORTED_EXTENSIONS, USPTOExtractor
+
 
 pytestmark = pytest.mark.fast
 

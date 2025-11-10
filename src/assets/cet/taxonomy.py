@@ -11,16 +11,15 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from src.ml.config.taxonomy_loader import TaxonomyLoader
 from src.models.cet_models import CETArea
-from typing import Any
 
 from .utils import (
-
     AssetCheckResult,
     AssetCheckSeverity,
     Output,

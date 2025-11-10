@@ -13,7 +13,7 @@ Tests for NAICS-to-BEA sector mapping functionality:
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -24,6 +24,7 @@ from src.enrichers.fiscal_bea_mapper import (
     NAICSToBEAResult,
     enrich_awards_with_bea_sectors,
 )
+
 
 pytestmark = pytest.mark.fast
 

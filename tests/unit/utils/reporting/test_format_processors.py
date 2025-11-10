@@ -22,13 +22,11 @@ from src.models.statistical_reports import (
     ReportArtifact,
     ReportFormat,
 )
-from src.utils.reporting.formats.base import (
-    BaseReportProcessor,
-    ReportProcessorRegistry,
-)
+from src.utils.reporting.formats.base import BaseReportProcessor, ReportProcessorRegistry
 from src.utils.reporting.formats.html_processor import HtmlReportProcessor
 from src.utils.reporting.formats.json_processor import JsonReportProcessor
 from src.utils.reporting.formats.markdown_processor import MarkdownProcessor
+
 
 pytestmark = pytest.mark.fast
 

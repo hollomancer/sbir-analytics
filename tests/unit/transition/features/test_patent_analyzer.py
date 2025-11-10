@@ -5,13 +5,12 @@ Tests the PatentSignalExtractor for extracting patent-related signals
 that indicate SBIR Phase III commercialization through federal contracts.
 """
 
-from datetime import date, timedelta
-from unittest.mock import Mock, patch
+from datetime import date
+from unittest.mock import patch
 
 import pytest
 
 from src.models.patent import Patent
-from src.models.transition_models import PatentSignal
 from src.transition.features.patent_analyzer import PatentSignalExtractor
 
 

@@ -1,30 +1,31 @@
 """Tests for configuration schemas."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from pydantic import ValidationError
 
 from src.config.schemas import (
-    SbirValidationConfig,
-    SbirDuckDBConfig,
+    CLIConfig,
     DataQualityConfig,
+    DuckDBConfig,
     EnrichmentConfig,
-    EnrichmentSourceConfig,
     EnrichmentRefreshConfig,
-    Neo4jConfig,
+    EnrichmentSourceConfig,
     ExtractionConfig,
-    ValidationConfig,
-    TransformationConfig,
+    FiscalAnalysisConfig,
     LoggingConfig,
     MetricsConfig,
-    DuckDBConfig,
-    StatisticalReportingConfig,
-    TaxParameterConfig,
-    SensitivityConfig,
-    CLIConfig,
-    FiscalAnalysisConfig,
+    Neo4jConfig,
     PathsConfig,
     PipelineConfig,
+    SbirDuckDBConfig,
+    SbirValidationConfig,
+    SensitivityConfig,
+    StatisticalReportingConfig,
+    TaxParameterConfig,
+    TransformationConfig,
+    ValidationConfig,
 )
 
 

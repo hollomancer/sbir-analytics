@@ -11,7 +11,6 @@ Tests for search provider base classes, scoring utilities, and mock provider:
 
 import json
 import time
-from pathlib import Path
 
 import pytest
 
@@ -22,14 +21,10 @@ from src.enrichers.search_providers.base import (
     ProviderResult,
     make_mock_response,
 )
-from src.enrichers.search_providers.mock_searxng import (
-    MockSearxngProvider,
-    make_mock_searxng,
-)
+from src.enrichers.search_providers.mock_searxng import MockSearxngProvider, make_mock_searxng
 from src.enrichers.search_providers.scoring import (
     FieldMatchScore,
     ResultScore,
-    aggregate_run_metrics,
     domain_of_url,
     f1_from_precision_recall,
     jaccard_similarity,
@@ -37,12 +32,12 @@ from src.enrichers.search_providers.scoring import (
     precision_at_k,
     recall_at_k,
     score_citation,
-    score_provider_run,
     score_result_against_truth,
     sequence_similarity,
     text_similarity,
     tokenize_text,
 )
+
 
 pytestmark = pytest.mark.fast
 

@@ -1,14 +1,14 @@
 """Tests for R StateIO function wrappers."""
 
-import pytest
-import pandas as pd
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
-from src.exceptions import DependencyError
-from src.utils.r_helpers import RFunctionError
+import pandas as pd
+import pytest
 
 # Import the module - will handle rpy2 availability gracefully
 import src.transformers.r_stateio_functions as r_stateio
+from src.exceptions import DependencyError
+from src.utils.r_helpers import RFunctionError
 
 
 class TestBuildStateModel:

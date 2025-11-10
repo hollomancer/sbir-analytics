@@ -5,7 +5,6 @@ Tests the TransitionAnalytics module for computing KPIs and breakdowns
 from transition detection outputs (award-level, company-level, by agency).
 """
 
-from datetime import datetime
 
 import pandas as pd
 import pytest

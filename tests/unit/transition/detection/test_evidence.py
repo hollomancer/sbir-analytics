@@ -1,10 +1,7 @@
 """Tests for transition evidence generation."""
 
-import pytest
-from datetime import date, datetime
-from unittest.mock import Mock, patch
+from datetime import date
 
-from src.transition.detection.evidence import EvidenceGenerator
 from src.models.transition_models import (
     AgencySignal,
     CETSignal,
@@ -18,6 +15,7 @@ from src.models.transition_models import (
     TransitionSignals,
     VendorMatch,
 )
+from src.transition.detection.evidence import EvidenceGenerator
 
 
 class TestEvidenceGeneratorInitialization:

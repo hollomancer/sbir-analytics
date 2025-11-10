@@ -1,7 +1,6 @@
 """Shared fixtures for extractor tests."""
 
 import json
-from pathlib import Path
 
 import pytest
 

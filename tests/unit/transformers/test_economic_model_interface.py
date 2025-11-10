@@ -1,15 +1,12 @@
 """Tests for economic model interface."""
 
-import pytest
-import pandas as pd
 from decimal import Decimal
-from unittest.mock import Mock
 
-from src.transformers.economic_model_interface import (
-    EconomicImpactResult,
-    EconomicModelInterface,
-)
+import pandas as pd
+import pytest
+
 from src.exceptions import ValidationError
+from src.transformers.economic_model_interface import EconomicImpactResult, EconomicModelInterface
 
 
 class TestEconomicImpactResult:

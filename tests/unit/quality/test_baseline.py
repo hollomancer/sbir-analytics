@@ -9,15 +9,11 @@ Tests cover:
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-from src.quality.baseline import (
-    BaselineComparison,
-    QualityBaseline,
-    QualityBaselineManager,
-)
+from src.quality.baseline import BaselineComparison, QualityBaseline, QualityBaselineManager
+
 
 pytestmark = pytest.mark.fast
 

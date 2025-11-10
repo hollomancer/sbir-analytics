@@ -3,24 +3,16 @@
 import json
 import os
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from src.models.quality import (
-    ChangesSummary,
-    DataHygieneMetrics,
-    ModuleReport,
-    QualitySeverity,
-    StatisticalReport,
-)
+from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport, StatisticalReport
 from src.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,
     PipelineMetrics,
     ReportCollection,
-    ReportFormat,
 )
 from src.utils.statistical_reporter import StatisticalReporter
 

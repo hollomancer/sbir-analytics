@@ -17,18 +17,14 @@ import pandas as pd
 import pytest
 
 from src.enrichers.naics.fiscal.strategies.agency_defaults import AgencyDefaultsStrategy
-from src.enrichers.naics.fiscal.strategies.base import (
-    EnrichmentStrategy,
-    NAICSEnrichmentResult,
-)
+from src.enrichers.naics.fiscal.strategies.base import NAICSEnrichmentResult
 from src.enrichers.naics.fiscal.strategies.original_data import OriginalDataStrategy
 from src.enrichers.naics.fiscal.strategies.sector_fallback import SectorFallbackStrategy
 from src.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
 from src.enrichers.naics.fiscal.strategies.topic_code import TopicCodeStrategy
-from src.enrichers.naics.fiscal.strategies.usaspending_dataframe import (
-    USAspendingDataFrameStrategy,
-)
+from src.enrichers.naics.fiscal.strategies.usaspending_dataframe import USAspendingDataFrameStrategy
 from src.enrichers.naics.fiscal.utils import normalize_naics_code, validate_naics_code
+
 
 pytestmark = pytest.mark.fast
 

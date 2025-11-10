@@ -18,6 +18,7 @@ import pytest
 
 from src.utils.enrichment_checkpoints import CheckpointStore, EnrichmentCheckpoint
 
+
 pytestmark = pytest.mark.fast
 
 

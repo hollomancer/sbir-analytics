@@ -18,6 +18,7 @@ import pytest
 
 from src.quality.dashboard import DashboardMetrics, QualityDashboard
 
+
 pytestmark = pytest.mark.fast
 
 

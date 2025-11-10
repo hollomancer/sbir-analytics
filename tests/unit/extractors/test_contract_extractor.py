@@ -10,12 +10,12 @@ Tests cover:
 """
 
 from datetime import date
-from pathlib import Path
 
 import pytest
 
 from src.extractors.contract_extractor import ContractExtractor
 from src.models.transition_models import CompetitionType
+
 
 pytestmark = pytest.mark.fast
 

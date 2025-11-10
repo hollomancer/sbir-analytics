@@ -1,13 +1,9 @@
 """Tests for Patent Assignment transformer."""
 
-import pytest
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import Mock, patch
 
-from src.transformers.patent_transformer import (
-    PatentAssignmentTransformer,
-    PatentTransformOptions,
-)
+from src.transformers.patent_transformer import PatentAssignmentTransformer, PatentTransformOptions
 
 
 class TestPatentTransformOptions:

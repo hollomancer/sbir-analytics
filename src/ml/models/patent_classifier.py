@@ -54,9 +54,7 @@ PatentFeatureVector = None
 # available, but do not raise if it's missing in minimal CI environments.
 try:
     from src.ml.features.patent_features import PatentFeatureVector as _PatentFeatureVector
-    from src.ml.features.patent_features import (
-        extract_features as _extract_features,
-    )
+    from src.ml.features.patent_features import extract_features as _extract_features
 
     # Populate module-level names only if not already present or None
     if "extract_features" not in globals() or extract_features is None:

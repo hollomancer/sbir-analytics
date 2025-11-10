@@ -9,9 +9,9 @@ import pytest
 
 from src.models.transition_models import CETSignal
 from src.transition.features.cet_analyzer import (
+    CET_KEYWORD_MAPPINGS,
     CETAnalysisResult,
     CETSignalExtractor,
-    CET_KEYWORD_MAPPINGS,
     create_cet_extractor,
 )
 

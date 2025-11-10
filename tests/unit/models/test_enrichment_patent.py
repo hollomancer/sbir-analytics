@@ -1,16 +1,17 @@
 """Tests for enrichment and patent models."""
 
+from datetime import date, datetime, timedelta
+
 import pytest
-from datetime import datetime, date, timedelta
 from pydantic import ValidationError
 
 from src.models.enrichment import (
-    EnrichmentStatus,
+    EnrichmentDeltaEvent,
     EnrichmentFreshnessRecord,
     EnrichmentFreshnessRecordModel,
-    EnrichmentDeltaEvent,
+    EnrichmentStatus,
 )
-from src.models.patent import Patent, RawPatent, PatentCitation
+from src.models.patent import Patent, PatentCitation, RawPatent
 
 
 class TestEnrichmentStatus:

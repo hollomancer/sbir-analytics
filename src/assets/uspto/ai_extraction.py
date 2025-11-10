@@ -11,30 +11,29 @@ This module contains:
 """
 
 from __future__ import annotations
-import os
 
 import json
-from datetime import datetime
+import os
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from .utils import (
+    DEFAULT_AI_CHECKPOINT_DIR,
+    DEFAULT_AI_DEDUP_TABLE,
+    DEFAULT_AI_DUCKDB,
+    DEFAULT_AI_PROCESSED_DIR,
+    DEFAULT_AI_RAW_DIR,
+    DEFAULT_AI_TABLE,
+    DEFAULT_DEDUP_CHECKS,
+    DEFAULT_EXTRACT_CHECKS,
     AssetIn,
-    MetadataValue,
     USPTOAIExtractor,
     _batch_to_dataframe,
     _ensure_dir,
     _ensure_dir_ai,
     asset,
-    DEFAULT_AI_DUCKDB,
-    DEFAULT_AI_RAW_DIR,
-    DEFAULT_AI_TABLE,
-    DEFAULT_AI_DEDUP_TABLE,
-    DEFAULT_AI_PROCESSED_DIR,
-    DEFAULT_EXTRACT_CHECKS,
-    DEFAULT_AI_CHECKPOINT_DIR,
 )
 
 

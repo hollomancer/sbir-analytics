@@ -14,17 +14,14 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
 from typing import Any
 
-from loguru import logger
-
 from .utils import (
+    DEFAULT_TRANSFORMED_DIR,
     AssetCheckResult,
     AssetCheckSeverity,
-    AssetIn,
-    DependencyError,
-    MetadataValue,
+    LoadMetrics,
+    PatentAnalysisAnalyzer,
     _convert_dates_to_iso,
     _ensure_output_dir,
     _get_neo4j_client,
@@ -32,10 +29,8 @@ from .utils import (
     _serialize_metrics,
     asset,
     asset_check,
-    DEFAULT_TRANSFORMED_DIR,
-    PatentAnalysisAnalyzer,
-    LoadMetrics,
 )
+
 
 # Neo4j loader imports
 try:

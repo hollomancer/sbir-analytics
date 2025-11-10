@@ -18,10 +18,11 @@ import pandas as pd
 import pytest
 
 from src.enrichers.inflation_adjuster import (
-    InflationAdjustmentResult,
     InflationAdjuster,
+    InflationAdjustmentResult,
     adjust_awards_for_inflation,
 )
+
 
 pytestmark = pytest.mark.fast
 

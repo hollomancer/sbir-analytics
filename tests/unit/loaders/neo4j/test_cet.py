@@ -1,8 +1,6 @@
 """Tests for Neo4j CET loader."""
 
-import pytest
-from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock
 
 from src.loaders.neo4j.cet import CETLoader, CETLoaderConfig
 from src.loaders.neo4j.client import Neo4jClient

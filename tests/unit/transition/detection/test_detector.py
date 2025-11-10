@@ -7,7 +7,7 @@ for the complete transition detection pipeline.
 """
 
 from datetime import date, datetime, timedelta
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
@@ -18,7 +18,6 @@ from src.models.transition_models import (
     FederalContract,
     Transition,
     TransitionSignals,
-    VendorMatch,
 )
 from src.transition.detection.detector import TransitionDetector
 

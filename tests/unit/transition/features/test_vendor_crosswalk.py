@@ -9,7 +9,7 @@ import json
 import tempfile
 from datetime import date, datetime
 from pathlib import Path
-from unittest.mock import Mock, call, patch
+from unittest.mock import patch
 
 import pytest
 

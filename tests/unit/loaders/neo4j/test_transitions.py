@@ -1,9 +1,10 @@
 """Tests for Neo4j Transition loader."""
 
-import pytest
-import pandas as pd
 from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+import pandas as pd
+import pytest
 
 from src.loaders.neo4j.transitions import TransitionLoader
 
