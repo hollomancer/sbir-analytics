@@ -481,9 +481,7 @@ class TestTransition:
             likelihood_score=0.92,
             confidence=ConfidenceLevel.HIGH,
             primary_contract=FederalContract(contract_id="CONTRACT-001"),
-            signals=TransitionSignals(
-                agency=AgencySignal(same_agency=True, agency_score=0.95)
-            ),
+            signals=TransitionSignals(agency=AgencySignal(same_agency=True, agency_score=0.95)),
         )
         assert transition.transition_id == "TRANS-001"
         assert transition.likelihood_score == 0.92

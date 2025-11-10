@@ -138,14 +138,18 @@ class TestEscapeFunctions:
 
     def test_escape_identifier_fallback(self):
         """Test escape_identifier fallback when DuckDB function unavailable."""
-        with patch("src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_identifier("table_name")
 
         assert result == '"table_name"'
 
     def test_escape_identifier_with_quotes(self):
         """Test escape_identifier with embedded quotes."""
-        with patch("src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_identifier('table"name')
 
         # Should escape internal quotes
@@ -163,14 +167,18 @@ class TestEscapeFunctions:
 
     def test_escape_literal_fallback(self):
         """Test escape_literal fallback when DuckDB function unavailable."""
-        with patch("src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_literal("value")
 
         assert result == "'value'"
 
     def test_escape_literal_with_quotes(self):
         """Test escape_literal with embedded quotes."""
-        with patch("src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_literal("val'ue")
 
         # Should escape internal quotes
@@ -178,7 +186,9 @@ class TestEscapeFunctions:
 
     def test_escape_literal_with_backslashes(self):
         """Test escape_literal with backslashes."""
-        with patch("src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_literal("val\\ue")
 
         # Should escape backslashes
@@ -287,7 +297,9 @@ class TestZippedDumpImport:
 
         assert result is True
         # Should have executed CREATE VIEW
-        assert any("CREATE OR REPLACE VIEW" in str(call) for call in mock_conn.execute.call_args_list)
+        assert any(
+            "CREATE OR REPLACE VIEW" in str(call) for call in mock_conn.execute.call_args_list
+        )
 
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump_fallback_to_copy_files(self, mock_connect, tmp_path):
@@ -323,7 +335,9 @@ class TestZippedDumpImport:
         extractor.connection = mock_conn
 
         with patch.object(extractor, "_import_copy_files", return_value=False):
-            with patch.object(extractor, "_extract_and_import_dump", return_value=True) as mock_extract:
+            with patch.object(
+                extractor, "_extract_and_import_dump", return_value=True
+            ) as mock_extract:
                 result = extractor._import_zipped_dump(zip_file, "test_table")
 
         assert result is True
@@ -416,12 +430,16 @@ class TestGetTableInfo:
     def test_get_table_info_success(self, mock_connect):
         """Test get_table_info returns table information."""
         mock_conn = Mock()
-        mock_conn.execute = Mock(return_value=Mock(
-            fetchall=Mock(return_value=[
-                ("id", "INTEGER"),
-                ("name", "VARCHAR"),
-            ])
-        ))
+        mock_conn.execute = Mock(
+            return_value=Mock(
+                fetchall=Mock(
+                    return_value=[
+                        ("id", "INTEGER"),
+                        ("name", "VARCHAR"),
+                    ]
+                )
+            )
+        )
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -512,14 +530,18 @@ class TestEdgeCases:
 
     def test_escape_identifier_empty_string(self):
         """Test escape_identifier with empty string."""
-        with patch("src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_identifier("")
 
         assert result == '""'
 
     def test_escape_literal_empty_string(self):
         """Test escape_literal with empty string."""
-        with patch("src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError):
+        with patch(
+            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
+        ):
             result = DuckDBUSAspendingExtractor._escape_literal("")
 
         assert result == "''"

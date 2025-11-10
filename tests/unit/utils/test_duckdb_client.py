@@ -174,9 +174,7 @@ class TestDuckDBClientQueryExecution:
             conn.execute("INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob')")
 
         # Query with parameters
-        results = client.execute_query(
-            "SELECT * FROM test WHERE id = $id", parameters={"id": 1}
-        )
+        results = client.execute_query("SELECT * FROM test WHERE id = $id", parameters={"id": 1})
 
         assert len(results) == 1
         assert results[0]["name"] == "Alice"

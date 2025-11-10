@@ -149,7 +149,8 @@ class TestNAICSToBEAMapper:
     def test_initialization_missing_files(self, tmp_path):
         """Test mapper initialization with missing files."""
         mapper = NAICSToBEAMapper(
-            crosswalk_path=tmp_path / "nonexistent.csv", fallback_config_path=tmp_path / "nonexistent.yaml"
+            crosswalk_path=tmp_path / "nonexistent.csv",
+            fallback_config_path=tmp_path / "nonexistent.yaml",
         )
 
         # Should handle missing files gracefully
@@ -333,7 +334,10 @@ class TestNAICSToBEAMapper:
         assert stats.total_mappings == 4
         assert stats.successful_mappings >= 3  # All except maybe None
         assert 0 <= stats.coverage_rate <= 1.0
-        assert "direct" in stats.source_distribution or "hierarchical_4digit" in stats.source_distribution
+        assert (
+            "direct" in stats.source_distribution
+            or "hierarchical_4digit" in stats.source_distribution
+        )
 
 
 # =============================================================================
@@ -376,7 +380,9 @@ class TestHelperFunctions:
             assert len(enriched_df) == 2
             assert isinstance(stats, BEAMappingStatistics)
 
-    def test_enrich_awards_with_bea_sectors_with_mapper(self, temp_crosswalk_csv, temp_fallback_yaml):
+    def test_enrich_awards_with_bea_sectors_with_mapper(
+        self, temp_crosswalk_csv, temp_fallback_yaml
+    ):
         """Test helper function uses provided mapper."""
         mapper = NAICSToBEAMapper(temp_crosswalk_csv, temp_fallback_yaml)
         awards_df = pd.DataFrame(

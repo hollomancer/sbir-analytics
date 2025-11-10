@@ -120,6 +120,7 @@ class TestUSPTOExtractorPathHandling:
         """Test handling of relative paths."""
         # Create relative path
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(tmp_path)
@@ -184,8 +185,7 @@ class TestUSPTOExtractorMultipleFiles:
 
         # Count supported files
         supported_files = [
-            f for f in sample_uspto_dir.iterdir()
-            if f.suffix in SUPPORTED_EXTENSIONS
+            f for f in sample_uspto_dir.iterdir() if f.suffix in SUPPORTED_EXTENSIONS
         ]
 
         assert len(supported_files) == 3  # .dta, .csv, .parquet

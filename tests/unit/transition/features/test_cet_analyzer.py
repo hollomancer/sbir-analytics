@@ -210,9 +210,7 @@ class TestInferContractCET:
     def test_infer_contract_cet_multiple_matches(self, extractor):
         """Test inference returns best match when multiple CET areas match."""
         # Description with both AI and quantum keywords
-        description = (
-            "quantum computing machine learning artificial intelligence quantum sensing"
-        )
+        description = "quantum computing machine learning artificial intelligence quantum sensing"
 
         cet, confidence = extractor.infer_contract_cet(description)
 
@@ -247,9 +245,7 @@ class TestInferContractCET:
     def test_infer_contract_cet_confidence_based_on_density(self, extractor):
         """Test confidence score based on keyword density."""
         # More keywords should give higher confidence
-        dense_description = (
-            "machine learning deep learning neural network AI computer vision NLP"
-        )
+        dense_description = "machine learning deep learning neural network AI computer vision NLP"
         sparse_description = "system with machine learning"
 
         _, dense_conf = extractor.infer_contract_cet(dense_description)
@@ -642,6 +638,7 @@ class TestEdgeCases:
 
     def test_extract_award_cet_from_pydantic_model(self, extractor):
         """Test extraction works with Pydantic models."""
+
         # Mock Pydantic model
         class MockAward:
             def model_dump(self):
@@ -654,6 +651,7 @@ class TestEdgeCases:
 
     def test_extract_award_cet_from_object_with_dict(self, extractor):
         """Test extraction works with objects having __dict__."""
+
         class MockAward:
             def __init__(self):
                 self.cet_area = "Space Technology"

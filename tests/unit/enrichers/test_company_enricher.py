@@ -253,9 +253,7 @@ def test_enrich_missing_award_company_column():
     awards = pd.DataFrame([{"award_id": 1}])
 
     with pytest.raises(ValidationError) as exc_info:
-        enrich_awards_with_companies(
-            awards, companies, award_company_col="nonexistent_column"
-        )
+        enrich_awards_with_companies(awards, companies, award_company_col="nonexistent_column")
 
     assert "award_company_col" in str(exc_info.value)
 
@@ -268,9 +266,7 @@ def test_enrich_missing_company_name_column():
     awards = pd.DataFrame([{"company": "Test Award"}])
 
     with pytest.raises(ValidationError) as exc_info:
-        enrich_awards_with_companies(
-            awards, companies, company_name_col="nonexistent_column"
-        )
+        enrich_awards_with_companies(awards, companies, company_name_col="nonexistent_column")
 
     assert "company_name_col" in str(exc_info.value)
 

@@ -48,11 +48,13 @@ def sample_dump_lines():
 @pytest.fixture
 def sample_awards_df():
     """Sample awards DataFrame."""
-    return pd.DataFrame({
-        "award_id": ["123456", "234567", "999999"],
-        "recipient_uei": ["UEI12345ABCD", "UEI67890EFGH", "UNKNOWN_UEI"],
-        "company": ["Data Systems", "Software Corp", "Unknown Co"],
-    })
+    return pd.DataFrame(
+        {
+            "award_id": ["123456", "234567", "999999"],
+            "recipient_uei": ["UEI12345ABCD", "UEI67890EFGH", "UNKNOWN_UEI"],
+            "company": ["Data Systems", "Software Corp", "Unknown Co"],
+        }
+    )
 
 
 # ==================== Regex Pattern Tests ====================
@@ -291,10 +293,12 @@ class TestIndexLoading:
 
     def test_load_from_cache_success(self, enricher, tmp_path):
         """Test loading index from cached Parquet file."""
-        cache_data = pd.DataFrame([
-            {"key_type": "award", "key": "123456", "naics_candidates": ["541511", "541512"]},
-            {"key_type": "recipient", "key": "UEI12345ABCD", "naics_candidates": ["336411"]},
-        ])
+        cache_data = pd.DataFrame(
+            [
+                {"key_type": "award", "key": "123456", "naics_candidates": ["541511", "541512"]},
+                {"key_type": "recipient", "key": "UEI12345ABCD", "naics_candidates": ["336411"]},
+            ]
+        )
 
         cache_path = tmp_path / "naics_index.parquet"
         cache_data.to_parquet(cache_path)
@@ -309,9 +313,11 @@ class TestIndexLoading:
 
     def test_load_from_cache_handles_none_naics(self, enricher, tmp_path):
         """Test loading handles None in naics_candidates."""
-        cache_data = pd.DataFrame([
-            {"key_type": "award", "key": "123456", "naics_candidates": None},
-        ])
+        cache_data = pd.DataFrame(
+            [
+                {"key_type": "award", "key": "123456", "naics_candidates": None},
+            ]
+        )
 
         cache_path = tmp_path / "naics_index.parquet"
         cache_data.to_parquet(cache_path)
@@ -324,9 +330,11 @@ class TestIndexLoading:
 
     def test_load_from_cache_handles_json_strings(self, enricher, tmp_path):
         """Test loading handles JSON string format."""
-        cache_data = pd.DataFrame([
-            {"key_type": "award", "key": "123456", "naics_candidates": '["541511", "541512"]'},
-        ])
+        cache_data = pd.DataFrame(
+            [
+                {"key_type": "award", "key": "123456", "naics_candidates": '["541511", "541512"]'},
+            ]
+        )
 
         cache_path = tmp_path / "naics_index.parquet"
         cache_data.to_parquet(cache_path)
@@ -414,9 +422,11 @@ class TestIndexLoading:
     def test_load_force_rebuild(self, enricher, tmp_path):
         """Test force=True rebuilds index even if cache exists."""
         cache_path = tmp_path / "cache.parquet"
-        old_data = pd.DataFrame([
-            {"key_type": "award", "key": "OLD", "naics_candidates": ["999999"]},
-        ])
+        old_data = pd.DataFrame(
+            [
+                {"key_type": "award", "key": "OLD", "naics_candidates": ["999999"]},
+            ]
+        )
         old_data.to_parquet(cache_path)
 
         enricher.config.cache_path = str(cache_path)
@@ -496,10 +506,12 @@ class TestAwardEnrichment:
 
     def test_enrich_awards_with_custom_columns(self, enricher):
         """Test enrichment with custom column names."""
-        df = pd.DataFrame({
-            "custom_award": ["123456"],
-            "custom_uei": ["UEI12345ABCD"],
-        })
+        df = pd.DataFrame(
+            {
+                "custom_award": ["123456"],
+                "custom_uei": ["UEI12345ABCD"],
+            }
+        )
         enricher.award_map = {"123456": {"541511"}}
 
         result = enricher.enrich_awards(

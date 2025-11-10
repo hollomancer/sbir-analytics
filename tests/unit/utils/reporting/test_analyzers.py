@@ -717,7 +717,11 @@ class TestSbirEnrichmentAnalyzer:
         module_data = {
             "enriched_df": sample_enriched_df,
             "original_df": sample_original_df,
-            "enrichment_metrics": {"records_processed": 5, "records_failed": 0, "duration_seconds": 8.0},
+            "enrichment_metrics": {
+                "records_processed": 5,
+                "records_failed": 0,
+                "duration_seconds": 8.0,
+            },
             "run_context": {"run_id": "sbir_run_123"},
         }
 

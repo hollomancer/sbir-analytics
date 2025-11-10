@@ -358,9 +358,7 @@ def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> 
     Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
     getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)
     int(getattr(context, "op_config", {}).get("sample_n", 200))
-    output_path = Path(
-        getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH)
-    )
+    output_path = Path(getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH))
 
     try:
         pass

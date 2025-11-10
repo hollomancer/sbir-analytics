@@ -38,8 +38,8 @@ class TestPerformanceMonitorInitialization:
         assert isinstance(monitor.metrics, dict)
         assert len(monitor.metrics) == 0
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', True)
-    @patch('src.utils.performance_monitor.psutil')
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", True)
+    @patch("src.utils.performance_monitor.psutil")
     def test_init_with_psutil(self, mock_psutil):
         """Test initialization with psutil available."""
         mock_process = Mock()
@@ -50,7 +50,7 @@ class TestPerformanceMonitorInitialization:
         assert monitor._process is not None
         mock_psutil.Process.assert_called_once()
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', False)
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", False)
     def test_init_without_psutil(self):
         """Test initialization without psutil."""
         monitor = PerformanceMonitor()
@@ -63,6 +63,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_basic(self, monitor):
         """Test timing a simple function."""
+
         @monitor.time_function
         def simple_func():
             return 42
@@ -80,6 +81,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_with_args(self, monitor):
         """Test timing function with arguments."""
+
         @monitor.time_function
         def add_numbers(a, b):
             return a + b
@@ -91,6 +93,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_with_kwargs(self, monitor):
         """Test timing function with keyword arguments."""
+
         @monitor.time_function
         def greet(name, greeting="Hello"):
             return f"{greeting}, {name}!"
@@ -102,6 +105,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_with_delay(self, monitor):
         """Test timing function with actual delay."""
+
         @monitor.time_function
         def slow_func():
             time.sleep(0.01)
@@ -115,6 +119,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_multiple_calls(self, monitor):
         """Test timing same function multiple times."""
+
         @monitor.time_function
         def repeated_func():
             return True
@@ -127,6 +132,7 @@ class TestTimeFunctionDecorator:
 
     def test_time_function_with_exception(self, monitor):
         """Test timing function that raises exception."""
+
         @monitor.time_function
         def failing_func():
             raise ValueError("Test error")
@@ -142,8 +148,8 @@ class TestTimeFunctionDecorator:
 class TestMonitorMemoryDecorator:
     """Tests for monitor_memory decorator."""
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', True)
-    @patch('src.utils.performance_monitor.psutil')
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", True)
+    @patch("src.utils.performance_monitor.psutil")
     def test_monitor_memory_with_psutil(self, mock_psutil):
         """Test memory monitoring with psutil available."""
         mock_process = Mock()
@@ -167,9 +173,10 @@ class TestMonitorMemoryDecorator:
         assert "end_memory_mb" in metric
         assert "memory_delta_mb" in metric
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', False)
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", False)
     def test_monitor_memory_without_psutil(self, monitor):
         """Test memory monitoring falls back to timing without psutil."""
+
         @monitor.monitor_memory
         def simple_func():
             return "result"
@@ -238,8 +245,8 @@ class TestTimeBlockContextManager:
 class TestMonitorBlockContextManager:
     """Tests for monitor_block context manager."""
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', True)
-    @patch('src.utils.performance_monitor.psutil')
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", True)
+    @patch("src.utils.performance_monitor.psutil")
     def test_monitor_block_with_psutil(self, mock_psutil):
         """Test monitoring block with psutil."""
         mock_process = Mock()
@@ -256,7 +263,7 @@ class TestMonitorBlockContextManager:
         assert "start_memory_mb" in metric
         assert "end_memory_mb" in metric
 
-    @patch('src.utils.performance_monitor._PSUTIL_AVAILABLE', False)
+    @patch("src.utils.performance_monitor._PSUTIL_AVAILABLE", False)
     def test_monitor_block_without_psutil(self, monitor):
         """Test monitor block falls back to timing."""
         with monitor.monitor_block("fallback_block"):
@@ -271,6 +278,7 @@ class TestMetricsRecording:
 
     def test_get_metrics_for_operation(self, monitor):
         """Test retrieving metrics for specific operation."""
+
         @monitor.time_function
         def test_func():
             pass
@@ -291,6 +299,7 @@ class TestMetricsRecording:
 
     def test_get_all_metrics(self, monitor):
         """Test retrieving all metrics."""
+
         @monitor.time_function
         def func1():
             pass
@@ -309,6 +318,7 @@ class TestMetricsRecording:
 
     def test_clear_metrics(self, monitor):
         """Test clearing all metrics."""
+
         @monitor.time_function
         def test_func():
             pass
@@ -322,6 +332,7 @@ class TestMetricsRecording:
 
     def test_clear_specific_metric(self, monitor):
         """Test clearing specific metric."""
+
         @monitor.time_function
         def func1():
             pass
@@ -344,6 +355,7 @@ class TestMetricsSummary:
 
     def test_get_summary(self, monitor):
         """Test generating metrics summary."""
+
         @monitor.time_function
         def test_func():
             time.sleep(0.001)
@@ -370,6 +382,7 @@ class TestMetricsSummary:
 
     def test_get_all_summaries(self, monitor):
         """Test getting summaries for all operations."""
+
         @monitor.time_function
         def func1():
             pass
@@ -393,6 +406,7 @@ class TestMetricsExport:
 
     def test_export_to_json(self, monitor, tmp_path):
         """Test exporting metrics to JSON."""
+
         @monitor.time_function
         def test_func():
             return 42
@@ -406,6 +420,7 @@ class TestMetricsExport:
 
         # Verify JSON is valid
         import json
+
         with open(output_file) as f:
             data = json.load(f)
 
@@ -420,6 +435,7 @@ class TestMetricsExport:
         assert output_file.exists()
 
         import json
+
         with open(output_file) as f:
             data = json.load(f)
 
@@ -431,6 +447,7 @@ class TestPerformanceMonitorIntegration:
 
     def test_complete_workflow(self, monitor):
         """Test complete monitoring workflow."""
+
         @monitor.time_function
         def process_data():
             with monitor.time_block("loading"):
@@ -450,6 +467,7 @@ class TestPerformanceMonitorIntegration:
 
     def test_multiple_operations_summary(self, monitor):
         """Test summary with multiple operations."""
+
         @monitor.time_function
         def fast_func():
             pass

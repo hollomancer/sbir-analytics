@@ -455,9 +455,7 @@ class TestUSAspendingDataFrameStrategy:
 
     def test_enrich_duns_match(self):
         """Test enriching with DUNS match."""
-        usaspending_df = pd.DataFrame(
-            [{"recipient_duns": "123456789", "primary_naics": "5417"}]
-        )
+        usaspending_df = pd.DataFrame([{"recipient_duns": "123456789", "primary_naics": "5417"}])
         strategy = USAspendingDataFrameStrategy(usaspending_df)
         row = pd.Series({"DUNS": "123456789"})
 

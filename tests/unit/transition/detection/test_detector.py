@@ -297,9 +297,7 @@ class TestMatchVendor:
         mock_record.metadata = {"vendor_id": "VENDOR001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(sample_contract)
 
@@ -336,9 +334,7 @@ class TestMatchVendor:
         mock_record.metadata = {"vendor_id": "VENDOR002"}
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=mock_record, score=1.0)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 
@@ -372,9 +368,7 @@ class TestMatchVendor:
         mock_record.metadata = {"vendor_id": "VENDOR003"}
         mock_vendor_resolver.resolve_by_duns.return_value = Mock(record=mock_record, score=1.0)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 
@@ -404,13 +398,9 @@ class TestMatchVendor:
         mock_record = Mock()
         mock_record.name = "Acme Corporation"
         mock_record.metadata = {"vendor_id": "VENDOR004"}
-        mock_vendor_resolver.resolve_by_name.return_value = Mock(
-            record=mock_record, score=0.92
-        )
+        mock_vendor_resolver.resolve_by_name.return_value = Mock(record=mock_record, score=0.92)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 
@@ -439,13 +429,9 @@ class TestMatchVendor:
         mock_record = Mock()
         mock_record.name = "Acme Corp"
         mock_record.metadata = {"vendor_id": "VENDOR005"}
-        mock_vendor_resolver.resolve_by_name.return_value = Mock(
-            record=mock_record, score=0.60
-        )
+        mock_vendor_resolver.resolve_by_name.return_value = Mock(record=mock_record, score=0.60)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 
@@ -473,9 +459,7 @@ class TestMatchVendor:
         mock_vendor_resolver.resolve_by_duns.return_value = Mock(record=None, score=0.0)
         mock_vendor_resolver.resolve_by_name.return_value = Mock(record=None, score=0.0)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 
@@ -820,7 +804,11 @@ class TestDetectBatch:
     ):
         """Test batch processing respects batch_size parameter."""
         awards = [
-            {"award_id": f"AWD{i:03d}", "vendor_uei": f"UEI{i:03d}", "completion_date": date(2023, 6, 1)}
+            {
+                "award_id": f"AWD{i:03d}",
+                "vendor_uei": f"UEI{i:03d}",
+                "completion_date": date(2023, 6, 1),
+            }
             for i in range(10)
         ]
 
@@ -921,7 +909,11 @@ class TestDetectBatch:
     ):
         """Test batch detection yields results as iterator."""
         awards = [
-            {"award_id": f"AWD{i:03d}", "vendor_uei": f"UEI{i:03d}", "completion_date": date(2023, 6, 1)}
+            {
+                "award_id": f"AWD{i:03d}",
+                "vendor_uei": f"UEI{i:03d}",
+                "completion_date": date(2023, 6, 1),
+            }
             for i in range(3)
         ]
 
@@ -1153,9 +1145,7 @@ class TestEdgeCases:
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=mock_record, score=1.0)
 
-        detector = TransitionDetector(
-            config=default_config, vendor_resolver=mock_vendor_resolver
-        )
+        detector = TransitionDetector(config=default_config, vendor_resolver=mock_vendor_resolver)
 
         vendor_match = detector.match_vendor(contract)
 

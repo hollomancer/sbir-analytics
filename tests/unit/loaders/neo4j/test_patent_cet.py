@@ -13,11 +13,7 @@ class TestNeo4jConfig:
 
     def test_config_default_values(self):
         """Test Neo4jConfig with default values."""
-        config = Neo4jConfig(
-            uri="bolt://localhost:7687",
-            user="neo4j",
-            password="password"
-        )
+        config = Neo4jConfig(uri="bolt://localhost:7687", user="neo4j", password="password")
 
         assert config.uri == "bolt://localhost:7687"
         assert config.user == "neo4j"
@@ -32,7 +28,7 @@ class TestNeo4jConfig:
             user="admin",
             password="secret",
             database="custom_db",
-            max_connection_lifetime=7200
+            max_connection_lifetime=7200,
         )
 
         assert config.uri == "bolt://custom:7687"
@@ -71,7 +67,9 @@ class TestNeo4jPatentCETLoaderInitialization:
 
     def test_initialization_without_driver_or_credentials(self):
         """Test initialization fails without driver or credentials."""
-        with pytest.raises(ConfigurationError, match="Provide either a driver or uri/user/password"):
+        with pytest.raises(
+            ConfigurationError, match="Provide either a driver or uri/user/password"
+        ):
             Neo4jPatentCETLoader()
 
     def test_initialization_with_partial_credentials(self):
@@ -79,26 +77,22 @@ class TestNeo4jPatentCETLoaderInitialization:
         with pytest.raises(ConfigurationError):
             Neo4jPatentCETLoader(uri="bolt://localhost:7687", user="neo4j")
 
-    @patch('src.loaders.neo4j.patent_cet.GraphDatabase')
+    @patch("src.loaders.neo4j.patent_cet.GraphDatabase")
     def test_initialization_creates_driver_from_credentials(self, mock_graphdb):
         """Test initialization creates driver from uri/user/password."""
         mock_driver = Mock()
         mock_graphdb.driver.return_value = mock_driver
 
         loader = Neo4jPatentCETLoader(
-            uri="bolt://localhost:7687",
-            user="neo4j",
-            password="password"
+            uri="bolt://localhost:7687", user="neo4j", password="password"
         )
 
         mock_graphdb.driver.assert_called_once_with(
-            "bolt://localhost:7687",
-            auth=("neo4j", "password"),
-            max_connection_lifetime=3600
+            "bolt://localhost:7687", auth=("neo4j", "password"), max_connection_lifetime=3600
         )
         assert loader._driver == mock_driver
 
-    @patch('src.loaders.neo4j.patent_cet.GraphDatabase')
+    @patch("src.loaders.neo4j.patent_cet.GraphDatabase")
     def test_initialization_with_custom_max_connection_lifetime(self, mock_graphdb):
         """Test initialization with custom max_connection_lifetime."""
         mock_driver = Mock()
@@ -108,13 +102,11 @@ class TestNeo4jPatentCETLoaderInitialization:
             uri="bolt://localhost:7687",
             user="neo4j",
             password="password",
-            max_connection_lifetime=7200
+            max_connection_lifetime=7200,
         )
 
         mock_graphdb.driver.assert_called_once_with(
-            "bolt://localhost:7687",
-            auth=("neo4j", "password"),
-            max_connection_lifetime=7200
+            "bolt://localhost:7687", auth=("neo4j", "password"), max_connection_lifetime=7200
         )
 
     def test_initialization_with_zero_batch_size(self):
@@ -189,13 +181,16 @@ class TestNeo4jPatentCETLoaderConstraints:
         mock_session = MagicMock()
 
         executed_queries = []
+
         def capture_query(fn):
             mock_tx = Mock()
+
             def run_side_effect(query):
                 executed_queries.append(query)
                 result = Mock()
                 result.consume.return_value = None
                 return result
+
             mock_tx.run.side_effect = run_side_effect
             return fn(mock_tx)
 
@@ -215,13 +210,16 @@ class TestNeo4jPatentCETLoaderConstraints:
         mock_session = MagicMock()
 
         executed_queries = []
+
         def capture_query(fn):
             mock_tx = Mock()
+
             def run_side_effect(query):
                 executed_queries.append(query)
                 result = Mock()
                 result.consume.return_value = None
                 return result
+
             mock_tx.run.side_effect = run_side_effect
             return fn(mock_tx)
 
@@ -231,7 +229,7 @@ class TestNeo4jPatentCETLoaderConstraints:
         loader = Neo4jPatentCETLoader(driver=mock_driver)
         loader.ensure_constraints()
 
-        all_queries = ' '.join(executed_queries)
+        all_queries = " ".join(executed_queries)
         assert "CETArea" in all_queries
         assert "UNIQUE" in all_queries
 
@@ -241,13 +239,16 @@ class TestNeo4jPatentCETLoaderConstraints:
         mock_session = MagicMock()
 
         executed_queries = []
+
         def capture_query(fn):
             mock_tx = Mock()
+
             def run_side_effect(query):
                 executed_queries.append(query)
                 result = Mock()
                 result.consume.return_value = None
                 return result
+
             mock_tx.run.side_effect = run_side_effect
             return fn(mock_tx)
 
@@ -257,7 +258,7 @@ class TestNeo4jPatentCETLoaderConstraints:
         loader = Neo4jPatentCETLoader(driver=mock_driver)
         loader.ensure_constraints()
 
-        all_queries = ' '.join(executed_queries)
+        all_queries = " ".join(executed_queries)
         assert "Patent" in all_queries
 
 
@@ -477,13 +478,15 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
 
         loader = Neo4jPatentCETLoader(driver=mock_driver)
 
-        rels = [{
-            "patent_id": "US123",
-            "cet_id": "cet1",
-            "score": 0.92,
-            "primary": True,
-            "classified_at": "2025-10-27T12:00:00Z",
-        }]
+        rels = [
+            {
+                "patent_id": "US123",
+                "cet_id": "cet1",
+                "score": 0.92,
+                "primary": True,
+                "classified_at": "2025-10-27T12:00:00Z",
+            }
+        ]
         result = loader.link_patent_cet(rels)
 
         assert result == 1
@@ -551,13 +554,15 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
 
         loader = Neo4jPatentCETLoader(driver=mock_driver)
 
-        rels = [{
-            "patent_id": "US123",
-            "cet_id": "cet1",
-            "score": 0.92,
-            "model_version": "v2.0",
-            "taxonomy_version": "2025.1",
-        }]
+        rels = [
+            {
+                "patent_id": "US123",
+                "cet_id": "cet1",
+                "score": 0.92,
+                "model_version": "v2.0",
+                "taxonomy_version": "2025.1",
+            }
+        ]
         result = loader.link_patent_cet(rels)
 
         assert result == 1
@@ -651,11 +656,13 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
         loader = Neo4jPatentCETLoader(driver=mock_driver)
 
         cet_areas = [{"id": "cet1", "name": "AI"}]
-        classifications = [{
-            "patent_id": "US123",
-            "cet_id": "cet1",
-            "score": 0.92,
-        }]
+        classifications = [
+            {
+                "patent_id": "US123",
+                "cet_id": "cet1",
+                "score": 0.92,
+            }
+        ]
 
         result = loader.load_classifications(classifications, cet_areas=cet_areas)
 
@@ -675,11 +682,13 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
         loader = Neo4jPatentCETLoader(driver=mock_driver)
 
         patents = [{"patent_id": "US123", "title": "ML System"}]
-        classifications = [{
-            "patent_id": "US123",
-            "cet_id": "cet1",
-            "score": 0.92,
-        }]
+        classifications = [
+            {
+                "patent_id": "US123",
+                "cet_id": "cet1",
+                "score": 0.92,
+            }
+        ]
 
         result = loader.load_classifications(classifications, patents=patents)
 
@@ -740,7 +749,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
 
         loader = Neo4jPatentCETLoader(driver=mock_driver)
 
-        with patch.object(loader, 'ensure_constraints') as mock_ensure:
+        with patch.object(loader, "ensure_constraints") as mock_ensure:
             loader.load_classifications([])
             mock_ensure.assert_called_once()
 

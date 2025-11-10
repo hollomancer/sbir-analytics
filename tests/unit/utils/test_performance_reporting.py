@@ -1,6 +1,5 @@
 """Tests for performance reporting utilities."""
 
-
 import pytest
 
 from src.utils.performance_reporting import (
@@ -521,7 +520,9 @@ class TestEdgeCases:
         # Should handle None values without crashing
         assert isinstance(markdown, str)
 
-    def test_save_markdown_report_creates_parent_dir(self, baseline_metrics, current_metrics, tmp_path):
+    def test_save_markdown_report_creates_parent_dir(
+        self, baseline_metrics, current_metrics, tmp_path
+    ):
         """Test saving report creates parent directory."""
         reporter = PerformanceReporter()
 

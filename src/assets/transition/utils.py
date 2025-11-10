@@ -29,7 +29,6 @@ except Exception:
     TransitionDetectionAnalyzer = None
 
 
-
 # Import-safe shims for Dagster
 try:
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
@@ -57,7 +56,7 @@ except Exception:  # pragma: no cover
         return _wrap
 
     class Output:  # type: ignore
-        def __init__(self, value: Any, metadata = None) -> None:
+        def __init__(self, value: Any, metadata=None) -> None:
             self.value = value
             self.metadata = metadata or {}
 
@@ -273,5 +272,3 @@ def _prepare_transition_dataframe(transitions_df: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------
 # 0) contracts_ingestion
 # -----------------------------
-
-

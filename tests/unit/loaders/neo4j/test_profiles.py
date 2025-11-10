@@ -45,13 +45,15 @@ class TestTransitionProfileLoader:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a1'],
-            'confidence': ['high', 'likely', 'high'],
-            'likelihood_score': [0.9, 0.75, 0.85],
-            'detected_at': [datetime.now()] * 3,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a1"],
+                "confidence": ["high", "likely", "high"],
+                "likelihood_score": [0.9, 0.75, 0.85],
+                "detected_at": [datetime.now()] * 3,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df=None)
 
@@ -63,19 +65,25 @@ class TestTransitionProfileLoader:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'confidence': ['high', 'likely', 'high'],
-            'likelihood_score': [0.9, 0.75, 0.85],
-            'detected_at': [datetime.now()] * 3,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "confidence": ["high", "likely", "high"],
+                "likelihood_score": [0.9, 0.75, 0.85],
+                "detected_at": [datetime.now()] * 3,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3', 'a4'],
-            'company_id': ['c1', 'c1', 'c2', 'c2'],
-            'award_date': pd.to_datetime(['2020-01-01', '2020-06-01', '2021-01-01', '2021-06-01']),
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3", "a4"],
+                "company_id": ["c1", "c1", "c2", "c2"],
+                "award_date": pd.to_datetime(
+                    ["2020-01-01", "2020-06-01", "2021-01-01", "2021-06-01"]
+                ),
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -88,10 +96,10 @@ class TestTransitionProfileLoader:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        assert 'profiles_created' in loader.stats
-        assert 'profiles_updated' in loader.stats
-        assert 'relationships_created' in loader.stats
-        assert 'errors' in loader.stats
+        assert "profiles_created" in loader.stats
+        assert "profiles_updated" in loader.stats
+        assert "relationships_created" in loader.stats
+        assert "errors" in loader.stats
 
     def test_batch_size_respected(self):
         """Test that custom batch size is respected."""
@@ -112,56 +120,57 @@ class TestTransitionProfileCalculations:
         loader = TransitionProfileLoader(mock_driver)
 
         # Create test data
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3', 't4'],
-            'award_id': ['a1', 'a2', 'a3', 'a4'],
-            'confidence': ['high', 'high', 'likely', 'possible'],
-            'likelihood_score': [0.9, 0.85, 0.75, 0.6],
-            'detected_at': pd.to_datetime([
-                '2023-01-15',
-                '2023-02-20',
-                '2023-03-10',
-                '2023-04-05'
-            ]),
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3", "t4"],
+                "award_id": ["a1", "a2", "a3", "a4"],
+                "confidence": ["high", "high", "likely", "possible"],
+                "likelihood_score": [0.9, 0.85, 0.75, 0.6],
+                "detected_at": pd.to_datetime(
+                    ["2023-01-15", "2023-02-20", "2023-03-10", "2023-04-05"]
+                ),
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3', 'a4', 'a5'],
-            'company_id': ['c1', 'c1', 'c1', 'c2', 'c2'],
-            'award_date': pd.to_datetime([
-                '2022-01-01',
-                '2022-06-01',
-                '2022-12-01',
-                '2022-03-01',
-                '2022-09-01'
-            ]),
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3", "a4", "a5"],
+                "company_id": ["c1", "c1", "c1", "c2", "c2"],
+                "award_date": pd.to_datetime(
+                    ["2022-01-01", "2022-06-01", "2022-12-01", "2022-03-01", "2022-09-01"]
+                ),
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
         # Verify profile structure
         if not result.empty:
             # Should have company-level aggregations
-            assert 'company_id' in result.columns or len(result) > 0
+            assert "company_id" in result.columns or len(result) > 0
 
     def test_high_confidence_counting(self):
         """Test counting of high confidence transitions."""
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'confidence': ['high', 'high', 'likely'],
-            'likelihood_score': [0.9, 0.88, 0.75],
-            'detected_at': [datetime.now()] * 3,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "confidence": ["high", "high", "likely"],
+                "likelihood_score": [0.9, 0.88, 0.75],
+                "detected_at": [datetime.now()] * 3,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3'],
-            'company_id': ['c1', 'c1', 'c1'],
-            'award_date': [datetime.now()] * 3,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3"],
+                "company_id": ["c1", "c1", "c1"],
+                "award_date": [datetime.now()] * 3,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -174,19 +183,23 @@ class TestTransitionProfileCalculations:
         loader = TransitionProfileLoader(mock_driver)
 
         # 3 transitions out of 5 awards for company c1
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'confidence': ['high'] * 3,
-            'likelihood_score': [0.9] * 3,
-            'detected_at': [datetime.now()] * 3,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "confidence": ["high"] * 3,
+                "likelihood_score": [0.9] * 3,
+                "detected_at": [datetime.now()] * 3,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3', 'a4', 'a5'],
-            'company_id': ['c1'] * 5,
-            'award_date': [datetime.now()] * 5,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3", "a4", "a5"],
+                "company_id": ["c1"] * 5,
+                "award_date": [datetime.now()] * 5,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -202,19 +215,23 @@ class TestTransitionProfileLoaderIntegration:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3', 't4'],
-            'award_id': ['a1', 'a2', 'a3', 'a4'],
-            'confidence': ['high', 'likely', 'high', 'possible'],
-            'likelihood_score': [0.9, 0.75, 0.85, 0.65],
-            'detected_at': [datetime.now()] * 4,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3", "t4"],
+                "award_id": ["a1", "a2", "a3", "a4"],
+                "confidence": ["high", "likely", "high", "possible"],
+                "likelihood_score": [0.9, 0.75, 0.85, 0.65],
+                "detected_at": [datetime.now()] * 4,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'],
-            'company_id': ['c1', 'c1', 'c2', 'c2', 'c3', 'c3'],
-            'award_date': [datetime.now()] * 6,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3", "a4", "a5", "a6"],
+                "company_id": ["c1", "c1", "c2", "c2", "c3", "c3"],
+                "award_date": [datetime.now()] * 6,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -226,19 +243,23 @@ class TestTransitionProfileLoaderIntegration:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2'],
-            'award_id': ['a1', 'a2'],
-            'confidence': ['high', 'high'],
-            'likelihood_score': [0.8, 0.9],  # Average should be 0.85
-            'detected_at': [datetime.now()] * 2,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2"],
+                "award_id": ["a1", "a2"],
+                "confidence": ["high", "high"],
+                "likelihood_score": [0.8, 0.9],  # Average should be 0.85
+                "detected_at": [datetime.now()] * 2,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2'],
-            'company_id': ['c1', 'c1'],
-            'award_date': [datetime.now()] * 2,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2"],
+                "company_id": ["c1", "c1"],
+                "award_date": [datetime.now()] * 2,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -250,25 +271,31 @@ class TestTransitionProfileLoaderIntegration:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        detected_dates = pd.to_datetime([
-            '2023-01-01',
-            '2023-06-01',
-            '2023-12-31',  # This should be the last
-        ])
+        detected_dates = pd.to_datetime(
+            [
+                "2023-01-01",
+                "2023-06-01",
+                "2023-12-31",  # This should be the last
+            ]
+        )
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'confidence': ['high'] * 3,
-            'likelihood_score': [0.9] * 3,
-            'detected_at': detected_dates,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "confidence": ["high"] * 3,
+                "likelihood_score": [0.9] * 3,
+                "detected_at": detected_dates,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3'],
-            'company_id': ['c1', 'c1', 'c1'],
-            'award_date': [datetime.now()] * 3,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3"],
+                "company_id": ["c1", "c1", "c1"],
+                "award_date": [datetime.now()] * 3,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -280,13 +307,15 @@ class TestTransitionProfileLoaderIntegration:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'confidence': ['high'],
-            'likelihood_score': [0.9],
-            'detected_at': [datetime.now()],
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "confidence": ["high"],
+                "likelihood_score": [0.9],
+                "detected_at": [datetime.now()],
+            }
+        )
 
         # Empty awards DataFrame
         awards_df = pd.DataFrame()
@@ -305,19 +334,23 @@ class TestTransitionProfileLoaderEdgeCases:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'confidence': ['high'],
-            'likelihood_score': [0.95],
-            'detected_at': [datetime.now()],
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "confidence": ["high"],
+                "likelihood_score": [0.95],
+                "detected_at": [datetime.now()],
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1'],
-            'company_id': ['c1'],
-            'award_date': [datetime.now()],
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1"],
+                "company_id": ["c1"],
+                "award_date": [datetime.now()],
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -328,19 +361,23 @@ class TestTransitionProfileLoaderEdgeCases:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2'],
-            'award_id': ['a1', 'a2'],
-            # Missing 'confidence' field
-            'likelihood_score': [0.9, 0.85],
-            'detected_at': [datetime.now()] * 2,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2"],
+                "award_id": ["a1", "a2"],
+                # Missing 'confidence' field
+                "likelihood_score": [0.9, 0.85],
+                "detected_at": [datetime.now()] * 2,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2'],
-            'company_id': ['c1', 'c1'],
-            'award_date': [datetime.now()] * 2,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2"],
+                "company_id": ["c1", "c1"],
+                "award_date": [datetime.now()] * 2,
+            }
+        )
 
         # Should handle missing fields gracefully
         result = loader.calculate_company_profiles(transitions_df, awards_df)
@@ -351,19 +388,23 @@ class TestTransitionProfileLoaderEdgeCases:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't1'],  # Duplicate
-            'award_id': ['a1', 'a1'],
-            'confidence': ['high', 'high'],
-            'likelihood_score': [0.9, 0.9],
-            'detected_at': [datetime.now()] * 2,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t1"],  # Duplicate
+                "award_id": ["a1", "a1"],
+                "confidence": ["high", "high"],
+                "likelihood_score": [0.9, 0.9],
+                "detected_at": [datetime.now()] * 2,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1'],
-            'company_id': ['c1'],
-            'award_date': [datetime.now()],
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1"],
+                "company_id": ["c1"],
+                "award_date": [datetime.now()],
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
         assert isinstance(result, pd.DataFrame)
@@ -373,19 +414,23 @@ class TestTransitionProfileLoaderEdgeCases:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3', 't4'],
-            'award_id': ['a1', 'a2', 'a3', 'a4'],
-            'confidence': ['high', 'likely', 'possible', 'low'],
-            'likelihood_score': [0.95, 0.80, 0.65, 0.45],
-            'detected_at': [datetime.now()] * 4,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3", "t4"],
+                "award_id": ["a1", "a2", "a3", "a4"],
+                "confidence": ["high", "likely", "possible", "low"],
+                "likelihood_score": [0.95, 0.80, 0.65, 0.45],
+                "detected_at": [datetime.now()] * 4,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2', 'a3', 'a4'],
-            'company_id': ['c1'] * 4,
-            'award_date': [datetime.now()] * 4,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2", "a3", "a4"],
+                "company_id": ["c1"] * 4,
+                "award_date": [datetime.now()] * 4,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 
@@ -397,19 +442,23 @@ class TestTransitionProfileLoaderEdgeCases:
         mock_driver = Mock()
         loader = TransitionProfileLoader(mock_driver)
 
-        transitions_df = pd.DataFrame({
-            'transition_id': ['t1', 't2'],
-            'award_id': ['a1', 'a2'],
-            'confidence': ['low', 'low'],
-            'likelihood_score': [0.0, 0.0],
-            'detected_at': [datetime.now()] * 2,
-        })
+        transitions_df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2"],
+                "award_id": ["a1", "a2"],
+                "confidence": ["low", "low"],
+                "likelihood_score": [0.0, 0.0],
+                "detected_at": [datetime.now()] * 2,
+            }
+        )
 
-        awards_df = pd.DataFrame({
-            'award_id': ['a1', 'a2'],
-            'company_id': ['c1', 'c1'],
-            'award_date': [datetime.now()] * 2,
-        })
+        awards_df = pd.DataFrame(
+            {
+                "award_id": ["a1", "a2"],
+                "company_id": ["c1", "c1"],
+                "award_date": [datetime.now()] * 2,
+            }
+        )
 
         result = loader.calculate_company_profiles(transitions_df, awards_df)
 

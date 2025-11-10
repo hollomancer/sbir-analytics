@@ -36,24 +36,28 @@ def mock_config():
 @pytest.fixture
 def sample_sbir_df():
     """Sample SBIR DataFrame."""
-    return pd.DataFrame({
-        "Award Number": ["AWD001", "AWD002", "AWD003", "AWD004", "AWD005"],
-        "Company": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co", "AeroSpace Ltd"],
-        "UEI": ["UEI001", "UEI002", None, "UEI004", "UEI005"],
-        "Duns": ["123456789", "987654321", "111222333", None, "555666777"],
-        "Amount": [100000, 150000, 200000, 250000, 300000],
-    })
+    return pd.DataFrame(
+        {
+            "Award Number": ["AWD001", "AWD002", "AWD003", "AWD004", "AWD005"],
+            "Company": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co", "AeroSpace Ltd"],
+            "UEI": ["UEI001", "UEI002", None, "UEI004", "UEI005"],
+            "Duns": ["123456789", "987654321", "111222333", None, "555666777"],
+            "Amount": [100000, 150000, 200000, 250000, 300000],
+        }
+    )
 
 
 @pytest.fixture
 def sample_recipient_df():
     """Sample recipient DataFrame."""
-    return pd.DataFrame({
-        "recipient_name": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co"],
-        "recipient_uei": ["UEI001", "UEI002", "UEI003", "UEI004"],
-        "recipient_duns": ["123456789", "987654321", "111222333", "444555666"],
-        "total_amount": [5000000, 3000000, 2000000, 1000000],
-    })
+    return pd.DataFrame(
+        {
+            "recipient_name": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co"],
+            "recipient_uei": ["UEI001", "UEI002", "UEI003", "UEI004"],
+            "recipient_duns": ["123456789", "987654321", "111222333", "444555666"],
+            "total_amount": [5000000, 3000000, 2000000, 1000000],
+        }
+    )
 
 
 @pytest.fixture
@@ -223,7 +227,9 @@ class TestChunkedEnricherInitialization:
     """Tests for ChunkedEnricher initialization."""
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_initialization(self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df):
+    def test_initialization(
+        self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
+    ):
         """Test ChunkedEnricher initialization."""
         mock_get_config.return_value = mock_config
 
@@ -299,13 +305,17 @@ class TestChunkGeneration:
         assert len(chunks[0]) == 5
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_chunk_generator_multiple_chunks(self, mock_get_config, mock_config, sample_recipient_df):
+    def test_chunk_generator_multiple_chunks(
+        self, mock_get_config, mock_config, sample_recipient_df
+    ):
         """Test chunk generator with multiple chunks."""
         # Create larger DataFrame
-        large_df = pd.DataFrame({
-            "Award Number": [f"AWD{i:03d}" for i in range(250)],
-            "Company": [f"Company {i}" for i in range(250)],
-        })
+        large_df = pd.DataFrame(
+            {
+                "Award Number": [f"AWD{i:03d}" for i in range(250)],
+                "Company": [f"Company {i}" for i in range(250)],
+            }
+        )
 
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
@@ -319,13 +329,17 @@ class TestChunkGeneration:
         assert len(chunks[2]) == 50  # Partial last chunk
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_chunk_generator_exact_division(self, mock_get_config, mock_config, sample_recipient_df):
+    def test_chunk_generator_exact_division(
+        self, mock_get_config, mock_config, sample_recipient_df
+    ):
         """Test chunk generator with exact division."""
         # Create DataFrame with exact multiple of chunk size
-        df = pd.DataFrame({
-            "Award Number": [f"AWD{i:03d}" for i in range(200)],
-            "Company": [f"Company {i}" for i in range(200)],
-        })
+        df = pd.DataFrame(
+            {
+                "Award Number": [f"AWD{i:03d}" for i in range(200)],
+                "Company": [f"Company {i}" for i in range(200)],
+            }
+        )
 
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
@@ -371,7 +385,13 @@ class TestEnrichChunk:
 
         # Mock enrichment result
         enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei", "exact_uei", "fuzzy_name", None, "exact_uei"]
+        enriched_df["_usaspending_match_method"] = [
+            "exact_uei",
+            "exact_uei",
+            "fuzzy_name",
+            None,
+            "exact_uei",
+        ]
         mock_enrich.return_value = enriched_df
 
         # Mock performance monitor context
@@ -386,7 +406,7 @@ class TestEnrichChunk:
         assert metrics["chunk_num"] == 1
         assert metrics["chunk_size"] == 3
         assert metrics["records_matched"] == 2
-        assert metrics["match_rate"] == pytest.approx(2/3)
+        assert metrics["match_rate"] == pytest.approx(2 / 3)
         assert metrics["exact_matches"] == 2
         assert metrics["fuzzy_matches"] == 1
         assert "duration_seconds" in metrics
@@ -620,7 +640,13 @@ class TestDataFrameProcessing:
         mock_config.enrichment.performance.chunk_size = 2
 
         enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei", "exact_uei", "fuzzy_name", None, "exact_uei"]
+        enriched_df["_usaspending_match_method"] = [
+            "exact_uei",
+            "exact_uei",
+            "fuzzy_name",
+            None,
+            "exact_uei",
+        ]
         mock_enrich.return_value = enriched_df
 
         mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()

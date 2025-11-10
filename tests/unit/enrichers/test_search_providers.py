@@ -92,9 +92,7 @@ class TestProviderResult:
 
     def test_result_to_dict(self):
         """Test converting result to dictionary."""
-        result = ProviderResult(
-            title="Test", snippet="Content", url="https://test.com", score=0.9
-        )
+        result = ProviderResult(title="Test", snippet="Content", url="https://test.com", score=0.9)
 
         result_dict = result.to_dict()
 
@@ -610,10 +608,26 @@ class TestPrecisionRecallMetrics:
         """Test precision@k when all results are positive."""
         results = [
             ResultScore(
-                "test", "q", 1, None, "T1", "S1", text_similarity=0.8, field_scores=[], citation_score=0.6
+                "test",
+                "q",
+                1,
+                None,
+                "T1",
+                "S1",
+                text_similarity=0.8,
+                field_scores=[],
+                citation_score=0.6,
             ),
             ResultScore(
-                "test", "q", 2, None, "T2", "S2", text_similarity=0.9, field_scores=[], citation_score=0.7
+                "test",
+                "q",
+                2,
+                None,
+                "T2",
+                "S2",
+                text_similarity=0.9,
+                field_scores=[],
+                citation_score=0.7,
             ),
         ]
 
@@ -625,10 +639,26 @@ class TestPrecisionRecallMetrics:
         """Test precision@k with partial positive results."""
         results = [
             ResultScore(
-                "test", "q", 1, None, "T1", "S1", text_similarity=0.8, field_scores=[], citation_score=0.0
+                "test",
+                "q",
+                1,
+                None,
+                "T1",
+                "S1",
+                text_similarity=0.8,
+                field_scores=[],
+                citation_score=0.0,
             ),
             ResultScore(
-                "test", "q", 2, None, "T2", "S2", text_similarity=0.2, field_scores=[], citation_score=0.0
+                "test",
+                "q",
+                2,
+                None,
+                "T2",
+                "S2",
+                text_similarity=0.2,
+                field_scores=[],
+                citation_score=0.0,
             ),
         ]
 
@@ -640,7 +670,15 @@ class TestPrecisionRecallMetrics:
         """Test recall@k when target is found."""
         results = [
             ResultScore(
-                "test", "q", 1, None, "T1", "S1", text_similarity=0.8, field_scores=[], citation_score=0.0
+                "test",
+                "q",
+                1,
+                None,
+                "T1",
+                "S1",
+                text_similarity=0.8,
+                field_scores=[],
+                citation_score=0.0,
             ),
         ]
 
@@ -652,7 +690,15 @@ class TestPrecisionRecallMetrics:
         """Test recall@k when target is not found."""
         results = [
             ResultScore(
-                "test", "q", 1, None, "T1", "S1", text_similarity=0.2, field_scores=[], citation_score=0.0
+                "test",
+                "q",
+                1,
+                None,
+                "T1",
+                "S1",
+                text_similarity=0.2,
+                field_scores=[],
+                citation_score=0.0,
             ),
         ]
 
@@ -723,7 +769,9 @@ class TestMockSearxngProvider:
         with fixture_path.open("w") as f:
             json.dump(fixture_data, f)
 
-        provider = MockSearxngProvider(config={"fixture_path": str(fixture_path), "result_count": 2})
+        provider = MockSearxngProvider(
+            config={"fixture_path": str(fixture_path), "result_count": 2}
+        )
 
         response = provider.search("query")
 

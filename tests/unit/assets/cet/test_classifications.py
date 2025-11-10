@@ -43,30 +43,34 @@ def sample_checks_data():
 @pytest.fixture
 def sample_awards_df():
     """Sample awards DataFrame."""
-    return pd.DataFrame({
-        "Award Number": ["AWD001", "AWD002", "AWD003"],
-        "Company": ["TechCo", "BioCo", "AeroCo"],
-        "Abstract": [
-            "Artificial intelligence and machine learning for data analysis",
-            "Biotechnology research for drug development",
-            "Aerospace engineering and quantum computing systems",
-        ],
-        "Amount": [100000, 150000, 200000],
-    })
+    return pd.DataFrame(
+        {
+            "Award Number": ["AWD001", "AWD002", "AWD003"],
+            "Company": ["TechCo", "BioCo", "AeroCo"],
+            "Abstract": [
+                "Artificial intelligence and machine learning for data analysis",
+                "Biotechnology research for drug development",
+                "Aerospace engineering and quantum computing systems",
+            ],
+            "Amount": [100000, 150000, 200000],
+        }
+    )
 
 
 @pytest.fixture
 def sample_patents_df():
     """Sample patents DataFrame."""
-    return pd.DataFrame({
-        "patent_id": ["PAT001", "PAT002", "PAT003"],
-        "title": ["AI System", "Bio Method", "Quantum Computer"],
-        "abstract": [
-            "Machine learning system for pattern recognition",
-            "Biotechnology method for gene therapy",
-            "Quantum computing hardware design",
-        ],
-    })
+    return pd.DataFrame(
+        {
+            "patent_id": ["PAT001", "PAT002", "PAT003"],
+            "title": ["AI System", "Bio Method", "Quantum Computer"],
+            "abstract": [
+                "Machine learning system for pattern recognition",
+                "Biotechnology method for gene therapy",
+                "Quantum computing hardware design",
+            ],
+        }
+    )
 
 
 @pytest.fixture
@@ -96,19 +100,21 @@ def sample_taxonomy():
 @pytest.fixture
 def sample_classification_results():
     """Sample classification results."""
-    return pd.DataFrame({
-        "award_id": ["AWD001", "AWD002", "AWD003"],
-        "primary_cet": ["ai_ml", "biotechnology", "quantum"],
-        "primary_score": [0.95, 0.88, 0.92],
-        "supporting_cets": [["quantum"], ["ai_ml"], ["ai_ml"]],
-        "evidence": [
-            ["machine learning mentioned in abstract"],
-            ["biotechnology research mentioned"],
-            ["quantum computing in abstract"],
-        ],
-        "classified_at": ["2023-01-01T10:00:00"] * 3,
-        "taxonomy_version": ["v1.0"] * 3,
-    })
+    return pd.DataFrame(
+        {
+            "award_id": ["AWD001", "AWD002", "AWD003"],
+            "primary_cet": ["ai_ml", "biotechnology", "quantum"],
+            "primary_score": [0.95, 0.88, 0.92],
+            "supporting_cets": [["quantum"], ["ai_ml"], ["ai_ml"]],
+            "evidence": [
+                ["machine learning mentioned in abstract"],
+                ["biotechnology research mentioned"],
+                ["quantum computing in abstract"],
+            ],
+            "classified_at": ["2023-01-01T10:00:00"] * 3,
+            "taxonomy_version": ["v1.0"] * 3,
+        }
+    )
 
 
 # ==================== Quality Check Tests ====================

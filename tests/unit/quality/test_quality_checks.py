@@ -27,12 +27,14 @@ pytestmark = pytest.mark.fast
 @pytest.fixture
 def sample_dataframe():
     """Create a sample DataFrame for testing."""
-    return pd.DataFrame({
-        "award_id": ["A001", "A002", "A003", "A004"],
-        "company_name": ["Company A", "Company B", None, "Company D"],
-        "award_amount": [100000, 150000, 200000, 250000],
-        "year": [2020, 2021, 2022, 2023],
-    })
+    return pd.DataFrame(
+        {
+            "award_id": ["A001", "A002", "A003", "A004"],
+            "company_name": ["Company A", "Company B", None, "Company D"],
+            "award_amount": [100000, 150000, 200000, 250000],
+            "year": [2020, 2021, 2022, 2023],
+        }
+    )
 
 
 @pytest.fixture
@@ -44,10 +46,12 @@ def empty_dataframe():
 @pytest.fixture
 def dataframe_with_duplicates():
     """Create a DataFrame with duplicate values."""
-    return pd.DataFrame({
-        "award_id": ["A001", "A002", "A001", "A003"],
-        "company_name": ["Company A", "Company B", "Company A", "Company C"],
-    })
+    return pd.DataFrame(
+        {
+            "award_id": ["A001", "A002", "A001", "A003"],
+            "company_name": ["Company A", "Company B", "Company A", "Company C"],
+        }
+    )
 
 
 class TestCheckCompleteness:
@@ -97,9 +101,7 @@ class TestCheckCompleteness:
     def test_multiple_fields(self, sample_dataframe):
         """Test completeness check on multiple fields."""
         issues = check_completeness(
-            sample_dataframe,
-            ["award_id", "company_name", "award_amount"],
-            threshold=0.95
+            sample_dataframe, ["award_id", "company_name", "award_amount"], threshold=0.95
         )
 
         # Only company_name should fail
@@ -127,9 +129,11 @@ class TestCheckUniqueness:
 
     def test_case_sensitive_uniqueness(self):
         """Test case-sensitive uniqueness check."""
-        df = pd.DataFrame({
-            "name": ["John", "john", "Jane"],
-        })
+        df = pd.DataFrame(
+            {
+                "name": ["John", "john", "Jane"],
+            }
+        )
 
         # Case-sensitive: "John" and "john" are different
         issues = check_uniqueness(df, ["name"], case_sensitive=True)
@@ -137,9 +141,11 @@ class TestCheckUniqueness:
 
     def test_case_insensitive_uniqueness(self):
         """Test case-insensitive uniqueness check."""
-        df = pd.DataFrame({
-            "name": ["John", "john", "Jane"],
-        })
+        df = pd.DataFrame(
+            {
+                "name": ["John", "john", "Jane"],
+            }
+        )
 
         # Case-insensitive: "John" and "john" are duplicates
         issues = check_uniqueness(df, ["name"], case_sensitive=False)
@@ -167,10 +173,7 @@ class TestCheckValueRanges:
     def test_valid_numeric_range(self, sample_dataframe):
         """Test when all values are within range."""
         issues = check_value_ranges(
-            sample_dataframe,
-            "award_amount",
-            min_value=50000,
-            max_value=300000
+            sample_dataframe, "award_amount", min_value=50000, max_value=300000
         )
 
         assert len(issues) == 0
@@ -200,11 +203,7 @@ class TestCheckValueRanges:
         """Test validation against allowed values list."""
         df = pd.DataFrame({"status": ["active", "pending", "invalid", "active"]})
 
-        issues = check_value_ranges(
-            df,
-            "status",
-            allowed_values=["active", "pending", "completed"]
-        )
+        issues = check_value_ranges(df, "status", allowed_values=["active", "pending", "completed"])
 
         assert len(issues) == 1
         assert issues[0].severity == QualitySeverity.HIGH
@@ -232,11 +231,7 @@ class TestCheckValueRanges:
         """Test allowed values validation ignores nulls."""
         df = pd.DataFrame({"status": ["active", None, "pending", "active"]})
 
-        issues = check_value_ranges(
-            df,
-            "status",
-            allowed_values=["active", "pending"]
-        )
+        issues = check_value_ranges(df, "status", allowed_values=["active", "pending"])
 
         # Nulls should be ignored, no issues
         assert len(issues) == 0
@@ -245,7 +240,7 @@ class TestCheckValueRanges:
 class TestValidateSbirAwards:
     """Tests for comprehensive SBIR awards validation."""
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_valid_sbir_data(self, mock_config, sample_dataframe):
         """Test validation of valid SBIR data."""
         # Mock config
@@ -262,7 +257,7 @@ class TestValidateSbirAwards:
         assert report.passed is True
         assert report.total_fields >= 1
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_sbir_with_completeness_issues(self, mock_config, sample_dataframe):
         """Test validation with completeness issues."""
         mock_app_config = Mock()
@@ -278,7 +273,7 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert report.issues[0].field == "company_name"
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_sbir_with_uniqueness_issues(self, mock_config, dataframe_with_duplicates):
         """Test validation with uniqueness issues."""
         mock_app_config = Mock()
@@ -293,12 +288,14 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert "duplicates" in report.issues[0].message.lower()
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_sbir_with_value_range_issues(self, mock_config):
         """Test validation with value range issues."""
-        df = pd.DataFrame({
-            "award_amount": [100, 200, 5000000, 400],  # One very high value
-        })
+        df = pd.DataFrame(
+            {
+                "award_amount": [100, 200, 5000000, 400],  # One very high value
+            }
+        )
 
         mock_app_config = Mock()
         mock_app_config.data_quality.completeness = {}
@@ -315,7 +312,7 @@ class TestValidateSbirAwards:
         assert len(report.issues) == 1
         assert "above maximum" in report.issues[0].message
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_empty_sbir_data(self, mock_config, empty_dataframe):
         """Test validation of empty DataFrame."""
         mock_app_config = Mock()
@@ -344,7 +341,7 @@ class TestValidateSbirAwards:
         assert report.passed is True
         assert report.record_id == "sbir_awards_dataset"
 
-    @patch('src.quality.checks.get_config')
+    @patch("src.quality.checks.get_config")
     def test_sbir_score_calculation(self, mock_config, sample_dataframe):
         """Test that scores are calculated correctly."""
         mock_app_config = Mock()

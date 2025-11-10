@@ -123,9 +123,7 @@ class TestVendorResolverInitialization:
 
     def test_initialization_with_thresholds(self):
         """Test VendorResolver initialization with custom thresholds."""
-        resolver = VendorResolver(
-            records=[], fuzzy_threshold=0.85, fuzzy_secondary_threshold=0.75
-        )
+        resolver = VendorResolver(records=[], fuzzy_threshold=0.85, fuzzy_secondary_threshold=0.75)
 
         assert resolver.fuzzy_threshold == 0.85
         assert resolver.fuzzy_secondary_threshold == 0.75

@@ -250,7 +250,9 @@ class TestHTTPRequests:
 
     @pytest.mark.asyncio
     @patch("httpx.AsyncClient")
-    async def test_make_request_post_success(self, mock_client_class, client, sample_recipient_data):
+    async def test_make_request_post_success(
+        self, mock_client_class, client, sample_recipient_data
+    ):
         """Test successful POST request."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -651,7 +653,9 @@ class TestAwardEnrichment:
         """Test enrichment falls back to CAGE."""
         with patch.object(client, "get_recipient_by_uei", return_value=None):
             with patch.object(client, "get_recipient_by_duns", return_value=None):
-                with patch.object(client, "get_recipient_by_cage", return_value=sample_recipient_data):
+                with patch.object(
+                    client, "get_recipient_by_cage", return_value=sample_recipient_data
+                ):
                     result = await client.enrich_award(
                         "AWD001", uei="UEI999", duns="999", cage="ABC12"
                     )
@@ -685,26 +689,34 @@ class TestAwardEnrichment:
         assert result["payload"] is None
 
     @pytest.mark.asyncio
-    async def test_enrich_award_delta_detection_no_change(self, client, sample_recipient_data, freshness_record):
+    async def test_enrich_award_delta_detection_no_change(
+        self, client, sample_recipient_data, freshness_record
+    ):
         """Test delta detection when data hasn't changed."""
         # Compute hash for sample data
         payload_hash = client._compute_payload_hash(sample_recipient_data)
         freshness_record.payload_hash = payload_hash
 
         with patch.object(client, "get_recipient_by_uei", return_value=sample_recipient_data):
-            result = await client.enrich_award("AWD001", uei="UEI123456789", freshness_record=freshness_record)
+            result = await client.enrich_award(
+                "AWD001", uei="UEI123456789", freshness_record=freshness_record
+            )
 
         assert result["success"] is True
         assert result["delta_detected"] is False
 
     @pytest.mark.asyncio
-    async def test_enrich_award_delta_detection_changed(self, client, sample_recipient_data, freshness_record):
+    async def test_enrich_award_delta_detection_changed(
+        self, client, sample_recipient_data, freshness_record
+    ):
         """Test delta detection when data has changed."""
         # Set different hash in freshness record
         freshness_record.payload_hash = "different_hash"
 
         with patch.object(client, "get_recipient_by_uei", return_value=sample_recipient_data):
-            result = await client.enrich_award("AWD001", uei="UEI123456789", freshness_record=freshness_record)
+            result = await client.enrich_award(
+                "AWD001", uei="UEI123456789", freshness_record=freshness_record
+            )
 
         assert result["success"] is True
         assert result["delta_detected"] is True

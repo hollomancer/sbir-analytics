@@ -786,7 +786,11 @@ class TestScoreAndClassify:
 
         assert isinstance(signals, TransitionSignals)
         assert 0.0 <= final_score <= 1.0
-        assert confidence in [ConfidenceLevel.HIGH, ConfidenceLevel.LIKELY, ConfidenceLevel.POSSIBLE]
+        assert confidence in [
+            ConfidenceLevel.HIGH,
+            ConfidenceLevel.LIKELY,
+            ConfidenceLevel.POSSIBLE,
+        ]
 
     def test_score_and_classify_returns_tuple(self, default_config):
         """Test score_and_classify returns correct tuple format."""

@@ -127,7 +127,7 @@ class TestCETLoaderConstraints:
         loader.create_constraints()
 
         # Collect all queries
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         assert "Award" in all_queries
         assert "Company" in all_queries
@@ -172,7 +172,7 @@ class TestCETLoaderIndexes:
         loader.create_indexes()
 
         # Collect all index queries
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         # Should include CET-related indexes
         assert "CETArea" in all_queries or "cet" in all_queries.lower()

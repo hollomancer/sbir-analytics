@@ -161,7 +161,7 @@ class TestPatentLoaderIndexes:
         loader.create_indexes()
 
         # Collect all index queries
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         # Should include indexes for key properties
         assert "grant_doc_num" in all_queries

@@ -189,7 +189,6 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
-
 @asset(
     description="Transform USPTO assignments into normalized PatentAssignment models",
     group_name="extraction",
@@ -372,7 +371,9 @@ def transformed_patents(context: Any, transformed_assignments: dict[str, Any]) -
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patent_entities(context: Any, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
+def transformed_patent_entities(
+    context: Any, transformed_assignments: dict[str, Any]
+) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
@@ -502,5 +503,3 @@ def _get_neo4j_client() -> Neo4jClient | None:
     except Exception as e:
         logger.error(f"Failed to create Neo4j client: {e}")
         return None
-
-

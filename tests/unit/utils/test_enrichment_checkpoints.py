@@ -283,17 +283,19 @@ class TestCheckpointStoreSaveLoad:
 
     def test_save_all(self, checkpoint_store):
         """Test saving all checkpoints DataFrame."""
-        df = pd.DataFrame({
-            "partition_id": ["p1", "p2"],
-            "source": ["s1", "s2"],
-            "last_processed_award_id": ["A1", "A2"],
-            "last_success_timestamp": [datetime.now(), datetime.now()],
-            "records_processed": [100, 200],
-            "records_failed": [1, 2],
-            "records_total": [101, 202],
-            "checkpoint_timestamp": [datetime.now(), datetime.now()],
-            "metadata": ["{}", "{}"],
-        })
+        df = pd.DataFrame(
+            {
+                "partition_id": ["p1", "p2"],
+                "source": ["s1", "s2"],
+                "last_processed_award_id": ["A1", "A2"],
+                "last_success_timestamp": [datetime.now(), datetime.now()],
+                "records_processed": [100, 200],
+                "records_failed": [1, 2],
+                "records_total": [101, 202],
+                "checkpoint_timestamp": [datetime.now(), datetime.now()],
+                "metadata": ["{}", "{}"],
+            }
+        )
 
         checkpoint_store.save_all(df)
 
@@ -373,7 +375,7 @@ class TestCheckpointStoreEdgeCases:
     def test_checkpoint_with_special_characters(self, checkpoint_store):
         """Test checkpoint with special characters in metadata."""
         special_metadata = {
-            "description": 'Test with "quotes" and \'apostrophes\'',
+            "description": "Test with \"quotes\" and 'apostrophes'",
             "path": "C:\\Users\\Test\\Documents",
             "unicode": "Café résumé",
         }

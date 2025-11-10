@@ -483,39 +483,43 @@ class TestValidateSBIRAwardRecord:
 
     def test_valid_complete_record(self):
         """Test validation passes for valid complete record."""
-        row = pd.Series({
-            "Company": "Acme Corp",
-            "Award Title": "AI Research",
-            "Agency": "DOD",
-            "Phase": "Phase I",
-            "Program": "SBIR",
-            "Award Year": 2020,
-            "Award Amount": 150000,
-            "UEI": "ABC123DEF456",
-            "Duns": "123456789",
-            "Contact Email": "contact@acme.com",
-            "PI Email": "pi@acme.com",
-            "State": "CA",
-            "Zip": "94105",
-            "Contact Phone": "555-123-4567",
-            "PI Phone": "555-987-6543",
-            "Proposal Award Date": date(2020, 6, 15),
-            "Contract End Date": date(2021, 6, 14),
-        })
+        row = pd.Series(
+            {
+                "Company": "Acme Corp",
+                "Award Title": "AI Research",
+                "Agency": "DOD",
+                "Phase": "Phase I",
+                "Program": "SBIR",
+                "Award Year": 2020,
+                "Award Amount": 150000,
+                "UEI": "ABC123DEF456",
+                "Duns": "123456789",
+                "Contact Email": "contact@acme.com",
+                "PI Email": "pi@acme.com",
+                "State": "CA",
+                "Zip": "94105",
+                "Contact Phone": "555-123-4567",
+                "PI Phone": "555-987-6543",
+                "Proposal Award Date": date(2020, 6, 15),
+                "Contract End Date": date(2021, 6, 14),
+            }
+        )
         issues = validate_sbir_award_record(row, 0)
         assert len(issues) == 0
 
     def test_missing_required_fields(self):
         """Test validation fails for missing required fields."""
-        row = pd.Series({
-            "Company": pd.NA,  # Missing
-            "Award Title": "",  # Missing
-            "Agency": "DOD",
-            "Phase": "Phase I",
-            "Program": "SBIR",
-            "Award Year": 2020,
-            "Award Amount": 150000,
-        })
+        row = pd.Series(
+            {
+                "Company": pd.NA,  # Missing
+                "Award Title": "",  # Missing
+                "Agency": "DOD",
+                "Phase": "Phase I",
+                "Program": "SBIR",
+                "Award Year": 2020,
+                "Award Amount": 150000,
+            }
+        )
         issues = validate_sbir_award_record(row, 0)
         # Should have errors for missing Company and Award Title
         assert len(issues) >= 2
@@ -524,20 +528,22 @@ class TestValidateSBIRAwardRecord:
 
     def test_invalid_formats(self):
         """Test validation warns for invalid formats."""
-        row = pd.Series({
-            "Company": "Acme Corp",
-            "Award Title": "Test",
-            "Agency": "DOD",
-            "Phase": "Phase I",
-            "Program": "SBIR",
-            "Award Year": 2020,
-            "Award Amount": 150000,
-            "UEI": "SHORT",  # Invalid: too short
-            "Duns": "12345",  # Invalid: wrong length
-            "Contact Email": "invalid-email",  # Invalid format
-            "State": "CAL",  # Invalid: 3 letters
-            "Zip": "123",  # Invalid: too short
-        })
+        row = pd.Series(
+            {
+                "Company": "Acme Corp",
+                "Award Title": "Test",
+                "Agency": "DOD",
+                "Phase": "Phase I",
+                "Program": "SBIR",
+                "Award Year": 2020,
+                "Award Amount": 150000,
+                "UEI": "SHORT",  # Invalid: too short
+                "Duns": "12345",  # Invalid: wrong length
+                "Contact Email": "invalid-email",  # Invalid format
+                "State": "CAL",  # Invalid: 3 letters
+                "Zip": "123",  # Invalid: too short
+            }
+        )
         issues = validate_sbir_award_record(row, 0)
         assert len(issues) >= 5  # All format validations should fail
 
@@ -554,26 +560,28 @@ class TestValidateSBIRAwards:
 
     def test_all_valid_records(self):
         """Test validation passes when all records are valid."""
-        df = pd.DataFrame([
-            {
-                "Company": "Acme Corp",
-                "Award Title": "AI Research",
-                "Agency": "DOD",
-                "Phase": "Phase I",
-                "Program": "SBIR",
-                "Award Year": 2020,
-                "Award Amount": 150000,
-            },
-            {
-                "Company": "Tech Inc",
-                "Award Title": "Quantum Computing",
-                "Agency": "NSF",
-                "Phase": "Phase II",
-                "Program": "STTR",
-                "Award Year": 2021,
-                "Award Amount": 750000,
-            },
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "Company": "Acme Corp",
+                    "Award Title": "AI Research",
+                    "Agency": "DOD",
+                    "Phase": "Phase I",
+                    "Program": "SBIR",
+                    "Award Year": 2020,
+                    "Award Amount": 150000,
+                },
+                {
+                    "Company": "Tech Inc",
+                    "Award Title": "Quantum Computing",
+                    "Agency": "NSF",
+                    "Phase": "Phase II",
+                    "Program": "STTR",
+                    "Award Year": 2021,
+                    "Award Amount": 750000,
+                },
+            ]
+        )
         report = validate_sbir_awards(df)
         assert report.total_records == 2
         assert report.passed_records == 2
@@ -582,26 +590,28 @@ class TestValidateSBIRAwards:
 
     def test_some_invalid_records(self):
         """Test validation fails when some records are invalid."""
-        df = pd.DataFrame([
-            {
-                "Company": "Acme Corp",
-                "Award Title": "Valid Record",
-                "Agency": "DOD",
-                "Phase": "Phase I",
-                "Program": "SBIR",
-                "Award Year": 2020,
-                "Award Amount": 150000,
-            },
-            {
-                "Company": pd.NA,  # Missing required field
-                "Award Title": "Invalid Record",
-                "Agency": "NSF",
-                "Phase": "Phase IV",  # Invalid phase
-                "Program": "INVALID",  # Invalid program
-                "Award Year": 1900,  # Invalid year
-                "Award Amount": -1000,  # Invalid amount
-            },
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "Company": "Acme Corp",
+                    "Award Title": "Valid Record",
+                    "Agency": "DOD",
+                    "Phase": "Phase I",
+                    "Program": "SBIR",
+                    "Award Year": 2020,
+                    "Award Amount": 150000,
+                },
+                {
+                    "Company": pd.NA,  # Missing required field
+                    "Award Title": "Invalid Record",
+                    "Agency": "NSF",
+                    "Phase": "Phase IV",  # Invalid phase
+                    "Program": "INVALID",  # Invalid program
+                    "Award Year": 1900,  # Invalid year
+                    "Award Amount": -1000,  # Invalid amount
+                },
+            ]
+        )
         report = validate_sbir_awards(df)
         assert report.total_records == 2
         assert report.failed_records >= 1
@@ -609,26 +619,28 @@ class TestValidateSBIRAwards:
 
     def test_pass_rate_threshold(self):
         """Test validation respects pass rate threshold."""
-        df = pd.DataFrame([
-            {
-                "Company": "Valid Corp",
-                "Award Title": "Valid",
-                "Agency": "DOD",
-                "Phase": "Phase I",
-                "Program": "SBIR",
-                "Award Year": 2020,
-                "Award Amount": 150000,
-            },
-            {
-                "Company": pd.NA,  # Invalid
-                "Award Title": "",
-                "Agency": "",
-                "Phase": "Phase IV",
-                "Program": "INVALID",
-                "Award Year": 1900,
-                "Award Amount": -1000,
-            },
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "Company": "Valid Corp",
+                    "Award Title": "Valid",
+                    "Agency": "DOD",
+                    "Phase": "Phase I",
+                    "Program": "SBIR",
+                    "Award Year": 2020,
+                    "Award Amount": 150000,
+                },
+                {
+                    "Company": pd.NA,  # Invalid
+                    "Award Title": "",
+                    "Agency": "",
+                    "Phase": "Phase IV",
+                    "Program": "INVALID",
+                    "Award Year": 1900,
+                    "Award Amount": -1000,
+                },
+            ]
+        )
         # 50% pass rate with 95% threshold should fail
         report = validate_sbir_awards(df, pass_rate_threshold=0.95)
         assert report.passed is False

@@ -570,7 +570,9 @@ class TestValidateResolutionQuality:
 
     def test_validate_quality_empty_dataframe(self, resolver):
         """Test quality validation with empty DataFrame."""
-        df = pd.DataFrame(columns=["fiscal_state_code", "fiscal_geo_confidence", "fiscal_geo_source"])
+        df = pd.DataFrame(
+            columns=["fiscal_state_code", "fiscal_geo_confidence", "fiscal_geo_source"]
+        )
 
         quality = resolver.validate_resolution_quality(df)
 

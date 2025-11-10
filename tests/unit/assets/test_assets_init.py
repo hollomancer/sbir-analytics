@@ -12,22 +12,26 @@ class TestAssetsPackageStructure:
     def test_all_list_exists(self):
         """Test __all__ list is defined."""
         from src.assets import __all__
+
         assert isinstance(__all__, list)
 
     def test_all_list_not_empty(self):
         """Test __all__ list contains exported symbols."""
         from src.assets import __all__
+
         assert len(__all__) > 0
 
     def test_all_list_contains_example_assets(self):
         """Test __all__ includes example assets."""
         from src.assets import __all__
+
         assert "raw_sbir_data" in __all__
         assert "validated_sbir_data" in __all__
 
     def test_all_list_contains_uspto_assets(self):
         """Test __all__ includes USPTO assets."""
         from src.assets import __all__
+
         assert "raw_uspto_assignments" in __all__
         assert "transformed_patents" in __all__
         assert "neo4j_patents" in __all__
@@ -35,12 +39,14 @@ class TestAssetsPackageStructure:
     def test_all_list_contains_cet_assets(self):
         """Test __all__ includes CET assets."""
         from src.assets import __all__
+
         assert "neo4j_cetarea_nodes" in __all__
         assert "neo4j_award_cet_enrichment" in __all__
 
     def test_all_list_contains_transition_assets(self):
         """Test __all__ includes transition assets."""
         from src.assets import __all__
+
         assert "contracts_ingestion" in __all__
         assert "transition_scores_v1" in __all__
         assert "loaded_transitions" in __all__
@@ -48,11 +54,13 @@ class TestAssetsPackageStructure:
     def test_lazy_mapping_exists(self):
         """Test _lazy_mapping dictionary exists."""
         from src.assets import _lazy_mapping
+
         assert isinstance(_lazy_mapping, dict)
 
     def test_lazy_mapping_not_empty(self):
         """Test _lazy_mapping contains mappings."""
         from src.assets import _lazy_mapping
+
         assert len(_lazy_mapping) > 0
 
     def test_lazy_mapping_structure(self):
@@ -73,8 +81,9 @@ class TestAssetsPackageStructure:
         from src.assets import _lazy_mapping
 
         for _symbol, (module_path, _attr_name) in _lazy_mapping.items():
-            assert module_path.startswith("src.assets."), \
-                f"Module path {module_path} should start with 'src.assets.'"
+            assert module_path.startswith(
+                "src.assets."
+            ), f"Module path {module_path} should start with 'src.assets.'"
 
     def test_all_matches_lazy_mapping_keys(self):
         """Test __all__ symbols match _lazy_mapping keys (mostly)."""
@@ -96,12 +105,14 @@ class TestLazyImportMechanism:
     def test_getattr_hook_exists(self):
         """Test __getattr__ function is defined."""
         import src.assets
-        assert hasattr(src.assets, '__getattr__')
+
+        assert hasattr(src.assets, "__getattr__")
 
     def test_dir_hook_exists(self):
         """Test __dir__ function is defined."""
         import src.assets
-        assert hasattr(src.assets, '__dir__')
+
+        assert hasattr(src.assets, "__dir__")
 
     def test_dir_includes_all_symbols(self):
         """Test __dir__() includes all exported symbols."""
@@ -116,27 +127,29 @@ class TestLazyImportMechanism:
     def test_dir_is_sorted(self):
         """Test __dir__() returns sorted list."""
         import src.assets
+
         dir_result = src.assets.__dir__()
 
         assert dir_result == sorted(dir_result)
 
-    @patch('src.assets.import_module')
+    @patch("src.assets.import_module")
     def test_getattr_imports_module_on_first_access(self, mock_import):
         """Test __getattr__ imports module on first access."""
         # Create a fresh module to avoid cached imports
         import sys
 
         # Remove from cache if present
-        module_name = 'src.assets'
+        module_name = "src.assets"
         if module_name in sys.modules:
             # Save lazy mapping before reload
             from src.assets import _lazy_mapping
+
             _lazy_mapping.copy()
 
             # Reload module
             importlib.reload(sys.modules[module_name])
 
-    @patch('src.assets.import_module')
+    @patch("src.assets.import_module")
     def test_getattr_returns_attribute_from_module(self, mock_import):
         """Test __getattr__ returns correct attribute from imported module."""
         from src.assets import __getattr__, _lazy_mapping
@@ -165,7 +178,7 @@ class TestLazyImportMechanism:
 
         assert "has no attribute 'nonexistent_symbol'" in str(exc_info.value)
 
-    @patch('src.assets.import_module')
+    @patch("src.assets.import_module")
     def test_getattr_raises_if_attribute_missing_from_module(self, mock_import):
         """Test __getattr__ raises if imported module lacks attribute."""
         from src.assets import __getattr__, _lazy_mapping
@@ -268,7 +281,10 @@ class TestLazyMappingContent:
 
         # Transition checks
         if "transition_analytics_quality_check" in _lazy_mapping:
-            assert _lazy_mapping["transition_analytics_quality_check"][0] == "src.assets.transition_assets"
+            assert (
+                _lazy_mapping["transition_analytics_quality_check"][0]
+                == "src.assets.transition_assets"
+            )
 
 
 class TestLazyImportBehavior:
@@ -279,8 +295,11 @@ class TestLazyImportBehavior:
         import sys
 
         # Clear any previously imported asset modules
-        asset_modules = [key for key in sys.modules.keys()
-                        if key.startswith('src.assets.') and key != 'src.assets']
+        asset_modules = [
+            key
+            for key in sys.modules.keys()
+            if key.startswith("src.assets.") and key != "src.assets"
+        ]
         for module in asset_modules:
             del sys.modules[module]
 
@@ -288,8 +307,10 @@ class TestLazyImportBehavior:
 
         # Asset submodules should not be loaded yet
         # (They will be loaded on first access via __getattr__)
-        assert 'src.assets.example_assets' not in sys.modules or \
-               sys.modules.get('src.assets.example_assets') is None
+        assert (
+            "src.assets.example_assets" not in sys.modules
+            or sys.modules.get("src.assets.example_assets") is None
+        )
 
     def test_multiple_symbols_from_same_module(self):
         """Test multiple symbols from the same module share mapping."""
@@ -317,18 +338,21 @@ class TestPackageDocumentation:
     def test_module_has_docstring(self):
         """Test assets package has docstring."""
         import src.assets
+
         assert src.assets.__doc__ is not None
         assert len(src.assets.__doc__) > 0
 
     def test_docstring_mentions_lazy_import(self):
         """Test docstring mentions lazy import mechanism."""
         import src.assets
+
         docstring = src.assets.__doc__.lower()
         assert "lazy" in docstring or "import" in docstring
 
     def test_docstring_mentions_avoiding_heavy_imports(self):
         """Test docstring explains avoiding heavy dependencies."""
         import src.assets
+
         docstring = src.assets.__doc__.lower()
         assert "optional" in docstring or "dependencies" in docstring or "dagster" in docstring
 
@@ -361,8 +385,9 @@ class TestConsistencyChecks:
         from src.assets import _lazy_mapping
 
         for symbol, (_module_path, attr_name) in _lazy_mapping.items():
-            assert attr_name.isidentifier(), \
-                f"Attribute {attr_name} for {symbol} is not a valid Python identifier"
+            assert (
+                attr_name.isidentifier()
+            ), f"Attribute {attr_name} for {symbol} is not a valid Python identifier"
 
     def test_module_paths_use_dot_notation(self):
         """Test all module paths use proper dot notation."""
@@ -391,7 +416,7 @@ class TestErrorHandling:
         assert "src.assets" in error_message
         assert "definitely_not_a_real_asset" in error_message
 
-    @patch('src.assets.import_module')
+    @patch("src.assets.import_module")
     def test_getattr_includes_cause_in_error(self, mock_import):
         """Test __getattr__ includes underlying AttributeError as cause."""
         from src.assets import __getattr__, _lazy_mapping

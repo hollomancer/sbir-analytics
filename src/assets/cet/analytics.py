@@ -52,7 +52,7 @@ def transformed_cet_analytics() -> Output:
     awards_json = processed_dir / "cet_award_classifications.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
         if pd is None:
             return None  # type: ignore[unreachable]
         if parquet_path.exists():
@@ -162,8 +162,6 @@ def transformed_cet_analytics() -> Output:
     return Output(value=metadata, metadata=metadata)
 
 
-
-
 @asset(
     name="transformed_cet_analytics_aggregates",
     key_prefix=["ml"],
@@ -206,7 +204,7 @@ def transformed_cet_analytics_aggregates() -> Output:
     companies_json = processed_dir / "cet_company_profiles.json"
 
     # Read helpers (parquet preferred, NDJSON fallback)
-    def _read_df(parquet_path: Path, json_path: Path, expected_cols = None):
+    def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
         if pd is None:
             return None  # type: ignore[unreachable]
         if parquet_path.exists():
@@ -394,5 +392,3 @@ def transformed_cet_analytics_aggregates() -> Output:
         "alerts_path": str(alerts_dir / "cet_analytics_aggregates.alerts.json"),
     }
     return Output(value=metadata, metadata=metadata)
-
-

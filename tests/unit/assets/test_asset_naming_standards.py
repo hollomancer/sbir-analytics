@@ -1,6 +1,5 @@
 """Tests for asset naming standards module."""
 
-
 from src.assets.asset_naming_standards import (
     ASSET_RENAMING_MAP,
     GROUP_RENAMING_MAP,
@@ -233,7 +232,10 @@ class TestAssetRenamingMap:
     def test_usaspending_assets_renamed(self):
         """Test USAspending assets are renamed correctly."""
         assert ASSET_RENAMING_MAP["usaspending_recipient_lookup"] == "raw_usaspending_recipients"
-        assert ASSET_RENAMING_MAP["usaspending_transaction_normalized"] == "raw_usaspending_transactions"
+        assert (
+            ASSET_RENAMING_MAP["usaspending_transaction_normalized"]
+            == "raw_usaspending_transactions"
+        )
         assert ASSET_RENAMING_MAP["usaspending_dump_profile"] == "raw_usaspending_profile"
 
     def test_uspto_raw_assets_already_correct(self):
@@ -258,13 +260,20 @@ class TestAssetRenamingMap:
 
     def test_cet_classifications_enriched(self):
         """Test CET classifications use enriched prefix."""
-        assert ASSET_RENAMING_MAP["cet_award_classifications"] == "enriched_cet_award_classifications"
-        assert ASSET_RENAMING_MAP["cet_patent_classifications"] == "enriched_cet_patent_classifications"
+        assert (
+            ASSET_RENAMING_MAP["cet_award_classifications"] == "enriched_cet_award_classifications"
+        )
+        assert (
+            ASSET_RENAMING_MAP["cet_patent_classifications"]
+            == "enriched_cet_patent_classifications"
+        )
 
     def test_cet_analytics_transformed(self):
         """Test CET analytics use transformed prefix."""
         assert ASSET_RENAMING_MAP["cet_analytics"] == "transformed_cet_analytics"
-        assert ASSET_RENAMING_MAP["cet_analytics_aggregates"] == "transformed_cet_analytics_aggregates"
+        assert (
+            ASSET_RENAMING_MAP["cet_analytics_aggregates"] == "transformed_cet_analytics_aggregates"
+        )
 
     def test_cet_neo4j_loaded(self):
         """Test CET Neo4j assets use loaded prefix."""
@@ -285,7 +294,10 @@ class TestAssetRenamingMap:
     def test_transition_neo4j_loaded(self):
         """Test transition Neo4j assets use loaded prefix."""
         assert ASSET_RENAMING_MAP["neo4j_transitions"] == "loaded_transitions"
-        assert ASSET_RENAMING_MAP["neo4j_transition_relationships"] == "loaded_transition_relationships"
+        assert (
+            ASSET_RENAMING_MAP["neo4j_transition_relationships"]
+            == "loaded_transition_relationships"
+        )
 
     def test_uspto_ai_assets_renamed(self):
         """Test USPTO AI assets renamed correctly."""
@@ -309,8 +321,9 @@ class TestAssetRenamingMap:
             has_valid_prefix = any(new_name.startswith(prefix) for prefix in valid_prefixes)
             is_unchanged = old_name == new_name
 
-            assert has_valid_prefix or is_unchanged, \
-                f"Asset {old_name} -> {new_name} missing valid prefix"
+            assert (
+                has_valid_prefix or is_unchanged
+            ), f"Asset {old_name} -> {new_name} missing valid prefix"
 
 
 class TestGroupRenamingMap:
@@ -349,8 +362,9 @@ class TestGroupRenamingMap:
         valid_groups = {"extraction", "validation", "enrichment", "transformation", "loading"}
 
         for old_group, new_group in GROUP_RENAMING_MAP.items():
-            assert new_group in valid_groups, \
-                f"Group {old_group} -> {new_group} is not a valid pipeline group"
+            assert (
+                new_group in valid_groups
+            ), f"Group {old_group} -> {new_group} is not a valid pipeline group"
 
 
 class TestNamingStandardsIntegration:
@@ -370,8 +384,7 @@ class TestNamingStandardsIntegration:
             # Test that generated names use the correct prefix
             entity = "test_entity"
             name = get_standardized_asset_name(stage_name, entity)
-            assert name.startswith(prefix), \
-                f"Stage {stage_name} should use prefix {prefix}"
+            assert name.startswith(prefix), f"Stage {stage_name} should use prefix {prefix}"
 
     def test_group_name_function_matches_constant(self):
         """Test get_group_name matches AssetNamingStandards.GROUP_NAMES."""

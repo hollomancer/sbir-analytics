@@ -144,9 +144,7 @@ class TestStatisticalReporterInitialization:
 
         assert reporter.config == config
 
-    def test_initialization_with_metrics_collector(
-        self, temp_output_dir, mock_metrics_collector
-    ):
+    def test_initialization_with_metrics_collector(self, temp_output_dir, mock_metrics_collector):
         """Test initialization with custom metrics collector."""
         reporter = StatisticalReporter(
             output_dir=temp_output_dir, metrics_collector=mock_metrics_collector
@@ -232,9 +230,7 @@ class TestCIContextDetection:
 class TestModuleReportGeneration:
     """Tests for module report generation."""
 
-    def test_generate_module_report_basic(
-        self, temp_output_dir, sample_metrics_data
-    ):
+    def test_generate_module_report_basic(self, temp_output_dir, sample_metrics_data):
         """Test basic module report generation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -292,7 +288,7 @@ class TestModuleReportGeneration:
         # Provide timestamps as Unix timestamps
         metrics_data = {
             "start_time": 1672570800.0,  # 2023-01-01 11:00:00
-            "end_time": 1672571100.0,    # 2023-01-01 11:05:00
+            "end_time": 1672571100.0,  # 2023-01-01 11:05:00
             "records_in": 100,
             "records_processed": 90,
         }
@@ -374,9 +370,7 @@ class TestReportAggregation:
 class TestFormatGeneration:
     """Tests for report format generation."""
 
-    def test_generate_json_report(
-        self, temp_output_dir, sample_statistical_report
-    ):
+    def test_generate_json_report(self, temp_output_dir, sample_statistical_report):
         """Test JSON report generation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -391,9 +385,7 @@ class TestFormatGeneration:
             data = json.load(f)
             assert "run_id" in data
 
-    def test_generate_markdown_summary(
-        self, temp_output_dir, sample_statistical_report
-    ):
+    def test_generate_markdown_summary(self, temp_output_dir, sample_statistical_report):
         """Test Markdown summary generation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -406,9 +398,7 @@ class TestFormatGeneration:
         assert "# Statistical Report" in content or "# Pipeline Report" in content
 
     @patch("src.utils.statistical_reporter.PLOTLY_AVAILABLE", False)
-    def test_generate_html_report_no_plotly(
-        self, temp_output_dir, sample_statistical_report
-    ):
+    def test_generate_html_report_no_plotly(self, temp_output_dir, sample_statistical_report):
         """Test HTML report generation without Plotly."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -423,9 +413,7 @@ class TestFormatGeneration:
             assert "<html>" in content.lower()
             assert "Statistical Report" in content or "Pipeline Report" in content
 
-    def test_generate_all_formats(
-        self, temp_output_dir, sample_statistical_report
-    ):
+    def test_generate_all_formats(self, temp_output_dir, sample_statistical_report):
         """Test generation of all report formats."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -444,9 +432,7 @@ class TestPipelineMetrics:
     """Tests for pipeline metrics collection."""
 
     @patch("src.utils.statistical_reporter.performance_monitor")
-    def test_collect_pipeline_metrics(
-        self, mock_perf_monitor, temp_output_dir
-    ):
+    def test_collect_pipeline_metrics(self, mock_perf_monitor, temp_output_dir):
         """Test collection of pipeline metrics."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -476,9 +462,7 @@ class TestReportCollection:
     """Tests for comprehensive report collection."""
 
     @patch("src.utils.statistical_reporter.performance_monitor")
-    def test_generate_reports(
-        self, mock_perf_monitor, temp_output_dir
-    ):
+    def test_generate_reports(self, mock_perf_monitor, temp_output_dir):
         """Test comprehensive report generation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -499,9 +483,7 @@ class TestReportCollection:
         assert len(collection.artifacts) > 0
 
     @patch("src.utils.statistical_reporter.performance_monitor")
-    def test_generate_reports_with_ci_context(
-        self, mock_perf_monitor, temp_output_dir
-    ):
+    def test_generate_reports_with_ci_context(self, mock_perf_monitor, temp_output_dir):
         """Test report generation with CI context."""
         config = {"ci": {"upload_artifacts": False}}
         reporter = StatisticalReporter(output_dir=temp_output_dir, config=config)
@@ -526,9 +508,7 @@ class TestReportCollection:
 class TestExecutiveSummary:
     """Tests for executive summary generation."""
 
-    def test_create_executive_summary(
-        self, temp_output_dir, sample_pipeline_metrics
-    ):
+    def test_create_executive_summary(self, temp_output_dir, sample_pipeline_metrics):
         """Test executive summary creation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -545,9 +525,7 @@ class TestExecutiveSummary:
 class TestHTMLGeneration:
     """Tests for HTML report generation."""
 
-    def test_generate_simple_html(
-        self, temp_output_dir, sample_statistical_report
-    ):
+    def test_generate_simple_html(self, temp_output_dir, sample_statistical_report):
         """Test simple HTML generation without Plotly."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -562,9 +540,7 @@ class TestHTMLGeneration:
             assert "<body>" in content.lower()
 
     @patch("src.utils.statistical_reporter.PLOTLY_AVAILABLE", True)
-    def test_generate_plotly_html_available(
-        self, temp_output_dir, sample_pipeline_metrics
-    ):
+    def test_generate_plotly_html_available(self, temp_output_dir, sample_pipeline_metrics):
         """Test Plotly HTML generation when available."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -572,9 +548,7 @@ class TestHTMLGeneration:
 
         with patch("src.utils.statistical_reporter.make_subplots"):
             with patch("src.utils.statistical_reporter.go"):
-                html_path = reporter._generate_plotly_html(
-                    sample_pipeline_metrics, output_file
-                )
+                html_path = reporter._generate_plotly_html(sample_pipeline_metrics, output_file)
 
                 assert html_path == output_file
 
@@ -585,9 +559,7 @@ class TestHTMLGeneration:
 class TestMarkdownGeneration:
     """Tests for Markdown content generation."""
 
-    def test_create_markdown_content(
-        self, temp_output_dir, sample_pipeline_metrics
-    ):
+    def test_create_markdown_content(self, temp_output_dir, sample_pipeline_metrics):
         """Test Markdown content creation."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 
@@ -606,9 +578,7 @@ class TestCIIntegration:
     """Tests for CI/CD integration."""
 
     @patch("src.utils.statistical_reporter.Path.write_text")
-    def test_handle_ci_integration(
-        self, mock_write_text, temp_output_dir, sample_pipeline_metrics
-    ):
+    def test_handle_ci_integration(self, mock_write_text, temp_output_dir, sample_pipeline_metrics):
         """Test CI integration handling."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
         reporter.ci_context = {"provider": "github_actions", "is_pr": True}
@@ -624,9 +594,7 @@ class TestCIIntegration:
         # Should not raise exception
         reporter._handle_ci_integration(collection)
 
-    def test_handle_ci_integration_no_context(
-        self, temp_output_dir
-    ):
+    def test_handle_ci_integration_no_context(self, temp_output_dir):
         """Test CI integration when no CI context exists."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
         reporter.ci_context = None
@@ -677,9 +645,7 @@ class TestEdgeCases:
 
         assert collection.run_id.startswith("run_")
 
-    def test_generate_json_report_handles_datetime(
-        self, temp_output_dir
-    ):
+    def test_generate_json_report_handles_datetime(self, temp_output_dir):
         """Test JSON report handles datetime serialization."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)
 

@@ -119,9 +119,7 @@ class TestDataQualityConfig:
 
     def test_percentage_validator_accepts_valid_percentages(self):
         """Test percentage validator accepts values between 0 and 1."""
-        config = DataQualityConfig(
-            completeness={"field1": 0.85, "field2": 1.0, "field3": 0.0}
-        )
+        config = DataQualityConfig(completeness={"field1": 0.85, "field2": 1.0, "field3": 0.0})
         assert config.completeness["field1"] == 0.85
         assert config.completeness["field2"] == 1.0
         assert config.completeness["field3"] == 0.0
@@ -484,17 +482,13 @@ class TestStatisticalReportingConfig:
     def test_quality_thresholds_validator_rejects_invalid_completeness(self):
         """Test quality thresholds validator rejects invalid completeness values."""
         with pytest.raises(ValidationError) as exc_info:
-            StatisticalReportingConfig(
-                quality_thresholds={"data_completeness_warning": 1.5}
-            )
+            StatisticalReportingConfig(quality_thresholds={"data_completeness_warning": 1.5})
         assert "must be between 0.0 and 1.0" in str(exc_info.value)
 
     def test_quality_thresholds_validator_rejects_invalid_performance(self):
         """Test quality thresholds validator rejects invalid performance values."""
         with pytest.raises(ValidationError) as exc_info:
-            StatisticalReportingConfig(
-                quality_thresholds={"performance_degradation_warning": 0.5}
-            )
+            StatisticalReportingConfig(quality_thresholds={"performance_degradation_warning": 0.5})
         assert "must be >= 1.0" in str(exc_info.value)
 
 
@@ -537,9 +531,7 @@ class TestTaxParameterConfig:
     def test_tax_parameters_validator_rejects_rates_above_one(self):
         """Test tax parameters validator rejects rates above 1.0."""
         with pytest.raises(ValidationError) as exc_info:
-            TaxParameterConfig(
-                corporate_income_tax={"federal_rate": 1.5}
-            )
+            TaxParameterConfig(corporate_income_tax={"federal_rate": 1.5})
         assert "must be between 0.0 and 1.0" in str(exc_info.value)
 
 
@@ -574,11 +566,7 @@ class TestSensitivityConfig:
     def test_uncertainty_parameters_validator_rejects_invalid_variation(self):
         """Test uncertainty parameters validator rejects invalid variation."""
         with pytest.raises(ValidationError) as exc_info:
-            SensitivityConfig(
-                uncertainty_parameters={
-                    "test": {"variation_percent": 1.5}
-                }
-            )
+            SensitivityConfig(uncertainty_parameters={"test": {"variation_percent": 1.5}})
         assert "must be between 0.0 and 1.0" in str(exc_info.value)
 
 
@@ -654,17 +642,13 @@ class TestFiscalAnalysisConfig:
 
     def test_quality_thresholds_validator_coerces_values(self):
         """Test quality thresholds validator coerces values to float."""
-        config = FiscalAnalysisConfig(
-            quality_thresholds={"naics_coverage_rate": "0.90"}
-        )
+        config = FiscalAnalysisConfig(quality_thresholds={"naics_coverage_rate": "0.90"})
         assert config.quality_thresholds["naics_coverage_rate"] == 0.90
 
     def test_quality_thresholds_validator_rejects_out_of_range(self):
         """Test quality thresholds validator rejects out of range values."""
         with pytest.raises(ValidationError) as exc_info:
-            FiscalAnalysisConfig(
-                quality_thresholds={"naics_coverage_rate": 1.5}
-            )
+            FiscalAnalysisConfig(quality_thresholds={"naics_coverage_rate": 1.5})
         assert "must be between 0.0 and 1.0" in str(exc_info.value)
 
 

@@ -96,7 +96,7 @@ class TestTransitionLoaderIndexes:
         loader = TransitionLoader(mock_driver)
         loader.ensure_indexes()
 
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         assert "transition_confidence_index" in all_queries
         assert "confidence" in all_queries
@@ -110,7 +110,7 @@ class TestTransitionLoaderIndexes:
         loader = TransitionLoader(mock_driver)
         loader.ensure_indexes()
 
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         assert "transition_score_index" in all_queries
         assert "likelihood_score" in all_queries
@@ -124,7 +124,7 @@ class TestTransitionLoaderIndexes:
         loader = TransitionLoader(mock_driver)
         loader.ensure_indexes()
 
-        all_queries = ' '.join([call[0][0] for call in mock_session.run.call_args_list])
+        all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
 
         assert "transition_date_index" in all_queries
         assert "detection_date" in all_queries
@@ -180,17 +180,19 @@ class TestTransitionLoaderNodeLoading:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+            }
+        )
 
         result = loader.load_transition_nodes(df)
 
@@ -209,17 +211,19 @@ class TestTransitionLoaderNodeLoading:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'contract_id': ['c1', 'c2', 'c3'],
-            'likelihood_score': [0.85, 0.90, 0.75],
-            'confidence': ['high', 'high', 'likely'],
-            'signals': ['[]'] * 3,
-            'evidence': ['{}'] * 3,
-            'detected_at': [datetime.now()] * 3,
-            'vendor_match_score': [0.9, 0.95, 0.8],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "contract_id": ["c1", "c2", "c3"],
+                "likelihood_score": [0.85, 0.90, 0.75],
+                "confidence": ["high", "high", "likely"],
+                "signals": ["[]"] * 3,
+                "evidence": ["{}"] * 3,
+                "detected_at": [datetime.now()] * 3,
+                "vendor_match_score": [0.9, 0.95, 0.8],
+            }
+        )
 
         result = loader.load_transition_nodes(df)
 
@@ -238,17 +242,19 @@ class TestTransitionLoaderNodeLoading:
         loader = TransitionLoader(mock_driver, batch_size=5)
 
         # Create 12 transitions (should create 3 batches)
-        df = pd.DataFrame({
-            'transition_id': [f't{i}' for i in range(12)],
-            'award_id': [f'a{i}' for i in range(12)],
-            'contract_id': [f'c{i}' for i in range(12)],
-            'likelihood_score': [0.85] * 12,
-            'confidence': ['high'] * 12,
-            'signals': ['[]'] * 12,
-            'evidence': ['{}'] * 12,
-            'detected_at': [datetime.now()] * 12,
-            'vendor_match_score': [0.9] * 12,
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": [f"t{i}" for i in range(12)],
+                "award_id": [f"a{i}" for i in range(12)],
+                "contract_id": [f"c{i}" for i in range(12)],
+                "likelihood_score": [0.85] * 12,
+                "confidence": ["high"] * 12,
+                "signals": ["[]"] * 12,
+                "evidence": ["{}"] * 12,
+                "detected_at": [datetime.now()] * 12,
+                "vendor_match_score": [0.9] * 12,
+            }
+        )
 
         result = loader.load_transition_nodes(df)
 
@@ -267,17 +273,19 @@ class TestTransitionLoaderNodeLoading:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+            }
+        )
 
         loader.load_transition_nodes(df)
 
@@ -297,17 +305,19 @@ class TestTransitionLoaderNodeLoading:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+            }
+        )
 
         loader.load_transition_nodes(df)
 
@@ -329,14 +339,16 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'detected_at': [datetime.now()],
-            'evidence': ['{}'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "detected_at": [datetime.now()],
+                "evidence": ["{}"],
+            }
+        )
 
         result = loader.create_transitioned_to_relationships(df)
 
@@ -354,14 +366,16 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'award_id': ['a1', 'a2', 'a3'],
-            'likelihood_score': [0.85, 0.90, 0.75],
-            'confidence': ['high', 'high', 'likely'],
-            'detected_at': [datetime.now()] * 3,
-            'evidence': ['{}'] * 3,
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "award_id": ["a1", "a2", "a3"],
+                "likelihood_score": [0.85, 0.90, 0.75],
+                "confidence": ["high", "high", "likely"],
+                "detected_at": [datetime.now()] * 3,
+                "evidence": ["{}"] * 3,
+            }
+        )
 
         result = loader.create_transitioned_to_relationships(df)
 
@@ -378,14 +392,16 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'detected_at': [datetime.now()],
-            'evidence': ['{}'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "detected_at": [datetime.now()],
+                "evidence": ["{}"],
+            }
+        )
 
         loader.create_transitioned_to_relationships(df)
 
@@ -406,14 +422,16 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'detected_at': [datetime.now()],
-            'evidence': ['{}'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "detected_at": [datetime.now()],
+                "evidence": ["{}"],
+            }
+        )
 
         loader.create_transitioned_to_relationships(df)
 
@@ -434,11 +452,13 @@ class TestTransitionLoaderResultedInRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'contract_id': ['c1'],
-            'confidence': ['high'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["c1"],
+                "confidence": ["high"],
+            }
+        )
 
         result = loader.create_resulted_in_relationships(df)
 
@@ -456,11 +476,13 @@ class TestTransitionLoaderResultedInRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'contract_id': ['c1', 'c2', 'c3'],
-            'confidence': ['high', 'high', 'likely'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "contract_id": ["c1", "c2", "c3"],
+                "confidence": ["high", "high", "likely"],
+            }
+        )
 
         result = loader.create_resulted_in_relationships(df)
 
@@ -477,11 +499,13 @@ class TestTransitionLoaderResultedInRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'contract_id': ['c1'],
-            'confidence': ['high'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["c1"],
+                "confidence": ["high"],
+            }
+        )
 
         loader.create_resulted_in_relationships(df)
 
@@ -502,11 +526,13 @@ class TestTransitionLoaderResultedInRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'contract_id': ['c1'],
-            'confidence': ['high'],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "contract_id": ["c1"],
+                "confidence": ["high"],
+            }
+        )
 
         loader.create_resulted_in_relationships(df)
 
@@ -521,7 +547,7 @@ class TestTransitionLoaderEnabledByRelationships:
         mock_driver = Mock()
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
+        df = pd.DataFrame({"transition_id": ["t1"]})
         result = loader.create_enabled_by_relationships(df, None)
 
         assert result == 0
@@ -531,7 +557,7 @@ class TestTransitionLoaderEnabledByRelationships:
         mock_driver = Mock()
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
+        df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame()
 
         result = loader.create_enabled_by_relationships(df, patent_df)
@@ -549,12 +575,14 @@ class TestTransitionLoaderEnabledByRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
-        patent_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'patent_id': ['p1'],
-            'patent_contribution': [0.7],
-        })
+        df = pd.DataFrame({"transition_id": ["t1"]})
+        patent_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "patent_id": ["p1"],
+                "patent_contribution": [0.7],
+            }
+        )
 
         result = loader.create_enabled_by_relationships(df, patent_df)
 
@@ -572,12 +600,14 @@ class TestTransitionLoaderEnabledByRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
-        patent_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'patent_id': ['p1'],
-            'patent_contribution': [0.7],
-        })
+        df = pd.DataFrame({"transition_id": ["t1"]})
+        patent_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "patent_id": ["p1"],
+                "patent_contribution": [0.7],
+            }
+        )
 
         loader.create_enabled_by_relationships(df, patent_df)
 
@@ -600,12 +630,14 @@ class TestTransitionLoaderEnabledByRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
-        patent_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'patent_id': ['p1'],
-            # No patent_contribution field
-        })
+        df = pd.DataFrame({"transition_id": ["t1"]})
+        patent_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "patent_id": ["p1"],
+                # No patent_contribution field
+            }
+        )
 
         result = loader.create_enabled_by_relationships(df, patent_df)
 
@@ -620,12 +652,14 @@ class TestTransitionLoaderEnabledByRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({'transition_id': ['t1']})
-        patent_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'patent_id': ['p1'],
-            'patent_contribution': [0.7],
-        })
+        df = pd.DataFrame({"transition_id": ["t1"]})
+        patent_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "patent_id": ["p1"],
+                "patent_contribution": [0.7],
+            }
+        )
 
         loader.create_enabled_by_relationships(df, patent_df)
 
@@ -640,10 +674,12 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
         mock_driver = Mock()
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'cet_area': [None],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "cet_area": [None],
+            }
+        )
 
         result = loader.create_involves_technology_relationships(df)
 
@@ -654,10 +690,12 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
         mock_driver = Mock()
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1', 't2'],
-            'cet_area': [None, pd.NA],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2"],
+                "cet_area": [None, pd.NA],
+            }
+        )
 
         result = loader.create_involves_technology_relationships(df)
 
@@ -674,11 +712,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'cet_area': ['cet1'],
-            'cet_alignment_score': [0.8],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "cet_area": ["cet1"],
+                "cet_alignment_score": [0.8],
+            }
+        )
 
         result = loader.create_involves_technology_relationships(df)
 
@@ -696,11 +736,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1', 't2', 't3'],
-            'cet_area': ['cet1', None, 'cet2'],
-            'cet_alignment_score': [0.8, 0.0, 0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1", "t2", "t3"],
+                "cet_area": ["cet1", None, "cet2"],
+                "cet_alignment_score": [0.8, 0.0, 0.9],
+            }
+        )
 
         result = loader.create_involves_technology_relationships(df)
 
@@ -718,11 +760,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'cet_area': ['cet1'],
-            'cet_alignment_score': [0.8],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "cet_area": ["cet1"],
+                "cet_alignment_score": [0.8],
+            }
+        )
 
         loader.create_involves_technology_relationships(df)
 
@@ -745,11 +789,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'cet_area': ['cet1'],
-            # No cet_alignment_score
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "cet_area": ["cet1"],
+                # No cet_alignment_score
+            }
+        )
 
         result = loader.create_involves_technology_relationships(df)
 
@@ -764,11 +810,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'cet_area': ['cet1'],
-            'cet_alignment_score': [0.8],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "cet_area": ["cet1"],
+                "cet_alignment_score": [0.8],
+            }
+        )
 
         loader.create_involves_technology_relationships(df)
 
@@ -789,26 +837,29 @@ class TestTransitionLoaderOrchestration:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-            'cet_area': [None],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+                "cet_area": [None],
+            }
+        )
 
-        with patch.object(loader, 'ensure_indexes') as mock_ensure_indexes, \
-             patch.object(loader, 'load_transition_nodes') as mock_load_nodes, \
-             patch.object(loader, 'create_transitioned_to_relationships') as mock_transitioned, \
-             patch.object(loader, 'create_resulted_in_relationships') as mock_resulted, \
-             patch.object(loader, 'create_enabled_by_relationships') as mock_enabled, \
-             patch.object(loader, 'create_involves_technology_relationships') as mock_involves:
-
+        with (
+            patch.object(loader, "ensure_indexes") as mock_ensure_indexes,
+            patch.object(loader, "load_transition_nodes") as mock_load_nodes,
+            patch.object(loader, "create_transitioned_to_relationships") as mock_transitioned,
+            patch.object(loader, "create_resulted_in_relationships") as mock_resulted,
+            patch.object(loader, "create_enabled_by_relationships") as mock_enabled,
+            patch.object(loader, "create_involves_technology_relationships") as mock_involves,
+        ):
             loader.load_transitions(df)
 
             mock_ensure_indexes.assert_called_once()
@@ -823,31 +874,36 @@ class TestTransitionLoaderOrchestration:
         mock_driver = Mock()
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-            'cet_area': [None],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+                "cet_area": [None],
+            }
+        )
 
-        patent_df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'patent_id': ['p1'],
-        })
+        patent_df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "patent_id": ["p1"],
+            }
+        )
 
-        with patch.object(loader, 'ensure_indexes'), \
-             patch.object(loader, 'load_transition_nodes'), \
-             patch.object(loader, 'create_transitioned_to_relationships'), \
-             patch.object(loader, 'create_resulted_in_relationships'), \
-             patch.object(loader, 'create_enabled_by_relationships') as mock_enabled, \
-             patch.object(loader, 'create_involves_technology_relationships'):
-
+        with (
+            patch.object(loader, "ensure_indexes"),
+            patch.object(loader, "load_transition_nodes"),
+            patch.object(loader, "create_transitioned_to_relationships"),
+            patch.object(loader, "create_resulted_in_relationships"),
+            patch.object(loader, "create_enabled_by_relationships") as mock_enabled,
+            patch.object(loader, "create_involves_technology_relationships"),
+        ):
             loader.load_transitions(df, patent_df)
 
             # Verify patent_df was passed
@@ -864,26 +920,29 @@ class TestTransitionLoaderOrchestration:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-            'cet_area': [None],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+                "cet_area": [None],
+            }
+        )
 
-        with patch.object(loader, 'ensure_indexes'), \
-             patch.object(loader, 'load_transition_nodes'), \
-             patch.object(loader, 'create_transitioned_to_relationships'), \
-             patch.object(loader, 'create_resulted_in_relationships'), \
-             patch.object(loader, 'create_enabled_by_relationships'), \
-             patch.object(loader, 'create_involves_technology_relationships'):
-
+        with (
+            patch.object(loader, "ensure_indexes"),
+            patch.object(loader, "load_transition_nodes"),
+            patch.object(loader, "create_transitioned_to_relationships"),
+            patch.object(loader, "create_resulted_in_relationships"),
+            patch.object(loader, "create_enabled_by_relationships"),
+            patch.object(loader, "create_involves_technology_relationships"),
+        ):
             result = loader.load_transitions(df)
 
             assert isinstance(result, dict)
@@ -919,17 +978,19 @@ class TestTransitionLoaderEdgeCases:
 
         loader = TransitionLoader(mock_driver)
 
-        df = pd.DataFrame({
-            'transition_id': ['t1'],
-            'award_id': ['a1'],
-            'contract_id': ['c1'],
-            'likelihood_score': [0.85],
-            'confidence': ['high'],
-            'signals': ['[]'],
-            'evidence': ['{}'],
-            'detected_at': [datetime.now()],
-            'vendor_match_score': [0.9],
-        })
+        df = pd.DataFrame(
+            {
+                "transition_id": ["t1"],
+                "award_id": ["a1"],
+                "contract_id": ["c1"],
+                "likelihood_score": [0.85],
+                "confidence": ["high"],
+                "signals": ["[]"],
+                "evidence": ["{}"],
+                "detected_at": [datetime.now()],
+                "vendor_match_score": [0.9],
+            }
+        )
 
         # Load twice
         loader.load_transition_nodes(df)

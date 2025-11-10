@@ -274,7 +274,9 @@ class TestEvaluate:
 
     def test_evaluate_empty_detections(self, evaluator):
         """Test evaluation with empty detections."""
-        detections = pd.DataFrame(columns=["award_id", "contract_id", "likelihood_score", "confidence"])
+        detections = pd.DataFrame(
+            columns=["award_id", "contract_id", "likelihood_score", "confidence"]
+        )
         ground_truth = pd.DataFrame(
             {
                 "award_id": ["AWD001"],
@@ -545,8 +547,18 @@ class TestGenerateEvaluationReport:
             support=13,
             confusion=cm,
             by_confidence={
-                "high": {"detections": 5, "true_positives": 5, "false_positives": 0, "precision": 1.0},
-                "likely": {"detections": 8, "true_positives": 4, "false_positives": 4, "precision": 0.5},
+                "high": {
+                    "detections": 5,
+                    "true_positives": 5,
+                    "false_positives": 0,
+                    "precision": 1.0,
+                },
+                "likely": {
+                    "detections": 8,
+                    "true_positives": 4,
+                    "false_positives": 4,
+                    "precision": 0.5,
+                },
             },
         )
 

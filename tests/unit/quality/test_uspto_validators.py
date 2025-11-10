@@ -134,9 +134,7 @@ class TestRfIdUniqueness:
             {"record_id": "002", "name": "Bob"},
         ]
 
-        result = validate_rf_id_uniqueness_from_iterator(
-            rows, rf_id_field_names=["record_id"]
-        )
+        result = validate_rf_id_uniqueness_from_iterator(rows, rf_id_field_names=["record_id"])
 
         assert result.success is True
         assert result.summary["total_rf_ids_found"] == 2
@@ -311,9 +309,7 @@ class TestDateFields:
             writer.writerow({"rf_id": "001", "date": "1500-01-01"})  # Too old
             writer.writerow({"rf_id": "002", "date": "2020-01-01"})
 
-        result = validate_date_fields(
-            csv_file, date_fields=["date"], min_year=1790, max_year=2100
-        )
+        result = validate_date_fields(csv_file, date_fields=["date"], min_year=1790, max_year=2100)
 
         assert result.success is False
         assert result.summary["total_invalid_dates"] > 0
@@ -421,16 +417,16 @@ class TestUSPTODataQualityValidator:
         # Create sample assignments file
         assignments_file = tmp_path / "assignments.csv"
         with open(assignments_file, "w", newline="") as f:
-            writer = csv.DictWriter(
-                f, fieldnames=["rf_id", "record_dt", "cname", "last_update_dt"]
-            )
+            writer = csv.DictWriter(f, fieldnames=["rf_id", "record_dt", "cname", "last_update_dt"])
             writer.writeheader()
-            writer.writerow({
-                "rf_id": "001",
-                "record_dt": "2020-01-01",
-                "cname": "Test Company",
-                "last_update_dt": "2020-01-02",
-            })
+            writer.writerow(
+                {
+                    "rf_id": "001",
+                    "record_dt": "2020-01-01",
+                    "cname": "Test Company",
+                    "last_update_dt": "2020-01-02",
+                }
+            )
 
         config = USPTOValidationConfig(
             fail_output_dir=tmp_path / "fail",

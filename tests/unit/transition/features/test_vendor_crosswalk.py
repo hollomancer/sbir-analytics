@@ -297,7 +297,9 @@ class TestAddOrMerge:
         cw.add_or_merge(record1)
 
         # Add record with same CAGE
-        record2 = CrosswalkRecord(canonical_id="co-2", canonical_name="Acme", cage="1A2B3", uei="ABC123")
+        record2 = CrosswalkRecord(
+            canonical_id="co-2", canonical_name="Acme", cage="1A2B3", uei="ABC123"
+        )
 
         result = cw.add_or_merge(record2)
 
@@ -311,7 +313,9 @@ class TestAddOrMerge:
         cw.add_or_merge(record1)
 
         # Add record with same DUNS
-        record2 = CrosswalkRecord(canonical_id="co-2", canonical_name="Acme", duns="123456789", uei="ABC123")
+        record2 = CrosswalkRecord(
+            canonical_id="co-2", canonical_name="Acme", duns="123456789", uei="ABC123"
+        )
 
         result = cw.add_or_merge(record2)
 
@@ -380,7 +384,9 @@ class TestAddOrMerge:
     def test_merge_different_canonical_names_creates_alias(self):
         """Test merging records with different canonical names creates alias."""
         cw = VendorCrosswalk()
-        record1 = CrosswalkRecord(canonical_id="co-1", canonical_name="Acme Corporation", uei="ABC123")
+        record1 = CrosswalkRecord(
+            canonical_id="co-1", canonical_name="Acme Corporation", uei="ABC123"
+        )
         cw.add_or_merge(record1)
 
         record2 = CrosswalkRecord(canonical_id="co-2", canonical_name="Acme Inc", uei="ABC123")
@@ -673,9 +679,7 @@ class TestAcquisitionHandling:
         cw.add_or_merge(acquirer)
         cw.add_or_merge(acquired)
 
-        result = cw.handle_acquisition(
-            acquirer_id="co-1", acquired_id="co-2", merge=False
-        )
+        result = cw.handle_acquisition(acquirer_id="co-1", acquired_id="co-2", merge=False)
 
         assert result is True
         # Both should still exist
@@ -838,9 +842,7 @@ class TestUtilities:
         record1 = CrosswalkRecord(
             canonical_id="co-1", canonical_name="Acme", uei="UEI001", cage="CAGE1"
         )
-        record2 = CrosswalkRecord(
-            canonical_id="co-2", canonical_name="Beta", duns="123456789"
-        )
+        record2 = CrosswalkRecord(canonical_id="co-2", canonical_name="Beta", duns="123456789")
         cw.add_or_merge(record1)
         cw.add_or_merge(record2)
 

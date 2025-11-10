@@ -25,9 +25,7 @@ class TestContractExtractorInitialization:
 
     def test_init_with_vendor_filters(self, sample_vendor_filters):
         """Test initialization with vendor filter file."""
-        extractor = ContractExtractor(
-            vendor_filter_file=sample_vendor_filters, batch_size=5000
-        )
+        extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters, batch_size=5000)
 
         assert extractor.batch_size == 5000
         assert len(extractor.vendor_filters["uei"]) == 2
@@ -165,9 +163,7 @@ class TestParseCompetitionType:
         extractor = ContractExtractor()
 
         assert extractor._parse_competition_type("LIMITED") == CompetitionType.LIMITED
-        assert (
-            extractor._parse_competition_type("LIMITED COMPETITION") == CompetitionType.LIMITED
-        )
+        assert extractor._parse_competition_type("LIMITED COMPETITION") == CompetitionType.LIMITED
         assert extractor._parse_competition_type("RESTRICTED") == CompetitionType.LIMITED
 
     def test_parse_competition_unknown(self):

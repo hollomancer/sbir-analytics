@@ -141,20 +141,22 @@ class MockEconomicModel(EconomicModelInterface):
 
         results = []
         for _, row in shocks_df.iterrows():
-            results.append({
-                "state": row["state"],
-                "bea_sector": row["bea_sector"],
-                "fiscal_year": row["fiscal_year"],
-                "wage_impact": row["shock_amount"] * 0.5,
-                "proprietor_income_impact": row["shock_amount"] * 0.1,
-                "gross_operating_surplus": row["shock_amount"] * 0.15,
-                "consumption_impact": row["shock_amount"] * 0.25,
-                "tax_impact": row["shock_amount"] * 0.1,
-                "production_impact": row["shock_amount"] * 1.5,
-                "model_version": model_version or self.version,
-                "confidence": 0.95,
-                "quality_flags": [],
-            })
+            results.append(
+                {
+                    "state": row["state"],
+                    "bea_sector": row["bea_sector"],
+                    "fiscal_year": row["fiscal_year"],
+                    "wage_impact": row["shock_amount"] * 0.5,
+                    "proprietor_income_impact": row["shock_amount"] * 0.1,
+                    "gross_operating_surplus": row["shock_amount"] * 0.15,
+                    "consumption_impact": row["shock_amount"] * 0.25,
+                    "tax_impact": row["shock_amount"] * 0.1,
+                    "production_impact": row["shock_amount"] * 1.5,
+                    "model_version": model_version or self.version,
+                    "confidence": 0.95,
+                    "quality_flags": [],
+                }
+            )
 
         return pd.DataFrame(results)
 
@@ -174,12 +176,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with valid DataFrame."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA", "NY", "TX"],
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [1000.0, 2000.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA", "NY", "TX"],
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         # Should not raise
         model.validate_input(df)
@@ -188,12 +192,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with missing required column."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            # Missing shock_amount
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                # Missing shock_amount
+            }
+        )
 
         with pytest.raises(ValidationError, match="Missing required columns"):
             model.validate_input(df)
@@ -202,10 +208,12 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with multiple missing columns."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            # Missing bea_sector, fiscal_year, shock_amount
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                # Missing bea_sector, fiscal_year, shock_amount
+            }
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model.validate_input(df)
@@ -219,12 +227,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with invalid state code length."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CAL", "NY", "TEX"],  # CAL and TEX are too long
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [1000.0, 2000.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CAL", "NY", "TEX"],  # CAL and TEX are too long
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         with pytest.raises(ValidationError, match="State codes must be exactly 2 letters"):
             model.validate_input(df)
@@ -233,12 +243,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with single character state code."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["C", "NY"],  # C is too short
-            "bea_sector": ["11", "21"],
-            "fiscal_year": [2020, 2020],
-            "shock_amount": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["C", "NY"],  # C is too short
+                "bea_sector": ["11", "21"],
+                "fiscal_year": [2020, 2020],
+                "shock_amount": [1000.0, 2000.0],
+            }
+        )
 
         with pytest.raises(ValidationError, match="State codes must be exactly 2 letters"):
             model.validate_input(df)
@@ -247,12 +259,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with negative shock amount."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA", "NY"],
-            "bea_sector": ["11", "21"],
-            "fiscal_year": [2020, 2020],
-            "shock_amount": [1000.0, -500.0],  # Negative amount
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA", "NY"],
+                "bea_sector": ["11", "21"],
+                "fiscal_year": [2020, 2020],
+                "shock_amount": [1000.0, -500.0],  # Negative amount
+            }
+        )
 
         with pytest.raises(ValidationError, match="Shock amounts must be non-negative"):
             model.validate_input(df)
@@ -261,12 +275,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with multiple negative shock amounts."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA", "NY", "TX"],
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [-100.0, -200.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA", "NY", "TX"],
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [-100.0, -200.0, 1500.0],
+            }
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model.validate_input(df)
@@ -279,12 +295,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input accepts zero shock amounts."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA", "NY"],
-            "bea_sector": ["11", "21"],
-            "fiscal_year": [2020, 2020],
-            "shock_amount": [0.0, 0.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA", "NY"],
+                "bea_sector": ["11", "21"],
+                "fiscal_year": [2020, 2020],
+                "shock_amount": [0.0, 0.0],
+            }
+        )
 
         # Should not raise - zeros are valid
         model.validate_input(df)
@@ -293,14 +311,16 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input accepts extra columns."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            "shock_amount": [1000.0],
-            "extra_column": ["extra_value"],
-            "another_column": [123],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                "shock_amount": [1000.0],
+                "extra_column": ["extra_value"],
+                "another_column": [123],
+            }
+        )
 
         # Should not raise - extra columns are fine
         model.validate_input(df)
@@ -309,12 +329,14 @@ class TestEconomicModelInterfaceValidation:
         """Test validate_input with empty DataFrame."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": [],
-            "bea_sector": [],
-            "fiscal_year": [],
-            "shock_amount": [],
-        })
+        df = pd.DataFrame(
+            {
+                "state": [],
+                "bea_sector": [],
+                "fiscal_year": [],
+                "shock_amount": [],
+            }
+        )
 
         # Should not raise - empty is valid structure
         model.validate_input(df)
@@ -327,12 +349,14 @@ class TestMockEconomicModel:
         """Test compute_impacts with basic input."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            "shock_amount": [1000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                "shock_amount": [1000.0],
+            }
+        )
 
         result = model.compute_impacts(df)
 
@@ -346,12 +370,14 @@ class TestMockEconomicModel:
         """Test compute_impacts with multiple states."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA", "NY", "TX"],
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [1000.0, 2000.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA", "NY", "TX"],
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         result = model.compute_impacts(df)
 
@@ -363,12 +389,14 @@ class TestMockEconomicModel:
         """Test compute_impacts with custom model version."""
         model = MockEconomicModel(version="Mock_v1.0")
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            "shock_amount": [1000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                "shock_amount": [1000.0],
+            }
+        )
 
         result = model.compute_impacts(df, model_version="Custom_v2.0")
 
@@ -396,12 +424,14 @@ class TestMockEconomicModel:
         """Test compute_impacts validates input before processing."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            "shock_amount": [-1000.0],  # Invalid negative
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                "shock_amount": [-1000.0],  # Invalid negative
+            }
+        )
 
         with pytest.raises(ValidationError):
             model.compute_impacts(df)
@@ -414,12 +444,14 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test validate_input with numeric state codes converted to string."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": [12, 34],  # Numeric but 2 digits
-            "bea_sector": ["11", "21"],
-            "fiscal_year": [2020, 2020],
-            "shock_amount": [1000.0, 2000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": [12, 34],  # Numeric but 2 digits
+                "bea_sector": ["11", "21"],
+                "fiscal_year": [2020, 2020],
+                "shock_amount": [1000.0, 2000.0],
+            }
+        )
 
         # Should not raise - converts to string and validates length
         model.validate_input(df)
@@ -428,12 +460,14 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test validate_input accepts mixed case state codes."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["ca", "NY", "Tx"],
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [1000.0, 2000.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["ca", "NY", "Tx"],
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         # Should not raise - accepts any 2-character codes
         model.validate_input(df)
@@ -442,12 +476,14 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test validate_input with very large shock amounts."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            "fiscal_year": [2020],
-            "shock_amount": [1e12],  # 1 trillion
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2020],
+                "shock_amount": [1e12],  # 1 trillion
+            }
+        )
 
         # Should not raise
         model.validate_input(df)
@@ -456,11 +492,13 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test validate_input error includes detailed information."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CA"],
-            "bea_sector": ["11"],
-            # Missing fiscal_year and shock_amount
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                # Missing fiscal_year and shock_amount
+            }
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model.validate_input(df)
@@ -476,12 +514,14 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test validate_input shows invalid state codes in error."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["CAL", "NEW", "TX"],
-            "bea_sector": ["11", "21", "22"],
-            "fiscal_year": [2020, 2020, 2020],
-            "shock_amount": [1000.0, 2000.0, 1500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["CAL", "NEW", "TX"],
+                "bea_sector": ["11", "21", "22"],
+                "fiscal_year": [2020, 2020, 2020],
+                "shock_amount": [1000.0, 2000.0, 1500.0],
+            }
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model.validate_input(df)
@@ -499,12 +539,14 @@ class TestEconomicModelInterfaceEdgeCases:
 
         # Create 15 invalid state codes
         invalid_states = [f"S{i:02d}" for i in range(15)]  # S00, S01, ..., S14
-        df = pd.DataFrame({
-            "state": invalid_states,
-            "bea_sector": ["11"] * 15,
-            "fiscal_year": [2020] * 15,
-            "shock_amount": [1000.0] * 15,
-        })
+        df = pd.DataFrame(
+            {
+                "state": invalid_states,
+                "bea_sector": ["11"] * 15,
+                "fiscal_year": [2020] * 15,
+                "shock_amount": [1000.0] * 15,
+            }
+        )
 
         with pytest.raises(ValidationError) as exc_info:
             model.validate_input(df)
@@ -517,12 +559,14 @@ class TestEconomicModelInterfaceEdgeCases:
         """Test compute_impacts preserves input row order."""
         model = MockEconomicModel()
 
-        df = pd.DataFrame({
-            "state": ["NY", "CA", "TX", "FL"],
-            "bea_sector": ["21", "11", "22", "23"],
-            "fiscal_year": [2019, 2020, 2021, 2022],
-            "shock_amount": [2000.0, 1000.0, 1500.0, 1200.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state": ["NY", "CA", "TX", "FL"],
+                "bea_sector": ["21", "11", "22", "23"],
+                "fiscal_year": [2019, 2020, 2021, 2022],
+                "shock_amount": [2000.0, 1000.0, 1500.0, 1200.0],
+            }
+        )
 
         result = model.compute_impacts(df)
 

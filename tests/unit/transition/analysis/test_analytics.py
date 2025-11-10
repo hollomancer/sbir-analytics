@@ -5,7 +5,6 @@ Tests the TransitionAnalytics module for computing KPIs and breakdowns
 from transition detection outputs (award-level, company-level, by agency).
 """
 
-
 import pandas as pd
 import pytest
 
@@ -226,7 +225,9 @@ class TestTransitionAnalyticsInitialization:
 class TestComputeAwardTransitionRate:
     """Tests for compute_award_transition_rate method."""
 
-    def test_compute_award_transition_rate_basic(self, analytics, sample_awards, sample_transitions):
+    def test_compute_award_transition_rate_basic(
+        self, analytics, sample_awards, sample_transitions
+    ):
         """Test computing award transition rate."""
         result = analytics.compute_award_transition_rate(sample_awards, sample_transitions)
 
@@ -356,7 +357,9 @@ class TestComputeCompanyTransitionRate:
         assert uei001_row["transitioned_awards"] == 1
         assert uei001_row["transitioned"] is True
 
-    def test_compute_company_transition_rate_sorted(self, analytics, sample_awards, sample_transitions):
+    def test_compute_company_transition_rate_sorted(
+        self, analytics, sample_awards, sample_transitions
+    ):
         """Test company DataFrame is sorted by transition status and total awards."""
         _, company_df = analytics.compute_company_transition_rate(sample_awards, sample_transitions)
 
@@ -520,9 +523,7 @@ class TestComputeAvgTimeToTransitionByAgency:
         transitions = pd.DataFrame({"award_id": ["AWD001"], "contract_id": ["CTR001"]})
         contracts = pd.DataFrame({"contract_id": ["CTR001"]})  # Missing date
 
-        result = analytics.compute_avg_time_to_transition_by_agency(
-            awards, transitions, contracts
-        )
+        result = analytics.compute_avg_time_to_transition_by_agency(awards, transitions, contracts)
 
         assert len(result) == 0
 
@@ -549,9 +550,7 @@ class TestComputeAvgTimeToTransitionByAgency:
             }
         )
 
-        result = analytics.compute_avg_time_to_transition_by_agency(
-            awards, transitions, contracts
-        )
+        result = analytics.compute_avg_time_to_transition_by_agency(awards, transitions, contracts)
 
         # Should only include AWD001 (positive days)
         if not result.empty:

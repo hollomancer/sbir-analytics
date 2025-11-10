@@ -157,9 +157,7 @@ class TestParseAddress:
 
     def test_parse_address_without_country(self):
         """Test parsing address without country."""
-        result = PatentAssignmentTransformer._parse_address(
-            "456 Oak Ave, Boston, MA 02115"
-        )
+        result = PatentAssignmentTransformer._parse_address("456 Oak Ave, Boston, MA 02115")
 
         street, city, state, postal, country = result
         assert street == "456 Oak Ave"
@@ -169,9 +167,7 @@ class TestParseAddress:
 
     def test_parse_address_single_line(self):
         """Test parsing single-line address."""
-        result = PatentAssignmentTransformer._parse_address(
-            "789 Elm St San Francisco CA 94102"
-        )
+        result = PatentAssignmentTransformer._parse_address("789 Elm St San Francisco CA 94102")
 
         street, city, state, postal, country = result
         assert postal == "94102"
@@ -191,9 +187,7 @@ class TestParseAddress:
 
     def test_parse_address_zip_plus_four(self):
         """Test parsing address with ZIP+4."""
-        result = PatentAssignmentTransformer._parse_address(
-            "100 Main St, City, NY 10001-1234"
-        )
+        result = PatentAssignmentTransformer._parse_address("100 Main St, City, NY 10001-1234")
 
         street, city, state, postal, country = result
         assert postal == "10001-1234"
@@ -247,9 +241,7 @@ class TestInferConveyanceType:
     def test_infer_assignment_type(self):
         """Test inferring assignment conveyance type."""
         transformer = PatentAssignmentTransformer()
-        conv_type, employer_flag = transformer._infer_conveyance_type(
-            "Assignment of patent rights"
-        )
+        conv_type, employer_flag = transformer._infer_conveyance_type("Assignment of patent rights")
 
         # ConveyanceType may not be available in test env, check for value
         assert employer_flag is False
@@ -275,9 +267,7 @@ class TestInferConveyanceType:
     def test_infer_work_for_hire(self):
         """Test inferring work for hire."""
         transformer = PatentAssignmentTransformer()
-        conv_type, employer_flag = transformer._infer_conveyance_type(
-            "Work for hire agreement"
-        )
+        conv_type, employer_flag = transformer._infer_conveyance_type("Work for hire agreement")
 
         assert employer_flag is True
 
@@ -294,9 +284,7 @@ class TestInferConveyanceType:
     def test_infer_security_interest_type(self):
         """Test inferring security interest type."""
         transformer = PatentAssignmentTransformer()
-        conv_type, employer_flag = transformer._infer_conveyance_type(
-            "Security interest in patent"
-        )
+        conv_type, employer_flag = transformer._infer_conveyance_type("Security interest in patent")
 
         assert employer_flag is False
 
@@ -587,10 +575,12 @@ class TestStandardizeAddress:
 class TestCalculateChainMetadata:
     """Tests for _calculate_chain_metadata method."""
 
-    @patch('src.transformers.patent_transformer.PatentAssignment')
-    @patch('src.transformers.patent_transformer.PatentAssignee')
-    @patch('src.transformers.patent_transformer.PatentAssignor')
-    def test_calculate_chain_metadata_temporal_span(self, mock_assignor, mock_assignee, mock_assignment):
+    @patch("src.transformers.patent_transformer.PatentAssignment")
+    @patch("src.transformers.patent_transformer.PatentAssignee")
+    @patch("src.transformers.patent_transformer.PatentAssignor")
+    def test_calculate_chain_metadata_temporal_span(
+        self, mock_assignor, mock_assignee, mock_assignment
+    ):
         """Test calculating temporal span between dates."""
         transformer = PatentAssignmentTransformer()
 
@@ -603,7 +593,7 @@ class TestCalculateChainMetadata:
 
         assert assignment.metadata["temporal_span_days"] == 30
 
-    @patch('src.transformers.patent_transformer.PatentAssignment')
+    @patch("src.transformers.patent_transformer.PatentAssignment")
     def test_calculate_chain_metadata_delayed_recording(self, mock_assignment):
         """Test flagging delayed recording (>90 days)."""
         transformer = PatentAssignmentTransformer()
@@ -617,7 +607,7 @@ class TestCalculateChainMetadata:
 
         assert "delayed_recording" in assignment.metadata["chain_flags"]
 
-    @patch('src.transformers.patent_transformer.PatentAssignment')
+    @patch("src.transformers.patent_transformer.PatentAssignment")
     def test_calculate_chain_metadata_sequence_indicator(self, mock_assignment):
         """Test detecting sequence indicators."""
         transformer = PatentAssignmentTransformer()
@@ -634,10 +624,10 @@ class TestCalculateChainMetadata:
         assert assignment.metadata["chain_sequence_indicator"]["current_part"] == 1
         assert assignment.metadata["chain_sequence_indicator"]["total_parts"] == 3
 
-    @patch('src.transformers.patent_transformer.PatentAssignment')
-    @patch('src.transformers.patent_transformer.PatentAssignee')
-    @patch('src.transformers.patent_transformer.PatentAssignor')
-    @patch('src.transformers.patent_transformer.PatentConveyance')
+    @patch("src.transformers.patent_transformer.PatentAssignment")
+    @patch("src.transformers.patent_transformer.PatentAssignee")
+    @patch("src.transformers.patent_transformer.PatentAssignor")
+    @patch("src.transformers.patent_transformer.PatentConveyance")
     def test_calculate_chain_metadata_employer_assignment(
         self, mock_conveyance, mock_assignor, mock_assignee, mock_assignment
     ):
@@ -648,9 +638,9 @@ class TestCalculateChainMetadata:
         assignment.metadata = {}
         assignment.execution_date = None
         assignment.recorded_date = None
-        assignment.assignee = Mock(spec=['name'])
+        assignment.assignee = Mock(spec=["name"])
         assignment.assignee.name = "Acme Corp"
-        assignment.assignor = Mock(spec=['name'])
+        assignment.assignor = Mock(spec=["name"])
         assignment.assignor.name = "John Smith"
         assignment.normalized_assignee_name = "Acme Corp"
         assignment.normalized_assignor_name = "John Smith"
@@ -678,7 +668,7 @@ class TestTransformChunk:
 
         assert len(results) == 0
 
-    @patch('src.transformers.patent_transformer.PatentAssignment')
+    @patch("src.transformers.patent_transformer.PatentAssignment")
     def test_transform_chunk_multiple_rows(self, mock_assignment):
         """Test transforming multiple rows."""
         transformer = PatentAssignmentTransformer()
@@ -713,9 +703,7 @@ class TestPatentAssignmentTransformerEdgeCases:
 
     def test_parse_address_with_apartment(self):
         """Test parsing address with apartment number."""
-        result = PatentAssignmentTransformer._parse_address(
-            "123 Main St Apt 4B, City, CA 12345"
-        )
+        result = PatentAssignmentTransformer._parse_address("123 Main St Apt 4B, City, CA 12345")
 
         street, city, state, postal, country = result
         assert "Main" in street

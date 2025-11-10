@@ -155,9 +155,7 @@ class TestQualityDashboard:
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("src.quality.dashboard.make_subplots")
-    def test_generate_trend_dashboard_with_plotly(
-        self, mock_subplots, dashboard, metrics_history
-    ):
+    def test_generate_trend_dashboard_with_plotly(self, mock_subplots, dashboard, metrics_history):
         """Test trend dashboard generation with Plotly available."""
         mock_fig = Mock()
         mock_subplots.return_value = mock_fig
@@ -186,9 +184,7 @@ class TestQualityDashboard:
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("src.quality.dashboard.make_subplots")
-    def test_generate_distribution_dashboard(
-        self, mock_subplots, dashboard, sample_metrics
-    ):
+    def test_generate_distribution_dashboard(self, mock_subplots, dashboard, sample_metrics):
         """Test distribution dashboard generation."""
         mock_fig = Mock()
         mock_subplots.return_value = mock_fig
@@ -199,9 +195,7 @@ class TestQualityDashboard:
         mock_fig.write_html.assert_called_once()
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", False)
-    def test_generate_distribution_dashboard_without_plotly(
-        self, dashboard, sample_metrics
-    ):
+    def test_generate_distribution_dashboard_without_plotly(self, dashboard, sample_metrics):
         """Test distribution dashboard without Plotly."""
         output_file = dashboard.generate_distribution_dashboard(sample_metrics)
 

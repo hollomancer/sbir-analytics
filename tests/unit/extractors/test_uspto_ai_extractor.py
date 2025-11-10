@@ -204,7 +204,7 @@ class TestNDJSONStreaming:
         ndjson_file = temp_input_dir / "data.ndjson"
         with open(ndjson_file, "w") as f:
             f.write('{"valid": "record"}\n')
-            f.write('{invalid json}\n')
+            f.write("{invalid json}\n")
             f.write('{"another": "record"}\n')
 
         extractor = USPTOAIExtractor(temp_input_dir, continue_on_error=True)
@@ -225,6 +225,7 @@ class TestCSVStreaming:
         csv_file = temp_input_dir / "data.csv"
         with open(csv_file, "w", newline="") as f:
             import csv
+
             writer = csv.DictWriter(f, fieldnames=["grant_doc_num", "score", "category"])
             writer.writeheader()
             writer.writerows(sample_csv_data)
@@ -417,9 +418,7 @@ class TestIDExtraction:
         """Test extracting ID with custom candidate fields."""
         record = {"custom_patent_id": "US1111111D1", "score": 0.85}
 
-        grant_id = USPTOAIExtractor._extract_grant_id(
-            record, id_candidates=["custom_patent_id"]
-        )
+        grant_id = USPTOAIExtractor._extract_grant_id(record, id_candidates=["custom_patent_id"])
 
         assert grant_id == "US1111111D1"
 

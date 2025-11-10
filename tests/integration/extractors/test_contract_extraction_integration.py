@@ -219,14 +219,13 @@ class TestContractExtractorStreaming:
 class TestExtractFromDump:
     """Tests for complete extract_from_dump pipeline."""
 
-    def test_extract_from_dump_end_to_end(
-        self, tmp_path, sample_dat_gz_file, vendor_filter_file
-    ):
+    def test_extract_from_dump_end_to_end(self, tmp_path, sample_dat_gz_file, vendor_filter_file):
         """Test complete extraction pipeline with Parquet output."""
         output_file = tmp_path / "output" / "contracts.parquet"
 
         extractor = ContractExtractor(
-            vendor_filter_file=vendor_filter_file, batch_size=2  # Small batch for testing
+            vendor_filter_file=vendor_filter_file,
+            batch_size=2,  # Small batch for testing
         )
 
         # Move sample file to dump_dir structure

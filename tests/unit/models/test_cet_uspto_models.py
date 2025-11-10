@@ -360,7 +360,10 @@ class TestCETAssessment:
         )
         supporting = [
             CETClassification(
-                cet_id=f"sup{i}", score=50.0, classification=ClassificationLevel.MEDIUM, primary=False
+                cet_id=f"sup{i}",
+                score=50.0,
+                classification=ClassificationLevel.MEDIUM,
+                primary=False,
             )
             for i in range(4)
         ]
@@ -382,7 +385,10 @@ class TestCETAssessment:
         )
         supporting = [
             CETClassification(
-                cet_id="bad", score=50.0, classification=ClassificationLevel.MEDIUM, primary=True  # Wrong!
+                cet_id="bad",
+                score=50.0,
+                classification=ClassificationLevel.MEDIUM,
+                primary=True,  # Wrong!
             )
         ]
         with pytest.raises(ValidationError) as exc_info:
@@ -399,7 +405,10 @@ class TestCETAssessment:
     def test_primary_cet_validator(self):
         """Test primary_cet validator requires primary=True."""
         primary_wrong = CETClassification(
-            cet_id="primary", score=80.0, classification=ClassificationLevel.HIGH, primary=False  # Wrong!
+            cet_id="primary",
+            score=80.0,
+            classification=ClassificationLevel.HIGH,
+            primary=False,  # Wrong!
         )
         with pytest.raises(ValidationError) as exc_info:
             CETAssessment(

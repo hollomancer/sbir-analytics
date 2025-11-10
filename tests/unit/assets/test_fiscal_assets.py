@@ -69,76 +69,86 @@ def mock_config():
 @pytest.fixture
 def sample_enriched_awards():
     """Sample enriched SBIR awards."""
-    return pd.DataFrame({
-        "Award Number": ["AWD001", "AWD002", "AWD003"],
-        "Company": ["TechCo", "BioCo", "AeroCo"],
-        "Amount": [100000, 150000, 200000],
-        "State": ["CA", "MA", "TX"],
-        "fiscal_year": [2021, 2022, 2023],
-    })
+    return pd.DataFrame(
+        {
+            "Award Number": ["AWD001", "AWD002", "AWD003"],
+            "Company": ["TechCo", "BioCo", "AeroCo"],
+            "Amount": [100000, 150000, 200000],
+            "State": ["CA", "MA", "TX"],
+            "fiscal_year": [2021, 2022, 2023],
+        }
+    )
 
 
 @pytest.fixture
 def sample_naics_enriched_awards():
     """Sample NAICS-enriched awards."""
-    return pd.DataFrame({
-        "Award Number": ["AWD001", "AWD002", "AWD003"],
-        "Company": ["TechCo", "BioCo", "AeroCo"],
-        "Amount": [100000, 150000, 200000],
-        "fiscal_naics_code": ["541511", "541712", None],
-        "fiscal_naics_source": ["original_data", "usaspending_dataframe", "missing"],
-        "fiscal_naics_confidence": [0.95, 0.85, None],
-        "fiscal_year": [2021, 2022, 2023],
-        "state_code": ["CA", "MA", "TX"],
-    })
+    return pd.DataFrame(
+        {
+            "Award Number": ["AWD001", "AWD002", "AWD003"],
+            "Company": ["TechCo", "BioCo", "AeroCo"],
+            "Amount": [100000, 150000, 200000],
+            "fiscal_naics_code": ["541511", "541712", None],
+            "fiscal_naics_source": ["original_data", "usaspending_dataframe", "missing"],
+            "fiscal_naics_confidence": [0.95, 0.85, None],
+            "fiscal_year": [2021, 2022, 2023],
+            "state_code": ["CA", "MA", "TX"],
+        }
+    )
 
 
 @pytest.fixture
 def sample_bea_mapped_awards():
     """Sample BEA-mapped awards."""
-    return pd.DataFrame({
-        "Award Number": ["AWD001", "AWD002", "AWD003"],
-        "fiscal_naics_code": ["541511", "541712", "336411"],
-        "bea_sector_code": ["5415", "5417", "3364"],
-        "bea_mapping_confidence": [0.90, 0.85, 0.95],
-        "Amount": [100000, 150000, 200000],
-        "fiscal_year": [2021, 2022, 2023],
-        "state_code": ["CA", "MA", "TX"],
-    })
+    return pd.DataFrame(
+        {
+            "Award Number": ["AWD001", "AWD002", "AWD003"],
+            "fiscal_naics_code": ["541511", "541712", "336411"],
+            "bea_sector_code": ["5415", "5417", "3364"],
+            "bea_mapping_confidence": [0.90, 0.85, 0.95],
+            "Amount": [100000, 150000, 200000],
+            "fiscal_year": [2021, 2022, 2023],
+            "state_code": ["CA", "MA", "TX"],
+        }
+    )
 
 
 @pytest.fixture
 def sample_economic_shocks():
     """Sample economic shocks."""
-    return pd.DataFrame({
-        "state": ["CA", "MA", "TX"],
-        "bea_sector": ["5415", "5417", "3364"],
-        "fiscal_year": [2021, 2022, 2023],
-        "shock_amount": [100000, 150000, 200000],
-        "awards_aggregated": [1, 1, 1],
-        "confidence": [0.90, 0.85, 0.95],
-        "naics_coverage_rate": [1.0, 1.0, 1.0],
-        "geographic_resolution_rate": [1.0, 1.0, 1.0],
-    })
+    return pd.DataFrame(
+        {
+            "state": ["CA", "MA", "TX"],
+            "bea_sector": ["5415", "5417", "3364"],
+            "fiscal_year": [2021, 2022, 2023],
+            "shock_amount": [100000, 150000, 200000],
+            "awards_aggregated": [1, 1, 1],
+            "confidence": [0.90, 0.85, 0.95],
+            "naics_coverage_rate": [1.0, 1.0, 1.0],
+            "geographic_resolution_rate": [1.0, 1.0, 1.0],
+        }
+    )
 
 
 @pytest.fixture
 def sample_economic_impacts():
     """Sample economic impacts."""
-    return pd.DataFrame({
-        "state": ["CA", "MA", "TX"],
-        "bea_sector": ["5415", "5417", "3364"],
-        "fiscal_year": [2021, 2022, 2023],
-        "shock_amount": [100000, 150000, 200000],
-        "wage_impact": [50000, 75000, 100000],
-        "proprietor_income_impact": [10000, 15000, 20000],
-        "gross_operating_surplus": [20000, 30000, 40000],
-        "consumption_impact": [30000, 45000, 60000],
-        "tax_impact": [15000, 22500, 30000],
-        "production_impact": [150000, 225000, 300000],
-        "model_version": "stateior_1.0",
-        "confidence": [0.90, 0.85, 0.95],
-    })
+    return pd.DataFrame(
+        {
+            "state": ["CA", "MA", "TX"],
+            "bea_sector": ["5415", "5417", "3364"],
+            "fiscal_year": [2021, 2022, 2023],
+            "shock_amount": [100000, 150000, 200000],
+            "wage_impact": [50000, 75000, 100000],
+            "proprietor_income_impact": [10000, 15000, 20000],
+            "gross_operating_surplus": [20000, 30000, 40000],
+            "consumption_impact": [30000, 45000, 60000],
+            "tax_impact": [15000, 22500, 30000],
+            "production_impact": [150000, 225000, 300000],
+            "model_version": "stateior_1.0",
+            "confidence": [0.90, 0.85, 0.95],
+        }
+    )
 
 
 # ==================== NAICS Enrichment Tests ====================
@@ -206,10 +216,12 @@ class TestFiscalNAICSEnrichment:
         mock_get_config.return_value = mock_config
 
         # Create DataFrame with low NAICS coverage
-        low_coverage_df = pd.DataFrame({
-            "fiscal_naics_code": [None, None, "541511", None, None],
-            "fiscal_naics_source": ["missing"] * 5,
-        })
+        low_coverage_df = pd.DataFrame(
+            {
+                "fiscal_naics_code": [None, None, "541511", None, None],
+                "fiscal_naics_source": ["missing"] * 5,
+            }
+        )
 
         result = fiscal_naics_coverage_check(low_coverage_df)
 
@@ -237,11 +249,13 @@ class TestFiscalNAICSEnrichment:
         mock_get_config.return_value = mock_config
 
         # Create DataFrame with low confidence scores
-        low_quality_df = pd.DataFrame({
-            "fiscal_naics_code": ["541511", "541512"],
-            "fiscal_naics_confidence": [0.30, 0.40],  # Below 0.60 threshold
-            "fiscal_naics_source": ["fallback"] * 2,
-        })
+        low_quality_df = pd.DataFrame(
+            {
+                "fiscal_naics_code": ["541511", "541512"],
+                "fiscal_naics_confidence": [0.30, 0.40],  # Below 0.60 threshold
+                "fiscal_naics_source": ["fallback"] * 2,
+            }
+        )
 
         result = fiscal_naics_quality_check(low_quality_df)
 
@@ -303,16 +317,16 @@ class TestBEAMapping:
         assert "PASSED" in result.description
 
     @patch("src.assets.fiscal_assets.get_config")
-    def test_bea_mapping_quality_check_fails_low_coverage(
-        self, mock_get_config, mock_config
-    ):
+    def test_bea_mapping_quality_check_fails_low_coverage(self, mock_get_config, mock_config):
         """Test BEA mapping quality check fails with low coverage."""
         mock_get_config.return_value = mock_config
 
-        low_coverage_df = pd.DataFrame({
-            "bea_sector_code": [None, None, "5415", None],
-            "bea_mapping_confidence": [None, None, 0.90, None],
-        })
+        low_coverage_df = pd.DataFrame(
+            {
+                "bea_sector_code": [None, None, "5415", None],
+                "bea_mapping_confidence": [None, None, 0.90, None],
+            }
+        )
 
         result = bea_mapping_quality_check(low_coverage_df)
 
@@ -384,9 +398,7 @@ class TestEconomicShocks:
         assert "PASSED" in result.description
 
     @patch("src.assets.fiscal_assets.get_config")
-    def test_economic_shocks_quality_check_fails_empty(
-        self, mock_get_config, mock_config
-    ):
+    def test_economic_shocks_quality_check_fails_empty(self, mock_get_config, mock_config):
         """Test economic shocks quality check fails with empty DataFrame."""
         mock_get_config.return_value = mock_config
 
@@ -400,18 +412,18 @@ class TestEconomicShocks:
         assert "No shocks generated" in result.description
 
     @patch("src.assets.fiscal_assets.get_config")
-    def test_economic_shocks_quality_check_fails_low_quality(
-        self, mock_get_config, mock_config
-    ):
+    def test_economic_shocks_quality_check_fails_low_quality(self, mock_get_config, mock_config):
         """Test economic shocks quality check fails with low quality metrics."""
         mock_get_config.return_value = mock_config
 
-        low_quality_df = pd.DataFrame({
-            "shock_amount": [1000, 2000],
-            "naics_coverage_rate": [0.40, 0.50],  # Low coverage
-            "geographic_resolution_rate": [0.50, 0.60],  # Low coverage
-            "confidence": [0.30, 0.40],  # Low confidence
-        })
+        low_quality_df = pd.DataFrame(
+            {
+                "shock_amount": [1000, 2000],
+                "naics_coverage_rate": [0.40, 0.50],  # Low coverage
+                "geographic_resolution_rate": [0.50, 0.60],  # Low coverage
+                "confidence": [0.30, 0.40],  # Low confidence
+            }
+        )
 
         result = economic_shocks_quality_check(low_quality_df)
 
@@ -448,8 +460,17 @@ class TestEconomicImpacts:
         mock_adapter.get_model_version.return_value = "stateior_1.0"
 
         impacts_df = sample_economic_impacts[
-            ["state", "bea_sector", "fiscal_year", "wage_impact", "proprietor_income_impact",
-             "gross_operating_surplus", "consumption_impact", "tax_impact", "production_impact"]
+            [
+                "state",
+                "bea_sector",
+                "fiscal_year",
+                "wage_impact",
+                "proprietor_income_impact",
+                "gross_operating_surplus",
+                "consumption_impact",
+                "tax_impact",
+                "production_impact",
+            ]
         ]
         mock_adapter.compute_impacts.return_value = impacts_df
         mock_adapter_class.return_value = mock_adapter
@@ -586,11 +607,13 @@ class TestFiscalPreparation:
         """Test inflation adjustment quality check passes."""
         mock_get_config.return_value = mock_config
 
-        adjusted_df = pd.DataFrame({
-            "amount_nominal": [100000, 150000, 200000],
-            "amount_real": [110000, 165000, 220000],
-            "inflation_factor": [1.1, 1.1, 1.1],
-        })
+        adjusted_df = pd.DataFrame(
+            {
+                "amount_nominal": [100000, 150000, 200000],
+                "amount_real": [110000, 165000, 220000],
+                "inflation_factor": [1.1, 1.1, 1.1],
+            }
+        )
 
         result = inflation_adjustment_quality_check(adjusted_df)
 
@@ -651,22 +674,26 @@ class TestTaxAndROI:
 
         mock_calculator = Mock()
 
-        summary_df = pd.DataFrame({
-            "fiscal_year": [2021, 2022],
-            "total_investment": [100000, 150000],
-            "total_federal_tax_return": [50000, 75000],
-            "roi_ratio": [0.50, 0.50],
-            "breakeven_year": [2025, 2026],
-        })
+        summary_df = pd.DataFrame(
+            {
+                "fiscal_year": [2021, 2022],
+                "total_investment": [100000, 150000],
+                "total_federal_tax_return": [50000, 75000],
+                "roi_ratio": [0.50, 0.50],
+                "breakeven_year": [2025, 2026],
+            }
+        )
 
         mock_calculator.calculate_roi_summary.return_value = summary_df
         mock_roi_calculator_class.return_value = mock_calculator
 
-        tax_df = pd.DataFrame({
-            "fiscal_year": [2021, 2022],
-            "total_federal_tax": [50000, 75000],
-            "shock_amount": [100000, 150000],
-        })
+        tax_df = pd.DataFrame(
+            {
+                "fiscal_year": [2021, 2022],
+                "total_federal_tax": [50000, 75000],
+                "shock_amount": [100000, 150000],
+            }
+        )
 
         result = fiscal_return_summary(mock_context, tax_df)
 
@@ -695,12 +722,14 @@ class TestSensitivityUncertainty:
 
         mock_sweep = Mock()
 
-        scenarios_df = pd.DataFrame({
-            "scenario_id": ["base", "optimistic", "pessimistic"],
-            "parameter": ["multiplier", "multiplier", "multiplier"],
-            "value": [1.0, 1.2, 0.8],
-            "total_impact": [100000, 120000, 80000],
-        })
+        scenarios_df = pd.DataFrame(
+            {
+                "scenario_id": ["base", "optimistic", "pessimistic"],
+                "parameter": ["multiplier", "multiplier", "multiplier"],
+                "value": [1.0, 1.2, 0.8],
+                "total_impact": [100000, 120000, 80000],
+            }
+        )
 
         mock_sweep.run_parameter_sweep.return_value = scenarios_df
         mock_sweep_class.return_value = mock_sweep
@@ -725,13 +754,15 @@ class TestSensitivityUncertainty:
 
         mock_quantifier = Mock()
 
-        uncertainty_df = pd.DataFrame({
-            "metric": ["roi_ratio", "tax_return"],
-            "mean": [0.50, 50000],
-            "std": [0.05, 5000],
-            "ci_lower": [0.45, 45000],
-            "ci_upper": [0.55, 55000],
-        })
+        uncertainty_df = pd.DataFrame(
+            {
+                "metric": ["roi_ratio", "tax_return"],
+                "mean": [0.50, 50000],
+                "std": [0.05, 5000],
+                "ci_lower": [0.45, 45000],
+                "ci_upper": [0.55, 55000],
+            }
+        )
 
         mock_quantifier.quantify_uncertainty.return_value = uncertainty_df
         mock_quantifier_class.return_value = mock_quantifier
@@ -763,28 +794,32 @@ class TestReporting:
         mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
         mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
-        roi_summary = pd.DataFrame({
-            "fiscal_year": [2021, 2022],
-            "roi_ratio": [0.50, 0.55],
-        })
+        roi_summary = pd.DataFrame(
+            {
+                "fiscal_year": [2021, 2022],
+                "roi_ratio": [0.50, 0.55],
+            }
+        )
 
-        sensitivity = pd.DataFrame({
-            "scenario_id": ["base", "optimistic"],
-            "total_impact": [100000, 120000],
-        })
+        sensitivity = pd.DataFrame(
+            {
+                "scenario_id": ["base", "optimistic"],
+                "total_impact": [100000, 120000],
+            }
+        )
 
-        uncertainty = pd.DataFrame({
-            "metric": ["roi_ratio"],
-            "mean": [0.50],
-            "ci_lower": [0.45],
-            "ci_upper": [0.55],
-        })
+        uncertainty = pd.DataFrame(
+            {
+                "metric": ["roi_ratio"],
+                "mean": [0.50],
+                "ci_lower": [0.45],
+                "ci_upper": [0.55],
+            }
+        )
 
         with patch("builtins.open", create=True):
             with patch("pathlib.Path.mkdir"):
-                result = fiscal_returns_report(
-                    mock_context, roi_summary, sensitivity, uncertainty
-                )
+                result = fiscal_returns_report(mock_context, roi_summary, sensitivity, uncertainty)
 
         assert isinstance(result, Output)
         assert result.value is not None
@@ -845,9 +880,7 @@ class TestEdgeCases:
         assert "warning" in result.metadata
         mock_context.log.error.assert_called()
 
-    def test_create_placeholder_impacts_all_columns(
-        self, mock_context, sample_economic_shocks
-    ):
+    def test_create_placeholder_impacts_all_columns(self, mock_context, sample_economic_shocks):
         """Test placeholder impacts includes all required columns."""
         result = _create_placeholder_impacts(sample_economic_shocks, mock_context)
 

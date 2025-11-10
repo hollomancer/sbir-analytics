@@ -143,8 +143,6 @@ LOAD_SUCCESS_THRESHOLD = float(os.environ.get("SBIR_ETL__USPTO__LOAD_SUCCESS_THR
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
-
-
 def _get_input_dir(context: Any) -> Path:
     """
     Resolve the input directory for USPTO raw files from asset config, env var, or default.
@@ -350,7 +348,6 @@ def _extract_table_results(report: dict[str, Any], table: str) -> dict[str, dict
     return (report or {}).get("tables", {}).get(table, {}) or {}
 
 
-
 def _now_suffix() -> str:
     return datetime.utcnow().strftime("%Y%m%dT%H%M%S")
 
@@ -414,8 +411,6 @@ def _normalize_country(country: str | None) -> str | None:
 
 
 @dataclass
-
-
 def _resolve_output_paths(context: Any, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
@@ -438,8 +433,6 @@ def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
                 yield json.loads(line)
             except json.JSONDecodeError:
                 continue
-
-
 
 
 def _ensure_output_dir() -> Path:
@@ -507,8 +500,6 @@ def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
 # ============================================================================
 
 
-
-
 def _ensure_dir_ai(p: Path) -> None:
     """Ensure directory exists for AI assets (duplicate name resolved)."""
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -547,5 +538,3 @@ def _batch_to_dataframe(batch: list[dict]):
             }
         )
     return pd.DataFrame(rows)
-
-

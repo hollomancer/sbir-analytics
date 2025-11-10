@@ -161,9 +161,7 @@ class TestNeo4jClientInitialization:
         )
 
     @patch("src.loaders.neo4j.client.GraphDatabase.driver")
-    def test_driver_cached_after_first_access(
-        self, mock_graph_database, neo4j_config, mock_driver
-    ):
+    def test_driver_cached_after_first_access(self, mock_graph_database, neo4j_config, mock_driver):
         """Test driver is cached and not recreated on subsequent access."""
         mock_graph_database.return_value = mock_driver
 
@@ -201,7 +199,9 @@ class TestNeo4jClientSessionManagement:
     """Tests for Neo4j session context manager."""
 
     @patch("src.loaders.neo4j.client.GraphDatabase.driver")
-    def test_session_context_manager(self, mock_graph_database, neo4j_config, mock_driver, mock_session):
+    def test_session_context_manager(
+        self, mock_graph_database, neo4j_config, mock_driver, mock_session
+    ):
         """Test session context manager creates and closes session."""
         mock_graph_database.return_value = mock_driver
         mock_driver.session.return_value = mock_session
@@ -241,9 +241,7 @@ class TestNeo4jClientNodeOperations:
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         result = client.upsert_node(
             mock_transaction, "Company", "uei", "ABC123", {"name": "Test Company"}
@@ -259,9 +257,7 @@ class TestNeo4jClientNodeOperations:
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         result = client.upsert_node(
             mock_transaction, "Company", "uei", "ABC123", {"name": "Updated Company"}
@@ -275,9 +271,7 @@ class TestNeo4jClientNodeOperations:
         mock_result.single.return_value = {"operation": "created"}
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         client.upsert_node(
             mock_transaction, "Company", "uei", "ABC123", {"name": "Test", "uei": "ABC123"}
@@ -334,9 +328,7 @@ class TestNeo4jClientBatchOperations:
         mock_upsert.return_value = {"operation": "created"}
 
         client = Neo4jClient(neo4j_config)
-        nodes = [
-            {"uei": f"UEI{i}", "name": f"Company {i}"} for i in range(5)
-        ]  # 5 nodes, 3 batches
+        nodes = [{"uei": f"UEI{i}", "name": f"Company {i}"} for i in range(5)]  # 5 nodes, 3 batches
 
         metrics = client.batch_upsert_nodes("Company", "uei", nodes)
 
@@ -426,9 +418,7 @@ class TestNeo4jClientRelationshipOperations:
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         result = client.create_relationship(
             mock_transaction,
@@ -451,9 +441,7 @@ class TestNeo4jClientRelationshipOperations:
         mock_result.single.return_value = None  # No match found
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         result = client.create_relationship(
             mock_transaction,
@@ -475,9 +463,7 @@ class TestNeo4jClientRelationshipOperations:
         mock_result.single.return_value = {"r": "rel"}
         mock_transaction.run.return_value = mock_result
 
-        client = Neo4jClient(
-            Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test")
-        )
+        client = Neo4jClient(Neo4jConfig(uri="bolt://localhost", username="neo4j", password="test"))
 
         client.create_relationship(
             mock_transaction,
