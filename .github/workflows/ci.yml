@@ -1,13 +1,17 @@
-name: On Pull Request
+name: CI
 
 on:
   pull_request:
     branches-ignore: []
     # Run on any PR to any branch
+  push:
+    branches: [main, develop]
 
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    # Only run change detection on PRs to optimize CI time
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: read
@@ -249,11 +253,15 @@ jobs:
             reports || true
 
   performance-check:
-    needs: [test, detect-changes]
+    needs: test
+    # Run on PR only if performance files changed, always run on push to main/develop
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      (github.event_name == 'push' || needs.detect-changes.outputs.performance == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
-    if: needs.detect-changes.outputs.performance == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -458,10 +466,15 @@ jobs:
           fi
 
   cet-pipeline:
-    needs: [test, detect-changes]
+    needs: test
+    # Run on PR only if CET files changed, skip on push to main/develop (use cet-dev-e2e instead)
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: needs.detect-changes.outputs.cet == 'true'
 
     services:
       neo4j:
@@ -581,10 +594,15 @@ jobs:
           if-no-files-found: warn
 
   neo4j-cet-smoke:
-    needs: [test, detect-changes]
+    needs: test
+    # Run on PR only if CET files changed, skip on push to main/develop
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: needs.detect-changes.outputs.cet == 'true'
     services:
       neo4j:
         image: neo4j:5
@@ -783,12 +801,146 @@ jobs:
         if: ${{ success() }}
         run: echo "Neo4j CET smoke workflow succeeded"
 
+  cet-dev-e2e:
+    name: CET Dev E2E (dev compose)
+    needs: test
+    # Only run on push to main/develop, skip on PRs
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Allow override via repository secrets; fall back to defaults for dev runs
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USER || 'neo4j' }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD || 'password' }}
+      IMAGE_NAME: sbir-etl
+      IMAGE_TAG: dev-${{ github.sha }}
+      STARTUP_TIMEOUT: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare .env for dev compose
+        run: |
+          set -eux
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
+          # Inject secrets if provided (no-op if secrets are empty)
+          if [ -n "${{ secrets.NEO4J_USER }}" ]; then
+            sed -i "s|NEO4J_USER=.*|NEO4J_USER=${{ secrets.NEO4J_USER }}|" .env || echo "NEO4J_USER=${{ secrets.NEO4J_USER }}" >> .env
+          fi
+          if [ -n "${{ secrets.NEO4J_PASSWORD }}" ]; then
+            sed -i "s|NEO4J_PASSWORD=.*|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|" .env || echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env
+          fi
+          echo ".env prepared"
+
+      - name: Build runtime image
+        run: |
+          set -eux
+          docker build --target runtime -t "${IMAGE_NAME}:${IMAGE_TAG}" .
+
+      - name: Start development compose stack (dev profile)
+        run: |
+          set -eux
+          docker compose --env-file .env --profile dev up -d --build
+
+      - name: Wait for Neo4j bolt port
+        run: |
+          set -eux
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends netcat-openbsd
+          TIMEOUT=${STARTUP_TIMEOUT}
+          i=0
+          until nc -z localhost 7687 || [ $i -ge $TIMEOUT ]; do
+            i=$((i+5))
+            echo "Waiting for Neo4j on 7687..."
+            sleep 5
+          done
+          if ! nc -z localhost 7687; then
+            echo "Neo4j did not become available on bolt port 7687"
+            docker compose --env-file .env --profile dev ps || true
+            docker logs $(docker ps --filter "name=sbir-neo4j" --format '{{.Names}}' | head -n 1) || true
+            exit 1
+          fi
+          echo "Neo4j appears reachable on 7687"
+
+      - name: Run CET full pipeline via Makefile helper
+        env:
+          # Ensure composer commands inside Make target use same .env
+          DOCKER_BUILDKIT: 1
+        run: |
+          set -eux
+          # Use the Make helper which runs the job inside the app container via docker compose
+          make cet-pipeline-dev
+
+      - name: List produced artifacts
+        if: always()
+        run: |
+          set -eux
+          echo "Artifacts produced under data/ and reports/:"
+          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" -o -name "*.ndjson" \) -print || true
+          find reports -maxdepth 4 -type f \( -name "*.json" -o -name "*.md" -o -name "*.html" \) -print || true
+
+      - name: Upload CET artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cet-dev-e2e-artifacts
+          path: |
+            data/processed/cet_*.parquet
+            data/processed/cet_*.json
+            data/processed/*.checks.json
+            data/processed/*.ndjson
+            reports/analytics/**
+            reports/alerts/**
+            reports/benchmarks/**
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Tear down dev compose stack (always)
+        if: always()
+        run: |
+          set -eux
+          docker compose --env-file .env --profile dev down --remove-orphans || true
+          echo "Compose stack torn down"
+
+      - name: Success note
+        if: success()
+        run: echo "CET Dev E2E completed successfully"
+
+      - name: Failure diagnostics
+        if: failure()
+        run: |
+          echo "Job failed — gathering diagnostic information"
+          docker compose --env-file .env --profile dev ps || true
+          echo "Recent container logs (if available):"
+          for name in $(docker ps --format '{{.Names}}'); do
+            echo "==== logs: $name ===="
+            docker logs --tail 200 "$name" || true
+          done
+
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
-    needs: [test, detect-changes]
+    needs: test
+    # Run on PR only if transition files changed, always run on push to main/develop
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: needs.detect-changes.outputs.transition == 'true'
     permissions:
       contents: read
 
