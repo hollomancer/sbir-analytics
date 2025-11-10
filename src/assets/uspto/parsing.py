@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .utils import _attempt_parse_sample, asset
+from .utils import AssetIn, _attempt_parse_sample, asset
 
 
 @asset(
