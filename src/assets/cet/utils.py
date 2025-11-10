@@ -21,13 +21,7 @@ from loguru import logger
 # ============================================================================
 
 try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        AssetIn,
-        asset,
-        asset_check,
-    )
+    from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, asset, asset_check
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
@@ -123,7 +117,7 @@ try:
 except Exception:  # pragma: no cover - fallback stubs when dagster is not installed
     # Lightweight stubs so this module can be imported in environments without dagster.
     class Output:  # type: ignore[no-redef]
-        def __init__(self, value: Any, metadata = None) -> None:
+        def __init__(self, value: Any, metadata=None) -> None:
             self.value = value
             self.metadata = metadata
 

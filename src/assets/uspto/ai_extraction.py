@@ -11,30 +11,30 @@ This module contains:
 """
 
 from __future__ import annotations
-import os
 
 import json
-from datetime import datetime
+import os
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
 from .utils import (
+    DEFAULT_AI_CHECKPOINT_DIR,
+    DEFAULT_AI_DEDUP_TABLE,
+    DEFAULT_AI_DUCKDB,
+    DEFAULT_AI_PROCESSED_DIR,
+    DEFAULT_AI_RAW_DIR,
+    DEFAULT_AI_SAMPLE_PATH,
+    DEFAULT_AI_TABLE,
+    DEFAULT_DEDUP_CHECKS,
+    DEFAULT_EXTRACT_CHECKS,
     AssetIn,
-    MetadataValue,
     USPTOAIExtractor,
     _batch_to_dataframe,
     _ensure_dir,
     _ensure_dir_ai,
     asset,
-    DEFAULT_AI_DUCKDB,
-    DEFAULT_AI_RAW_DIR,
-    DEFAULT_AI_TABLE,
-    DEFAULT_AI_DEDUP_TABLE,
-    DEFAULT_AI_PROCESSED_DIR,
-    DEFAULT_EXTRACT_CHECKS,
-    DEFAULT_AI_CHECKPOINT_DIR,
 )
 
 
@@ -45,7 +45,7 @@ from .utils import (
         "Supports NDJSON, CSV, Parquet, and Stata (.dta) with resume & optional dedupe."
     ),
 )
-def raw_uspto_ai_extract(context: Any) -> dict[str, object]:
+def raw_uspto_ai_extract(context) -> dict[str, object]:
     """
     Implements Task 11.1 (loader) and 11.2 (incremental resume) for USPTO AI extraction.
 
@@ -244,7 +244,7 @@ def raw_uspto_ai_extract(context: Any) -> dict[str, object]:
     ),
     ins={"raw_uspto_ai_extract": AssetIn()},
 )
-def uspto_ai_deduplicate(context: Any, raw_uspto_ai_extract) -> dict[str, object]:
+def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
     """
     Implements Task 11.2 (deduplication) using DuckDB window functions.
 
@@ -342,7 +342,7 @@ def uspto_ai_deduplicate(context: Any, raw_uspto_ai_extract) -> dict[str, object
     ),
     ins={"uspto_ai_deduplicate": AssetIn()},
 )
-def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> str:
+def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     """
     Implements Task 11.3 (human sampling) using DuckDB ORDER BY RANDOM() LIMIT N.
 
@@ -358,9 +358,7 @@ def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> 
     Path(getattr(context, "op_config", {}).get("duckdb", DEFAULT_AI_DUCKDB))
     getattr(context, "op_config", {}).get("table", DEFAULT_AI_DEDUP_TABLE)
     int(getattr(context, "op_config", {}).get("sample_n", 200))
-    output_path = Path(
-        getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH)
-    )
+    output_path = Path(getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH))
 
     try:
         pass
@@ -385,7 +383,7 @@ def raw_uspto_ai_human_sample_extraction(context: Any, uspto_ai_deduplicate) -> 
         "Writes a checks JSON summarizing the ingest and returns the ingest summary dict."
     ),
 )
-def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
+def raw_uspto_ai_predictions(context) -> dict[str, object]:
     """
     Dagster asset that ingests the raw USPTO AI NDJSON into the DuckDB cache.
 
@@ -606,7 +604,7 @@ def raw_uspto_ai_predictions(context: Any) -> dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context: Any) -> dict[str, int | None]:
+def validated_uspto_ai_cache_stats(context) -> dict[str, int | None]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """
@@ -662,7 +660,7 @@ def validated_uspto_ai_cache_stats(context: Any) -> dict[str, int | None]:
         "Writes the sample to `data/processed/uspto_ai_human_sample.ndjson` (or path configured via op_config)."
     ),
 )
-def raw_uspto_ai_human_sample(context: Any) -> str:
+def raw_uspto_ai_human_sample(context) -> str:
     """
     Produce a human evaluation sample from the DuckDB cache.
     """
@@ -746,7 +744,7 @@ def raw_uspto_ai_human_sample(context: Any) -> str:
         "and produce a summary checks JSON and an NDJSON of matches."
     ),
 )
-def enriched_uspto_ai_patent_join(context: Any) -> dict[str, object]:
+def enriched_uspto_ai_patent_join(context) -> dict[str, object]:
     """
     Asset that links cached USPTO AI predictions to transformed patents for downstream
     validation and agreement analysis.
@@ -901,46 +899,10 @@ def enriched_uspto_ai_patent_join(context: Any) -> dict[str, object]:
 # ============================================================================
 
 __all__ = [
-    # Stage 1: Raw discovery and parsing
-    "raw_uspto_assignments",
-    "raw_uspto_assignees",
-    "raw_uspto_assignors",
-    "raw_uspto_documentids",
-    "raw_uspto_conveyances",
-    "parsed_uspto_assignments",
-    "validated_uspto_assignees",
-    "validated_uspto_assignors",
-    "parsed_uspto_documentids",
-    "parsed_uspto_conveyances",
-    "uspto_assignments_parsing_check",
-    "uspto_assignees_parsing_check",
-    "uspto_assignors_parsing_check",
-    "uspto_documentids_parsing_check",
-    "uspto_conveyances_parsing_check",
-    # Stage 2: Validation
-    "validated_uspto_assignments",
-    "uspto_rf_id_asset_check",
-    "uspto_completeness_asset_check",
-    "uspto_referential_asset_check",
-    # Stage 3: Transformation
-    "transformed_patent_assignments",
-    "transformed_patents",
-    "transformed_patent_entities",
-    "uspto_transformation_success_check",
-    "uspto_company_linkage_check",
-    # Stage 4: Neo4j Loading
-    "loaded_patents",
-    "loaded_patent_assignments",
-    "loaded_patent_entities",
-    "loaded_patent_relationships",
-    "patent_load_success_rate",
-    "assignment_load_success_rate",
-    "patent_relationship_cardinality",
-    # Stage 5: AI Extraction
+    # AI Extraction assets
     "raw_uspto_ai_extract",
     "uspto_ai_deduplicate",
     "raw_uspto_ai_human_sample_extraction",
-    # Additional AI assets from consolidated uspto_ai_assets.py
     "raw_uspto_ai_predictions",
     "validated_uspto_ai_cache_stats",
     "raw_uspto_ai_human_sample",

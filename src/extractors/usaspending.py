@@ -7,6 +7,7 @@ Supports both direct DuckDB postgres_scanner access and pg_restore streaming for
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import pandas as pd

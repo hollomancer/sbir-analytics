@@ -169,6 +169,225 @@ def test_enrich_multiple_awards_batch_behavior():
     assert enriched["company_industry"].iloc[2] in ("C", None)
 
 
+def test_build_block_key_normal():
+    """Test building block key from normalized name."""
+    from src.enrichers.company_enricher import build_block_key
+
+    key = build_block_key("acme innovations", prefix_len=2)
+
+    assert key == "ac"
+
+
+def test_build_block_key_short_name():
+    """Test building block key from name shorter than prefix."""
+    from src.enrichers.company_enricher import build_block_key
+
+    key = build_block_key("a", prefix_len=2)
+
+    assert key == "a"
+
+
+def test_build_block_key_empty_name():
+    """Test building block key from empty name."""
+    from src.enrichers.company_enricher import build_block_key
+
+    key = build_block_key("", prefix_len=2)
+
+    assert key == ""
+
+
+def test_coerce_int_valid():
+    """Test coercing valid values to int."""
+    from src.enrichers.company_enricher import _coerce_int
+
+    assert _coerce_int(42) == 42
+    assert _coerce_int("42") == 42
+    assert _coerce_int(42.0) == 42
+
+
+def test_coerce_int_invalid():
+    """Test coercing invalid values to int returns None."""
+    from src.enrichers.company_enricher import _coerce_int
+
+    assert _coerce_int(None) is None
+    assert _coerce_int("abc") is None
+    assert _coerce_int([]) is None
+
+
+def test_enrich_empty_awards():
+    """Test enriching empty awards DataFrame."""
+    companies = pd.DataFrame(
+        [
+            {"company": "Test Corp", "UEI": "U1", "Duns": "111111111"},
+        ]
+    )
+    awards = pd.DataFrame(columns=["company", "UEI", "Duns"])
+
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    assert len(enriched) == 0
+    assert "_match_method" in enriched.columns
+
+
+def test_enrich_empty_companies():
+    """Test enriching awards with empty companies DataFrame."""
+    companies = pd.DataFrame(columns=["company", "UEI", "Duns"])
+    awards = pd.DataFrame(
+        [
+            {"company": "Test Award", "UEI": "U1", "Duns": "111111111"},
+        ]
+    )
+
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    # Should complete without error
+    assert len(enriched) == 1
+    assert "_match_method" in enriched.columns
+
+
+def test_enrich_missing_award_company_column():
+    """Test error when award company column is missing."""
+    from src.exceptions import ValidationError
+
+    companies = pd.DataFrame([{"company": "Test Corp"}])
+    awards = pd.DataFrame([{"award_id": 1}])
+
+    with pytest.raises(ValidationError) as exc_info:
+        enrich_awards_with_companies(awards, companies, award_company_col="nonexistent_column")
+
+    assert "award_company_col" in str(exc_info.value)
+
+
+def test_enrich_missing_company_name_column():
+    """Test error when company name column is missing."""
+    from src.exceptions import ValidationError
+
+    companies = pd.DataFrame([{"industry": "Tech"}])
+    awards = pd.DataFrame([{"company": "Test Award"}])
+
+    with pytest.raises(ValidationError) as exc_info:
+        enrich_awards_with_companies(awards, companies, company_name_col="nonexistent_column")
+
+    assert "company_name_col" in str(exc_info.value)
+
+
+def test_enrich_column_name_fallback():
+    """Test column name fallback detection."""
+    companies = pd.DataFrame([{"Company Name": "Test Corp", "UEI": "U1"}])
+    awards = pd.DataFrame([{"Company": "Test Corp", "UEI": "U1"}])
+
+    # Should use fallback detection
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    assert enriched["_match_method"].iloc[0] == "uei-exact"
+
+
+def test_enrich_url_normalization():
+    """Test company URL normalization."""
+    companies = pd.DataFrame(
+        [
+            {
+                "company": "Web Corp",
+                "UEI": "U1",
+                "Company Website": "https://webcorp.com",
+            }
+        ]
+    )
+    awards = pd.DataFrame(
+        [
+            {
+                "company": "Web Corp",
+                "UEI": "U1",
+                "Company URL": "",
+            }
+        ]
+    )
+
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    assert "company_url" in enriched.columns
+
+
+def test_enrich_fuzzy_with_blocking():
+    """Test fuzzy matching uses blocking for performance."""
+    # Create companies with same block key prefix
+    companies = pd.DataFrame(
+        [
+            {"company": "Advanced Tech Solutions", "UEI": "", "Duns": ""},
+            {"company": "Advanced Data Systems", "UEI": "", "Duns": ""},
+            {"company": "Zebra Corp", "UEI": "", "Duns": ""},  # Different block
+        ]
+    )
+    awards = pd.DataFrame(
+        [
+            {"company": "Advanced Tech", "UEI": "", "Duns": ""},
+        ]
+    )
+
+    enriched = enrich_awards_with_companies(
+        awards, companies, high_threshold=70, low_threshold=50, prefix_len=2
+    )
+
+    # Should match one of the "Advanced" companies, not Zebra
+    assert enriched["_match_method"].iloc[0].startswith("fuzzy")
+    assert enriched["_match_score"].iloc[0] >= 50
+
+
+def test_enrich_fuzzy_no_block_candidates():
+    """Test fuzzy matching fallback when no block candidates."""
+    companies = pd.DataFrame(
+        [
+            {"company": "Acme Corp", "UEI": "", "Duns": ""},
+        ]
+    )
+    awards = pd.DataFrame(
+        [
+            {"company": "Zzz Unrelated", "UEI": "", "Duns": ""},
+        ]
+    )
+
+    enriched = enrich_awards_with_companies(
+        awards, companies, high_threshold=95, low_threshold=50, prefix_len=2
+    )
+
+    # Should still attempt fuzzy matching with fallback
+    assert "_match_score" in enriched.columns
+
+
+def test_enrich_weighted_scoring_thresholds():
+    """Test scoring threshold behavior."""
+    companies = pd.DataFrame(
+        [
+            {"company": "Similar Name Corp", "UEI": "", "Duns": ""},
+        ]
+    )
+    awards = pd.DataFrame(
+        [
+            {"company": "Similar Name Corporation", "UEI": "", "Duns": ""},
+        ]
+    )
+
+    # High threshold - should be auto-accepted
+    enriched_high = enrich_awards_with_companies(
+        awards, companies, high_threshold=80, low_threshold=60
+    )
+    assert enriched_high["_match_method"].iloc[0] == "fuzzy-auto"
+
+    # Very high threshold - should be candidate
+    enriched_low = enrich_awards_with_companies(
+        awards, companies, high_threshold=99, low_threshold=85
+    )
+    assert enriched_low["_match_method"].iloc[0] in ("fuzzy-candidate", "fuzzy-auto")
+
+
+def test_normalize_company_name_extended():
+    """Test extended company name normalization scenarios."""
+    assert normalize_company_name("ACME CORP.") == "acme corp"
+    assert normalize_company_name("The XYZ Company, LLC") == "the xyz company llc"
+    assert normalize_company_name("  Multiple   Spaces  ") == "multiple spaces"
+    assert normalize_company_name("123 Tech Inc") == "123 tech inc"
+
+
 if __name__ == "__main__":
     # quick smoke run
     pytest.main([__file__])

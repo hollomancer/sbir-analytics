@@ -44,10 +44,9 @@ from __future__ import annotations
 import time
 from collections.abc import Generator, Iterable
 from pathlib import Path
-
-from loguru import logger
 from typing import Any
 
+from loguru import logger
 
 
 # Optional imports - fallbacks are handled at runtime

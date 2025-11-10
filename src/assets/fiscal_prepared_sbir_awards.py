@@ -13,6 +13,7 @@ except Exception:
 
 
 from pathlib import Path
+from typing import Any
 
 
 # Import NAICS enricher from consolidated package

@@ -462,17 +462,13 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state models (cached per state/year)
                 # Note: This can be expensive - consider caching
-                state_models = build_useeior_state_models(
-                    self.useeio, modelname, year=year
-                )
+                state_models = build_useeior_state_models(self.useeio, modelname, year=year)
 
                 # Get state-specific model
                 state_model = state_models.rx2(state)
 
                 # Format shocks as demand vector
-                demand = format_demand_vector_from_shocks(
-                    self.useeio, state_model, state_shocks
-                )
+                demand = format_demand_vector_from_shocks(self.useeio, state_model, state_shocks)
 
                 # Calculate impacts
                 impacts = calculate_impacts_with_useeior(
@@ -489,9 +485,7 @@ class RStateIOAdapter(EconomicModelInterface):
                     n_matrix = impacts.rx2("N")
                     # Convert N to pandas for easier manipulation
                     if self._pandas_converter is not None:
-                        with localconverter(
-                            ro.default_converter + self._pandas_converter
-                        ):
+                        with localconverter(ro.default_converter + self._pandas_converter):
                             n_df = ro.conversion.rpy2py(n_matrix)
                     else:
                         import rpy2.robjects.pandas2ri as pandas2ri
@@ -515,9 +509,7 @@ class RStateIOAdapter(EconomicModelInterface):
                 va_components = {}
                 if self.stateio is not None:
                     try:
-                        va_components = get_state_value_added(
-                            self.stateio, state, year
-                        )
+                        va_components = get_state_value_added(self.stateio, state, year)
                     except Exception as e:
                         logger.debug(f"Could not get value added for {state}: {e}")
 
@@ -646,14 +638,10 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state IO table
                 specs = {"BaseIOSchema": "2017"}
-                build_state_model(
-                    self.stateio, state, year, specs
-                )
+                build_state_model(self.stateio, state, year, specs)
 
                 # Get value added components
-                get_state_value_added(
-                    self.stateio, state, year, specs
-                )
+                get_state_value_added(self.stateio, state, year, specs)
 
                 # TODO: Extract technical coefficients matrix and compute Leontief inverse
                 # TODO: Apply shocks to get production impacts

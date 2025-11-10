@@ -14,10 +14,8 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
-from typing import Any
 
 from .utils import (
-
     AssetCheckResult,
     AssetCheckSeverity,
     Output,
@@ -31,7 +29,7 @@ from .utils import (
     asset="transformed_cet_company_profiles",
     description="Company CET profiles successfully generated (basic sanity from checks JSON)",
 )
-def cet_company_profiles_check(context: Any) -> AssetCheckResult:
+def cet_company_profiles_check(context) -> AssetCheckResult:
     """
     Ensure company CET profiles were produced without critical errors.
     Consumes data/processed/cet_company_profiles.checks.json written by the asset.

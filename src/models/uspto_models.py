@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 
 """
 Pydantic models for USPTO patent data used by the SBIR ETL transition pipeline.

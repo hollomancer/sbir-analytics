@@ -14,17 +14,16 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date, datetime
+from collections.abc import Iterable
 from itertools import product
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from loguru import logger
 
+from src.config.schemas import Neo4jConfig
 from src.extractors.uspto_extractor import USPTOExtractor
 from src.loaders.neo4j.client import Neo4jClient
-from src.config.schemas import Neo4jConfig
 
 from .utils import (
     AssetCheckResult,
@@ -33,7 +32,6 @@ from .utils import (
     MetadataValue,
     PatentAssignment,
     PatentAssignmentTransformer,
-    _coerce_str,
     _combine_address,
     _iter_small_sample,
     _load_assignments_file,
@@ -45,6 +43,7 @@ from .utils import (
     asset,
     asset_check,
 )
+
 
 # Constants
 TRANSFORM_SUCCESS_THRESHOLD = 0.9
@@ -190,7 +189,6 @@ class USPTOAssignmentJoiner:
                     yield JoinedRow(merged, rf_key)
 
 
-
 @asset(
     description="Transform USPTO assignments into normalized PatentAssignment models",
     group_name="extraction",
@@ -303,7 +301,7 @@ def transformed_patent_assignments(
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patents(context: Any, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
+def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, base_dir = _resolve_output_paths(context, "patents")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
@@ -373,7 +371,9 @@ def transformed_patents(context: Any, transformed_assignments: dict[str, Any]) -
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patent_entities(context: Any, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
+def transformed_patent_entities(
+    context: Any, transformed_assignments: dict[str, Any]
+) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():
@@ -503,5 +503,3 @@ def _get_neo4j_client() -> Neo4jClient | None:
     except Exception as e:
         logger.error(f"Failed to create Neo4j client: {e}")
         return None
-
-

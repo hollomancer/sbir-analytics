@@ -41,7 +41,7 @@ except Exception:
     asset="enriched_cet_award_classifications",
     description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
 )
-def cet_award_classifications_quality_check(context: Any) -> AssetCheckResult:
+def cet_award_classifications_quality_check(context) -> AssetCheckResult:
     """
     Validate CET award classification quality against targets.
     Consumes data/processed/cet_award_classifications.checks.json written by the asset.

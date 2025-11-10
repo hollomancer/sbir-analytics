@@ -11,18 +11,12 @@ This module contains quality checks for transition assets:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pandas as pd
-from loguru import logger
-from typing import Any
 
 from .utils import (
-
     AssetCheckResult,
     AssetCheckSeverity,
-    AssetExecutionContext,
+    _env_bool,
     _env_float,
     _env_int,
     asset_check,
@@ -180,7 +174,7 @@ def transition_scores_quality_check(
     asset="transformed_transition_analytics",
     description="Sanity checks for transition analytics: positive denominators and 0≤rates≤1 (optional min-rate thresholds via env).",
 )
-def transition_analytics_quality_check(context: Any) -> AssetCheckResult:
+def transition_analytics_quality_check(context) -> AssetCheckResult:
     """
     Validate transition_analytics KPIs using the emitted checks JSON.
 
@@ -278,7 +272,7 @@ def transition_analytics_quality_check(context: Any) -> AssetCheckResult:
     asset="transformed_transition_evidence",
     description="Evidence completeness for candidates with score ≥ configured threshold",
 )
-def transition_evidence_quality_check(context: Any) -> AssetCheckResult:
+def transition_evidence_quality_check(context) -> AssetCheckResult:
     """
     Check evidence completeness by consuming the checks JSON emitted by transition_evidence_v1.
 
@@ -430,5 +424,3 @@ def transition_detections_quality_check(
             "columns_present": list(transition_detections.columns),
         },
     )
-
-

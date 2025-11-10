@@ -54,9 +54,7 @@ PatentFeatureVector = None
 # available, but do not raise if it's missing in minimal CI environments.
 try:
     from src.ml.features.patent_features import PatentFeatureVector as _PatentFeatureVector
-    from src.ml.features.patent_features import (
-        extract_features as _extract_features,
-    )
+    from src.ml.features.patent_features import extract_features as _extract_features
 
     # Populate module-level names only if not already present or None
     if "extract_features" not in globals() or extract_features is None:
@@ -86,7 +84,9 @@ class PatentFeatureExtractor:
         self.keywords_map = keywords_map
         self.stopwords = stopwords
 
-    def features_for_dataframe(self, df: Any, title_col: str = "title", assignee_col: str | None = None) -> None:
+    def features_for_dataframe(
+        self, df: Any, title_col: str = "title", assignee_col: str | None = None
+    ) -> None:
         """
         Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
           - texts: List[str] suitable to pass to classifier pipelines (combined normalized title + assignee hint)

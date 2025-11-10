@@ -8,7 +8,7 @@ import os
 
 import pytest
 
-from src.loaders import LoadMetrics, Neo4jClient, Neo4jConfig
+from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
 
 
 # Skip these tests if Neo4j is not available
