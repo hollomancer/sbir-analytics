@@ -15,6 +15,10 @@ from src.transition.evaluation.evaluator import (
 )
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def evaluator():
     """Default TransitionEvaluator for testing."""

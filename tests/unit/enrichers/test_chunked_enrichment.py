@@ -19,6 +19,10 @@ from src.exceptions import EnrichmentError
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def mock_config():
     """Mock configuration."""

@@ -4,12 +4,19 @@ import pytest
 from pydantic import ValidationError
 
 from src.validators.schemas import (
+
+
+pytestmark = pytest.mark.fast
+
     CompletenessCheck,
     UniquenessCheck,
     ValidationConfig,
     ValidationResult,
     ValueRangeCheck,
 )
+
+
+
 
 
 class TestValidationResultModel:

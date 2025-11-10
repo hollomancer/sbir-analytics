@@ -28,6 +28,10 @@ from src.models.uspto_models import (
 # ============================================================================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestClassificationLevel:
     """Tests for ClassificationLevel enum."""
 

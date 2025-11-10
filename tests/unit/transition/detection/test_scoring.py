@@ -18,6 +18,10 @@ from src.models.transition_models import (
 from src.transition.detection.scoring import TransitionScorer
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def default_config():
     """Default scoring configuration for tests."""

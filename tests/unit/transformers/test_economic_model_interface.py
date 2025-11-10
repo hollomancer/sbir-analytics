@@ -9,6 +9,10 @@ from src.exceptions import ValidationError
 from src.transformers.economic_model_interface import EconomicImpactResult, EconomicModelInterface
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestEconomicImpactResult:
     """Tests for EconomicImpactResult dataclass."""
 

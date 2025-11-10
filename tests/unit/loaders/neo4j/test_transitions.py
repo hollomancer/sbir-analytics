@@ -9,6 +9,10 @@ import pytest
 from src.loaders.neo4j.transitions import TransitionLoader
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestTransitionLoaderInitialization:
     """Tests for TransitionLoader initialization."""
 

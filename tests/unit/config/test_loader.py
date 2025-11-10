@@ -20,6 +20,10 @@ from src.config.schemas import PipelineConfig
 from src.exceptions import ConfigurationError
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestDeepMergeDicts:
     """Tests for _deep_merge_dicts function."""
 

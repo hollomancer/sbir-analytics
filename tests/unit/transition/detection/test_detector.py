@@ -22,6 +22,10 @@ from src.models.transition_models import (
 from src.transition.detection.detector import TransitionDetector
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def default_config():
     """Default detector configuration for tests."""

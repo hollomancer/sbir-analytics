@@ -1,4 +1,10 @@
+import pytest
+
 import pandas as pd
+
+
+pytestmark = pytest.mark.fast
+
 
 
 def _unwrap_output(result):

@@ -1,5 +1,9 @@
 """Integration tests for Neo4j client.
 
+
+pytestmark = pytest.mark.integration
+
+
 These tests require a running Neo4j instance.
 Run with: docker-compose up -d neo4j
 """

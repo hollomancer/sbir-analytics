@@ -5,6 +5,10 @@ from src.ml.models.cet_classifier import ApplicabilityModel
 from src.models.cet_models import CETArea
 
 
+pytestmark = pytest.mark.integration
+
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 def test_cet_classifier_training_and_classification_synthetic():

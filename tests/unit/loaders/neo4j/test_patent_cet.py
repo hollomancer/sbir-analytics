@@ -8,6 +8,10 @@ from src.exceptions import ConfigurationError
 from src.loaders.neo4j.patent_cet import Neo4jConfig, Neo4jPatentCETLoader
 
 
+pytestmark = pytest.mark.fast
+
+
+
 class TestNeo4jConfig:
     """Tests for Neo4jConfig dataclass."""
 

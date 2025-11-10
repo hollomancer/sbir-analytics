@@ -14,6 +14,10 @@ from src.utils.performance_reporting import (
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def sample_benchmark_data():
     """Sample benchmark data."""

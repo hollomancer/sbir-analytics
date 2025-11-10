@@ -19,6 +19,10 @@ from src.models.enrichment import EnrichmentFreshnessRecord
 # ==================== Fixtures ====================
 
 
+pytestmark = pytest.mark.fast
+
+
+
 @pytest.fixture
 def mock_config():
     """Mock configuration."""

@@ -1,5 +1,7 @@
 """Tests for transition evidence generation."""
 
+import pytest
+
 from datetime import date
 
 from src.models.transition_models import (
@@ -16,6 +18,10 @@ from src.models.transition_models import (
     VendorMatch,
 )
 from src.transition.detection.evidence import EvidenceGenerator
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestEvidenceGeneratorInitialization:

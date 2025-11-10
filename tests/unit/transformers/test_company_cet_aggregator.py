@@ -1,8 +1,14 @@
 """Tests for CompanyCETAggregator transformer."""
 
+import pytest
+
 import pandas as pd
 
 from src.transformers.company_cet_aggregator import CompanyCETAggregator
+
+
+pytestmark = pytest.mark.fast
+
 
 
 class TestCompanyCETAggregatorInitialization:
