@@ -14,8 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .company import _get_neo4j_client
-from .utils import (
+from .company import (
     DEFAULT_AWARD_CLASS_JSON,
     DEFAULT_AWARD_CLASS_PARQUET,
     DEFAULT_COMPANY_PROFILES_JSON,
@@ -23,11 +22,9 @@ from .utils import (
     DEFAULT_OUTPUT_DIR,
     DEFAULT_TAXONOMY_JSON,
     DEFAULT_TAXONOMY_PARQUET,
-    AssetIn,
-    _read_parquet_or_ndjson,
-    _serialize_metrics,
-    asset,
+    _get_neo4j_client,
 )
+from .utils import AssetIn, _read_parquet_or_ndjson, _serialize_metrics, asset
 
 
 # Neo4j loader imports
