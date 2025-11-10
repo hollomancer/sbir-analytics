@@ -169,6 +169,7 @@ def _env_bool(key: str, default: bool) -> bool:
 # Neo4j imports (import-safe)
 try:
     from neo4j import Driver
+
     from src.loaders.neo4j import Neo4jClient
 except Exception:
     Driver = None  # type: ignore
