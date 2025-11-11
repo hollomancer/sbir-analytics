@@ -1,0 +1,4 @@
+# CODEOWNERS for automated SBIR awards refresh artifacts
+
+data/raw/sbir/award_data.csv @sbir-etl/data-stewards
+reports/awards_data_refresh/* @sbir-etl/data-stewards

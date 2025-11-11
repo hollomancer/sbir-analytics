@@ -1,0 +1,177 @@
+name: Weekly SBIR Awards Refresh
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: "Force commit even if CSV hash did not change"
+        required: false
+        default: false
+        type: boolean
+      source_url:
+        description: "Override source URL (defaults to sbir.gov canonical feed)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: awards-data-refresh
+  cancel-in-progress: false
+
+env:
+  DATA_PATH: data/raw/sbir/award_data.csv
+  METADATA_DIR: reports/awards_data_refresh
+  SCHEMA_PATH: docs/data/sbir_awards_columns.json
+  DEFAULT_SOURCE_URL: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+
+jobs:
+  refresh-awards-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
+      SOURCE_URL: ${{ github.event.inputs.source_url || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download SBIR awards CSV
+        id: download
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$DATA_PATH")"
+          url="${SOURCE_URL}"
+          if [ -z "$url" ]; then
+            url="${DEFAULT_SOURCE_URL}"
+          fi
+          tmp="${DATA_PATH}.tmp"
+          trap 'rm -f "$tmp"' EXIT
+          curl --retry 5 --retry-delay 5 --fail --location --compressed "$url" -o "$tmp"
+          mv "$tmp" "$DATA_PATH"
+          trap - EXIT
+          echo "source_url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Check for dataset changes
+        id: csv_diff
+        run: |
+          if git diff --quiet -- "$DATA_PATH"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate dataset and emit metadata
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: validate
+        run: |
+          python scripts/data/awards_refresh_validation.py \
+            --csv-path "$DATA_PATH" \
+            --schema-path "$SCHEMA_PATH" \
+            --metadata-dir "$METADATA_DIR" \
+            --summary-path "$METADATA_DIR/latest.md" \
+            --previous-metadata "$METADATA_DIR/latest.json" \
+            --source-url "${{ steps.download.outputs.source_url }}" \
+            --gha-output "$GITHUB_OUTPUT"
+
+      - name: Prepare CSV artifact
+        run: |
+          gzip -c "$DATA_PATH" > awards_data.csv.gz
+
+      - name: Upload raw CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbir-awards-csv
+          path: awards_data.csv.gz
+          retention-days: 7
+
+      - name: Upload metadata artifact
+        if: steps.validate.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbir-awards-metadata
+          path: |
+            ${{ steps.validate.outputs.metadata_path }}
+            ${{ steps.validate.outputs.summary_path }}
+          retention-days: 30
+
+      - name: Determine commit requirement
+        id: proceed
+        run: |
+          should="false"
+          if [ "${{ env.FORCE_REFRESH }}" = "true" ]; then
+            should="true"
+          elif [ "${{ steps.csv_diff.outputs.changed }}" = "true" ]; then
+            should="true"
+          fi
+          echo "should_proceed=$should" >> "$GITHUB_OUTPUT"
+
+      - name: No-op note
+        if: steps.proceed.outputs.should_proceed != 'true'
+        run: echo "No data changes detected; skipping commit/PR."
+
+      - name: Set refresh date
+        if: steps.proceed.outputs.should_proceed == 'true'
+        id: stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git author
+        if: steps.proceed.outputs.should_proceed == 'true'
+        run: |
+          git config user.name "SBIR Data Bot"
+          git config user.email "sbir-data-bot@users.noreply.github.com"
+
+      - name: Stage refresh artifacts
+        if: steps.proceed.outputs.should_proceed == 'true'
+        run: |
+          git add "$DATA_PATH"
+          git add "$METADATA_DIR"
+
+      - name: Commit refresh artifacts
+        if: steps.proceed.outputs.should_proceed == 'true'
+        run: |
+          if git diff --cached --quiet; then
+            echo "Nothing to commit after staging."
+            exit 0
+          fi
+          git commit -m "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
+
+      - name: Build PR body
+        if: steps.proceed.outputs.should_proceed == 'true'
+        id: pr_body
+        run: |
+          PR_PATH="$RUNNER_TEMP/awards_refresh_pr.md"
+          {
+            echo "## SBIR awards data refresh"
+            echo ""
+            echo "Automated sync of \`$DATA_PATH\` from the SBIR.gov public dataset."
+            echo ""
+            cat "${{ steps.validate.outputs.summary_path }}"
+            echo ""
+            echo "---"
+            echo "Metadata file: \`${{ steps.validate.outputs.metadata_path }}\`"
+          } > "$PR_PATH"
+          echo "path=$PR_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.proceed.outputs.should_proceed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: data-refresh/${{ steps.stamp.outputs.date }}
+          delete-branch: true
+          title: "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
+          commit-message: "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
+          body-path: ${{ steps.pr_body.outputs.path }}
+          labels: data,automation
