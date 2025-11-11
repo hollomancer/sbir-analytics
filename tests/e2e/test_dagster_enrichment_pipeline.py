@@ -435,6 +435,3 @@ Tests the complete enrichment pipeline from data ingestion through enrichment
 to final output validation, ensuring all assets materialize successfully and
 data flows correctly between stages.
 """
-
-import pytest
-

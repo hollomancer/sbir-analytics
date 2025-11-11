@@ -19,10 +19,10 @@ from uuid import uuid4
 import pandas as pd
 from loguru import logger
 
-# Configuration and extractor imports
-from src.config.loader import get_config
-from src.extractors.contract_extractor import ContractExtractor
-from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
+# Configuration and extractor imports (re-exported for use by other transition modules)
+from src.config.loader import get_config  # noqa: F401
+from src.extractors.contract_extractor import ContractExtractor  # noqa: F401
+from src.transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -35,10 +35,10 @@ except Exception:
 
 # Import-safe shims for Dagster
 try:
-    from dagster import AssetExecutionContext as _RealAssetExecutionContext
     from dagster import (
         AssetCheckResult,
         AssetCheckSeverity,
+        AssetExecutionContext as _RealAssetExecutionContext,
         MetadataValue,
         Output,
         asset,

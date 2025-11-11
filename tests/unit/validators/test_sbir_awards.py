@@ -1,13 +1,7 @@
 """Tests for SBIR award validation rules."""
 
-import pytest
-
 from datetime import date
 
-import pandas as pd
-
-from src.models.quality import QualitySeverity
-from src.validators.sbir_awards import (
     EMAIL_REGEX,
     PHONE_REGEX,
     VALID_US_STATES,
@@ -28,6 +22,11 @@ from src.validators.sbir_awards import (
     validate_uei_format,
     validate_zip_code,
 )
+import pandas as pd
+import pytest
+
+from src.models.quality import QualitySeverity
+from src.validators.sbir_awards import (
 
 
 pytestmark = pytest.mark.fast
