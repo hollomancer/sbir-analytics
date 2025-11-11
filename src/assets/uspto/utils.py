@@ -411,7 +411,6 @@ def _normalize_country(country: str | None) -> str | None:
     return c
 
 
-@dataclass
 def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))
