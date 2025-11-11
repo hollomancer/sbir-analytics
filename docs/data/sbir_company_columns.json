@@ -1,0 +1,19 @@
+{
+  "columns": [
+    "Company Name",
+    "UEI",
+    "DUNs",
+    "Number Awards",
+    "Address 1",
+    "Address 2",
+    "City",
+    "State",
+    "ZIP",
+    "Country",
+    "Hubzone Owned",
+    "Women Owned",
+    "Socially Economically Disadvantaged",
+    "Company URL"
+  ]
+}
+
