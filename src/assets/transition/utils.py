@@ -32,7 +32,14 @@ except Exception:
 # Import-safe shims for Dagster
 try:
     from dagster import AssetExecutionContext as _RealAssetExecutionContext
-    from dagster import MetadataValue, Output, asset, asset_check
+    from dagster import (
+        AssetCheckResult,
+        AssetCheckSeverity,
+        MetadataValue,
+        Output,
+        asset,
+        asset_check,
+    )
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:
@@ -77,6 +84,23 @@ except Exception:  # pragma: no cover
             return fn
 
         return _wrap
+
+    class AssetCheckResult:  # type: ignore
+        def __init__(
+            self,
+            passed: bool,
+            severity=None,
+            description: str = "",
+            metadata: dict | None = None,
+        ) -> None:
+            self.passed = passed
+            self.severity = severity
+            self.description = description
+            self.metadata = metadata or {}
+
+    class AssetCheckSeverity:  # type: ignore
+        ERROR = "ERROR"
+        WARN = "WARN"
 
 
 def _ensure_parent_dir(path: Path) -> None:
