@@ -1,8 +1,10 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 from dagster import build_asset_context
 
 import src.assets.sbir_ingestion as assets_module
@@ -132,11 +134,6 @@ def test_materialize_raw_validated_and_report_assets(
     except Exception:
         # ignore if not empty or removal fails
         pass
-
-
-from pathlib import Path
-
-import pytest
 
 
 pytestmark = pytest.mark.integration

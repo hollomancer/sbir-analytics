@@ -133,7 +133,7 @@ dmypy.json
 .pyre/
 
 # Data files
-data/
+/data/
 !data/reference/*.csv
 !data/reference/*.xlsx
 !data/reference/*.xls
