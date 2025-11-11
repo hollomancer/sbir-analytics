@@ -22,16 +22,6 @@ from loguru import logger
 
 from src.exceptions import DependencyError
 
-# Import parsed/validated assets needed for asset_check decorators
-# These need to be imported before being referenced in asset_check() calls
-from .parsing import (
-    parsed_uspto_assignments,
-    parsed_uspto_conveyances,
-    parsed_uspto_documentids,
-    validated_uspto_assignees,
-    validated_uspto_assignors,
-)
-
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -288,6 +278,17 @@ def _make_parsing_check(
     # Return the inner function but keep dagster-friendly attributes for introspection
     _check.__name__ = f"{table_asset_name}_parsing_check"
     return _check
+
+
+# Import parsed/validated assets needed for asset_check decorators
+# These imports must come AFTER _attempt_parse_sample is defined to avoid circular imports
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
 
 
 # Create concrete asset_check functions and bind them to the parsed assets using the decorator
