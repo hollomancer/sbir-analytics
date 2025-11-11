@@ -147,6 +147,7 @@ def main() -> int:
 
     raw_meta_path = args.output_dir / "raw_sbir_awards_metadata.json"
     validated_meta_path = args.output_dir / "validated_sbir_awards_metadata.json"
+    validated_csv_path = args.output_dir / "validated_sbir_awards.csv"
     report_json_path = args.report_json or (args.output_dir / "sbir_validation_report.json")
     summary_md_path = args.summary_md or (args.output_dir / "ingestion_summary.md")
 
@@ -157,6 +158,9 @@ def main() -> int:
     with validated_meta_path.open("w", encoding="utf-8") as handle:
         json.dump({"metadata": validated_metadata}, handle, indent=2)
         handle.write("\n")
+
+    # Save validated DataFrame as CSV for downstream use (e.g., Neo4j loading)
+    validated_df.to_csv(validated_csv_path, index=False)
 
     with report_json_path.open("w", encoding="utf-8") as handle:
         json.dump(
@@ -173,6 +177,7 @@ def main() -> int:
         with args.gha_output.open("a", encoding="utf-8") as handle:
             handle.write(f"raw_metadata_path={raw_meta_path}\n")
             handle.write(f"validated_metadata_path={validated_meta_path}\n")
+            handle.write(f"validated_csv_path={validated_csv_path}\n")
             handle.write(f"validation_report_path={report_json_path}\n")
             handle.write(f"ingestion_summary_path={summary_md_path}\n")
 

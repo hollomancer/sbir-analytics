@@ -31,6 +31,10 @@ env:
   INPUT_PROFILE_MD: reports/awards_data_refresh/inputs_profile.md
   ENRICHMENT_SUMMARY_JSON: reports/awards_data_refresh/enrichment_summary.json
   ENRICHMENT_SUMMARY_MD: reports/awards_data_refresh/enrichment_summary.md
+  NEO4J_LOAD_METRICS_JSON: reports/awards_data_refresh/neo4j_load_metrics.json
+  NEO4J_LOAD_SUMMARY_MD: reports/awards_data_refresh/neo4j_load_summary.md
+  NEO4J_SMOKE_CHECK_JSON: reports/awards_data_refresh/neo4j_smoke_check.json
+  NEO4J_SMOKE_CHECK_MD: reports/awards_data_refresh/neo4j_smoke_check.md
   COMPANY_DIR: data/raw/sbir
   COMPANY_SCHEMA_PATH: docs/data/sbir_company_columns.json
   SCHEMA_PATH: docs/data/sbir_awards_columns.json
@@ -40,9 +44,29 @@ jobs:
   refresh-awards-data:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      neo4j:
+        image: neo4j:5
+        ports:
+          - 7687:7687
+          - 7474:7474
+        env:
+          NEO4J_AUTH: neo4j/password
+          NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+          NEO4J_PLUGINS: '["apoc"]'
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 40s
     env:
       FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
       SOURCE_URL: ${{ github.event.inputs.source_url || '' }}
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+      NEO4J_DATABASE: neo4j
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -149,6 +173,42 @@ jobs:
         env:
           SBIR_E2E_AWARD_CSV: ${{ env.DATA_PATH }}
 
+      - name: Wait for Neo4j
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        run: |
+          echo "Waiting for Neo4j to be ready..."
+          until curl -s -f -o /dev/null "http://localhost:7474"; do
+            echo "Neo4j not ready, sleeping..."
+            sleep 5
+          done
+          echo "Neo4j is ready!"
+
+      - name: Reset Neo4j database
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        run: |
+          poetry run python scripts/data/reset_neo4j_sbir.py
+
+      - name: Load SBIR awards into Neo4j
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: neo4j_load
+        run: |
+          poetry run python scripts/data/run_neo4j_sbir_load.py \
+            --validated-csv "${{ steps.ingestion_checks.outputs.validated_csv_path }}" \
+            --output-dir "$METADATA_DIR" \
+            --summary-md "$NEO4J_LOAD_SUMMARY_MD" \
+            --gha-output "$GITHUB_OUTPUT" || true
+        continue-on-error: true
+
+      - name: Run Neo4j smoke checks
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: neo4j_smoke
+        run: |
+          poetry run python scripts/data/run_neo4j_smoke_checks.py \
+            --output-json "$NEO4J_SMOKE_CHECK_JSON" \
+            --output-md "$NEO4J_SMOKE_CHECK_MD" \
+            --gha-output "$GITHUB_OUTPUT" || true
+        continue-on-error: true
+
       - name: Prepare CSV artifact
         run: |
           gzip -c "$DATA_PATH" > awards_data.csv.gz
@@ -176,6 +236,10 @@ jobs:
             ${{ steps.ingestion_checks.outputs.ingestion_summary_path }}
             ${{ env.ENRICHMENT_SUMMARY_JSON }}
             ${{ env.ENRICHMENT_SUMMARY_MD }}
+            ${{ env.NEO4J_LOAD_METRICS_JSON }}
+            ${{ env.NEO4J_LOAD_SUMMARY_MD }}
+            ${{ env.NEO4J_SMOKE_CHECK_JSON }}
+            ${{ env.NEO4J_SMOKE_CHECK_MD }}
           retention-days: 30
 
       - name: Determine commit requirement
