@@ -10,7 +10,9 @@ This module contains:
 
 from __future__ import annotations
 
-from .utils import AssetIn, _attempt_parse_sample, asset
+from dagster import AssetIn, asset
+
+from .utils import _attempt_parse_sample
 
 
 @asset(
