@@ -20,7 +20,7 @@ from typing import Any
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset_check
 from loguru import logger
 
-from ..exceptions import DependencyError
+from src.exceptions import DependencyError
 
 # Import parsed/validated assets needed for asset_check decorators
 # These need to be imported before being referenced in asset_check() calls
