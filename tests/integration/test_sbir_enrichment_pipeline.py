@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +11,11 @@ from src.enrichers.company_enricher import enrich_awards_with_companies
 
 
 def _fixture_csv_path():
+    override = os.getenv("SBIR_E2E_AWARD_CSV")
+    if override:
+        override_path = Path(override).resolve()
+        assert override_path.exists(), f"Override CSV not found: {override_path}"
+        return override_path
     # Resolve absolute path to the fixture regardless of cwd
     return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
 
@@ -61,6 +67,8 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
     # Expect the fixture to contain rows (we know it's small)
     assert len(raw_df) > 0
 
+    override_csv = os.getenv("SBIR_E2E_AWARD_CSV")
+
     # Prepare a minimal companies DataFrame that should match at least one award row
     # Use a company that exists in the fixture: "Acme Innovations" with UEI from fixture
     companies = pd.DataFrame(
@@ -103,9 +111,16 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
 
     # Find the row corresponding to Acme Innovations (match by original Company value)
     acme_rows = enriched[enriched["Company"].astype(str).str.contains("Acme", case=False, na=False)]
-    assert len(acme_rows) >= 1
 
     # For Acme row(s), expect either a deterministic or fuzzy match with non-null score
+    if override_csv:
+        # With the full dataset we cannot guarantee that our synthetic company sample matches,
+        # so only assert that enrichment produced candidates where possible.
+        assert len(enriched) > 0
+        if len(acme_rows) == 0:
+            return
+    else:
+        assert len(acme_rows) >= 1
     acme_row = acme_rows.iloc[0]
     acme_row.get("_match_score")
     match_method = acme_row.get("_match_method")

@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,6 +27,11 @@ def _make_test_config(
 
 
 def _fixture_csv_path():
+    override = os.getenv("SBIR_E2E_AWARD_CSV")
+    if override:
+        override_path = Path(override).resolve()
+        assert override_path.exists(), f"Override CSV not found: {override_path}"
+        return override_path
     # Resolve absolute path to the fixture regardless of cwd
     # tests/integration/... -> parents[2] is repo root; fixture lives at tests/fixtures/sbir_sample.csv
     return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
@@ -73,7 +79,11 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
 
     # Assert basic properties of the raw extraction
     assert isinstance(raw_df, pd.DataFrame)
-    assert len(raw_df) == 100  # fixture contains 100 rows
+    override_csv = os.getenv("SBIR_E2E_AWARD_CSV")
+    if override_csv:
+        assert len(raw_df) > 100, "Expected live dataset to contain more than 100 rows"
+    else:
+        assert len(raw_df) == 100  # fixture contains 100 rows
 
     # If metadata was returned via Output metadata, validate presence of extraction timestamps and columns
     metadata = getattr(raw_output, "metadata", None) or {}

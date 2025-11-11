@@ -27,6 +27,12 @@ concurrency:
 env:
   DATA_PATH: data/raw/sbir/award_data.csv
   METADATA_DIR: reports/awards_data_refresh
+  INPUT_PROFILE_JSON: reports/awards_data_refresh/inputs_profile.json
+  INPUT_PROFILE_MD: reports/awards_data_refresh/inputs_profile.md
+  ENRICHMENT_SUMMARY_JSON: reports/awards_data_refresh/enrichment_summary.json
+  ENRICHMENT_SUMMARY_MD: reports/awards_data_refresh/enrichment_summary.md
+  COMPANY_DIR: data/raw/sbir
+  COMPANY_SCHEMA_PATH: docs/data/sbir_company_columns.json
   SCHEMA_PATH: docs/data/sbir_awards_columns.json
   DEFAULT_SOURCE_URL: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
 
@@ -86,6 +92,63 @@ jobs:
             --source-url "${{ steps.download.outputs.source_url }}" \
             --gha-output "$GITHUB_OUTPUT"
 
+      - name: Profile award and company inputs
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: profile_inputs
+        run: |
+          python scripts/data/profile_sbir_inputs.py \
+            --award-csv "$DATA_PATH" \
+            --company-dir "$COMPANY_DIR" \
+            --company-schema-path "$COMPANY_SCHEMA_PATH" \
+            --output-json "$INPUT_PROFILE_JSON" \
+            --output-md "$INPUT_PROFILE_MD" \
+            --gha-output "$GITHUB_OUTPUT"
+
+      - name: Install Poetry
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        run: |
+          pip install --quiet "poetry==1.8.3"
+
+      - name: Install project dependencies
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        run: |
+          poetry install --no-interaction
+
+      - name: Run SBIR ingestion validation
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: ingestion_checks
+        run: |
+          poetry run python scripts/data/run_sbir_ingestion_checks.py \
+            --csv-path "$DATA_PATH" \
+            --duckdb-path "$METADATA_DIR/ingestion.duckdb" \
+            --table-name "sbir_awards_refresh" \
+            --pass-rate-threshold 0.95 \
+            --output-dir "$METADATA_DIR" \
+            --report-json "$METADATA_DIR/sbir_validation_report.json" \
+            --summary-md "$METADATA_DIR/ingestion_summary.md" \
+            --gha-output "$GITHUB_OUTPUT"
+
+      - name: Run company enrichment coverage
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        id: enrichment_check
+        run: |
+          poetry run python scripts/data/run_sbir_enrichment_check.py \
+            --awards-csv "$DATA_PATH" \
+            --company-dir "$COMPANY_DIR" \
+            --output-json "$ENRICHMENT_SUMMARY_JSON" \
+            --output-md "$ENRICHMENT_SUMMARY_MD" \
+            --gha-output "$GITHUB_OUTPUT"
+
+      - name: Run SBIR integration tests
+        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        run: |
+          poetry run pytest \
+            tests/integration/test_sbir_ingestion_assets.py \
+            tests/integration/test_sbir_enrichment_pipeline.py \
+            --maxfail=1 --disable-warnings -q
+        env:
+          SBIR_E2E_AWARD_CSV: ${{ env.DATA_PATH }}
+
       - name: Prepare CSV artifact
         run: |
           gzip -c "$DATA_PATH" > awards_data.csv.gz
@@ -105,6 +168,14 @@ jobs:
           path: |
             ${{ steps.validate.outputs.metadata_path }}
             ${{ steps.validate.outputs.summary_path }}
+            ${{ env.INPUT_PROFILE_JSON }}
+            ${{ env.INPUT_PROFILE_MD }}
+            ${{ steps.ingestion_checks.outputs.raw_metadata_path }}
+            ${{ steps.ingestion_checks.outputs.validated_metadata_path }}
+            ${{ steps.ingestion_checks.outputs.validation_report_path }}
+            ${{ steps.ingestion_checks.outputs.ingestion_summary_path }}
+            ${{ env.ENRICHMENT_SUMMARY_JSON }}
+            ${{ env.ENRICHMENT_SUMMARY_MD }}
           retention-days: 30
 
       - name: Determine commit requirement
