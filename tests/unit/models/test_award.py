@@ -45,7 +45,7 @@ class TestAwardModel:
             abstract="Advanced AI research",
             keywords="artificial intelligence, machine learning",
             award_title="AI Innovation Project",
-            company_uei="ABC123DEF456",
+            company_uei="ABC123DEF456",  # pragma: allowlist secret
             company_duns="123456789",
             company_cage="1A2B3",
             company_address="123 Main St",
@@ -292,7 +292,7 @@ class TestAwardModel:
             award_amount=10000,
             award_date=date(2023, 1, 1),
             program="SBIR",
-            company_uei="abc123def456",
+            company_uei="abc123def456",  # pragma: allowlist secret
         )
         assert award.company_uei == "ABC123DEF456"
 

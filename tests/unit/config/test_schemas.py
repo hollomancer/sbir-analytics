@@ -160,7 +160,7 @@ class TestEnrichmentConfig:
         """Test EnrichmentConfig default SAM.gov configuration."""
         config = EnrichmentConfig()
         assert config.sam_gov["base_url"] == "https://api.sam.gov/entity-information/v3"
-        assert config.sam_gov["api_key_env_var"] == "SAM_GOV_API_KEY"
+        assert config.sam_gov["api_key_env_var"] == "SAM_GOV_API_KEY"  # pragma: allowlist secret
         assert config.sam_gov["rate_limit_per_minute"] == 60
         assert config.sam_gov["timeout_seconds"] == 30
 
@@ -250,7 +250,7 @@ class TestNeo4jConfig:
         config = Neo4jConfig()
         assert config.uri == "bolt://localhost:7687"
         assert config.username == "neo4j"
-        assert config.password == "neo4j"
+        assert config.password == "neo4j"  # pragma: allowlist secret
         assert config.database == "neo4j"
         assert config.batch_size == 1000
         assert config.parallel_threads == 4
@@ -262,7 +262,7 @@ class TestNeo4jConfig:
         config = Neo4jConfig(
             uri="bolt://prod-neo4j:7687",
             username="admin",
-            password="secret",
+            password="secret",  # pragma: allowlist secret
             database="sbir",
         )
         assert config.uri == "bolt://prod-neo4j:7687"

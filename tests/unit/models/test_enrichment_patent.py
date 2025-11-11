@@ -54,7 +54,7 @@ class TestEnrichmentFreshnessRecord:
             source="usaspending",
             last_attempt_at=now,
             last_success_at=now,
-            payload_hash="abc123def456",
+            payload_hash="abc123def456",  # pragma: allowlist secret
             status=EnrichmentStatus.SUCCESS,
             error_message=None,
             metadata={"modification_number": 5},

@@ -17,7 +17,7 @@ class TestNeo4jConfig:
 
     def test_config_default_values(self):
         """Test Neo4jConfig with default values."""
-        config = Neo4jConfig(uri="bolt://localhost:7687", user="neo4j", password="password")
+        config = Neo4jConfig(uri="bolt://localhost:7687", user="neo4j", password="password")  # pragma: allowlist secret
 
         assert config.uri == "bolt://localhost:7687"
         assert config.user == "neo4j"
@@ -30,7 +30,7 @@ class TestNeo4jConfig:
         config = Neo4jConfig(
             uri="bolt://custom:7687",
             user="admin",
-            password="secret",
+            password="secret",  # pragma: allowlist secret
             database="custom_db",
             max_connection_lifetime=7200,
         )
