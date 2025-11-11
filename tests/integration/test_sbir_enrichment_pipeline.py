@@ -36,7 +36,7 @@ def _make_test_config(
 def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkeypatch):
     """
     Integration test:
-    - Run the raw SBIR extraction asset (uses the CSV fixture)
+    - Run the raw SBIR extraction asset (uses the CSV fixture or real data)
     - Run the company enricher against the extracted DataFrame
     - Assert enrichment metadata and merged company columns exist
     """
@@ -49,7 +49,7 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
     # Ensure the asset code writes report into tmp_path by changing cwd
     monkeypatch.chdir(tmp_path)
 
-    # Monkeypatch get_config used by the assets module to point to our fixture and temp DB
+    # Monkeypatch get_config used by the assets module to point to our data source and temp DB
     test_config = _make_test_config(
         csv_path=str(fixture_csv),
         db_path=str(db_path),
