@@ -9,6 +9,17 @@ from dagster import build_asset_context
 import src.assets.sbir_ingestion as assets_module
 
 
+def _fixture_csv_path():
+    override = os.getenv("SBIR_E2E_AWARD_CSV")
+    if override:
+        override_path = Path(override).resolve()
+        assert override_path.exists(), f"Override CSV not found: {override_path}"
+        return override_path
+    # Resolve absolute path to the fixture regardless of cwd
+    # tests/integration/... -> parents[2] is repo root; fixture lives at tests/fixtures/sbir_sample.csv
+    return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
+
+
 def _make_test_config(
     csv_path: str, db_path: str, table_name: str, pass_rate_threshold: float = 0.95
 ):
@@ -24,17 +35,6 @@ def _make_test_config(
         sbir_awards=SimpleNamespace(pass_rate_threshold=pass_rate_threshold)
     )
     return SimpleNamespace(extraction=extraction, data_quality=data_quality)
-
-
-def _fixture_csv_path():
-    override = os.getenv("SBIR_E2E_AWARD_CSV")
-    if override:
-        override_path = Path(override).resolve()
-        assert override_path.exists(), f"Override CSV not found: {override_path}"
-        return override_path
-    # Resolve absolute path to the fixture regardless of cwd
-    # tests/integration/... -> parents[2] is repo root; fixture lives at tests/fixtures/sbir_sample.csv
-    return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
 
 
 def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch):
