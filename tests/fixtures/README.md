@@ -2,6 +2,10 @@
 
 This directory contains sample SBIR (Small Business Innovation Research) award data for testing purposes.
 
+**For comprehensive test data documentation, see:** [`tests/TEST_DATA.md`](../TEST_DATA.md)
+
+This includes information about using real SBIR data from `data/raw/sbir/` in tests.
+
 ## Files
 
 - `sbir_sample.csv`: Sample dataset with 100 SBIR/STTR award records
