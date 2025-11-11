@@ -136,7 +136,8 @@ markers = [
     "fast: fast unit tests (< 1 second each)",
     "integration: integration tests",
     "slow: long-running tests",
-    "e2e: end-to-end tests"
+    "e2e: end-to-end tests",
+    "real_data: tests that use real SBIR data from data/raw/sbir/ instead of fixtures"
 ]
 testpaths = ["tests", "sbir-etl/tests"]
 python_files = ["test_*.py"]

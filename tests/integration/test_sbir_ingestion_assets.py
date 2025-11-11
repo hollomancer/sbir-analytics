@@ -25,13 +25,9 @@ def _make_test_config(
     return SimpleNamespace(extraction=extraction, data_quality=data_quality)
 
 
-def _fixture_csv_path():
-    # Resolve absolute path to the fixture regardless of cwd
-    # tests/integration/... -> parents[2] is repo root; fixture lives at tests/fixtures/sbir_sample.csv
-    return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
-
-
-def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch):
+def test_materialize_raw_validated_and_report_assets(
+    tmp_path: Path, monkeypatch, sbir_csv_path: Path
+):
     """
     Integration-style test that exercises the three SBIR ingestion assets:
     - raw_sbir_awards
@@ -44,8 +40,8 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
     - Asserts that returned outputs have expected structure and that a validation report file is written
     """
     # Arrange: prepare fixture and temporary database path, and change cwd so report writes to tmp_path
-    fixture_csv = _fixture_csv_path()
-    assert fixture_csv.exists(), f"Expected fixture CSV at {fixture_csv}"
+    # sbir_csv_path fixture automatically provides the right data source (sample or real)
+    assert sbir_csv_path.exists(), f"Expected SBIR CSV at {sbir_csv_path}"
 
     db_path = tmp_path / "assets_test.duckdb"
     table_name = "sbir_assets_test"
@@ -55,7 +51,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
 
     # Build a minimal config object and monkeypatch get_config used in the assets module
     test_config = _make_test_config(
-        csv_path=str(fixture_csv),
+        csv_path=str(sbir_csv_path),
         db_path=str(db_path),
         table_name=table_name,
         pass_rate_threshold=0.0,
@@ -73,7 +69,7 @@ def test_materialize_raw_validated_and_report_assets(tmp_path: Path, monkeypatch
 
     # Assert basic properties of the raw extraction
     assert isinstance(raw_df, pd.DataFrame)
-    assert len(raw_df) == 100  # fixture contains 100 rows
+    assert len(raw_df) > 0  # Should have at least some rows (100 in sample, millions in real data)
 
     # If metadata was returned via Output metadata, validate presence of extraction timestamps and columns
     metadata = getattr(raw_output, "metadata", None) or {}

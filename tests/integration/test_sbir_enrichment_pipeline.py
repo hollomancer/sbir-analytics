@@ -9,11 +9,6 @@ import src.assets.sbir_ingestion as assets_module
 from src.enrichers.company_enricher import enrich_awards_with_companies
 
 
-def _fixture_csv_path():
-    # Resolve absolute path to the fixture regardless of cwd
-    return Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sbir_sample.csv"
-
-
 def _make_test_config(
     csv_path: str, db_path: str, table_name: str, pass_rate_threshold: float = 0.95
 ):
@@ -27,15 +22,16 @@ def _make_test_config(
     return SimpleNamespace(extraction=extraction, data_quality=data_quality)
 
 
-def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkeypatch):
+def test_enrichment_pipeline_runs_and_merges_company_data(
+    tmp_path: Path, monkeypatch, sbir_csv_path: Path
+):
     """
     Integration test:
-    - Run the raw SBIR extraction asset (uses the CSV fixture)
+    - Run the raw SBIR extraction asset (uses the CSV fixture or real data)
     - Run the company enricher against the extracted DataFrame
     - Assert enrichment metadata and merged company columns exist
     """
-    fixture_csv = _fixture_csv_path()
-    assert fixture_csv.exists(), f"Expected fixture CSV at {fixture_csv}"
+    assert sbir_csv_path.exists(), f"Expected SBIR CSV at {sbir_csv_path}"
 
     db_path = tmp_path / "assets_test.duckdb"
     table_name = "sbir_enrich_test"
@@ -43,9 +39,9 @@ def test_enrichment_pipeline_runs_and_merges_company_data(tmp_path: Path, monkey
     # Ensure the asset code writes report into tmp_path by changing cwd
     monkeypatch.chdir(tmp_path)
 
-    # Monkeypatch get_config used by the assets module to point to our fixture and temp DB
+    # Monkeypatch get_config used by the assets module to point to our data source and temp DB
     test_config = _make_test_config(
-        csv_path=str(fixture_csv),
+        csv_path=str(sbir_csv_path),
         db_path=str(db_path),
         table_name=table_name,
         pass_rate_threshold=0.0,
