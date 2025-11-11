@@ -30,7 +30,7 @@ def neo4j_config():
     return Neo4jConfig(
         uri="bolt://localhost:7687",
         username="neo4j",
-        password="test_password",
+        password="test_password",  # pragma: allowlist secret
         database="test_db",
         batch_size=1000,
     )
@@ -69,7 +69,7 @@ class TestNeo4jConfig:
         config = Neo4jConfig(
             uri="bolt://localhost:7687",
             username="neo4j",
-            password="secret",
+            password="secret",  # pragma: allowlist secret
             database="mydb",
             batch_size=500,
         )

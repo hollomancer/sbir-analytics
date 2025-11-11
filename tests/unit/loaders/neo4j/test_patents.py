@@ -1,8 +1,8 @@
 """Tests for Neo4j patents loader."""
 
-import pytest
-
 from unittest.mock import MagicMock, Mock
+
+import pytest
 
 from src.loaders.neo4j.client import Neo4jClient
 from src.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig

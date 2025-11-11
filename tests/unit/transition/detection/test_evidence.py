@@ -1,8 +1,8 @@
 """Tests for transition evidence generation."""
 
-import pytest
-
 from datetime import date
+
+import pytest
 
 from src.models.transition_models import (
     AgencySignal,

@@ -737,7 +737,7 @@ class TestGeographicResolutionModel:
             award_id="AWARD-001",
             company_uei="ABC123DEF456",
             original_address="123 Main St, Boston, MA 02101",
-            resolved_state="MA",
+            resolved_state="MA",  # pragma: allowlist secret
             resolved_city="Boston",
             resolved_zip="02101",
             resolution_method="direct",

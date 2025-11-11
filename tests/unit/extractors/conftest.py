@@ -9,7 +9,7 @@ import pytest
 def sample_vendor_filters(tmp_path):
     """Sample vendor filter JSON file."""
     filter_data = {
-        "uei": ["ABC123456789", "XYZ987654321"],
+        "uei": ["ABC123456789", "XYZ987654321"],  # pragma: allowlist secret
         "duns": ["123456789", "987654321"],
         "company_names": ["TEST COMPANY INC", "ACME CORPORATION"],
     }

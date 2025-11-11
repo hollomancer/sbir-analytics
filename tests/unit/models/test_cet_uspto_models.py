@@ -621,7 +621,7 @@ class TestPatentAssignee:
             state="MA",
             postal_code="02101",
             country="US",
-            uei="ABC123DEF456",
+            uei="ABC123DEF456",  # pragma: allowlist secret
             cage="1A2B3",
             duns="123456789",
             metadata={"source": "uspto"},

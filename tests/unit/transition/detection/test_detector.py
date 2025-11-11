@@ -91,7 +91,7 @@ def sample_award():
     return {
         "award_id": "AWD001",
         "vendor_id": "VENDOR001",
-        "vendor_uei": "ABC123DEF456",
+        "vendor_uei": "ABC123DEF456",  # pragma: allowlist secret
         "vendor_name": "Acme Corp",
         "agency": "DOD",
         "completion_date": date(2023, 6, 1),

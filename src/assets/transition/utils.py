@@ -19,6 +19,10 @@ from uuid import uuid4
 import pandas as pd
 from loguru import logger
 
+# Configuration and extractor imports (re-exported for use by other transition modules)
+from src.config.loader import get_config  # noqa: F401
+from src.extractors.contract_extractor import ContractExtractor  # noqa: F401
+from src.transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -31,8 +35,15 @@ except Exception:
 
 # Import-safe shims for Dagster
 try:
-    from dagster import AssetExecutionContext as _RealAssetExecutionContext
-    from dagster import MetadataValue, Output, asset, asset_check
+    from dagster import (
+        AssetCheckResult,
+        AssetCheckSeverity,
+        AssetExecutionContext as _RealAssetExecutionContext,
+        MetadataValue,
+        Output,
+        asset,
+        asset_check,
+    )
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:
@@ -77,6 +88,23 @@ except Exception:  # pragma: no cover
             return fn
 
         return _wrap
+
+    class AssetCheckResult:  # type: ignore
+        def __init__(
+            self,
+            passed: bool,
+            severity=None,
+            description: str = "",
+            metadata: dict | None = None,
+        ) -> None:
+            self.passed = passed
+            self.severity = severity
+            self.description = description
+            self.metadata = metadata or {}
+
+    class AssetCheckSeverity:  # type: ignore
+        ERROR = "ERROR"
+        WARN = "WARN"
 
 
 def _ensure_parent_dir(path: Path) -> None:
@@ -178,6 +206,13 @@ except Exception:
 DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
+DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
+
+# Transition loading thresholds
+TRANSITION_MIN_NODE_COUNT = _env_int("SBIR_ETL__TRANSITION__MIN_NODE_COUNT", 100)
+TRANSITION_LOAD_SUCCESS_THRESHOLD = _env_float(
+    "SBIR_ETL__TRANSITION__LOAD_SUCCESS_THRESHOLD", 0.99
+)
 
 
 def _get_neo4j_driver() -> Any:

@@ -31,7 +31,7 @@ class TestContractExtractorInitialization:
         assert len(extractor.vendor_filters["uei"]) == 2
         assert len(extractor.vendor_filters["duns"]) == 2
         assert len(extractor.vendor_filters["company_names"]) == 2
-        assert "ABC123456789" in extractor.vendor_filters["uei"]
+        assert "ABC123456789" in extractor.vendor_filters["uei"]  # pragma: allowlist secret
         assert "TEST COMPANY INC" in extractor.vendor_filters["company_names"]
 
     def test_init_without_vendor_filters(self):

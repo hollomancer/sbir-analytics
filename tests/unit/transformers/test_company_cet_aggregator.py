@@ -1,8 +1,7 @@
 """Tests for CompanyCETAggregator transformer."""
 
-import pytest
-
 import pandas as pd
+import pytest
 
 from src.transformers.company_cet_aggregator import CompanyCETAggregator
 

@@ -17,20 +17,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset_check
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
-from ..exceptions import DependencyError
-
-# Import parsed/validated assets needed for asset_check decorators
-# These need to be imported before being referenced in asset_check() calls
-from .parsing import (
-    parsed_uspto_assignments,
-    parsed_uspto_conveyances,
-    parsed_uspto_documentids,
-    validated_uspto_assignees,
-    validated_uspto_assignors,
-)
+from src.exceptions import DependencyError
 
 
 # Statistical reporting imports
@@ -290,6 +280,17 @@ def _make_parsing_check(
     return _check
 
 
+# Import parsed/validated assets needed for asset_check decorators
+# These imports must come AFTER _attempt_parse_sample is defined to avoid circular imports
+from .parsing import (
+    parsed_uspto_assignments,
+    parsed_uspto_conveyances,
+    parsed_uspto_documentids,
+    validated_uspto_assignees,
+    validated_uspto_assignors,
+)
+
+
 # Create concrete asset_check functions and bind them to the parsed assets using the decorator
 uspto_assignments_parsing_check = asset_check(
     asset=parsed_uspto_assignments,
@@ -410,7 +411,6 @@ def _normalize_country(country: str | None) -> str | None:
     return c
 
 
-@dataclass
 def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
     cfg = context.op_config or {}
     base_dir = Path(cfg.get("output_dir", DEFAULT_TRANSFORMED_DIR))

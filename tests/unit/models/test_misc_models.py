@@ -242,7 +242,7 @@ class TestCompanyModels:
         with pytest.raises(ValidationError) as exc_info:
             Company(
                 name="Test Corp",
-                duns="ABC123DEF",
+                duns="ABC123DEF",  # pragma: allowlist secret
             )
         assert "DUNS must be 9 digits" in str(exc_info.value)
 

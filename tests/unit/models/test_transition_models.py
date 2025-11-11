@@ -351,7 +351,7 @@ class TestVendorMatch:
             method="uei",
             score=1.0,
             matched_name="Acme Corporation",
-            metadata={"uei": "ABC123DEF456"},
+            metadata={"uei": "ABC123DEF456"},  # pragma: allowlist secret
         )
         assert match.vendor_id == "VENDOR-123"
         assert match.method == "uei"

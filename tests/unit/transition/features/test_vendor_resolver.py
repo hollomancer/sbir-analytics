@@ -24,7 +24,7 @@ def sample_vendors():
     """Sample vendor records for testing."""
     return [
         VendorRecord(
-            uei="ABC123DEF456",
+            uei="ABC123DEF456",  # pragma: allowlist secret
             cage="1A2B3",
             duns="123456789",
             name="Acme Corporation",

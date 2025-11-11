@@ -1,10 +1,9 @@
 """Tests for SBIR award validation rules."""
 
-import pytest
-
 from datetime import date
 
 import pandas as pd
+import pytest
 
 from src.models.quality import QualitySeverity
 from src.validators.sbir_awards import (
@@ -498,7 +497,7 @@ class TestValidateSBIRAwardRecord:
                 "Program": "SBIR",
                 "Award Year": 2020,
                 "Award Amount": 150000,
-                "UEI": "ABC123DEF456",
+                "UEI": "ABC123DEF456",  # pragma: allowlist secret
                 "Duns": "123456789",
                 "Contact Email": "contact@acme.com",
                 "PI Email": "pi@acme.com",

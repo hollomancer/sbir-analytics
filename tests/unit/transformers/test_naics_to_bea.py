@@ -1,13 +1,12 @@
 """Tests for NAICS to BEA mapper."""
 
-import pytest
-
-import csv
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
+import csv
+import tempfile
 
 import pandas as pd
+import pytest
 
 from src.transformers.naics_to_bea import NAICSToBEAMapper
 
