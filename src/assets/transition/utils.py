@@ -19,6 +19,10 @@ from uuid import uuid4
 import pandas as pd
 from loguru import logger
 
+# Configuration and extractor imports
+from src.config.loader import get_config
+from src.extractors.contract_extractor import ContractExtractor
+from src.transition.features.vendor_resolver import VendorRecord, VendorResolver
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -202,6 +206,13 @@ except Exception:
 DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
+DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
+
+# Transition loading thresholds
+TRANSITION_MIN_NODE_COUNT = _env_int("SBIR_ETL__TRANSITION__MIN_NODE_COUNT", 100)
+TRANSITION_LOAD_SUCCESS_THRESHOLD = _env_float(
+    "SBIR_ETL__TRANSITION__LOAD_SUCCESS_THRESHOLD", 0.99
+)
 
 
 def _get_neo4j_driver() -> Any:
