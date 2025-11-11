@@ -3,19 +3,17 @@ from pathlib import Path
 
 import pytest
 
-
-pytestmark = pytest.mark.fast
-
-
 pytest.importorskip("dagster")
 from dagster import build_asset_context
-
 
 pytest.importorskip("pandas")
 
 transformation_assets = pytest.importorskip(
     "src.assets.uspto_assets", reason="uspto assets module missing"
 )
+
+
+pytestmark = pytest.mark.fast
 
 
 def _get_compute_fn(asset_def):
