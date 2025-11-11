@@ -3,17 +3,17 @@
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+import numpy as np
+import pandas as pd
+import pytest
+
+from src.transformers.fiscal.sensitivity import (
     FiscalParameterSweep,
     FiscalUncertaintyQuantifier,
     ParameterRange,
     ParameterScenario,
     UncertaintyResult,
 )
-import numpy as np
-import pandas as pd
-import pytest
-
-from src.transformers.fiscal.sensitivity import (
 
 
 pytestmark = pytest.mark.fast

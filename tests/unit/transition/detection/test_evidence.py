@@ -2,6 +2,9 @@
 
 from datetime import date
 
+import pytest
+
+from src.models.transition_models import (
     AgencySignal,
     CETSignal,
     CompetitionSignal,
@@ -14,9 +17,6 @@ from datetime import date
     TransitionSignals,
     VendorMatch,
 )
-import pytest
-
-from src.models.transition_models import (
 from src.transition.detection.evidence import EvidenceGenerator
 
 
