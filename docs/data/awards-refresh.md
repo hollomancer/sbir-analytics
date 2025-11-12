@@ -8,6 +8,7 @@ Weekly automation keeps the canonical SBIR.gov CSV (`data/raw/sbir/award_data.cs
 - **Triggers:** scheduled cron + `workflow_dispatch` with `force_refresh` (bool) and `source_url` (string) inputs
 - **Branch / commit:** `data-refresh/<YYYY-MM-DD>` with commit `chore(data): refresh sbir awards <YYYY-MM-DD>`
 - **Owners:** `@sbir-etl/data-stewards` (see `.github/CODEOWNERS`)
+- **Neo4j:** Optionally loads to Neo4j Aura (see [Neo4j Aura Setup](neo4j-aura-setup.md))
 
 ### Execution steps
 
