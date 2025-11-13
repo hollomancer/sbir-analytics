@@ -120,8 +120,30 @@ def neo4j_sbir_awards(
                                 normalized_dict[normalized_key] = int(value)
                             else:
                                 normalized_dict[normalized_key] = value
+                        # Special handling for zip - convert '-' placeholder to None
+                        elif normalized_key == "zip" and isinstance(value, str) and value.strip() == "-":
+                            normalized_dict[normalized_key] = None
+                        # Special handling for DUNS - pad short DUNS with leading zeros
+                        elif normalized_key == "duns" and isinstance(value, str):
+                            # Strip hyphens and extract digits
+                            digits = "".join(ch for ch in value if ch.isdigit())
+                            # Pad with leading zeros if 7-8 digits (some old DUNS were 7-8 digits)
+                            if 7 <= len(digits) <= 8:
+                                normalized_dict[normalized_key] = digits.zfill(9)
+                            else:
+                                normalized_dict[normalized_key] = value
+                        # Special handling for boolean fields - convert 'U' (Unknown) to None
+                        elif normalized_key in ("hubzone_owned", "woman_owned", "socially_and_economically_disadvantaged") and value == "U":
+                            normalized_dict[normalized_key] = None
                         else:
                             normalized_dict[normalized_key] = value
+
+                # Skip records with zero or missing award amounts (likely cancelled/placeholder awards)
+                award_amount = normalized_dict.get("award_amount")
+                if award_amount is None or (isinstance(award_amount, (int, float)) and award_amount <= 0):
+                    logger.debug(f"Skipping award with zero/missing amount: {normalized_dict.get('award_id', 'unknown')}")
+                    failed_count += 1
+                    continue
 
                 award = Award.from_sbir_csv(normalized_dict)
 
