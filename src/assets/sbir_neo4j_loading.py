@@ -81,8 +81,13 @@ def neo4j_sbir_awards(
         for _, row in validated_sbir_awards.iterrows():
             try:
                 # Convert row dict to Award model
+                # Normalize column names: lowercase and replace spaces with underscores
                 row_dict = row.to_dict()
-                award = Award.from_sbir_csv(row_dict)
+                normalized_dict = {
+                    key.lower().replace(" ", "_"): value
+                    for key, value in row_dict.items()
+                }
+                award = Award.from_sbir_csv(normalized_dict)
 
                 # Create Award node properties
                 award_props = {
