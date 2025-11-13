@@ -470,6 +470,16 @@ logger.error(f"USAspending query failed for company {uei}: {error}")
    - Verify query performance
    - Test with large result sets
 
+### Validation Dataset
+
+The system will be validated against a real-world dataset of high-volume SBIR companies:
+- **File**: `data/raw/sbir/over-100-awards-company_search_1763075384.csv`
+- **Companies**: 200+ companies with 100+ SBIR awards each
+- **Fields**: Company Name, UEI, DUNS, Number Awards, Address, etc.
+- **Purpose**: Validate categorization accuracy on companies with substantial contract portfolios
+
+This dataset represents the most active SBIR participants and provides a robust test of the classification system's ability to handle companies with diverse contract portfolios.
+
 ### Test Data
 
 ```python

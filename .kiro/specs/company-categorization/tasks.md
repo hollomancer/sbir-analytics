@@ -195,6 +195,15 @@ This implementation plan breaks down the company categorization feature into dis
     - Verify metadata is populated correctly
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
+  - [ ] 8.6 Validate against high-volume SBIR companies
+    - Load companies from `data/raw/sbir/over-100-awards-company_search_1763075384.csv`
+    - Run categorization on all 200+ companies with 100+ awards each
+    - Verify categorization completes successfully for all companies
+    - Analyze classification distribution (Product/Service/Mixed/Uncertain percentages)
+    - Spot-check 10-20 companies manually to validate classification accuracy
+    - Generate validation report with classification statistics
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 8.1, 8.2, 8.3, 8.4, 8.5_
+
 - [ ] 9. Add documentation
   - [ ]* 9.1 Create module docstrings
     - Document `company_categorization.py` module purpose and usage
