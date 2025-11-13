@@ -106,7 +106,11 @@ def neo4j_sbir_awards(
         award_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
         award_researcher_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
         award_institution_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
-        failed_count = 0
+
+        # Track skip reasons
+        skipped_zero_amount = 0
+        skipped_no_company_id = 0
+        validation_errors = 0
 
         for _, row in validated_sbir_awards.iterrows():
             try:
@@ -154,8 +158,16 @@ def neo4j_sbir_awards(
                 # Skip records with zero or missing award amounts (likely cancelled/placeholder awards)
                 award_amount = normalized_dict.get("award_amount")
                 if award_amount is None or (isinstance(award_amount, (int, float)) and award_amount <= 0):
-                    logger.debug(f"Skipping award with zero/missing amount: {normalized_dict.get('award_id', 'unknown')}")
-                    failed_count += 1
+                    # Try to identify the award for logging
+                    tracking = normalized_dict.get("agency_tracking_number", "")
+                    contract = normalized_dict.get("contract", "")
+                    company = normalized_dict.get("company", "")
+                    award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
+
+                    if skipped_zero_amount < 10:  # Only log first 10 to avoid spam
+                        logger.debug(f"Skipping award with zero/missing amount: {award_id_hint} (amount={award_amount})")
+                    skipped_zero_amount += 1
+                    metrics.errors += 1
                     continue
 
                 award = Award.from_sbir_csv(normalized_dict)
@@ -190,6 +202,11 @@ def neo4j_sbir_awards(
                     company_id = award.company_uei
                 elif award.company_duns:
                     company_id = f"DUNS:{award.company_duns}"
+                else:
+                    # Track awards without company identifiers
+                    if skipped_no_company_id < 10:
+                        logger.debug(f"Award {award.award_id} has no UEI or DUNS - cannot link to Company")
+                    skipped_no_company_id += 1
 
                 if company_id:
                     if company_id not in company_nodes_map:
@@ -291,7 +308,9 @@ def neo4j_sbir_awards(
                     )
 
             except Exception as e:
-                logger.warning(f"Failed to process award row: {e}")
+                if validation_errors < 10:  # Only log first 10 validation errors
+                    logger.warning(f"Failed to process award row: {e}")
+                validation_errors += 1
                 metrics.errors += 1
 
         # Load Company nodes first
@@ -347,6 +366,35 @@ def neo4j_sbir_awards(
             metrics = rel_metrics
             context.log.info(f"Created {len(award_institution_rels)} CONDUCTED_AT relationships")
 
+        # Log comprehensive summary of processing results
+        total_rows = len(validated_sbir_awards)
+        successfully_processed = len(award_nodes)
+        total_skipped = skipped_zero_amount + skipped_no_company_id + validation_errors
+
+        logger.info("=" * 80)
+        logger.info("Neo4j SBIR Awards Loading Summary")
+        logger.info("=" * 80)
+        logger.info(f"Total rows processed: {total_rows}")
+        logger.info(f"Successfully processed: {successfully_processed} ({successfully_processed/total_rows*100:.1f}%)")
+        logger.info(f"Total skipped/failed: {total_skipped} ({total_skipped/total_rows*100:.1f}%)")
+        logger.info("")
+        logger.info("Skip/Failure Breakdown:")
+        logger.info(f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount/total_rows*100:.1f}%)")
+        logger.info(f"  • No company identifier (no UEI/DUNS): {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
+        logger.info(f"  • Validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
+        logger.info("")
+        logger.info("Nodes Created/Updated:")
+        logger.info(f"  • Awards: {len(award_nodes)} nodes")
+        logger.info(f"  • Companies: {len(company_nodes_map)} unique nodes")
+        logger.info(f"  • Researchers: {len(researcher_nodes_map)} unique nodes")
+        logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
+        logger.info("")
+        logger.info("Relationships Created:")
+        logger.info(f"  • AWARDED_TO: {len(award_company_rels)} relationships")
+        logger.info(f"  • RESEARCHED_BY: {len(award_researcher_rels)} relationships")
+        logger.info(f"  • CONDUCTED_AT: {len(award_institution_rels)} relationships")
+        logger.info("=" * 80)
+
         duration = time.time() - start_time
 
         result = {
@@ -362,6 +410,13 @@ def neo4j_sbir_awards(
             "relationships_created": sum(metrics.relationships_created.values()),
             "errors": metrics.errors,
             "duration_seconds": duration,
+            "total_rows_processed": total_rows,
+            "successfully_processed": successfully_processed,
+            "skip_reasons": {
+                "zero_or_missing_amount": skipped_zero_amount,
+                "no_company_identifier": skipped_no_company_id,
+                "validation_errors": validation_errors,
+            },
             "metrics": {
                 "nodes_created": metrics.nodes_created,
                 "nodes_updated": metrics.nodes_updated,
