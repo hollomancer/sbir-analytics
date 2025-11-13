@@ -55,12 +55,15 @@ This document outlines strategies for transitioning the SBIR ETL pipeline from l
 - Can be complex to configure
 - Potential vendor lock-in with proprietary services
 
-**Estimated Monthly Cost:** $300-800
-- Neo4j Aura Professional: $100-300/month
+**Estimated Monthly Cost:** $200-600 (with incremental plan)
+- Neo4j Aura Incremental: $65-150/month (pay-as-you-go)
+- Neo4j Aura Professional: $100-300/month (reserved capacity)
 - ECS Fargate (daily 30-min runs): $50-100/month
 - S3 storage (100GB): $3/month
 - Data transfer: $50-100/month
 - CloudWatch: $50/month
+
+💡 **Cost Tip:** Start with Neo4j Aura's incremental/pay-as-you-go plan to minimize upfront costs during migration and testing. Scale to Professional tier only if sustained workload requires reserved capacity.
 
 ---
 
@@ -622,9 +625,12 @@ jobs:
 
 | Provider | Database | Compute | Storage | Total Monthly |
 |----------|----------|---------|---------|---------------|
-| **AWS** | Neo4j Aura Pro: $200 | ECS Fargate: $75 | S3: $3 | **$278** |
+| **AWS** (Incremental) | Neo4j Aura: $80 | ECS Fargate: $75 | S3: $3 | **$158** |
+| **AWS** (Professional) | Neo4j Aura Pro: $200 | ECS Fargate: $75 | S3: $3 | **$278** |
 | **Azure** | Neo4j on VM: $175 | ACI: $60 | Blob: $2 | **$237** |
 | **GCP** | Neo4j on VM: $150 | Cloud Run: $45 | GCS: $2 | **$197** |
+
+💡 **Note:** AWS with Neo4j Aura Incremental plan offers the best starting price at ~$158/month. Upgrade to Professional tier ($278/month) only when you need guaranteed reserved capacity or advanced features.
 
 **Cost Optimization Tips:**
 1. **Use committed use discounts** (save 30-50% for 1-3 year commits)
@@ -672,15 +678,16 @@ If on-premise infrastructure costs > $200/month (including maintenance time), cl
 2. **Excellent container ecosystem** - ECS Fargate provides serverless containers
 3. **Keep Dagster** - Maintains familiar orchestration, reduces refactoring
 4. **Balanced effort** - 4-6 weeks is reasonable for production-ready migration
-5. **Cost-effective** - ~$280/month with room for optimization
-6. **Scalable** - Can grow with your needs
+5. **💰 Most cost-effective** - ~$158/month with Incremental plan (lowest of all options!)
+6. **Scalable** - Can grow with your needs without manual provisioning
 
-### Alternative for Budget-Conscious Teams: **Strategy D (Hybrid) on GCP**
+### Alternative for Self-Hosted Preference: **Strategy D (Hybrid) on GCP**
 
 **Rationale:**
-1. **Lowest cost** - ~$200/month with Cloud Run's generous free tier
+1. **Self-hosted control** - ~$197/month with self-managed Neo4j on Compute Engine
 2. **Good for daily pipelines** - Cloud Run is perfect for scheduled workloads
 3. **Less infrastructure** - Simpler than full ECS/EKS setup
+4. **BigQuery integration** - Easy expansion to data warehouse if needed
 
 ### Quick Start Option: **Strategy A (Lift & Shift)**
 
@@ -749,11 +756,31 @@ Instead of self-hosting Dagster, consider **Dagster Cloud**:
 - Free tier available for evaluation
 
 ### Neo4j Aura Sizing Guide
-- **Free Tier:** 200MB storage (good for testing)
-- **Professional:** $100-300/month (good for production)
-- **Enterprise:** $1000+/month (high availability, advanced features)
 
-Start with Professional tier and monitor usage.
+**Recommended Approach:** Start with Incremental plan, upgrade only if needed
+
+| Tier | Cost | Storage | When to Use |
+|------|------|---------|-------------|
+| **Free** | $0 | 200MB | Testing, proof-of-concept only |
+| **Incremental** | **$65-150/month** | **Pay-as-you-go** | **🎯 Start here! Perfect for daily pipelines with variable usage** |
+| **Professional** | $200-400/month | Reserved capacity | High-availability needs, predictable workloads |
+| **Enterprise** | $1000+/month | Multi-region, advanced features | Mission-critical, 24/7 uptime requirements |
+
+**Migration Strategy:**
+1. **Phase 1-3 (Testing):** Use Free tier for proof-of-concept
+2. **Phase 4-5 (Initial Production):** Migrate to Incremental plan (~$80-100/month)
+3. **Phase 6+ (Optimization):** Monitor usage patterns
+   - If daily usage is consistent → Consider Professional for cost savings
+   - If usage is sporadic/variable → Stay on Incremental plan
+
+**Key Advantage of Incremental Plan:**
+- ✅ Pay only for actual storage + compute used
+- ✅ No upfront capacity commitment
+- ✅ Automatically scales with workload
+- ✅ Perfect for daily batch jobs (pipeline runs 30 min/day)
+- ✅ Can handle growth without manual provisioning
+
+For a daily ETL pipeline processing ~533K awards, the Incremental plan should cost $80-120/month, significantly less than reserved Professional tier.
 
 ---
 
