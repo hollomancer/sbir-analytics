@@ -7,17 +7,21 @@ Key Features:
 - Unified name normalization with configurable suffix handling
 - Consistent punctuation and whitespace handling
 - Support for both "normalize" and "remove" suffix strategies
+- Optional enhanced abbreviations support
 """
 
 from __future__ import annotations
 
 import re
+from typing import Any
 
 
 def normalize_name(
     name: str | None,
     *,
     remove_suffixes: bool = False,
+    apply_abbreviations: bool = False,
+    abbreviations: dict[str, str] | None = None,
 ) -> str:
     """Normalize a company or recipient name for fuzzy matching.
 
@@ -29,6 +33,8 @@ def normalize_name(
         name: Company or recipient name to normalize
         remove_suffixes: If True, remove business suffixes entirely.
                         If False, normalize them to standard forms.
+        apply_abbreviations: If True, apply abbreviation dictionary
+        abbreviations: Custom abbreviation dict (if None, uses enhanced_matching.ENHANCED_ABBREVIATIONS)
 
     Returns:
         Normalized name string (lowercase, normalized punctuation/whitespace)
@@ -40,6 +46,8 @@ def normalize_name(
         'acme'
         >>> normalize_name("TechCorp Incorporated")
         'techcorp inc'
+        >>> normalize_name("Advanced Technologies", apply_abbreviations=True)
+        'adv tech'
     """
     if not name:
         return ""
@@ -61,6 +69,22 @@ def normalize_name(
         s = re.sub(r"\b(incorporated|incorporation)\b", "inc", s)
         s = re.sub(r"\b(company|co)\b", "company", s)
         s = re.sub(r"\b(limited|ltd)\b", "ltd", s)
+
+    # Apply abbreviations if requested
+    if apply_abbreviations:
+        if abbreviations is None:
+            # Import here to avoid circular dependency
+            try:
+                from .enhanced_matching import ENHANCED_ABBREVIATIONS
+
+                abbreviations = ENHANCED_ABBREVIATIONS
+            except ImportError:  # pragma: no cover
+                abbreviations = {}
+
+        if abbreviations:
+            tokens = s.split()
+            normalized_tokens = [abbreviations.get(token, token) for token in tokens]
+            s = " ".join(normalized_tokens)
 
     # Collapse whitespace
     s = re.sub(r"\s+", " ", s).strip()
