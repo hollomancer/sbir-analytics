@@ -13,6 +13,23 @@ from ..config.loader import get_config
 from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 from ..models.award import Award
 
+# State name to code mapping
+STATE_NAME_TO_CODE = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA",
+    "colorado": "CO", "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA",
+    "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA",
+    "kansas": "KS", "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV", "new hampshire": "NH",
+    "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC",
+    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA",
+    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
+    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
+    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
+    "puerto rico": "PR", "guam": "GU", "virgin islands": "VI", "american samoa": "AS",
+    "northern mariana islands": "MP",
+}
+
 
 def _get_neo4j_client() -> Neo4jClient | None:
     """Get Neo4j client from configuration, or None if unavailable."""
@@ -82,11 +99,22 @@ def neo4j_sbir_awards(
             try:
                 # Convert row dict to Award model
                 # Normalize column names: lowercase and replace spaces with underscores
+                # Also convert pandas NaN to None for proper Pydantic validation
                 row_dict = row.to_dict()
-                normalized_dict = {
-                    key.lower().replace(" ", "_"): value
-                    for key, value in row_dict.items()
-                }
+                normalized_dict = {}
+                for key, value in row_dict.items():
+                    normalized_key = key.lower().replace(" ", "_")
+                    # Convert pandas NaN/NA to None
+                    if pd.isna(value):
+                        normalized_dict[normalized_key] = None
+                    else:
+                        # Special handling for state - convert full name to 2-letter code
+                        if normalized_key == "state" and isinstance(value, str):
+                            state_lower = value.strip().lower()
+                            normalized_dict[normalized_key] = STATE_NAME_TO_CODE.get(state_lower, value)
+                        else:
+                            normalized_dict[normalized_key] = value
+
                 award = Award.from_sbir_csv(normalized_dict)
 
                 # Create Award node properties
