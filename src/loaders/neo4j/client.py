@@ -1,5 +1,7 @@
 """Neo4j client wrapper for batch loading and transaction management."""
 
+import hashlib
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -28,6 +30,22 @@ class LoadMetrics(BaseModel):
     relationships_created: dict[str, int] = Field(default_factory=dict)
     errors: int = 0
     duration_seconds: float = 0.0
+
+
+def _compute_node_hash(properties: dict[str, Any]) -> str:
+    """Compute a stable hash of node properties for change detection.
+
+    Args:
+        properties: Dictionary of node properties
+
+    Returns:
+        MD5 hash of the serialized properties
+    """
+    # Remove any internal properties that shouldn't affect the hash
+    clean_props = {k: v for k, v in properties.items() if not k.startswith("__")}
+    # Sort keys for consistent hashing
+    stable_json = json.dumps(clean_props, sort_keys=True, default=str)
+    return hashlib.md5(stable_json.encode()).hexdigest()
 
 
 class Neo4jClient:
@@ -175,6 +193,10 @@ class Neo4jClient:
     ) -> LoadMetrics:
         """Batch upsert nodes with transaction management using UNWIND for performance.
 
+        Only updates nodes when their properties have actually changed, determined by
+        comparing a hash of the property values. This significantly improves performance
+        when re-loading data that hasn't changed.
+
         Args:
             label: Node label
             key_property: Property name for matching
@@ -209,15 +231,26 @@ class Neo4jClient:
                 if not valid_batch:
                     continue
 
+                # Add hash to each node for change detection
+                for node in valid_batch:
+                    node["__hash"] = _compute_node_hash(node)
+
                 try:
                     # Use UNWIND to batch process all nodes in a single query
+                    # Only update nodes when their hash has changed
                     query = f"""
                     UNWIND $batch AS node
                     MERGE (n:{label} {{{key_property}: node.{key_property}}})
-                    ON CREATE SET n = node, n.__created = true
-                    ON MATCH SET n += node, n.__created = false
-                    RETURN count(CASE WHEN n.__created THEN 1 END) as created_count,
-                           count(CASE WHEN NOT n.__created THEN 1 END) as updated_count
+                    ON CREATE SET n = node, n.__new = true
+                    ON MATCH SET n.__new = false
+                    WITH n, node,
+                        CASE WHEN NOT n.__new AND (n.__hash IS NULL OR n.__hash <> node.__hash)
+                             THEN true ELSE false END AS needs_update
+                    FOREACH (x IN CASE WHEN needs_update THEN [1] ELSE [] END |
+                        SET n += node
+                    )
+                    RETURN count(CASE WHEN n.__new THEN 1 END) as created_count,
+                           count(CASE WHEN needs_update THEN 1 END) as updated_count
                     """
 
                     result = session.run(query, batch=valid_batch)
@@ -229,8 +262,8 @@ class Neo4jClient:
                     # Clean up temporary flags
                     cleanup_query = f"""
                     MATCH (n:{label})
-                    WHERE n.__created IS NOT NULL
-                    REMOVE n.__created
+                    WHERE n.__new IS NOT NULL
+                    REMOVE n.__new
                     """
                     session.run(cleanup_query)
 
