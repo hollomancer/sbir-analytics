@@ -221,58 +221,73 @@ class Award(BaseModel):
         """Normalize and validate UEI if provided.
 
         This validator strips any non-alphanumeric characters (hyphens, spaces,
-        etc.) from the input and then expects the remaining characters to be a
-        12-character alphanumeric UEI. The returned value is uppercased.
+        etc.) from the input. If the result is exactly 12 characters, returns
+        the uppercased UEI. Otherwise, returns None (lenient - accept bad data
+        rather than rejecting the entire record).
         """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("Company UEI must be a string")
+            return None  # Lenient: return None for non-string
         # Remove non-alphanumeric characters commonly present in raw input (spaces, hyphens)
         cleaned = "".join(ch for ch in v if ch.isalnum()).strip()
         if len(cleaned) != 12:
-            raise ValueError(
-                "Company UEI must be a 12-character alphanumeric string after removing separators"
-            )
+            # Lenient: return None instead of raising exception
+            return None
         return cleaned.upper()
 
     @field_validator("company_duns")
     @classmethod
     def validate_company_duns(cls, v: str | None) -> str | None:
-        """Normalize and validate DUNS if provided: must contain 9 digits."""
+        """Normalize and validate DUNS if provided.
+
+        Returns 9-digit DUNS if valid, None if invalid (lenient - accept bad
+        data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("DUNS must be provided as a string")
+            return None  # Lenient: return None for non-string
         digits = "".join(ch for ch in v if ch.isdigit())
         if len(digits) != 9:
-            raise ValueError("DUNS must contain exactly 9 digits")
+            # Lenient: return None instead of raising exception
+            return None
         return digits
 
     @field_validator("company_state")
     @classmethod
     def validate_company_state(cls, v: str | None) -> str | None:
-        """Normalize state code to uppercase 2-letter code."""
+        """Normalize state code to uppercase 2-letter code.
+
+        Returns uppercased 2-letter code if valid, None if invalid (lenient -
+        accept bad data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("State must be a string")
+            return None  # Lenient: return None for non-string
         code = v.strip().upper()
         if len(code) != 2:
-            raise ValueError("State code must be 2 letters")
+            # Lenient: return None instead of raising exception
+            return None
         return code
 
     @field_validator("company_zip")
     @classmethod
     def validate_company_zip(cls, v: str | None) -> str | None:
-        """Normalize ZIP to digits and validate 5 or 9 digits."""
+        """Normalize ZIP to digits and validate 5 or 9 digits.
+
+        Returns digits-only ZIP if valid (5 or 9 digits), None if invalid
+        (lenient - accept bad data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("ZIP must be a string")
+            return None  # Lenient: return None for non-string
         digits = "".join(ch for ch in v if ch.isdigit())
         if len(digits) not in (5, 9):
-            raise ValueError("ZIP code must be 5 or 9 digits")
+            # Lenient: return None instead of raising exception
+            return None
         return digits
 
     @field_validator("number_of_employees", mode="before")
@@ -300,12 +315,17 @@ class Award(BaseModel):
 
         Awards should not be dated in the future. This catches data entry errors
         or placeholder dates that should be cleaned.
+
+        Note: This is now lenient - it accepts future dates with a warning logged
+        rather than rejecting the record.
         """
         from datetime import date as date_cls
+        from loguru import logger
 
         today = date_cls.today()
         if v > today:
-            raise ValueError(f"Award date cannot be in the future (got {v}, today is {today})")
+            # Lenient: log warning but accept the date
+            logger.warning(f"Award date is in the future: {v} (today: {today})")
         return v
 
     @field_validator("proposal_award_date")
@@ -315,32 +335,44 @@ class Award(BaseModel):
 
         Proposal dates should precede or match award dates - it doesn't make sense
         for a proposal to be dated after the award decision.
+
+        Note: This is now lenient - it accepts reversed dates with a warning logged
+        rather than rejecting the record.
         """
         if v is None:
             return v
+        from loguru import logger
+
         award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
         if award_date_val and isinstance(award_date_val, date):
             # Proposal should be before or on the same day as award
             if v > award_date_val:
-                raise ValueError(
-                    f"Proposal date ({v}) cannot be after award date ({award_date_val})"
+                # Lenient: log warning but accept the date
+                logger.warning(
+                    f"Proposal date ({v}) is after award date ({award_date_val})"
                 )
         return v
 
     @field_validator("contract_start_date")
     @classmethod
     def validate_contract_start_not_future(cls: Any, v: date | None) -> date | None:
-        """Validate that contract_start_date is not unreasonably far in the future."""
+        """Validate that contract_start_date is not unreasonably far in the future.
+
+        Note: This is now lenient - it accepts far-future dates with a warning logged
+        rather than rejecting the record.
+        """
         if v is None:
             return v
         from datetime import date as date_cls
+        from loguru import logger
 
         today = date_cls.today()
         # Allow up to 2 years in the future for planned contracts
         max_future_date = date_cls(today.year + 2, today.month, today.day)
         if v > max_future_date:
-            raise ValueError(
-                f"Contract start date ({v}) is unreasonably far in future (max: {max_future_date})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract start date ({v}) is far in future (max expected: {max_future_date})"
             )
         return v
 
@@ -352,22 +384,28 @@ class Award(BaseModel):
         Checks:
         1. End date >= start date (if both present)
         2. End date >= proposal/award date (if both present)
+
+        Note: This is now lenient - it accepts invalid date orders with a warning logged
+        rather than rejecting the record.
         """
         if v is None:
             return v
+        from loguru import logger
 
         # Check against contract_start_date if present
         start = info.data.get("contract_start_date") if hasattr(info, "data") else None
         if start and isinstance(start, date) and v < start:
-            raise ValueError(
-                f"Contract end date ({v}) must be on or after start date ({start})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract end date ({v}) is before start date ({start})"
             )
 
         # Check against proposal_award_date if present
         proposal = info.data.get("proposal_award_date") if hasattr(info, "data") else None
         if proposal and isinstance(proposal, date) and v < proposal:
-            raise ValueError(
-                f"Contract end date ({v}) must be on or after proposal date ({proposal})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract end date ({v}) is before proposal date ({proposal})"
             )
 
         return v
@@ -430,6 +468,7 @@ class Award(BaseModel):
             "phase",
             "program",
             "award_amount",
+            "award_date",  # Add award_date to list of copied fields
             "award_year",
             "proposal_award_date",
             "contract_end_date",

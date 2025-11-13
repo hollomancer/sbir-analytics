@@ -337,17 +337,17 @@ class TestAwardModel:
         assert award.company_uei == "ABC123DEF456"
 
     def test_company_uei_validator_rejects_wrong_length(self):
-        """Test company_uei validator rejects non-12-character UEI."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-18",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_uei="ABC123",
-            )
-        assert "Company UEI must be a 12-character alphanumeric string" in str(exc_info.value)
+        """Test company_uei validator returns None for non-12-character UEI (lenient)."""
+        award = Award(
+            award_id="TEST-18",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_uei="ABC123",  # Too short, should become None
+        )
+        # Lenient: invalid UEI is set to None instead of raising exception
+        assert award.company_uei is None
 
     def test_company_duns_validator_extracts_digits(self):
         """Test company_duns validator extracts 9 digits."""
@@ -362,17 +362,17 @@ class TestAwardModel:
         assert award.company_duns == "123456789"
 
     def test_company_duns_validator_rejects_wrong_length(self):
-        """Test company_duns validator rejects non-9-digit DUNS."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-20",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_duns="12345",
-            )
-        assert "DUNS must contain exactly 9 digits" in str(exc_info.value)
+        """Test company_duns validator returns None for non-9-digit DUNS (lenient)."""
+        award = Award(
+            award_id="TEST-20",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_duns="12345",  # Too short, should become None
+        )
+        # Lenient: invalid DUNS is set to None instead of raising exception
+        assert award.company_duns is None
 
     def test_company_state_validator_normalizes_to_uppercase(self):
         """Test company_state validator normalizes to uppercase."""
@@ -387,17 +387,17 @@ class TestAwardModel:
         assert award.company_state == "CA"
 
     def test_company_state_validator_rejects_invalid_length(self):
-        """Test company_state validator rejects non-2-letter codes."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-22",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_state="CAL",
-            )
-        assert "State code must be 2 letters" in str(exc_info.value)
+        """Test company_state validator returns None for non-2-letter codes (lenient)."""
+        award = Award(
+            award_id="TEST-22",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_state="CAL",  # Too long, should become None
+        )
+        # Lenient: invalid state code is set to None instead of raising exception
+        assert award.company_state is None
 
     def test_company_zip_validator_extracts_5_digits(self):
         """Test company_zip validator accepts 5-digit ZIP."""
@@ -424,17 +424,17 @@ class TestAwardModel:
         assert award.company_zip == "021011234"
 
     def test_company_zip_validator_rejects_invalid_length(self):
-        """Test company_zip validator rejects invalid digit count."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-25",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_zip="123",
-            )
-        assert "ZIP code must be 5 or 9 digits" in str(exc_info.value)
+        """Test company_zip validator returns None for invalid digit count (lenient)."""
+        award = Award(
+            award_id="TEST-25",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_zip="123",  # Too short, should become None
+        )
+        # Lenient: invalid ZIP code is set to None instead of raising exception
+        assert award.company_zip is None
 
     def test_number_of_employees_validator_coerces_string(self):
         """Test number_of_employees validator coerces string to int."""
@@ -475,18 +475,19 @@ class TestAwardModel:
         assert award.contract_end_date == date(2023, 12, 31)
 
     def test_contract_end_date_validator_rejects_before_start(self):
-        """Test contract_end_date validator rejects end before start."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-29",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                proposal_award_date=date(2023, 12, 31),
-                contract_end_date=date(2023, 1, 1),
-            )
-        assert "contract_end_date must be on or after proposal_award_date" in str(exc_info.value)
+        """Test contract_end_date validator accepts end before start with warning (lenient)."""
+        # Lenient: invalid date order is accepted with a warning instead of raising exception
+        award = Award(
+            award_id="TEST-29",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            proposal_award_date=date(2023, 12, 31),
+            contract_end_date=date(2023, 1, 1),  # Before proposal date, but accepted
+        )
+        # Award is created successfully despite invalid date order
+        assert award.contract_end_date == date(2023, 1, 1)
 
     def test_field_aliases_company_name(self):
         """Test 'company' alias maps to company_name."""
