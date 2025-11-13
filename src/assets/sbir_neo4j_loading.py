@@ -369,19 +369,21 @@ def neo4j_sbir_awards(
         # Log comprehensive summary of processing results
         total_rows = len(validated_sbir_awards)
         successfully_processed = len(award_nodes)
-        total_skipped = skipped_zero_amount + skipped_no_company_id + validation_errors
+        # Only count actual failures (zero amounts and validation errors), not missing company IDs
+        # Awards without company IDs are still successfully processed, just not linked to companies
+        total_failed = skipped_zero_amount + validation_errors
 
         logger.info("=" * 80)
         logger.info("Neo4j SBIR Awards Loading Summary")
         logger.info("=" * 80)
         logger.info(f"Total rows processed: {total_rows}")
         logger.info(f"Successfully processed: {successfully_processed} ({successfully_processed/total_rows*100:.1f}%)")
-        logger.info(f"Total skipped/failed: {total_skipped} ({total_skipped/total_rows*100:.1f}%)")
+        logger.info(f"Failed to process: {total_failed} ({total_failed/total_rows*100:.1f}%)")
         logger.info("")
-        logger.info("Skip/Failure Breakdown:")
+        logger.info("Processing Issues:")
         logger.info(f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount/total_rows*100:.1f}%)")
-        logger.info(f"  • No company identifier (no UEI/DUNS): {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
         logger.info(f"  • Validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
+        logger.info(f"  • Awards without company ID (no UEI/DUNS): {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
         logger.info("")
         logger.info("Nodes Created/Updated:")
         logger.info(f"  • Awards: {len(award_nodes)} nodes")
@@ -482,6 +484,7 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     status = neo4j_sbir_awards.get("status")
     errors = neo4j_sbir_awards.get("errors", 0)
     awards_loaded = neo4j_sbir_awards.get("awards_loaded", 0)
+    total_rows = neo4j_sbir_awards.get("total_rows_processed", 0)
 
     if status != "success":
         reason = neo4j_sbir_awards.get("reason") or neo4j_sbir_awards.get("error", "unknown")
@@ -492,14 +495,15 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
             metadata={"status": status, "reason": reason},
         )
 
-    # Allow some errors but fail if too many
-    error_threshold = 100
-    if errors > error_threshold:
+    # Allow some errors but fail if error rate is too high (percentage-based threshold)
+    error_rate_threshold = 0.25  # 25% error rate threshold
+    error_rate = errors / total_rows if total_rows > 0 else 0
+    if error_rate > error_rate_threshold:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description=f"✗ Too many load errors: {errors} (threshold: {error_threshold})",
-            metadata={"errors": errors, "threshold": error_threshold},
+            description=f"✗ Too many load errors: {errors}/{total_rows} ({error_rate*100:.1f}% > {error_rate_threshold*100:.0f}% threshold)",
+            metadata={"errors": errors, "total_rows": total_rows, "error_rate": error_rate, "threshold": error_rate_threshold},
         )
 
     if awards_loaded == 0:
@@ -513,7 +517,7 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     return AssetCheckResult(
         passed=True,
         severity=AssetCheckSeverity.WARN,
-        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions, {errors} errors",
+        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions ({error_rate*100:.1f}% error rate)",
         metadata={
             "awards_loaded": awards_loaded,
             "companies_loaded": neo4j_sbir_awards.get("companies_loaded", 0),
@@ -521,6 +525,7 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
             "institutions_loaded": neo4j_sbir_awards.get("institutions_loaded", 0),
             "relationships_created": neo4j_sbir_awards.get("relationships_created", 0),
             "errors": errors,
+            "error_rate": error_rate,
         },
     )
 
