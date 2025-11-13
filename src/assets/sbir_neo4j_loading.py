@@ -68,7 +68,7 @@ def neo4j_sbir_awards(
 
     Creates the following nodes:
     - Award nodes with properties from the validated DataFrame
-    - Company nodes (deduplicated by UEI)
+    - Company nodes (deduplicated by UEI/DUNS/Name)
     - Researcher nodes (from PI fields, deduplicated by name+email)
     - ResearchInstitution nodes (from RI fields, deduplicated by name)
 
@@ -76,6 +76,8 @@ def neo4j_sbir_awards(
     - (Award)-[AWARDED_TO]->(Company)
     - (Award)-[RESEARCHED_BY]->(Researcher)
     - (Award)-[CONDUCTED_AT]->(ResearchInstitution)
+    - (Researcher)-[WORKED_ON]->(Award)
+    - (Researcher)-[WORKED_AT]->(Company)
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -106,6 +108,8 @@ def neo4j_sbir_awards(
         award_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
         award_researcher_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
         award_institution_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
+        researcher_award_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # WORKED_ON
+        researcher_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # WORKED_AT
 
         # Track skip reasons
         skipped_zero_amount = 0
@@ -277,7 +281,7 @@ def neo4j_sbir_awards(
                             researcher_props["phone"] = award.pi_phone
                         researcher_nodes_map[researcher_id] = researcher_props
 
-                    # Create RESEARCHED_BY relationship
+                    # Create RESEARCHED_BY relationship (Award -> Researcher)
                     award_researcher_rels.append(
                         (
                             "Award",
@@ -290,6 +294,35 @@ def neo4j_sbir_awards(
                             None,
                         )
                     )
+
+                    # Create WORKED_ON relationship (Researcher -> Award)
+                    researcher_award_rels.append(
+                        (
+                            "Researcher",
+                            "researcher_id",
+                            researcher_id,
+                            "Award",
+                            "award_id",
+                            award.award_id,
+                            "WORKED_ON",
+                            None,
+                        )
+                    )
+
+                    # Create WORKED_AT relationship (Researcher -> Company) if company exists
+                    if company_id:
+                        researcher_company_rels.append(
+                            (
+                                "Researcher",
+                                "researcher_id",
+                                researcher_id,
+                                "Company",
+                                "company_id",
+                                company_id,
+                                "WORKED_AT",
+                                None,
+                            )
+                        )
 
                 # Create Research Institution node if RI name available
                 if award.research_institution:
@@ -378,6 +411,18 @@ def neo4j_sbir_awards(
             metrics = rel_metrics
             context.log.info(f"Created {len(award_institution_rels)} CONDUCTED_AT relationships")
 
+        # Create WORKED_ON relationships (Researcher -> Award)
+        if researcher_award_rels:
+            rel_metrics = client.batch_create_relationships(researcher_award_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(researcher_award_rels)} WORKED_ON relationships")
+
+        # Create WORKED_AT relationships (Researcher -> Company)
+        if researcher_company_rels:
+            rel_metrics = client.batch_create_relationships(researcher_company_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(researcher_company_rels)} WORKED_AT relationships")
+
         # Log comprehensive summary of processing results
         total_rows = len(validated_sbir_awards)
         successfully_processed = len(award_nodes)
@@ -405,9 +450,11 @@ def neo4j_sbir_awards(
         logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
         logger.info("")
         logger.info("Relationships Created:")
-        logger.info(f"  • AWARDED_TO: {len(award_company_rels)} relationships")
-        logger.info(f"  • RESEARCHED_BY: {len(award_researcher_rels)} relationships")
-        logger.info(f"  • CONDUCTED_AT: {len(award_institution_rels)} relationships")
+        logger.info(f"  • AWARDED_TO (Award → Company): {len(award_company_rels)} relationships")
+        logger.info(f"  • RESEARCHED_BY (Award → Researcher): {len(award_researcher_rels)} relationships")
+        logger.info(f"  • CONDUCTED_AT (Award → Institution): {len(award_institution_rels)} relationships")
+        logger.info(f"  • WORKED_ON (Researcher → Award): {len(researcher_award_rels)} relationships")
+        logger.info(f"  • WORKED_AT (Researcher → Company): {len(researcher_company_rels)} relationships")
         logger.info("=" * 80)
 
         duration = time.time() - start_time
