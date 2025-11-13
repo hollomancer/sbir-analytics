@@ -10,6 +10,8 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, Output, asset, asset_check
 from loguru import logger
 
+from datetime import date
+
 from ..config.loader import get_config
 from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 from ..models.award import Award
@@ -144,6 +146,141 @@ def _get_neo4j_client() -> Neo4jClient | None:
         return None
 
 
+def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, str, str, str, str, dict[str, Any] | None]]:
+    """Detect Phase I → Phase II → Phase III award progressions.
+
+    Matches awards that represent the same project progressing through SBIR/STTR phases.
+
+    Matching criteria:
+    - Same company (via UEI, DUNS, or normalized name)
+    - Same agency
+    - Same program (SBIR or STTR)
+    - Sequential phases (I → II or II → III)
+    - Chronological order (earlier phase comes first)
+
+    Additional scoring factors:
+    - Same topic code (+0.3)
+    - Same PI (+0.2)
+    - Time gap within reasonable bounds (+0.1 if 1-4 years)
+
+    Args:
+        awards: List of Award objects to analyze
+
+    Returns:
+        List of relationship tuples in the format expected by batch_create_relationships:
+        (source_label, source_key, source_id, target_label, target_key, target_id, rel_type, properties)
+    """
+    # Group awards by company identifier for efficient matching
+    company_awards: dict[str, list[Award]] = {}
+
+    for award in awards:
+        if not award.phase or award.phase not in ["I", "II", "III"]:
+            continue
+
+        # Determine company identifier (same logic as main loading code)
+        company_id = None
+        if award.company_uei:
+            company_id = award.company_uei
+        elif award.company_duns:
+            company_id = f"DUNS:{award.company_duns}"
+        elif award.company_name:
+            normalized_name = normalize_company_name(award.company_name)
+            if normalized_name:
+                company_id = f"NAME:{normalized_name}"
+
+        if company_id:
+            if company_id not in company_awards:
+                company_awards[company_id] = []
+            company_awards[company_id].append(award)
+
+    # Detect progressions within each company's awards
+    progressions = []
+    phase_transitions = {"I": "II", "II": "III"}
+
+    for company_id, company_award_list in company_awards.items():
+        # Sort by award date for chronological matching
+        sorted_awards = sorted(
+            company_award_list,
+            key=lambda a: a.award_date if a.award_date else date(1900, 1, 1)
+        )
+
+        for i, earlier_award in enumerate(sorted_awards):
+            if earlier_award.phase not in phase_transitions:
+                continue
+
+            expected_next_phase = phase_transitions[earlier_award.phase]
+
+            # Look for matching later awards in the next phase
+            for later_award in sorted_awards[i + 1:]:
+                if later_award.phase != expected_next_phase:
+                    continue
+
+                # Check basic matching criteria
+                if earlier_award.agency != later_award.agency:
+                    continue
+
+                if earlier_award.program != later_award.program:
+                    continue
+
+                # Ensure chronological order
+                if earlier_award.award_date and later_award.award_date:
+                    if earlier_award.award_date >= later_award.award_date:
+                        continue
+                    years_between = (later_award.award_date - earlier_award.award_date).days / 365.25
+                else:
+                    years_between = None
+
+                # Calculate confidence score
+                confidence = 0.5  # Base confidence for matching company, agency, program
+
+                # Same topic code boosts confidence
+                same_topic = False
+                if (earlier_award.topic_code and later_award.topic_code and
+                    earlier_award.topic_code == later_award.topic_code):
+                    confidence += 0.3
+                    same_topic = True
+
+                # Same PI boosts confidence
+                same_pi = False
+                if (earlier_award.principal_investigator and later_award.principal_investigator and
+                    earlier_award.principal_investigator.lower() == later_award.principal_investigator.lower()):
+                    confidence += 0.2
+                    same_pi = True
+
+                # Reasonable time gap boosts confidence
+                if years_between is not None and 1 <= years_between <= 4:
+                    confidence += 0.1
+
+                # Create relationship properties
+                rel_props = {
+                    "phase_progression": f"{earlier_award.phase}_to_{expected_next_phase}",
+                    "confidence": round(confidence, 2),
+                    "same_topic": same_topic,
+                    "same_pi": same_pi,
+                }
+
+                if years_between is not None:
+                    rel_props["years_between"] = round(years_between, 2)
+
+                # Add relationship tuple
+                progressions.append((
+                    "Award",
+                    "award_id",
+                    earlier_award.award_id,
+                    "Award",
+                    "award_id",
+                    later_award.award_id,
+                    "FOLLOWS",
+                    rel_props,
+                ))
+
+                # Only match each Phase I to the first qualifying Phase II
+                # (to avoid multiple FOLLOWS from one award if there are multiple Phase IIs)
+                break
+
+    return progressions
+
+
 @asset(
     description="Load validated SBIR awards into Neo4j with Award, Company, Researcher, and Institution nodes",
     group_name="neo4j_loading",
@@ -167,6 +304,7 @@ def neo4j_sbir_awards(
     - (Award)-[CONDUCTED_AT]->(ResearchInstitution)
     - (Researcher)-[WORKED_ON]->(Award)
     - (Researcher)-[WORKED_AT]->(Company)
+    - (Award)-[FOLLOWS]->(Award) - Phase I → II → III progressions
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -191,6 +329,7 @@ def neo4j_sbir_awards(
 
         # Convert DataFrame rows to Award models, then to Neo4j node properties
         award_nodes = []
+        award_objects: list[Award] = []  # Keep Award objects for progression detection
         company_nodes_map: dict[str, dict[str, Any]] = {}
         researcher_nodes_map: dict[str, dict[str, Any]] = {}
         institution_nodes_map: dict[str, dict[str, Any]] = {}
@@ -290,6 +429,7 @@ def neo4j_sbir_awards(
                     award_props["company_duns"] = award.company_duns
 
                 award_nodes.append(award_props)
+                award_objects.append(award)  # Keep Award object for progression detection
 
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
                 # Also track all identifiers for cross-walking
@@ -542,6 +682,16 @@ def neo4j_sbir_awards(
             metrics = rel_metrics
             context.log.info(f"Created {len(researcher_company_rels)} WORKED_AT relationships")
 
+        # Detect and create FOLLOWS relationships (Award -> Award for phase progressions)
+        context.log.info("Detecting award phase progressions...")
+        follows_rels = detect_award_progressions(award_objects)
+        if follows_rels:
+            rel_metrics = client.batch_create_relationships(follows_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(follows_rels)} FOLLOWS relationships for award progressions")
+        else:
+            context.log.info("No award progressions detected")
+
         # Log comprehensive summary of processing results
         total_rows = len(validated_sbir_awards)
         successfully_processed = len(award_nodes)
@@ -575,6 +725,7 @@ def neo4j_sbir_awards(
         logger.info(f"  • CONDUCTED_AT (Award → Institution): {len(award_institution_rels)} relationships")
         logger.info(f"  • WORKED_ON (Researcher → Award): {len(researcher_award_rels)} relationships")
         logger.info(f"  • WORKED_AT (Researcher → Company): {len(researcher_company_rels)} relationships")
+        logger.info(f"  • FOLLOWS (Award → Award): {len(follows_rels)} phase progressions")
         logger.info("=" * 80)
 
         duration = time.time() - start_time
