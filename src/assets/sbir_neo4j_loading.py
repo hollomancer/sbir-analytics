@@ -184,13 +184,21 @@ def neo4j_sbir_awards(
 
                 award_nodes.append(award_props)
 
-                # Create Company node if UEI available
+                # Create Company node if UEI or DUNS available (DUNS as fallback)
+                company_id = None
                 if award.company_uei:
-                    if award.company_uei not in company_nodes_map:
+                    company_id = award.company_uei
+                elif award.company_duns:
+                    company_id = f"DUNS:{award.company_duns}"
+
+                if company_id:
+                    if company_id not in company_nodes_map:
                         company_props = {
-                            "uei": award.company_uei,
+                            "company_id": company_id,
                             "name": award.company_name,
                         }
+                        if award.company_uei:
+                            company_props["uei"] = award.company_uei
                         if award.company_duns:
                             company_props["duns"] = award.company_duns
                         if award.company_city:
@@ -199,17 +207,17 @@ def neo4j_sbir_awards(
                             company_props["state"] = award.company_state
                         if award.company_zip:
                             company_props["zip"] = award.company_zip
-                        company_nodes_map[award.company_uei] = company_props
+                        company_nodes_map[company_id] = company_props
 
-                    # Create AWARDS relationship
+                    # Create AWARDED_TO relationship
                     award_company_rels.append(
                         (
                             "Award",
                             "award_id",
                             award.award_id,
                             "Company",
-                            "uei",
-                            award.company_uei,
+                            "company_id",
+                            company_id,
                             "AWARDED_TO",
                             None,
                         )
@@ -290,7 +298,7 @@ def neo4j_sbir_awards(
         if company_nodes_map:
             company_nodes_list = list(company_nodes_map.values())
             company_metrics = client.batch_upsert_nodes(
-                label="Company", key_property="uei", nodes=company_nodes_list, metrics=metrics
+                label="Company", key_property="company_id", nodes=company_nodes_list, metrics=metrics
             )
             metrics = company_metrics
             context.log.info(f"Loaded {len(company_nodes_list)} Company nodes")

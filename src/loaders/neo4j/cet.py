@@ -76,8 +76,8 @@ class CETLoader:
             # Optional: ensure Award and Company constraints exist for enrichment keys
             "CREATE CONSTRAINT award_award_id IF NOT EXISTS "
             "FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
-            "CREATE CONSTRAINT company_uei IF NOT EXISTS "
-            "FOR (c:Company) REQUIRE c.uei IS UNIQUE",
+            "CREATE CONSTRAINT company_id IF NOT EXISTS "
+            "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
         ]
 
         with self.client.session() as session:

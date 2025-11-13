@@ -81,7 +81,7 @@ class Neo4jClient:
     def create_constraints(self) -> None:
         """Create unique constraints for entity primary keys."""
         constraints = [
-            "CREATE CONSTRAINT company_uei IF NOT EXISTS FOR (c:Company) REQUIRE c.uei IS UNIQUE",
+            "CREATE CONSTRAINT company_id IF NOT EXISTS FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             "CREATE CONSTRAINT award_id IF NOT EXISTS FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
             "CREATE CONSTRAINT researcher_id IF NOT EXISTS FOR (r:Researcher) REQUIRE r.researcher_id IS UNIQUE",
             "CREATE CONSTRAINT patent_id IF NOT EXISTS FOR (p:Patent) REQUIRE p.patent_id IS UNIQUE",
@@ -100,6 +100,8 @@ class Neo4jClient:
         """Create indexes for frequently queried properties."""
         indexes = [
             "CREATE INDEX company_name IF NOT EXISTS FOR (c:Company) ON (c.name)",
+            "CREATE INDEX company_uei IF NOT EXISTS FOR (c:Company) ON (c.uei)",
+            "CREATE INDEX company_duns IF NOT EXISTS FOR (c:Company) ON (c.duns)",
             "CREATE INDEX award_date IF NOT EXISTS FOR (a:Award) ON (a.award_date)",
             "CREATE INDEX researcher_name IF NOT EXISTS FOR (r:Researcher) ON (r.name)",
             "CREATE INDEX patent_number IF NOT EXISTS FOR (p:Patent) ON (p.patent_number)",
