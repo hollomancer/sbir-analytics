@@ -222,6 +222,31 @@ transformation:
       - "FUNDED_BY"
       - "SUBMITTED_BY"
 
+# Company categorization configuration
+company_categorization:
+  # Classification thresholds
+  product_leaning_pct: 60.0 # 60% threshold for Product-leaning
+  service_leaning_pct: 60.0 # 60% threshold for Service-leaning
+  psc_family_diversity_threshold: 6 # >6 PSC families → Mixed
+
+  # Confidence levels
+  low_max_awards: 2 # <=2 awards → Low confidence
+  medium_max_awards: 5 # 2-5 awards → Medium confidence
+  # >5 awards → High confidence
+
+  # Processing
+  batch_size: 100 # Companies per batch
+  parallel_workers: 4 # Parallel processing workers
+
+  # USAspending query settings
+  usaspending_table_name: "usaspending_awards"
+  usaspending_timeout_seconds: 30
+  usaspending_retry_attempts: 3
+
+  # Output options
+  include_contract_details: true
+  include_metadata: true
+
 loading:
   neo4j:
     # Neo4j connection configuration

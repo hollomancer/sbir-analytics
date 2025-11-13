@@ -644,6 +644,68 @@ class CLIConfig(BaseModel):
         return v
 
 
+class CompanyCategorizationConfig(BaseModel):
+    """Configuration for company categorization system."""
+
+    # Classification thresholds
+    product_leaning_pct: float = Field(
+        default=60.0,
+        ge=0.0,
+        le=100.0,
+        description="Product percentage threshold for Product-leaning classification",
+    )
+    service_leaning_pct: float = Field(
+        default=60.0,
+        ge=0.0,
+        le=100.0,
+        description="Service percentage threshold for Service-leaning classification",
+    )
+    psc_family_diversity_threshold: int = Field(
+        default=6, ge=1, description="PSC family count threshold for Mixed override"
+    )
+
+    # Confidence levels
+    low_max_awards: int = Field(
+        default=2, ge=1, description="Maximum awards for Low confidence level"
+    )
+    medium_max_awards: int = Field(
+        default=5, ge=1, description="Maximum awards for Medium confidence level"
+    )
+
+    # Processing
+    batch_size: int = Field(default=100, ge=1, description="Batch size for processing companies")
+    parallel_workers: int = Field(
+        default=4, ge=1, description="Number of parallel workers for processing"
+    )
+
+    # USAspending query
+    usaspending_table_name: str = Field(
+        default="usaspending_awards", description="USAspending table name in DuckDB"
+    )
+    usaspending_timeout_seconds: int = Field(
+        default=30, ge=1, description="Query timeout in seconds"
+    )
+    usaspending_retry_attempts: int = Field(
+        default=3, ge=0, description="Number of retry attempts for failed queries"
+    )
+
+    # Output options
+    include_contract_details: bool = Field(
+        default=True, description="Include individual contract details in output"
+    )
+    include_metadata: bool = Field(default=True, description="Include classification metadata")
+
+    @field_validator(
+        "product_leaning_pct", "service_leaning_pct"
+    )
+    @classmethod
+    def validate_threshold_percentage(cls, v: float) -> float:
+        """Validate threshold percentage is between 0 and 100."""
+        if not (0.0 <= v <= 100.0):
+            raise ValueError(f"Threshold percentage must be between 0.0 and 100.0, got {v}")
+        return v
+
+
 class FiscalAnalysisConfig(BaseModel):
     """Configuration for SBIR fiscal returns analysis."""
 
@@ -871,6 +933,10 @@ class PipelineConfig(BaseModel):
     )
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
     cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
+    company_categorization: CompanyCategorizationConfig = Field(
+        default_factory=CompanyCategorizationConfig,
+        description="Company categorization configuration",
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
