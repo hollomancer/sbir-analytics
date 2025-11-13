@@ -100,6 +100,7 @@ class Neo4jClient:
         """Create indexes for frequently queried properties."""
         indexes = [
             "CREATE INDEX company_name IF NOT EXISTS FOR (c:Company) ON (c.name)",
+            "CREATE INDEX company_normalized_name IF NOT EXISTS FOR (c:Company) ON (c.normalized_name)",
             "CREATE INDEX company_uei IF NOT EXISTS FOR (c:Company) ON (c.uei)",
             "CREATE INDEX company_duns IF NOT EXISTS FOR (c:Company) ON (c.duns)",
             "CREATE INDEX award_date IF NOT EXISTS FOR (a:Award) ON (a.award_date)",

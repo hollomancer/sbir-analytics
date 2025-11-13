@@ -1,6 +1,7 @@
 """Neo4j loading assets for SBIR awards."""
 
 import json
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,94 @@ STATE_NAME_TO_CODE = {
     "puerto rico": "PR", "guam": "GU", "virgin islands": "VI", "american samoa": "AS",
     "northern mariana islands": "MP",
 }
+
+# Legal suffixes to remove during company name normalization
+LEGAL_SUFFIXES = [
+    r'\bincorporated\b',
+    r'\bincorporation\b',
+    r'\bcorporation\b',
+    r'\bcompany\b',
+    r'\blimited\b',
+    r'\bliability\b',
+    r'\bpartnership\b',
+    r'\binc\.?\b',
+    r'\bcorp\.?\b',
+    r'\bco\.?\b',
+    r'\bltd\.?\b',
+    r'\bllc\.?\b',
+    r'\bllp\.?\b',
+    r'\blp\.?\b',
+    r'\bplc\.?\b',
+    r'\bp\.?c\.?\b',
+    r'\bl\.?l\.?c\.?\b',
+    r'\bl\.?l\.?p\.?\b',
+    r'\bl\.?p\.?\b',
+]
+
+# Common abbreviation standardizations
+ABBREVIATION_REPLACEMENTS = {
+    r'\btechnologies\b': 'tech',
+    r'\btechnology\b': 'tech',
+    r'\bsystems?\b': 'sys',
+    r'\bsolutions?\b': 'sol',
+    r'\bservices?\b': 'svc',
+    r'\binternational\b': 'intl',
+    r'\bamerican\b': 'amer',
+    r'\bmanufacturing\b': 'mfg',
+    r'\bindustries\b': 'ind',
+    r'\benterprises?\b': 'ent',
+    r'\bassociates?\b': 'assoc',
+    r'\blaboratories\b': 'lab',
+    r'\blaboratory\b': 'lab',
+    r'\bresearch\b': 'rsch',
+    r'\bdevelopment\b': 'dev',
+}
+
+
+def normalize_company_name(name: str) -> str:
+    """Normalize company name for better matching across records.
+
+    Applies the following transformations:
+    1. Lowercase and strip whitespace
+    2. Remove punctuation (except hyphens in the middle of words)
+    3. Remove legal suffixes (Inc, Corp, LLC, etc.)
+    4. Standardize common abbreviations
+    5. Normalize whitespace to single spaces
+
+    Args:
+        name: Raw company name
+
+    Returns:
+        Normalized company name for use as identifier
+
+    Example:
+        >>> normalize_company_name("Acme Technologies, Inc.")
+        'acme tech'
+        >>> normalize_company_name("ABC Systems & Solutions LLC")
+        'abc sys sol'
+    """
+    if not name:
+        return ""
+
+    # Lowercase and strip
+    normalized = name.lower().strip()
+
+    # Remove punctuation except hyphens (but replace hyphens with spaces)
+    normalized = re.sub(r'[^\w\s-]', ' ', normalized)
+    normalized = normalized.replace('-', ' ')
+
+    # Remove legal suffixes
+    for suffix in LEGAL_SUFFIXES:
+        normalized = re.sub(suffix, '', normalized, flags=re.IGNORECASE)
+
+    # Apply abbreviation standardizations
+    for pattern, replacement in ABBREVIATION_REPLACEMENTS.items():
+        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+
+    # Normalize whitespace to single spaces
+    normalized = ' '.join(normalized.split())
+
+    return normalized.strip()
 
 
 def _get_neo4j_client() -> Neo4jClient | None:
@@ -202,8 +291,10 @@ def neo4j_sbir_awards(
                 award_nodes.append(award_props)
 
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
+                # Also track all identifiers for cross-walking
                 company_id = None
                 company_id_type = None  # Track identification method
+                normalized_company_name = normalize_company_name(award.company_name) if award.company_name else ""
 
                 if award.company_uei:
                     company_id = award.company_uei
@@ -211,10 +302,9 @@ def neo4j_sbir_awards(
                 elif award.company_duns:
                     company_id = f"DUNS:{award.company_duns}"
                     company_id_type = "duns"
-                elif award.company_name:
+                elif normalized_company_name:
                     # Use normalized company name as final fallback
-                    normalized_name = award.company_name.strip().lower()
-                    company_id = f"NAME:{normalized_name}"
+                    company_id = f"NAME:{normalized_company_name}"
                     company_id_type = "name"
                     companies_by_name_only += 1
                 else:
@@ -228,8 +318,10 @@ def neo4j_sbir_awards(
                         company_props = {
                             "company_id": company_id,
                             "name": award.company_name,
+                            "normalized_name": normalized_company_name,
                             "id_type": company_id_type,  # Track identification method
                         }
+                        # Store all known identifiers for cross-walking
                         if award.company_uei:
                             company_props["uei"] = award.company_uei
                         if award.company_duns:
@@ -241,6 +333,20 @@ def neo4j_sbir_awards(
                         if award.company_zip:
                             company_props["zip"] = award.company_zip
                         company_nodes_map[company_id] = company_props
+                    else:
+                        # Company already exists - update with additional identifiers (cross-walking)
+                        existing_company = company_nodes_map[company_id]
+                        if award.company_uei and not existing_company.get("uei"):
+                            existing_company["uei"] = award.company_uei
+                        if award.company_duns and not existing_company.get("duns"):
+                            existing_company["duns"] = award.company_duns
+                        # Update location if missing
+                        if award.company_city and not existing_company.get("city"):
+                            existing_company["city"] = award.company_city
+                        if award.company_state and not existing_company.get("state"):
+                            existing_company["state"] = award.company_state
+                        if award.company_zip and not existing_company.get("zip"):
+                            existing_company["zip"] = award.company_zip
 
                     # Create AWARDED_TO relationship
                     award_company_rels.append(
