@@ -56,7 +56,7 @@ def _get_neo4j_client() -> Neo4jClient | None:
 
 
 @asset(
-    description="Load validated SBIR awards into Neo4j as Award nodes",
+    description="Load validated SBIR awards into Neo4j with Award, Company, Researcher, and Institution nodes",
     group_name="neo4j_loading",
     compute_kind="neo4j",
 )
@@ -66,8 +66,16 @@ def neo4j_sbir_awards(
     """
     Load validated SBIR awards into Neo4j.
 
-    Creates Award nodes with properties from the validated DataFrame.
-    Also creates Company nodes and AWARDS relationships.
+    Creates the following nodes:
+    - Award nodes with properties from the validated DataFrame
+    - Company nodes (deduplicated by UEI)
+    - Researcher nodes (from PI fields, deduplicated by name+email)
+    - ResearchInstitution nodes (from RI fields, deduplicated by name)
+
+    Creates the following relationships:
+    - (Award)-[AWARDED_TO]->(Company)
+    - (Award)-[RESEARCHED_BY]->(Researcher)
+    - (Award)-[CONDUCTED_AT]->(ResearchInstitution)
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -93,7 +101,12 @@ def neo4j_sbir_awards(
         # Convert DataFrame rows to Award models, then to Neo4j node properties
         award_nodes = []
         company_nodes_map: dict[str, dict[str, Any]] = {}
+        researcher_nodes_map: dict[str, dict[str, Any]] = {}
+        institution_nodes_map: dict[str, dict[str, Any]] = {}
         award_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
+        award_researcher_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
+        award_institution_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
+        failed_count = 0
 
         for _, row in validated_sbir_awards.iterrows():
             try:
@@ -163,15 +176,11 @@ def neo4j_sbir_awards(
                     "abstract": award.abstract,
                 }
 
-                # Add optional fields if present
+                # Add optional fields if present (for backward compatibility, but we'll also create separate nodes)
                 if award.company_uei:
                     award_props["company_uei"] = award.company_uei
                 if award.company_duns:
                     award_props["company_duns"] = award.company_duns
-                if award.principal_investigator:
-                    award_props["principal_investigator"] = award.principal_investigator
-                if award.research_institution:
-                    award_props["research_institution"] = award.research_institution
 
                 award_nodes.append(award_props)
 
@@ -201,7 +210,74 @@ def neo4j_sbir_awards(
                             "Company",
                             "uei",
                             award.company_uei,
-                            "AWARDS",
+                            "AWARDED_TO",
+                            None,
+                        )
+                    )
+
+                # Create Researcher node if PI name available
+                if award.principal_investigator:
+                    # Generate researcher_id from name and email (or just name)
+                    pi_name = award.principal_investigator.strip()
+                    pi_email = award.pi_email.strip() if award.pi_email else None
+
+                    # Create unique researcher ID
+                    if pi_email:
+                        researcher_id = f"{pi_name}|{pi_email}".lower()
+                    else:
+                        researcher_id = pi_name.lower()
+
+                    if researcher_id not in researcher_nodes_map:
+                        researcher_props = {
+                            "researcher_id": researcher_id,
+                            "name": pi_name,
+                        }
+                        if pi_email:
+                            researcher_props["email"] = pi_email
+                        if award.pi_title:
+                            researcher_props["title"] = award.pi_title
+                        if award.pi_phone:
+                            researcher_props["phone"] = award.pi_phone
+                        researcher_nodes_map[researcher_id] = researcher_props
+
+                    # Create RESEARCHED_BY relationship
+                    award_researcher_rels.append(
+                        (
+                            "Award",
+                            "award_id",
+                            award.award_id,
+                            "Researcher",
+                            "researcher_id",
+                            researcher_id,
+                            "RESEARCHED_BY",
+                            None,
+                        )
+                    )
+
+                # Create Research Institution node if RI name available
+                if award.research_institution:
+                    institution_name = award.research_institution.strip()
+
+                    if institution_name not in institution_nodes_map:
+                        institution_props = {
+                            "name": institution_name,
+                        }
+                        if award.ri_poc_name:
+                            institution_props["poc_name"] = award.ri_poc_name
+                        if award.ri_poc_phone:
+                            institution_props["poc_phone"] = award.ri_poc_phone
+                        institution_nodes_map[institution_name] = institution_props
+
+                    # Create CONDUCTED_AT relationship
+                    award_institution_rels.append(
+                        (
+                            "Award",
+                            "award_id",
+                            award.award_id,
+                            "ResearchInstitution",
+                            "name",
+                            institution_name,
+                            "CONDUCTED_AT",
                             None,
                         )
                     )
@@ -227,11 +303,41 @@ def neo4j_sbir_awards(
             metrics = award_metrics
             context.log.info(f"Loaded {len(award_nodes)} Award nodes")
 
-        # Create AWARDS relationships
+        # Load Researcher nodes
+        if researcher_nodes_map:
+            researcher_nodes_list = list(researcher_nodes_map.values())
+            researcher_metrics = client.batch_upsert_nodes(
+                label="Researcher", key_property="researcher_id", nodes=researcher_nodes_list, metrics=metrics
+            )
+            metrics = researcher_metrics
+            context.log.info(f"Loaded {len(researcher_nodes_list)} Researcher nodes")
+
+        # Load Research Institution nodes
+        if institution_nodes_map:
+            institution_nodes_list = list(institution_nodes_map.values())
+            institution_metrics = client.batch_upsert_nodes(
+                label="ResearchInstitution", key_property="name", nodes=institution_nodes_list, metrics=metrics
+            )
+            metrics = institution_metrics
+            context.log.info(f"Loaded {len(institution_nodes_list)} ResearchInstitution nodes")
+
+        # Create AWARDED_TO relationships (Award -> Company)
         if award_company_rels:
             rel_metrics = client.batch_create_relationships(award_company_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(award_company_rels)} AWARDS relationships")
+            context.log.info(f"Created {len(award_company_rels)} AWARDED_TO relationships")
+
+        # Create RESEARCHED_BY relationships (Award -> Researcher)
+        if award_researcher_rels:
+            rel_metrics = client.batch_create_relationships(award_researcher_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(award_researcher_rels)} RESEARCHED_BY relationships")
+
+        # Create CONDUCTED_AT relationships (Award -> ResearchInstitution)
+        if award_institution_rels:
+            rel_metrics = client.batch_create_relationships(award_institution_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(award_institution_rels)} CONDUCTED_AT relationships")
 
         duration = time.time() - start_time
 
@@ -241,6 +347,10 @@ def neo4j_sbir_awards(
             "awards_updated": metrics.nodes_updated.get("Award", 0),
             "companies_loaded": metrics.nodes_created.get("Company", 0),
             "companies_updated": metrics.nodes_updated.get("Company", 0),
+            "researchers_loaded": metrics.nodes_created.get("Researcher", 0),
+            "researchers_updated": metrics.nodes_updated.get("Researcher", 0),
+            "institutions_loaded": metrics.nodes_created.get("ResearchInstitution", 0),
+            "institutions_updated": metrics.nodes_updated.get("ResearchInstitution", 0),
             "relationships_created": sum(metrics.relationships_created.values()),
             "errors": metrics.errors,
             "duration_seconds": duration,
@@ -264,6 +374,8 @@ def neo4j_sbir_awards(
             extra={
                 "awards_loaded": result["awards_loaded"],
                 "companies_loaded": result["companies_loaded"],
+                "researchers_loaded": result["researchers_loaded"],
+                "institutions_loaded": result["institutions_loaded"],
                 "relationships_created": result["relationships_created"],
                 "errors": result["errors"],
                 "duration_seconds": duration,
@@ -275,6 +387,8 @@ def neo4j_sbir_awards(
             metadata={
                 "awards_loaded": result["awards_loaded"],
                 "companies_loaded": result["companies_loaded"],
+                "researchers_loaded": result["researchers_loaded"],
+                "institutions_loaded": result["institutions_loaded"],
                 "relationships_created": result["relationships_created"],
                 "errors": result["errors"],
                 "duration_seconds": round(duration, 2),
@@ -336,10 +450,12 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     return AssetCheckResult(
         passed=True,
         severity=AssetCheckSeverity.WARN,
-        description=f"✓ Neo4j load successful: {awards_loaded} awards loaded, {errors} errors",
+        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions, {errors} errors",
         metadata={
             "awards_loaded": awards_loaded,
             "companies_loaded": neo4j_sbir_awards.get("companies_loaded", 0),
+            "researchers_loaded": neo4j_sbir_awards.get("researchers_loaded", 0),
+            "institutions_loaded": neo4j_sbir_awards.get("institutions_loaded", 0),
             "relationships_created": neo4j_sbir_awards.get("relationships_created", 0),
             "errors": errors,
         },

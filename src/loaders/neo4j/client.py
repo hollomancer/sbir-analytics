@@ -85,6 +85,7 @@ class Neo4jClient:
             "CREATE CONSTRAINT award_id IF NOT EXISTS FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
             "CREATE CONSTRAINT researcher_id IF NOT EXISTS FOR (r:Researcher) REQUIRE r.researcher_id IS UNIQUE",
             "CREATE CONSTRAINT patent_id IF NOT EXISTS FOR (p:Patent) REQUIRE p.patent_id IS UNIQUE",
+            "CREATE CONSTRAINT institution_name IF NOT EXISTS FOR (i:ResearchInstitution) REQUIRE i.name IS UNIQUE",
         ]
 
         with self.session() as session:
@@ -102,6 +103,7 @@ class Neo4jClient:
             "CREATE INDEX award_date IF NOT EXISTS FOR (a:Award) ON (a.award_date)",
             "CREATE INDEX researcher_name IF NOT EXISTS FOR (r:Researcher) ON (r.name)",
             "CREATE INDEX patent_number IF NOT EXISTS FOR (p:Patent) ON (p.patent_number)",
+            "CREATE INDEX institution_name IF NOT EXISTS FOR (i:ResearchInstitution) ON (i.name)",
         ]
 
         with self.session() as session:
