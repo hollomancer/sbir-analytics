@@ -41,7 +41,7 @@ class Award(BaseModel):
     company_name: str = Field(..., description="Company receiving the award", alias="company")
     award_amount: float = Field(..., description="Award amount in USD")
     award_date: date = Field(..., description="Date award was made")
-    program: str = Field(..., description="SBIR or STTR program")
+    program: str | None = Field(None, description="SBIR or STTR program (lenient validator)")
 
     # Optional metadata fields
     phase: str | None = Field(None, description="Phase I, II, or III")
@@ -164,13 +164,37 @@ class Award(BaseModel):
 
     @field_validator("program")
     @classmethod
-    def validate_program(cls, v: str) -> str:
-        """Validate program is SBIR or STTR and normalize to uppercase."""
+    def validate_program(cls, v: str) -> str | None:
+        """Validate program is SBIR or STTR and normalize to uppercase.
+
+        Lenient: Attempts to extract SBIR or STTR from variations like
+        "SBIR/STTR", "SBIR-Phase I", etc. Returns None for invalid values
+        rather than rejecting the entire record.
+        """
+        from loguru import logger
+
         if v is None:
             return v  # type: ignore[unreachable]
-        if v.upper() not in ["SBIR", "STTR"]:
-            raise ValueError("Program must be SBIR or STTR")
-        return v.upper()
+
+        # Normalize to uppercase and strip whitespace
+        normalized = str(v).upper().strip()
+
+        # Exact match (most common case)
+        if normalized in ["SBIR", "STTR"]:
+            return normalized
+
+        # Try to extract SBIR or STTR from variations
+        # Handle cases like "SBIR/STTR", "SBIR-Phase I", "STTR Phase II"
+        if "SBIR" in normalized:
+            logger.warning(f"Program field '{v}' contains SBIR but not exact match - normalizing to SBIR")
+            return "SBIR"
+        if "STTR" in normalized:
+            logger.warning(f"Program field '{v}' contains STTR but not exact match - normalizing to STTR")
+            return "STTR"
+
+        # Invalid value - return None (lenient)
+        logger.warning(f"Program field '{v}' is not SBIR or STTR - setting to None to preserve record")
+        return None
 
     @field_validator("phase")
     @classmethod
@@ -178,7 +202,13 @@ class Award(BaseModel):
         """Validate phase if provided. Normalize to roman I/II/III.
 
         Accepts both "Phase I" format (SBIR.gov) and "I" format (consolidated).
+
+        Lenient: Attempts to normalize numeric phases (1, 2, 3, 4) and handle
+        variations. Returns None for invalid values rather than rejecting the
+        entire record.
         """
+        from loguru import logger
+
         if v is None:
             return v
         sv = str(v).strip()
@@ -186,16 +216,41 @@ class Award(BaseModel):
         if sv.upper().startswith("PHASE "):
             sv = sv.upper().replace("PHASE ", "")
         sv = sv.upper()
-        if sv not in ["I", "II", "III"]:
-            raise ValueError("Phase must be I, II, or III (or Phase I, Phase II, Phase III)")
-        return sv
+
+        # Exact match (most common case)
+        if sv in ["I", "II", "III"]:
+            return sv
+
+        # Try to normalize numeric phases to roman numerals
+        phase_map = {"1": "I", "2": "II", "3": "III", "4": "III"}  # Phase IV -> Phase III
+        if sv in phase_map:
+            normalized = phase_map[sv]
+            if sv == "4":
+                logger.warning(f"Phase field '{v}' is Phase IV (not standard) - normalizing to III")
+            return normalized
+
+        # Handle IV as Phase III (non-standard but occurs in data)
+        if sv == "IV":
+            logger.warning(f"Phase field '{v}' is Phase IV (not standard) - normalizing to III")
+            return "III"
+
+        # Invalid value - return None (lenient)
+        logger.warning(f"Phase field '{v}' is not I/II/III - setting to None to preserve record")
+        return None
 
     @field_validator("fiscal_year")
     @classmethod
     def validate_fiscal_year(cls, v: int | None) -> int | None:
-        """Validate fiscal year range."""
+        """Validate fiscal year range.
+
+        Lenient: Accepts out-of-range years with a warning rather than
+        rejecting the entire record. This preserves historical or future-dated
+        awards.
+        """
+        from loguru import logger
+
         if v is not None and (v < 1983 or v > 2050):
-            raise ValueError("Fiscal year must be between 1983 and 2050")
+            logger.warning(f"Fiscal year {v} is out of typical range (1983-2050) - accepting anyway to preserve record")
         return v
 
     @field_validator("award_year")
@@ -293,20 +348,62 @@ class Award(BaseModel):
     @field_validator("number_of_employees", mode="before")
     @classmethod
     def validate_number_of_employees(cls: Any, v) -> int | None:
-        """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative."""
+        """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative.
+
+        Lenient: Accepts floats (rounds to nearest int), extracts digits from
+        text like "approx 500", and returns None for invalid values rather than
+        rejecting the entire record.
+        """
+        from loguru import logger
+
         if v is None or v == "":
             return None
+
         # Accept numeric strings like "1,234"
         if isinstance(v, str):
+            # Try to extract digits from the string
+            cleaned = v.replace(",", "").strip()
             try:
-                v = int(v.replace(",", "").strip())
-            except Exception:
-                raise ValueError("Number of employees must be an integer")
-        if not isinstance(v, int):
-            raise ValueError("Number of employees must be an integer")
-        if v < 0:
-            raise ValueError("Number of employees must be non-negative")
-        return v
+                # Try parsing as float first (handles "123.5")
+                float_val = float(cleaned)
+                if float_val < 0:
+                    logger.warning(f"Number of employees '{v}' is negative - setting to None")
+                    return None
+                # Round to nearest int
+                int_val = round(float_val)
+                if abs(float_val - int_val) > 0.01:  # If it's not close to an integer
+                    logger.warning(f"Number of employees '{v}' is a float - rounding to {int_val}")
+                return int_val
+            except ValueError:
+                # Try extracting just the digits (handles "approx 500")
+                digits = "".join(ch for ch in cleaned if ch.isdigit())
+                if digits:
+                    logger.warning(f"Number of employees '{v}' is not pure numeric - extracting {digits}")
+                    return int(digits)
+                # Can't parse - return None (lenient)
+                logger.warning(f"Number of employees '{v}' cannot be parsed - setting to None to preserve record")
+                return None
+
+        # Handle float values
+        if isinstance(v, float):
+            if v < 0:
+                logger.warning(f"Number of employees {v} is negative - setting to None")
+                return None
+            int_val = round(v)
+            if abs(v - int_val) > 0.01:
+                logger.warning(f"Number of employees {v} is a float - rounding to {int_val}")
+            return int_val
+
+        # Handle int values
+        if isinstance(v, int):
+            if v < 0:
+                logger.warning(f"Number of employees {v} is negative - setting to None")
+                return None
+            return v
+
+        # Unknown type - return None (lenient)
+        logger.warning(f"Number of employees has unexpected type {type(v)} - setting to None to preserve record")
+        return None
 
     @field_validator("award_date")
     @classmethod
