@@ -112,6 +112,13 @@ def neo4j_sbir_awards(
                         if normalized_key == "state" and isinstance(value, str):
                             state_lower = value.strip().lower()
                             normalized_dict[normalized_key] = STATE_NAME_TO_CODE.get(state_lower, value)
+                        # Special handling for number_of_employees - convert float to int
+                        elif normalized_key == "number_of_employees" and isinstance(value, float):
+                            # Only convert if it's a whole number (no fractional part)
+                            if value.is_integer():
+                                normalized_dict[normalized_key] = int(value)
+                            else:
+                                normalized_dict[normalized_key] = value
                         else:
                             normalized_dict[normalized_key] = value
 
