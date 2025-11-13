@@ -111,6 +111,7 @@ def neo4j_sbir_awards(
         skipped_zero_amount = 0
         skipped_no_company_id = 0
         validation_errors = 0
+        companies_by_name_only = 0  # Track companies identified by name only
 
         for _, row in validated_sbir_awards.iterrows():
             try:
@@ -196,16 +197,26 @@ def neo4j_sbir_awards(
 
                 award_nodes.append(award_props)
 
-                # Create Company node if UEI or DUNS available (DUNS as fallback)
+                # Create Company node with fallback hierarchy: UEI > DUNS > Name
                 company_id = None
+                company_id_type = None  # Track identification method
+
                 if award.company_uei:
                     company_id = award.company_uei
+                    company_id_type = "uei"
                 elif award.company_duns:
                     company_id = f"DUNS:{award.company_duns}"
+                    company_id_type = "duns"
+                elif award.company_name:
+                    # Use normalized company name as final fallback
+                    normalized_name = award.company_name.strip().lower()
+                    company_id = f"NAME:{normalized_name}"
+                    company_id_type = "name"
+                    companies_by_name_only += 1
                 else:
-                    # Track awards without company identifiers
+                    # Track awards without any company identifier
                     if skipped_no_company_id < 10:
-                        logger.debug(f"Award {award.award_id} has no UEI or DUNS - cannot link to Company")
+                        logger.debug(f"Award {award.award_id} has no company name, UEI, or DUNS")
                     skipped_no_company_id += 1
 
                 if company_id:
@@ -213,6 +224,7 @@ def neo4j_sbir_awards(
                         company_props = {
                             "company_id": company_id,
                             "name": award.company_name,
+                            "id_type": company_id_type,  # Track identification method
                         }
                         if award.company_uei:
                             company_props["uei"] = award.company_uei
@@ -383,11 +395,12 @@ def neo4j_sbir_awards(
         logger.info("Processing Issues:")
         logger.info(f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount/total_rows*100:.1f}%)")
         logger.info(f"  • Validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
-        logger.info(f"  • Awards without company ID (no UEI/DUNS): {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
+        logger.info(f"  • Awards without any company identifier: {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
         logger.info("")
         logger.info("Nodes Created/Updated:")
         logger.info(f"  • Awards: {len(award_nodes)} nodes")
         logger.info(f"  • Companies: {len(company_nodes_map)} unique nodes")
+        logger.info(f"    - Identified by name only: {companies_by_name_only} ({companies_by_name_only/len(company_nodes_map)*100:.1f}% of companies)")
         logger.info(f"  • Researchers: {len(researcher_nodes_map)} unique nodes")
         logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
         logger.info("")
@@ -419,6 +432,7 @@ def neo4j_sbir_awards(
                 "no_company_identifier": skipped_no_company_id,
                 "validation_errors": validation_errors,
             },
+            "companies_by_name_only": companies_by_name_only,
             "metrics": {
                 "nodes_created": metrics.nodes_created,
                 "nodes_updated": metrics.nodes_updated,
