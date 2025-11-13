@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Award(BaseModel):
@@ -201,13 +201,18 @@ class Award(BaseModel):
     @field_validator("award_year")
     @classmethod
     def validate_award_year_matches_date(cls: Any, v: int | None, info: Any) -> int | None:
-        """If award_year provided, ensure it matches award_date year when award_date exists."""
-        if v is None:
-            return v
+        """Prioritize award_date year over award_year field. Auto-correct if mismatch.
+
+        If award_date exists, its year takes priority:
+        - If award_year is None, populate it from award_date.year
+        - If award_year differs from award_date.year, auto-correct to award_date.year
+        If award_date doesn't exist, award_year is used as-is (fallback).
+        """
         award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
         if award_date_val and isinstance(award_date_val, date):
-            if v != award_date_val.year:
-                raise ValueError("award_year must match award_date year")
+            # award_date is the source of truth - always use its year
+            return award_date_val.year
+        # No award_date available, use award_year as fallback
         return v
 
     @field_validator("company_uei")
@@ -366,6 +371,18 @@ class Award(BaseModel):
             )
 
         return v
+
+    @model_validator(mode="after")
+    def populate_award_year_from_date(self) -> "Award":
+        """Populate award_year from award_date if not already set.
+
+        This runs after all field validation and ensures award_year is always
+        populated when award_date is available. Uses object.__setattr__ to
+        bypass validate_assignment and avoid re-triggering field validators.
+        """
+        if self.award_year is None and self.award_date:
+            object.__setattr__(self, "award_year", self.award_date.year)
+        return self
 
     model_config = ConfigDict(
         validate_assignment=True,
