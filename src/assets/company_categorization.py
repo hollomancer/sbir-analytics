@@ -408,3 +408,172 @@ def company_categorization_confidence_check(
             "total_misaligned": int(total_misaligned),
         },
     )
+
+
+@asset(
+    description="Load company categorizations into Neo4j Company nodes",
+    group_name="company_categorization",
+    compute_kind="neo4j",
+)
+def neo4j_company_categorization(
+    context: AssetExecutionContext,
+    enriched_sbir_companies_with_categorization: pd.DataFrame,
+) -> Output[dict]:
+    """Load company categorization data into Neo4j.
+
+    Enriches existing Company nodes with categorization properties including
+    classification (Product-leaning/Service-leaning/Mixed/Uncertain), percentages,
+    confidence levels, and metadata.
+
+    Args:
+        enriched_sbir_companies_with_categorization: DataFrame with categorizations
+
+    Returns:
+        Dictionary with load metrics and summary
+    """
+    from ..loaders.neo4j import (
+        CompanyCategorizationLoader,
+        CompanyCategorizationLoaderConfig,
+        Neo4jClient,
+        Neo4jConfig,
+    )
+
+    config = get_config()
+    neo4j_cfg = config.neo4j
+
+    context.log.info(
+        f"Loading {len(enriched_sbir_companies_with_categorization)} "
+        f"company categorizations to Neo4j"
+    )
+
+    # Initialize Neo4j client
+    client_config = Neo4jConfig(
+        uri=neo4j_cfg.uri,
+        username=neo4j_cfg.username,
+        password=neo4j_cfg.password,
+        database=neo4j_cfg.database,
+        batch_size=neo4j_cfg.batch_size,
+    )
+
+    client = Neo4jClient(client_config)
+
+    try:
+        # Initialize categorization loader
+        loader_config = CompanyCategorizationLoaderConfig(
+            batch_size=neo4j_cfg.batch_size,
+            create_indexes=neo4j_cfg.create_indexes,
+            update_existing_only=True,  # Only update existing Company nodes
+        )
+
+        loader = CompanyCategorizationLoader(client, loader_config)
+
+        # Create indexes if configured
+        if loader_config.create_indexes:
+            context.log.info("Creating Neo4j indexes for company categorization")
+            loader.create_indexes()
+
+        # Convert DataFrame to dict records for loading
+        categorization_records = enriched_sbir_companies_with_categorization.to_dict(
+            orient="records"
+        )
+
+        # Load categorizations
+        context.log.info(
+            f"Loading {len(categorization_records)} categorizations in batches of "
+            f"{loader_config.batch_size}"
+        )
+
+        metrics = loader.load_categorizations(categorization_records)
+
+        # Calculate success rate
+        total_attempted = len(categorization_records)
+        successful = metrics.nodes_updated.get("Company", 0)
+        success_rate = (successful / total_attempted * 100) if total_attempted > 0 else 0
+
+        context.log.info(
+            f"Categorization loading complete: {successful}/{total_attempted} companies updated "
+            f"({success_rate:.1f}% success rate), {metrics.errors} errors"
+        )
+
+        # Create metadata for Dagster UI
+        metadata = {
+            "companies_updated": successful,
+            "total_attempted": total_attempted,
+            "success_rate_pct": round(success_rate, 2),
+            "errors": metrics.errors,
+            "batch_size": loader_config.batch_size,
+            "update_existing_only": loader_config.update_existing_only,
+        }
+
+        # Return summary
+        summary = {
+            "companies_updated": successful,
+            "total_attempted": total_attempted,
+            "success_rate": success_rate / 100,
+            "errors": metrics.errors,
+        }
+
+        return Output(value=summary, metadata=metadata)
+
+    finally:
+        # Clean up Neo4j connection
+        client.close()
+
+
+@asset_check(
+    asset=neo4j_company_categorization,
+    description="Verify Neo4j categorization load success rate",
+)
+def neo4j_categorization_load_success_check(
+    context: AssetCheckExecutionContext,
+    neo4j_company_categorization: dict,
+) -> AssetCheckResult:
+    """Verify that company categorizations loaded successfully to Neo4j.
+
+    Checks:
+    - Success rate >= 95%
+    - No critical errors
+
+    Args:
+        neo4j_company_categorization: Load summary dict
+
+    Returns:
+        AssetCheckResult with success metrics
+    """
+    success_rate = neo4j_company_categorization.get("success_rate", 0.0)
+    errors = neo4j_company_categorization.get("errors", 0)
+    companies_updated = neo4j_company_categorization.get("companies_updated", 0)
+    total_attempted = neo4j_company_categorization.get("total_attempted", 0)
+
+    # Define success threshold (95%)
+    success_threshold = 0.95
+
+    # Check success rate
+    passed = success_rate >= success_threshold
+
+    if passed:
+        description = (
+            f"Neo4j load successful: {companies_updated}/{total_attempted} companies updated "
+            f"({success_rate * 100:.1f}% success rate)"
+        )
+        severity = AssetCheckSeverity.INFO
+    else:
+        description = (
+            f"Neo4j load below threshold: {companies_updated}/{total_attempted} companies updated "
+            f"({success_rate * 100:.1f}% < {success_threshold * 100:.1f}% threshold), "
+            f"{errors} errors"
+        )
+        severity = AssetCheckSeverity.ERROR
+
+    return AssetCheckResult(
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata={
+            "companies_updated": companies_updated,
+            "total_attempted": total_attempted,
+            "success_rate_pct": round(success_rate * 100, 2),
+            "errors": errors,
+            "success_threshold_pct": success_threshold * 100,
+        },
+    )
