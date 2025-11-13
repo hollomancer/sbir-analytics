@@ -143,6 +143,7 @@ class ApplicabilityModel:
         # Build CET keyword mapping
         self.cet_keywords = {area.cet_id: area.keywords for area in cet_areas}
         self.cet_id_to_name = {area.cet_id: area.name for area in cet_areas}
+        self.cet_negative_keywords = {area.cet_id: area.negative_keywords for area in cet_areas}
 
         # Initialize pipelines (one per CET area for binary classification)
         self.pipelines: dict[str, Pipeline] = {}
@@ -178,6 +179,9 @@ class ApplicabilityModel:
         feature_config = self.config.get("feature_selection", {})
         calibration_config = self.config.get("calibration", {})
 
+        # Get stop words from config
+        stop_words = tfidf_config.get("stop_words", None)
+
         # TF-IDF Vectorizer with keyword boosting
         vectorizer = CETAwareTfidfVectorizer(
             cet_keywords=self.cet_keywords,
@@ -190,6 +194,7 @@ class ApplicabilityModel:
             use_idf=tfidf_config.get("use_idf", True),
             smooth_idf=tfidf_config.get("smooth_idf", True),
             norm=tfidf_config.get("norm", "l2"),
+            stop_words=stop_words,  # Add stop words support
         )
 
         # Feature selection
@@ -326,6 +331,8 @@ class ApplicabilityModel:
         self,
         text: str,
         return_all_scores: bool = False,
+        agency: str | None = None,
+        branch: str | None = None,
     ) -> list[CETClassification]:
         """
         Classify a single document into CET areas.
@@ -333,6 +340,8 @@ class ApplicabilityModel:
         Args:
             text: Document text to classify
             return_all_scores: If True, return scores for all CET areas (default: False)
+            agency: Funding agency name for applying contextual priors
+            branch: Funding branch/sub-agency for applying contextual priors
 
         Returns:
             List of CETClassification objects sorted by score (descending)
@@ -345,7 +354,7 @@ class ApplicabilityModel:
                 details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
             )
 
-        scores = self._get_scores([text])[0]
+        scores = self._get_scores([text], agency=agency, branch=branch)[0]
 
         # Get thresholds
         thresholds = self.config.get("confidence_thresholds", {})
@@ -391,6 +400,8 @@ class ApplicabilityModel:
         self,
         texts: list[str],
         batch_size: int | None = None,
+        agency: str | None = None,
+        branch: str | None = None,
     ) -> list[list[CETClassification]]:
         """
         Classify multiple documents efficiently.
@@ -398,6 +409,8 @@ class ApplicabilityModel:
         Args:
             texts: List of document texts
             batch_size: Batch size (default: from config or 1000)
+            agency: Funding agency for applying contextual priors (applies to all documents)
+            branch: Funding branch for applying contextual priors (applies to all documents)
 
         Returns:
             List of classification lists (one per document)
@@ -422,8 +435,8 @@ class ApplicabilityModel:
             batch = texts[i : i + batch_size]
             logger.debug(f"Processing batch {i//batch_size + 1}/{(len(texts)-1)//batch_size + 1}")
 
-            # Get scores for batch
-            batch_scores = self._get_scores(batch)
+            # Get scores for batch with agency/branch priors
+            batch_scores = self._get_scores(batch, agency=agency, branch=branch)
 
             # Convert to classifications
             for scores in batch_scores:
@@ -433,12 +446,19 @@ class ApplicabilityModel:
         logger.info(f"Batch classification complete: {len(all_classifications)} documents")
         return all_classifications
 
-    def _get_scores(self, texts: list[str]) -> list[dict[str, float]]:
+    def _get_scores(
+        self,
+        texts: list[str],
+        agency: str | None = None,
+        branch: str | None = None,
+    ) -> list[dict[str, float]]:
         """
-        Get classification scores for documents.
+        Get classification scores for documents with negative keyword filtering and priors.
 
         Args:
             texts: List of document texts
+            agency: Funding agency for applying contextual priors
+            branch: Funding branch for applying contextual priors
 
         Returns:
             List of score dictionaries (CET ID -> score)
@@ -454,6 +474,14 @@ class ApplicabilityModel:
                 # Convert to 0-100 scale
                 scores = [float(p * 100) for p in probas]
 
+                # Apply negative keyword penalties for each text
+                negative_keywords = self.cet_negative_keywords.get(cet_id, [])
+                if negative_keywords:
+                    scores = [
+                        self._apply_negative_keyword_penalty(score, text, negative_keywords)
+                        for score, text in zip(scores, texts)
+                    ]
+
                 # Assign scores to the correct text in scores_list
                 for i, score in enumerate(scores):
                     scores_list[i][cet_id] = score
@@ -461,6 +489,13 @@ class ApplicabilityModel:
                 logger.warning(f"Classification failed for {cet_id} for the batch: {e}")
                 for i in range(len(texts)):
                     scores_list[i][cet_id] = 0.0
+
+        # Apply agency/branch priors to each document's scores
+        if agency or branch:
+            scores_list = [
+                self._apply_agency_branch_priors(scores, agency=agency, branch=branch)
+                for scores in scores_list
+            ]
 
         return scores_list
 
@@ -505,6 +540,89 @@ class ApplicabilityModel:
             return ClassificationLevel.MEDIUM
         else:
             return ClassificationLevel.LOW
+
+    def _apply_negative_keyword_penalty(
+        self, score: float, text: str, negative_keywords: list[str]
+    ) -> float:
+        """
+        Apply penalty if negative keywords are present in text.
+
+        Negative keywords indicate false positives (e.g., "quantum mechanics" ≠ "quantum computing").
+        Each negative keyword match reduces the score by 30%.
+
+        Args:
+            score: Base classification score
+            text: Document text to check
+            negative_keywords: List of negative keywords for this CET area
+
+        Returns:
+            Penalized score (clamped to 0-100)
+        """
+        if not negative_keywords:
+            return score
+
+        text_lower = text.lower()
+        penalty_multiplier = 1.0
+
+        for neg_kw in negative_keywords:
+            if neg_kw.lower() in text_lower:
+                penalty_multiplier *= 0.7  # 30% reduction per negative keyword
+                logger.debug(f"Negative keyword '{neg_kw}' found, applying penalty")
+
+        penalized_score = score * penalty_multiplier
+        return max(0.0, min(100.0, penalized_score))
+
+    def _apply_agency_branch_priors(
+        self,
+        scores: dict[str, float],
+        agency: str | None = None,
+        branch: str | None = None,
+    ) -> dict[str, float]:
+        """
+        Apply agency/branch contextual score boosts.
+
+        Boosts classification scores based on known agency/branch focus areas.
+        Example: DoD awards get +15 boost for hypersonics, NIH gets +20 for biotechnologies.
+
+        Args:
+            scores: Base classification scores (CET ID -> score)
+            agency: Funding agency name (e.g., "Department of Defense")
+            branch: Funding branch/sub-agency (e.g., "Air Force", "DARPA")
+
+        Returns:
+            Adjusted scores with priors applied (clamped to 0-100)
+        """
+        priors_config = self.config.get("priors", {})
+
+        if not priors_config.get("enabled", True):
+            return scores
+
+        adjusted_scores = scores.copy()
+
+        # Apply agency priors
+        if agency:
+            agency_priors = priors_config.get("agencies", {}).get(agency, {})
+
+            for cet_id, boost in agency_priors.items():
+                if cet_id == "_all_cets":
+                    # Apply baseline boost to all CETs
+                    for cet in adjusted_scores:
+                        adjusted_scores[cet] = min(100.0, adjusted_scores[cet] + boost)
+                    logger.debug(f"Applied agency prior: {agency} -> all CETs +{boost}")
+                elif cet_id in adjusted_scores:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(f"Applied agency prior: {agency} -> {cet_id} +{boost}")
+
+        # Apply branch priors (override/augment agency priors)
+        if branch:
+            branch_priors = priors_config.get("branches", {}).get(branch, {})
+
+            for cet_id, boost in branch_priors.items():
+                if cet_id in adjusted_scores:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(f"Applied branch prior: {branch} -> {cet_id} +{boost}")
+
+        return adjusted_scores
 
     def save(self, filepath: Path) -> None:
         """
