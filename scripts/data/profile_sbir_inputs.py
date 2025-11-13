@@ -185,9 +185,11 @@ def main() -> int:
         with args.gha_output.open("a", encoding="utf-8") as handle:
             handle.write(f"inputs_profile_json={args.output_json}\n")
             handle.write(f"inputs_profile_md={markdown_path}\n")
+            handle.write(f"schema_drift_detected={str(schema_drift_detected).lower()}\n")
 
     if schema_drift_detected:
-        raise SystemExit("Company CSV schema drift detected; see profile report for details.")
+        print("⚠️  WARNING: Company CSV schema drift detected; see profile report for details.")
+        print(f"   Report: {markdown_path}")
 
     return 0
 

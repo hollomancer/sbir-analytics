@@ -44,29 +44,14 @@ jobs:
   refresh-awards-data:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      neo4j:
-        image: neo4j:5
-        ports:
-          - 7687:7687
-          - 7474:7474
-        env:
-          NEO4J_AUTH: neo4j/password
-          NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
-          NEO4J_PLUGINS: '["apoc"]'
-        options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-          --health-start-period 40s
     env:
       FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
       SOURCE_URL: ${{ github.event.inputs.source_url || '' }}
-      NEO4J_URI: bolt://localhost:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: password
-      NEO4J_DATABASE: neo4j
+      # Neo4j Aura connection (optional - set secrets to enable)
+      NEO4J_URI: ${{ secrets.NEO4J_AURA_URI || '' }}
+      NEO4J_USER: ${{ secrets.NEO4J_AURA_USER || '' }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_AURA_PASSWORD || '' }}
+      NEO4J_DATABASE: ${{ secrets.NEO4J_AURA_DATABASE || 'neo4j' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -173,25 +158,17 @@ jobs:
         env:
           SBIR_E2E_AWARD_CSV: ${{ env.DATA_PATH }}
 
-      - name: Wait for Neo4j
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        run: |
-          echo "Waiting for Neo4j to be ready..."
-          until curl -s -f -o /dev/null "http://localhost:7474"; do
-            echo "Neo4j not ready, sleeping..."
-            sleep 5
-          done
-          echo "Neo4j is ready!"
-
       - name: Reset Neo4j database
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         run: |
+          echo "Resetting Neo4j Aura database..."
           poetry run python scripts/data/reset_neo4j_sbir.py
 
-      - name: Load SBIR awards into Neo4j
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+      - name: Load SBIR awards into Neo4j Aura
+        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         id: neo4j_load
         run: |
+          echo "Loading data to Neo4j Aura: ${NEO4J_URI}"
           poetry run python scripts/data/run_neo4j_sbir_load.py \
             --validated-csv "${{ steps.ingestion_checks.outputs.validated_csv_path }}" \
             --output-dir "$METADATA_DIR" \
@@ -199,8 +176,8 @@ jobs:
             --gha-output "$GITHUB_OUTPUT" || true
         continue-on-error: true
 
-      - name: Run Neo4j smoke checks
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
+      - name: Run Neo4j Aura smoke checks
+        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         id: neo4j_smoke
         run: |
           poetry run python scripts/data/run_neo4j_smoke_checks.py \

@@ -52,6 +52,18 @@ def _output_metadata(output: Any) -> dict[str, Any]:
     return getattr(output, "metadata", {}) or {}
 
 
+def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Convert Dagster metadata values to JSON-serializable plain values."""
+    result = {}
+    for key, value in metadata.items():
+        # Dagster metadata values have a 'value' attribute containing the actual data
+        if hasattr(value, 'value'):
+            result[key] = value.value
+        else:
+            result[key] = value
+    return result
+
+
 def render_markdown_summary(load_result: dict[str, Any]) -> str:
     """Render Neo4j load results as markdown."""
     lines = [
@@ -68,6 +80,10 @@ def render_markdown_summary(load_result: dict[str, Any]) -> str:
         lines.append(f"| Awards updated | {load_result.get('awards_updated', 0)} |")
         lines.append(f"| Companies loaded | {load_result.get('companies_loaded', 0)} |")
         lines.append(f"| Companies updated | {load_result.get('companies_updated', 0)} |")
+        lines.append(f"| Researchers loaded | {load_result.get('researchers_loaded', 0)} |")
+        lines.append(f"| Researchers updated | {load_result.get('researchers_updated', 0)} |")
+        lines.append(f"| Institutions loaded | {load_result.get('institutions_loaded', 0)} |")
+        lines.append(f"| Institutions updated | {load_result.get('institutions_updated', 0)} |")
         lines.append(f"| Relationships created | {load_result.get('relationships_created', 0)} |")
         lines.append(f"| Errors | {load_result.get('errors', 0)} |")
         lines.append(f"| Duration (seconds) | {load_result.get('duration_seconds', 0):.2f} |")
@@ -103,7 +119,7 @@ def main() -> int:
     # Write metrics JSON
     metrics_json_path = args.output_dir / "neo4j_load_metrics.json"
     with metrics_json_path.open("w", encoding="utf-8") as f:
-        json.dump({"result": load_result, "metadata": load_metadata}, f, indent=2)
+        json.dump({"result": load_result, "metadata": _serialize_metadata(load_metadata)}, f, indent=2)
         f.write("\n")
 
     # Write markdown summary

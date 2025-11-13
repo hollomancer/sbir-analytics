@@ -81,6 +81,18 @@ def _output_metadata(output: Any) -> dict[str, Any]:
     return getattr(output, "metadata", {}) or {}
 
 
+def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Convert Dagster metadata values to JSON-serializable plain values."""
+    result = {}
+    for key, value in metadata.items():
+        # Dagster metadata values have a 'value' attribute containing the actual data
+        if hasattr(value, 'value'):
+            result[key] = value.value
+        else:
+            result[key] = value
+    return result
+
+
 def render_markdown_summary(raw_meta: dict[str, Any], validated_meta: dict[str, Any], report: dict[str, Any]) -> str:
     lines = [
         "# SBIR ingestion validation",
@@ -152,11 +164,11 @@ def main() -> int:
     summary_md_path = args.summary_md or (args.output_dir / "ingestion_summary.md")
 
     with raw_meta_path.open("w", encoding="utf-8") as handle:
-        json.dump({"metadata": raw_metadata}, handle, indent=2)
+        json.dump({"metadata": _serialize_metadata(raw_metadata)}, handle, indent=2)
         handle.write("\n")
 
     with validated_meta_path.open("w", encoding="utf-8") as handle:
-        json.dump({"metadata": validated_metadata}, handle, indent=2)
+        json.dump({"metadata": _serialize_metadata(validated_metadata)}, handle, indent=2)
         handle.write("\n")
 
     # Save validated DataFrame as CSV for downstream use (e.g., Neo4j loading)
@@ -164,13 +176,17 @@ def main() -> int:
 
     with report_json_path.open("w", encoding="utf-8") as handle:
         json.dump(
-            {"report": report_dict, "metadata": report_metadata},
+            {"report": report_dict, "metadata": _serialize_metadata(report_metadata)},
             handle,
             indent=2,
         )
         handle.write("\n")
 
-    summary_md = render_markdown_summary(raw_metadata, validated_metadata, report_dict)
+    summary_md = render_markdown_summary(
+        _serialize_metadata(raw_metadata),
+        _serialize_metadata(validated_metadata),
+        report_dict
+    )
     summary_md_path.write_text(summary_md, encoding="utf-8")
 
     if args.gha_output:
