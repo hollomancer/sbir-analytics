@@ -52,6 +52,18 @@ def _output_metadata(output: Any) -> dict[str, Any]:
     return getattr(output, "metadata", {}) or {}
 
 
+def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Convert Dagster metadata values to JSON-serializable plain values."""
+    result = {}
+    for key, value in metadata.items():
+        # Dagster metadata values have a 'value' attribute containing the actual data
+        if hasattr(value, 'value'):
+            result[key] = value.value
+        else:
+            result[key] = value
+    return result
+
+
 def render_markdown_summary(load_result: dict[str, Any]) -> str:
     """Render Neo4j load results as markdown."""
     lines = [
@@ -103,7 +115,7 @@ def main() -> int:
     # Write metrics JSON
     metrics_json_path = args.output_dir / "neo4j_load_metrics.json"
     with metrics_json_path.open("w", encoding="utf-8") as f:
-        json.dump({"result": load_result, "metadata": load_metadata}, f, indent=2)
+        json.dump({"result": load_result, "metadata": _serialize_metadata(load_metadata)}, f, indent=2)
         f.write("\n")
 
     # Write markdown summary
