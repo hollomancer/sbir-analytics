@@ -288,15 +288,83 @@ class Award(BaseModel):
             raise ValueError("Number of employees must be non-negative")
         return v
 
+    @field_validator("award_date")
+    @classmethod
+    def validate_award_date_not_future(cls: Any, v: date) -> date:
+        """Validate that award_date is not in the future.
+
+        Awards should not be dated in the future. This catches data entry errors
+        or placeholder dates that should be cleaned.
+        """
+        from datetime import date as date_cls
+
+        today = date_cls.today()
+        if v > today:
+            raise ValueError(f"Award date cannot be in the future (got {v}, today is {today})")
+        return v
+
+    @field_validator("proposal_award_date")
+    @classmethod
+    def validate_proposal_date_order(cls: Any, v: date | None, info: Any) -> date | None:
+        """If proposal_award_date and award_date present, ensure proposal came before award.
+
+        Proposal dates should precede or match award dates - it doesn't make sense
+        for a proposal to be dated after the award decision.
+        """
+        if v is None:
+            return v
+        award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
+        if award_date_val and isinstance(award_date_val, date):
+            # Proposal should be before or on the same day as award
+            if v > award_date_val:
+                raise ValueError(
+                    f"Proposal date ({v}) cannot be after award date ({award_date_val})"
+                )
+        return v
+
+    @field_validator("contract_start_date")
+    @classmethod
+    def validate_contract_start_not_future(cls: Any, v: date | None) -> date | None:
+        """Validate that contract_start_date is not unreasonably far in the future."""
+        if v is None:
+            return v
+        from datetime import date as date_cls
+
+        today = date_cls.today()
+        # Allow up to 2 years in the future for planned contracts
+        max_future_date = date_cls(today.year + 2, today.month, today.day)
+        if v > max_future_date:
+            raise ValueError(
+                f"Contract start date ({v}) is unreasonably far in future (max: {max_future_date})"
+            )
+        return v
+
     @field_validator("contract_end_date")
     @classmethod
     def validate_date_order(cls: Any, v: date | None, info: Any) -> date | None:
-        """If contract_end_date and proposal_award_date present, ensure consistency."""
+        """Validate contract end date consistency with start and proposal dates.
+
+        Checks:
+        1. End date >= start date (if both present)
+        2. End date >= proposal/award date (if both present)
+        """
         if v is None:
             return v
-        start = info.data.get("proposal_award_date") if hasattr(info, "data") else None
+
+        # Check against contract_start_date if present
+        start = info.data.get("contract_start_date") if hasattr(info, "data") else None
         if start and isinstance(start, date) and v < start:
-            raise ValueError("contract_end_date must be on or after proposal_award_date")
+            raise ValueError(
+                f"Contract end date ({v}) must be on or after start date ({start})"
+            )
+
+        # Check against proposal_award_date if present
+        proposal = info.data.get("proposal_award_date") if hasattr(info, "data") else None
+        if proposal and isinstance(proposal, date) and v < proposal:
+            raise ValueError(
+                f"Contract end date ({v}) must be on or after proposal date ({proposal})"
+            )
+
         return v
 
     model_config = ConfigDict(

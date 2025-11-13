@@ -204,6 +204,7 @@ def neo4j_sbir_awards(
         skipped_zero_amount = 0
         skipped_no_company_id = 0
         validation_errors = 0
+        date_validation_errors = 0  # Track date hygiene validation errors
         companies_by_name_only = 0  # Track companies identified by name only
 
         for _, row in validated_sbir_awards.iterrows():
@@ -459,9 +460,21 @@ def neo4j_sbir_awards(
                     )
 
             except Exception as e:
-                if validation_errors < 10:  # Only log first 10 validation errors
-                    logger.warning(f"Failed to process award row: {e}")
-                validation_errors += 1
+                error_msg = str(e)
+                # Check if it's a date validation error by examining the error message
+                is_date_error = any(
+                    keyword in error_msg.lower()
+                    for keyword in ["date", "future", "before", "after"]
+                )
+
+                if is_date_error:
+                    if date_validation_errors < 10:  # Only log first 10 to avoid spam
+                        logger.warning(f"Date validation error: {e}")
+                    date_validation_errors += 1
+                else:
+                    if validation_errors < 10:  # Only log first 10 to avoid spam
+                        logger.warning(f"Failed to process award row: {e}")
+                    validation_errors += 1
                 metrics.errors += 1
 
         # Load Company nodes first
@@ -534,7 +547,7 @@ def neo4j_sbir_awards(
         successfully_processed = len(award_nodes)
         # Only count actual failures (zero amounts and validation errors), not missing company IDs
         # Awards without company IDs are still successfully processed, just not linked to companies
-        total_failed = skipped_zero_amount + validation_errors
+        total_failed = skipped_zero_amount + validation_errors + date_validation_errors
 
         logger.info("=" * 80)
         logger.info("Neo4j SBIR Awards Loading Summary")
@@ -545,7 +558,8 @@ def neo4j_sbir_awards(
         logger.info("")
         logger.info("Processing Issues:")
         logger.info(f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount/total_rows*100:.1f}%)")
-        logger.info(f"  • Validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
+        logger.info(f"  • Date validation errors: {date_validation_errors} ({date_validation_errors/total_rows*100:.1f}%)")
+        logger.info(f"  • Other validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
         logger.info(f"  • Awards without any company identifier: {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
         logger.info("")
         logger.info("Nodes Created/Updated:")
@@ -583,7 +597,8 @@ def neo4j_sbir_awards(
             "skip_reasons": {
                 "zero_or_missing_amount": skipped_zero_amount,
                 "no_company_identifier": skipped_no_company_id,
-                "validation_errors": validation_errors,
+                "date_validation_errors": date_validation_errors,
+                "other_validation_errors": validation_errors,
             },
             "companies_by_name_only": companies_by_name_only,
             "metrics": {
