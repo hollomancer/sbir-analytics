@@ -221,7 +221,7 @@ def categorize_companies(
 
         # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
         if use_api:
-            contracts_df = retrieve_company_contracts_api(uei=uei)
+            contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
         else:
             if extractor is None:
                 raise ValueError("extractor is required when use_api=False")
@@ -229,7 +229,7 @@ def categorize_companies(
 
         # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
         if use_api:
-            sbir_df = retrieve_sbir_awards_api(uei=uei)
+            sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
         else:
             sbir_df = retrieve_sbir_awards(extractor, uei=uei)
 

@@ -7,11 +7,14 @@ IMPORTANT: SBIR/STTR awards are excluded from categorization to focus on non-R&D
 contract revenue that reflects the company's product vs service business model. However,
 SBIR/STTR awards can be retrieved separately for reporting and debugging purposes.
 
+The module supports fallback to company name-based search when UEI/DUNS identifiers are
+missing or invalid, ensuring broader coverage for companies with incomplete metadata.
+
 Key Functions:
     - retrieve_company_contracts: Retrieve non-SBIR federal contracts for categorization (DuckDB)
-    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for categorization (API)
+    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for categorization (API, with name fallback)
     - retrieve_sbir_awards: Retrieve SBIR/STTR awards for reporting (DuckDB)
-    - retrieve_sbir_awards_api: Retrieve SBIR/STTR awards for reporting (API)
+    - retrieve_sbir_awards_api: Retrieve SBIR/STTR awards for reporting (API, with name fallback)
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
@@ -24,6 +27,27 @@ import pandas as pd
 from loguru import logger
 
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
+
+
+def _is_valid_identifier(value: str | None) -> bool:
+    """Check if an identifier (UEI/DUNS/CAGE) is valid.
+
+    Args:
+        value: Identifier value to validate
+
+    Returns:
+        True if valid, False if None, NaN, empty, or invalid
+    """
+    if value is None:
+        return False
+    if isinstance(value, float) and pd.isna(value):
+        return False
+    if isinstance(value, str):
+        # Check for string "nan", "none", empty, or whitespace
+        cleaned = value.strip().lower()
+        if cleaned in ("", "nan", "none", "null"):
+            return False
+    return True
 
 
 def retrieve_company_contracts(
@@ -171,6 +195,7 @@ def retrieve_company_contracts(
 def retrieve_company_contracts_api(
     uei: str | None = None,
     duns: str | None = None,
+    company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
     page_size: int = 100,
@@ -183,9 +208,12 @@ def retrieve_company_contracts_api(
     focus on non-R&D federal contract revenue. This endpoint properly populates
     PSC codes without requiring additional API calls per award.
 
+    Falls back to company name search if UEI/DUNS are missing or invalid.
+
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
+        company_name: Company name (used as fallback when UEI/DUNS are invalid)
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
         page_size: Number of results per page
@@ -208,12 +236,21 @@ def retrieve_company_contracts_api(
         >>> len(contracts)
         15
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns]):
-        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+    # Validate identifiers
+    valid_uei = _is_valid_identifier(uei)
+    valid_duns = _is_valid_identifier(duns)
+    valid_name = _is_valid_identifier(company_name)
+
+    # Check if we have at least one valid identifier
+    if not any([valid_uei, valid_duns, valid_name]):
+        logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
-    logger.info(f"Retrieving contracts from USAspending API using transaction endpoint (UEI={uei}, DUNS={duns})")
+    # Determine search strategy
+    if valid_uei or valid_duns:
+        logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+    else:
+        logger.info(f"Falling back to name-based search for: {company_name}")
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
@@ -222,10 +259,13 @@ def retrieve_company_contracts_api(
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
     recipient_search_terms = []
-    if uei:
+    if valid_uei:
         recipient_search_terms.append(uei)
-    if duns:
+    if valid_duns:
         recipient_search_terms.append(duns)
+    if not recipient_search_terms and valid_name:
+        # Fallback to company name if no valid identifiers
+        recipient_search_terms.append(company_name)
 
     if recipient_search_terms:
         filters["recipient_search_text"] = recipient_search_terms
@@ -627,6 +667,7 @@ def retrieve_sbir_awards(
 def retrieve_sbir_awards_api(
     uei: str | None = None,
     duns: str | None = None,
+    company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
     page_size: int = 100,
@@ -636,9 +677,12 @@ def retrieve_sbir_awards_api(
     This function retrieves SBIR/STTR awards separately for debugging and reporting
     purposes. These awards are NOT used in the categorization logic.
 
+    Falls back to company name search if UEI/DUNS are missing or invalid.
+
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
+        company_name: Company name (used as fallback when UEI/DUNS are invalid)
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
         page_size: Number of results per page
@@ -646,11 +690,19 @@ def retrieve_sbir_awards_api(
     Returns:
         DataFrame with SBIR/STTR awards only
     """
-    if not any([uei, duns]):
-        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+    # Validate identifiers
+    valid_uei = _is_valid_identifier(uei)
+    valid_duns = _is_valid_identifier(duns)
+    valid_name = _is_valid_identifier(company_name)
+
+    if not any([valid_uei, valid_duns, valid_name]):
+        logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
-    logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei}, DUNS={duns})")
+    if valid_uei or valid_duns:
+        logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+    else:
+        logger.debug(f"Retrieving SBIR/STTR awards from USAspending API using name: {company_name}")
 
     # Build search filters
     filters: dict[str, Any] = {
@@ -658,10 +710,12 @@ def retrieve_sbir_awards_api(
     }
 
     recipient_search_terms = []
-    if uei:
+    if valid_uei:
         recipient_search_terms.append(uei)
-    if duns:
+    if valid_duns:
         recipient_search_terms.append(duns)
+    if not recipient_search_terms and valid_name:
+        recipient_search_terms.append(company_name)
 
     if recipient_search_terms:
         filters["recipient_search_text"] = recipient_search_terms
