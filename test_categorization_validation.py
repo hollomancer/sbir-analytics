@@ -15,6 +15,11 @@ Usage:
     # Test all companies
     poetry run python test_categorization_validation.py
 
+    # Test with a different CSV file (all equivalent):
+    poetry run python test_categorization_validation.py --dataset path/to/companies.csv
+    poetry run python test_categorization_validation.py -d path/to/companies.csv
+    poetry run python test_categorization_validation.py --csv path/to/companies.csv
+
     # Test specific company by UEI
     poetry run python test_categorization_validation.py --uei ABC123DEF456
 
@@ -46,6 +51,8 @@ from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
+    is_cost_based_contract,
+    is_service_based_contract,
 )
 
 
@@ -273,16 +280,32 @@ def categorize_companies(
                     "sbir_award_count": sbir_award_count,
                     "sbir_dollars": sbir_dollars,
                     "sbir_pct_of_total": sbir_pct_of_total,
+                    "non_sbir_dollars": 0.0,
+                    "non_sbir_contracts": 0,
+                    "cost_based_contracts": 0,
+                    "service_based_contracts": 0,
+                    "justification": "No non-SBIR contracts found",
                 }
             )
             continue
 
         # Classify individual contracts
         classified_contracts = []
+        cost_based_count = 0
+        service_based_count = 0
+        
         for _, contract in contracts_df.iterrows():
             contract_dict = contract.to_dict()
             classified = classify_contract(contract_dict)
             classified_contracts.append(classified.model_dump())
+            
+            # Track cost-based and service-based contracts
+            contract_type = contract_dict.get("contract_type", "")
+            pricing = contract_dict.get("pricing", "")
+            if is_cost_based_contract(contract_type, pricing):
+                cost_based_count += 1
+            if is_service_based_contract(contract_type, pricing):
+                service_based_count += 1
 
         # Count classifications
         product_count = sum(1 for c in classified_contracts if c["classification"] == "Product")
@@ -308,6 +331,29 @@ def categorize_companies(
             f"- {company_result.confidence} confidence"
         )
 
+        # Generate justification
+        justification_parts = []
+        if company_result.override_reason:
+            if company_result.override_reason == "high_psc_diversity":
+                justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
+            elif company_result.override_reason == "insufficient_awards":
+                justification_parts.append("Insufficient awards for reliable classification")
+            elif company_result.override_reason == "no_contracts_found":
+                justification_parts.append("No non-SBIR contracts found")
+        else:
+            if company_result.product_pct >= 60:
+                justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
+            if company_result.service_pct >= 60:
+                justification_parts.append(f"{company_result.service_pct:.0f}% service/R&D contracts")
+            if 40 <= company_result.product_pct <= 60 and 40 <= company_result.service_pct <= 60:
+                justification_parts.append("Balanced product/service portfolio")
+            if company_result.psc_family_count > 5:
+                justification_parts.append(f"{company_result.psc_family_count} PSC families")
+            if company_result.award_count > 50:
+                justification_parts.append(f"{company_result.award_count} contracts")
+        
+        justification = ", ".join(justification_parts) if justification_parts else "See metrics"
+
         # Add to results with SBIR award statistics for comparison
         result_dict = {
             "company_uei": company_result.company_uei,
@@ -326,6 +372,11 @@ def categorize_companies(
             "sbir_award_count": sbir_award_count,
             "sbir_dollars": sbir_dollars,
             "sbir_pct_of_total": sbir_pct_of_total,
+            "non_sbir_dollars": non_sbir_dollars,
+            "non_sbir_contracts": company_result.award_count,
+            "cost_based_contracts": cost_based_count,
+            "service_based_contracts": service_based_count,
+            "justification": justification,
         }
         results.append(result_dict)
 
@@ -427,15 +478,46 @@ def print_summary(results: pd.DataFrame) -> None:
 
 
 def export_results(results: pd.DataFrame, output_path: str) -> None:
-    """Export results to CSV file.
+    """Export results to CSV file with all requested fields.
 
     Args:
         results: DataFrame with categorization results
         output_path: Path to output CSV file
     """
-    results.to_csv(output_path, index=False)
+    # Select and order the columns as requested
+    export_columns = [
+        "company_name",
+        "sbir_award_count",
+        "sbir_dollars",
+        "non_sbir_dollars",
+        "non_sbir_contracts",
+        "cost_based_contracts",
+        "service_based_contracts",
+        "classification",
+        "justification",
+        "confidence",
+    ]
+    
+    # Create export DataFrame with only requested columns
+    export_df = results[export_columns].copy()
+    
+    # Rename columns to match user's requested format
+    export_df = export_df.rename(columns={
+        "company_name": "Company Name",
+        "sbir_award_count": "# of SBIR Awards Received",
+        "sbir_dollars": "# of SBIR Dollars Received",
+        "non_sbir_dollars": "Number of Non-SBIR Dollars Received",
+        "non_sbir_contracts": "Number of Non-SBIR Government Contracts Received",
+        "cost_based_contracts": "Number of Non-SBIR Cost-Based Contracts Received",
+        "service_based_contracts": "Number of Non-SBIR Service-Based Contracts Received",
+        "classification": "Classification",
+        "justification": "Justification",
+        "confidence": "Confidence",
+    })
+    
+    export_df.to_csv(output_path, index=False)
     logger.info(f"\nResults exported to: {output_path}")
-    logger.info(f"Columns: {', '.join(results.columns)}")
+    logger.info(f"Exported {len(export_df)} companies with {len(export_df.columns)} columns")
 
 
 def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
@@ -712,8 +794,18 @@ def main():
     )
     parser.add_argument(
         "--dataset",
+        "-d",
         type=str,
-        help="Path to validation dataset CSV (default: data/raw/sbir/over-100-awards-company_search_1763075384.csv)",
+        dest="dataset",
+        metavar="CSV_FILE",
+        help="Path to company CSV file to process (default: data/raw/sbir/over-100-awards-company_search_1763075384.csv)",
+    )
+    parser.add_argument(
+        "--csv",
+        type=str,
+        dest="dataset",
+        metavar="CSV_FILE",
+        help="Alias for --dataset: Path to company CSV file to process",
     )
     parser.add_argument(
         "--limit", type=int, help="Limit number of companies to process (default: all)"

@@ -88,7 +88,7 @@ class CompanyClassification(BaseModel):
     """
 
     # Core identification
-    company_uei: str = Field(..., description="Company UEI")
+    company_uei: str | None = Field(None, description="Company UEI (optional)")
     company_name: str = Field(..., description="Company name")
 
     # Classification result

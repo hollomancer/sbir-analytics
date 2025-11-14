@@ -26,13 +26,152 @@ Key Functions:
 
 import re
 import time
+from collections import deque
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
 import pandas as pd
 from loguru import logger
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
+from src.config.loader import get_config
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
+
+
+class RateLimiter:
+    """Rate limiter for USAspending API calls.
+    
+    Tracks request timestamps and enforces rate limits by waiting when necessary.
+    """
+
+    def __init__(self, rate_limit_per_minute: int = 120):
+        """Initialize rate limiter.
+        
+        Args:
+            rate_limit_per_minute: Maximum requests allowed per minute
+        """
+        self.rate_limit_per_minute = rate_limit_per_minute
+        self.request_times: deque[datetime] = deque(maxlen=rate_limit_per_minute)
+
+    def wait_if_needed(self) -> None:
+        """Wait if rate limit would be exceeded.
+        
+        Removes requests older than 1 minute and waits if we're at the limit.
+        """
+        now = datetime.now()
+        # Remove requests older than 1 minute
+        cutoff_time = now - timedelta(seconds=60)
+        while self.request_times and self.request_times[0] < cutoff_time:
+            self.request_times.popleft()
+
+        # If we're at the limit, wait until the oldest request is 60 seconds old
+        if len(self.request_times) >= self.rate_limit_per_minute:
+            oldest = self.request_times[0]
+            wait_seconds = 60 - (now - oldest).total_seconds() + 0.5  # Add 0.5s buffer
+            if wait_seconds > 0:
+                logger.debug(f"Rate limit reached ({self.rate_limit_per_minute}/min), waiting {wait_seconds:.1f} seconds")
+                time.sleep(wait_seconds)
+                # Recalculate after sleep
+                now = datetime.now()
+                cutoff_time = now - timedelta(seconds=60)
+                while self.request_times and self.request_times[0] < cutoff_time:
+                    self.request_times.popleft()
+
+        # Record this request
+        self.request_times.append(datetime.now())
+
+
+# Global rate limiter instance (initialized on first use)
+_rate_limiter: RateLimiter | None = None
+
+
+def _get_rate_limiter() -> RateLimiter:
+    """Get or create the global rate limiter instance.
+    
+    Returns:
+        RateLimiter instance configured from config
+    """
+    global _rate_limiter
+    if _rate_limiter is None:
+        try:
+            config = get_config()
+            rate_limit = config.enrichment_refresh.usaspending.rate_limit_per_minute
+        except Exception:
+            # Fallback to conservative default if config unavailable
+            rate_limit = 120
+            logger.warning(f"Could not load rate limit from config, using default: {rate_limit}/min")
+        _rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)
+    return _rate_limiter
+
+
+def _make_rate_limited_request(
+    method: str,
+    url: str,
+    rate_limiter: RateLimiter | None = None,
+    timeout: int = 30,
+    max_retries: int = 3,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Make an HTTP request with rate limiting and retry logic.
+    
+    Args:
+        method: HTTP method (GET, POST)
+        url: Full URL to request
+        rate_limiter: Optional rate limiter instance (uses global if None)
+        timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts
+        **kwargs: Additional arguments to pass to httpx request
+        
+    Returns:
+        httpx.Response object
+        
+    Raises:
+        httpx.HTTPError: If request fails after all retries
+    """
+    if rate_limiter is None:
+        rate_limiter = _get_rate_limiter()
+    
+    @retry(
+        stop=stop_after_attempt(max_retries),
+        wait=wait_exponential(multiplier=2.0, min=2, max=30),
+        retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException, httpx.RequestError)),
+        reraise=True,
+    )
+    def _do_request() -> httpx.Response:
+        # Wait for rate limit before making request
+        rate_limiter.wait_if_needed()
+        
+        # Make the request
+        with httpx.Client(timeout=timeout) as client:
+            if method.upper() == "GET":
+                response = client.get(url, **kwargs)
+            elif method.upper() == "POST":
+                response = client.post(url, **kwargs)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+            
+            # Check for rate limit status code - raise_for_status will convert to HTTPStatusError for retry
+            if response.status_code == 429:
+                logger.warning("Received 429 rate limit response, will retry with backoff")
+            
+            response.raise_for_status()
+            return response
+    
+    try:
+        return _do_request()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            logger.error(f"Rate limit exceeded after {max_retries} retries for {url}")
+        raise
+    except (httpx.TimeoutException, httpx.RequestError) as e:
+        logger.error(f"Request failed after {max_retries} retries for {url}: {e}")
+        raise
 
 
 def _is_valid_identifier(value: str | None) -> bool:
@@ -156,14 +295,40 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
         if core_name not in variations and len(core_name) >= 10:
             variations.append(core_name)
 
+    # Variation 6: Generate uppercase variations (USAspending often uses uppercase)
+    # Add uppercase versions of key variations
+    uppercase_variations = []
+    for variation in variations[:3]:  # Only uppercase the first few most specific variations
+        upper = variation.upper().strip()
+        if upper != variation and len(upper) >= 5:  # Only add if different from original
+            uppercase_variations.append(upper)
+    
+    # Add uppercase variations after the original variations but before the base name
+    variations = variations[:3] + uppercase_variations + variations[3:]
+
     # Remove duplicates while preserving order
-    seen = set()
+    # Prefer uppercase versions when there are case differences
+    seen = {}  # Map lowercase -> actual variation (prefer uppercase)
+    for variation in variations:
+        if len(variation) < 5:
+            continue
+        normalized_check = variation.lower().strip()
+        if normalized_check not in seen:
+            seen[normalized_check] = variation
+        else:
+            # If we already have this variation, prefer uppercase version
+            existing = seen[normalized_check]
+            if variation.isupper() and not existing.isupper():
+                seen[normalized_check] = variation
+    
+    # Convert back to list, preserving original order for first occurrence of each
     unique_variations = []
+    seen_order = set()
     for variation in variations:
         normalized_check = variation.lower().strip()
-        if normalized_check not in seen and len(variation) >= 5:
-            seen.add(normalized_check)
-            unique_variations.append(variation)
+        if normalized_check not in seen_order:
+            unique_variations.append(seen[normalized_check])
+            seen_order.add(normalized_check)
 
     return unique_variations
 
@@ -198,6 +363,9 @@ def _fuzzy_match_recipient(
 
     logger.debug(f"Generated {len(name_variations)} name variations for '{company_name}': {name_variations}")
 
+    # Track the best candidate match (in case we don't find one with UEI/DUNS)
+    best_candidate = None
+
     # Try each variation until we find a match
     for idx, search_name in enumerate(name_variations, 1):
         try:
@@ -207,16 +375,16 @@ def _fuzzy_match_recipient(
                 "limit": 5,  # Get top 5 matches for potential validation
             }
 
-            response = httpx.post(
+            response = _make_rate_limited_request(
+                "POST",
                 url,
+                timeout=timeout,
                 json=payload,
                 headers={
                     "Content-Type": "application/json",
                     "User-Agent": "SBIR-ETL/1.0",
                 },
-                timeout=timeout,
             )
-            response.raise_for_status()
             data = response.json()
 
             results = data.get("results", [])
@@ -230,8 +398,50 @@ def _fuzzy_match_recipient(
             best_match = results[0]
             matched_name = best_match.get("legal_business_name", "")
             matched_uei = best_match.get("uei")
+            matched_duns = best_match.get("duns")
 
-            # Log which variation succeeded
+            # If we found a match with valid UEI/DUNS, use it immediately
+            if _is_valid_identifier(matched_uei) or _is_valid_identifier(matched_duns):
+                # Log which variation succeeded
+                if idx == 1:
+                    logger.info(
+                        f"Autocomplete matched '{company_name}' → '{matched_name}' (UEI: {matched_uei})"
+                    )
+                else:
+                    logger.info(
+                        f"Autocomplete matched '{company_name}' using variation '{search_name}' "
+                        f"→ '{matched_name}' (UEI: {matched_uei})"
+                    )
+                return {
+                    "uei": matched_uei,
+                    "name": matched_name,
+                    "duns": matched_duns,
+                }
+            
+            # If match has valid name but no UEI/DUNS, keep it as a candidate but continue searching
+            # We'll use the first match with a valid name if no better match is found
+            if _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
+                if best_candidate is None:
+                    best_candidate = {
+                        "uei": matched_uei,
+                        "name": matched_name,
+                        "duns": matched_duns,
+                    }
+                logger.debug(
+                    f"Found match with name '{matched_name}' but no UEI/DUNS, continuing search..."
+                )
+                # Continue to try more variations to find one with UEI/DUNS
+                continue
+            
+            # If match has empty name and no UEI/DUNS, it's not useful - continue searching
+            if not _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
+                logger.debug(
+                    f"Found match with empty name and no UEI/DUNS for variation '{search_name}', continuing search..."
+                )
+                continue
+            
+            # If we have a valid name match (even without UEI/DUNS), return it
+            # This will be used for direct name search
             if idx == 1:
                 logger.info(
                     f"Autocomplete matched '{company_name}' → '{matched_name}' (UEI: {matched_uei})"
@@ -241,19 +451,33 @@ def _fuzzy_match_recipient(
                     f"Autocomplete matched '{company_name}' using variation '{search_name}' "
                     f"→ '{matched_name}' (UEI: {matched_uei})"
                 )
-
             return {
                 "uei": matched_uei,
                 "name": matched_name,
-                "duns": best_match.get("duns"),
+                "duns": matched_duns,
             }
 
-        except httpx.HTTPError as e:
-            logger.debug(f"HTTP error during autocomplete for variation '{search_name}': {e}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limit exceeded during autocomplete for '{search_name}', skipping remaining variations")
+                break  # Don't try more variations if rate limited
+            logger.debug(f"HTTP {e.response.status_code} error during autocomplete for variation '{search_name}': {e}")
+            continue  # Try next variation
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            logger.debug(f"Connection error during autocomplete for variation '{search_name}': {e}")
             continue  # Try next variation
         except Exception as e:
-            logger.debug(f"Error during autocomplete for variation '{search_name}': {e}")
+            logger.debug(f"Unexpected error during autocomplete for variation '{search_name}': {e}")
             continue  # Try next variation
+
+    # If we found a candidate with valid name but no UEI/DUNS, return it
+    # This will be used for direct name search
+    if best_candidate:
+        logger.info(
+            f"Autocomplete found match with name '{best_candidate['name']}' but no UEI/DUNS, "
+            f"will use matched name for direct search"
+        )
+        return best_candidate
 
     # No matches found with any variation
     logger.debug(f"No autocomplete matches found for '{company_name}' after trying {len(name_variations)} variations")
@@ -461,6 +685,7 @@ def retrieve_company_contracts_api(
 
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
+    matched_name = None
     if not (valid_uei or valid_duns) and valid_name:
         logger.info(f"Attempting fuzzy match via autocomplete for: {company_name}")
         match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
@@ -469,6 +694,7 @@ def retrieve_company_contracts_api(
             # Use the matched identifiers instead of the original name
             matched_uei = match_result.get("uei")
             matched_duns = match_result.get("duns")
+            matched_name = match_result.get("name")
 
             if _is_valid_identifier(matched_uei):
                 uei = matched_uei
@@ -478,6 +704,13 @@ def retrieve_company_contracts_api(
                 duns = matched_duns
                 valid_duns = True
                 fuzzy_matched = True
+            
+            # If autocomplete matched but didn't return UEI/DUNS, use the matched name for search
+            # The matched name is what USAspending recognizes and is more likely to work
+            if not (valid_uei or valid_duns) and matched_name and _is_valid_identifier(matched_name):
+                logger.info(f"Autocomplete matched name '{matched_name}' but no UEI/DUNS found, using matched name for search")
+                company_name = matched_name
+                fuzzy_matched = True
 
     # Determine search strategy
     if valid_uei or valid_duns:
@@ -486,7 +719,10 @@ def retrieve_company_contracts_api(
         else:
             logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
     else:
-        logger.info(f"Falling back to direct name search for: {company_name}")
+        if fuzzy_matched and matched_name:
+            logger.info(f"Falling back to direct name search using autocomplete-matched name: {company_name}")
+        else:
+            logger.info(f"Falling back to direct name search for: {company_name}")
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
@@ -501,7 +737,22 @@ def retrieve_company_contracts_api(
         recipient_search_terms.append(duns)
     if not recipient_search_terms and valid_name:
         # Fallback to company name if no valid identifiers
-        recipient_search_terms.append(company_name)
+        # Use matched name if available, otherwise try multiple name variations
+        if matched_name and _is_valid_identifier(matched_name):
+            recipient_search_terms.append(matched_name)
+        else:
+            # Try multiple name variations to improve matching
+            # Generate variations and use the most specific ones
+            name_variations = _normalize_company_name_for_search(company_name)
+            # Use up to 3 most specific variations (usually the first ones)
+            for variation in name_variations[:3]:
+                if variation and len(variation) >= 10:  # Only use substantial variations
+                    recipient_search_terms.append(variation)
+                    if len(recipient_search_terms) >= 3:  # Limit to 3 variations
+                        break
+            # If no variations were added, use original name
+            if not recipient_search_terms:
+                recipient_search_terms.append(company_name)
 
     if recipient_search_terms:
         filters["recipient_search_text"] = recipient_search_terms
@@ -540,24 +791,36 @@ def retrieve_company_contracts_api(
             logger.debug(f"Fetching page {page} from spending_by_transaction endpoint")
 
             try:
-                response = httpx.post(
+                response = _make_rate_limited_request(
+                    "POST",
                     url,
+                    timeout=timeout,
                     json=payload,
                     headers={
                         "Content-Type": "application/json",
                         "User-Agent": "SBIR-ETL/1.0",
                     },
-                    timeout=timeout,
                 )
-                response.raise_for_status()
                 data = response.json()
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error fetching transactions from USAspending API: {e}")
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.error(f"Rate limit exceeded for page {page}, stopping pagination")
+                    if page == 1:
+                        return pd.DataFrame()
+                    break
+                logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                logger.error(f"Connection error fetching transactions from USAspending API (page {page}): {e}")
+                if page == 1:
+                    return pd.DataFrame()
+                # Wait a bit before retrying next page
+                time.sleep(2)
+                break
             except Exception as e:
-                logger.error(f"Error fetching transactions from USAspending API: {e}")
+                logger.error(f"Unexpected error fetching transactions from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -704,8 +967,14 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
     """
     try:
         url = f"{base_url}/awards/{award_id}/"
-        response = httpx.get(url, timeout=timeout)
-        response.raise_for_status()
+        response = _make_rate_limited_request(
+            "GET",
+            url,
+            timeout=timeout,
+            headers={
+                "User-Agent": "SBIR-ETL/1.0",
+            },
+        )
         award_data = response.json()
 
         # Debug: Log the structure of the response to understand where PSC is located
@@ -748,11 +1017,16 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             logger.debug(f"Award {award_id} not found in individual award endpoint (404)")
+        elif e.response.status_code == 429:
+            logger.warning(f"Rate limit exceeded fetching award details for {award_id}")
         else:
-            logger.warning(f"HTTP error fetching award details for {award_id}: {e}")
+            logger.warning(f"HTTP {e.response.status_code} error fetching award details for {award_id}: {e}")
+        return None
+    except (httpx.TimeoutException, httpx.RequestError) as e:
+        logger.warning(f"Connection error fetching award details for {award_id}: {e}")
         return None
     except Exception as e:
-        logger.warning(f"Error fetching award details for {award_id}: {e}")
+        logger.warning(f"Unexpected error fetching award details for {award_id}: {e}")
         return None
 
 
@@ -1006,21 +1280,32 @@ def retrieve_sbir_awards_api(
             url = f"{base_url}/search/spending_by_transaction/"
 
             try:
-                response = httpx.post(
+                response = _make_rate_limited_request(
+                    "POST",
                     url,
+                    timeout=timeout,
                     json=payload,
                     headers={
                         "Content-Type": "application/json",
                         "User-Agent": "SBIR-ETL/1.0",
                     },
-                    timeout=timeout,
                 )
-                response.raise_for_status()
                 data = response.json()
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error fetching SBIR awards from API: {e}")
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    logger.error(f"Rate limit exceeded for SBIR awards page {page}, stopping pagination")
+                    if page == 1:
+                        return pd.DataFrame()
+                    break
+                logger.error(f"HTTP {e.response.status_code} error fetching SBIR awards from API: {e}")
                 if page == 1:
                     return pd.DataFrame()
+                break
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                logger.error(f"Connection error fetching SBIR awards from API (page {page}): {e}")
+                if page == 1:
+                    return pd.DataFrame()
+                time.sleep(2)
                 break
 
             results = data.get("results", [])

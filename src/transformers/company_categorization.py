@@ -14,6 +14,8 @@ Key Functions:
     - aggregate_company_classification: Aggregate contract classifications to company level
 """
 
+from typing import Union
+
 from loguru import logger
 
 from src.models.categorization import CompanyClassification, ContractClassification
@@ -23,10 +25,12 @@ def classify_contract(contract: dict) -> ContractClassification:
     """Classify a single federal contract/award.
 
     Classification logic (in priority order):
-    1. Contract type overrides: CPFF, Cost-Type, T&M → Service (highest priority)
-    2. PSC-based: numeric → Product, A/B → R&D, alphabetic → Service
-    3. Description inference: FFP with product keywords → Product
-    4. SBIR phase adjustment: Phase I/II → R&D (unless numeric PSC)
+    1. Cost Reimbursement Contracts (CPFF, CPIF, CPAF, CPOF, Cost-Type) → Service-based
+    2. Labor Hours Contracts (T&M, LH) → Service-based
+    3. Fixed Price Contracts (FFP, FPIF, FPEPA) → Product-based (when PSC/keywords support it)
+    4. PSC-based: numeric → Product, A/B → R&D, alphabetic → Service
+    5. Description inference: product keywords → Product
+    6. SBIR phase adjustment: Phase I/II → R&D (unless numeric PSC)
 
     Args:
         contract: Dictionary with fields:
@@ -60,12 +64,13 @@ def classify_contract(contract: dict) -> ContractClassification:
     sbir_phase = contract.get("sbir_phase")
 
     # --- Rule 1: Contract type overrides (highest priority) ---
-    # CPFF, Cost-Type, or T&M pricing → Service
+    # Cost Reimbursement Contracts → Service-based
+    # Labor Hours Contracts → Service-based
     if _is_service_contract_type(contract_type, pricing):
         return ContractClassification(
             award_id=award_id,
             classification="Service",
-            method="contract_type",
+            method="contract_type_service",
             confidence=0.95,
             psc=psc or None,
             contract_type=contract_type or None,
@@ -75,13 +80,79 @@ def classify_contract(contract: dict) -> ContractClassification:
             sbir_phase=sbir_phase,
         )
 
-    # --- Rule 2: PSC-based classification ---
+    # --- Rule 2: Fixed Price Contracts → Product-based (when PSC supports it) ---
+    # Fixed Price contracts are product-based if they have numeric PSC or product keywords
+    if _is_fixed_price_contract_type(contract_type, pricing):
+        # Check if PSC indicates product
+        if psc:
+            psc_classification, psc_method, psc_confidence = _classify_by_psc(psc)
+            # Fixed Price + numeric PSC → Product
+            if psc_classification == "Product":
+                return ContractClassification(
+                    award_id=award_id,
+                    classification="Product",
+                    method="fixed_price_numeric_psc",
+                    confidence=0.95,
+                    psc=psc,
+                    contract_type=contract_type or None,
+                    pricing=pricing or None,
+                    description=description or None,
+                    award_amount=award_amount,
+                    sbir_phase=sbir_phase,
+                )
+            # Fixed Price + R&D PSC → R&D
+            if psc_classification == "R&D":
+                return ContractClassification(
+                    award_id=award_id,
+                    classification="R&D",
+                    method="fixed_price_rd_psc",
+                    confidence=0.90,
+                    psc=psc,
+                    contract_type=contract_type or None,
+                    pricing=pricing or None,
+                    description=description or None,
+                    award_amount=award_amount,
+                    sbir_phase=sbir_phase,
+                )
+        
+        # Fixed Price + product keywords → Product
+        product_match = _check_product_keywords(description)
+        if product_match:
+            return ContractClassification(
+                award_id=award_id,
+                classification="Product",
+                method="fixed_price_product_keywords",
+                confidence=0.90,
+                psc=psc or None,
+                contract_type=contract_type or None,
+                pricing=pricing or None,
+                description=description or None,
+                award_amount=award_amount,
+                sbir_phase=sbir_phase,
+            )
+        
+        # Fixed Price without clear product indicators → default to Product (but lower confidence)
+        # This reflects that Fixed Price contracts are typically product-based
+        return ContractClassification(
+            award_id=award_id,
+            classification="Product",
+            method="fixed_price_default",
+            confidence=0.75,
+            psc=psc or None,
+            contract_type=contract_type or None,
+            pricing=pricing or None,
+            description=description or None,
+            award_amount=award_amount,
+            sbir_phase=sbir_phase,
+        )
+
+    # --- Rule 3: PSC-based classification ---
     if psc:
         psc_classification, psc_method, psc_confidence = _classify_by_psc(psc)
 
-        # --- Rule 3: Description inference (only for FFP with non-R&D PSC) ---
-        # FFP with product keywords can override alphabetic PSC → Product
-        if pricing and pricing.upper() == "FFP" and psc_classification != "R&D":
+        # --- Rule 4: Description inference (only for non-R&D PSC) ---
+        # Product keywords can override alphabetic PSC → Product
+        if psc_classification != "R&D":
             product_match = _check_product_keywords(description)
             if product_match:
                 return ContractClassification(
@@ -91,13 +162,13 @@ def classify_contract(contract: dict) -> ContractClassification:
                     confidence=0.85,
                     psc=psc,
                     contract_type=contract_type or None,
-                    pricing=pricing,
+                    pricing=pricing or None,
                     description=description or None,
                     award_amount=award_amount,
                     sbir_phase=sbir_phase,
                 )
 
-        # --- Rule 4: SBIR phase adjustment ---
+        # --- Rule 5: SBIR phase adjustment ---
         if sbir_phase and sbir_phase in ("I", "II"):
             # Phase I/II with numeric PSC → keep Product
             if psc_classification == "Product":
@@ -158,19 +229,18 @@ def classify_contract(contract: dict) -> ContractClassification:
     )
 
 
-def _is_service_contract_type(contract_type: str, pricing: str) -> bool:
-    """Check if contract type or pricing indicates service work.
+def is_cost_based_contract(contract_type: str, pricing: str) -> bool:
+    """Check if contract type or pricing indicates cost-based contract.
 
-    Service indicators:
-    - Contract type: CPFF, Cost-Type
-    - Pricing: T&M (Time and Materials)
+    Cost-based contracts:
+    - Cost Reimbursement Contracts: CPFF, CPIF, CPAF, CPOF, Cost-Type, Cost Plus
 
     Args:
         contract_type: Contract type string
         pricing: Pricing type string
 
     Returns:
-        True if contract type indicates service work
+        True if contract type indicates cost-based contract
     """
     if not contract_type and not pricing:
         return False
@@ -179,16 +249,78 @@ def _is_service_contract_type(contract_type: str, pricing: str) -> bool:
     ct = contract_type.upper() if contract_type else ""
     pr = pricing.upper() if pricing else ""
 
-    # Check for service-indicating contract types
-    service_types = {"CPFF", "COST-TYPE", "COST TYPE"}
-    if any(st in ct for st in service_types):
+    # Cost Reimbursement Contracts
+    cost_reimbursement_types = {
+        "CPFF",  # Cost Plus Fixed Fee
+        "CPIF",  # Cost Plus Incentive Fee
+        "CPAF",  # Cost Plus Award Fee
+        "CPOF",  # Cost Plus Other Fee
+        "COST-TYPE",
+        "COST TYPE",
+        "COST PLUS",
+        "COST+",
+    }
+    if any(crt in ct for crt in cost_reimbursement_types):
         return True
-
-    # Check for T&M pricing
-    if "T&M" in pr or "T & M" in pr or "TIME AND MATERIALS" in pr or "TIME & MATERIALS" in pr:
+    if any(crt in pr for crt in cost_reimbursement_types):
         return True
 
     return False
+
+
+def is_service_based_contract(contract_type: str, pricing: str) -> bool:
+    """Check if contract type or pricing indicates service-based contract.
+
+    Service-based contracts:
+    - Labor Hours Contracts: T&M (Time and Materials), LH (Labor Hours)
+
+    Args:
+        contract_type: Contract type string
+        pricing: Pricing type string
+
+    Returns:
+        True if contract type indicates service-based contract
+    """
+    if not contract_type and not pricing:
+        return False
+
+    # Normalize to uppercase for comparison
+    ct = contract_type.upper() if contract_type else ""
+    pr = pricing.upper() if pricing else ""
+
+    # Labor Hours Contracts
+    labor_hours_types = {
+        "T&M",
+        "T & M",
+        "TIME AND MATERIALS",
+        "TIME & MATERIALS",
+        "LH",
+        "LABOR HOURS",
+        "LABOR-HOURS",
+    }
+    if any(lht in ct for lht in labor_hours_types):
+        return True
+    if any(lht in pr for lht in labor_hours_types):
+        return True
+
+    return False
+
+
+def _is_service_contract_type(contract_type: str, pricing: str) -> bool:
+    """Check if contract type or pricing indicates service work.
+
+    Service-based contracts:
+    - Cost Reimbursement Contracts: CPFF, CPIF, CPAF, CPOF, Cost-Type, Cost Plus
+    - Labor Hours Contracts: T&M (Time and Materials), LH (Labor Hours)
+
+    Args:
+        contract_type: Contract type string
+        pricing: Pricing type string
+
+    Returns:
+        True if contract type indicates service work
+    """
+    return is_cost_based_contract(contract_type, pricing) or is_service_based_contract(contract_type, pricing)
 
 
 def _classify_by_psc(psc: str) -> tuple[str, str, float]:
@@ -234,6 +366,50 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
     return ("Service", "psc_alphabetic", 0.90)
 
 
+def _is_fixed_price_contract_type(contract_type: str, pricing: str) -> bool:
+    """Check if contract type or pricing indicates fixed price contract.
+
+    Fixed Price Contracts → Product-based (when combined with numeric PSC or product keywords)
+
+    Fixed Price contract types:
+    - FFP (Firm Fixed Price)
+    - FPIF (Fixed Price Incentive Firm)
+    - FPEPA (Fixed Price with Economic Price Adjustment)
+    - FPI (Fixed Price Incentive)
+    - FP (Fixed Price)
+
+    Args:
+        contract_type: Contract type string
+        pricing: Pricing type string
+
+    Returns:
+        True if contract type indicates fixed price contract
+    """
+    if not contract_type and not pricing:
+        return False
+
+    # Normalize to uppercase for comparison
+    ct = contract_type.upper() if contract_type else ""
+    pr = pricing.upper() if pricing else ""
+
+    # Fixed Price Contracts → Product-based
+    fixed_price_types = {
+        "FFP",  # Firm Fixed Price
+        "FPIF",  # Fixed Price Incentive Firm
+        "FPEPA",  # Fixed Price with Economic Price Adjustment
+        "FPI",  # Fixed Price Incentive
+        "FP",  # Fixed Price
+        "FIXED PRICE",
+        "FIRM FIXED PRICE",
+    }
+    if any(fpt in ct for fpt in fixed_price_types):
+        return True
+    if any(fpt in pr for fpt in fixed_price_types):
+        return True
+
+    return False
+
+
 def _check_product_keywords(description: str) -> bool:
     """Check if description contains product-indicating keywords.
 
@@ -260,8 +436,8 @@ def _check_product_keywords(description: str) -> bool:
 
 
 def aggregate_company_classification(
-    contracts: list[dict],
-    company_uei: str,
+    contracts: list[Union[dict, ContractClassification]],
+    company_uei: str | None = None,
     company_name: str = "",
 ) -> CompanyClassification:
     """Aggregate contract classifications to company level.
@@ -294,7 +470,7 @@ def aggregate_company_classification(
     """
     # Handle edge case: insufficient data
     if len(contracts) < 2:
-        logger.warning(f"Company {company_uei} has fewer than 2 contracts, classifying as Uncertain")
+        logger.warning(f"Company {company_uei or company_name or 'Unknown'} has fewer than 2 contracts, classifying as Uncertain")
         return CompanyClassification(
             company_uei=company_uei,
             company_name=company_name or "Unknown",
@@ -312,7 +488,7 @@ def aggregate_company_classification(
         )
 
     # Convert dicts to ContractClassification objects if needed
-    classified_contracts = []
+    classified_contracts: list[ContractClassification] = []
     for c in contracts:
         if isinstance(c, ContractClassification):
             classified_contracts.append(c)
@@ -373,7 +549,7 @@ def aggregate_company_classification(
         classification = "Mixed"
         override_reason = "high_psc_diversity"
         logger.info(
-            f"Company {company_uei} has {len(psc_families)} PSC families, "
+            f"Company {company_uei or company_name or 'Unknown'} has {len(psc_families)} PSC families, "
             f"overriding to Mixed classification"
         )
     # Standard classification based on thresholds
@@ -393,7 +569,7 @@ def aggregate_company_classification(
         confidence = "High"
 
     logger.info(
-        f"Classified company {company_uei} as {classification} "
+        f"Classified company {company_uei or company_name or 'Unknown'} as {classification} "
         f"({len(classified_contracts)} awards, {confidence} confidence)"
     )
 
