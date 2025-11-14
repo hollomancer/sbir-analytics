@@ -158,21 +158,25 @@ def retrieve_company_contracts(
         >>> len(contracts)
         15
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns, cage]):
-        logger.warning("No company identifiers provided, returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = _is_valid_identifier(uei)
+    valid_duns = _is_valid_identifier(duns)
+    valid_cage = _is_valid_identifier(cage)
+
+    if not any([valid_uei, valid_duns, valid_cage]):
+        logger.warning("No valid company identifiers provided, returning empty DataFrame")
         return pd.DataFrame()
 
     # Build WHERE clause based on available identifiers
     where_clauses = []
-    if uei:
+    if valid_uei:
         # USAspending may have various UEI column names
         where_clauses.append(f"recipient_uei = '{uei}'")
         where_clauses.append(f"awardee_or_recipient_uei = '{uei}'")
-    if duns:
+    if valid_duns:
         where_clauses.append(f"recipient_duns = '{duns}'")
         where_clauses.append(f"awardee_or_recipient_uniqu = '{duns}'")
-    if cage:
+    if valid_cage:
         where_clauses.append(f"cage_code = '{cage}'")
         where_clauses.append(f"vendor_doing_as_business_n = '{cage}'")
 
@@ -691,20 +695,24 @@ def retrieve_sbir_awards(
     Returns:
         DataFrame with SBIR/STTR awards only
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns, cage]):
-        logger.warning("No company identifiers provided, returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = _is_valid_identifier(uei)
+    valid_duns = _is_valid_identifier(duns)
+    valid_cage = _is_valid_identifier(cage)
+
+    if not any([valid_uei, valid_duns, valid_cage]):
+        logger.warning("No valid company identifiers provided, returning empty DataFrame")
         return pd.DataFrame()
 
     # Build WHERE clause based on available identifiers
     where_clauses = []
-    if uei:
+    if valid_uei:
         where_clauses.append(f"recipient_uei = '{uei}'")
         where_clauses.append(f"awardee_or_recipient_uei = '{uei}'")
-    if duns:
+    if valid_duns:
         where_clauses.append(f"recipient_duns = '{duns}'")
         where_clauses.append(f"awardee_or_recipient_uniqu = '{duns}'")
-    if cage:
+    if valid_cage:
         where_clauses.append(f"cage_code = '{cage}'")
         where_clauses.append(f"vendor_doing_as_business_n = '{cage}'")
 
