@@ -444,7 +444,7 @@ def aggregate_company_classification(
 
     Aggregation logic:
     1. Calculate dollar-weighted percentages for Product vs Service/R&D
-    2. Apply 60% threshold for Product-leaning or Service-leaning
+    2. Apply 51% threshold for Product-leaning or Service-leaning
     3. Apply Mixed classification if neither threshold met
     4. Apply override rules (e.g., >6 PSC families → Mixed)
     5. Assign confidence level based on number of awards
@@ -553,9 +553,9 @@ def aggregate_company_classification(
             f"overriding to Mixed classification"
         )
     # Standard classification based on thresholds
-    elif product_pct >= 60:
+    elif product_pct >= 51:
         classification = "Product-leaning"
-    elif service_pct >= 60:
+    elif service_pct >= 51:
         classification = "Service-leaning"
     else:
         classification = "Mixed"

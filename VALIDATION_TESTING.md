@@ -340,7 +340,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
    - Edit `config/base.yaml`:
      ```yaml
      company_categorization:
-       product_leaning_pct: 60.0  # Adjust threshold
+       product_leaning_pct: 51.0  # Adjust threshold
        psc_family_diversity_threshold: 6  # Adjust diversity limit
      ```
 

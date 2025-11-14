@@ -136,11 +136,11 @@ print(f"   Product %: {company_result1.product_pct:.1f}%")
 print(f"   Classification: {company_result1.classification}")
 print(f"   Confidence: {company_result1.confidence}")
 assert company_result1.classification == "Product-leaning", "Expected Product-leaning"
-assert company_result1.product_pct > 60, "Expected >60% product"
+assert company_result1.product_pct >= 51, "Expected >=51% product"
 print("   ✓ PASS")
 
 # Test 8: Company Aggregation - Service-leaning
-print("\n8. Testing company aggregation - Service-leaning (>60%)")
+print("\n8. Testing company aggregation - Service-leaning (>=51%)")
 contracts_service = [
     {"award_id": "C1", "classification": "Service", "award_amount": 300000, "psc": "R425"},
     {"award_id": "C2", "classification": "R&D", "award_amount": 200000, "psc": "A123"},
@@ -155,11 +155,11 @@ print(f"   Service %: {company_result2.service_pct:.1f}%")
 print(f"   Classification: {company_result2.classification}")
 print(f"   Confidence: {company_result2.confidence}")
 assert company_result2.classification == "Service-leaning", "Expected Service-leaning"
-assert company_result2.service_pct > 60, "Expected >60% service"
+assert company_result2.service_pct >= 51, "Expected >=51% service"
 print("   ✓ PASS")
 
 # Test 9: Company Aggregation - Mixed
-print("\n9. Testing company aggregation - Mixed (neither >60%)")
+print("\n9. Testing company aggregation - Mixed (neither >=51%)")
 contracts_mixed = [
     {"award_id": "C1", "classification": "Product", "award_amount": 250000, "psc": "1234"},
     {"award_id": "C2", "classification": "Service", "award_amount": 250000, "psc": "R425"},

@@ -259,8 +259,8 @@ transformation:
 # Company categorization configuration
 company_categorization:
   # Classification thresholds
-  product_leaning_pct: 60.0 # 60% threshold for Product-leaning
-  service_leaning_pct: 60.0 # 60% threshold for Service-leaning
+  product_leaning_pct: 51.0 # 51% threshold for Product-leaning
+  service_leaning_pct: 51.0 # 51% threshold for Service-leaning
   psc_family_diversity_threshold: 6 # >6 PSC families → Mixed
 
   # Confidence levels

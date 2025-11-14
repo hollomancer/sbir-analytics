@@ -35,7 +35,9 @@ Usage:
 
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -189,6 +191,7 @@ def categorize_companies(
     specific_uei: str | None = None,
     use_api: bool = False,
     detailed: bool = False,
+    max_workers: int = 1,
 ) -> pd.DataFrame:
     """Categorize companies from the validation dataset.
 
@@ -199,6 +202,7 @@ def categorize_companies(
         specific_uei: Optional specific UEI to process
         use_api: If True, use USAspending API instead of DuckDB
         detailed: If True, print detailed contract classifications
+        max_workers: Number of parallel workers (1 = sequential, >1 = parallel)
 
     Returns:
         DataFrame with categorization results
@@ -217,55 +221,58 @@ def categorize_companies(
         logger.info(f"Processing all {len(companies)} companies")
 
     results = []
+    
+    # Helper function to process a single company
+    def process_company(idx_and_company: tuple[int, tuple]) -> dict[str, Any] | None:
+        """Process a single company and return result dict."""
+        idx, (_, company) = idx_and_company
+        try:
+            uei = company.get("UEI")
+            name = company.get("Company Name", "Unknown")
+            sbir_awards = company.get("SBIR Awards", 0)
 
-    for idx, (_, company) in enumerate(companies.iterrows(), 1):
-        uei = company.get("UEI")
-        name = company.get("Company Name", "Unknown")
-        sbir_awards = company.get("SBIR Awards", 0)
+            # Convert pandas NaN to None/default values for Pydantic compatibility
+            if pd.isna(uei):
+                uei = None
+            if pd.isna(sbir_awards):
+                sbir_awards = 0
 
-        # Convert pandas NaN to None/default values for Pydantic compatibility
-        if pd.isna(uei):
-            uei = None
-        if pd.isna(sbir_awards):
-            sbir_awards = 0
+            logger.info(
+                f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})"
+            )
 
-        logger.info(
-            f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})"
-        )
+            # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
+            if use_api:
+                contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
+            else:
+                if extractor is None:
+                    raise ValueError("extractor is required when use_api=False")
+                contracts_df = retrieve_company_contracts(extractor, uei=uei)
 
-        # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
-        if use_api:
-            contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
-        else:
-            if extractor is None:
-                raise ValueError("extractor is required when use_api=False")
-            contracts_df = retrieve_company_contracts(extractor, uei=uei)
+            # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
+            if use_api:
+                sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
+            else:
+                sbir_df = retrieve_sbir_awards(extractor, uei=uei)
 
-        # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
-        if use_api:
-            sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
-        else:
-            sbir_df = retrieve_sbir_awards(extractor, uei=uei)
+            # Calculate SBIR statistics
+            sbir_award_count = len(sbir_df) if not sbir_df.empty else 0
+            sbir_dollars = sbir_df["award_amount"].sum() if not sbir_df.empty else 0.0
+            non_sbir_dollars = contracts_df["award_amount"].sum() if not contracts_df.empty else 0.0
+            total_usaspending_dollars = sbir_dollars + non_sbir_dollars
+            sbir_pct_of_total = (
+                (sbir_dollars / total_usaspending_dollars * 100) if total_usaspending_dollars > 0 else 0.0
+            )
 
-        # Calculate SBIR statistics
-        sbir_award_count = len(sbir_df) if not sbir_df.empty else 0
-        sbir_dollars = sbir_df["award_amount"].sum() if not sbir_df.empty else 0.0
-        non_sbir_dollars = contracts_df["award_amount"].sum() if not contracts_df.empty else 0.0
-        total_usaspending_dollars = sbir_dollars + non_sbir_dollars
-        sbir_pct_of_total = (
-            (sbir_dollars / total_usaspending_dollars * 100) if total_usaspending_dollars > 0 else 0.0
-        )
+            # Log SBIR statistics for debugging
+            logger.info(
+                f"  USAspending breakdown: {len(contracts_df)} non-SBIR contracts (${non_sbir_dollars:,.0f}), "
+                f"{sbir_award_count} SBIR/STTR awards (${sbir_dollars:,.0f}, {sbir_pct_of_total:.1f}% of total)"
+            )
 
-        # Log SBIR statistics for debugging
-        logger.info(
-            f"  USAspending breakdown: {len(contracts_df)} non-SBIR contracts (${non_sbir_dollars:,.0f}), "
-            f"{sbir_award_count} SBIR/STTR awards (${sbir_dollars:,.0f}, {sbir_pct_of_total:.1f}% of total)"
-        )
-
-        if contracts_df.empty:
-            logger.warning(f"  No non-SBIR/STTR USAspending contracts found for {name}")
-            results.append(
-                {
+            if contracts_df.empty:
+                logger.warning(f"  No non-SBIR/STTR USAspending contracts found for {name}")
+                return {
                     "company_uei": uei,
                     "company_name": name,
                     "sbir_awards": sbir_awards,
@@ -286,101 +293,122 @@ def categorize_companies(
                     "service_based_contracts": 0,
                     "justification": "No non-SBIR contracts found",
                 }
-            )
-            continue
 
-        # Classify individual contracts
-        classified_contracts = []
-        cost_based_count = 0
-        service_based_count = 0
-        
-        for _, contract in contracts_df.iterrows():
-            contract_dict = contract.to_dict()
-            classified = classify_contract(contract_dict)
-            classified_contracts.append(classified.model_dump())
+            # Classify individual contracts
+            classified_contracts = []
+            cost_based_count = 0
+            service_based_count = 0
             
-            # Track cost-based and service-based contracts
-            contract_type = contract_dict.get("contract_type", "")
-            pricing = contract_dict.get("pricing", "")
-            if is_cost_based_contract(contract_type, pricing):
-                cost_based_count += 1
-            if is_service_based_contract(contract_type, pricing):
-                service_based_count += 1
+            for _, contract in contracts_df.iterrows():
+                contract_dict = contract.to_dict()
+                classified = classify_contract(contract_dict)
+                classified_contracts.append(classified.model_dump())
+                
+                # Track cost-based and service-based contracts
+                contract_type = contract_dict.get("contract_type", "")
+                pricing = contract_dict.get("pricing", "")
+                if is_cost_based_contract(contract_type, pricing):
+                    cost_based_count += 1
+                if is_service_based_contract(contract_type, pricing):
+                    service_based_count += 1
 
-        # Count classifications
-        product_count = sum(1 for c in classified_contracts if c["classification"] == "Product")
-        service_count = sum(1 for c in classified_contracts if c["classification"] == "Service")
-        rd_count = sum(1 for c in classified_contracts if c["classification"] == "R&D")
+            # Count classifications
+            product_count = sum(1 for c in classified_contracts if c["classification"] == "Product")
+            service_count = sum(1 for c in classified_contracts if c["classification"] == "Service")
+            rd_count = sum(1 for c in classified_contracts if c["classification"] == "R&D")
 
-        logger.info(
-            f"  Contract breakdown: {product_count} Product, {service_count} Service, {rd_count} R&D"
-        )
+            logger.info(
+                f"  Contract breakdown: {product_count} Product, {service_count} Service, {rd_count} R&D"
+            )
 
-        # Print detailed justifications if requested
-        if detailed:
-            print_contract_justifications(name, classified_contracts, detailed=detailed)
+            # Print detailed justifications if requested
+            if detailed:
+                print_contract_justifications(name, classified_contracts, detailed=detailed)
 
-        # Aggregate to company level
-        company_result = aggregate_company_classification(
-            classified_contracts, company_uei=uei, company_name=name
-        )
+            # Aggregate to company level
+            company_result = aggregate_company_classification(
+                classified_contracts, company_uei=uei, company_name=name
+            )
 
-        logger.info(
-            f"  Result: {company_result.classification} "
-            f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) "
-            f"- {company_result.confidence} confidence"
-        )
+            logger.info(
+                f"  Result: {company_result.classification} "
+                f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) "
+                f"- {company_result.confidence} confidence"
+            )
 
-        # Generate justification
-        justification_parts = []
-        if company_result.override_reason:
-            if company_result.override_reason == "high_psc_diversity":
-                justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
-            elif company_result.override_reason == "insufficient_awards":
-                justification_parts.append("Insufficient awards for reliable classification")
-            elif company_result.override_reason == "no_contracts_found":
-                justification_parts.append("No non-SBIR contracts found")
-        else:
-            if company_result.product_pct >= 60:
-                justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
-            if company_result.service_pct >= 60:
-                justification_parts.append(f"{company_result.service_pct:.0f}% service/R&D contracts")
-            if 40 <= company_result.product_pct <= 60 and 40 <= company_result.service_pct <= 60:
-                justification_parts.append("Balanced product/service portfolio")
-            if company_result.psc_family_count > 5:
-                justification_parts.append(f"{company_result.psc_family_count} PSC families")
-            if company_result.award_count > 50:
-                justification_parts.append(f"{company_result.award_count} contracts")
-        
-        justification = ", ".join(justification_parts) if justification_parts else "See metrics"
+            # Generate justification
+            justification_parts = []
+            if company_result.override_reason:
+                if company_result.override_reason == "high_psc_diversity":
+                    justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
+                elif company_result.override_reason == "insufficient_awards":
+                    justification_parts.append("Insufficient awards for reliable classification")
+                elif company_result.override_reason == "no_contracts_found":
+                    justification_parts.append("No non-SBIR contracts found")
+            else:
+                if company_result.product_pct >= 51:
+                    justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
+                if company_result.service_pct >= 51:
+                    justification_parts.append(f"{company_result.service_pct:.0f}% service/R&D contracts")
+                if 40 <= company_result.product_pct <= 50 and 40 <= company_result.service_pct <= 50:
+                    justification_parts.append("Balanced product/service portfolio")
+                if company_result.psc_family_count > 5:
+                    justification_parts.append(f"{company_result.psc_family_count} PSC families")
+                if company_result.award_count > 50:
+                    justification_parts.append(f"{company_result.award_count} contracts")
+            
+            justification = ", ".join(justification_parts) if justification_parts else "See metrics"
 
-        # Add to results with SBIR award statistics for comparison
-        result_dict = {
-            "company_uei": company_result.company_uei,
-            "company_name": company_result.company_name,
-            "sbir_awards": sbir_awards,
-            "classification": company_result.classification,
-            "product_pct": company_result.product_pct,
-            "service_pct": company_result.service_pct,
-            "confidence": company_result.confidence,
-            "award_count": company_result.award_count,
-            "psc_family_count": company_result.psc_family_count,
-            "total_dollars": company_result.total_dollars,
-            "product_dollars": company_result.product_dollars,
-            "service_rd_dollars": company_result.service_rd_dollars,
-            "override_reason": company_result.override_reason,
-            "sbir_award_count": sbir_award_count,
-            "sbir_dollars": sbir_dollars,
-            "sbir_pct_of_total": sbir_pct_of_total,
-            "non_sbir_dollars": non_sbir_dollars,
-            "non_sbir_contracts": company_result.award_count,
-            "cost_based_contracts": cost_based_count,
-            "service_based_contracts": service_based_count,
-            "justification": justification,
-        }
-        results.append(result_dict)
+            # Return result dict
+            return {
+                "company_uei": company_result.company_uei,
+                "company_name": company_result.company_name,
+                "sbir_awards": sbir_awards,
+                "classification": company_result.classification,
+                "product_pct": company_result.product_pct,
+                "service_pct": company_result.service_pct,
+                "confidence": company_result.confidence,
+                "award_count": company_result.award_count,
+                "psc_family_count": company_result.psc_family_count,
+                "total_dollars": company_result.total_dollars,
+                "product_dollars": company_result.product_dollars,
+                "service_rd_dollars": company_result.service_rd_dollars,
+                "override_reason": company_result.override_reason,
+                "sbir_award_count": sbir_award_count,
+                "sbir_dollars": sbir_dollars,
+                "sbir_pct_of_total": sbir_pct_of_total,
+                "non_sbir_dollars": non_sbir_dollars,
+                "non_sbir_contracts": company_result.award_count,
+                "cost_based_contracts": cost_based_count,
+                "service_based_contracts": service_based_count,
+                "justification": justification,
+            }
+        except Exception as e:
+            logger.error(f"Error processing company {company.get('Company Name', 'Unknown')}: {e}")
+            return None
+
+    # Process companies sequentially or in parallel
+    if max_workers > 1 and use_api:
+        # Parallel processing (only for API mode, respects shared rate limiter)
+        logger.info(f"Processing {len(companies)} companies in parallel with {max_workers} workers")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(process_company, (idx, company)): idx
+                for idx, company in enumerate(companies.iterrows(), 1)
+            }
+            for future in as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    results.append(result)
+    else:
+        # Sequential processing
+        for idx, (_, company) in enumerate(companies.iterrows(), 1):
+            result = process_company((idx, company))
+            if result is not None:
+                results.append(result)
 
     return pd.DataFrame(results)
+
 
 
 def print_summary(results: pd.DataFrame) -> None:
@@ -704,9 +732,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write("---\n\n")
         f.write("## Methodology\n\n")
         f.write("**Categorization Criteria:**\n\n")
-        f.write("- **Product**: >60% of contract dollars from product-related PSC codes (numeric PSCs)\n")
-        f.write("- **Service**: >60% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
-        f.write("- **Mixed**: Neither product nor service dominates (balanced portfolio)\n\n")
+        f.write("- **Product**: ≥51% of contract dollars from product-related PSC codes (numeric PSCs)\n")
+        f.write("- **Service**: ≥51% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
+        f.write("- **Mixed**: Neither product nor service reaches 51% threshold (balanced portfolio)\n\n")
         f.write("**Confidence Levels:**\n\n")
         f.write("- **High**: 20+ contracts across 3+ PSC families with >80% in one category\n")
         f.write("- **Medium**: 10+ contracts or clear majority (>70%) in one category\n")
@@ -831,6 +859,13 @@ def main():
         action="store_true",
         help="Show detailed contract classification justifications",
     )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for API mode (default: 1 = sequential). "
+             "Recommended: 3-5 workers to maximize throughput while respecting rate limits.",
+    )
 
     args = parser.parse_args()
 
@@ -864,6 +899,7 @@ def main():
             specific_uei=args.uei,
             use_api=args.use_api,
             detailed=args.detailed,
+            max_workers=args.max_workers,
         )
 
         # Print summary

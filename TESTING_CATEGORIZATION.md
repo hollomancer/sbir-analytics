@@ -322,8 +322,8 @@ Use this checklist when validating the system:
 - [ ] SBIR Phase III → Standard rules apply
 
 ### Company Aggregation
-- [ ] ≥60% Product dollars → Product-leaning
-- [ ] ≥60% Service/R&D dollars → Service-leaning
+- [ ] ≥51% Product dollars → Product-leaning
+- [ ] ≥51% Service/R&D dollars → Service-leaning
 - [ ] Neither threshold → Mixed
 - [ ] >6 PSC families → Mixed (override)
 - [ ] <2 awards → Uncertain

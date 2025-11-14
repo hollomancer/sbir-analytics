@@ -25,6 +25,7 @@ Key Functions:
 """
 
 import re
+import threading
 import time
 from collections import deque
 from datetime import datetime, timedelta
@@ -45,9 +46,10 @@ from src.extractors.usaspending import DuckDBUSAspendingExtractor
 
 
 class RateLimiter:
-    """Rate limiter for USAspending API calls.
+    """Thread-safe rate limiter for USAspending API calls.
     
     Tracks request timestamps and enforces rate limits by waiting when necessary.
+    Thread-safe for use in parallel processing scenarios.
     """
 
     def __init__(self, rate_limit_per_minute: int = 120):
@@ -58,37 +60,46 @@ class RateLimiter:
         """
         self.rate_limit_per_minute = rate_limit_per_minute
         self.request_times: deque[datetime] = deque(maxlen=rate_limit_per_minute)
+        self._lock = threading.Lock()  # Thread-safe lock
 
     def wait_if_needed(self) -> None:
         """Wait if rate limit would be exceeded.
         
         Removes requests older than 1 minute and waits if we're at the limit.
+        Thread-safe for concurrent access.
         """
-        now = datetime.now()
-        # Remove requests older than 1 minute
-        cutoff_time = now - timedelta(seconds=60)
-        while self.request_times and self.request_times[0] < cutoff_time:
-            self.request_times.popleft()
+        with self._lock:
+            now = datetime.now()
+            # Remove requests older than 1 minute
+            cutoff_time = now - timedelta(seconds=60)
+            while self.request_times and self.request_times[0] < cutoff_time:
+                self.request_times.popleft()
 
-        # If we're at the limit, wait until the oldest request is 60 seconds old
-        if len(self.request_times) >= self.rate_limit_per_minute:
-            oldest = self.request_times[0]
-            wait_seconds = 60 - (now - oldest).total_seconds() + 0.5  # Add 0.5s buffer
-            if wait_seconds > 0:
-                logger.debug(f"Rate limit reached ({self.rate_limit_per_minute}/min), waiting {wait_seconds:.1f} seconds")
-                time.sleep(wait_seconds)
-                # Recalculate after sleep
-                now = datetime.now()
-                cutoff_time = now - timedelta(seconds=60)
-                while self.request_times and self.request_times[0] < cutoff_time:
-                    self.request_times.popleft()
+            # If we're at the limit, wait until the oldest request is 60 seconds old
+            if len(self.request_times) >= self.rate_limit_per_minute:
+                oldest = self.request_times[0]
+                wait_seconds = 60 - (now - oldest).total_seconds() + 0.5  # Add 0.5s buffer
+                if wait_seconds > 0:
+                    logger.debug(f"Rate limit reached ({self.rate_limit_per_minute}/min), waiting {wait_seconds:.1f} seconds")
+                    # Release lock during sleep to allow other threads to check
+                    self._lock.release()
+                    try:
+                        time.sleep(wait_seconds)
+                    finally:
+                        self._lock.acquire()
+                    # Recalculate after sleep
+                    now = datetime.now()
+                    cutoff_time = now - timedelta(seconds=60)
+                    while self.request_times and self.request_times[0] < cutoff_time:
+                        self.request_times.popleft()
 
-        # Record this request
-        self.request_times.append(datetime.now())
+            # Record this request
+            self.request_times.append(datetime.now())
 
 
-# Global rate limiter instance (initialized on first use)
+# Global rate limiter instance (initialized on first use, thread-safe)
 _rate_limiter: RateLimiter | None = None
+_rate_limiter_lock = threading.Lock()
 
 
 def _get_rate_limiter() -> RateLimiter:
@@ -99,14 +110,17 @@ def _get_rate_limiter() -> RateLimiter:
     """
     global _rate_limiter
     if _rate_limiter is None:
-        try:
-            config = get_config()
-            rate_limit = config.enrichment_refresh.usaspending.rate_limit_per_minute
-        except Exception:
-            # Fallback to conservative default if config unavailable
-            rate_limit = 120
-            logger.warning(f"Could not load rate limit from config, using default: {rate_limit}/min")
-        _rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)
+        with _rate_limiter_lock:
+            # Double-check pattern for thread safety
+            if _rate_limiter is None:
+                try:
+                    config = get_config()
+                    rate_limit = config.enrichment_refresh.usaspending.rate_limit_per_minute
+                except Exception:
+                    # Fallback to conservative default if config unavailable
+                    rate_limit = 120
+                    logger.warning(f"Could not load rate limit from config, using default: {rate_limit}/min")
+                _rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)
     return _rate_limiter
 
 
@@ -632,7 +646,7 @@ def retrieve_company_contracts_api(
     company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
-    page_size: int = 100,
+    page_size: int = 500,  # Increased from 100 to reduce API calls (max is typically 500)
     max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API (excluding SBIR/STTR).
@@ -730,29 +744,20 @@ def retrieve_company_contracts_api(
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
+    # Include company name alongside identifiers for better matching (helps when UEI doesn't match)
     recipient_search_terms = []
     if valid_uei:
         recipient_search_terms.append(uei)
+        logger.debug(f"Adding UEI to recipient_search_text: {uei}")
     if valid_duns:
         recipient_search_terms.append(duns)
-    if not recipient_search_terms and valid_name:
-        # Fallback to company name if no valid identifiers
-        # Use matched name if available, otherwise try multiple name variations
-        if matched_name and _is_valid_identifier(matched_name):
-            recipient_search_terms.append(matched_name)
-        else:
-            # Try multiple name variations to improve matching
-            # Generate variations and use the most specific ones
-            name_variations = _normalize_company_name_for_search(company_name)
-            # Use up to 3 most specific variations (usually the first ones)
-            for variation in name_variations[:3]:
-                if variation and len(variation) >= 10:  # Only use substantial variations
-                    recipient_search_terms.append(variation)
-                    if len(recipient_search_terms) >= 3:  # Limit to 3 variations
-                        break
-            # If no variations were added, use original name
-            if not recipient_search_terms:
-                recipient_search_terms.append(company_name)
+        logger.debug(f"Adding DUNS to recipient_search_text: {duns}")
+    # Always include company name if available (helps when UEI/DUNS don't match correctly)
+    if valid_name:
+        # Use matched name from autocomplete if available, otherwise use original
+        name_to_search = matched_name if (matched_name and _is_valid_identifier(matched_name)) else company_name
+        recipient_search_terms.append(name_to_search)
+        logger.debug(f"Adding company name to recipient_search_text: {name_to_search}")
 
     if recipient_search_terms:
         filters["recipient_search_text"] = recipient_search_terms
@@ -900,8 +905,111 @@ def retrieve_company_contracts_api(
 
         logger.info(f"Retrieved {len(all_transactions)} transactions from spending_by_transaction endpoint")
 
+        # If no results with UEI/DUNS and we have a company name, try name-based search as fallback
+        if not all_transactions and (valid_uei or valid_duns) and valid_name:
+            logger.info(
+                f"No transactions found with UEI/DUNS, trying fallback search by company name: {company_name}"
+            )
+            # Try searching by company name - use name variations for better matching
+            name_filters = {
+                "award_type_codes": ["A", "B", "C", "D"],
+            }
+            
+            # Generate name variations for better matching
+            name_variations = _normalize_company_name_for_search(company_name)
+            # Use up to 3 most specific variations
+            name_search_terms = []
+            for variation in name_variations[:3]:
+                if variation and len(variation) >= 10:
+                    name_search_terms.append(variation)
+                    if len(name_search_terms) >= 3:
+                        break
+            if not name_search_terms:
+                name_search_terms = [company_name]
+            
+            name_filters["recipient_search_text"] = name_search_terms
+            logger.debug(f"Trying name search with variations: {name_search_terms}")
+            
+            # Try pagination with name search
+            name_page = 1
+            name_transactions = []
+            try:
+                while True:
+                    name_payload = {
+                        "filters": name_filters,
+                        "fields": fields,
+                        "sort": "Transaction Amount",
+                        "order": "desc",
+                        "page": name_page,
+                        "limit": page_size,
+                    }
+                    name_response = _make_rate_limited_request(
+                        "POST",
+                        f"{base_url}/search/spending_by_transaction/",
+                        timeout=timeout,
+                        json=name_payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "User-Agent": "SBIR-ETL/1.0",
+                        },
+                    )
+                    name_data = name_response.json()
+                    name_results = name_data.get("results", [])
+                    
+                    if not name_results:
+                        break
+                    
+                    # Process name-based results
+                    for transaction in name_results:
+                        psc_raw = transaction.get("PSC")
+                        if isinstance(psc_raw, dict):
+                            psc_value = psc_raw.get("code") or psc_raw.get("psc_code") or psc_raw.get("psc")
+                        elif isinstance(psc_raw, str):
+                            psc_value = psc_raw
+                        else:
+                            psc_value = None
+                        
+                        processed_transaction = {
+                            "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
+                            "psc": psc_value,
+                            "contract_type": transaction.get("Award Type"),
+                            "pricing": transaction.get("Award Type"),
+                            "description": transaction.get("Transaction Description"),
+                            "award_amount": transaction.get("Transaction Amount", 0),
+                            "recipient_uei": transaction.get("Recipient UEI") or uei,
+                            "recipient_duns": duns,
+                            "action_date": transaction.get("Action Date"),
+                            "award_type": transaction.get("Award Type"),
+                        }
+                        
+                        if not processed_transaction["award_id"]:
+                            processed_transaction["award_id"] = f"UNKNOWN_{len(name_transactions)}"
+                        
+                        name_transactions.append(processed_transaction)
+                    
+                    # Check for more pages
+                    page_metadata = name_data.get("page_metadata", {})
+                    has_next = page_metadata.get("hasNext", False)
+                    if not has_next:
+                        break
+                    name_page += 1
+                
+                if name_transactions:
+                    logger.info(
+                        f"Found {len(name_transactions)} transactions using company name search. "
+                        f"UEI {uei} may not be correctly linked in USAspending for {company_name}"
+                    )
+                    # Use name-based results instead
+                    all_transactions = name_transactions
+                else:
+                    logger.warning(
+                        f"Name-based fallback search also found no transactions for {company_name}"
+                    )
+            except Exception as e:
+                logger.debug(f"Name-based fallback search failed: {e}")
+
         if not all_transactions:
-            logger.warning(f"No transactions found for company (UEI={uei}, DUNS={duns})")
+            logger.warning(f"No transactions found for company (UEI={uei}, DUNS={duns}, name={company_name})")
             return pd.DataFrame()
 
         # Convert to DataFrame
@@ -1180,7 +1288,7 @@ def retrieve_sbir_awards_api(
     company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
-    page_size: int = 100,
+    page_size: int = 500,  # Increased from 100 to reduce API calls
 ) -> pd.DataFrame:
     """Retrieve ONLY SBIR/STTR awards for a company from USAspending API (for reporting).
 
