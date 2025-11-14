@@ -216,6 +216,10 @@ def categorize_companies(
         name = company.get("Company Name", "Unknown")
         sbir_awards = company.get("SBIR Awards", 0)
 
+        # Convert pandas NaN to None for Pydantic compatibility
+        if pd.isna(uei):
+            uei = None
+
         logger.info(
             f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei}, SBIR Awards: {sbir_awards})"
         )
