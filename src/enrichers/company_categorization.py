@@ -161,22 +161,17 @@ def retrieve_company_contracts_api(
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API.
 
-    Uses a hybrid two-step approach for reliable PSC code retrieval:
-    1. Step 1: Query /search/spending_by_award/ endpoint to get list of all awards
-    2. Step 2: For each award, query /awards/{award_id}/ to retrieve detailed PSC codes
-
-    The spending_by_award endpoint provides efficient pagination for retrieving award lists,
-    but doesn't populate PSC codes. The individual awards endpoint provides full PSC data.
-
-    Note: Limited to first `max_psc_lookups` awards to manage API load and rate limits.
+    Uses the /search/spending_by_transaction/ endpoint which returns transaction-level
+    data including PSC codes directly in the response. This endpoint properly populates
+    PSC codes without requiring additional API calls per award.
 
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
-        page_size: Number of results per page for award search
-        max_psc_lookups: Maximum number of individual award detail lookups (default: 100)
+        page_size: Number of results per page
+        max_psc_lookups: Unused (kept for API compatibility)
 
     Returns:
         DataFrame with columns:
@@ -184,8 +179,8 @@ def retrieve_company_contracts_api(
             - psc: Product Service Code
             - contract_type: Type of contract pricing
             - pricing: Type of contract pricing
-            - description: Award description
-            - award_amount: Federal action obligation
+            - description: Transaction description
+            - award_amount: Transaction amount
             - recipient_uei: Recipient UEI
             - recipient_duns: Recipient DUNS
             - sbir_phase: SBIR phase if detected (I, II, III)
@@ -200,7 +195,7 @@ def retrieve_company_contracts_api(
         logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
         return pd.DataFrame()
 
-    logger.info(f"Retrieving contracts from USAspending API (UEI={uei}, DUNS={duns})")
+    logger.info(f"Retrieving contracts from USAspending API using transaction endpoint (UEI={uei}, DUNS={duns})")
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
@@ -217,37 +212,38 @@ def retrieve_company_contracts_api(
     if recipient_search_terms:
         filters["recipient_search_text"] = recipient_search_terms
 
-    # Fields to retrieve from award search endpoint
+    # Fields to retrieve from transaction endpoint
+    # Using the exact field names from the API documentation
     fields = [
-        "Award ID",
-        "Recipient Name",
-        "Award Amount",
-        "Description",
-        "Start Date",
-        "End Date",
-        "Contract Award Type",
-        "Award Type",
-        "recipient_uei",
+        "Award ID",              # Award identifier
+        "Recipient Name",        # Company name
+        "Transaction Amount",    # Amount for this transaction
+        "Transaction Description",  # Description
+        "Action Date",           # Transaction date
+        "PSC",                   # Product/Service Code (the key field we need!)
+        "Recipient UEI",         # Recipient UEI
+        "Award Type",            # Contract type
+        "internal_id",           # Internal award identifier
     ]
 
-    all_contracts = []
+    all_transactions = []
     page = 1
 
     try:
-        # Step 1: Get list of awards using spending_by_award endpoint
-        logger.info("Step 1: Fetching award list from spending_by_award endpoint")
+        logger.info("Fetching transactions from spending_by_transaction endpoint")
         while True:
+            # Build payload with ALL required fields per API contract
             payload = {
                 "filters": filters,
                 "fields": fields,
+                "sort": "Transaction Amount",  # Required field per API docs
+                "order": "desc",
                 "page": page,
                 "limit": page_size,
-                "sort": "Award Amount",
-                "order": "desc",
             }
 
-            url = f"{base_url}/search/spending_by_award/"
-            logger.debug(f"Fetching page {page} from USAspending API (awards)")
+            url = f"{base_url}/search/spending_by_transaction/"
+            logger.debug(f"Fetching page {page} from spending_by_transaction endpoint")
 
             try:
                 response = httpx.post(
@@ -262,12 +258,12 @@ def retrieve_company_contracts_api(
                 response.raise_for_status()
                 data = response.json()
             except httpx.HTTPError as e:
-                logger.error(f"HTTP error fetching awards from USAspending API: {e}")
+                logger.error(f"HTTP error fetching transactions from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
             except Exception as e:
-                logger.error(f"Error fetching awards from USAspending API: {e}")
+                logger.error(f"Error fetching transactions from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -279,53 +275,52 @@ def retrieve_company_contracts_api(
 
             # Debug: Log structure of first result to understand response format
             if page == 1 and results:
-                logger.debug(f"First award result keys: {list(results[0].keys())}")
-                logger.debug(
-                    f"First award ID fields: "
-                    f"internal_id={results[0].get('internal_id')}, "
-                    f"generated_internal_id={results[0].get('generated_internal_id')}, "
-                    f"Award ID={results[0].get('Award ID')}"
-                )
+                logger.debug(f"First transaction result keys: {list(results[0].keys())}")
+                # Check if PSC is present in the response
+                psc_value = results[0].get("PSC")
+                logger.debug(f"First transaction PSC value: {psc_value}")
 
-            # Process each award - store basic info without PSC for now
-            for contract in results:
-                # Award ID might be in different fields - try multiple options
-                # The 'internal_id' field typically has the format needed for /awards/ endpoint
-                award_id = (
-                    contract.get("internal_id")
-                    or contract.get("generated_internal_id")
-                    or contract.get("Award ID")
-                )
+            # Process each transaction
+            for transaction in results:
+                # Extract PSC field - should be directly in the response as "PSC"
+                psc_value = transaction.get("PSC")
 
-                processed_contract = {
-                    "award_id": award_id,
-                    "psc": None,  # Will be filled in step 2
-                    "contract_type": contract.get("Contract Award Type"),
-                    "pricing": contract.get("Contract Award Type"),
-                    "description": contract.get("Description"),
-                    "award_amount": contract.get("Award Amount", 0),
-                    "recipient_uei": contract.get("recipient_uei") or uei,
+                # Log if PSC is empty to help debugging
+                if not psc_value or (isinstance(psc_value, str) and not psc_value.strip()):
+                    logger.debug(
+                        f"PSC field empty for transaction. "
+                        f"Award ID: {transaction.get('Award ID')}, "
+                        f"Available keys: {list(transaction.keys())}"
+                    )
+
+                processed_transaction = {
+                    "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
+                    "psc": psc_value,
+                    "contract_type": transaction.get("Award Type"),
+                    "pricing": transaction.get("Award Type"),
+                    "description": transaction.get("Transaction Description"),
+                    "award_amount": transaction.get("Transaction Amount", 0),
+                    "recipient_uei": transaction.get("Recipient UEI") or uei,
                     "recipient_duns": duns,
-                    "start_date": contract.get("Start Date"),
-                    "end_date": contract.get("End Date"),
-                    "award_type": contract.get("Award Type"),
+                    "action_date": transaction.get("Action Date"),
+                    "award_type": transaction.get("Award Type"),
                 }
 
                 # Generate fallback ID if award_id is missing
-                if not processed_contract["award_id"]:
-                    processed_contract["award_id"] = f"UNKNOWN_{len(all_contracts)}"
+                if not processed_transaction["award_id"]:
+                    processed_transaction["award_id"] = f"UNKNOWN_{len(all_transactions)}"
                     logger.debug(
-                        f"No award ID found in response. Available keys: {list(contract.keys())}"
+                        f"No award ID found in transaction response. Available keys: {list(transaction.keys())}"
                     )
 
-                all_contracts.append(processed_contract)
+                all_transactions.append(processed_transaction)
 
             # Check if there are more pages
             page_metadata = data.get("page_metadata", {})
             has_next = page_metadata.get("hasNext", False)
             total = page_metadata.get("total", 0)
 
-            logger.debug(f"Retrieved {len(results)} awards (page {page}), total available: {total}")
+            logger.debug(f"Retrieved {len(results)} transactions (page {page}), total available: {total}")
 
             if not has_next:
                 logger.debug("No more pages available")
@@ -333,46 +328,19 @@ def retrieve_company_contracts_api(
 
             page += 1
 
-        logger.info(f"Step 1 complete: Retrieved {len(all_contracts)} awards from spending_by_award endpoint")
+        logger.info(f"Retrieved {len(all_transactions)} transactions from spending_by_transaction endpoint")
 
-        if not all_contracts:
-            logger.warning(f"No contracts found for company (UEI={uei}, DUNS={duns})")
+        if not all_transactions:
+            logger.warning(f"No transactions found for company (UEI={uei}, DUNS={duns})")
             return pd.DataFrame()
 
         # Convert to DataFrame
-        df = pd.DataFrame(all_contracts)
+        df = pd.DataFrame(all_transactions)
 
-        # Step 2: Fetch PSC codes from individual award endpoint for each award
-        # Limit to max_psc_lookups to manage API rate limits
-        logger.info(f"Step 2: Fetching PSC codes from individual award endpoint (limit: {max_psc_lookups})")
-
-        awards_to_lookup = df.head(max_psc_lookups)
-        psc_success_count = 0
-
-        for idx, row in awards_to_lookup.iterrows():
-            award_id = row["award_id"]
-            if not award_id or award_id.startswith("UNKNOWN_"):
-                continue
-
-            # Add delay to respect rate limits (120 per minute = ~0.5s per request)
-            time.sleep(0.5)
-
-            award_details = _fetch_award_details(award_id, base_url, timeout)
-            if award_details and award_details.get("psc"):
-                df.at[idx, "psc"] = award_details["psc"]
-                psc_success_count += 1
-
-        logger.info(
-            f"Step 2 complete: Successfully retrieved {psc_success_count} PSC codes "
-            f"from {len(awards_to_lookup)} award lookups"
-        )
-
-        # Log warning if some awards weren't looked up due to limit
-        if len(df) > max_psc_lookups:
-            logger.warning(
-                f"Only fetched PSC codes for first {max_psc_lookups} awards out of {len(df)} total "
-                f"(set max_psc_lookups higher to retrieve more)"
-            )
+        # Check PSC coverage
+        psc_count = (~df["psc"].isna()).sum()
+        psc_coverage = (psc_count / len(df) * 100) if len(df) > 0 else 0
+        logger.info(f"PSC code coverage: {psc_count}/{len(df)} ({psc_coverage:.1f}%)")
 
         # Extract SBIR phase from description
         df["sbir_phase"] = df["description"].apply(_extract_sbir_phase)
