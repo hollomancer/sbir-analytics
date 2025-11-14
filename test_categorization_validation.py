@@ -2,8 +2,11 @@
 """Test company categorization against high-volume SBIR companies dataset.
 
 This script validates the categorization system against the 200+ company validation
-dataset with known high award volumes. It provides detailed output for spot-checking
-and quality validation.
+dataset with known high award volumes. It analyzes non-SBIR/STTR federal contract
+revenue to determine whether companies are primarily Product or Service oriented.
+
+IMPORTANT: SBIR/STTR awards are excluded from the analysis to focus on other federal
+contract revenue that reflects the company's product vs service business model.
 
 Usage:
     # Test first 10 companies (quick)
@@ -17,6 +20,9 @@ Usage:
 
     # Export results to CSV
     poetry run python test_categorization_validation.py --output results.csv
+
+    # Generate detailed markdown report
+    poetry run python test_categorization_validation.py --markdown-report report.md
 
     # Load to Neo4j after categorization
     poetry run python test_categorization_validation.py --load-neo4j
@@ -33,6 +39,8 @@ from src.config.loader import get_config
 from src.enrichers.company_categorization import (
     retrieve_company_contracts,
     retrieve_company_contracts_api,
+    retrieve_sbir_awards,
+    retrieve_sbir_awards_api,
 )
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.transformers.company_categorization import (
@@ -212,7 +220,7 @@ def categorize_companies(
             f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei}, SBIR Awards: {sbir_awards})"
         )
 
-        # Retrieve USAspending contracts
+        # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
         if use_api:
             contracts_df = retrieve_company_contracts_api(uei=uei)
         else:
@@ -220,8 +228,29 @@ def categorize_companies(
                 raise ValueError("extractor is required when use_api=False")
             contracts_df = retrieve_company_contracts(extractor, uei=uei)
 
+        # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
+        if use_api:
+            sbir_df = retrieve_sbir_awards_api(uei=uei)
+        else:
+            sbir_df = retrieve_sbir_awards(extractor, uei=uei)
+
+        # Calculate SBIR statistics
+        sbir_award_count = len(sbir_df) if not sbir_df.empty else 0
+        sbir_dollars = sbir_df["award_amount"].sum() if not sbir_df.empty else 0.0
+        non_sbir_dollars = contracts_df["award_amount"].sum() if not contracts_df.empty else 0.0
+        total_usaspending_dollars = sbir_dollars + non_sbir_dollars
+        sbir_pct_of_total = (
+            (sbir_dollars / total_usaspending_dollars * 100) if total_usaspending_dollars > 0 else 0.0
+        )
+
+        # Log SBIR statistics for debugging
+        logger.info(
+            f"  USAspending breakdown: {len(contracts_df)} non-SBIR contracts (${non_sbir_dollars:,.0f}), "
+            f"{sbir_award_count} SBIR/STTR awards (${sbir_dollars:,.0f}, {sbir_pct_of_total:.1f}% of total)"
+        )
+
         if contracts_df.empty:
-            logger.warning(f"  No USAspending contracts found for {name}")
+            logger.warning(f"  No non-SBIR/STTR USAspending contracts found for {name}")
             results.append(
                 {
                     "company_uei": uei,
@@ -235,11 +264,12 @@ def categorize_companies(
                     "psc_family_count": 0,
                     "total_dollars": 0.0,
                     "override_reason": "no_contracts_found",
+                    "sbir_award_count": sbir_award_count,
+                    "sbir_dollars": sbir_dollars,
+                    "sbir_pct_of_total": sbir_pct_of_total,
                 }
             )
             continue
-
-        logger.info(f"  Retrieved {len(contracts_df)} USAspending contracts")
 
         # Classify individual contracts
         classified_contracts = []
@@ -272,7 +302,7 @@ def categorize_companies(
             f"- {company_result.confidence} confidence"
         )
 
-        # Add to results with SBIR award count for comparison
+        # Add to results with SBIR award statistics for comparison
         result_dict = {
             "company_uei": company_result.company_uei,
             "company_name": company_result.company_name,
@@ -287,6 +317,9 @@ def categorize_companies(
             "product_dollars": company_result.product_dollars,
             "service_rd_dollars": company_result.service_rd_dollars,
             "override_reason": company_result.override_reason,
+            "sbir_award_count": sbir_award_count,
+            "sbir_dollars": sbir_dollars,
+            "sbir_pct_of_total": sbir_pct_of_total,
         }
         results.append(result_dict)
 
@@ -308,6 +341,24 @@ def print_summary(results: pd.DataFrame) -> None:
     logger.info(f"Companies with contracts: {(results['award_count'] > 0).sum()}")
     logger.info(f"Companies without contracts: {(results['award_count'] == 0).sum()}")
 
+    # List companies with no non-SBIR/STTR contracts
+    no_contracts = results[results['award_count'] == 0]
+    if len(no_contracts) > 0:
+        logger.info(f"\nCompanies with NO Non-SBIR/STTR USAspending Contracts ({len(no_contracts)} total):")
+        logger.info("-" * 80)
+        logger.info("  (These companies received SBIR awards but have no other federal contract revenue)")
+        for idx, (_, row) in enumerate(no_contracts.iterrows(), 1):
+            company_name = row['company_name']
+            uei = row['company_uei']
+            sbir_awards = row['sbir_awards']
+            sbir_award_count = row.get('sbir_award_count', 0)
+            sbir_dollars = row.get('sbir_dollars', 0)
+            logger.info(
+                f"  {idx}. {company_name} (UEI: {uei}, SBIR Awards from dataset: {sbir_awards}, "
+                f"SBIR in USAspending: {sbir_award_count} awards / ${sbir_dollars:,.0f})"
+            )
+        logger.info("-" * 80)
+
     # Classification distribution
     logger.info("\nClassification Distribution:")
     class_dist = results["classification"].value_counts()
@@ -322,10 +373,35 @@ def print_summary(results: pd.DataFrame) -> None:
         pct = (count / len(results)) * 100
         logger.info(f"  {confidence}: {count} ({pct:.1f}%)")
 
+    # SBIR/STTR Award Statistics (for debugging - NOT used in categorization)
+    logger.info("\nSBIR/STTR Award Statistics (for debugging only):")
+    logger.info("  " + "-" * 76)
+    total_sbir_awards = results["sbir_award_count"].sum()
+    total_sbir_dollars = results["sbir_dollars"].sum()
+    companies_with_sbir = (results["sbir_award_count"] > 0).sum()
+    avg_sbir_pct = results["sbir_pct_of_total"].mean()
+
+    logger.info(f"  Total SBIR/STTR awards found in USAspending: {total_sbir_awards:,.0f}")
+    logger.info(f"  Total SBIR/STTR dollars: ${total_sbir_dollars:,.0f}")
+    logger.info(f"  Companies with SBIR awards in USAspending: {companies_with_sbir}/{len(results)}")
+    logger.info(f"  Avg SBIR % of total USAspending revenue: {avg_sbir_pct:.1f}%")
+
+    # Show companies where SBIR dominates
+    high_sbir_pct = results[results["sbir_pct_of_total"] > 80]
+    if len(high_sbir_pct) > 0:
+        logger.info(f"\n  Companies with >80% SBIR/STTR revenue ({len(high_sbir_pct)} total):")
+        for idx, (_, row) in enumerate(high_sbir_pct.head(10).iterrows(), 1):
+            logger.info(
+                f"    {idx}. {row['company_name'][:40]}: {row['sbir_pct_of_total']:.1f}% SBIR "
+                f"(${row['sbir_dollars']:,.0f} SBIR / ${row['sbir_dollars'] + row['total_dollars']:,.0f} total)"
+            )
+        if len(high_sbir_pct) > 10:
+            logger.info(f"    ... and {len(high_sbir_pct) - 10} more")
+
     # Average metrics
     with_contracts = results[results["award_count"] > 0]
     if len(with_contracts) > 0:
-        logger.info("\nAverage Metrics (companies with contracts):")
+        logger.info("\nNon-SBIR Contract Metrics (companies with non-SBIR contracts):")
         logger.info(f"  Avg contracts per company: {with_contracts['award_count'].mean():.1f}")
         logger.info(f"  Avg PSC families: {with_contracts['psc_family_count'].mean():.1f}")
         logger.info(f"  Avg total dollars: ${with_contracts['total_dollars'].mean():,.0f}")
@@ -354,6 +430,205 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
     results.to_csv(output_path, index=False)
     logger.info(f"\nResults exported to: {output_path}")
     logger.info(f"Columns: {', '.join(results.columns)}")
+
+
+def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
+    """Generate a detailed markdown report with categorization insights.
+
+    Args:
+        results: DataFrame with categorization results
+        output_path: Path to output markdown file
+    """
+    with open(output_path, "w") as f:
+        # Header
+        f.write("# Company Categorization Analysis Report\n\n")
+        f.write("This report analyzes SBIR companies based on their **non-SBIR/STTR** federal contract revenue ")
+        f.write("to determine whether they are primarily Product or Service oriented.\n\n")
+        f.write("**Important**: SBIR/STTR awards are tracked for reference but NOT included in categorization.\n\n")
+        f.write("---\n\n")
+
+        # Executive Summary
+        f.write("## Executive Summary\n\n")
+        f.write(f"- **Total Companies Analyzed**: {len(results)}\n")
+        f.write(f"- **Companies with Non-SBIR Contracts**: {(results['award_count'] > 0).sum()}\n")
+        f.write(f"- **Companies with ONLY SBIR Revenue**: {(results['award_count'] == 0).sum()}\n\n")
+
+        # Classification breakdown
+        f.write("### Classification Breakdown\n\n")
+        class_dist = results["classification"].value_counts()
+        for classification, count in class_dist.items():
+            pct = (count / len(results)) * 100
+            f.write(f"- **{classification}**: {count} companies ({pct:.1f}%)\n")
+        f.write("\n")
+
+        # Confidence breakdown
+        f.write("### Confidence Distribution\n\n")
+        conf_dist = results["confidence"].value_counts()
+        for confidence, count in conf_dist.items():
+            pct = (count / len(results)) * 100
+            f.write(f"- **{confidence}**: {count} companies ({pct:.1f}%)\n")
+        f.write("\n---\n\n")
+
+        # SBIR Statistics
+        f.write("## SBIR/STTR Revenue Statistics\n\n")
+        f.write("*For debugging purposes - these revenues are NOT used in categorization*\n\n")
+        total_sbir_awards = results["sbir_award_count"].sum()
+        total_sbir_dollars = results["sbir_dollars"].sum()
+        total_non_sbir_dollars = results["total_dollars"].sum()
+        companies_with_sbir = (results["sbir_award_count"] > 0).sum()
+        avg_sbir_pct = results["sbir_pct_of_total"].mean()
+
+        f.write(f"- **Total SBIR/STTR Awards Found**: {total_sbir_awards:,.0f}\n")
+        f.write(f"- **Total SBIR/STTR Dollars**: ${total_sbir_dollars:,.0f}\n")
+        f.write(f"- **Total Non-SBIR Contract Dollars**: ${total_non_sbir_dollars:,.0f}\n")
+        f.write(f"- **Companies with SBIR in USAspending**: {companies_with_sbir}/{len(results)}\n")
+        f.write(f"- **Average SBIR % of Total Revenue**: {avg_sbir_pct:.1f}%\n\n")
+        f.write("---\n\n")
+
+        # Product-Focused Companies
+        product_companies = results[results["classification"] == "Product"].copy()
+        if len(product_companies) > 0:
+            product_companies = product_companies.sort_values("total_dollars", ascending=False)
+            f.write(f"## Product-Focused Companies ({len(product_companies)} total)\n\n")
+            f.write("Companies primarily selling tangible products to the federal government.\n\n")
+
+            # Group by confidence
+            for confidence in ["High", "Medium", "Low"]:
+                conf_companies = product_companies[product_companies["confidence"] == confidence]
+                if len(conf_companies) > 0:
+                    f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
+                    f.write("| Company | Product % | Contracts | Total $ | SBIR % | Justification |\n")
+                    f.write("|---------|-----------|-----------|---------|--------|---------------|\n")
+
+                    for _, row in conf_companies.iterrows():
+                        company = row["company_name"][:40]
+                        product_pct = row["product_pct"]
+                        contracts = row["award_count"]
+                        total_dollars = row["total_dollars"]
+                        sbir_pct = row["sbir_pct_of_total"]
+
+                        # Generate justification
+                        justification = []
+                        if product_pct > 80:
+                            justification.append(f"{product_pct:.0f}% product contracts")
+                        if row["psc_family_count"] > 5:
+                            justification.append(f"{row['psc_family_count']} PSC families")
+                        if contracts > 50:
+                            justification.append(f"{contracts} contracts")
+
+                        just_str = ", ".join(justification) if justification else "See metrics"
+
+                        f.write(f"| {company} | {product_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                    f.write("\n")
+
+        # Service-Focused Companies
+        service_companies = results[results["classification"] == "Service"].copy()
+        if len(service_companies) > 0:
+            service_companies = service_companies.sort_values("total_dollars", ascending=False)
+            f.write(f"## Service-Focused Companies ({len(service_companies)} total)\n\n")
+            f.write("Companies primarily providing services to the federal government.\n\n")
+
+            # Group by confidence
+            for confidence in ["High", "Medium", "Low"]:
+                conf_companies = service_companies[service_companies["confidence"] == confidence]
+                if len(conf_companies) > 0:
+                    f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
+                    f.write("| Company | Service % | Contracts | Total $ | SBIR % | Justification |\n")
+                    f.write("|---------|-----------|-----------|---------|--------|---------------|\n")
+
+                    for _, row in conf_companies.iterrows():
+                        company = row["company_name"][:40]
+                        service_pct = row["service_pct"]
+                        contracts = row["award_count"]
+                        total_dollars = row["total_dollars"]
+                        sbir_pct = row["sbir_pct_of_total"]
+
+                        # Generate justification
+                        justification = []
+                        if service_pct > 80:
+                            justification.append(f"{service_pct:.0f}% service/R&D contracts")
+                        if row["psc_family_count"] > 5:
+                            justification.append(f"{row['psc_family_count']} PSC families")
+                        if contracts > 50:
+                            justification.append(f"{contracts} contracts")
+
+                        just_str = ", ".join(justification) if justification else "See metrics"
+
+                        f.write(f"| {company} | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                    f.write("\n")
+
+        # Mixed Companies
+        mixed_companies = results[results["classification"] == "Mixed"].copy()
+        if len(mixed_companies) > 0:
+            mixed_companies = mixed_companies.sort_values("total_dollars", ascending=False)
+            f.write(f"## Mixed Product/Service Companies ({len(mixed_companies)} total)\n\n")
+            f.write("Companies with balanced product and service portfolios.\n\n")
+
+            # Group by confidence
+            for confidence in ["High", "Medium", "Low"]:
+                conf_companies = mixed_companies[mixed_companies["confidence"] == confidence]
+                if len(conf_companies) > 0:
+                    f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
+                    f.write("| Company | Product % | Service % | Contracts | Total $ | SBIR % | Justification |\n")
+                    f.write("|---------|-----------|-----------|-----------|---------|--------|---------------|\n")
+
+                    for _, row in conf_companies.iterrows():
+                        company = row["company_name"][:40]
+                        product_pct = row["product_pct"]
+                        service_pct = row["service_pct"]
+                        contracts = row["award_count"]
+                        total_dollars = row["total_dollars"]
+                        sbir_pct = row["sbir_pct_of_total"]
+
+                        # Generate justification
+                        justification = []
+                        justification.append(f"Balanced: {product_pct:.0f}% prod / {service_pct:.0f}% svc")
+                        if row["psc_family_count"] > 5:
+                            justification.append(f"{row['psc_family_count']} PSC families")
+
+                        just_str = ", ".join(justification) if justification else "See metrics"
+
+                        f.write(f"| {company} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                    f.write("\n")
+
+        # Uncertain/No Contracts
+        uncertain_companies = results[
+            (results["classification"] == "Uncertain") | (results["award_count"] == 0)
+        ].copy()
+        if len(uncertain_companies) > 0:
+            uncertain_companies = uncertain_companies.sort_values("sbir_dollars", ascending=False)
+            f.write(f"## Companies with No Non-SBIR Contracts ({len(uncertain_companies)} total)\n\n")
+            f.write("These companies have SBIR awards but no other federal contract revenue in USAspending.\n\n")
+            f.write("| Company | UEI | SBIR Awards (Dataset) | SBIR in USAspending | SBIR $ |\n")
+            f.write("|---------|-----|----------------------|---------------------|--------|\n")
+
+            for _, row in uncertain_companies.iterrows():
+                company = row["company_name"][:40]
+                uei = row["company_uei"]
+                sbir_awards_dataset = row["sbir_awards"]
+                sbir_award_count = row.get("sbir_award_count", 0)
+                sbir_dollars = row.get("sbir_dollars", 0)
+
+                f.write(f"| {company} | {uei} | {sbir_awards_dataset} | {sbir_award_count} | ${sbir_dollars:,.0f} |\n")
+            f.write("\n")
+
+        # Footer
+        f.write("---\n\n")
+        f.write("## Methodology\n\n")
+        f.write("**Categorization Criteria:**\n\n")
+        f.write("- **Product**: >60% of contract dollars from product-related PSC codes (numeric PSCs)\n")
+        f.write("- **Service**: >60% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
+        f.write("- **Mixed**: Neither product nor service dominates (balanced portfolio)\n\n")
+        f.write("**Confidence Levels:**\n\n")
+        f.write("- **High**: 20+ contracts across 3+ PSC families with >80% in one category\n")
+        f.write("- **Medium**: 10+ contracts or clear majority (>70%) in one category\n")
+        f.write("- **Low**: Few contracts (<10) or borderline classification\n\n")
+        f.write("**SBIR Exclusion:**\n\n")
+        f.write("SBIR/STTR awards are excluded from categorization because they are R&D grants ")
+        f.write("and do not reflect the company's product vs service business model. They are ")
+        f.write("tracked separately for debugging and comparison purposes.\n")
+
+    logger.info(f"\nMarkdown report generated: {output_path}")
 
 
 def load_to_neo4j(results: pd.DataFrame) -> None:
@@ -440,6 +715,11 @@ def main():
     parser.add_argument("--uei", type=str, help="Process specific company by UEI")
     parser.add_argument("--output", type=str, help="Export results to CSV file")
     parser.add_argument(
+        "--markdown-report",
+        type=str,
+        help="Generate detailed markdown report with categorization insights",
+    )
+    parser.add_argument(
         "--load-neo4j", action="store_true", help="Load results to Neo4j after categorization"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
@@ -494,6 +774,10 @@ def main():
         # Export if requested
         if args.output:
             export_results(results, args.output)
+
+        # Generate markdown report if requested
+        if args.markdown_report:
+            generate_markdown_report(results, args.markdown_report)
 
         # Load to Neo4j if requested
         if args.load_neo4j:
