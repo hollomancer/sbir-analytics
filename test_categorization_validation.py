@@ -12,8 +12,11 @@ Usage:
     # Test all companies
     poetry run python test_categorization_validation.py
 
-    # Test specific company by UEI
-    poetry run python test_categorization_validation.py --uei ABC123DEF456
+    # Test specific company by UEI with detailed justifications
+    poetry run python test_categorization_validation.py --uei ABC123DEF456 --detailed
+
+    # Test with detailed contract-level justifications
+    poetry run python test_categorization_validation.py --limit 5 --detailed
 
     # Export results to CSV
     poetry run python test_categorization_validation.py --output results.csv
@@ -64,10 +67,111 @@ def load_validation_dataset(path: str | None = None) -> pd.DataFrame:
     return df
 
 
+def print_contract_justifications(
+    classified_contracts: list[dict],
+    company_name: str,
+    show_top_n: int = 5,
+) -> None:
+    """Print detailed justifications for contract classifications.
+
+    Args:
+        classified_contracts: List of classified contract dictionaries
+        company_name: Name of the company
+        show_top_n: Number of top contracts to show per category
+    """
+    if not classified_contracts:
+        return
+
+    logger.info(f"\n  {'=' * 76}")
+    logger.info(f"  CONTRACT CLASSIFICATION DETAILS: {company_name}")
+    logger.info(f"  {'=' * 76}")
+
+    # Sort by award amount (highest first)
+    sorted_contracts = sorted(
+        classified_contracts, key=lambda x: x.get("award_amount", 0), reverse=True
+    )
+
+    # Show top contracts by dollar value
+    logger.info(f"\n  Top {show_top_n} Contracts by Dollar Value:")
+    logger.info(f"  {'-' * 76}")
+    for i, contract in enumerate(sorted_contracts[:show_top_n], 1):
+        amount = contract.get("award_amount", 0)
+        classification = contract.get("classification", "Unknown")
+        method = contract.get("method", "unknown")
+        confidence = contract.get("confidence", 0)
+        psc = contract.get("psc", "N/A")
+        contract_type = contract.get("contract_type", "N/A")
+        sbir_phase = contract.get("sbir_phase", "N/A")
+
+        logger.info(f"\n  #{i}: ${amount:,.0f} → {classification}")
+        logger.info(f"      PSC: {psc} | Type: {contract_type} | SBIR Phase: {sbir_phase}")
+        logger.info(f"      Method: {method} | Confidence: {confidence:.2f}")
+
+        # Show reason based on method
+        if method == "contract_type":
+            logger.info(f"      → Contract type override (CPFF/Cost/T&M forces Service)")
+        elif method == "psc_numeric":
+            logger.info(f"      → Numeric PSC code indicates Product")
+        elif method == "psc_alphabetic":
+            logger.info(f"      → Alphabetic PSC code indicates Service")
+        elif method == "psc_rd":
+            logger.info(f"      → PSC starts with A/B indicates R&D")
+        elif method == "description_inference":
+            logger.info(f"      → Description keywords suggest Product")
+        elif method == "sbir_adjustment":
+            logger.info(f"      → SBIR Phase I/II adjusted to R&D")
+
+    # Show samples from each category
+    for category in ["Product", "Service", "R&D"]:
+        category_contracts = [c for c in sorted_contracts if c.get("classification") == category]
+        if not category_contracts:
+            continue
+
+        logger.info(f"\n  {category} Contracts ({len(category_contracts)} total):")
+        logger.info(f"  {'-' * 76}")
+
+        # Show top 3 by amount for this category
+        for i, contract in enumerate(category_contracts[:3], 1):
+            amount = contract.get("award_amount", 0)
+            method = contract.get("method", "unknown")
+            psc = contract.get("psc", "N/A")
+            desc = contract.get("description", "")[:50] + "..." if contract.get("description") else "N/A"
+
+            logger.info(f"      {i}. ${amount:,.0f} | PSC: {psc} | Method: {method}")
+            logger.info(f"         {desc}")
+
+    # Classification method breakdown
+    logger.info(f"\n  Classification Method Breakdown:")
+    logger.info(f"  {'-' * 76}")
+    method_counts = {}
+    for contract in classified_contracts:
+        method = contract.get("method", "unknown")
+        method_counts[method] = method_counts.get(method, 0) + 1
+
+    for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+        pct = (count / len(classified_contracts)) * 100
+        logger.info(f"      {method}: {count} contracts ({pct:.1f}%)")
+
+    # Dollar-weighted breakdown
+    logger.info(f"\n  Dollar-Weighted Breakdown:")
+    logger.info(f"  {'-' * 76}")
+    total_dollars = sum(c.get("award_amount", 0) for c in classified_contracts)
+    for category in ["Product", "Service", "R&D"]:
+        category_dollars = sum(
+            c.get("award_amount", 0) for c in classified_contracts if c.get("classification") == category
+        )
+        if total_dollars > 0:
+            pct = (category_dollars / total_dollars) * 100
+            logger.info(f"      {category}: ${category_dollars:,.0f} ({pct:.1f}%)")
+
+    logger.info(f"  {'=' * 76}\n")
+
+
 def categorize_companies(
     companies: pd.DataFrame,
     limit: int | None = None,
     specific_uei: str | None = None,
+    show_detailed: bool = False,
 ) -> pd.DataFrame:
     """Categorize companies from the validation dataset.
 
@@ -75,6 +179,7 @@ def categorize_companies(
         companies: Validation dataset DataFrame
         limit: Optional limit on number of companies to process
         specific_uei: Optional specific UEI to process
+        show_detailed: Show detailed contract justifications
 
     Returns:
         DataFrame with categorization results
@@ -142,6 +247,10 @@ def categorize_companies(
         logger.info(
             f"  Contract breakdown: {product_count} Product, {service_count} Service, {rd_count} R&D"
         )
+
+        # Show detailed justifications for classifications (if requested)
+        if show_detailed:
+            print_contract_justifications(classified_contracts, name, show_top_n=5)
 
         # Aggregate to company level
         company_result = aggregate_company_classification(
@@ -324,6 +433,11 @@ def main():
     parser.add_argument(
         "--load-neo4j", action="store_true", help="Load results to Neo4j after categorization"
     )
+    parser.add_argument(
+        "--detailed",
+        action="store_true",
+        help="Show detailed contract justifications for each company",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
@@ -343,7 +457,7 @@ def main():
 
     # Categorize companies
     results = categorize_companies(
-        companies, limit=args.limit, specific_uei=args.uei
+        companies, limit=args.limit, specific_uei=args.uei, show_detailed=args.detailed
     )
 
     # Print summary
