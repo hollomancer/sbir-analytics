@@ -105,7 +105,7 @@ def print_contract_justifications(
                 amount = contract.get("award_amount", 0)
                 psc = contract.get("psc") or "None"
                 method = contract.get("method", "unknown")
-                desc = contract.get("description", "N/A")[:60]
+                desc = (contract.get("description") or "N/A")[:60]
                 logger.info(f"      {idx}. ${amount:,.0f} | PSC: {psc} | Method: {method}")
                 logger.info(f"         {desc}...")
 
