@@ -744,23 +744,21 @@ def retrieve_company_contracts_api(
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
-    # Include company name alongside identifiers for better matching (helps when UEI doesn't match)
-    recipient_search_terms = []
+    # Prioritize UEI/DUNS as they are most reliable, fallback to name if needed
+    # Note: API may accept array or string - try UEI first as single string
     if valid_uei:
-        recipient_search_terms.append(uei)
-        logger.debug(f"Adding UEI to recipient_search_text: {uei}")
-    if valid_duns:
-        recipient_search_terms.append(duns)
-        logger.debug(f"Adding DUNS to recipient_search_text: {duns}")
-    # Always include company name if available (helps when UEI/DUNS don't match correctly)
-    if valid_name:
-        # Use matched name from autocomplete if available, otherwise use original
+        # Use UEI as primary search term (most reliable identifier)
+        filters["recipient_search_text"] = uei
+        logger.debug(f"Using UEI for recipient_search_text: {uei}")
+    elif valid_duns:
+        # Fallback to DUNS if no UEI
+        filters["recipient_search_text"] = duns
+        logger.debug(f"Using DUNS for recipient_search_text: {duns}")
+    elif valid_name:
+        # Fallback to company name if no identifiers
         name_to_search = matched_name if (matched_name and _is_valid_identifier(matched_name)) else company_name
-        recipient_search_terms.append(name_to_search)
-        logger.debug(f"Adding company name to recipient_search_text: {name_to_search}")
-
-    if recipient_search_terms:
-        filters["recipient_search_text"] = recipient_search_terms
+        filters["recipient_search_text"] = name_to_search
+        logger.debug(f"Using company name for recipient_search_text: {name_to_search}")
 
     # Fields to retrieve from transaction endpoint
     # Using the exact field names from the API documentation
@@ -813,7 +811,14 @@ def retrieve_company_contracts_api(
                     if page == 1:
                         return pd.DataFrame()
                     break
-                logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
+                # Log detailed error response for debugging
+                try:
+                    error_detail = e.response.json()
+                    logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
+                    logger.error(f"Error details: {error_detail}")
+                    logger.debug(f"Request payload: {payload}")
+                except Exception:
+                    logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -916,19 +921,17 @@ def retrieve_company_contracts_api(
             }
             
             # Generate name variations for better matching
+            # Try the most specific variation first (usually the first one)
             name_variations = _normalize_company_name_for_search(company_name)
-            # Use up to 3 most specific variations
-            name_search_terms = []
+            # Use the first substantial variation, or fallback to original name
+            name_to_search = company_name
             for variation in name_variations[:3]:
                 if variation and len(variation) >= 10:
-                    name_search_terms.append(variation)
-                    if len(name_search_terms) >= 3:
-                        break
-            if not name_search_terms:
-                name_search_terms = [company_name]
+                    name_to_search = variation
+                    break
             
-            name_filters["recipient_search_text"] = name_search_terms
-            logger.debug(f"Trying name search with variations: {name_search_terms}")
+            name_filters["recipient_search_text"] = name_to_search
+            logger.debug(f"Trying name search with: {name_to_search}")
             
             # Try pagination with name search
             name_page = 1

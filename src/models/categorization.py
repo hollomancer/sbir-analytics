@@ -94,7 +94,7 @@ class CompanyClassification(BaseModel):
     # Classification result
     classification: str = Field(
         ...,
-        description="Company classification: Product-leaning, Service-leaning, Mixed, or Uncertain"
+        description="Company classification: Product-leaning, Service-leaning, R&D-leaning, Mixed, or Uncertain"
     )
     product_pct: float = Field(
         ...,
@@ -106,7 +106,13 @@ class CompanyClassification(BaseModel):
         ...,
         ge=0.0,
         le=100.0,
-        description="Percentage of dollars from service/R&D contracts"
+        description="Percentage of dollars from service contracts"
+    )
+    rd_pct: float = Field(
+        ...,
+        ge=0.0,
+        le=100.0,
+        description="Percentage of dollars from R&D contracts"
     )
     confidence: str = Field(
         ...,
@@ -118,7 +124,8 @@ class CompanyClassification(BaseModel):
     psc_family_count: int = Field(..., description="Number of distinct PSC families")
     total_dollars: float = Field(..., description="Total contract dollars")
     product_dollars: float = Field(..., description="Product contract dollars")
-    service_rd_dollars: float = Field(..., description="Service/R&D contract dollars")
+    service_dollars: float = Field(..., description="Service contract dollars")
+    rd_dollars: float = Field(..., description="R&D contract dollars")
 
     # Override information
     override_reason: str | None = Field(
@@ -136,7 +143,7 @@ class CompanyClassification(BaseModel):
     @classmethod
     def validate_classification(cls, v: str) -> str:
         """Validate classification is one of the allowed values."""
-        allowed = {"Product-leaning", "Service-leaning", "Mixed", "Uncertain"}
+        allowed = {"Product-leaning", "Service-leaning", "R&D-leaning", "Mixed", "Uncertain"}
         if v not in allowed:
             raise ValueError(f"Classification must be one of {allowed}, got {v}")
         return v
@@ -150,7 +157,7 @@ class CompanyClassification(BaseModel):
             raise ValueError(f"Confidence must be one of {allowed}, got {v}")
         return v
 
-    @field_validator("product_pct", "service_pct")
+    @field_validator("product_pct", "service_pct", "rd_pct")
     @classmethod
     def validate_percentage_range(cls, v: float) -> float:
         """Validate percentage is between 0.0 and 100.0."""
@@ -166,7 +173,7 @@ class CompanyClassification(BaseModel):
             raise ValueError(f"Count must be non-negative, got {v}")
         return v
 
-    @field_validator("total_dollars", "product_dollars", "service_rd_dollars")
+    @field_validator("total_dollars", "product_dollars", "service_dollars", "rd_dollars")
     @classmethod
     def validate_dollars_non_negative(cls, v: float) -> float:
         """Validate dollar amount is non-negative."""

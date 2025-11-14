@@ -443,9 +443,9 @@ def aggregate_company_classification(
     """Aggregate contract classifications to company level.
 
     Aggregation logic:
-    1. Calculate dollar-weighted percentages for Product vs Service/R&D
-    2. Apply 51% threshold for Product-leaning or Service-leaning
-    3. Apply Mixed classification if neither threshold met
+    1. Calculate dollar-weighted percentages for Product, Service, and R&D separately
+    2. Apply 51% threshold for Product-leaning, Service-leaning, or R&D-leaning
+    3. Apply Mixed classification if no category reaches threshold
     4. Apply override rules (e.g., >6 PSC families → Mixed)
     5. Assign confidence level based on number of awards
 
@@ -477,12 +477,14 @@ def aggregate_company_classification(
             classification="Uncertain",
             product_pct=0.0,
             service_pct=0.0,
+            rd_pct=0.0,
             confidence="Low",
             award_count=len(contracts),
             psc_family_count=0,
             total_dollars=0.0,
             product_dollars=0.0,
-            service_rd_dollars=0.0,
+            service_dollars=0.0,
+            rd_dollars=0.0,
             override_reason="insufficient_awards",
             contracts=[],
         )
@@ -514,26 +516,33 @@ def aggregate_company_classification(
                 classified = classify_contract(c)
                 classified_contracts.append(classified)
 
-    # Calculate dollar-weighted percentages
+    # Calculate dollar-weighted percentages (separate R&D from Service)
     total_dollars = sum(c.award_amount or 0.0 for c in classified_contracts)
     product_dollars = sum(
         c.award_amount or 0.0
         for c in classified_contracts
         if c.classification == "Product"
     )
-    service_rd_dollars = sum(
+    service_dollars = sum(
         c.award_amount or 0.0
         for c in classified_contracts
-        if c.classification in ("Service", "R&D")
+        if c.classification == "Service"
+    )
+    rd_dollars = sum(
+        c.award_amount or 0.0
+        for c in classified_contracts
+        if c.classification == "R&D"
     )
 
     # Calculate percentages
     if total_dollars > 0:
         product_pct = (product_dollars / total_dollars) * 100
-        service_pct = (service_rd_dollars / total_dollars) * 100
+        service_pct = (service_dollars / total_dollars) * 100
+        rd_pct = (rd_dollars / total_dollars) * 100
     else:
         product_pct = 0.0
         service_pct = 0.0
+        rd_pct = 0.0
 
     # Count PSC families
     psc_families = set()
@@ -552,11 +561,13 @@ def aggregate_company_classification(
             f"Company {company_uei or company_name or 'Unknown'} has {len(psc_families)} PSC families, "
             f"overriding to Mixed classification"
         )
-    # Standard classification based on thresholds
+    # Standard classification based on thresholds (three categories)
     elif product_pct >= 51:
         classification = "Product-leaning"
     elif service_pct >= 51:
         classification = "Service-leaning"
+    elif rd_pct >= 51:
+        classification = "R&D-leaning"
     else:
         classification = "Mixed"
 
@@ -570,7 +581,8 @@ def aggregate_company_classification(
 
     logger.info(
         f"Classified company {company_uei or company_name or 'Unknown'} as {classification} "
-        f"({len(classified_contracts)} awards, {confidence} confidence)"
+        f"({len(classified_contracts)} awards, {confidence} confidence) - "
+        f"Product: {product_pct:.1f}%, Service: {service_pct:.1f}%, R&D: {rd_pct:.1f}%"
     )
 
     return CompanyClassification(
@@ -579,12 +591,14 @@ def aggregate_company_classification(
         classification=classification,
         product_pct=round(product_pct, 2),
         service_pct=round(service_pct, 2),
+        rd_pct=round(rd_pct, 2),
         confidence=confidence,
         award_count=len(classified_contracts),
         psc_family_count=len(psc_families),
         total_dollars=total_dollars,
         product_dollars=product_dollars,
-        service_rd_dollars=service_rd_dollars,
+        service_dollars=service_dollars,
+        rd_dollars=rd_dollars,
         override_reason=override_reason,
         contracts=classified_contracts,
     )

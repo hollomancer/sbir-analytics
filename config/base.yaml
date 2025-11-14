@@ -261,6 +261,7 @@ company_categorization:
   # Classification thresholds
   product_leaning_pct: 51.0 # 51% threshold for Product-leaning
   service_leaning_pct: 51.0 # 51% threshold for Service-leaning
+  rd_leaning_pct: 51.0 # 51% threshold for R&D-leaning
   psc_family_diversity_threshold: 6 # >6 PSC families → Mixed
 
   # Confidence levels

@@ -279,10 +279,14 @@ def categorize_companies(
                     "classification": "Uncertain",
                     "product_pct": 0.0,
                     "service_pct": 0.0,
+                    "rd_pct": 0.0,
                     "confidence": "Low",
                     "award_count": 0,
                     "psc_family_count": 0,
                     "total_dollars": 0.0,
+                    "product_dollars": 0.0,
+                    "service_dollars": 0.0,
+                    "rd_dollars": 0.0,
                     "override_reason": "no_contracts_found",
                     "sbir_award_count": sbir_award_count,
                     "sbir_dollars": sbir_dollars,
@@ -329,11 +333,16 @@ def categorize_companies(
             company_result = aggregate_company_classification(
                 classified_contracts, company_uei=uei, company_name=name
             )
+            
+            logger.info(
+                f"  Dollar breakdown: Product: {company_result.product_pct:.1f}%, "
+                f"Service: {company_result.service_pct:.1f}%, R&D: {company_result.rd_pct:.1f}%"
+            )
 
             logger.info(
                 f"  Result: {company_result.classification} "
-                f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) "
-                f"- {company_result.confidence} confidence"
+                f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service, "
+                f"{company_result.rd_pct:.1f}% R&D) - {company_result.confidence} confidence"
             )
 
             # Generate justification
@@ -349,9 +358,13 @@ def categorize_companies(
                 if company_result.product_pct >= 51:
                     justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
                 if company_result.service_pct >= 51:
-                    justification_parts.append(f"{company_result.service_pct:.0f}% service/R&D contracts")
-                if 40 <= company_result.product_pct <= 50 and 40 <= company_result.service_pct <= 50:
-                    justification_parts.append("Balanced product/service portfolio")
+                    justification_parts.append(f"{company_result.service_pct:.0f}% service contracts")
+                if company_result.rd_pct >= 51:
+                    justification_parts.append(f"{company_result.rd_pct:.0f}% R&D contracts")
+                # Check for balanced portfolio (no category >= 51%)
+                if (company_result.product_pct < 51 and company_result.service_pct < 51 and 
+                    company_result.rd_pct < 51):
+                    justification_parts.append("Balanced portfolio across categories")
                 if company_result.psc_family_count > 5:
                     justification_parts.append(f"{company_result.psc_family_count} PSC families")
                 if company_result.award_count > 50:
@@ -367,12 +380,14 @@ def categorize_companies(
                 "classification": company_result.classification,
                 "product_pct": company_result.product_pct,
                 "service_pct": company_result.service_pct,
+                "rd_pct": company_result.rd_pct,
                 "confidence": company_result.confidence,
                 "award_count": company_result.award_count,
                 "psc_family_count": company_result.psc_family_count,
                 "total_dollars": company_result.total_dollars,
                 "product_dollars": company_result.product_dollars,
-                "service_rd_dollars": company_result.service_rd_dollars,
+                "service_dollars": company_result.service_dollars,
+                "rd_dollars": company_result.rd_dollars,
                 "override_reason": company_result.override_reason,
                 "sbir_award_count": sbir_award_count,
                 "sbir_dollars": sbir_dollars,
@@ -403,7 +418,7 @@ def categorize_companies(
     else:
         # Sequential processing
         for idx, (_, company) in enumerate(companies.iterrows(), 1):
-            result = process_company((idx, company))
+            result = process_company((idx, (_, company)))
             if result is not None:
                 results.append(result)
 
@@ -521,6 +536,12 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "non_sbir_contracts",
         "cost_based_contracts",
         "service_based_contracts",
+        "product_pct",
+        "service_pct",
+        "rd_pct",
+        "product_dollars",
+        "service_dollars",
+        "rd_dollars",
         "classification",
         "justification",
         "confidence",
@@ -538,6 +559,12 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "non_sbir_contracts": "Number of Non-SBIR Government Contracts Received",
         "cost_based_contracts": "Number of Non-SBIR Cost-Based Contracts Received",
         "service_based_contracts": "Number of Non-SBIR Service-Based Contracts Received",
+        "product_pct": "Product %",
+        "service_pct": "Service %",
+        "rd_pct": "R&D %",
+        "product_dollars": "Product Dollars",
+        "service_dollars": "Service Dollars",
+        "rd_dollars": "R&D Dollars",
         "classification": "Classification",
         "justification": "Justification",
         "confidence": "Confidence",
@@ -732,9 +759,10 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write("---\n\n")
         f.write("## Methodology\n\n")
         f.write("**Categorization Criteria:**\n\n")
-        f.write("- **Product**: ≥51% of contract dollars from product-related PSC codes (numeric PSCs)\n")
-        f.write("- **Service**: ≥51% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
-        f.write("- **Mixed**: Neither product nor service reaches 51% threshold (balanced portfolio)\n\n")
+        f.write("- **Product-leaning**: ≥51% of contract dollars from product-related PSC codes (numeric PSCs)\n")
+        f.write("- **Service-leaning**: ≥51% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
+        f.write("- **R&D-leaning**: ≥51% of contract dollars from R&D contracts\n")
+        f.write("- **Mixed**: No category reaches 51% threshold (balanced portfolio)\n\n")
         f.write("**Confidence Levels:**\n\n")
         f.write("- **High**: 20+ contracts across 3+ PSC families with >80% in one category\n")
         f.write("- **Medium**: 10+ contracts or clear majority (>70%) in one category\n")
