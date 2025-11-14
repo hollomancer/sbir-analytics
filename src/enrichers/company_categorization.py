@@ -18,6 +18,7 @@ import pandas as pd
 from loguru import logger
 
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
+from src.utils.text_normalization import normalize_name
 
 
 def retrieve_company_contracts(
@@ -228,8 +229,26 @@ def retrieve_company_contracts_api(
 
     # Fallback to company name if no UEI/DUNS available
     if not recipient_search_terms and valid_name:
-        recipient_search_terms.append(str(company_name))
-        logger.info(f"Using company name fallback search: {company_name}")
+        # Add both original and normalized company name for better matching
+        original_name = str(company_name)
+        normalized_company_name = normalize_name(
+            company_name,
+            remove_suffixes=True,  # Remove Inc, Corp, etc. for broader matching
+            apply_abbreviations=True  # Expand abbreviations like "Tech" → "Technologies"
+        )
+
+        # Add original name first (more precise)
+        recipient_search_terms.append(original_name)
+
+        # Add normalized name if different (catches variants)
+        if normalized_company_name and normalized_company_name != original_name.lower():
+            recipient_search_terms.append(normalized_company_name)
+            logger.info(
+                f"Using company name fallback search: '{original_name}' "
+                f"(normalized: '{normalized_company_name}')"
+            )
+        else:
+            logger.info(f"Using company name fallback search: '{original_name}'")
 
     # Must have at least one search term to query the API
     if not recipient_search_terms:
