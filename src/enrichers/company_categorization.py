@@ -29,6 +29,9 @@ def retrieve_company_contracts_api(
     Uses the USAspending.gov public API to retrieve contract data. This is the
     recommended method as it doesn't require a local database.
 
+    Note: API has a max limit of 100 results per request. This function automatically
+    paginates to retrieve up to the specified limit.
+
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number (legacy identifier)
@@ -81,71 +84,91 @@ def retrieve_company_contracts_api(
     elif duns:
         filters["recipient_search_text"] = [duns]
 
-    # Build request payload
-    payload = {
-        "filters": filters,
-        "fields": [
-            "Award ID",
-            "Recipient Name",
-            "Award Amount",
-            "Description",
-            "awarding_agency_name",
-            "Start Date",
-            "End Date",
-            "Product or Service Code",
-            "recipient_uei",
-            "recipient_duns",
-        ],
-        "limit": limit,
-        "page": 1,
-        "sort": "Award Amount",
-        "order": "desc",
-    }
+    # API has max limit of 100 per request
+    page_size = 100
+    all_records = []
+    page = 1
+    total_retrieved = 0
 
     try:
-        # Make API request
         with httpx.Client(timeout=timeout) as client:
-            response = client.post(api_url, json=payload)
-            response.raise_for_status()
+            while total_retrieved < limit:
+                # Build request payload for this page
+                payload = {
+                    "filters": filters,
+                    "fields": [
+                        "Award ID",
+                        "Recipient Name",
+                        "Award Amount",
+                        "Description",
+                        "awarding_agency_name",
+                        "Start Date",
+                        "End Date",
+                        "Product or Service Code",
+                        "recipient_uei",
+                        "recipient_duns",
+                    ],
+                    "limit": min(page_size, limit - total_retrieved),
+                    "page": page,
+                    "sort": "Award Amount",
+                    "order": "desc",
+                }
 
-        data = response.json()
+                # Make API request
+                response = client.post(api_url, json=payload)
+                response.raise_for_status()
 
-        # Extract results
-        results = data.get("results", [])
+                data = response.json()
+                results = data.get("results", [])
 
-        if not results:
+                if not results:
+                    # No more results
+                    break
+
+                # Convert results to records
+                for result in results:
+                    # Extract PSC code
+                    psc = result.get("Product or Service Code", "")
+
+                    # Parse contract type/pricing from description (best effort)
+                    description = result.get("Description", "") or ""
+                    contract_type, pricing = _infer_contract_type_from_description(description)
+
+                    # Extract SBIR phase
+                    sbir_phase = _extract_sbir_phase(description)
+
+                    record = {
+                        "award_id": result.get("Award ID", ""),
+                        "psc": psc,
+                        "contract_type": contract_type,
+                        "pricing": pricing,
+                        "description": description,
+                        "award_amount": float(result.get("Award Amount", 0) or 0),
+                        "recipient_uei": result.get("recipient_uei", uei),
+                        "recipient_duns": result.get("recipient_duns", duns),
+                        "sbir_phase": sbir_phase,
+                    }
+                    all_records.append(record)
+
+                total_retrieved += len(results)
+                page += 1
+
+                # If we got fewer results than page_size, we've reached the end
+                if len(results) < page_size:
+                    break
+
+                # Small delay between requests to be respectful to API
+                if total_retrieved < limit:
+                    time.sleep(0.1)
+
+        if not all_records:
             logger.info(f"No contracts found in USAspending API for company (UEI={uei}, DUNS={duns})")
             return pd.DataFrame()
 
-        logger.info(f"Retrieved {len(results)} contracts from USAspending API")
+        logger.info(f"Retrieved {len(all_records)} contracts from USAspending API across {page - 1} page(s)")
 
-        # Convert to DataFrame with standardized columns
-        records = []
-        for result in results:
-            # Extract PSC code
-            psc = result.get("Product or Service Code", "")
-
-            # Parse contract type/pricing from description (best effort)
-            description = result.get("Description", "") or ""
-            contract_type, pricing = _infer_contract_type_from_description(description)
-
-            # Extract SBIR phase
-            sbir_phase = _extract_sbir_phase(description)
-
-            record = {
-                "award_id": result.get("Award ID", ""),
-                "psc": psc,
-                "contract_type": contract_type,
-                "pricing": pricing,
-                "description": description,
-                "award_amount": float(result.get("Award Amount", 0) or 0),
-                "recipient_uei": result.get("recipient_uei", uei),
-                "recipient_duns": result.get("recipient_duns", duns),
-                "sbir_phase": sbir_phase,
-            }
-            records.append(record)
-
-        df = pd.DataFrame(records)
+        # Convert to DataFrame
+        df = pd.DataFrame(all_records)
 
         # Drop duplicates based on award_id
         df = df.drop_duplicates(subset=["award_id"])
