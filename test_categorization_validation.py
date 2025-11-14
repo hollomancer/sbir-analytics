@@ -215,6 +215,10 @@ def categorize_companies(
         uei = company.get("UEI")
         name = company.get("Company Name", "Unknown")
 
+        # Convert pandas NaN to None for Pydantic compatibility
+        if pd.isna(uei):
+            uei = None
+
         logger.info(
             f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})"
         )
