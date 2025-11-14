@@ -159,9 +159,13 @@ def retrieve_company_contracts_api(
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API.
 
-    Queries the USAspending API v2 for all contracts associated with a company
-    using their identifiers (UEI, DUNS). Returns contracts with fields needed
-    for company categorization.
+    Queries the USAspending API v2 /search/spending_by_transaction/ endpoint for all
+    transactions/contracts associated with a company using their identifiers (UEI, DUNS).
+    Uses the transaction endpoint because the award endpoint doesn't populate PSC codes.
+    Returns contracts with fields needed for company categorization.
+
+    Note: May return multiple transactions per award. Duplicates are removed based on
+    award_id before returning.
 
     Args:
         uei: Company UEI (Unique Entity Identifier)
@@ -240,8 +244,10 @@ def retrieve_company_contracts_api(
             }
 
             # Make API request
-            url = f"{base_url}/search/spending_by_award/"
-            logger.debug(f"Fetching page {page} from USAspending API")
+            # NOTE: Using spending_by_transaction instead of spending_by_award because
+            # the award endpoint doesn't populate PSC codes in the response
+            url = f"{base_url}/search/spending_by_transaction/"
+            logger.debug(f"Fetching page {page} from USAspending API (transactions)")
 
             try:
                 response = httpx.post(
