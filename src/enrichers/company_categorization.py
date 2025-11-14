@@ -7,14 +7,20 @@ IMPORTANT: SBIR/STTR awards are excluded from categorization to focus on non-R&D
 contract revenue that reflects the company's product vs service business model. However,
 SBIR/STTR awards can be retrieved separately for reporting and debugging purposes.
 
-The module supports fallback to company name-based search when UEI/DUNS identifiers are
-missing or invalid, ensuring broader coverage for companies with incomplete metadata.
+The module supports intelligent fallback strategies when UEI/DUNS identifiers are missing:
+1. First: Try exact UEI/DUNS match
+2. Second: Use USAspending autocomplete API for fuzzy name matching
+3. Third: Fall back to direct name-based search
+
+This multi-tier approach significantly improves coverage for companies with incomplete
+metadata or name variations (e.g., "Advanced Technologies/Laboratories Intl" vs
+"ADVANCED TECHNOLOGIES AND LABORATORIES (ATL) INTERNATIONAL, INC.").
 
 Key Functions:
     - retrieve_company_contracts: Retrieve non-SBIR federal contracts for categorization (DuckDB)
-    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for categorization (API, with name fallback)
+    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts (API, with fuzzy matching)
     - retrieve_sbir_awards: Retrieve SBIR/STTR awards for reporting (DuckDB)
-    - retrieve_sbir_awards_api: Retrieve SBIR/STTR awards for reporting (API, with name fallback)
+    - retrieve_sbir_awards_api: Retrieve SBIR/STTR awards for reporting (API, with fuzzy matching)
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
@@ -48,6 +54,68 @@ def _is_valid_identifier(value: str | None) -> bool:
         if cleaned in ("", "nan", "none", "null"):
             return False
     return True
+
+
+def _fuzzy_match_recipient(
+    company_name: str,
+    base_url: str = "https://api.usaspending.gov/api/v2",
+    timeout: int = 10,
+) -> dict[str, Any] | None:
+    """Use USAspending autocomplete API to find the best recipient match for a company name.
+
+    Args:
+        company_name: Company name to search for
+        base_url: USAspending API base URL
+        timeout: Request timeout in seconds
+
+    Returns:
+        Dictionary with matched recipient info (uei, name, etc.) or None if no match
+    """
+    if not company_name or not isinstance(company_name, str):
+        return None
+
+    try:
+        url = f"{base_url}/autocomplete/recipient/"
+        params = {
+            "search_text": company_name,
+            "limit": 5,  # Get top 5 matches for potential validation
+        }
+
+        response = httpx.get(
+            url,
+            params=params,
+            headers={"User-Agent": "SBIR-ETL/1.0"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        results = data.get("results", [])
+        if not results:
+            logger.debug(f"No autocomplete matches found for: {company_name}")
+            return None
+
+        # Get the best match (first result)
+        best_match = results[0]
+        matched_name = best_match.get("legal_business_name", "")
+        matched_uei = best_match.get("uei")
+
+        logger.info(
+            f"Autocomplete matched '{company_name}' → '{matched_name}' (UEI: {matched_uei})"
+        )
+
+        return {
+            "uei": matched_uei,
+            "name": matched_name,
+            "duns": best_match.get("duns"),
+        }
+
+    except httpx.HTTPError as e:
+        logger.warning(f"HTTP error during autocomplete for '{company_name}': {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error during autocomplete for '{company_name}': {e}")
+        return None
 
 
 def retrieve_company_contracts(
@@ -208,7 +276,10 @@ def retrieve_company_contracts_api(
     focus on non-R&D federal contract revenue. This endpoint properly populates
     PSC codes without requiring additional API calls per award.
 
-    Falls back to company name search if UEI/DUNS are missing or invalid.
+    Implements intelligent fallback strategy when UEI/DUNS are missing:
+    1. First: Use UEI/DUNS if valid
+    2. Second: Use autocomplete API for fuzzy name matching to find UEI/DUNS
+    3. Third: Fall back to direct name-based search
 
     Args:
         uei: Company UEI (Unique Entity Identifier)
@@ -246,11 +317,34 @@ def retrieve_company_contracts_api(
         logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
+    # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
+    fuzzy_matched = False
+    if not (valid_uei or valid_duns) and valid_name:
+        logger.info(f"Attempting fuzzy match via autocomplete for: {company_name}")
+        match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
+
+        if match_result:
+            # Use the matched identifiers instead of the original name
+            matched_uei = match_result.get("uei")
+            matched_duns = match_result.get("duns")
+
+            if _is_valid_identifier(matched_uei):
+                uei = matched_uei
+                valid_uei = True
+                fuzzy_matched = True
+            if _is_valid_identifier(matched_duns):
+                duns = matched_duns
+                valid_duns = True
+                fuzzy_matched = True
+
     # Determine search strategy
     if valid_uei or valid_duns:
-        logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+        if fuzzy_matched:
+            logger.info(f"Using fuzzy-matched identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+        else:
+            logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
     else:
-        logger.info(f"Falling back to name-based search for: {company_name}")
+        logger.info(f"Falling back to direct name search for: {company_name}")
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
@@ -677,7 +771,10 @@ def retrieve_sbir_awards_api(
     This function retrieves SBIR/STTR awards separately for debugging and reporting
     purposes. These awards are NOT used in the categorization logic.
 
-    Falls back to company name search if UEI/DUNS are missing or invalid.
+    Implements intelligent fallback strategy when UEI/DUNS are missing:
+    1. First: Use UEI/DUNS if valid
+    2. Second: Use autocomplete API for fuzzy name matching to find UEI/DUNS
+    3. Third: Fall back to direct name-based search
 
     Args:
         uei: Company UEI (Unique Entity Identifier)
@@ -699,8 +796,30 @@ def retrieve_sbir_awards_api(
         logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
+    # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
+    fuzzy_matched = False
+    if not (valid_uei or valid_duns) and valid_name:
+        logger.debug(f"Attempting fuzzy match via autocomplete for SBIR awards: {company_name}")
+        match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
+
+        if match_result:
+            matched_uei = match_result.get("uei")
+            matched_duns = match_result.get("duns")
+
+            if _is_valid_identifier(matched_uei):
+                uei = matched_uei
+                valid_uei = True
+                fuzzy_matched = True
+            if _is_valid_identifier(matched_duns):
+                duns = matched_duns
+                valid_duns = True
+                fuzzy_matched = True
+
     if valid_uei or valid_duns:
-        logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+        if fuzzy_matched:
+            logger.debug(f"Using fuzzy-matched identifiers for SBIR (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+        else:
+            logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
     else:
         logger.debug(f"Retrieving SBIR/STTR awards from USAspending API using name: {company_name}")
 
