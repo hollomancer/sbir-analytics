@@ -106,6 +106,40 @@ enrichment:
     memory_delta_warning_mb: 500.0 # WARNING if memory delta > 500MB
     memory_pressure_warn_percent: 80.0 # WARNING if memory > 80% available
     memory_pressure_critical_percent: 95.0 # CRITICAL if memory > 95% available
+
+  # Enhanced matching features for company name data cleaning
+  enhanced_matching:
+    # Phonetic matching - catches misspellings that sound similar
+    # Examples: "Smyth" vs "Smith", "Mikrosystems" vs "Microsystems"
+    enable_phonetic_matching: false # Enable phonetic (sound-alike) matching
+    phonetic_algorithm: "metaphone" # Options: "metaphone", "double_metaphone", "soundex"
+    phonetic_boost: 5 # Score boost (0-10) when phonetic codes match
+
+    # Jaro-Winkler matching - gives extra weight to matching prefixes
+    # Particularly good for company names where first word is distinctive
+    enable_jaro_winkler: false # Enable Jaro-Winkler distance metric
+    jaro_winkler_prefix_weight: 0.1 # Weight for matching prefix (0.0-0.25)
+    jaro_winkler_threshold: 90 # Min score to consider a match (0-100)
+    jaro_winkler_use_as_primary: false # Use Jaro-Winkler as primary scorer (instead of token_set_ratio)
+
+    # Enhanced abbreviations - normalizes common terms to standard abbreviations
+    # Examples: "Technologies" -> "tech", "International" -> "intl"
+    enable_enhanced_abbreviations: false # Enable enhanced abbreviation dictionary
+    custom_abbreviations: {} # Additional custom abbreviations (dict format)
+
+  # Researcher matching configuration
+  researcher_matching:
+    # ORCID-first matching strategy
+    enable_orcid_matching: true # Match by ORCID identifier (highest confidence)
+    orcid_confidence: 100 # Confidence score for ORCID matches
+
+    # Email matching
+    enable_email_matching: true # Match by email address
+    email_confidence: 95 # Confidence score for email matches
+
+    # Affiliation + last name matching
+    enable_affiliation_matching: true # Match by affiliation + last name
+    affiliation_confidence: 80 # Confidence score for affiliation matches
   sam_gov:
     # SAM.gov API configuration
     base_url: "https://api.sam.gov/entity-information/v3"
