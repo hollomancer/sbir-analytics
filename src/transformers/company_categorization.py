@@ -52,9 +52,7 @@ def classify_contract(contract: dict) -> ContractClassification:
     """
     # Extract fields with safe defaults
     award_id = contract.get("award_id", "")
-    # Convert PSC to string if it's a number (handles numeric PSC codes stored as int)
-    psc_raw = contract.get("psc", "")
-    psc = str(psc_raw) if psc_raw else ""
+    psc = contract.get("psc", "")
     contract_type = contract.get("contract_type", "")
     pricing = contract.get("pricing", "")
     description = contract.get("description", "") or ""
@@ -210,11 +208,6 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
     if not psc:
         return ("Service", "default", 0.50)
 
-<<<<<<< HEAD
-    # Ensure PSC is a string (handles cases where numeric PSC might be passed as int)
-    psc_str = str(psc) if psc else ""
-    if not psc_str:
-=======
     # Handle edge case where PSC might be a dict instead of string
     if isinstance(psc, dict):
         # Try to extract the code from the dict
@@ -224,11 +217,10 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
 
     # Ensure PSC is a string
     if not isinstance(psc, str):
->>>>>>> claude/fix-psc-codes-issue-01Pg9ogB15qXtSpxJW43oab7
         return ("Service", "default", 0.50)
 
     # Get first character of PSC
-    first_char = psc_str[0].upper()
+    first_char = psc[0].upper()
 
     # Numeric PSC → Product
     if first_char.isdigit():
@@ -371,10 +363,7 @@ def aggregate_company_classification(
     psc_families = set()
     for c in classified_contracts:
         if c.psc:
-            # Ensure PSC is string (defensive programming)
-            psc_str = str(c.psc) if c.psc else ""
-            if psc_str:
-                psc_families.add(psc_str[0].upper())
+            psc_families.add(c.psc[0].upper())
 
     # Apply override rules and determine classification
     override_reason = None
