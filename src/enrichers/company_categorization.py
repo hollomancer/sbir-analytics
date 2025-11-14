@@ -360,8 +360,8 @@ def retrieve_company_contracts_api(
             if not award_id or pd.isna(award_id) or award_id.startswith("UNKNOWN_"):
                 continue
 
-            # Add delay to respect rate limits (120 per minute = ~0.5s per request)
-            time.sleep(0.5)
+            # Add delay to respect rate limits (conservative: 60 per minute = 1s per request)
+            time.sleep(1.0)
 
             award_details = _fetch_award_details(award_id, base_url, timeout)
             if award_details and award_details.get("psc"):
@@ -401,71 +401,110 @@ def retrieve_company_contracts_api(
         return pd.DataFrame()
 
 
-def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str, Any] | None:
-    """Fetch detailed award information including PSC code.
+def _fetch_award_details(award_id: str, base_url: str, timeout: int, max_retries: int = 3) -> dict[str, Any] | None:
+    """Fetch detailed award information including PSC code with retry logic.
 
     This is used as a fallback when the transaction endpoint doesn't return PSC codes.
+    Includes exponential backoff for connection errors and rate limiting.
 
     Args:
         award_id: Award identifier (PIID or generated_internal_id)
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts for connection errors
 
     Returns:
         Award details dict with PSC code, or None if fetch fails
     """
-    try:
-        url = f"{base_url}/awards/{award_id}/"
-        response = httpx.get(url, timeout=timeout)
-        response.raise_for_status()
-        award_data = response.json()
+    url = f"{base_url}/awards/{award_id}/"
+    award_data = None
 
-        # Debug: Log the structure of the response to understand where PSC is located
-        if isinstance(award_data, dict):
-            # Log top-level keys to help debug structure
-            logger.debug(f"Award {award_id} response keys: {list(award_data.keys())}")
+    for attempt in range(max_retries):
+        try:
+            response = httpx.get(url, timeout=timeout)
+            response.raise_for_status()
+            award_data = response.json()
+            break  # Success, exit retry loop
 
-        # Extract PSC from the detailed award response
-        # Per USAspending API docs, PSC is in latest_transaction_contract_data for contract awards
-        psc = None
-        if isinstance(award_data, dict):
-            # Primary location: latest_transaction_contract_data (for contracts)
-            latest_contract = award_data.get("latest_transaction_contract_data", {})
-            if isinstance(latest_contract, dict):
-                psc = latest_contract.get("product_or_service_code")
-
-            # Fallback locations if not in primary location
-            if not psc:
-                psc = (
-                    award_data.get("product_or_service_code")
-                    or award_data.get("psc")
-                    or award_data.get("latest_transaction", {}).get("product_or_service_code")
-                    or award_data.get("contract_data", {}).get("product_or_service_code")
-                    or award_data.get("base_transaction", {}).get("product_or_service_code")
+        except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError) as e:
+            # Connection errors - likely rate limiting or server overload
+            if attempt < max_retries - 1:
+                # Exponential backoff: 2s, 4s, 8s
+                wait_time = 2 ** (attempt + 1)
+                logger.debug(
+                    f"Connection error for award {award_id} (attempt {attempt + 1}/{max_retries}): {e}. "
+                    f"Retrying in {wait_time}s..."
                 )
+                time.sleep(wait_time)
+                continue
+            else:
+                logger.warning(f"Failed to fetch award {award_id} after {max_retries} attempts: {e}")
+                return None
 
-            # If still not found, log warning with available keys
-            if not psc:
-                logger.warning(
-                    f"PSC not found for award {award_id}. "
-                    f"Response has keys: {list(award_data.keys())[:10]}"
-                )
+        except httpx.HTTPStatusError as e:
+            # HTTP errors (404, 429, 500, etc)
+            if e.response.status_code == 404:
+                logger.debug(f"Award {award_id} not found (404)")
+            elif e.response.status_code == 429:
+                # Rate limit - wait longer
+                if attempt < max_retries - 1:
+                    wait_time = 5 * (attempt + 1)  # 5s, 10s, 15s
+                    logger.warning(
+                        f"Rate limit hit for award {award_id} (attempt {attempt + 1}/{max_retries}). "
+                        f"Waiting {wait_time}s..."
+                    )
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.warning(f"Rate limit exceeded for award {award_id} after {max_retries} attempts")
+            else:
+                logger.warning(f"HTTP {e.response.status_code} error for award {award_id}: {e}")
+            return None
 
-        if psc:
-            logger.debug(f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint")
-            return {"psc": psc}
+        except Exception as e:
+            logger.warning(f"Unexpected error fetching award {award_id}: {e}")
+            return None
 
+    # Process successful response (only if we got data)
+    if award_data is None:
         return None
 
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            logger.debug(f"Award {award_id} not found in individual award endpoint (404)")
-        else:
-            logger.warning(f"HTTP error fetching award details for {award_id}: {e}")
-        return None
-    except Exception as e:
-        logger.warning(f"Error fetching award details for {award_id}: {e}")
-        return None
+    # Debug: Log the structure of the response to understand where PSC is located
+    if isinstance(award_data, dict):
+        # Log top-level keys to help debug structure
+        logger.debug(f"Award {award_id} response keys: {list(award_data.keys())}")
+
+    # Extract PSC from the detailed award response
+    # Per USAspending API docs, PSC is in latest_transaction_contract_data for contract awards
+    psc = None
+    if isinstance(award_data, dict):
+        # Primary location: latest_transaction_contract_data (for contracts)
+        latest_contract = award_data.get("latest_transaction_contract_data", {})
+        if isinstance(latest_contract, dict):
+            psc = latest_contract.get("product_or_service_code")
+
+        # Fallback locations if not in primary location
+        if not psc:
+            psc = (
+                award_data.get("product_or_service_code")
+                or award_data.get("psc")
+                or award_data.get("latest_transaction", {}).get("product_or_service_code")
+                or award_data.get("contract_data", {}).get("product_or_service_code")
+                or award_data.get("base_transaction", {}).get("product_or_service_code")
+            )
+
+        # If still not found, log warning with available keys
+        if not psc:
+            logger.warning(
+                f"PSC not found for award {award_id}. "
+                f"Response has keys: {list(award_data.keys())[:10]}"
+            )
+
+    if psc:
+        logger.debug(f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint")
+        return {"psc": psc}
+
+    return None
 
 
 def _extract_sbir_phase(description: str | None) -> str | None:
