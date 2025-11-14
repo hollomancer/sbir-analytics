@@ -126,9 +126,35 @@ def retrieve_company_contracts_api(
                     break
 
                 # Convert results to records
-                for result in results:
-                    # Extract PSC code
-                    psc = result.get("Product or Service Code", "")
+                for idx, result in enumerate(results):
+                    # Extract PSC code - handle nested structure
+                    # USAspending often returns: product_or_service_code.code
+                    psc_field = result.get("Product or Service Code", "")
+
+                    if isinstance(psc_field, dict):
+                        # Nested: {"code": "5820", "description": "..."}
+                        psc = psc_field.get("code", "")
+                        if idx == 0 and page == 1:
+                            logger.debug(f"PSC returned as nested dict: {psc_field}")
+                    elif isinstance(psc_field, str):
+                        # Flat string
+                        psc = psc_field
+                        if idx == 0 and page == 1:
+                            logger.debug(f"PSC returned as flat string: '{psc_field}'")
+                    else:
+                        # Try alternative field names
+                        if idx == 0 and page == 1:
+                            logger.warning(f"PSC field empty/unexpected type, trying alternatives. Available keys: {list(result.keys())}")
+                        psc = result.get("product_or_service_code", "")
+                        if isinstance(psc, dict):
+                            psc = psc.get("code", "")
+
+                    # Clean PSC code
+                    psc = str(psc).strip() if psc else ""
+
+                    # Debug: log if PSC is empty for first contract
+                    if idx == 0 and page == 1 and not psc:
+                        logger.error(f"CRITICAL: PSC is empty after parsing! Raw response keys: {list(result.keys())}")
 
                     # Parse contract type/pricing from description (best effort)
                     description = result.get("Description", "") or ""
