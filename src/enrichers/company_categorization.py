@@ -359,7 +359,9 @@ def retrieve_company_contracts_api(
         return df
 
     except Exception as e:
+        import traceback
         logger.error(f"Failed to retrieve contracts from USAspending API: {e}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         return pd.DataFrame()
 
 
