@@ -3,9 +3,12 @@
 This module provides functionality to retrieve federal contract portfolios from
 USAspending for SBIR companies to support categorization as Product/Service/Mixed firms.
 
+IMPORTANT: SBIR/STTR awards are excluded from retrieval to focus on non-R&D federal
+contract revenue that reflects the company's product vs service business model.
+
 Key Functions:
-    - retrieve_company_contracts: Retrieve all federal contracts for a company (DuckDB)
-    - retrieve_company_contracts_api: Retrieve all federal contracts for a company (API)
+    - retrieve_company_contracts: Retrieve non-SBIR federal contracts for a company (DuckDB)
+    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for a company (API)
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
@@ -27,10 +30,11 @@ def retrieve_company_contracts(
     cage: str | None = None,
     table_name: str = "usaspending_awards",
 ) -> pd.DataFrame:
-    """Retrieve all federal contracts for a company from USAspending.
+    """Retrieve all federal contracts for a company from USAspending (excluding SBIR/STTR).
 
     Queries the USAspending database for all contracts associated with a company
-    using their identifiers (UEI, DUNS, CAGE). Returns contracts with fields needed
+    using their identifiers (UEI, DUNS, CAGE). SBIR/STTR awards are excluded to focus
+    on non-R&D federal contract revenue. Returns contracts with fields needed
     for company categorization.
 
     Args:
@@ -82,6 +86,7 @@ def retrieve_company_contracts(
 
     # Build query to extract relevant fields
     # Note: USAspending field names vary - using common variations
+    # IMPORTANT: Exclude SBIR/STTR awards to focus on other federal contract revenue
     query = f"""
     SELECT
         COALESCE(award_id_piid, piid, fain, uri, award_id) as award_id,
@@ -100,6 +105,15 @@ def retrieve_company_contracts(
     WHERE ({where_clause})
         AND federal_action_obligation IS NOT NULL
         AND federal_action_obligation != 0
+        AND (
+            award_description IS NULL
+            OR (
+                UPPER(award_description) NOT LIKE '%SBIR%'
+                AND UPPER(award_description) NOT LIKE '%STTR%'
+                AND UPPER(award_description) NOT LIKE '%SMALL BUSINESS INNOVATION%'
+                AND UPPER(award_description) NOT LIKE '%SMALL BUSINESS TECH%'
+            )
+        )
     """
 
     try:
@@ -159,10 +173,11 @@ def retrieve_company_contracts_api(
     page_size: int = 100,
     max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
-    """Retrieve all federal contracts for a company from USAspending API.
+    """Retrieve all federal contracts for a company from USAspending API (excluding SBIR/STTR).
 
     Uses the /search/spending_by_transaction/ endpoint which returns transaction-level
-    data including PSC codes directly in the response. This endpoint properly populates
+    data including PSC codes directly in the response. SBIR/STTR awards are excluded to
+    focus on non-R&D federal contract revenue. This endpoint properly populates
     PSC codes without requiring additional API calls per award.
 
     Args:
@@ -350,12 +365,29 @@ def retrieve_company_contracts_api(
         # Convert to DataFrame
         df = pd.DataFrame(all_transactions)
 
+        # Filter out SBIR/STTR awards to focus on other federal contract revenue
+        initial_count = len(df)
+        if initial_count > 0:
+            df = df[
+                df["description"].isna()
+                | ~df["description"].str.upper().str.contains(
+                    "SBIR|STTR|SMALL BUSINESS INNOVATION|SMALL BUSINESS TECH", regex=True, na=False
+                )
+            ]
+            sbir_filtered = initial_count - len(df)
+            if sbir_filtered > 0:
+                logger.info(f"Filtered out {sbir_filtered} SBIR/STTR contracts ({sbir_filtered/initial_count*100:.1f}%)")
+
+        if df.empty:
+            logger.warning(f"No non-SBIR/STTR contracts found for company (UEI={uei}, DUNS={duns})")
+            return pd.DataFrame()
+
         # Check PSC coverage
         psc_count = (~df["psc"].isna()).sum()
         psc_coverage = (psc_count / len(df) * 100) if len(df) > 0 else 0
         logger.info(f"PSC code coverage: {psc_count}/{len(df)} ({psc_coverage:.1f}%)")
 
-        # Extract SBIR phase from description
+        # Extract SBIR phase from description (should be minimal after filtering)
         df["sbir_phase"] = df["description"].apply(_extract_sbir_phase)
 
         # Ensure numeric types for award_amount

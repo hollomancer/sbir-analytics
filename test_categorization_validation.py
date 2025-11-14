@@ -2,8 +2,11 @@
 """Test company categorization against high-volume SBIR companies dataset.
 
 This script validates the categorization system against the 200+ company validation
-dataset with known high award volumes. It provides detailed output for spot-checking
-and quality validation.
+dataset with known high award volumes. It analyzes non-SBIR/STTR federal contract
+revenue to determine whether companies are primarily Product or Service oriented.
+
+IMPORTANT: SBIR/STTR awards are excluded from the analysis to focus on other federal
+contract revenue that reflects the company's product vs service business model.
 
 Usage:
     # Test first 10 companies (quick)
@@ -221,7 +224,7 @@ def categorize_companies(
             contracts_df = retrieve_company_contracts(extractor, uei=uei)
 
         if contracts_df.empty:
-            logger.warning(f"  No USAspending contracts found for {name}")
+            logger.warning(f"  No non-SBIR/STTR USAspending contracts found for {name}")
             results.append(
                 {
                     "company_uei": uei,
@@ -239,7 +242,7 @@ def categorize_companies(
             )
             continue
 
-        logger.info(f"  Retrieved {len(contracts_df)} USAspending contracts")
+        logger.info(f"  Retrieved {len(contracts_df)} non-SBIR/STTR USAspending contracts")
 
         # Classify individual contracts
         classified_contracts = []
@@ -308,11 +311,12 @@ def print_summary(results: pd.DataFrame) -> None:
     logger.info(f"Companies with contracts: {(results['award_count'] > 0).sum()}")
     logger.info(f"Companies without contracts: {(results['award_count'] == 0).sum()}")
 
-    # List companies with no contracts
+    # List companies with no non-SBIR/STTR contracts
     no_contracts = results[results['award_count'] == 0]
     if len(no_contracts) > 0:
-        logger.info(f"\nCompanies with NO USAspending Contracts ({len(no_contracts)} total):")
+        logger.info(f"\nCompanies with NO Non-SBIR/STTR USAspending Contracts ({len(no_contracts)} total):")
         logger.info("-" * 80)
+        logger.info("  (These companies received SBIR awards but have no other federal contract revenue)")
         for idx, (_, row) in enumerate(no_contracts.iterrows(), 1):
             company_name = row['company_name']
             uei = row['company_uei']
