@@ -420,17 +420,23 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
             logger.debug(f"Award {award_id} response keys: {list(award_data.keys())}")
 
         # Extract PSC from the detailed award response
-        # The individual award endpoint has different structure than search endpoints
+        # Per USAspending API docs, PSC is in latest_transaction_contract_data for contract awards
         psc = None
         if isinstance(award_data, dict):
-            # Try various paths where PSC might be located in the response
-            psc = (
-                award_data.get("product_or_service_code")
-                or award_data.get("psc")
-                or award_data.get("latest_transaction", {}).get("product_or_service_code")
-                or award_data.get("contract_data", {}).get("product_or_service_code")
-                or award_data.get("base_transaction", {}).get("product_or_service_code")
-            )
+            # Primary location: latest_transaction_contract_data (for contracts)
+            latest_contract = award_data.get("latest_transaction_contract_data", {})
+            if isinstance(latest_contract, dict):
+                psc = latest_contract.get("product_or_service_code")
+
+            # Fallback locations if not in primary location
+            if not psc:
+                psc = (
+                    award_data.get("product_or_service_code")
+                    or award_data.get("psc")
+                    or award_data.get("latest_transaction", {}).get("product_or_service_code")
+                    or award_data.get("contract_data", {}).get("product_or_service_code")
+                    or award_data.get("base_transaction", {}).get("product_or_service_code")
+                )
 
             # If still not found, log warning with available keys
             if not psc:
