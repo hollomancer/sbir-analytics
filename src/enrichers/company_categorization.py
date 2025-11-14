@@ -3,12 +3,15 @@
 This module provides functionality to retrieve federal contract portfolios from
 USAspending for SBIR companies to support categorization as Product/Service/Mixed firms.
 
-IMPORTANT: SBIR/STTR awards are excluded from retrieval to focus on non-R&D federal
-contract revenue that reflects the company's product vs service business model.
+IMPORTANT: SBIR/STTR awards are excluded from categorization to focus on non-R&D federal
+contract revenue that reflects the company's product vs service business model. However,
+SBIR/STTR awards can be retrieved separately for reporting and debugging purposes.
 
 Key Functions:
-    - retrieve_company_contracts: Retrieve non-SBIR federal contracts for a company (DuckDB)
-    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for a company (API)
+    - retrieve_company_contracts: Retrieve non-SBIR federal contracts for categorization (DuckDB)
+    - retrieve_company_contracts_api: Retrieve non-SBIR federal contracts for categorization (API)
+    - retrieve_sbir_awards: Retrieve SBIR/STTR awards for reporting (DuckDB)
+    - retrieve_sbir_awards_api: Retrieve SBIR/STTR awards for reporting (API)
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
@@ -530,6 +533,223 @@ def _extract_sbir_phase(description: str | None) -> str | None:
                 return phase
 
     return None
+
+
+def retrieve_sbir_awards(
+    extractor: DuckDBUSAspendingExtractor,
+    uei: str | None = None,
+    duns: str | None = None,
+    cage: str | None = None,
+    table_name: str = "usaspending_awards",
+) -> pd.DataFrame:
+    """Retrieve ONLY SBIR/STTR awards for a company from USAspending (for reporting).
+
+    This function retrieves SBIR/STTR awards separately for debugging and reporting
+    purposes. These awards are NOT used in the categorization logic.
+
+    Args:
+        extractor: DuckDB USAspending extractor instance
+        uei: Company UEI (Unique Entity Identifier)
+        duns: Company DUNS number
+        cage: Company CAGE code
+        table_name: USAspending table name (default: usaspending_awards)
+
+    Returns:
+        DataFrame with SBIR/STTR awards only
+    """
+    # Validate at least one identifier is provided
+    if not any([uei, duns, cage]):
+        logger.warning("No company identifiers provided, returning empty DataFrame")
+        return pd.DataFrame()
+
+    # Build WHERE clause based on available identifiers
+    where_clauses = []
+    if uei:
+        where_clauses.append(f"recipient_uei = '{uei}'")
+        where_clauses.append(f"awardee_or_recipient_uei = '{uei}'")
+    if duns:
+        where_clauses.append(f"recipient_duns = '{duns}'")
+        where_clauses.append(f"awardee_or_recipient_uniqu = '{duns}'")
+    if cage:
+        where_clauses.append(f"cage_code = '{cage}'")
+        where_clauses.append(f"vendor_doing_as_business_n = '{cage}'")
+
+    where_clause = " OR ".join(where_clauses)
+
+    # Query to retrieve ONLY SBIR/STTR awards
+    query = f"""
+    SELECT
+        COALESCE(award_id_piid, piid, fain, uri, award_id) as award_id,
+        award_description as description,
+        CAST(federal_action_obligation as DOUBLE) as award_amount,
+        action_date,
+        fiscal_year
+    FROM {table_name}
+    WHERE ({where_clause})
+        AND federal_action_obligation IS NOT NULL
+        AND federal_action_obligation != 0
+        AND (
+            UPPER(award_description) LIKE '%SBIR%'
+            OR UPPER(award_description) LIKE '%STTR%'
+            OR UPPER(award_description) LIKE '%SMALL BUSINESS INNOVATION%'
+            OR UPPER(award_description) LIKE '%SMALL BUSINESS TECH%'
+        )
+    """
+
+    try:
+        conn = extractor.connect()
+        logger.debug(f"Querying USAspending for SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})")
+
+        result = conn.execute(query).fetchdf()
+
+        if result.empty:
+            logger.debug(f"No SBIR/STTR awards found in USAspending (UEI={uei}, DUNS={duns}, CAGE={cage})")
+            return pd.DataFrame()
+
+        # Drop any rows with invalid award_id
+        result = result[result["award_id"].notna()]
+
+        # Ensure numeric types
+        result["award_amount"] = pd.to_numeric(result["award_amount"], errors="coerce")
+
+        # Drop duplicates based on award_id
+        result = result.drop_duplicates(subset=["award_id"])
+
+        logger.debug(f"Retrieved {len(result)} SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to query SBIR/STTR awards: {e}")
+        return pd.DataFrame()
+
+
+def retrieve_sbir_awards_api(
+    uei: str | None = None,
+    duns: str | None = None,
+    base_url: str = "https://api.usaspending.gov/api/v2",
+    timeout: int = 30,
+    page_size: int = 100,
+) -> pd.DataFrame:
+    """Retrieve ONLY SBIR/STTR awards for a company from USAspending API (for reporting).
+
+    This function retrieves SBIR/STTR awards separately for debugging and reporting
+    purposes. These awards are NOT used in the categorization logic.
+
+    Args:
+        uei: Company UEI (Unique Entity Identifier)
+        duns: Company DUNS number
+        base_url: USAspending API base URL
+        timeout: Request timeout in seconds
+        page_size: Number of results per page
+
+    Returns:
+        DataFrame with SBIR/STTR awards only
+    """
+    if not any([uei, duns]):
+        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+        return pd.DataFrame()
+
+    logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei}, DUNS={duns})")
+
+    # Build search filters
+    filters: dict[str, Any] = {
+        "award_type_codes": ["A", "B", "C", "D"],
+    }
+
+    recipient_search_terms = []
+    if uei:
+        recipient_search_terms.append(uei)
+    if duns:
+        recipient_search_terms.append(duns)
+
+    if recipient_search_terms:
+        filters["recipient_search_text"] = recipient_search_terms
+
+    fields = [
+        "Award ID",
+        "Transaction Amount",
+        "Transaction Description",
+        "Action Date",
+        "internal_id",
+    ]
+
+    all_transactions = []
+    page = 1
+
+    try:
+        while True:
+            payload = {
+                "filters": filters,
+                "fields": fields,
+                "sort": "Transaction Amount",
+                "order": "desc",
+                "page": page,
+                "limit": page_size,
+            }
+
+            url = f"{base_url}/search/spending_by_transaction/"
+
+            try:
+                response = httpx.post(
+                    url,
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "User-Agent": "SBIR-ETL/1.0",
+                    },
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error fetching SBIR awards from API: {e}")
+                if page == 1:
+                    return pd.DataFrame()
+                break
+
+            results = data.get("results", [])
+            if not results:
+                break
+
+            for transaction in results:
+                description = transaction.get("Transaction Description", "")
+                # Only include SBIR/STTR transactions
+                if description and any(
+                    keyword in description.upper()
+                    for keyword in ["SBIR", "STTR", "SMALL BUSINESS INNOVATION", "SMALL BUSINESS TECH"]
+                ):
+                    all_transactions.append(
+                        {
+                            "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
+                            "description": description,
+                            "award_amount": transaction.get("Transaction Amount", 0),
+                            "action_date": transaction.get("Action Date"),
+                        }
+                    )
+
+            page_metadata = data.get("page_metadata", {})
+            has_next = page_metadata.get("hasNext", False)
+
+            if not has_next:
+                break
+
+            page += 1
+
+        if not all_transactions:
+            logger.debug(f"No SBIR/STTR awards found via API (UEI={uei}, DUNS={duns})")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(all_transactions)
+        df["award_amount"] = pd.to_numeric(df["award_amount"], errors="coerce")
+        df = df.drop_duplicates(subset=["award_id"])
+
+        logger.debug(f"Retrieved {len(df)} SBIR/STTR awards via API")
+        return df
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve SBIR awards from API: {e}")
+        return pd.DataFrame()
 
 
 def batch_retrieve_company_contracts(

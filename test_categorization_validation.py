@@ -36,6 +36,8 @@ from src.config.loader import get_config
 from src.enrichers.company_categorization import (
     retrieve_company_contracts,
     retrieve_company_contracts_api,
+    retrieve_sbir_awards,
+    retrieve_sbir_awards_api,
 )
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.transformers.company_categorization import (
@@ -215,13 +217,34 @@ def categorize_companies(
             f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei}, SBIR Awards: {sbir_awards})"
         )
 
-        # Retrieve USAspending contracts
+        # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
         if use_api:
             contracts_df = retrieve_company_contracts_api(uei=uei)
         else:
             if extractor is None:
                 raise ValueError("extractor is required when use_api=False")
             contracts_df = retrieve_company_contracts(extractor, uei=uei)
+
+        # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
+        if use_api:
+            sbir_df = retrieve_sbir_awards_api(uei=uei)
+        else:
+            sbir_df = retrieve_sbir_awards(extractor, uei=uei)
+
+        # Calculate SBIR statistics
+        sbir_award_count = len(sbir_df) if not sbir_df.empty else 0
+        sbir_dollars = sbir_df["award_amount"].sum() if not sbir_df.empty else 0.0
+        non_sbir_dollars = contracts_df["award_amount"].sum() if not contracts_df.empty else 0.0
+        total_usaspending_dollars = sbir_dollars + non_sbir_dollars
+        sbir_pct_of_total = (
+            (sbir_dollars / total_usaspending_dollars * 100) if total_usaspending_dollars > 0 else 0.0
+        )
+
+        # Log SBIR statistics for debugging
+        logger.info(
+            f"  USAspending breakdown: {len(contracts_df)} non-SBIR contracts (${non_sbir_dollars:,.0f}), "
+            f"{sbir_award_count} SBIR/STTR awards (${sbir_dollars:,.0f}, {sbir_pct_of_total:.1f}% of total)"
+        )
 
         if contracts_df.empty:
             logger.warning(f"  No non-SBIR/STTR USAspending contracts found for {name}")
@@ -238,11 +261,12 @@ def categorize_companies(
                     "psc_family_count": 0,
                     "total_dollars": 0.0,
                     "override_reason": "no_contracts_found",
+                    "sbir_award_count": sbir_award_count,
+                    "sbir_dollars": sbir_dollars,
+                    "sbir_pct_of_total": sbir_pct_of_total,
                 }
             )
             continue
-
-        logger.info(f"  Retrieved {len(contracts_df)} non-SBIR/STTR USAspending contracts")
 
         # Classify individual contracts
         classified_contracts = []
@@ -275,7 +299,7 @@ def categorize_companies(
             f"- {company_result.confidence} confidence"
         )
 
-        # Add to results with SBIR award count for comparison
+        # Add to results with SBIR award statistics for comparison
         result_dict = {
             "company_uei": company_result.company_uei,
             "company_name": company_result.company_name,
@@ -290,6 +314,9 @@ def categorize_companies(
             "product_dollars": company_result.product_dollars,
             "service_rd_dollars": company_result.service_rd_dollars,
             "override_reason": company_result.override_reason,
+            "sbir_award_count": sbir_award_count,
+            "sbir_dollars": sbir_dollars,
+            "sbir_pct_of_total": sbir_pct_of_total,
         }
         results.append(result_dict)
 
@@ -321,7 +348,12 @@ def print_summary(results: pd.DataFrame) -> None:
             company_name = row['company_name']
             uei = row['company_uei']
             sbir_awards = row['sbir_awards']
-            logger.info(f"  {idx}. {company_name} (UEI: {uei}, SBIR Awards: {sbir_awards})")
+            sbir_award_count = row.get('sbir_award_count', 0)
+            sbir_dollars = row.get('sbir_dollars', 0)
+            logger.info(
+                f"  {idx}. {company_name} (UEI: {uei}, SBIR Awards from dataset: {sbir_awards}, "
+                f"SBIR in USAspending: {sbir_award_count} awards / ${sbir_dollars:,.0f})"
+            )
         logger.info("-" * 80)
 
     # Classification distribution
@@ -338,10 +370,35 @@ def print_summary(results: pd.DataFrame) -> None:
         pct = (count / len(results)) * 100
         logger.info(f"  {confidence}: {count} ({pct:.1f}%)")
 
+    # SBIR/STTR Award Statistics (for debugging - NOT used in categorization)
+    logger.info("\nSBIR/STTR Award Statistics (for debugging only):")
+    logger.info("  " + "-" * 76)
+    total_sbir_awards = results["sbir_award_count"].sum()
+    total_sbir_dollars = results["sbir_dollars"].sum()
+    companies_with_sbir = (results["sbir_award_count"] > 0).sum()
+    avg_sbir_pct = results["sbir_pct_of_total"].mean()
+
+    logger.info(f"  Total SBIR/STTR awards found in USAspending: {total_sbir_awards:,.0f}")
+    logger.info(f"  Total SBIR/STTR dollars: ${total_sbir_dollars:,.0f}")
+    logger.info(f"  Companies with SBIR awards in USAspending: {companies_with_sbir}/{len(results)}")
+    logger.info(f"  Avg SBIR % of total USAspending revenue: {avg_sbir_pct:.1f}%")
+
+    # Show companies where SBIR dominates
+    high_sbir_pct = results[results["sbir_pct_of_total"] > 80]
+    if len(high_sbir_pct) > 0:
+        logger.info(f"\n  Companies with >80% SBIR/STTR revenue ({len(high_sbir_pct)} total):")
+        for idx, (_, row) in enumerate(high_sbir_pct.head(10).iterrows(), 1):
+            logger.info(
+                f"    {idx}. {row['company_name'][:40]}: {row['sbir_pct_of_total']:.1f}% SBIR "
+                f"(${row['sbir_dollars']:,.0f} SBIR / ${row['sbir_dollars'] + row['total_dollars']:,.0f} total)"
+            )
+        if len(high_sbir_pct) > 10:
+            logger.info(f"    ... and {len(high_sbir_pct) - 10} more")
+
     # Average metrics
     with_contracts = results[results["award_count"] > 0]
     if len(with_contracts) > 0:
-        logger.info("\nAverage Metrics (companies with contracts):")
+        logger.info("\nNon-SBIR Contract Metrics (companies with non-SBIR contracts):")
         logger.info(f"  Avg contracts per company: {with_contracts['award_count'].mean():.1f}")
         logger.info(f"  Avg PSC families: {with_contracts['psc_family_count'].mean():.1f}")
         logger.info(f"  Avg total dollars: ${with_contracts['total_dollars'].mean():,.0f}")
