@@ -64,7 +64,17 @@ def retrieve_company_contracts_api(
     api_url = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 
     # Build filters based on available identifiers
-    filters = {"award_type_codes": ["A", "B", "C", "D"]}  # Contract types
+    filters = {
+        "award_type_codes": ["A", "B", "C", "D"],  # Contract types
+        # Use broad time period to capture all available contracts
+        # USAspending.gov data goes back to ~2008
+        "time_period": [
+            {
+                "start_date": "2008-10-01",  # Start of FY2009
+                "end_date": "2025-09-30",    # End of FY2025
+            }
+        ],
+    }
 
     if uei:
         filters["recipient_search_text"] = [uei]
