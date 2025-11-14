@@ -214,10 +214,9 @@ def categorize_companies(
     for idx, (_, company) in enumerate(companies.iterrows(), 1):
         uei = company.get("UEI")
         name = company.get("Company Name", "Unknown")
-        sbir_awards = company.get("SBIR Awards", 0)
 
         logger.info(
-            f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei}, SBIR Awards: {sbir_awards})"
+            f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})"
         )
 
         # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
