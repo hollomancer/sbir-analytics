@@ -111,15 +111,21 @@ def print_contract_justifications(
         if method == "contract_type":
             logger.info(f"      → Contract type override (CPFF/Cost/T&M forces Service)")
         elif method == "psc_numeric":
-            logger.info(f"      → Numeric PSC code indicates Product")
+            logger.info(f"      → Numeric PSC code indicates Product (high confidence)")
         elif method == "psc_alphabetic":
-            logger.info(f"      → Alphabetic PSC code indicates Service")
+            logger.info(f"      → Alphabetic PSC code indicates Service (moderate confidence)")
         elif method == "psc_rd":
-            logger.info(f"      → PSC starts with A/B indicates R&D")
+            logger.info(f"      → PSC starts with A/B indicates R&D (moderate confidence)")
+        elif method == "psc_def_ffp":
+            logger.info(f"      → PSC D/E/F (IT/telecom/space) + FFP pricing → Product")
+        elif method == "psc_def_service":
+            logger.info(f"      → PSC D/E/F (IT/telecom/space) defaults to Service")
         elif method == "description_inference":
             logger.info(f"      → Description keywords suggest Product")
         elif method == "sbir_adjustment":
             logger.info(f"      → SBIR Phase I/II adjusted to R&D")
+        elif method == "sbir_numeric_psc":
+            logger.info(f"      → SBIR Phase I/II with numeric PSC kept as Product")
 
     # Show samples from each category
     for category in ["Product", "Service", "R&D"]:

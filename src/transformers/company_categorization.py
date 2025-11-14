@@ -24,7 +24,13 @@ def classify_contract(contract: dict) -> ContractClassification:
 
     Classification logic (in priority order):
     1. Contract type overrides: CPFF, Cost-Type, T&M → Service (highest priority)
-    2. PSC-based: numeric → Product, A/B → R&D, alphabetic → Service
+    2. PSC-based classification:
+       - Numeric PSC → Product (high confidence: 0.95)
+       - PSC A/B → R&D (moderate confidence: 0.75)
+       - PSC D/E/F (IT/telecom/space) → use pricing to resolve:
+         * FFP → Product (moderate confidence: 0.75)
+         * Other/None → Service (moderate confidence: 0.75)
+       - Other alphabetic PSC → Service (moderate confidence: 0.75)
     3. Description inference: FFP with product keywords → Product
     4. SBIR phase adjustment: Phase I/II → R&D (unless numeric PSC)
 
@@ -79,6 +85,39 @@ def classify_contract(contract: dict) -> ContractClassification:
     if psc:
         psc_classification, psc_method, psc_confidence = _classify_by_psc(psc)
 
+        # --- Special Rule 2a: PSC D/E/F (IT, telecom, space) - use pricing to resolve ---
+        first_char = psc[0].upper()
+        if first_char in ("D", "E", "F"):
+            # FFP pricing suggests fixed deliverable → Product
+            if pricing and pricing.upper() == "FFP":
+                return ContractClassification(
+                    award_id=award_id,
+                    classification="Product",
+                    method="psc_def_ffp",
+                    confidence=0.75,  # Moderate confidence for alphabetic PSC
+                    psc=psc,
+                    contract_type=contract_type or None,
+                    pricing=pricing,
+                    description=description or None,
+                    award_amount=award_amount,
+                    sbir_phase=sbir_phase,
+                )
+            # Cost/T&M already caught by contract type override (Rule 1)
+            # No pricing or other → default to Service for IT/telecom/space
+            else:
+                return ContractClassification(
+                    award_id=award_id,
+                    classification="Service",
+                    method="psc_def_service",
+                    confidence=0.75,  # Moderate confidence for alphabetic PSC
+                    psc=psc,
+                    contract_type=contract_type or None,
+                    pricing=pricing or None,
+                    description=description or None,
+                    award_amount=award_amount,
+                    sbir_phase=sbir_phase,
+                )
+
         # --- Rule 3: Description inference (only for FFP with non-R&D PSC) ---
         # FFP with product keywords can override alphabetic PSC → Product
         if pricing and pricing.upper() == "FFP" and psc_classification != "R&D":
@@ -99,13 +138,13 @@ def classify_contract(contract: dict) -> ContractClassification:
 
         # --- Rule 4: SBIR phase adjustment ---
         if sbir_phase and sbir_phase in ("I", "II"):
-            # Phase I/II with numeric PSC → keep Product
+            # Phase I/II with numeric PSC → keep Product (high confidence)
             if psc_classification == "Product":
                 return ContractClassification(
                     award_id=award_id,
                     classification="Product",
                     method="sbir_numeric_psc",
-                    confidence=0.90,
+                    confidence=0.95,  # High confidence for numeric PSC
                     psc=psc,
                     contract_type=contract_type or None,
                     pricing=pricing or None,
@@ -114,12 +153,12 @@ def classify_contract(contract: dict) -> ContractClassification:
                     sbir_phase=sbir_phase,
                 )
             else:
-                # Phase I/II with alphabetic PSC → R&D
+                # Phase I/II with alphabetic PSC → R&D (moderate confidence)
                 return ContractClassification(
                     award_id=award_id,
                     classification="R&D",
                     method="sbir_adjustment",
-                    confidence=0.90,
+                    confidence=0.75,  # Moderate confidence for alphabetic PSC
                     psc=psc,
                     contract_type=contract_type or None,
                     pricing=pricing or None,
@@ -195,9 +234,14 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
     """Classify contract based on PSC (Product Service Code).
 
     PSC classification rules:
-    - Numeric PSC (e.g., "1234") → Product
-    - PSC starting with A or B → R&D
-    - Other alphabetic PSC → Service
+    - Numeric PSC (e.g., "1234") → Product (high confidence)
+    - PSC starting with A or B → R&D (moderate confidence)
+    - PSC starting with D/E/F → Handled separately (IT/telecom/space)
+    - Other alphabetic PSC → Service (moderate confidence)
+
+    Confidence levels:
+    - High (0.95): Numeric PSCs - strong product indicator
+    - Moderate (0.75): Alphabetic PSCs - less definitive
 
     Args:
         psc: Product Service Code
@@ -211,16 +255,17 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
     # Get first character of PSC
     first_char = psc[0].upper()
 
-    # Numeric PSC → Product
+    # Numeric PSC → Product (high confidence)
     if first_char.isdigit():
-        return ("Product", "psc_numeric", 0.90)
+        return ("Product", "psc_numeric", 0.95)
 
-    # PSC starting with A or B → R&D
+    # PSC starting with A or B → R&D (moderate confidence)
     if first_char in ("A", "B"):
-        return ("R&D", "psc_rd", 0.90)
+        return ("R&D", "psc_rd", 0.75)
 
-    # Other alphabetic PSC → Service
-    return ("Service", "psc_alphabetic", 0.90)
+    # PSC D/E/F handled separately in main classification logic
+    # Other alphabetic PSC → Service (moderate confidence)
+    return ("Service", "psc_alphabetic", 0.75)
 
 
 def _check_product_keywords(description: str) -> bool:
