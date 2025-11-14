@@ -157,27 +157,26 @@ def retrieve_company_contracts_api(
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
     page_size: int = 100,
+    max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API.
 
-    Uses a hybrid approach for maximum accuracy:
-    1. Primary: Queries /search/spending_by_transaction/ endpoint for bulk retrieval
-    2. Fallback: For contracts with missing PSC codes, queries /awards/{award_id}/
-       endpoint individually (limited to 20 contracts to manage API load)
+    Uses a hybrid two-step approach for reliable PSC code retrieval:
+    1. Step 1: Query /search/spending_by_award/ endpoint to get list of all awards
+    2. Step 2: For each award, query /awards/{award_id}/ to retrieve detailed PSC codes
 
-    The transaction endpoint is used first because the award search endpoint doesn't
-    populate PSC codes. For any remaining contracts with missing PSC codes, individual
-    award lookups are performed to fill in the gaps.
+    The spending_by_award endpoint provides efficient pagination for retrieving award lists,
+    but doesn't populate PSC codes. The individual awards endpoint provides full PSC data.
 
-    Note: May return multiple transactions per award. Duplicates are removed based on
-    award_id before returning.
+    Note: Limited to first `max_psc_lookups` awards to manage API load and rate limits.
 
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
-        page_size: Number of results per page
+        page_size: Number of results per page for award search
+        max_psc_lookups: Maximum number of individual award detail lookups (default: 100)
 
     Returns:
         DataFrame with columns:
@@ -203,22 +202,22 @@ def retrieve_company_contracts_api(
 
     logger.info(f"Retrieving contracts from USAspending API (UEI={uei}, DUNS={duns})")
 
-    # Build search filters for the API
+    # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
-        "award_type_codes": ["A", "B", "C", "D"],  # Contract awards
+        "award_type_codes": ["A", "B", "C", "D"],  # Contract awards only
     }
 
-    # Add recipient search
-    recipient_ids = []
+    # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
+    recipient_search_terms = []
     if uei:
-        recipient_ids.append(uei)
+        recipient_search_terms.append(uei)
     if duns:
-        recipient_ids.append(duns)
+        recipient_search_terms.append(duns)
 
-    if recipient_ids:
-        filters["recipient_search_text"] = recipient_ids
+    if recipient_search_terms:
+        filters["recipient_search_text"] = recipient_search_terms
 
-    # Fields to retrieve from API
+    # Fields to retrieve from award search endpoint
     fields = [
         "Award ID",
         "Recipient Name",
@@ -226,19 +225,18 @@ def retrieve_company_contracts_api(
         "Description",
         "Start Date",
         "End Date",
-        "Product or Service Code",
         "Contract Award Type",
-        "awarding_agency_name",
+        "Award Type",
         "recipient_uei",
-        "recipient_duns",
     ]
 
     all_contracts = []
     page = 1
 
     try:
+        # Step 1: Get list of awards using spending_by_award endpoint
+        logger.info("Step 1: Fetching award list from spending_by_award endpoint")
         while True:
-            # Build POST request payload
             payload = {
                 "filters": filters,
                 "fields": fields,
@@ -248,11 +246,8 @@ def retrieve_company_contracts_api(
                 "order": "desc",
             }
 
-            # Make API request
-            # NOTE: Using spending_by_transaction instead of spending_by_award because
-            # the award endpoint doesn't populate PSC codes in the response
-            url = f"{base_url}/search/spending_by_transaction/"
-            logger.debug(f"Fetching page {page} from USAspending API (transactions)")
+            url = f"{base_url}/search/spending_by_award/"
+            logger.debug(f"Fetching page {page} from USAspending API (awards)")
 
             try:
                 response = httpx.post(
@@ -267,12 +262,12 @@ def retrieve_company_contracts_api(
                 response.raise_for_status()
                 data = response.json()
             except httpx.HTTPError as e:
-                logger.error(f"HTTP error fetching contracts from USAspending API: {e}")
+                logger.error(f"HTTP error fetching awards from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
             except Exception as e:
-                logger.error(f"Error fetching contracts from USAspending API: {e}")
+                logger.error(f"Error fetching awards from USAspending API: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -282,48 +277,25 @@ def retrieve_company_contracts_api(
                 logger.debug(f"No more results found (page {page})")
                 break
 
-            # Process each contract
+            # Process each award - store basic info without PSC for now
             for contract in results:
-                # Extract PSC field - the API returns it as "Product or Service Code"
-                psc_value = contract.get("Product or Service Code")
-
-                # Log if PSC is empty to help debugging
-                if not psc_value or (isinstance(psc_value, str) and not psc_value.strip()):
-                    logger.warning(
-                        f"PSC field empty/unexpected type, trying alternatives. "
-                        f"Available keys: {list(contract.keys())}"
-                    )
-                    # Try alternative field names
-                    psc_value = (
-                        contract.get("product_or_service_code") or
-                        contract.get("psc") or
-                        contract.get("Product or Service Code") or
-                        contract.get("PSC")
-                    )
-
-                    if not psc_value:
-                        logger.error(
-                            f"CRITICAL: PSC is empty after parsing! "
-                            f"Raw response keys: {list(contract.keys())}"
-                        )
-
                 processed_contract = {
                     "award_id": contract.get("Award ID") or contract.get("internal_id"),
-                    "psc": psc_value,
+                    "psc": None,  # Will be filled in step 2
                     "contract_type": contract.get("Contract Award Type"),
                     "pricing": contract.get("Contract Award Type"),
                     "description": contract.get("Description"),
                     "award_amount": contract.get("Award Amount", 0),
                     "recipient_uei": contract.get("recipient_uei") or uei,
-                    "recipient_duns": contract.get("recipient_duns") or duns,
+                    "recipient_duns": duns,
                     "start_date": contract.get("Start Date"),
                     "end_date": contract.get("End Date"),
-                    "awarding_agency": contract.get("awarding_agency_name"),
+                    "award_type": contract.get("Award Type"),
                 }
 
                 # Generate internal ID if award_id is missing
                 if not processed_contract["award_id"]:
-                    processed_contract["award_id"] = contract.get("generated_internal_id", f"UNKNOWN_{len(all_contracts)}")
+                    processed_contract["award_id"] = f"UNKNOWN_{len(all_contracts)}"
 
                 all_contracts.append(processed_contract)
 
@@ -332,7 +304,7 @@ def retrieve_company_contracts_api(
             has_next = page_metadata.get("hasNext", False)
             total = page_metadata.get("total", 0)
 
-            logger.debug(f"Retrieved {len(results)} contracts (page {page}), total available: {total}")
+            logger.debug(f"Retrieved {len(results)} awards (page {page}), total available: {total}")
 
             if not has_next:
                 logger.debug("No more pages available")
@@ -340,7 +312,7 @@ def retrieve_company_contracts_api(
 
             page += 1
 
-        logger.info(f"Retrieved {len(all_contracts)} contracts from USAspending API across {page} page(s)")
+        logger.info(f"Step 1 complete: Retrieved {len(all_contracts)} awards from spending_by_award endpoint")
 
         if not all_contracts:
             logger.warning(f"No contracts found for company (UEI={uei}, DUNS={duns})")
@@ -349,42 +321,37 @@ def retrieve_company_contracts_api(
         # Convert to DataFrame
         df = pd.DataFrame(all_contracts)
 
-        # Fallback: Fetch PSC codes from individual award endpoint for contracts with missing PSC
-        missing_psc_mask = df["psc"].isna() | (df["psc"] == "")
-        missing_psc_count = missing_psc_mask.sum()
+        # Step 2: Fetch PSC codes from individual award endpoint for each award
+        # Limit to max_psc_lookups to manage API rate limits
+        logger.info(f"Step 2: Fetching PSC codes from individual award endpoint (limit: {max_psc_lookups})")
 
-        if missing_psc_count > 0:
-            logger.info(
-                f"Attempting to retrieve PSC codes for {missing_psc_count} contracts "
-                f"with missing PSC using individual award endpoint"
+        awards_to_lookup = df.head(max_psc_lookups)
+        psc_success_count = 0
+
+        for idx, row in awards_to_lookup.iterrows():
+            award_id = row["award_id"]
+            if not award_id or award_id.startswith("UNKNOWN_"):
+                continue
+
+            # Add delay to respect rate limits (120 per minute = ~0.5s per request)
+            time.sleep(0.5)
+
+            award_details = _fetch_award_details(award_id, base_url, timeout)
+            if award_details and award_details.get("psc"):
+                df.at[idx, "psc"] = award_details["psc"]
+                psc_success_count += 1
+
+        logger.info(
+            f"Step 2 complete: Successfully retrieved {psc_success_count} PSC codes "
+            f"from {len(awards_to_lookup)} award lookups"
+        )
+
+        # Log warning if some awards weren't looked up due to limit
+        if len(df) > max_psc_lookups:
+            logger.warning(
+                f"Only fetched PSC codes for first {max_psc_lookups} awards out of {len(df)} total "
+                f"(set max_psc_lookups higher to retrieve more)"
             )
-
-            # Limit fallback calls to avoid excessive API requests (max 20)
-            max_fallback_calls = min(20, missing_psc_count)
-            missing_psc_df = df[missing_psc_mask].head(max_fallback_calls)
-
-            for idx, row in missing_psc_df.iterrows():
-                award_id = row["award_id"]
-                if not award_id or award_id.startswith("UNKNOWN_"):
-                    continue
-
-                # Add small delay to respect rate limits (120 per minute = ~0.5s per request)
-                time.sleep(0.5)
-
-                award_details = _fetch_award_details(award_id, base_url, timeout)
-                if award_details and award_details.get("psc"):
-                    df.at[idx, "psc"] = award_details["psc"]
-
-            retrieved_psc_count = (~(df["psc"].isna() | (df["psc"] == ""))).sum() - (
-                len(df) - missing_psc_count
-            )
-            if retrieved_psc_count > 0:
-                logger.info(
-                    f"Successfully retrieved {retrieved_psc_count} PSC codes "
-                    f"from individual award endpoint"
-                )
-            else:
-                logger.warning("No PSC codes could be retrieved from individual award endpoint")
 
         # Extract SBIR phase from description
         df["sbir_phase"] = df["description"].apply(_extract_sbir_phase)
@@ -427,14 +394,16 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
         award_data = response.json()
 
         # Extract PSC from the detailed award response
-        # The individual award endpoint has different structure
+        # The individual award endpoint has different structure than search endpoints
         psc = None
         if isinstance(award_data, dict):
-            # Try various paths where PSC might be located
+            # Try various paths where PSC might be located in the response
             psc = (
                 award_data.get("product_or_service_code")
                 or award_data.get("psc")
                 or award_data.get("latest_transaction", {}).get("product_or_service_code")
+                or award_data.get("contract_data", {}).get("product_or_service_code")
+                or award_data.get("base_transaction", {}).get("product_or_service_code")
             )
 
         if psc:
