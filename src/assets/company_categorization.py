@@ -20,7 +20,6 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.company_categorization import retrieve_company_contracts
-from ..extractors.usaspending import DuckDBUSAspendingExtractor
 from ..transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
@@ -61,16 +60,10 @@ def enriched_sbir_companies_with_categorization(
     """
     # Get configuration
     config = get_config()
-    usaspending_table = config.extraction.usaspending.get("table_name", "usaspending_awards")
 
     context.log.info(
         f"Starting company categorization for {len(validated_sbir_awards)} SBIR awards",
-        extra={"usaspending_table": usaspending_table},
     )
-
-    # Initialize USAspending extractor
-    db_path = config.duckdb.database_path
-    extractor = DuckDBUSAspendingExtractor(db_path)
 
     try:
         # Get unique companies from validated awards
@@ -116,10 +109,8 @@ def enriched_sbir_companies_with_categorization(
                     f"({companies_with_contracts} with contracts, {total_contracts_retrieved} total contracts)"
                 )
 
-            # Retrieve contracts from USAspending
-            contracts_df = retrieve_company_contracts(
-                extractor, uei=uei, table_name=usaspending_table
-            )
+            # Retrieve contracts from USAspending API
+            contracts_df = retrieve_company_contracts(uei=uei, use_api=True)
 
             companies_processed += 1
 
@@ -211,9 +202,9 @@ def enriched_sbir_companies_with_categorization(
 
         return Output(value=result_df, metadata=metadata)
 
-    finally:
-        # Clean up extractor connection
-        extractor.close()
+    except Exception as e:
+        context.log.error(f"Categorization failed: {e}")
+        raise
 
 
 @asset_check(

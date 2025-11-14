@@ -29,9 +29,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from src.config.loader import get_config
 from src.enrichers.company_categorization import retrieve_company_contracts
-from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
@@ -68,7 +66,6 @@ def load_validation_dataset(path: str | None = None) -> pd.DataFrame:
 
 def categorize_companies(
     companies: pd.DataFrame,
-    extractor: DuckDBUSAspendingExtractor,
     limit: int | None = None,
     specific_uei: str | None = None,
 ) -> pd.DataFrame:
@@ -76,7 +73,6 @@ def categorize_companies(
 
     Args:
         companies: Validation dataset DataFrame
-        extractor: USAspending extractor
         limit: Optional limit on number of companies to process
         specific_uei: Optional specific UEI to process
 
@@ -107,8 +103,8 @@ def categorize_companies(
             f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei}, SBIR Awards: {sbir_awards})"
         )
 
-        # Retrieve USAspending contracts
-        contracts_df = retrieve_company_contracts(extractor, uei=uei)
+        # Retrieve USAspending contracts via API
+        contracts_df = retrieve_company_contracts(uei=uei, use_api=True)
 
         if contracts_df.empty:
             logger.warning(f"  No USAspending contracts found for {name}")
@@ -343,36 +339,27 @@ def main():
     # Load validation dataset
     companies = load_validation_dataset(args.dataset)
 
-    # Initialize USAspending extractor
-    config = get_config()
-    db_path = config.duckdb.database_path
-    logger.info(f"Using DuckDB database: {db_path}")
+    logger.info("Using USAspending API for contract retrieval")
 
-    extractor = DuckDBUSAspendingExtractor(db_path)
+    # Categorize companies
+    results = categorize_companies(
+        companies, limit=args.limit, specific_uei=args.uei
+    )
 
-    try:
-        # Categorize companies
-        results = categorize_companies(
-            companies, extractor, limit=args.limit, specific_uei=args.uei
-        )
+    # Print summary
+    print_summary(results)
 
-        # Print summary
-        print_summary(results)
+    # Export if requested
+    if args.output:
+        export_results(results, args.output)
 
-        # Export if requested
-        if args.output:
-            export_results(results, args.output)
+    # Load to Neo4j if requested
+    if args.load_neo4j:
+        load_to_neo4j(results)
 
-        # Load to Neo4j if requested
-        if args.load_neo4j:
-            load_to_neo4j(results)
-
-        logger.info("\n" + "=" * 80)
-        logger.info("✓ VALIDATION TESTING COMPLETE")
-        logger.info("=" * 80)
-
-    finally:
-        extractor.close()
+    logger.info("\n" + "=" * 80)
+    logger.info("✓ VALIDATION TESTING COMPLETE")
+    logger.info("=" * 80)
 
 
 if __name__ == "__main__":
