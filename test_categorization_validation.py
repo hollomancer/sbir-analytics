@@ -322,15 +322,15 @@ def print_summary(results: pd.DataFrame) -> None:
         pct = (count / len(results)) * 100
         logger.info(f"  {confidence}: {count} ({pct:.1f}%)")
 
-    # Average metrics
+    # Median metrics (more robust to outliers than mean)
     with_contracts = results[results["award_count"] > 0]
     if len(with_contracts) > 0:
-        logger.info("\nAverage Metrics (companies with contracts):")
-        logger.info(f"  Avg contracts per company: {with_contracts['award_count'].mean():.1f}")
-        logger.info(f"  Avg PSC families: {with_contracts['psc_family_count'].mean():.1f}")
-        logger.info(f"  Avg total dollars: ${with_contracts['total_dollars'].mean():,.0f}")
-        logger.info(f"  Avg product %: {with_contracts['product_pct'].mean():.1f}%")
-        logger.info(f"  Avg service %: {with_contracts['service_pct'].mean():.1f}%")
+        logger.info("\nMedian Metrics (companies with contracts):")
+        logger.info(f"  Median contracts per company: {with_contracts['award_count'].median():.1f}")
+        logger.info(f"  Median PSC families: {with_contracts['psc_family_count'].median():.1f}")
+        logger.info(f"  Median total dollars: ${with_contracts['total_dollars'].median():,.0f}")
+        logger.info(f"  Median product %: {with_contracts['product_pct'].median():.1f}%")
+        logger.info(f"  Median service %: {with_contracts['service_pct'].median():.1f}%")
 
     # Top 10 by contract volume
     logger.info("\nTop 10 Companies by Contract Count:")
