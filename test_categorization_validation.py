@@ -308,6 +308,18 @@ def print_summary(results: pd.DataFrame) -> None:
     logger.info(f"Companies with contracts: {(results['award_count'] > 0).sum()}")
     logger.info(f"Companies without contracts: {(results['award_count'] == 0).sum()}")
 
+    # List companies with no contracts
+    no_contracts = results[results['award_count'] == 0]
+    if len(no_contracts) > 0:
+        logger.info(f"\nCompanies with NO USAspending Contracts ({len(no_contracts)} total):")
+        logger.info("-" * 80)
+        for idx, (_, row) in enumerate(no_contracts.iterrows(), 1):
+            company_name = row['company_name']
+            uei = row['company_uei']
+            sbir_awards = row['sbir_awards']
+            logger.info(f"  {idx}. {company_name} (UEI: {uei}, SBIR Awards: {sbir_awards})")
+        logger.info("-" * 80)
+
     # Classification distribution
     logger.info("\nClassification Distribution:")
     class_dist = results["classification"].value_counts()
