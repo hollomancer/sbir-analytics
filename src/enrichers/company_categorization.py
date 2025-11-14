@@ -76,15 +76,18 @@ def _fuzzy_match_recipient(
 
     try:
         url = f"{base_url}/autocomplete/recipient/"
-        params = {
+        payload = {
             "search_text": company_name,
             "limit": 5,  # Get top 5 matches for potential validation
         }
 
-        response = httpx.get(
+        response = httpx.post(
             url,
-            params=params,
-            headers={"User-Agent": "SBIR-ETL/1.0"},
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "SBIR-ETL/1.0",
+            },
             timeout=timeout,
         )
         response.raise_for_status()
