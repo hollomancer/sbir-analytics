@@ -214,7 +214,7 @@ def categorize_companies(
 
         # Retrieve USAspending contracts
         if use_api:
-            contracts_df = retrieve_company_contracts_api(uei=uei)
+            contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
         else:
             if extractor is None:
                 raise ValueError("extractor is required when use_api=False")

@@ -159,6 +159,7 @@ def retrieve_company_contracts(
 def retrieve_company_contracts_api(
     uei: str | None = None,
     duns: str | None = None,
+    company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
     page_size: int = 100,
@@ -170,9 +171,12 @@ def retrieve_company_contracts_api(
     data including PSC codes directly in the response. This endpoint properly populates
     PSC codes without requiring additional API calls per award.
 
+    Supports fallback to company name search when UEI/DUNS are not available.
+
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
+        company_name: Company name (used as fallback if UEI/DUNS unavailable)
         base_url: USAspending API base URL
         timeout: Request timeout in seconds
         page_size: Number of results per page
@@ -194,14 +198,17 @@ def retrieve_company_contracts_api(
         >>> contracts = retrieve_company_contracts_api(uei="ABC123DEF456")
         >>> len(contracts)
         15
+        >>> # Fallback to name search
+        >>> contracts = retrieve_company_contracts_api(company_name="Acme Corp")
     """
     # Validate at least one identifier is provided
     # Handle pandas NaN values which are truthy but invalid
     valid_uei = uei and not pd.isna(uei) and str(uei).lower() != 'nan'
     valid_duns = duns and not pd.isna(duns) and str(duns).lower() != 'nan'
+    valid_name = company_name and not pd.isna(company_name) and str(company_name).lower() != 'nan'
 
-    if not any([valid_uei, valid_duns]):
-        logger.warning("No valid company identifiers provided (UEI or DUNS), returning empty DataFrame")
+    if not any([valid_uei, valid_duns, valid_name]):
+        logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
     logger.info(f"Retrieving contracts from USAspending API using transaction endpoint (UEI={uei}, DUNS={duns})")
@@ -212,14 +219,24 @@ def retrieve_company_contracts_api(
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
+    # Prioritize UEI/DUNS over name for more precise matching
     recipient_search_terms = []
     if valid_uei:
         recipient_search_terms.append(str(uei))
     if valid_duns:
         recipient_search_terms.append(str(duns))
 
-    if recipient_search_terms:
-        filters["recipient_search_text"] = recipient_search_terms
+    # Fallback to company name if no UEI/DUNS available
+    if not recipient_search_terms and valid_name:
+        recipient_search_terms.append(str(company_name))
+        logger.info(f"Using company name fallback search: {company_name}")
+
+    # Must have at least one search term to query the API
+    if not recipient_search_terms:
+        logger.warning(f"No valid search terms for company, skipping API query")
+        return pd.DataFrame()
+
+    filters["recipient_search_text"] = recipient_search_terms
 
     # Fields to retrieve from transaction endpoint
     # Using the exact field names from the API documentation
