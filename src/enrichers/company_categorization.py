@@ -277,10 +277,28 @@ def retrieve_company_contracts_api(
                 logger.debug(f"No more results found (page {page})")
                 break
 
+            # Debug: Log structure of first result to understand response format
+            if page == 1 and results:
+                logger.debug(f"First award result keys: {list(results[0].keys())}")
+                logger.debug(
+                    f"First award ID fields: "
+                    f"internal_id={results[0].get('internal_id')}, "
+                    f"generated_internal_id={results[0].get('generated_internal_id')}, "
+                    f"Award ID={results[0].get('Award ID')}"
+                )
+
             # Process each award - store basic info without PSC for now
             for contract in results:
+                # Award ID might be in different fields - try multiple options
+                # The 'internal_id' field typically has the format needed for /awards/ endpoint
+                award_id = (
+                    contract.get("internal_id")
+                    or contract.get("generated_internal_id")
+                    or contract.get("Award ID")
+                )
+
                 processed_contract = {
-                    "award_id": contract.get("Award ID") or contract.get("internal_id"),
+                    "award_id": award_id,
                     "psc": None,  # Will be filled in step 2
                     "contract_type": contract.get("Contract Award Type"),
                     "pricing": contract.get("Contract Award Type"),
@@ -293,9 +311,12 @@ def retrieve_company_contracts_api(
                     "award_type": contract.get("Award Type"),
                 }
 
-                # Generate internal ID if award_id is missing
+                # Generate fallback ID if award_id is missing
                 if not processed_contract["award_id"]:
                     processed_contract["award_id"] = f"UNKNOWN_{len(all_contracts)}"
+                    logger.debug(
+                        f"No award ID found in response. Available keys: {list(contract.keys())}"
+                    )
 
                 all_contracts.append(processed_contract)
 
@@ -393,6 +414,11 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
         response.raise_for_status()
         award_data = response.json()
 
+        # Debug: Log the structure of the response to understand where PSC is located
+        if isinstance(award_data, dict):
+            # Log top-level keys to help debug structure
+            logger.debug(f"Award {award_id} response keys: {list(award_data.keys())}")
+
         # Extract PSC from the detailed award response
         # The individual award endpoint has different structure than search endpoints
         psc = None
@@ -405,6 +431,13 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
                 or award_data.get("contract_data", {}).get("product_or_service_code")
                 or award_data.get("base_transaction", {}).get("product_or_service_code")
             )
+
+            # If still not found, log warning with available keys
+            if not psc:
+                logger.warning(
+                    f"PSC not found for award {award_id}. "
+                    f"Response has keys: {list(award_data.keys())[:10]}"
+                )
 
         if psc:
             logger.debug(f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint")

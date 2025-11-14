@@ -20,7 +20,7 @@ from loguru import logger
 
 # Configure logger for testing
 logger.remove()
-logger.add(sys.stderr, level="INFO")
+logger.add(sys.stderr, level="DEBUG")  # Enable DEBUG to see API response structure
 
 
 def test_psc_retrieval():
@@ -43,14 +43,14 @@ def test_psc_retrieval():
         return
 
     print(f"\nTesting with UEI: {test_uei}")
-    print(f"Fetching contracts (limited to 10 PSC lookups for quick testing)...")
+    print(f"Fetching contracts (limited to 2 PSC lookups for debugging)...")
     print()
 
     try:
         # Retrieve contracts with limited PSC lookups for quick testing
         contracts_df = retrieve_company_contracts_api(
             uei=test_uei,
-            max_psc_lookups=10  # Limit to 10 for quick testing
+            max_psc_lookups=2  # Limit to 2 for debugging to see detailed logs
         )
 
         if contracts_df.empty:
