@@ -104,7 +104,7 @@ def retrieve_company_contracts_api(
                         "awarding_agency_name",
                         "Start Date",
                         "End Date",
-                        "Product or Service Code",
+                        "product_or_service_code",  # Actual field name in API response
                         "recipient_uei",
                         "recipient_duns",
                     ],
@@ -127,52 +127,34 @@ def retrieve_company_contracts_api(
 
                 # Convert results to records
                 for idx, result in enumerate(results):
-                    # Extract PSC code - handle nested structure
-                    # USAspending often returns: product_or_service_code.code
-                    psc_field = result.get("Product or Service Code", "")
+                    # Extract PSC code from search endpoint
+                    # Search endpoint returns: product_or_service_code as flat string
+                    # Award endpoint returns: product_or_service_code as nested dict with .code
+                    psc_field = result.get("product_or_service_code", "")
 
                     # Debug: log actual PSC field value on first contract
                     if idx == 0 and page == 1:
                         logger.info(f"PSC field raw value: {repr(psc_field)} (type: {type(psc_field).__name__})")
 
                     if isinstance(psc_field, dict):
-                        # Nested: {"code": "5820", "description": "..."}
+                        # Nested dict (from award endpoint): {"code": "5820", "description": "..."}
                         psc = psc_field.get("code", "")
                         if idx == 0 and page == 1:
                             logger.debug(f"PSC returned as nested dict: {psc_field}")
                     elif isinstance(psc_field, str) and psc_field:
-                        # Flat string (non-empty)
+                        # Flat string (from search endpoint) - this is the expected format
                         psc = psc_field
                         if idx == 0 and page == 1:
                             logger.debug(f"PSC returned as flat string: '{psc_field}'")
-                    elif psc_field is None or psc_field == "":
-                        # PSC field is null or empty - this is the problem!
-                        if idx == 0 and page == 1:
-                            logger.error(
-                                f"CRITICAL: PSC field is null/empty in API response.\n"
-                                f"  Field value: {repr(psc_field)}\n"
-                                f"  This means the USAspending API is not returning PSC codes.\n"
-                                f"  Possible causes:\n"
-                                f"    1. Wrong field name requested\n"
-                                f"    2. Different API endpoint needed\n"
-                                f"    3. PSC not available for these award types\n"
-                                f"  Available fields: {list(result.keys())}"
-                            )
-                        # Try alternative field names
-                        psc = result.get("product_or_service_code", "")
-                        if isinstance(psc, dict):
-                            psc = psc.get("code", "")
                     else:
-                        # Unexpected type
+                        # PSC field is null or empty - contract may not have PSC
                         if idx == 0 and page == 1:
                             logger.warning(
-                                f"PSC field has unexpected type: {type(psc_field).__name__}\n"
-                                f"  Value: {repr(psc_field)}\n"
-                                f"  Trying alternatives..."
+                                f"PSC field is null/empty in API response.\n"
+                                f"  Field value: {repr(psc_field)}\n"
+                                f"  Available fields: {list(result.keys())}"
                             )
-                        psc = result.get("product_or_service_code", "")
-                        if isinstance(psc, dict):
-                            psc = psc.get("code", "")
+                        psc = ""
 
                     # Clean PSC code
                     psc = str(psc).strip() if psc else ""
