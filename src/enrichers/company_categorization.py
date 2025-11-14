@@ -646,7 +646,7 @@ def retrieve_company_contracts_api(
     company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
-    page_size: int = 500,  # Increased from 100 to reduce API calls (max is typically 500)
+    page_size: int = 100,  # API maximum limit is 100
     max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API (excluding SBIR/STTR).
@@ -744,21 +744,23 @@ def retrieve_company_contracts_api(
     }
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
-    # Prioritize UEI/DUNS as they are most reliable, fallback to name if needed
-    # Note: API may accept array or string - try UEI first as single string
+    # API requires an array format - include all available identifiers for better matching
+    recipient_search_terms = []
     if valid_uei:
-        # Use UEI as primary search term (most reliable identifier)
-        filters["recipient_search_text"] = uei
-        logger.debug(f"Using UEI for recipient_search_text: {uei}")
-    elif valid_duns:
-        # Fallback to DUNS if no UEI
-        filters["recipient_search_text"] = duns
-        logger.debug(f"Using DUNS for recipient_search_text: {duns}")
-    elif valid_name:
-        # Fallback to company name if no identifiers
+        recipient_search_terms.append(uei)
+        logger.debug(f"Adding UEI to recipient_search_text: {uei}")
+    if valid_duns:
+        recipient_search_terms.append(duns)
+        logger.debug(f"Adding DUNS to recipient_search_text: {duns}")
+    # Include company name if available (helps when UEI/DUNS don't match correctly)
+    if valid_name:
+        # Use matched name from autocomplete if available, otherwise use original
         name_to_search = matched_name if (matched_name and _is_valid_identifier(matched_name)) else company_name
-        filters["recipient_search_text"] = name_to_search
-        logger.debug(f"Using company name for recipient_search_text: {name_to_search}")
+        recipient_search_terms.append(name_to_search)
+        logger.debug(f"Adding company name to recipient_search_text: {name_to_search}")
+
+    if recipient_search_terms:
+        filters["recipient_search_text"] = recipient_search_terms
 
     # Fields to retrieve from transaction endpoint
     # Using the exact field names from the API documentation
@@ -921,17 +923,20 @@ def retrieve_company_contracts_api(
             }
             
             # Generate name variations for better matching
-            # Try the most specific variation first (usually the first one)
+            # API requires array format - include multiple variations for better matching
             name_variations = _normalize_company_name_for_search(company_name)
-            # Use the first substantial variation, or fallback to original name
-            name_to_search = company_name
+            # Use up to 3 most specific variations
+            name_search_terms = []
             for variation in name_variations[:3]:
                 if variation and len(variation) >= 10:
-                    name_to_search = variation
-                    break
+                    name_search_terms.append(variation)
+                    if len(name_search_terms) >= 3:
+                        break
+            if not name_search_terms:
+                name_search_terms = [company_name]
             
-            name_filters["recipient_search_text"] = name_to_search
-            logger.debug(f"Trying name search with: {name_to_search}")
+            name_filters["recipient_search_text"] = name_search_terms
+            logger.debug(f"Trying name search with variations: {name_search_terms}")
             
             # Try pagination with name search
             name_page = 1
@@ -1291,7 +1296,7 @@ def retrieve_sbir_awards_api(
     company_name: str | None = None,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 30,
-    page_size: int = 500,  # Increased from 100 to reduce API calls
+    page_size: int = 100,  # API maximum limit is 100
 ) -> pd.DataFrame:
     """Retrieve ONLY SBIR/STTR awards for a company from USAspending API (for reporting).
 
