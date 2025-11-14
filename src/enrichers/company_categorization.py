@@ -66,21 +66,25 @@ def retrieve_company_contracts(
         >>> len(contracts)
         15
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns, cage]):
-        logger.warning("No company identifiers provided, returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = uei and not pd.isna(uei)
+    valid_duns = duns and not pd.isna(duns)
+    valid_cage = cage and not pd.isna(cage)
+
+    if not any([valid_uei, valid_duns, valid_cage]):
+        logger.warning("No valid company identifiers provided, returning empty DataFrame")
         return pd.DataFrame()
 
     # Build WHERE clause based on available identifiers
     where_clauses = []
-    if uei:
+    if valid_uei:
         # USAspending may have various UEI column names
         where_clauses.append(f"recipient_uei = '{uei}'")
         where_clauses.append(f"awardee_or_recipient_uei = '{uei}'")
-    if duns:
+    if valid_duns:
         where_clauses.append(f"recipient_duns = '{duns}'")
         where_clauses.append(f"awardee_or_recipient_uniqu = '{duns}'")
-    if cage:
+    if valid_cage:
         where_clauses.append(f"cage_code = '{cage}'")
         where_clauses.append(f"vendor_doing_as_business_n = '{cage}'")
 
@@ -208,12 +212,15 @@ def retrieve_company_contracts_api(
         >>> len(contracts)
         15
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns]):
-        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = uei and not pd.isna(uei)
+    valid_duns = duns and not pd.isna(duns)
+
+    if not any([valid_uei, valid_duns]):
+        logger.warning("No valid company identifiers provided (UEI or DUNS), returning empty DataFrame")
         return pd.DataFrame()
 
-    logger.info(f"Retrieving contracts from USAspending API using transaction endpoint (UEI={uei}, DUNS={duns})")
+    logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
 
     # Build search filters using AdvancedFilterObject
     filters: dict[str, Any] = {
@@ -222,9 +229,9 @@ def retrieve_company_contracts_api(
 
     # Add recipient search - recipient_search_text searches across name, UEI, and DUNS
     recipient_search_terms = []
-    if uei:
+    if valid_uei:
         recipient_search_terms.append(uei)
-    if duns:
+    if valid_duns:
         recipient_search_terms.append(duns)
 
     if recipient_search_terms:
@@ -557,20 +564,24 @@ def retrieve_sbir_awards(
     Returns:
         DataFrame with SBIR/STTR awards only
     """
-    # Validate at least one identifier is provided
-    if not any([uei, duns, cage]):
-        logger.warning("No company identifiers provided, returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = uei and not pd.isna(uei)
+    valid_duns = duns and not pd.isna(duns)
+    valid_cage = cage and not pd.isna(cage)
+
+    if not any([valid_uei, valid_duns, valid_cage]):
+        logger.warning("No valid company identifiers provided, returning empty DataFrame")
         return pd.DataFrame()
 
     # Build WHERE clause based on available identifiers
     where_clauses = []
-    if uei:
+    if valid_uei:
         where_clauses.append(f"recipient_uei = '{uei}'")
         where_clauses.append(f"awardee_or_recipient_uei = '{uei}'")
-    if duns:
+    if valid_duns:
         where_clauses.append(f"recipient_duns = '{duns}'")
         where_clauses.append(f"awardee_or_recipient_uniqu = '{duns}'")
-    if cage:
+    if valid_cage:
         where_clauses.append(f"cage_code = '{cage}'")
         where_clauses.append(f"vendor_doing_as_business_n = '{cage}'")
 
@@ -646,11 +657,15 @@ def retrieve_sbir_awards_api(
     Returns:
         DataFrame with SBIR/STTR awards only
     """
-    if not any([uei, duns]):
-        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+    # Validate at least one valid identifier is provided (handle NaN values from pandas)
+    valid_uei = uei and not pd.isna(uei)
+    valid_duns = duns and not pd.isna(duns)
+
+    if not any([valid_uei, valid_duns]):
+        logger.warning("No valid company identifiers provided (UEI or DUNS), returning empty DataFrame")
         return pd.DataFrame()
 
-    logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei}, DUNS={duns})")
+    logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
 
     # Build search filters
     filters: dict[str, Any] = {
@@ -658,9 +673,9 @@ def retrieve_sbir_awards_api(
     }
 
     recipient_search_terms = []
-    if uei:
+    if valid_uei:
         recipient_search_terms.append(uei)
-    if duns:
+    if valid_duns:
         recipient_search_terms.append(duns)
 
     if recipient_search_terms:
