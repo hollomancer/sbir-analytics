@@ -344,6 +344,9 @@ def retrieve_company_contracts_api(
         # Convert to DataFrame
         df = pd.DataFrame(all_contracts)
 
+        # Ensure award_id is string type (pandas may infer as int for numeric IDs)
+        df["award_id"] = df["award_id"].astype(str)
+
         # Step 2: Fetch PSC codes from individual award endpoint for each award
         # Limit to max_psc_lookups to manage API rate limits
         logger.info(f"Step 2: Fetching PSC codes from individual award endpoint (limit: {max_psc_lookups})")
@@ -353,7 +356,8 @@ def retrieve_company_contracts_api(
 
         for idx, row in awards_to_lookup.iterrows():
             award_id = row["award_id"]
-            if not award_id or award_id.startswith("UNKNOWN_"):
+            # Skip if missing or placeholder ID
+            if not award_id or pd.isna(award_id) or award_id.startswith("UNKNOWN_"):
                 continue
 
             # Add delay to respect rate limits (120 per minute = ~0.5s per request)
