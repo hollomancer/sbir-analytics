@@ -544,10 +544,21 @@ def aggregate_company_classification(
     original_contract_dicts = [c for c in contracts if isinstance(c, dict)]
     
     for c in original_contract_dicts:
-        awarding_agency = c.get("awarding_agency") or c.get("agency") or "Unknown"
-        award_amount = c.get("award_amount") or 0.0
-        if awarding_agency and awarding_agency != "Unknown":
+        # Try multiple possible field names for agency
+        awarding_agency = (
+            c.get("awarding_agency") 
+            or c.get("Awarding Agency")
+            or c.get("agency") 
+            or c.get("Agency")
+            or None
+        )
+        award_amount = c.get("award_amount") or c.get("award_amount") or 0.0
+        
+        if awarding_agency and awarding_agency != "Unknown" and awarding_agency:
             agency_dollars[awarding_agency] = agency_dollars.get(awarding_agency, 0.0) + award_amount
+        elif not awarding_agency and len(original_contract_dicts) > 0:
+            # Debug: log if we're missing agency info
+            logger.debug(f"Contract {c.get('award_id', 'unknown')} missing agency info. Available keys: {list(c.keys())[:10]}")
     
     # Convert to percentages
     agency_breakdown: dict[str, float] = {}

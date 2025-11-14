@@ -870,6 +870,10 @@ def retrieve_company_contracts_api(
                 # Check if PSC is present in the response
                 psc_value = results[0].get("PSC")
                 logger.debug(f"First transaction PSC value: {psc_value}")
+                # Check if agency fields are present
+                awarding_agency = results[0].get("Awarding Agency")
+                awarding_sub_agency = results[0].get("Awarding Sub Agency")
+                logger.debug(f"First transaction Awarding Agency: {awarding_agency}, Awarding Sub Agency: {awarding_sub_agency}")
 
             # Process each transaction
             for transaction in results:

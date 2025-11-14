@@ -59,7 +59,7 @@ from src.transformers.company_categorization import (
 
 
 def print_contract_justifications(
-    company_name: str, classified_contracts: list[dict], detailed: bool = False
+    company_name: str, classified_contracts: list[dict], detailed: bool = False, agency_breakdown: dict[str, float] | None = None
 ) -> None:
     """Print detailed contract classification justifications.
 
@@ -111,7 +111,6 @@ def print_contract_justifications(
     # Count by classification
     product_contracts = [c for c in classified_contracts if c.get("classification") == "Product"]
     service_contracts = [c for c in classified_contracts if c.get("classification") == "Service"]
-    rd_contracts = [c for c in classified_contracts if c.get("classification") == "R&D"]
 
     # Show detailed lists if requested
     if detailed or len(classified_contracts) <= 20:
@@ -145,13 +144,18 @@ def print_contract_justifications(
 
     product_dollars = sum(c.get("award_amount", 0) for c in product_contracts)
     service_dollars = sum(c.get("award_amount", 0) for c in service_contracts)
-    rd_dollars = sum(c.get("award_amount", 0) for c in rd_contracts)
-    total_dollars = product_dollars + service_dollars + rd_dollars
+    total_dollars = product_dollars + service_dollars
 
     if total_dollars > 0:
         logger.info(f"      Product: ${product_dollars:,.0f} ({product_dollars/total_dollars*100:.1f}%)")
         logger.info(f"      Service: ${service_dollars:,.0f} ({service_dollars/total_dollars*100:.1f}%)")
-        logger.info(f"      R&D: ${rd_dollars:,.0f} ({rd_dollars/total_dollars*100:.1f}%)")
+
+    # Agency breakdown if provided
+    if agency_breakdown:
+        logger.info("\n  Agency Revenue Breakdown:")
+        logger.info("  " + "-" * 76)
+        for agency, pct in sorted(agency_breakdown.items(), key=lambda x: x[1], reverse=True):
+            logger.info(f"      {agency}: {pct:.1f}%")
 
     logger.info("  " + "=" * 76 + "\n")
 
@@ -279,14 +283,12 @@ def categorize_companies(
                     "classification": "Uncertain",
                     "product_pct": 0.0,
                     "service_pct": 0.0,
-                    "rd_pct": 0.0,
                     "confidence": "Low",
                     "award_count": 0,
                     "psc_family_count": 0,
                     "total_dollars": 0.0,
                     "product_dollars": 0.0,
                     "service_dollars": 0.0,
-                    "rd_dollars": 0.0,
                     "override_reason": "no_contracts_found",
                     "sbir_award_count": sbir_award_count,
                     "sbir_dollars": sbir_dollars,
@@ -299,12 +301,15 @@ def categorize_companies(
                 }
 
             # Classify individual contracts
+            # Keep original dicts for agency breakdown calculation
+            contract_dicts = []
             classified_contracts = []
             cost_based_count = 0
             service_based_count = 0
             
             for _, contract in contracts_df.iterrows():
                 contract_dict = contract.to_dict()
+                contract_dicts.append(contract_dict)  # Keep original for agency info
                 classified = classify_contract(contract_dict)
                 classified_contracts.append(classified.model_dump())
                 
@@ -319,30 +324,36 @@ def categorize_companies(
             # Count classifications
             product_count = sum(1 for c in classified_contracts if c["classification"] == "Product")
             service_count = sum(1 for c in classified_contracts if c["classification"] == "Service")
-            rd_count = sum(1 for c in classified_contracts if c["classification"] == "R&D")
 
             logger.info(
-                f"  Contract breakdown: {product_count} Product, {service_count} Service, {rd_count} R&D"
+                f"  Contract breakdown: {product_count} Product, {service_count} Service"
             )
 
-            # Print detailed justifications if requested
-            if detailed:
-                print_contract_justifications(name, classified_contracts, detailed=detailed)
-
-            # Aggregate to company level
+            # Aggregate to company level (pass original dicts for agency breakdown)
             company_result = aggregate_company_classification(
-                classified_contracts, company_uei=uei, company_name=name
+                contract_dicts, company_uei=uei, company_name=name
             )
             
             logger.info(
                 f"  Dollar breakdown: Product: {company_result.product_pct:.1f}%, "
-                f"Service: {company_result.service_pct:.1f}%, R&D: {company_result.rd_pct:.1f}%"
+                f"Service: {company_result.service_pct:.1f}%"
             )
+
+            # Log agency breakdown if available
+            if company_result.agency_breakdown:
+                agency_parts = []
+                for agency, pct in sorted(company_result.agency_breakdown.items(), key=lambda x: x[1], reverse=True):
+                    agency_parts.append(f"{agency}: {pct:.1f}%")
+                logger.info(f"  Agency breakdown: {', '.join(agency_parts)}")
+
+            # Print detailed justifications if requested (after aggregation so we have agency breakdown)
+            if detailed:
+                print_contract_justifications(name, classified_contracts, detailed=detailed, agency_breakdown=company_result.agency_breakdown)
 
             logger.info(
                 f"  Result: {company_result.classification} "
-                f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service, "
-                f"{company_result.rd_pct:.1f}% R&D) - {company_result.confidence} confidence"
+                f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) - "
+                f"{company_result.confidence} confidence"
             )
 
             # Generate justification
@@ -359,11 +370,8 @@ def categorize_companies(
                     justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
                 if company_result.service_pct >= 51:
                     justification_parts.append(f"{company_result.service_pct:.0f}% service contracts")
-                if company_result.rd_pct >= 51:
-                    justification_parts.append(f"{company_result.rd_pct:.0f}% R&D contracts")
                 # Check for balanced portfolio (no category >= 51%)
-                if (company_result.product_pct < 51 and company_result.service_pct < 51 and 
-                    company_result.rd_pct < 51):
+                if (company_result.product_pct < 51 and company_result.service_pct < 51):
                     justification_parts.append("Balanced portfolio across categories")
                 if company_result.psc_family_count > 5:
                     justification_parts.append(f"{company_result.psc_family_count} PSC families")
@@ -380,14 +388,12 @@ def categorize_companies(
                 "classification": company_result.classification,
                 "product_pct": company_result.product_pct,
                 "service_pct": company_result.service_pct,
-                "rd_pct": company_result.rd_pct,
                 "confidence": company_result.confidence,
                 "award_count": company_result.award_count,
                 "psc_family_count": company_result.psc_family_count,
                 "total_dollars": company_result.total_dollars,
                 "product_dollars": company_result.product_dollars,
                 "service_dollars": company_result.service_dollars,
-                "rd_dollars": company_result.rd_dollars,
                 "override_reason": company_result.override_reason,
                 "sbir_award_count": sbir_award_count,
                 "sbir_dollars": sbir_dollars,
@@ -538,10 +544,8 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "service_based_contracts",
         "product_pct",
         "service_pct",
-        "rd_pct",
         "product_dollars",
         "service_dollars",
-        "rd_dollars",
         "classification",
         "justification",
         "confidence",
@@ -561,10 +565,8 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "service_based_contracts": "Number of Non-SBIR Service-Based Contracts Received",
         "product_pct": "Product %",
         "service_pct": "Service %",
-        "rd_pct": "R&D %",
         "product_dollars": "Product Dollars",
         "service_dollars": "Service Dollars",
-        "rd_dollars": "R&D Dollars",
         "classification": "Classification",
         "justification": "Justification",
         "confidence": "Confidence",
