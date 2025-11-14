@@ -108,24 +108,26 @@ def print_contract_justifications(
         logger.info(f"      Method: {method} | Confidence: {confidence:.2f}")
 
         # Show reason based on method
-        if method == "contract_type":
-            logger.info(f"      → Contract type override (CPFF/Cost/T&M forces Service)")
+        if "_confirmed" in method:
+            logger.info(f"      → HIGH AGREEMENT: PSC and pricing confirm each other")
+        elif "_conflict" in method or "_ambiguous" in method:
+            logger.info(f"      → LOW AGREEMENT: PSC and pricing don't align (lower confidence)")
         elif method == "psc_numeric":
-            logger.info(f"      → Numeric PSC code indicates Product (high confidence)")
+            logger.info(f"      → Numeric PSC code indicates Product")
         elif method == "psc_alphabetic":
-            logger.info(f"      → Alphabetic PSC code indicates Service (moderate confidence)")
+            logger.info(f"      → Alphabetic PSC code indicates Service")
         elif method == "psc_rd":
-            logger.info(f"      → PSC starts with A/B indicates R&D (moderate confidence)")
+            logger.info(f"      → PSC starts with A/B indicates R&D")
         elif method == "psc_def_ffp":
-            logger.info(f"      → PSC D/E/F (IT/telecom/space) + FFP pricing → Product")
+            logger.info(f"      → PSC D/E/F (IT/telecom/space) + FFP → Product")
         elif method == "psc_def_service":
-            logger.info(f"      → PSC D/E/F (IT/telecom/space) defaults to Service")
-        elif method == "description_inference":
-            logger.info(f"      → Description keywords suggest Product")
-        elif method == "sbir_adjustment":
-            logger.info(f"      → SBIR Phase I/II adjusted to R&D")
-        elif method == "sbir_numeric_psc":
-            logger.info(f"      → SBIR Phase I/II with numeric PSC kept as Product")
+            logger.info(f"      → PSC D/E/F (IT/telecom/space) → Service")
+        elif "description_inference" in method:
+            logger.info(f"      → Product keywords in description (integrator resolution)")
+        elif "sbir" in method:
+            logger.info(f"      → SBIR Phase I/II adjustment")
+        elif "default" in method:
+            logger.info(f"      → Default classification (no PSC or insufficient data)")
 
     # Show samples from each category
     for category in ["Product", "Service", "R&D"]:
