@@ -35,7 +35,9 @@ Usage:
 
 import argparse
 import sys
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +58,109 @@ from src.transformers.company_categorization import (
     is_cost_based_contract,
     is_service_based_contract,
 )
+
+
+def _extract_year_from_date(date_str: str | None) -> int | None:
+    """Extract year from date string in various formats.
+    
+    Args:
+        date_str: Date string (ISO format, YYYY-MM-DD, or YYYYMMDD)
+        
+    Returns:
+        Year as integer, or None if date cannot be parsed
+    """
+    if not date_str:
+        return None
+    
+    try:
+        # Try ISO format first (YYYY-MM-DD)
+        if isinstance(date_str, str) and "-" in date_str:
+            dt = datetime.fromisoformat(date_str.split("T")[0])
+            return dt.year
+        # Try YYYYMMDD format
+        elif isinstance(date_str, str) and len(date_str) >= 4:
+            year_str = date_str[:4]
+            if year_str.isdigit():
+                year = int(year_str)
+                # Sanity check: year should be reasonable
+                if 1900 <= year <= 2100:
+                    return year
+    except (ValueError, AttributeError):
+        pass
+    
+    return None
+
+
+def _analyze_consecutive_product_years(
+    contract_dicts: list[dict], classified_contracts: list[dict]
+) -> list[int] | None:
+    """Analyze year-by-year revenue to identify consecutive years where product > service.
+    
+    Args:
+        contract_dicts: Original contract dictionaries with date and amount info
+        classified_contracts: Classified contracts with Product/Service classification
+        
+    Returns:
+        List of consecutive years where product revenue exceeded service revenue,
+        or None if no consecutive years found
+    """
+    if not contract_dicts or not classified_contracts:
+        return None
+    
+    # Create a mapping from award_id to classification for quick lookup
+    classification_map = {c.get("award_id"): c.get("classification") for c in classified_contracts}
+    
+    # Group contracts by year
+    year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0})
+    
+    for contract in contract_dicts:
+        award_id = contract.get("award_id")
+        classification = classification_map.get(award_id)
+        amount = contract.get("award_amount") or 0.0
+        
+        if not classification or amount <= 0:
+            continue
+        
+        # Extract year from action_date
+        action_date = contract.get("action_date")
+        year = _extract_year_from_date(action_date)
+        
+        if year and classification in ("Product", "Service"):
+            year_revenue[year][classification.lower()] += amount
+    
+    if not year_revenue:
+        return None
+    
+    # Identify years where product > service
+    product_dominant_years = []
+    for year in sorted(year_revenue.keys()):
+        revenue = year_revenue[year]
+        product_total = revenue.get("product", 0.0)
+        service_total = revenue.get("service", 0.0)
+        
+        if product_total > service_total and product_total > 0:
+            product_dominant_years.append(year)
+    
+    # Find consecutive years
+    if len(product_dominant_years) < 2:
+        return None
+    
+    consecutive_years = []
+    current_sequence = [product_dominant_years[0]]
+    
+    for i in range(1, len(product_dominant_years)):
+        if product_dominant_years[i] == product_dominant_years[i-1] + 1:
+            current_sequence.append(product_dominant_years[i])
+        else:
+            if len(current_sequence) >= 2:
+                consecutive_years.extend(current_sequence)
+            current_sequence = [product_dominant_years[i]]
+    
+    # Check final sequence
+    if len(current_sequence) >= 2:
+        consecutive_years.extend(current_sequence)
+    
+    return sorted(set(consecutive_years)) if consecutive_years else None
 
 
 def print_contract_justifications(
@@ -329,6 +434,9 @@ def categorize_companies(
                 f"  Contract breakdown: {product_count} Product, {service_count} Service"
             )
 
+            # Analyze year-by-year revenue to identify consecutive product-dominant years
+            consecutive_product_years = _analyze_consecutive_product_years(contract_dicts, classified_contracts)
+
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_result = aggregate_company_classification(
                 contract_dicts, company_uei=uei, company_name=name
@@ -345,6 +453,11 @@ def categorize_companies(
                 for agency, pct in sorted(company_result.agency_breakdown.items(), key=lambda x: x[1], reverse=True):
                     agency_parts.append(f"{agency}: {pct:.1f}%")
                 logger.info(f"  Agency breakdown: {', '.join(agency_parts)}")
+
+            # Log consecutive product-dominant years if found
+            if consecutive_product_years:
+                years_str = ", ".join(map(str, consecutive_product_years))
+                logger.info(f"  ⚠️  Consecutive product-dominant years: {years_str} (Product > Service for 2+ consecutive years)")
 
             # Print detailed justifications if requested (after aggregation so we have agency breakdown)
             if detailed:
@@ -403,6 +516,7 @@ def categorize_companies(
                 "cost_based_contracts": cost_based_count,
                 "service_based_contracts": service_based_count,
                 "justification": justification,
+                "consecutive_product_years": consecutive_product_years if consecutive_product_years else None,
             }
         except Exception as e:
             logger.error(f"Error processing company {company.get('Company Name', 'Unknown')}: {e}")
@@ -514,6 +628,24 @@ def print_summary(results: pd.DataFrame) -> None:
         logger.info(f"  Avg product %: {with_contracts['product_pct'].mean():.1f}%")
         logger.info(f"  Avg service %: {with_contracts['service_pct'].mean():.1f}%")
 
+    # Companies with consecutive product-dominant years
+    if "consecutive_product_years" in results.columns:
+        consecutive_product_companies = results[results["consecutive_product_years"].notna()]
+        if len(consecutive_product_companies) > 0:
+            logger.info("\nCompanies with Consecutive Product-Dominant Years (Product > Service for 2+ consecutive years):")
+            logger.info("  " + "-" * 76)
+            for idx, (_, row) in enumerate(consecutive_product_companies.iterrows(), 1):
+                years = row["consecutive_product_years"]
+                if isinstance(years, list):
+                    years_str = ", ".join(map(str, years))
+                else:
+                    years_str = str(years)
+                logger.info(
+                    f"  {idx}. {row['company_name'][:40]}: Years {years_str} "
+                    f"({row['product_pct']:.1f}% Product overall, {row['award_count']} contracts)"
+                )
+            logger.info(f"\n  Total: {len(consecutive_product_companies)} companies")
+
     # Top 10 by contract volume
     logger.info("\nTop 10 Companies by Contract Count:")
     top_10 = results.nlargest(10, "award_count")[
@@ -551,11 +683,22 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "confidence",
     ]
     
-    # Create export DataFrame with only requested columns
-    export_df = results[export_columns].copy()
+    # Add consecutive_product_years if available
+    if "consecutive_product_years" in results.columns:
+        export_columns.append("consecutive_product_years")
+    
+    # Create export DataFrame with only requested columns (handle missing columns)
+    available_columns = [col for col in export_columns if col in results.columns]
+    export_df = results[available_columns].copy()
+    
+    # Format consecutive_product_years as string for CSV
+    if "consecutive_product_years" in export_df.columns:
+        export_df["consecutive_product_years"] = export_df["consecutive_product_years"].apply(
+            lambda x: ", ".join(map(str, x)) if isinstance(x, list) else (str(x) if x is not None else "")
+        )
     
     # Rename columns to match user's requested format
-    export_df = export_df.rename(columns={
+    rename_map = {
         "company_name": "Company Name",
         "sbir_award_count": "# of SBIR Awards Received",
         "sbir_dollars": "# of SBIR Dollars Received",
@@ -570,7 +713,13 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "classification": "Classification",
         "justification": "Justification",
         "confidence": "Confidence",
-    })
+    }
+    
+    # Add rename for consecutive_product_years if present
+    if "consecutive_product_years" in export_df.columns:
+        rename_map["consecutive_product_years"] = "Consecutive Product-Dominant Years"
+    
+    export_df = export_df.rename(columns=rename_map)
     
     export_df.to_csv(output_path, index=False)
     logger.info(f"\nResults exported to: {output_path}")
@@ -629,6 +778,32 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write(f"- **Companies with SBIR in USAspending**: {companies_with_sbir}/{len(results)}\n")
         f.write(f"- **Average SBIR % of Total Revenue**: {avg_sbir_pct:.1f}%\n\n")
         f.write("---\n\n")
+        
+        # Companies with consecutive product-dominant years
+        if "consecutive_product_years" in results.columns:
+            consecutive_product_companies = results[results["consecutive_product_years"].notna()]
+            if len(consecutive_product_companies) > 0:
+                f.write("## Companies with Consecutive Product-Dominant Years\n\n")
+                f.write("Companies that received more product revenue than service revenue for **2+ consecutive years**.\n\n")
+                f.write("| Company | Years | Product % | Service % | Contracts | Total $ |\n")
+                f.write("|---------|------|-----------|-----------|-----------|--------|\n")
+                
+                for _, row in consecutive_product_companies.iterrows():
+                    company = row["company_name"][:40]
+                    years = row["consecutive_product_years"]
+                    if isinstance(years, list):
+                        years_str = ", ".join(map(str, years))
+                    else:
+                        years_str = str(years)
+                    product_pct = row["product_pct"]
+                    service_pct = row["service_pct"]
+                    contracts = row["award_count"]
+                    total_dollars = row["total_dollars"]
+                    
+                    f.write(f"| {company} | {years_str} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
+                
+                f.write(f"\n**Total**: {len(consecutive_product_companies)} companies\n\n")
+                f.write("---\n\n")
 
         # Product-Focused Companies
         product_companies = results[results["classification"] == "Product"].copy()

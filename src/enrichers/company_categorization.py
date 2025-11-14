@@ -711,8 +711,8 @@ def retrieve_company_contracts_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = USAspendingCache(enabled=False)
 
-    # Check cache first
-    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name)
+    # Check cache first (non-SBIR contracts)
+    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
     if cached_result is not None:
         logger.debug(f"Returning cached result for company (UEI={uei}, DUNS={duns}, name={company_name})")
         return cached_result
@@ -1089,8 +1089,8 @@ def retrieve_company_contracts_api(
 
         logger.info(f"Processed {len(df)} unique contracts")
 
-        # Cache the result
-        cache.set(df, uei=uei, duns=duns, company_name=company_name)
+        # Cache the result (non-SBIR contracts)
+        cache.set(df, uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
 
         return df
 
@@ -1374,8 +1374,8 @@ def retrieve_sbir_awards_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = USAspendingCache(enabled=False)
 
-    # Check cache first
-    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name)
+    # Check cache first (SBIR awards only)
+    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
     if cached_result is not None:
         logger.debug(f"Returning cached SBIR awards result for company (UEI={uei}, DUNS={duns}, name={company_name})")
         return cached_result
@@ -1514,8 +1514,8 @@ def retrieve_sbir_awards_api(
 
         logger.debug(f"Retrieved {len(df)} SBIR/STTR awards via API")
         
-        # Cache the result
-        cache.set(df, uei=uei, duns=duns, company_name=company_name)
+        # Cache the result (SBIR awards only)
+        cache.set(df, uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
         
         return df
 

@@ -44,6 +44,7 @@ class USAspendingCache:
         uei: str | None = None,
         duns: str | None = None,
         company_name: str | None = None,
+        cache_type: str = "contracts",
     ) -> str:
         """Generate a cache key from company identifiers.
 
@@ -51,6 +52,7 @@ class USAspendingCache:
             uei: Company UEI
             duns: Company DUNS number
             company_name: Company name
+            cache_type: Type of cache entry ("contracts" for non-SBIR, "sbir" for SBIR-only)
 
         Returns:
             Cache key (hash of normalized identifiers)
@@ -68,6 +70,9 @@ class USAspendingCache:
 
         if not parts:
             raise ValueError("At least one identifier (UEI, DUNS, or name) must be provided")
+
+        # Add cache type to distinguish SBIR vs non-SBIR
+        parts.append(f"type:{cache_type}")
 
         # Create hash of combined identifiers
         key_string = "|".join(sorted(parts))
@@ -117,6 +122,7 @@ class USAspendingCache:
         uei: str | None = None,
         duns: str | None = None,
         company_name: str | None = None,
+        cache_type: str = "contracts",
     ) -> pd.DataFrame | None:
         """Retrieve cached data if available and not expired.
 
@@ -124,6 +130,7 @@ class USAspendingCache:
             uei: Company UEI
             duns: Company DUNS number
             company_name: Company name
+            cache_type: Type of cache entry ("contracts" for non-SBIR, "sbir" for SBIR-only)
 
         Returns:
             Cached DataFrame if found and valid, None otherwise
@@ -132,7 +139,7 @@ class USAspendingCache:
             return None
 
         try:
-            cache_key = self._generate_cache_key(uei=uei, duns=duns, company_name=company_name)
+            cache_key = self._generate_cache_key(uei=uei, duns=duns, company_name=company_name, cache_type=cache_type)
             cache_path = self._get_cache_path(cache_key)
             metadata_path = self._get_metadata_path(cache_key)
 
@@ -175,6 +182,7 @@ class USAspendingCache:
         uei: str | None = None,
         duns: str | None = None,
         company_name: str | None = None,
+        cache_type: str = "contracts",
         **metadata: Any,
     ) -> None:
         """Store data in cache.
@@ -184,13 +192,14 @@ class USAspendingCache:
             uei: Company UEI
             duns: Company DUNS number
             company_name: Company name
+            cache_type: Type of cache entry ("contracts" for non-SBIR, "sbir" for SBIR-only)
             **metadata: Additional metadata to store
         """
         if not self.enabled:
             return
 
         try:
-            cache_key = self._generate_cache_key(uei=uei, duns=duns, company_name=company_name)
+            cache_key = self._generate_cache_key(uei=uei, duns=duns, company_name=company_name, cache_type=cache_type)
             cache_path = self._get_cache_path(cache_key)
             metadata_path = self._get_metadata_path(cache_key)
 
