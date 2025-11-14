@@ -291,11 +291,13 @@ def retrieve_company_contracts_api(
             for contract in results:
                 # Award ID might be in different fields - try multiple options
                 # The 'internal_id' field typically has the format needed for /awards/ endpoint
-                award_id = (
+                # Convert to string since internal_id may be an integer
+                award_id_raw = (
                     contract.get("internal_id")
                     or contract.get("generated_internal_id")
                     or contract.get("Award ID")
                 )
+                award_id = str(award_id_raw) if award_id_raw is not None else None
 
                 processed_contract = {
                     "award_id": award_id,
