@@ -9,8 +9,15 @@ SBIR/STTR awards can be retrieved separately for reporting and debugging purpose
 
 The module supports intelligent fallback strategies when UEI/DUNS identifiers are missing:
 1. First: Try exact UEI/DUNS match
-2. Second: Use USAspending autocomplete API for fuzzy name matching
+2. Second: Use USAspending autocomplete API for fuzzy name matching with variations
 3. Third: Fall back to direct name-based search
+
+Enhanced Name Matching:
+The autocomplete fuzzy matching now automatically tries multiple name variations to
+improve match rates:
+- Expands common abbreviations (Intl → International, Tech → Technology, etc.)
+- Handles "/" separators (converts to "and" or spaces)
+- Tries multiple API response field names (legal_business_name, recipient_name, etc.)
 
 This multi-tier approach significantly improves coverage for companies with incomplete
 metadata or name variations (e.g., "Advanced Technologies/Laboratories Intl" vs
@@ -56,12 +63,77 @@ def _is_valid_identifier(value: str | None) -> bool:
     return True
 
 
+def _generate_name_variations(company_name: str) -> list[str]:
+    """Generate variations of a company name for better matching.
+
+    Args:
+        company_name: Original company name
+
+    Returns:
+        List of name variations to try, in order of preference
+
+    Examples:
+        >>> _generate_name_variations("Advanced Technologies/Laboratories Intl")
+        ['Advanced Technologies/Laboratories Intl',
+         'Advanced Technologies/Laboratories International',
+         'Advanced Technologies and Laboratories Intl',
+         'Advanced Technologies and Laboratories International']
+    """
+    variations = [company_name]  # Always try original first
+
+    # Common abbreviation expansions
+    # Order matters: more specific abbreviations first to avoid partial matches
+    abbreviations = {
+        r"\bIntl\b": "International",
+        r"\bTech\b": "Technology",
+        r"\bSys\b": "Systems",
+        r"\bCorp\b": "Corporation",
+        r"\bInc\b": "Incorporated",
+        r"\bLtd\b": "Limited",
+        r"\bCo\b": "Company",
+        r"\bMfg\b": "Manufacturing",
+        r"\bEng\b": "Engineering",
+        r"\bDev\b": "Development",
+    }
+
+    # Try expanding abbreviations using word boundaries
+    for abbrev_pattern, full in abbreviations.items():
+        if re.search(abbrev_pattern, company_name):
+            expanded = re.sub(abbrev_pattern, full, company_name)
+            variations.append(expanded)
+
+    # Try replacing "/" with "and" or " " (common in company names)
+    if "/" in company_name:
+        variations.append(company_name.replace("/", " and "))
+        variations.append(company_name.replace("/", " "))
+
+        # Also try combining / replacement with abbreviation expansion
+        for abbrev_pattern, full in abbreviations.items():
+            base_variation = company_name.replace("/", " and ")
+            if re.search(abbrev_pattern, base_variation):
+                expanded = re.sub(abbrev_pattern, full, base_variation)
+                variations.append(expanded)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_variations = []
+    for v in variations:
+        if v not in seen:
+            seen.add(v)
+            unique_variations.append(v)
+
+    return unique_variations
+
+
 def _fuzzy_match_recipient(
     company_name: str,
     base_url: str = "https://api.usaspending.gov/api/v2",
     timeout: int = 10,
 ) -> dict[str, Any] | None:
     """Use USAspending autocomplete API to find the best recipient match for a company name.
+
+    Tries multiple name variations to improve matching success rate, especially for
+    abbreviated or alternative name formats.
 
     Args:
         company_name: Company name to search for
@@ -74,48 +146,100 @@ def _fuzzy_match_recipient(
     if not company_name or not isinstance(company_name, str):
         return None
 
-    try:
-        url = f"{base_url}/autocomplete/recipient/"
-        params = {
-            "search_text": company_name,
-            "limit": 5,  # Get top 5 matches for potential validation
-        }
+    # Generate name variations to try
+    name_variations = _generate_name_variations(company_name)
 
-        response = httpx.get(
-            url,
-            params=params,
-            headers={"User-Agent": "SBIR-ETL/1.0"},
-            timeout=timeout,
-        )
-        response.raise_for_status()
-        data = response.json()
+    # Try each variation until we get a valid match
+    for variation in name_variations:
+        try:
+            url = f"{base_url}/autocomplete/recipient/"
+            params = {
+                "search_text": variation,
+                "limit": 5,  # Get top 5 matches for potential validation
+            }
 
-        results = data.get("results", [])
-        if not results:
-            logger.debug(f"No autocomplete matches found for: {company_name}")
-            return None
+            response = httpx.get(
+                url,
+                params=params,
+                headers={"User-Agent": "SBIR-ETL/1.0"},
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        # Get the best match (first result)
-        best_match = results[0]
-        matched_name = best_match.get("legal_business_name", "")
-        matched_uei = best_match.get("uei")
+            results = data.get("results", [])
+            if not results:
+                if variation != company_name:
+                    logger.debug(f"No autocomplete matches for variation: {variation}")
+                continue
 
-        logger.info(
-            f"Autocomplete matched '{company_name}' → '{matched_name}' (UEI: {matched_uei})"
-        )
+            # Get the best match (first result)
+            best_match = results[0]
 
-        return {
-            "uei": matched_uei,
-            "name": matched_name,
-            "duns": best_match.get("duns"),
-        }
+            # Debug: Log available fields in the response to help diagnose issues
+            available_fields = list(best_match.keys())
+            logger.debug(f"Autocomplete response fields: {available_fields}")
 
-    except httpx.HTTPError as e:
-        logger.warning(f"HTTP error during autocomplete for '{company_name}': {e}")
-        return None
-    except Exception as e:
-        logger.warning(f"Error during autocomplete for '{company_name}': {e}")
-        return None
+            # Try multiple possible field names for the company name
+            # Different endpoints use different field naming conventions
+            matched_name = (
+                best_match.get("legal_business_name") or
+                best_match.get("recipient_name") or
+                best_match.get("name") or
+                best_match.get("business_name") or
+                ""
+            )
+
+            # Try multiple possible field names for UEI
+            matched_uei = (
+                best_match.get("uei") or
+                best_match.get("recipient_uei") or
+                best_match.get("UEI")
+            )
+
+            # Try multiple possible field names for DUNS
+            matched_duns = (
+                best_match.get("duns") or
+                best_match.get("recipient_duns") or
+                best_match.get("DUNS")
+            )
+
+            # If we still don't have a name after trying all field variations,
+            # log the full response and continue to next variation
+            if not matched_name:
+                logger.debug(
+                    f"Autocomplete returned empty name for variation '{variation}'. "
+                    f"Response fields: {available_fields}"
+                )
+                continue
+
+            # We found a valid match!
+            if variation != company_name:
+                logger.info(
+                    f"Autocomplete matched '{company_name}' using variation '{variation}' "
+                    f"→ '{matched_name}' (UEI: {matched_uei})"
+                )
+            else:
+                logger.info(
+                    f"Autocomplete matched '{company_name}' → '{matched_name}' (UEI: {matched_uei})"
+                )
+
+            return {
+                "uei": matched_uei,
+                "name": matched_name,
+                "duns": matched_duns,
+            }
+
+        except httpx.HTTPError as e:
+            logger.debug(f"HTTP error during autocomplete for '{variation}': {e}")
+            continue
+        except Exception as e:
+            logger.debug(f"Error during autocomplete for '{variation}': {e}")
+            continue
+
+    # No variations worked
+    logger.debug(f"No autocomplete matches found for: {company_name} (tried {len(name_variations)} variations)")
+    return None
 
 
 def retrieve_company_contracts(
