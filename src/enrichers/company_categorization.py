@@ -10,6 +10,7 @@ Key Functions:
 """
 
 import re
+import time
 from typing import Any
 
 import httpx
@@ -159,10 +160,14 @@ def retrieve_company_contracts_api(
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API.
 
-    Queries the USAspending API v2 /search/spending_by_transaction/ endpoint for all
-    transactions/contracts associated with a company using their identifiers (UEI, DUNS).
-    Uses the transaction endpoint because the award endpoint doesn't populate PSC codes.
-    Returns contracts with fields needed for company categorization.
+    Uses a hybrid approach for maximum accuracy:
+    1. Primary: Queries /search/spending_by_transaction/ endpoint for bulk retrieval
+    2. Fallback: For contracts with missing PSC codes, queries /awards/{award_id}/
+       endpoint individually (limited to 20 contracts to manage API load)
+
+    The transaction endpoint is used first because the award search endpoint doesn't
+    populate PSC codes. For any remaining contracts with missing PSC codes, individual
+    award lookups are performed to fill in the gaps.
 
     Note: May return multiple transactions per award. Duplicates are removed based on
     award_id before returning.
@@ -344,6 +349,43 @@ def retrieve_company_contracts_api(
         # Convert to DataFrame
         df = pd.DataFrame(all_contracts)
 
+        # Fallback: Fetch PSC codes from individual award endpoint for contracts with missing PSC
+        missing_psc_mask = df["psc"].isna() | (df["psc"] == "")
+        missing_psc_count = missing_psc_mask.sum()
+
+        if missing_psc_count > 0:
+            logger.info(
+                f"Attempting to retrieve PSC codes for {missing_psc_count} contracts "
+                f"with missing PSC using individual award endpoint"
+            )
+
+            # Limit fallback calls to avoid excessive API requests (max 20)
+            max_fallback_calls = min(20, missing_psc_count)
+            missing_psc_df = df[missing_psc_mask].head(max_fallback_calls)
+
+            for idx, row in missing_psc_df.iterrows():
+                award_id = row["award_id"]
+                if not award_id or award_id.startswith("UNKNOWN_"):
+                    continue
+
+                # Add small delay to respect rate limits (120 per minute = ~0.5s per request)
+                time.sleep(0.5)
+
+                award_details = _fetch_award_details(award_id, base_url, timeout)
+                if award_details and award_details.get("psc"):
+                    df.at[idx, "psc"] = award_details["psc"]
+
+            retrieved_psc_count = (~(df["psc"].isna() | (df["psc"] == ""))).sum() - (
+                len(df) - missing_psc_count
+            )
+            if retrieved_psc_count > 0:
+                logger.info(
+                    f"Successfully retrieved {retrieved_psc_count} PSC codes "
+                    f"from individual award endpoint"
+                )
+            else:
+                logger.warning("No PSC codes could be retrieved from individual award endpoint")
+
         # Extract SBIR phase from description
         df["sbir_phase"] = df["description"].apply(_extract_sbir_phase)
 
@@ -363,6 +405,53 @@ def retrieve_company_contracts_api(
     except Exception as e:
         logger.error(f"Failed to retrieve contracts from USAspending API: {e}")
         return pd.DataFrame()
+
+
+def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str, Any] | None:
+    """Fetch detailed award information including PSC code.
+
+    This is used as a fallback when the transaction endpoint doesn't return PSC codes.
+
+    Args:
+        award_id: Award identifier (PIID or generated_internal_id)
+        base_url: USAspending API base URL
+        timeout: Request timeout in seconds
+
+    Returns:
+        Award details dict with PSC code, or None if fetch fails
+    """
+    try:
+        url = f"{base_url}/awards/{award_id}/"
+        response = httpx.get(url, timeout=timeout)
+        response.raise_for_status()
+        award_data = response.json()
+
+        # Extract PSC from the detailed award response
+        # The individual award endpoint has different structure
+        psc = None
+        if isinstance(award_data, dict):
+            # Try various paths where PSC might be located
+            psc = (
+                award_data.get("product_or_service_code")
+                or award_data.get("psc")
+                or award_data.get("latest_transaction", {}).get("product_or_service_code")
+            )
+
+        if psc:
+            logger.debug(f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint")
+            return {"psc": psc}
+
+        return None
+
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            logger.debug(f"Award {award_id} not found in individual award endpoint (404)")
+        else:
+            logger.warning(f"HTTP error fetching award details for {award_id}: {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error fetching award details for {award_id}: {e}")
+        return None
 
 
 def _extract_sbir_phase(description: str | None) -> str | None:
