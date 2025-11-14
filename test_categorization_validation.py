@@ -30,12 +30,113 @@ import pandas as pd
 from loguru import logger
 
 from src.config.loader import get_config
-from src.enrichers.company_categorization import retrieve_company_contracts
+from src.enrichers.company_categorization import (
+    retrieve_company_contracts,
+    retrieve_company_contracts_api,
+)
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.transformers.company_categorization import (
     aggregate_company_classification,
     classify_contract,
 )
+
+
+def print_contract_justifications(
+    company_name: str, classified_contracts: list[dict], detailed: bool = False
+) -> None:
+    """Print detailed contract classification justifications.
+
+    Args:
+        company_name: Name of the company
+        classified_contracts: List of classified contract dictionaries
+        detailed: If True, show additional details
+    """
+    if not classified_contracts:
+        return
+
+    logger.info("\n  " + "=" * 76)
+    logger.info(f"  CONTRACT CLASSIFICATION DETAILS: {company_name}")
+    logger.info("  " + "=" * 76)
+
+    # Top 5 contracts by dollar value
+    logger.info("\n  Top 5 Contracts by Dollar Value:")
+    logger.info("  " + "-" * 76)
+
+    sorted_contracts = sorted(classified_contracts, key=lambda x: x.get("award_amount", 0), reverse=True)
+
+    for idx, contract in enumerate(sorted_contracts[:5], 1):
+        amount = contract.get("award_amount", 0)
+        classification = contract.get("classification", "Unknown")
+        psc = contract.get("psc") or "None"
+        contract_type = contract.get("contract_type") or "None"
+        sbir_phase = contract.get("sbir_phase") or "None"
+        method = contract.get("method", "unknown")
+        confidence = contract.get("confidence", 0.0)
+
+        logger.info(f"\n  #{idx}: ${amount:,.0f} → {classification}")
+        logger.info(f"      PSC: {psc} | Type: {contract_type} | SBIR Phase: {sbir_phase}")
+        logger.info(f"      Method: {method} | Confidence: {confidence:.2f}")
+
+        # Show justification based on method
+        if method == "psc_numeric":
+            logger.info(f"      → Numeric PSC code indicates tangible product")
+        elif method == "psc_alphabetic":
+            logger.info(f"      → Alphabetic PSC code indicates service")
+        elif method == "contract_type_override":
+            logger.info(f"      → Contract type {contract_type} overrides PSC classification")
+        elif method == "sbir_phase_adjustment":
+            logger.info(f"      → SBIR Phase {sbir_phase} adjusted classification")
+        elif method == "description_inference":
+            logger.info(f"      → Product keywords detected in description")
+        elif method == "default_no_psc":
+            logger.info(f"      → Default classification (no PSC or insufficient data)")
+
+    # Count by classification
+    product_contracts = [c for c in classified_contracts if c.get("classification") == "Product"]
+    service_contracts = [c for c in classified_contracts if c.get("classification") == "Service"]
+    rd_contracts = [c for c in classified_contracts if c.get("classification") == "R&D"]
+
+    # Show detailed lists if requested
+    if detailed or len(classified_contracts) <= 20:
+        if service_contracts:
+            logger.info(f"\n  Service Contracts ({len(service_contracts)} total):")
+            logger.info("  " + "-" * 76)
+            for idx, contract in enumerate(service_contracts[:3], 1):
+                amount = contract.get("award_amount", 0)
+                psc = contract.get("psc") or "None"
+                method = contract.get("method", "unknown")
+                desc = contract.get("description", "N/A")[:60]
+                logger.info(f"      {idx}. ${amount:,.0f} | PSC: {psc} | Method: {method}")
+                logger.info(f"         {desc}...")
+
+    # Method breakdown
+    logger.info("\n  Classification Method Breakdown:")
+    logger.info("  " + "-" * 76)
+
+    method_counts = {}
+    for contract in classified_contracts:
+        method = contract.get("method", "unknown")
+        method_counts[method] = method_counts.get(method, 0) + 1
+
+    for method, count in sorted(method_counts.items(), key=lambda x: x[1], reverse=True):
+        pct = (count / len(classified_contracts)) * 100
+        logger.info(f"      {method}: {count} contracts ({pct:.1f}%)")
+
+    # Dollar-weighted breakdown
+    logger.info("\n  Dollar-Weighted Breakdown:")
+    logger.info("  " + "-" * 76)
+
+    product_dollars = sum(c.get("award_amount", 0) for c in product_contracts)
+    service_dollars = sum(c.get("award_amount", 0) for c in service_contracts)
+    rd_dollars = sum(c.get("award_amount", 0) for c in rd_contracts)
+    total_dollars = product_dollars + service_dollars + rd_dollars
+
+    if total_dollars > 0:
+        logger.info(f"      Product: ${product_dollars:,.0f} ({product_dollars/total_dollars*100:.1f}%)")
+        logger.info(f"      Service: ${service_dollars:,.0f} ({service_dollars/total_dollars*100:.1f}%)")
+        logger.info(f"      R&D: ${rd_dollars:,.0f} ({rd_dollars/total_dollars*100:.1f}%)")
+
+    logger.info("  " + "=" * 76 + "\n")
 
 
 def load_validation_dataset(path: str | None = None) -> pd.DataFrame:
@@ -68,17 +169,21 @@ def load_validation_dataset(path: str | None = None) -> pd.DataFrame:
 
 def categorize_companies(
     companies: pd.DataFrame,
-    extractor: DuckDBUSAspendingExtractor,
+    extractor: DuckDBUSAspendingExtractor | None = None,
     limit: int | None = None,
     specific_uei: str | None = None,
+    use_api: bool = False,
+    detailed: bool = False,
 ) -> pd.DataFrame:
     """Categorize companies from the validation dataset.
 
     Args:
         companies: Validation dataset DataFrame
-        extractor: USAspending extractor
+        extractor: USAspending extractor (required if use_api=False)
         limit: Optional limit on number of companies to process
         specific_uei: Optional specific UEI to process
+        use_api: If True, use USAspending API instead of DuckDB
+        detailed: If True, print detailed contract classifications
 
     Returns:
         DataFrame with categorization results
@@ -108,7 +213,12 @@ def categorize_companies(
         )
 
         # Retrieve USAspending contracts
-        contracts_df = retrieve_company_contracts(extractor, uei=uei)
+        if use_api:
+            contracts_df = retrieve_company_contracts_api(uei=uei)
+        else:
+            if extractor is None:
+                raise ValueError("extractor is required when use_api=False")
+            contracts_df = retrieve_company_contracts(extractor, uei=uei)
 
         if contracts_df.empty:
             logger.warning(f"  No USAspending contracts found for {name}")
@@ -146,6 +256,10 @@ def categorize_companies(
         logger.info(
             f"  Contract breakdown: {product_count} Product, {service_count} Service, {rd_count} R&D"
         )
+
+        # Print detailed justifications if requested
+        if detailed:
+            print_contract_justifications(name, classified_contracts, detailed=detailed)
 
         # Aggregate to company level
         company_result = aggregate_company_classification(
@@ -329,6 +443,16 @@ def main():
         "--load-neo4j", action="store_true", help="Load results to Neo4j after categorization"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--use-api",
+        action="store_true",
+        help="Use USAspending API instead of DuckDB for contract retrieval",
+    )
+    parser.add_argument(
+        "--detailed",
+        action="store_true",
+        help="Show detailed contract classification justifications",
+    )
 
     args = parser.parse_args()
 
@@ -343,17 +467,25 @@ def main():
     # Load validation dataset
     companies = load_validation_dataset(args.dataset)
 
-    # Initialize USAspending extractor
-    config = get_config()
-    db_path = config.duckdb.database_path
-    logger.info(f"Using DuckDB database: {db_path}")
-
-    extractor = DuckDBUSAspendingExtractor(db_path)
+    # Initialize USAspending extractor if not using API
+    extractor = None
+    if args.use_api:
+        logger.info("Using USAspending API for contract retrieval")
+    else:
+        config = get_config()
+        db_path = config.duckdb.database_path
+        logger.info(f"Using DuckDB database: {db_path}")
+        extractor = DuckDBUSAspendingExtractor(db_path)
 
     try:
         # Categorize companies
         results = categorize_companies(
-            companies, extractor, limit=args.limit, specific_uei=args.uei
+            companies,
+            extractor,
+            limit=args.limit,
+            specific_uei=args.uei,
+            use_api=args.use_api,
+            detailed=args.detailed,
         )
 
         # Print summary
@@ -372,7 +504,8 @@ def main():
         logger.info("=" * 80)
 
     finally:
-        extractor.close()
+        if extractor is not None:
+            extractor.close()
 
 
 if __name__ == "__main__":

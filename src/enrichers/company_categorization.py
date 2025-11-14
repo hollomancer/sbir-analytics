@@ -4,12 +4,15 @@ This module provides functionality to retrieve federal contract portfolios from
 USAspending for SBIR companies to support categorization as Product/Service/Mixed firms.
 
 Key Functions:
-    - retrieve_company_contracts: Retrieve all federal contracts for a company
+    - retrieve_company_contracts: Retrieve all federal contracts for a company (DuckDB)
+    - retrieve_company_contracts_api: Retrieve all federal contracts for a company (API)
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
 import re
+from typing import Any
 
+import httpx
 import pandas as pd
 from loguru import logger
 
@@ -144,6 +147,215 @@ def retrieve_company_contracts(
             f"(UEI={uei}, DUNS={duns}, CAGE={cage}): {e}"
         )
         # Return empty DataFrame on error rather than raising
+        return pd.DataFrame()
+
+
+def retrieve_company_contracts_api(
+    uei: str | None = None,
+    duns: str | None = None,
+    base_url: str = "https://api.usaspending.gov/api/v2",
+    timeout: int = 30,
+    page_size: int = 100,
+) -> pd.DataFrame:
+    """Retrieve all federal contracts for a company from USAspending API.
+
+    Queries the USAspending API v2 for all contracts associated with a company
+    using their identifiers (UEI, DUNS). Returns contracts with fields needed
+    for company categorization.
+
+    Args:
+        uei: Company UEI (Unique Entity Identifier)
+        duns: Company DUNS number
+        base_url: USAspending API base URL
+        timeout: Request timeout in seconds
+        page_size: Number of results per page
+
+    Returns:
+        DataFrame with columns:
+            - award_id: Contract/award identifier
+            - psc: Product Service Code
+            - contract_type: Type of contract pricing
+            - pricing: Type of contract pricing
+            - description: Award description
+            - award_amount: Federal action obligation
+            - recipient_uei: Recipient UEI
+            - recipient_duns: Recipient DUNS
+            - sbir_phase: SBIR phase if detected (I, II, III)
+
+    Examples:
+        >>> contracts = retrieve_company_contracts_api(uei="ABC123DEF456")
+        >>> len(contracts)
+        15
+    """
+    # Validate at least one identifier is provided
+    if not any([uei, duns]):
+        logger.warning("No company identifiers provided (UEI or DUNS), returning empty DataFrame")
+        return pd.DataFrame()
+
+    logger.info(f"Retrieving contracts from USAspending API (UEI={uei}, DUNS={duns})")
+
+    # Build search filters for the API
+    filters: dict[str, Any] = {
+        "award_type_codes": ["A", "B", "C", "D"],  # Contract awards
+    }
+
+    # Add recipient search
+    recipient_ids = []
+    if uei:
+        recipient_ids.append(uei)
+    if duns:
+        recipient_ids.append(duns)
+
+    if recipient_ids:
+        filters["recipient_search_text"] = recipient_ids
+
+    # Fields to retrieve from API
+    fields = [
+        "Award ID",
+        "Recipient Name",
+        "Award Amount",
+        "Description",
+        "Start Date",
+        "End Date",
+        "Product or Service Code",
+        "Contract Award Type",
+        "awarding_agency_name",
+        "recipient_uei",
+        "recipient_duns",
+    ]
+
+    all_contracts = []
+    page = 1
+
+    try:
+        while True:
+            # Build POST request payload
+            payload = {
+                "filters": filters,
+                "fields": fields,
+                "page": page,
+                "limit": page_size,
+                "sort": "Award Amount",
+                "order": "desc",
+            }
+
+            # Make API request
+            url = f"{base_url}/search/spending_by_award/"
+            logger.debug(f"Fetching page {page} from USAspending API")
+
+            try:
+                response = httpx.post(
+                    url,
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "User-Agent": "SBIR-ETL/1.0",
+                    },
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error fetching contracts from USAspending API: {e}")
+                if page == 1:
+                    return pd.DataFrame()
+                break
+            except Exception as e:
+                logger.error(f"Error fetching contracts from USAspending API: {e}")
+                if page == 1:
+                    return pd.DataFrame()
+                break
+
+            results = data.get("results", [])
+            if not results:
+                logger.debug(f"No more results found (page {page})")
+                break
+
+            # Process each contract
+            for contract in results:
+                # Extract PSC field - the API returns it as "Product or Service Code"
+                psc_value = contract.get("Product or Service Code")
+
+                # Log if PSC is empty to help debugging
+                if not psc_value or (isinstance(psc_value, str) and not psc_value.strip()):
+                    logger.warning(
+                        f"PSC field empty/unexpected type, trying alternatives. "
+                        f"Available keys: {list(contract.keys())}"
+                    )
+                    # Try alternative field names
+                    psc_value = (
+                        contract.get("product_or_service_code") or
+                        contract.get("psc") or
+                        contract.get("Product or Service Code") or
+                        contract.get("PSC")
+                    )
+
+                    if not psc_value:
+                        logger.error(
+                            f"CRITICAL: PSC is empty after parsing! "
+                            f"Raw response keys: {list(contract.keys())}"
+                        )
+
+                processed_contract = {
+                    "award_id": contract.get("Award ID") or contract.get("internal_id"),
+                    "psc": psc_value,
+                    "contract_type": contract.get("Contract Award Type"),
+                    "pricing": contract.get("Contract Award Type"),
+                    "description": contract.get("Description"),
+                    "award_amount": contract.get("Award Amount", 0),
+                    "recipient_uei": contract.get("recipient_uei") or uei,
+                    "recipient_duns": contract.get("recipient_duns") or duns,
+                    "start_date": contract.get("Start Date"),
+                    "end_date": contract.get("End Date"),
+                    "awarding_agency": contract.get("awarding_agency_name"),
+                }
+
+                # Generate internal ID if award_id is missing
+                if not processed_contract["award_id"]:
+                    processed_contract["award_id"] = contract.get("generated_internal_id", f"UNKNOWN_{len(all_contracts)}")
+
+                all_contracts.append(processed_contract)
+
+            # Check if there are more pages
+            page_metadata = data.get("page_metadata", {})
+            has_next = page_metadata.get("hasNext", False)
+            total = page_metadata.get("total", 0)
+
+            logger.debug(f"Retrieved {len(results)} contracts (page {page}), total available: {total}")
+
+            if not has_next:
+                logger.debug("No more pages available")
+                break
+
+            page += 1
+
+        logger.info(f"Retrieved {len(all_contracts)} contracts from USAspending API across {page} page(s)")
+
+        if not all_contracts:
+            logger.warning(f"No contracts found for company (UEI={uei}, DUNS={duns})")
+            return pd.DataFrame()
+
+        # Convert to DataFrame
+        df = pd.DataFrame(all_contracts)
+
+        # Extract SBIR phase from description
+        df["sbir_phase"] = df["description"].apply(_extract_sbir_phase)
+
+        # Ensure numeric types for award_amount
+        df["award_amount"] = pd.to_numeric(df["award_amount"], errors="coerce")
+
+        # Drop duplicates based on award_id
+        initial_count = len(df)
+        df = df.drop_duplicates(subset=["award_id"])
+        if len(df) < initial_count:
+            logger.debug(f"Removed {initial_count - len(df)} duplicate contracts")
+
+        logger.info(f"Processed {len(df)} unique contracts")
+
+        return df
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve contracts from USAspending API: {e}")
         return pd.DataFrame()
 
 
