@@ -210,9 +210,21 @@ def _classify_by_psc(psc: str) -> tuple[str, str, float]:
     if not psc:
         return ("Service", "default", 0.50)
 
+<<<<<<< HEAD
     # Ensure PSC is a string (handles cases where numeric PSC might be passed as int)
     psc_str = str(psc) if psc else ""
     if not psc_str:
+=======
+    # Handle edge case where PSC might be a dict instead of string
+    if isinstance(psc, dict):
+        # Try to extract the code from the dict
+        psc = psc.get("code") or psc.get("psc_code") or psc.get("psc") or ""
+        if not psc:
+            return ("Service", "default", 0.50)
+
+    # Ensure PSC is a string
+    if not isinstance(psc, str):
+>>>>>>> claude/fix-psc-codes-issue-01Pg9ogB15qXtSpxJW43oab7
         return ("Service", "default", 0.50)
 
     # Get first character of PSC

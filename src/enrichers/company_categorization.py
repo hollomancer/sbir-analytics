@@ -283,6 +283,7 @@ def retrieve_company_contracts_api(
                     f"Award ID={results[0].get('Award ID')}"
                 )
 
+<<<<<<< HEAD
             # Process each award - store basic info without PSC for now
             for contract in results:
                 # Award ID might be in different fields - try multiple options
@@ -294,6 +295,33 @@ def retrieve_company_contracts_api(
                     or contract.get("Award ID")
                 )
                 award_id = str(award_id_raw) if award_id_raw is not None else None
+=======
+            # Process each transaction
+            for transaction in results:
+                # Extract PSC field - API might return it as a dict or string
+                psc_raw = transaction.get("PSC")
+
+                # PSC might be a dict/object or a string - extract the code
+                if isinstance(psc_raw, dict):
+                    # If PSC is a dict, try to extract the code from common keys
+                    psc_value = psc_raw.get("code") or psc_raw.get("psc_code") or psc_raw.get("psc")
+                    if page == 1 and psc_raw:
+                        logger.debug(f"PSC is a dict with keys: {list(psc_raw.keys())}, extracted: {psc_value}")
+                elif isinstance(psc_raw, str):
+                    psc_value = psc_raw
+                else:
+                    psc_value = None
+                    if psc_raw is not None:
+                        logger.debug(f"PSC has unexpected type: {type(psc_raw)}, value: {psc_raw}")
+
+                # Log if PSC is empty to help debugging
+                if not psc_value or (isinstance(psc_value, str) and not psc_value.strip()):
+                    logger.debug(
+                        f"PSC field empty for transaction. "
+                        f"Award ID: {transaction.get('Award ID')}, "
+                        f"PSC raw value: {psc_raw}"
+                    )
+>>>>>>> claude/fix-psc-codes-issue-01Pg9ogB15qXtSpxJW43oab7
 
                 processed_transaction = {
                     "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
@@ -392,7 +420,9 @@ def retrieve_company_contracts_api(
         return df
 
     except Exception as e:
+        import traceback
         logger.error(f"Failed to retrieve contracts from USAspending API: {e}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         return pd.DataFrame()
 
 
