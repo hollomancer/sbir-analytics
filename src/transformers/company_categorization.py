@@ -28,9 +28,9 @@ def classify_contract(contract: dict) -> ContractClassification:
     1. Cost Reimbursement Contracts (CPFF, CPIF, CPAF, CPOF, Cost-Type) → Service-based
     2. Labor Hours Contracts (T&M, LH) → Service-based
     3. Fixed Price Contracts (FFP, FPIF, FPEPA) → Product-based (when PSC/keywords support it)
-    4. PSC-based: numeric → Product, A/B → R&D, alphabetic → Service
+    4. PSC-based: numeric → Product, A/B → Service (R&D treated as Service), alphabetic → Service
     5. Description inference: product keywords → Product
-    6. SBIR phase adjustment: Phase I/II → R&D (unless numeric PSC)
+    6. SBIR phase adjustment: Phase I/II → Service (unless numeric PSC)
 
     Args:
         contract: Dictionary with fields:
@@ -100,12 +100,12 @@ def classify_contract(contract: dict) -> ContractClassification:
                     award_amount=award_amount,
                     sbir_phase=sbir_phase,
                 )
-            # Fixed Price + R&D PSC → R&D
+            # Fixed Price + R&D PSC → Service (R&D treated as Service)
             if psc_classification == "R&D":
                 return ContractClassification(
                     award_id=award_id,
-                    classification="R&D",
-                    method="fixed_price_rd_psc",
+                    classification="Service",
+                    method="fixed_price_rd_psc_as_service",
                     confidence=0.90,
                     psc=psc,
                     contract_type=contract_type or None,
@@ -185,11 +185,11 @@ def classify_contract(contract: dict) -> ContractClassification:
                     sbir_phase=sbir_phase,
                 )
             else:
-                # Phase I/II with alphabetic PSC → R&D
+                # Phase I/II with alphabetic PSC → Service (R&D treated as Service)
                 return ContractClassification(
                     award_id=award_id,
-                    classification="R&D",
-                    method="sbir_adjustment",
+                    classification="Service",
+                    method="sbir_adjustment_as_service",
                     confidence=0.90,
                     psc=psc,
                     contract_type=contract_type or None,
@@ -199,10 +199,11 @@ def classify_contract(contract: dict) -> ContractClassification:
                     sbir_phase=sbir_phase,
                 )
 
-        # Return PSC-based classification
+        # Return PSC-based classification (convert R&D to Service)
+        final_classification = "Service" if psc_classification == "R&D" else psc_classification
         return ContractClassification(
             award_id=award_id,
-            classification=psc_classification,
+            classification=final_classification,
             method=psc_method,
             confidence=psc_confidence,
             psc=psc,
@@ -443,11 +444,12 @@ def aggregate_company_classification(
     """Aggregate contract classifications to company level.
 
     Aggregation logic:
-    1. Calculate dollar-weighted percentages for Product, Service, and R&D separately
-    2. Apply 51% threshold for Product-leaning, Service-leaning, or R&D-leaning
+    1. Calculate dollar-weighted percentages for Product and Service
+    2. Apply 51% threshold for Product-leaning or Service-leaning
     3. Apply Mixed classification if no category reaches threshold
     4. Apply override rules (e.g., >6 PSC families → Mixed)
-    5. Assign confidence level based on number of awards
+    5. Calculate agency breakdown (percentage of revenue by awarding agency)
+    6. Assign confidence level based on number of awards
 
     Args:
         contracts: List of classified contracts (as dicts or ContractClassification objects)
@@ -477,14 +479,13 @@ def aggregate_company_classification(
             classification="Uncertain",
             product_pct=0.0,
             service_pct=0.0,
-            rd_pct=0.0,
             confidence="Low",
             award_count=len(contracts),
             psc_family_count=0,
             total_dollars=0.0,
             product_dollars=0.0,
             service_dollars=0.0,
-            rd_dollars=0.0,
+            agency_breakdown={},
             override_reason="insufficient_awards",
             contracts=[],
         )
@@ -516,7 +517,7 @@ def aggregate_company_classification(
                 classified = classify_contract(c)
                 classified_contracts.append(classified)
 
-    # Calculate dollar-weighted percentages (separate R&D from Service)
+    # Calculate dollar-weighted percentages for Product and Service
     total_dollars = sum(c.award_amount or 0.0 for c in classified_contracts)
     product_dollars = sum(
         c.award_amount or 0.0
@@ -528,21 +529,31 @@ def aggregate_company_classification(
         for c in classified_contracts
         if c.classification == "Service"
     )
-    rd_dollars = sum(
-        c.award_amount or 0.0
-        for c in classified_contracts
-        if c.classification == "R&D"
-    )
 
     # Calculate percentages
     if total_dollars > 0:
         product_pct = (product_dollars / total_dollars) * 100
         service_pct = (service_dollars / total_dollars) * 100
-        rd_pct = (rd_dollars / total_dollars) * 100
     else:
         product_pct = 0.0
         service_pct = 0.0
-        rd_pct = 0.0
+
+    # Calculate agency breakdown (from original contract dicts if available)
+    # Need to track original contract dicts for agency info since ContractClassification doesn't store it
+    agency_dollars: dict[str, float] = {}
+    original_contract_dicts = [c for c in contracts if isinstance(c, dict)]
+    
+    for c in original_contract_dicts:
+        awarding_agency = c.get("awarding_agency") or c.get("agency") or "Unknown"
+        award_amount = c.get("award_amount") or 0.0
+        if awarding_agency and awarding_agency != "Unknown":
+            agency_dollars[awarding_agency] = agency_dollars.get(awarding_agency, 0.0) + award_amount
+    
+    # Convert to percentages
+    agency_breakdown: dict[str, float] = {}
+    if total_dollars > 0:
+        for agency, dollars in agency_dollars.items():
+            agency_breakdown[agency] = round((dollars / total_dollars) * 100, 2)
 
     # Count PSC families
     psc_families = set()
@@ -561,13 +572,11 @@ def aggregate_company_classification(
             f"Company {company_uei or company_name or 'Unknown'} has {len(psc_families)} PSC families, "
             f"overriding to Mixed classification"
         )
-    # Standard classification based on thresholds (three categories)
+    # Standard classification based on thresholds (two categories)
     elif product_pct >= 51:
         classification = "Product-leaning"
     elif service_pct >= 51:
         classification = "Service-leaning"
-    elif rd_pct >= 51:
-        classification = "R&D-leaning"
     else:
         classification = "Mixed"
 
@@ -582,7 +591,7 @@ def aggregate_company_classification(
     logger.info(
         f"Classified company {company_uei or company_name or 'Unknown'} as {classification} "
         f"({len(classified_contracts)} awards, {confidence} confidence) - "
-        f"Product: {product_pct:.1f}%, Service: {service_pct:.1f}%, R&D: {rd_pct:.1f}%"
+        f"Product: {product_pct:.1f}%, Service: {service_pct:.1f}%"
     )
 
     return CompanyClassification(
@@ -591,14 +600,13 @@ def aggregate_company_classification(
         classification=classification,
         product_pct=round(product_pct, 2),
         service_pct=round(service_pct, 2),
-        rd_pct=round(rd_pct, 2),
         confidence=confidence,
         award_count=len(classified_contracts),
         psc_family_count=len(psc_families),
         total_dollars=total_dollars,
         product_dollars=product_dollars,
         service_dollars=service_dollars,
-        rd_dollars=rd_dollars,
+        agency_breakdown=agency_breakdown,
         override_reason=override_reason,
         contracts=classified_contracts,
     )

@@ -56,7 +56,8 @@ def enriched_sbir_companies_with_categorization(
             - psc_family_count: Number of distinct PSC families
             - total_dollars: Total contract dollars
             - product_dollars: Product contract dollars
-            - service_rd_dollars: Service/R&D contract dollars
+            - service_dollars: Service contract dollars
+            - agency_breakdown: Percentage of revenue by awarding agency
             - override_reason: Reason for override if applied
     """
     # Get configuration
@@ -138,7 +139,8 @@ def enriched_sbir_companies_with_categorization(
                         "psc_family_count": 0,
                         "total_dollars": 0.0,
                         "product_dollars": 0.0,
-                        "service_rd_dollars": 0.0,
+                        "service_dollars": 0.0,
+                        "agency_breakdown": {},
                         "override_reason": "no_contracts_found",
                     }
                 )
@@ -148,15 +150,15 @@ def enriched_sbir_companies_with_categorization(
             total_contracts_retrieved += len(contracts_df)
 
             # Classify individual contracts
-            classified_contracts = []
+            # Keep original dicts for agency breakdown calculation
+            contract_dicts = []
             for _, contract in contracts_df.iterrows():
                 contract_dict = contract.to_dict()
-                classified = classify_contract(contract_dict)
-                classified_contracts.append(classified.model_dump())
+                contract_dicts.append(contract_dict)  # Keep original for agency info
 
-            # Aggregate to company level
+            # Aggregate to company level (pass original dicts for agency breakdown)
             company_classification = aggregate_company_classification(
-                classified_contracts, company_uei=uei, company_name=name
+                contract_dicts, company_uei=uei, company_name=name
             )
 
             # Add to results
@@ -172,7 +174,8 @@ def enriched_sbir_companies_with_categorization(
                     "psc_family_count": company_classification.psc_family_count,
                     "total_dollars": company_classification.total_dollars,
                     "product_dollars": company_classification.product_dollars,
-                    "service_rd_dollars": company_classification.service_rd_dollars,
+                    "service_dollars": company_classification.service_dollars,
+                    "agency_breakdown": company_classification.agency_breakdown,
                     "override_reason": company_classification.override_reason,
                 }
             )

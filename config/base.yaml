@@ -190,6 +190,12 @@ enrichment:
       enable_metrics: true
       metrics_file: "reports/metrics/enrichment_freshness.json"
 
+      # API response caching
+      cache:
+        enabled: true  # Enable caching of API responses
+        cache_dir: "data/cache/usaspending"  # Directory for cache files
+        ttl_hours: 24  # Time-to-live for cache entries (hours)
+
 extraction:
   sbir:
     # SBIR CSV configuration

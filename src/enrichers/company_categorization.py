@@ -43,6 +43,7 @@ from tenacity import (
 
 from src.config.loader import get_config
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
+from src.utils.usaspending_cache import USAspendingCache
 
 
 class RateLimiter:
@@ -697,10 +698,29 @@ def retrieve_company_contracts_api(
         logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
+    # Initialize cache
+    try:
+        config = get_config()
+        cache_config = config.enrichment_refresh.usaspending.cache
+        cache = USAspendingCache(
+            cache_dir=cache_config.cache_dir,
+            enabled=cache_config.enabled,
+            ttl_hours=cache_config.ttl_hours,
+        )
+    except Exception as e:
+        logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
+        cache = USAspendingCache(enabled=False)
+
+    # Check cache first
+    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name)
+    if cached_result is not None:
+        logger.debug(f"Returning cached result for company (UEI={uei}, DUNS={duns}, name={company_name})")
+        return cached_result
+
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
     matched_name = None
-    if not (valid_uei or valid_duns) and valid_name:
+    if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.info(f"Attempting fuzzy match via autocomplete for: {company_name}")
         match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
 
@@ -773,10 +793,12 @@ def retrieve_company_contracts_api(
         "PSC",                   # Product/Service Code (the key field we need!)
         "Recipient UEI",         # Recipient UEI
         "Award Type",            # Contract type
+        "Awarding Agency",       # Awarding agency name
+        "Awarding Sub Agency",   # Awarding sub-agency name
         "internal_id",           # Internal award identifier
     ]
 
-    all_transactions = []
+    all_transactions: list[dict[str, Any]] = []
     page = 1
 
     try:
@@ -886,6 +908,8 @@ def retrieve_company_contracts_api(
                     "recipient_duns": duns,
                     "action_date": transaction.get("Action Date"),
                     "award_type": transaction.get("Award Type"),
+                    "awarding_agency": transaction.get("Awarding Agency"),
+                    "awarding_sub_agency": transaction.get("Awarding Sub Agency"),
                 }
 
                 # Generate fallback ID if award_id is missing
@@ -924,15 +948,15 @@ def retrieve_company_contracts_api(
             
             # Generate name variations for better matching
             # API requires array format - include multiple variations for better matching
-            name_variations = _normalize_company_name_for_search(company_name)
+            name_variations = _normalize_company_name_for_search(company_name) if company_name else []
             # Use up to 3 most specific variations
-            name_search_terms = []
+            name_search_terms: list[str] = []
             for variation in name_variations[:3]:
                 if variation and len(variation) >= 10:
                     name_search_terms.append(variation)
                     if len(name_search_terms) >= 3:
                         break
-            if not name_search_terms:
+            if not name_search_terms and company_name:
                 name_search_terms = [company_name]
             
             name_filters["recipient_search_text"] = name_search_terms
@@ -940,7 +964,7 @@ def retrieve_company_contracts_api(
             
             # Try pagination with name search
             name_page = 1
-            name_transactions = []
+            name_transactions: list[dict[str, Any]] = []
             try:
                 while True:
                     name_payload = {
@@ -988,6 +1012,8 @@ def retrieve_company_contracts_api(
                             "recipient_duns": duns,
                             "action_date": transaction.get("Action Date"),
                             "award_type": transaction.get("Award Type"),
+                            "awarding_agency": transaction.get("Awarding Agency"),
+                            "awarding_sub_agency": transaction.get("Awarding Sub Agency"),
                         }
                         
                         if not processed_transaction["award_id"]:
@@ -1058,6 +1084,9 @@ def retrieve_company_contracts_api(
             logger.debug(f"Removed {initial_count - len(df)} duplicate contracts")
 
         logger.info(f"Processed {len(df)} unique contracts")
+
+        # Cache the result
+        cache.set(df, uei=uei, duns=duns, company_name=company_name)
 
         return df
 
@@ -1328,9 +1357,28 @@ def retrieve_sbir_awards_api(
         logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
         return pd.DataFrame()
 
+    # Initialize cache
+    try:
+        config = get_config()
+        cache_config = config.enrichment_refresh.usaspending.cache
+        cache = USAspendingCache(
+            cache_dir=cache_config.cache_dir,
+            enabled=cache_config.enabled,
+            ttl_hours=cache_config.ttl_hours,
+        )
+    except Exception as e:
+        logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
+        cache = USAspendingCache(enabled=False)
+
+    # Check cache first
+    cached_result = cache.get(uei=uei, duns=duns, company_name=company_name)
+    if cached_result is not None:
+        logger.debug(f"Returning cached SBIR awards result for company (UEI={uei}, DUNS={duns}, name={company_name})")
+        return cached_result
+
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
     fuzzy_matched = False
-    if not (valid_uei or valid_duns) and valid_name:
+    if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.debug(f"Attempting fuzzy match via autocomplete for SBIR awards: {company_name}")
         match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
 
@@ -1379,7 +1427,7 @@ def retrieve_sbir_awards_api(
         "internal_id",
     ]
 
-    all_transactions = []
+    all_transactions: list[dict[str, Any]] = []
     page = 1
 
     try:
@@ -1461,6 +1509,10 @@ def retrieve_sbir_awards_api(
         df = df.drop_duplicates(subset=["award_id"])
 
         logger.debug(f"Retrieved {len(df)} SBIR/STTR awards via API")
+        
+        # Cache the result
+        cache.set(df, uei=uei, duns=duns, company_name=company_name)
+        
         return df
 
     except Exception as e:

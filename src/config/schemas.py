@@ -176,6 +176,21 @@ class EnrichmentSourceConfig(BaseModel):
         description="Path to metrics output file",
     )
 
+    class CacheConfig(BaseModel):
+        """Configuration for API response caching."""
+
+        enabled: bool = Field(default=True, description="Enable caching of API responses")
+        cache_dir: str = Field(
+            default="data/cache/usaspending", description="Directory for cache files"
+        )
+        ttl_hours: int = Field(
+            default=24, ge=1, description="Time-to-live for cache entries (hours)"
+        )
+
+    cache: CacheConfig = Field(
+        default_factory=CacheConfig, description="API response caching configuration"
+    )
+
 
 class EnrichmentRefreshConfig(BaseModel):
     """Configuration for iterative enrichment refresh across all sources.

@@ -116,13 +116,14 @@ class CompanyCategorizationLoader:
           - company_uei (required): UEI to match Company node
           - classification (required): Product-leaning, Service-leaning, Mixed, Uncertain
           - product_pct (required): Percentage of product dollars
-          - service_pct (required): Percentage of service/R&D dollars
+          - service_pct (required): Percentage of service dollars
           - confidence (required): Low, Medium, High
           - award_count (required): Number of contracts analyzed
           - psc_family_count (optional): Number of distinct PSC families
           - total_dollars (optional): Total contract dollars
           - product_dollars (optional): Product contract dollars
-          - service_rd_dollars (optional): Service/R&D contract dollars
+          - service_dollars (optional): Service contract dollars
+          - agency_breakdown (optional): Dictionary of agency name -> percentage
           - override_reason (optional): Reason for classification override
 
         Args:
@@ -176,10 +177,15 @@ class CompanyCategorizationLoader:
             if "product_dollars" in raw:
                 props["categorization_product_dollars"] = _as_float(raw.get("product_dollars"))
 
-            if "service_rd_dollars" in raw:
-                props["categorization_service_rd_dollars"] = _as_float(
-                    raw.get("service_rd_dollars")
+            if "service_dollars" in raw:
+                props["categorization_service_dollars"] = _as_float(
+                    raw.get("service_dollars")
                 )
+
+            if "agency_breakdown" in raw:
+                agency_breakdown = raw.get("agency_breakdown")
+                if isinstance(agency_breakdown, dict):
+                    props["categorization_agency_breakdown"] = agency_breakdown
 
             if raw.get("override_reason"):
                 props["categorization_override_reason"] = _as_str(raw.get("override_reason"))
