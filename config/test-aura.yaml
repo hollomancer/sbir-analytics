@@ -1,0 +1,171 @@
+# Test configuration for Neo4j Aura Free
+# This file is loaded when ENVIRONMENT=test-aura
+# It overrides base.yaml with settings optimized for Aura Free's 100K node limit
+
+pipeline:
+  name: "sbir-etl"
+  version: "0.1.0"
+  environment: "test-aura"
+
+# Neo4j Aura Free configuration
+neo4j:
+  # Connection details (override via environment variables)
+  uri: "neo4j+s://localhost:7687"  # Override with your Aura URI
+  username: "neo4j"
+  password: "neo4j"  # Override with your Aura password
+  database: "neo4j"
+
+  # Aura Free-optimized settings
+  batch_size: 500  # Smaller batches for free tier
+  parallel_threads: 2  # Reduce parallelism to avoid overwhelming free instance
+  create_constraints: true  # Essential for data integrity
+  create_indexes: true  # Essential for query performance
+  transaction_timeout_seconds: 120  # Shorter timeout for free tier
+  retry_on_deadlock: true
+  max_deadlock_retries: 2  # Fewer retries
+
+  # Aura Free safeguards (custom fields for testing)
+  max_nodes: 95000  # Leave 5K buffer for safety
+  max_relationships: 190000  # Leave 10K buffer
+  check_node_count: true  # Validate before bulk operations
+  enable_quota_monitoring: true  # Monitor resource usage
+
+# Data extraction limits for testing
+# NOTE: In CI, sample limits are further reduced via environment variables
+# to ensure we stay well within Aura Free's 100K node limit
+extraction:
+  sbir:
+    csv_path: "data/raw/sbir/awards_data.csv"
+    batch_size: 500  # Smaller batches for Aura Free
+    encoding: "utf-8"
+    sample_limit: 1000  # CRITICAL: Safe limit for CI (≈2K nodes)
+                        # Can increase to 5000 for local testing (≈10K nodes)
+
+    duckdb:
+      database_path: ":memory:"
+      table_name: "sbir_awards"
+
+  usaspending:
+    database_name: "usaspending"
+    table_name: "awards"
+    import_chunk_size: 1000  # Reduced for testing
+    sample_limit: 500  # Limit USAspending data for CI
+
+  uspto:
+    csv_path: "data/raw/uspto/patent_assignments.csv"
+    batch_size: 500
+    encoding: "utf-8"
+    sample_limit: 300  # Limit patent data for CI
+
+# Reduced enrichment for testing
+enrichment:
+  performance:
+    chunk_size: 500  # Much smaller chunks
+    memory_threshold_mb: 512  # Lower memory threshold
+    match_rate_threshold: 0.60  # Relaxed for testing
+    timeout_seconds: 60  # Shorter timeout
+
+  # Disable enhanced features for faster testing
+  enhanced_matching:
+    enable_phonetic_matching: false
+    enable_jaro_winkler: false
+    enable_enhanced_abbreviations: false
+
+# Data quality - relaxed thresholds for test data
+data_quality:
+  sbir_awards:
+    pass_rate_threshold: 0.85  # Relaxed from 0.95
+    completeness_threshold: 0.80  # Relaxed from 0.90
+    uniqueness_threshold: 0.95  # Relaxed from 0.99
+
+  completeness:
+    award_id: 1.00  # Still required
+    company_name: 0.80  # Relaxed
+    award_amount: 0.70  # Relaxed
+    award_date: 0.80  # Relaxed
+    program: 0.85  # Relaxed
+
+# DuckDB - optimized for testing
+duckdb:
+  database_path: ":memory:"  # In-memory for speed
+  memory_limit_gb: 2  # Reduced memory
+  threads: 2  # Fewer threads
+  enable_object_cache: true
+  enable_query_profiler: false
+
+# Logging - more verbose for testing
+logging:
+  level: "DEBUG"  # More detailed logs
+  format: "json"
+  file_path: "logs/test-aura.log"
+  max_file_size_mb: 50  # Smaller log files
+  backup_count: 2  # Fewer backups
+  console_enabled: true
+  file_enabled: true
+
+# Metrics - enabled for monitoring
+metrics:
+  enabled: true
+  collection_interval_seconds: 15  # More frequent
+  persist_to_file: true
+  metrics_file_path: "logs/test-aura-metrics.json"
+
+  warning_thresholds:
+    stage_duration_seconds: 300  # 5 minutes
+    memory_usage_mb: 1024  # 1GB
+    error_rate_percentage: 10.0  # More lenient
+
+# Company categorization - reduced batch processing
+company_categorization:
+  batch_size: 50  # Smaller batches
+  parallel_workers: 2  # Fewer workers
+  usaspending_timeout_seconds: 30
+  usaspending_retry_attempts: 2
+
+# Validation - relaxed for test environment
+validation:
+  strict_schema: false  # Relaxed for testing
+  fail_on_first_error: false
+  sample_size_for_checks: 500  # Smaller sample
+  max_error_percentage: 0.10  # More lenient
+
+# Transformation - optimized for smaller datasets
+transformation:
+  company_deduplication:
+    similarity_threshold: 0.80  # Slightly relaxed
+    min_company_name_length: 3
+
+  graph_preparation:
+    batch_size: 500  # Smaller batches
+
+# Statistical reporting - simplified for testing
+statistical_reporting:
+  generation:
+    enabled: false  # Disable for faster testing
+    formats: ["json"]  # Minimal formats
+    output_directory: "reports/test-aura"
+
+  modules:
+    sbir_enrichment:
+      enabled: false
+    patent_analysis:
+      enabled: false
+    cet_classification:
+      enabled: false
+    transition_detection:
+      enabled: false
+
+# Fiscal analysis - disabled for testing
+fiscal_analysis:
+  quality_thresholds:
+    naics_coverage_rate: 0.70  # Relaxed
+    geographic_resolution_rate: 0.80  # Relaxed
+
+# CLI - optimized for test feedback
+cli:
+  theme: "default"
+  progress_refresh_rate: 0.5  # Slower refresh
+  show_timestamps: true
+  max_table_rows: 25  # Fewer rows displayed
+  api_timeout_seconds: 30
+  max_concurrent_operations: 2  # Reduced concurrency
