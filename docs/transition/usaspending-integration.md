@@ -70,7 +70,7 @@ This document captures the initial integration of USAspending data for the SBIR 
 - Run the extractor via:
 
   ```text
-  poetry run python scripts/extract_federal_contracts.py --subset \
+  uv run python scripts/extract_federal_contracts.py --subset \
 
       --output /Volumes/X10\ Pro/projects/sbir-etl-data/contracts_test_sample.parquet
   ```

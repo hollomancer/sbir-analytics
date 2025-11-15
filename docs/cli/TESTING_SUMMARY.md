@@ -7,7 +7,7 @@
 The quickest way to verify CLI installation and basic functionality:
 
 ```bash
-poetry run python scripts/test_cli.py
+uv run python scripts/test_cli.py
 ```
 
 This validates:
@@ -27,18 +27,18 @@ Test commands directly:
 
 ## Test help
 
-poetry run sbir-cli --help
-poetry run sbir-cli status --help
-poetry run sbir-cli metrics --help
+uv run sbir-cli --help
+uv run sbir-cli status --help
+uv run sbir-cli metrics --help
 
 ## Test status commands (will work if Dagster/Neo4j available)
 
-poetry run sbir-cli status summary
-poetry run sbir-cli status assets --group sbir_ingestion
+uv run sbir-cli status summary
+uv run sbir-cli status assets --group sbir_ingestion
 
 ## Test with dry-run (safe, no execution)
 
-poetry run sbir-cli ingest run --dry-run
+uv run sbir-cli ingest run --dry-run
 ```
 
 ### 3. Unit Tests
@@ -49,15 +49,15 @@ Run unit tests (some tests require mocking adjustments):
 
 ## Test display components (most reliable)
 
-poetry run pytest tests/unit/cli/test_display.py -v
+uv run pytest tests/unit/cli/test_display.py -v
 
 ## Test integration clients (requires mocking)
 
-poetry run pytest tests/unit/cli/test_integration_clients.py -v
+uv run pytest tests/unit/cli/test_integration_clients.py -v
 
 ## Test commands
 
-poetry run pytest tests/unit/cli/test_commands.py -v
+uv run pytest tests/unit/cli/test_commands.py -v
 ```
 
 ### 4. Integration Tests
@@ -65,7 +65,7 @@ poetry run pytest tests/unit/cli/test_commands.py -v
 Test end-to-end command execution:
 
 ```bash
-poetry run pytest tests/integration/cli/test_cli_integration.py -v
+uv run pytest tests/integration/cli/test_cli_integration.py -v
 ```
 
 ## Test Coverage
@@ -127,7 +127,7 @@ Many commands support `--dry-run`:
 
 ## Safe to run without services
 
-poetry run sbir-cli ingest run --dry-run
+uv run sbir-cli ingest run --dry-run
 ```
 
 ## CI/CD Testing
@@ -141,7 +141,7 @@ Tests should run in CI with mocked services:
 - name: Test CLI
 
   run: |
-    poetry run pytest tests/unit/cli/ tests/integration/cli/ \
+    uv run pytest tests/unit/cli/ tests/integration/cli/ \
 
       --cov=src/cli \
       --cov-report=xml
@@ -154,8 +154,8 @@ Tests should run in CI with mocked services:
 If imports fail:
 
 ```bash
-poetry install
-poetry run python -c "from src.cli.main import app; print('OK')"
+uv sync
+uv run python -c "from src.cli.main import app; print('OK')"
 ```
 
 ### Mocking Failures

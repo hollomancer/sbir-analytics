@@ -28,11 +28,11 @@ This guide walks you through running the Transition Detection MVP locally, revie
 
 ## 1. Install (if needed)
 
-poetry install
+uv sync
 
 ## 2. Verify contracts_sample is valid
 
-poetry run python scripts/validate_contracts_sample.py
+uv run python scripts/validate_contracts_sample.py
 
 ## 3. Run MVP
 
@@ -95,8 +95,8 @@ Notes:
 ## Prerequisites
 
 - Python 3.11+
-- Poetry installed and the project dependencies installed:
-  - poetry install
+- uv installed and the project dependencies installed:
+  - uv sync
 
 No local Neo4j or Dagster environment is required for this MVP run.
 
@@ -219,7 +219,7 @@ In Dagster environments, these checks can block downstream assets if thresholds 
 - Parquet module missing
   - The pipeline will write .ndjson files instead of parquet automatically.
   - You can install pyarrow to enable parquet:
-    - poetry add pyarrow
+    - uv add pyarrow
 
 - No data produced
   - Check logs printed by the make target.

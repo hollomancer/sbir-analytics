@@ -492,7 +492,7 @@ raise DependencyError(
     dependency_name="pandas",
     component="utils.data_processor",
     operation="process_dataframe",
-    details={"install_command": "poetry install"}
+    details={"install_command": "uv sync"}
 )
 ```
 
@@ -593,7 +593,7 @@ raise DependencyError(
     dependency_name="package_name",
     component="component_name",
     operation="operation_name",
-    details={"install_command": "poetry install --extras xyz"}
+    details={"install_command": "uv sync --extra xyz"}
 )
 
 # File not found

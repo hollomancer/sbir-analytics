@@ -21,7 +21,7 @@ Quick guide for testing the company categorization system against the high-volum
 ### 1. Test First 10 Companies (Fastest - ~2 minutes)
 
 ```bash
-poetry run python test_categorization_validation.py --limit 10
+uv run python test_categorization_validation.py --limit 10
 ```
 
 **Expected Output:**
@@ -56,7 +56,7 @@ Classification Distribution:
 ### 2. Test Specific Company by UEI
 
 ```bash
-poetry run python test_categorization_validation.py --uei ABC123DEF456
+uv run python test_categorization_validation.py --uei ABC123DEF456
 ```
 
 Shows detailed analysis for a single company.
@@ -64,7 +64,7 @@ Shows detailed analysis for a single company.
 ### 3. Test All Companies + Export Results
 
 ```bash
-poetry run python test_categorization_validation.py --output validation_results.csv
+uv run python test_categorization_validation.py --output validation_results.csv
 ```
 
 Processes all 200+ companies and exports to CSV (~20-30 minutes).
@@ -72,7 +72,7 @@ Processes all 200+ companies and exports to CSV (~20-30 minutes).
 ### 4. Test and Load to Neo4j
 
 ```bash
-poetry run python test_categorization_validation.py --limit 20 --load-neo4j
+uv run python test_categorization_validation.py --limit 20 --load-neo4j
 ```
 
 Tests 20 companies and loads results to Neo4j.
@@ -91,7 +91,7 @@ ls -lh data/raw/sbir/over-100-awards-company_search_1763075384.csv
 ls -lh data/processed/sbir.duckdb
 
 # 3. Verify dependencies installed
-poetry install
+uv sync
 ```
 
 **If validation dataset is missing:**
@@ -103,7 +103,7 @@ You'll need to load USAspending database dump first. See main README for instruc
 ### Step 2: Run Initial Test (10 companies)
 
 ```bash
-poetry run python test_categorization_validation.py --limit 10 --verbose
+uv run python test_categorization_validation.py --limit 10 --verbose
 ```
 
 This will:
@@ -125,7 +125,7 @@ Look for companies you know and verify classifications make sense:
 
 ```bash
 # Example: Check a specific aerospace company
-poetry run python test_categorization_validation.py --uei <KNOWN_UEI>
+uv run python test_categorization_validation.py --uei <KNOWN_UEI>
 ```
 
 **Manual validation checklist:**
@@ -137,7 +137,7 @@ poetry run python test_categorization_validation.py --uei <KNOWN_UEI>
 ### Step 4: Run Full Validation
 
 ```bash
-poetry run python test_categorization_validation.py --output full_validation.csv
+uv run python test_categorization_validation.py --output full_validation.csv
 ```
 
 **This will take 20-30 minutes** depending on database size and network.
@@ -146,7 +146,7 @@ poetry run python test_categorization_validation.py --output full_validation.csv
 
 ```bash
 # Open CSV in Excel/LibreOffice or analyze with pandas
-poetry run python
+uv run python
 ```
 
 ```python
@@ -177,10 +177,10 @@ Uncertain         15
 
 ```bash
 # Test with small batch first
-poetry run python test_categorization_validation.py --limit 20 --load-neo4j
+uv run python test_categorization_validation.py --limit 20 --load-neo4j
 
 # If successful, load all
-poetry run python test_categorization_validation.py --load-neo4j --output full_results.csv
+uv run python test_categorization_validation.py --load-neo4j --output full_results.csv
 ```
 
 Then query Neo4j:
@@ -268,7 +268,7 @@ Here are some well-known SBIR companies you can use for manual validation:
 Find their UEIs in the dataset and test:
 
 ```bash
-poetry run python test_categorization_validation.py --uei <THEIR_UEI>
+uv run python test_categorization_validation.py --uei <THEIR_UEI>
 ```
 
 ---
@@ -292,10 +292,10 @@ find data -name "*over-100-awards*"
 **Fix:**
 ```bash
 # Check config
-poetry run python -c "from src.config.loader import get_config; print(get_config().extraction.usaspending)"
+uv run python -c "from src.config.loader import get_config; print(get_config().extraction.usaspending)"
 
 # Verify table exists in DuckDB
-poetry run python -c "
+uv run python -c "
 import duckdb
 conn = duckdb.connect('data/processed/sbir.duckdb')
 print(conn.execute('SHOW TABLES').fetchall())
@@ -310,13 +310,13 @@ conn.close()
 ```bash
 # Process in chunks of 50
 for i in 0 50 100 150; do
-    poetry run python test_categorization_validation.py \
+    uv run python test_categorization_validation.py \
         --limit 50 \
         --output results_chunk_$i.csv
 done
 
 # Combine results
-poetry run python -c "
+uv run python -c "
 import pandas as pd
 import glob
 chunks = [pd.read_csv(f) for f in sorted(glob.glob('results_chunk_*.csv'))]
@@ -346,7 +346,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
 
 4. **Run Full Pipeline in Dagster**
    ```bash
-   poetry run dagster dev
+   uv run dagster dev
    # Materialize: enriched_sbir_companies_with_categorization
    # Review asset checks
    ```
@@ -354,7 +354,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
 5. **Load to Neo4j for Analysis**
    ```bash
    # After validation looks good
-   poetry run python test_categorization_validation.py --load-neo4j
+   uv run python test_categorization_validation.py --load-neo4j
    ```
 
 ---

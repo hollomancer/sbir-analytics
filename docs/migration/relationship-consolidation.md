@@ -79,7 +79,7 @@ This migration consolidates relationship types in Neo4j to simplify the graph sc
 1. **Test the pipeline**:
    ```bash
    # Run SBIR loading to verify new relationships are created correctly
-   poetry run dagster asset materialize -m src.assets.sbir_neo4j_loading sbir_neo4j_loading
+   uv run dagster asset materialize -m src.assets.sbir_neo4j_loading sbir_neo4j_loading
    ```
 
 2. **Verify in Neo4j Browser**:

@@ -94,8 +94,8 @@ These libraries need to be added for new features:
 
 | Library | Version | Purpose | Installation |
 |---------|---------|---------|-------------|
-| **scikit-learn** | ≥1.4.0 | TF-IDF, Logistic Regression, feature selection, calibration | `poetry add scikit-learn>=1.4` |
-| **spacy** | ≥3.7.0 | Sentence segmentation, evidence extraction | `poetry add spacy>=3.7` |
+| **scikit-learn** | ≥1.4.0 | TF-IDF, Logistic Regression, feature selection, calibration | `uv add scikit-learn>=1.4` |
+| **spacy** | ≥3.7.0 | Sentence segmentation, evidence extraction | `uv add spacy>=3.7` |
 | **en_core_web_sm** | Latest | English NLP model for spaCy | `python -m spacy download en_core_web_sm` |
 
 ### Why Not Shared with Other Modules?
@@ -710,19 +710,19 @@ bandit = "^1.7.0"
 
 ## Base installation (SBIR + USPTO modules)
 
-poetry install
+uv sync
 
 ## With ML capabilities (adds CET classification)
 
-poetry install --extras ml
+uv sync --extra ml
 
 ## Download spaCy model (if using ML extras)
 
-poetry run python -m spacy download en_core_web_sm
+uv run python -m spacy download en_core_web_sm
 
 ## Development installation (includes testing tools)
 
-poetry install --with dev
+uv sync --dev
 ```
 
 ---

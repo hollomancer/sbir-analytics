@@ -250,14 +250,14 @@
 **Goal**: Add advanced testing techniques
 
 **Phase 5.1**: Property-Based Tests
-- Install Hypothesis: `poetry add --group dev hypothesis`
+- Install Hypothesis: `uv add --dev hypothesis`
 - Create property tests for:
   - Data model invariants (models/)
   - Text normalization (utils/)
   - Enrichment strategies (enrichers/)
 
 **Phase 5.2**: Performance Tests
-- Install pytest-benchmark: `poetry add --group dev pytest-benchmark`
+- Install pytest-benchmark: `uv add --dev pytest-benchmark`
 - Benchmark critical paths:
   - Database queries (loaders/)
   - Search provider performance (enrichers/)
@@ -346,7 +346,7 @@ After implementing Phase 3-5 recommendations:
 ### Immediate (This Week)
 1. ✅ Install testing dependencies:
    ```bash
-   poetry add --group dev hypothesis pytest-benchmark pytest-vcr faker
+   uv add --dev hypothesis pytest-benchmark pytest-vcr faker
    ```
 
 2. ✅ Run actual coverage analysis:

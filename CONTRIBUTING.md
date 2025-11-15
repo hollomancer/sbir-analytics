@@ -16,9 +16,9 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
 ### Prerequisites
 
-- Python 3.11
-- Poetry for dependency management
-- Docker and Docker Compose (for running Neo4j locally)
+- Python 3.11 or 3.12
+- uv for dependency management ([install uv](https://github.com/astral-sh/uv))
+- Neo4j Aura account (Free tier available) or Docker for local Neo4j
 - Git
 
 ### Initial Setup
@@ -30,31 +30,31 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
    cd sbir-etl
    ```
 
-2. **Install dependencies with Poetry:**
+2. **Install dependencies with uv:**
 
    ```bash
-   poetry install
+   uv sync
    ```
 
-3. **Activate the virtual environment:**
+3. **Set up Neo4j Aura (recommended):**
+
+   - Create a Neo4j Aura instance at [neo4j.com/cloud/aura](https://neo4j.com/cloud/aura)
+   - Copy your connection URI and credentials
+
+4. **Configure environment:**
 
    ```bash
-   poetry shell
-   ```
-
-4. **Start local services (Neo4j) with Docker Compose:**
-
-   ```bash
-   docker-compose up -d neo4j
+   cp .env.example .env
+   # Edit .env: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
    ```
 
 5. **Verify setup:**
 
    ```bash
-   pytest
-   black --check .
-   ruff check .
-   mypy src/
+   uv run pytest
+   uv run black --check .
+   uv run ruff check .
+   uv run mypy src/
    ```
 
 ## Development Workflow

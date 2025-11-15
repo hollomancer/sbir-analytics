@@ -467,7 +467,7 @@ class TestOriginalDataStrategy:
 
 #### Task 3.1.1: Install and Configure Hypothesis (0.5 days)
 ```bash
-poetry add --group dev hypothesis
+uv add --dev hypothesis
 ```
 
 **Configuration** in `pyproject.toml`:
@@ -702,13 +702,13 @@ def test_contract_extractor_memory_usage():
 ## Quick Start
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
 
 # Run fast tests only
-poetry run pytest -m fast
+uv run pytest -m fast
 
 # Run with coverage
-poetry run pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 ```
 
 ## Test Categories
@@ -837,7 +837,7 @@ tests/fixtures/
 ```yaml
 - name: Check coverage threshold
   run: |
-    poetry run pytest --cov=src --cov-fail-under=75 --cov-report=term-missing
+    uv run pytest --cov=src --cov-fail-under=75 --cov-report=term-missing
 
 - name: Coverage comment
   uses: py-cov-action/python-coverage-comment-action@v3
@@ -877,14 +877,14 @@ exclude_lines = [
 **Install**: `pytest-xdist`
 
 ```bash
-poetry add --group dev pytest-xdist
+uv add --dev pytest-xdist
 ```
 
 **Update CI**:
 ```yaml
 - name: Run tests in parallel
   run: |
-    poetry run pytest -n auto -m "not slow" --dist loadgroup
+    uv run pytest -n auto -m "not slow" --dist loadgroup
 ```
 
 **Configuration**:
@@ -903,7 +903,7 @@ addopts = "-v --cov=src --cov-report=term-missing -n auto"
 **Install**: `pytest-rerunfailures` and `pytest-flakefinder`
 
 ```bash
-poetry add --group dev pytest-rerunfailures pytest-flakefinder
+uv add --dev pytest-rerunfailures pytest-flakefinder
 ```
 
 **Configuration**:
@@ -927,7 +927,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run tests 10 times
         run: |
-          poetry run pytest --flake-finder --flake-runs=10
+          uv run pytest --flake-finder --flake-runs=10
       - name: Report flaky tests
         if: failure()
         uses: actions/github-script@v6
@@ -963,7 +963,7 @@ def test_loaders_import():
 
 ### Quick Win 2: Run Coverage Report (30 minutes)
 ```bash
-poetry run pytest --cov=src --cov-report=html --cov-report=term-missing
+uv run pytest --cov=src --cov-report=html --cov-report=term-missing
 open htmlcov/index.html
 ```
 Save report as baseline and identify lowest-hanging fruit.

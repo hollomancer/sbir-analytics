@@ -6,12 +6,12 @@ This guide explains how to test the company categorization system at different l
 
 1. **Install Dependencies**
    ```bash
-   poetry install
+   uv sync
    ```
 
 2. **Verify Installation**
    ```bash
-   poetry run python -c "from src.transformers.company_categorization import classify_contract; print('✓ Imports working')"
+   uv run python -c "from src.transformers.company_categorization import classify_contract; print('✓ Imports working')"
    ```
 
 ---
@@ -23,7 +23,7 @@ This guide explains how to test the company categorization system at different l
 Run the automated test script:
 
 ```bash
-poetry run python test_categorization_quick.py
+uv run python test_categorization_quick.py
 ```
 
 This tests:
@@ -59,7 +59,7 @@ Company Categorization - Quick Test
 Test individual functions directly:
 
 ```python
-poetry run python
+uv run python
 ```
 
 ```python
@@ -109,7 +109,7 @@ Product-leaning: 75.0% Product
 1. Create a test dataset with known companies:
 
 ```python
-poetry run python
+uv run python
 ```
 
 ```python
@@ -187,7 +187,7 @@ print(f"Total Contracts: {company_result.award_count}")
 
 1. Start the Dagster dev server:
    ```bash
-   poetry run dagster dev
+   uv run dagster dev
    ```
 
 2. Open browser to http://localhost:3000
@@ -299,7 +299,7 @@ class TestCompanyAggregation:
 
 Run tests:
 ```bash
-poetry run pytest tests/test_company_categorization.py -v
+uv run pytest tests/test_company_categorization.py -v
 ```
 
 ---
@@ -345,7 +345,7 @@ Use this checklist when validating the system:
 ### Import Errors
 ```bash
 # Ensure dependencies are installed
-poetry install
+uv sync
 
 # Verify PYTHONPATH
 export PYTHONPATH=/home/user/sbir-etl
@@ -354,7 +354,7 @@ export PYTHONPATH=/home/user/sbir-etl
 ### USAspending Connection Issues
 ```bash
 # Check DuckDB database path
-poetry run python -c "from src.config.loader import get_config; print(get_config().duckdb.database_path)"
+uv run python -c "from src.config.loader import get_config; print(get_config().duckdb.database_path)"
 
 # Verify USAspending dump is loaded
 # Check config/base.yaml: paths.usaspending_dump_file

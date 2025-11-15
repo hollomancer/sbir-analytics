@@ -7,7 +7,7 @@ The SBIR CLI provides a comprehensive command-line interface for monitoring and 
 The CLI is installed automatically with the project:
 
 ```bash
-poetry install
+uv sync
 ```
 
 The `sbir-cli` command will be available after installation.
@@ -271,11 +271,11 @@ export SBIR_ETL__CLI__DASHBOARD_REFRESH_RATE=5
 
 ## Reinstall package to register entry point
 
-poetry install
+uv sync
 
 ## Or run directly
 
-poetry run python -m src.cli.main
+uv run python -m src.cli.main
 ```
 
 ### Import Errors
@@ -284,16 +284,16 @@ poetry run python -m src.cli.main
 
 ## Ensure dependencies are installed
 
-poetry install
+uv sync
 
 ## Check Rich is available
 
-poetry run python -c "import rich; print('OK')"
+uv run python -c "import rich; print('OK')"
 ```
 
 ### Dagster Connection Issues
 
-- Verify Dagster is running: `poetry run dagster dev`
+- Verify Dagster is running: `uv run dagster dev`
 - Check Dagster port (default: 3000)
 - Verify workspace configuration in `workspace.yaml`
 
@@ -383,15 +383,15 @@ Quick test:
 
 ## Validation script
 
-poetry run python scripts/test_cli.py
+uv run python scripts/test_cli.py
 
 ## Unit tests
 
-poetry run pytest tests/unit/cli/ -v
+uv run pytest tests/unit/cli/ -v
 
 ## Integration tests
 
-poetry run pytest tests/integration/cli/ -v
+uv run pytest tests/integration/cli/ -v
 ```
 
 ## See Also

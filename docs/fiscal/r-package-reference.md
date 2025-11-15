@@ -197,7 +197,7 @@ Common R package errors:
 ### System Requirements
 
 1. **R Runtime**: Install R (https://www.r-project.org/)
-2. **Python rpy2**: `poetry install --extras r` or `pip install rpy2`
+2. **Python rpy2**: `uv sync --extra r` or `pip install rpy2`
 3. **R Packages**: Install StateIO and USEEIOR in R environment
 
 ### Step-by-Step Installation
@@ -246,7 +246,7 @@ library(useeior)
 ###3. Install Python rpy2
 
 ```bash
-poetry install --extras r
+uv sync --extra r
 
 ## or
 
@@ -273,7 +273,7 @@ except Exception as e:
 
 1. **rpy2 Import Error**
    - Ensure R is installed and in PATH
-   - Install rpy2: `poetry install --extras r`
+   - Install rpy2: `uv sync --extra r`
    - Check R_HOME environment variable if needed
 
 2. **R Package Not Found**

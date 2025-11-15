@@ -2,73 +2,79 @@
 
 A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4j graph database for analysis and visualization.
 
-## CLI Interface
+## Quick Start
 
-The SBIR CLI provides a rich command-line interface for monitoring and operating the pipeline:
+### Prerequisites
+
+- **Python**: 3.11 or 3.12
+- **uv**: For dependency management ([install uv](https://github.com/astral-sh/uv))
+- **Neo4j Aura**: Neo4j cloud instance (Free tier available)
+- **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
+
+### Local Development
+
+1. **Clone and install dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd sbir-etl
+   uv sync
+   ```
+
+2. **Set up Neo4j Aura:**
+   - Create a Neo4j Aura instance at [neo4j.com/cloud/aura](https://neo4j.com/cloud/aura)
+   - Copy your connection URI and credentials
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+   ```
+
+4. **Run the pipeline:**
+   ```bash
+   uv run dagster dev
+   # Open http://localhost:3000 and materialize the assets
+   ```
+
+5. **Run tests:**
+   ```bash
+   uv run pytest -v --cov=src
+   ```
+
+### Container Development (Alternative)
+
+For containerized development with Docker Compose:
 
 ```bash
-
-## Install and verify
-
-poetry install
-sbir-cli --help
-
-## Check pipeline status
-
-sbir-cli status summary
-
-## View metrics
-
-sbir-cli metrics latest
-
-## Start interactive dashboard
-
-sbir-cli dashboard start
+cp .env.example .env
+# Edit .env: set NEO4J_USER, NEO4J_PASSWORD (for local Neo4j if not using Aura)
+make docker-build
+make docker-up-dev
+# Open http://localhost:3000 and materialize the assets
 ```
 
-See [CLI Reference Guide](docs/cli/README.md) for complete documentation.
+See `docs/deployment/containerization.md` for full details.
 
-## Configuration
+## Overview
 
-### Path Configuration
+This project implements a five-stage ETL pipeline that processes SBIR award data from multiple government sources and loads it into a Neo4j graph database for analysis and visualization.
 
-The pipeline uses a flexible, configuration-driven approach for file system paths. All paths can be configured via YAML files or environment variables.
+### Pipeline Stages
 
-**Default paths** (relative to project root):
-```
-data/
-├── usaspending/              # USAspending database dumps
-├── transition/               # Transition detection outputs
-├── raw/                      # Raw input data
-└── scripts_output/          # Script outputs
-```
+1. **Extract**: Download and parse raw data (SBIR.gov CSV, USAspending PostgreSQL dump, USPTO patent DTAs)
+2. **Validate**: Schema validation and data quality checks
+3. **Enrich**: Augment data with fuzzy matching and external enrichment
+4. **Transform**: Business logic and graph-ready entity preparation
+5. **Load**: Write to Neo4j with idempotent operations and relationship chains
 
-**Environment variable overrides:**
-```bash
-# Override any path in configuration
-export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
-export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/path/to/dump.zip
-export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/path/to/contracts.parquet
-```
+### Key Features
 
-**Configuration file** (`config/base.yaml`):
-```yaml
-paths:
-  data_root: "data"
-  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
-  transition_contracts_output: "data/transition/contracts_ingestion.parquet"
-  transition_dump_dir: "data/transition/pruned_data_store_api_dump"
-  transition_vendor_filters: "data/transition/sbir_vendor_filters.json"
-  scripts_output: "data/scripts_output"
-```
-
-**Key benefits:**
-- ✅ **Portable**: No hardcoded paths - works across different environments
-- ✅ **Flexible**: Override via environment variables for different deployments
-- ✅ **Validated**: Automatic path validation on startup with helpful error messages
-- ✅ **Docker-ready**: Easy volume mounting and path configuration
-
-See [Path Configuration Guide](docs/configuration/paths.md) for complete documentation.
+- **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
+- **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
+- **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
+- **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
+- **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
+- **Iterative Enrichment Refresh**: Automatic freshness tracking and refresh for enrichment data
 
 ## Documentation Map
 
@@ -132,28 +138,18 @@ After transition detection pipeline:
 - **Neo4j Transition nodes** - Queryable in graph database
 - **Neo4j relationships** - TRANSITIONED_TO, RESULTED_IN, ENABLED_BY, INVOLVES_TECHNOLOGY
 
-### Quick Start
+### Usage
 
 ```bash
+# Run full transition detection pipeline
+uv run python -m dagster job execute -f src/definitions.py -j transition_full_job
 
-## Run full transition detection pipeline (all SBIR awards)
-
-poetry run python -m dagster job execute -f src/definitions.py -j transition_full_job
-
-## Or: Run from Dagster UI
-
-dagster dev
-
-## Then select and materialize "transition_full_job"
-
+# Or: Run from Dagster UI
+uv run dagster dev
+# Then select and materialize "transition_full_job"
 ```
 
-**Expected Output** (10–30 minutes on typical hardware):
-- All 169 tasks complete ✅
-- ~40,000–80,000 detected transitions (depending on dataset size)
-- Precision: ≥85% (HIGH confidence validated)
-- Full analytics suite and executive reports generated
-- Full analytics suite generated
+**Expected Output**: ~40,000–80,000 detected transitions with ≥85% precision (HIGH confidence)
 
 ### Configuration
 
@@ -255,18 +251,18 @@ ORDER BY effectiveness_percent DESC
 
 ## Run all transition detection tests
 
-poetry run pytest tests/unit/test_transition*.py -v
-poetry run pytest tests/integration/test_transition_integration.py -v
-poetry run pytest tests/e2e/test_transition_e2e.py -v
+uv run pytest tests/unit/test_transition*.py -v
+uv run pytest tests/integration/test_transition_integration.py -v
+uv run pytest tests/e2e/test_transition_e2e.py -v
 
 ## Run with coverage
 
-poetry run pytest tests/unit/test_transition*.py --cov=src/transition --cov-report=html
+uv run pytest tests/unit/test_transition*.py --cov=src/transition --cov-report=html
 
 ## Run specific signal tests
 
-poetry run pytest tests/unit/test_transition_scorer.py -v  # 32 tests, 93% coverage
-poetry run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% coverage
+uv run pytest tests/unit/test_transition_scorer.py -v  # 32 tests, 93% coverage
+uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% coverage
 ```
 
 ### Key Files
@@ -368,24 +364,18 @@ After fiscal returns analysis pipeline:
 - **comprehensive_fiscal_report.json** - Complete analysis with all metrics
 - **audit_trail.json** - Parameter lineage and transformation history
 
-### Quick Start
+### Usage
 
 ```bash
+# Run MVP fiscal analysis (core functionality)
+uv run python -m dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
 
-## Run MVP fiscal analysis (core functionality)
+# Run full analysis with sensitivity analysis
+uv run python -m dagster job execute -f src/definitions.py -j fiscal_returns_full_job
 
-poetry run dagster job execute -f src/definitions.py -j fiscal_returns_mvp_job
-
-## Run full analysis with sensitivity analysis
-
-poetry run dagster job execute -f src/definitions.py -j fiscal_returns_full_job
-
-## Or: Run from Dagster UI
-
-dagster dev
-
-## Then select and materialize "fiscal_returns_full_job"
-
+# Or: Run from Dagster UI
+uv run dagster dev
+# Then select and materialize "fiscal_returns_full_job"
 ```
 
 **Expected Output** (15–45 minutes depending on dataset size):
@@ -442,7 +432,7 @@ For fiscal returns analysis with StateIO/USEEIOR economic models:
 2. **Install Python rpy2**:
 
    ```bash
-   poetry install --extras r
+   uv sync --extra r
    ```
 
 3. **Install R packages** (in R console):
@@ -590,49 +580,57 @@ For ongoing development:
 
 ---
 
-## Transition Detection MVP
+## Configuration
 
-**Status**: MVP infrastructure complete. Sample data validated (5,000 contracts, 100% action_date coverage). Ready for quality gate review.</parameter>
+### Path Configuration
 
-</invoke>
+The pipeline uses a flexible, configuration-driven approach for file system paths. All paths can be configured via YAML files or environment variables.
 
-### 30-Minute Quick Start
-
-```bash
-
-## 1. Verify contracts sample meets acceptance criteria
-
-poetry run python scripts/validate_contracts_sample.py
-
-## 2. Run the MVP pipeline (vendor resolution → transition scoring → evidence)
-
-make transition-mvp-run
-
-## 3. Review validation summary and gates
-
-cat reports/validation/transition_mvp.json | jq .
-
-## 4. Review 30 quality samples for precision assessment
-
-cat reports/validation/transition_quality_review_sample.json | jq '.[] | select(.score >= 0.80)'
-
-## 5. (Optional) Clean artifacts
-
-make transition-mvp-clean
+**Default paths** (relative to project root):
+```
+data/
+├── usaspending/              # USAspending database dumps
+├── transition/               # Transition detection outputs
+├── raw/                      # Raw input data
+└── scripts_output/          # Script outputs
 ```
 
-### What You Get
+**Configuration file** (`config/base.yaml`):
+```yaml
+paths:
+  data_root: "data"
+  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
+  transition_contracts_output: "data/transition/contracts_ingestion.parquet"
+  scripts_output: "data/scripts_output"
+```
 
-After the MVP run:
+**Key benefits:**
+- ✅ **Portable**: No hardcoded paths - works across different environments
+- ✅ **Flexible**: Override via environment variables for different deployments
+- ✅ **Validated**: Automatic path validation on startup with helpful error messages
 
-- ✓ **contracts_sample.parquet** (5,000 records with validated metadata)
-- ✓ **vendor_resolution** mapping (award recipients → federal contracts)
-- ✓ **transition_scores** with deterministic rule-based scoring
-- ✓ **transitions_evidence.ndjson** for manual inspection
-- ✓ **Quality review samples** (30 high-confidence transitions for precision assessment)
-- ✓ **Validation gates** enforcing data quality (coverage, resolution rate, etc.)
+See [Path Configuration Guide](docs/configuration/paths.md) for complete documentation.
 
-### Acceptance Criteria (Task 25.1-25.6)
+## CLI Interface
+
+The SBIR CLI provides a rich command-line interface for monitoring and operating the pipeline:
+
+```bash
+# Install and verify
+uv sync
+uv run sbir-cli --help
+
+# Check pipeline status
+uv run sbir-cli status summary
+
+# View metrics
+uv run sbir-cli metrics latest
+
+# Start interactive dashboard
+uv run sbir-cli dashboard start
+```
+
+See [CLI Reference Guide](docs/cli/README.md) for complete documentation.
 
 ✓ Sample size: 1k–10k records
 ✓ Action date coverage: ≥ 90%
@@ -862,22 +860,22 @@ The PatentsView API integration enables enrichment of SBIR companies with patent
 
 ```bash
 # Test first 10 companies (quick)
-poetry run python test_patentsview_enrichment.py --limit 10
+uv run python test_patentsview_enrichment.py --limit 10
 
 # Test all companies
-poetry run python test_patentsview_enrichment.py
+uv run python test_patentsview_enrichment.py
 
 # Test with a different CSV file
-poetry run python test_patentsview_enrichment.py --dataset path/to/companies.csv
+uv run python test_patentsview_enrichment.py --dataset path/to/companies.csv
 
 # Test specific company by UEI
-poetry run python test_patentsview_enrichment.py --uei ABC123DEF456
+uv run python test_patentsview_enrichment.py --uei ABC123DEF456
 
 # Export results to CSV
-poetry run python test_patentsview_enrichment.py --output results.csv
+uv run python test_patentsview_enrichment.py --output results.csv
 
 # Generate detailed markdown report
-poetry run python test_patentsview_enrichment.py --markdown-report report.md
+uv run python test_patentsview_enrichment.py --markdown-report report.md
 ```
 
 **Programmatic Usage**:
@@ -917,26 +915,20 @@ PatentsView API has a rate limit of 45 requests per minute. The client automatic
 
 API responses are cached by default (24-hour TTL) to avoid redundant queries. Cache can be disabled or configured in `config/base.yaml`.
 
-### Quick Start
+### Usage
 
 ```bash
-
-## List stale awards
-
+# List stale awards
 python scripts/refresh_enrichment.py list-stale --source usaspending
 
-## Refresh stale awards
-
+# Refresh stale awards
 python scripts/refresh_enrichment.py refresh-usaspending --stale-only
 
-## View freshness statistics
-
+# View freshness statistics
 python scripts/refresh_enrichment.py stats --source usaspending
 ```
 
-**Configuration**: `config/base.yaml` → `enrichment_refresh.usaspending`
-
-**Metrics**: `reports/metrics/enrichment_freshness.json`
+**Configuration**: `config/base.yaml` → `enrichment_refresh.usaspending` | **Metrics**: `reports/metrics/enrichment_freshness.json`
 
 ## Company Categorization
 
@@ -960,22 +952,22 @@ The company categorization system analyzes federal contract portfolios to classi
 
 ```bash
 # Test first 10 companies (quick)
-poetry run python test_categorization_validation.py --limit 10
+uv run python test_categorization_validation.py --limit 10
 
 # Test all companies
-poetry run python test_categorization_validation.py
+uv run python test_categorization_validation.py
 
 # Test specific company by UEI
-poetry run python test_categorization_validation.py --uei ABC123DEF456
+uv run python test_categorization_validation.py --uei ABC123DEF456
 
 # Export results to CSV
-poetry run python test_categorization_validation.py --output results.csv
+uv run python test_categorization_validation.py --output results.csv
 
 # Generate detailed markdown report
-poetry run python test_categorization_validation.py --markdown-report report.md
+uv run python test_categorization_validation.py --markdown-report report.md
 
 # Load categorized companies to Neo4j
-poetry run python test_categorization_validation.py --load-neo4j
+uv run python test_categorization_validation.py --load-neo4j
 ```
 
 **Programmatic Usage**:
@@ -1033,19 +1025,19 @@ This script orchestrates all migrations in the correct order:
 
 ```bash
 # Dry run to see what would happen
-poetry run python scripts/migration/unified_schema_migration.py --dry-run
+uv run python scripts/migration/unified_schema_migration.py --dry-run
 
 # Run all migrations (requires confirmation)
-poetry run python scripts/migration/unified_schema_migration.py
+uv run python scripts/migration/unified_schema_migration.py
 
 # Run all migrations (skip confirmation)
-poetry run python scripts/migration/unified_schema_migration.py --yes
+uv run python scripts/migration/unified_schema_migration.py --yes
 
 # Skip specific steps
-poetry run python scripts/migration/unified_schema_migration.py --yes --skip-steps 1,2
+uv run python scripts/migration/unified_schema_migration.py --yes --skip-steps 1,2
 
 # Optimize for speed (larger batches, more connections)
-poetry run python scripts/migration/unified_schema_migration.py --yes --batch-size 2000 --connection-pool-size 30
+uv run python scripts/migration/unified_schema_migration.py --yes --batch-size 2000 --connection-pool-size 30
 ```
 
 ### Features
@@ -1069,107 +1061,6 @@ export NEO4J_PASSWORD=your_password
 - **Migration Guides**: `docs/migration/` - Detailed guides for each migration step
 - **Schema Documentation**: `docs/schemas/` - Neo4j schema documentation
 
-## Quick Start
-
-### Prerequisites
-
-- **Python**: 3.11 or 3.12
-- **Poetry**: For dependency management
-- **Docker**: For containerized development
-- **Neo4j**: 5.x (provided via Docker Compose)
-- **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
-  - Install R: https://www.r-project.org/
-  - Install rpy2: `poetry install --extras r`
-  - R packages: [StateIO](https://github.com/USEPA/stateior) | [USEEIOR](https://github.com/USEPA/useeior)
-  - Install R packages: See [R Package Installation](#r-package-installation) below
-
-### Container Development (Recommended)
-
-The project provides Docker Compose for a consistent development and testing environment, including comprehensive E2E testing capabilities optimized for MacBook Air development.
-
-1. **Set up environment:**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env: set NEO4J_USER, NEO4J_PASSWORD
-   ```
-
-2. **Build and start services:**
-
-   ```bash
-   make docker-build
-   make docker-up-dev
-   ```
-
-3. **Run the pipeline:**
-
-   Open your browser to [http://localhost:3000](http://localhost:3000) and materialize the assets to run the pipeline.
-
-4. **Run tests in container:**
-
-   ```bash
-   make docker-test
-   ```
-
-5. **Run E2E tests locally:**
-
-   ```bash
-   # Run comprehensive E2E tests (MacBook Air optimized)
-   make docker-e2e-standard
-
-   # Quick smoke test (< 2 minutes)
-   make docker-e2e-minimal
-
-   # Performance test with larger datasets
-   make docker-e2e-large
-
-   # Edge case testing
-   make docker-e2e-edge-cases
-
-   # Interactive debugging
-   make docker-e2e-debug
-
-   # Cleanup E2E environment
-   make docker-e2e-clean
-   ```
-
-6. **View logs:**
-
-   ```bash
-   make docker-logs SERVICE=dagster-webserver
-   ```
-
-See `docs/deployment/containerization.md` for full details.
-
-### Local Development (Alternative)
-
-1. **Clone and install dependencies:**
-
-   ```bash
-   git clone <repository-url>
-   cd sbir-etl
-   poetry install
-   ```
-
-2. **Configure environment:**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env with Neo4j credentials and data paths
-   ```
-
-3. **Start Dagster UI:**
-
-   ```bash
-   poetry run dagster dev
-   # Open http://localhost:3000 and materialize the assets.
-   ```
-
-4. **Run tests:**
-
-   ```bash
-   pytest -v --cov=src --cov-report=html
-   ```
 
 ## Bulk Data Sources
 
@@ -1262,33 +1153,33 @@ The CI system optimizes test runtime with prioritized job tiers:
 
 ## Run all tests
 
-poetry run pytest
+uv run pytest
 
 ## Run fast tests only (matches PR/commit CI)
 
-poetry run pytest -m fast
+uv run pytest -m fast
 
 ## Run slow tests only
 
-poetry run pytest -m slow
+uv run pytest -m slow
 
 ## Run integration tests
 
-poetry run pytest -m integration
+uv run pytest -m integration
 
 ## Run E2E tests
 
-poetry run pytest -m e2e
+uv run pytest -m e2e
 
 ## Run with coverage
 
-poetry run pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-report=html
 
 ## Run specific test categories
 
-poetry run pytest tests/unit/test_config.py -v
-poetry run pytest tests/integration/ -v
-poetry run pytest tests/e2e/ -v
+uv run pytest tests/unit/test_config.py -v
+uv run pytest tests/integration/ -v
+uv run pytest tests/e2e/ -v
 
 ## Container tests
 

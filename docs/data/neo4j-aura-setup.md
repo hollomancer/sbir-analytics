@@ -73,10 +73,10 @@ export NEO4J_PASSWORD="your-password"
 export NEO4J_DATABASE="neo4j"
 
 # Test reset script
-poetry run python scripts/data/reset_neo4j_sbir.py --dry-run
+uv run python scripts/data/reset_neo4j_sbir.py --dry-run
 
 # Test loading (requires validated CSV)
-poetry run python scripts/data/run_neo4j_sbir_load.py \
+uv run python scripts/data/run_neo4j_sbir_load.py \
   --validated-csv data/validated/sbir_validated.csv \
   --output-dir reports/neo4j_test \
   --summary-md reports/neo4j_test/load_summary.md
@@ -165,7 +165,7 @@ See the main documentation for other low-cost options:
 **Symptom:** Load fails or Aura console shows warning
 
 **Solutions:**
-- Reset database to free space: `poetry run python scripts/data/reset_neo4j_sbir.py`
+- Reset database to free space: `uv run python scripts/data/reset_neo4j_sbir.py`
 - Use filtered/sample datasets
 - Upgrade to Professional tier
 - Switch to self-hosted option

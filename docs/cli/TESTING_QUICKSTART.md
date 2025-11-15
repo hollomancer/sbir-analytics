@@ -5,7 +5,7 @@
 The fastest way to verify CLI functionality:
 
 ```bash
-poetry run python scripts/test_cli.py
+uv run python scripts/test_cli.py
 ```
 
 ### What it tests:
@@ -25,20 +25,20 @@ Test commands directly (works even without services):
 
 ## Help commands (always work)
 
-poetry run sbir-cli --help
-poetry run sbir-cli status --help
-poetry run sbir-cli metrics --help
+uv run sbir-cli --help
+uv run sbir-cli status --help
+uv run sbir-cli metrics --help
 
 ## Dry-run commands (safe, no execution)
 
-poetry run sbir-cli ingest run --dry-run
-poetry run sbir-cli ingest run --groups sbir_ingestion --dry-run
+uv run sbir-cli ingest run --dry-run
+uv run sbir-cli ingest run --groups sbir_ingestion --dry-run
 
 ## Status commands (will show errors if services unavailable, but structure works)
 
-poetry run sbir-cli status summary
-poetry run sbir-cli status assets
-poetry run sbir-cli status neo4j --detailed
+uv run sbir-cli status summary
+uv run sbir-cli status assets
+uv run sbir-cli status neo4j --detailed
 ```
 
 ## ✅ Unit Tests
@@ -46,7 +46,7 @@ poetry run sbir-cli status neo4j --detailed
 ### Display Components (Most Reliable)
 
 ```bash
-poetry run pytest tests/unit/cli/test_display.py -v
+uv run pytest tests/unit/cli/test_display.py -v
 ```
 
 **Expected**: 9-10 tests pass (1 may need minor fix for mock console)
@@ -54,7 +54,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 ### Integration Clients
 
 ```bash
-poetry run pytest tests/unit/cli/test_integration_clients.py -v
+uv run pytest tests/unit/cli/test_integration_clients.py -v
 ```
 
 **Note**: Some tests need mocking refinement but demonstrate test structure.
@@ -62,7 +62,7 @@ poetry run pytest tests/unit/cli/test_integration_clients.py -v
 ### Commands
 
 ```bash
-poetry run pytest tests/unit/cli/test_commands.py -v
+uv run pytest tests/unit/cli/test_commands.py -v
 ```
 
 **Note**: Tests verify command structure exists; full execution tests need service mocks.
@@ -70,7 +70,7 @@ poetry run pytest tests/unit/cli/test_commands.py -v
 ## ✅ Integration Tests
 
 ```bash
-poetry run pytest tests/integration/cli/test_cli_integration.py -v
+uv run pytest tests/integration/cli/test_cli_integration.py -v
 ```
 
 Tests end-to-end command execution with CliRunner.
@@ -87,7 +87,7 @@ Tests end-to-end command execution with CliRunner.
 ### Option 1: Use Dry-Run
 
 ```bash
-poetry run sbir-cli ingest run --dry-run
+uv run sbir-cli ingest run --dry-run
 ```
 
 ### Option 2: Mock in Tests
@@ -103,7 +103,7 @@ See `tests/unit/cli/test_integration_clients.py` for examples of mocking:
 Display components don't need services:
 
 ```bash
-poetry run pytest tests/unit/cli/test_display.py -v
+uv run pytest tests/unit/cli/test_display.py -v
 ```
 
 ## What's Working
@@ -123,7 +123,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 
 ## Recommended Testing Approach
 
-1. **Start with validation script**: `poetry run python scripts/test_cli.py`
+1. **Start with validation script**: `uv run python scripts/test_cli.py`
 2. **Test commands manually**: Use `--help` and `--dry-run` flags
 3. **Run display tests**: Most reliable, no service dependencies
 4. **Refine mocks**: Adjust integration client mocks as needed

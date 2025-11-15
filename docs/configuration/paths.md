@@ -100,7 +100,7 @@ export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/mnt/output/contracts.parque
 ```bash
 # Use local project paths (default behavior - no overrides needed)
 cd /home/user/sbir-etl
-poetry run dagster dev
+uv run dagster dev
 ```
 
 #### Production Environment (Mounted Volumes)
@@ -111,7 +111,7 @@ export SBIR_ETL__PATHS__DATA_ROOT=/mnt/data
 export SBIR_ETL__PATHS__USASPENDING_DUMP_FILE=/mnt/dumps/usaspending-db_latest.zip
 export SBIR_ETL__PATHS__TRANSITION_DUMP_DIR=/mnt/transition/api_dump
 
-poetry run dagster dev
+uv run dagster dev
 ```
 
 #### Docker Deployment

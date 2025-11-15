@@ -7,7 +7,7 @@
 **You MUST use the `-m` flag** because `definitions.py` uses relative imports:
 
 ```bash
-poetry run dagster dev -m src.definitions
+uv run dagster dev -m src.definitions
 ```
 
 **DO NOT use `-f src/definitions.py`** - this will cause import errors.
@@ -17,7 +17,7 @@ poetry run dagster dev -m src.definitions
 If you prefer, you can use:
 
 ```bash
-poetry run dagster dev
+uv run dagster dev
 ```
 
 This should automatically read `workspace.yaml` which uses `python_module: src.definitions`.
@@ -33,7 +33,7 @@ If you need to use file path directly:
 ## First ensure PYTHONPATH includes project root
 
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-poetry run dagster dev -f src/definitions.py
+uv run dagster dev -f src/definitions.py
 ```
 
 After starting, access the UI at: **http://localhost:3000**
@@ -62,11 +62,11 @@ Once Dagster is running:
 
 ## Materialize a specific job
 
-poetry run dagster job execute -m src.definitions -j sbir_etl_job
+uv run dagster job execute -m src.definitions -j sbir_etl_job
 
 ## Materialize a specific asset
 
-poetry run dagster asset materialize -m src.definitions -s raw_sbir_awards
+uv run dagster asset materialize -m src.definitions -s raw_sbir_awards
 ```
 
 ## Configuration Files

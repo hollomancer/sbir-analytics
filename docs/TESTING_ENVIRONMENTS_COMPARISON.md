@@ -117,7 +117,7 @@ services:
 **Steps:**
 1. Spin up Neo4j service container
 2. Wait for Neo4j to be ready
-3. Install Python dependencies via Poetry
+3. Install Python dependencies via uv (`uv sync`)
 4. Run `pytest -m fast` (unit + fast integration tests)
 5. Generate coverage report
 
@@ -378,7 +378,7 @@ services:
     image: neo4j:5
     # ... config ...
 steps:
-  - run: poetry run pytest -m fast
+  - run: uv run pytest -m fast
 ```
 
 **No change needed!** Docker is optimal here.

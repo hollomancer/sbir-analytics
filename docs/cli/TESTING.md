@@ -17,15 +17,15 @@ Tests are organized in two main directories:
 
 ## Unit tests
 
-poetry run pytest tests/unit/cli/ -v
+uv run pytest tests/unit/cli/ -v
 
 ## Integration tests
 
-poetry run pytest tests/integration/cli/ -v
+uv run pytest tests/integration/cli/ -v
 
 ## All CLI tests with coverage
 
-poetry run pytest tests/unit/cli/ tests/integration/cli/ --cov=src/cli --cov-report=html
+uv run pytest tests/unit/cli/ tests/integration/cli/ --cov=src/cli --cov-report=html
 ```
 
 ### Run Specific Test Files
@@ -34,15 +34,15 @@ poetry run pytest tests/unit/cli/ tests/integration/cli/ --cov=src/cli --cov-rep
 
 ## Test integration clients
 
-poetry run pytest tests/unit/cli/test_integration_clients.py -v
+uv run pytest tests/unit/cli/test_integration_clients.py -v
 
 ## Test commands
 
-poetry run pytest tests/unit/cli/test_commands.py -v
+uv run pytest tests/unit/cli/test_commands.py -v
 
 ## Test display components
 
-poetry run pytest tests/unit/cli/test_display.py -v
+uv run pytest tests/unit/cli/test_display.py -v
 ```
 
 ### Quick Validation Script
@@ -50,7 +50,7 @@ poetry run pytest tests/unit/cli/test_display.py -v
 For a quick sanity check of CLI installation:
 
 ```bash
-poetry run python scripts/test_cli.py
+uv run python scripts/test_cli.py
 ```
 
 This validates:
@@ -69,9 +69,9 @@ This validates:
 Tests for `DagsterClient`, `Neo4jClient`, and `MetricsCollector`:
 
 ```bash
-poetry run pytest tests/unit/cli/test_integration_clients.py::TestDagsterClient -v
-poetry run pytest tests/unit/cli/test_integration_clients.py::TestNeo4jClient -v
-poetry run pytest tests/unit/cli/test_integration_clients.py::TestMetricsCollector -v
+uv run pytest tests/unit/cli/test_integration_clients.py::TestDagsterClient -v
+uv run pytest tests/unit/cli/test_integration_clients.py::TestNeo4jClient -v
+uv run pytest tests/unit/cli/test_integration_clients.py::TestMetricsCollector -v
 ```
 
 ### Mocking Strategy:
@@ -85,8 +85,8 @@ poetry run pytest tests/unit/cli/test_integration_clients.py::TestMetricsCollect
 Tests for command logic (status, metrics, ingest, enrich):
 
 ```bash
-poetry run pytest tests/unit/cli/test_commands.py::TestStatusCommands -v
-poetry run pytest tests/unit/cli/test_commands.py::TestMetricsCommands -v
+uv run pytest tests/unit/cli/test_commands.py::TestStatusCommands -v
+uv run pytest tests/unit/cli/test_commands.py::TestMetricsCommands -v
 ```
 
 ### Mocking Strategy:
@@ -100,8 +100,8 @@ poetry run pytest tests/unit/cli/test_commands.py::TestMetricsCommands -v
 Tests for Rich UI components:
 
 ```bash
-poetry run pytest tests/unit/cli/test_display.py::TestProgressTracker -v
-poetry run pytest tests/unit/cli/test_display.py::TestMetricsDisplay -v
+uv run pytest tests/unit/cli/test_display.py::TestProgressTracker -v
+uv run pytest tests/unit/cli/test_display.py::TestMetricsDisplay -v
 ```
 
 ### Integration Tests
@@ -111,7 +111,7 @@ poetry run pytest tests/unit/cli/test_display.py::TestMetricsDisplay -v
 Tests using Typer's `CliRunner` with mocked services:
 
 ```bash
-poetry run pytest tests/integration/cli/test_cli_integration.py -v
+uv run pytest tests/integration/cli/test_cli_integration.py -v
 ```
 
 ### Test Scenarios:
@@ -129,27 +129,27 @@ poetry run pytest tests/integration/cli/test_cli_integration.py -v
 
 ## Help
 
-poetry run sbir-cli --help
+uv run sbir-cli --help
 
 ## Status commands
 
-poetry run sbir-cli status summary
-poetry run sbir-cli status assets
-poetry run sbir-cli status neo4j --detailed
+uv run sbir-cli status summary
+uv run sbir-cli status assets
+uv run sbir-cli status neo4j --detailed
 
 ## Metrics commands
 
-poetry run sbir-cli metrics latest
-poetry run sbir-cli metrics show --limit 10
+uv run sbir-cli metrics latest
+uv run sbir-cli metrics show --limit 10
 
 ## Ingest commands
 
-poetry run sbir-cli ingest run --dry-run
-poetry run sbir-cli ingest run --groups sbir_ingestion --dry-run
+uv run sbir-cli ingest run --dry-run
+uv run sbir-cli ingest run --groups sbir_ingestion --dry-run
 
 ## Enrich commands
 
-poetry run sbir-cli enrich stats
+uv run sbir-cli enrich stats
 ```
 
 ### With Real Services (Advanced)
@@ -162,7 +162,7 @@ For testing with actual Dagster and Neo4j instances:
 
 ## Terminal 1: Start Dagster
 
-poetry run dagster dev -m src.definitions
+uv run dagster dev -m src.definitions
 
 ## Terminal 2: Start Neo4j (if using Docker)
 
@@ -175,8 +175,8 @@ docker compose up neo4j
 
 ## Test with real services
 
-poetry run sbir-cli status summary
-poetry run sbir-cli status neo4j --detailed
+uv run sbir-cli status summary
+uv run sbir-cli status neo4j --detailed
 ```
 
 ## Writing New Tests
@@ -248,7 +248,7 @@ CLI tests are included in CI:
 
 ## Run in CI environment
 
-poetry run pytest tests/unit/cli/ tests/integration/cli/ \
+uv run pytest tests/unit/cli/ tests/integration/cli/ \
 
   --cov=src/cli \
   --cov-report=xml \
@@ -263,11 +263,11 @@ poetry run pytest tests/unit/cli/ tests/integration/cli/ \
 
 ## Ensure dependencies installed
 
-poetry install
+uv sync
 
 ## Verify Rich is available
 
-poetry run python -c "import rich; print('OK')"
+uv run python -c "import rich; print('OK')"
 ```
 
 ### Mock Issues

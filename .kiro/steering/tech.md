@@ -13,8 +13,8 @@ The technology stack has been streamlined through major consolidation efforts:
 
 ### Language & Runtime
 
-- **Python 3.11**
-- **Poetry** for dependency management and packaging
+- **Python 3.11+**
+- **uv** for dependency management and packaging
 
 ### Key Frameworks & Libraries
 
@@ -35,8 +35,8 @@ The technology stack has been streamlined through major consolidation efforts:
 
 ### Infrastructure
 
-- **Docker & Docker Compose**: Containerized development and deployment
-- **Neo4j 5.x**: Graph database (provided via Docker Compose)
+- **Docker & Docker Compose**: Containerized development and deployment (optional)
+- **Neo4j 5.x**: Graph database (Neo4j Aura cloud recommended, Docker alternative available)
 
 ## Common Commands
 
@@ -46,13 +46,13 @@ The technology stack has been streamlined through major consolidation efforts:
 
 ## Install dependencies
 
-poetry install
+uv sync
 
-## Activate virtual environment
+## Run commands (uv manages virtual environment automatically)
 
-poetry shell
+uv run dagster dev
 
-## Start local services (Neo4j) - Consolidated Docker Compose
+## Start local Neo4j (optional - Aura recommended)
 
 make neo4j-up
 
