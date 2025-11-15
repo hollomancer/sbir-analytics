@@ -38,6 +38,10 @@ class CETArea(BaseModel):
     keywords: list[str] = Field(
         default_factory=list, description="Keywords associated with this CET area"
     )
+    negative_keywords: list[str] = Field(
+        default_factory=list,
+        description="Negative keywords that indicate false positives (reduce classification confidence)",
+    )
     parent_cet_id: str | None = Field(
         None, description="Parent CET ID for hierarchical relationships"
     )

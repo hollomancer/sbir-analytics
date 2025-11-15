@@ -25,6 +25,40 @@ tfidf:
   # Keyword boosting (increase weight for CET-specific keywords)
   keyword_boost_factor: 2.0  # Multiply TF-IDF score by this factor for CET keywords
 
+  # Stop words (generic SBIR/proposal terms to filter)
+  stop_words:
+    # Generic SBIR terms
+    - "phase"
+    - "sbir"
+    - "sttr"
+    - "award"
+    - "contract"
+    - "proposal"
+    - "program"
+    - "project"
+    - "research"
+    - "development"
+    - "technology"
+    - "technical"
+    # Business terms
+    - "company"
+    - "firm"
+    - "small"
+    - "business"
+    - "innovative"
+    - "innovation"
+    # Proposal boilerplate
+    - "objective"
+    - "approach"
+    - "anticipated"
+    - "benefits"
+    - "commercial"
+    - "applications"
+    - "potential"
+    - "proposed"
+    - "develop"
+    - "provide"
+
 # Logistic Regression parameters
 logistic_regression:
   penalty: "l2"  # L2 regularization
@@ -46,6 +80,15 @@ feature_selection:
   enabled: true
   method: "chi2"  # Chi-squared feature selection
   k_best: 3000  # Select top 3000 features
+
+# Multi-Source Text Configuration
+# Combines abstract, keywords, and title with configurable weights
+multi_source:
+  enabled: false  # Set to true to use multi-source vectorization (requires retraining)
+  abstract_weight: 0.5  # Weight for abstract text (50%)
+  keywords_weight: 0.3  # Weight for keywords text (30%)
+  title_weight: 0.2  # Weight for title text (20%)
+  # Note: Weights must sum to 1.0
 
 # Evidence Extraction
 evidence:
@@ -88,6 +131,181 @@ quality:
   min_success_rate: 0.95  # 95% classification success rate
   min_high_confidence_rate: 0.60  # 60% high confidence classifications
   min_evidence_coverage: 0.80  # 80% of classifications have evidence
+
+# Agency/Branch Priors (contextual score adjustments)
+# These boost classification scores based on known agency/branch focus areas
+# Applied additively after ML scoring: final_score = ml_score + agency_boost + branch_boost
+priors:
+  enabled: true
+
+  # Agency-level priors (boost scores for CETs when awards are funded by specific agencies)
+  agencies:
+    "Department of Defense":
+      hypersonics: 15
+      autonomous_systems: 15
+      directed_energy: 15
+      advanced_engineering_materials: 10
+      integrated_sensing_and_cyber: 10
+      semiconductors_and_microelectronics: 10
+      communication_and_networking_technologies: 10
+
+    "Department of Health and Human Services":
+      biotechnologies: 20
+      artificial_intelligence: 5  # For medical AI
+
+    "National Aeronautics and Space Administration":
+      space_technologies_and_systems: 25
+      advanced_engineering_materials: 15
+      autonomous_systems: 10
+      renewable_energy_generation_and_storage: 10
+
+    "Department of Energy":
+      renewable_energy_generation_and_storage: 20
+      advanced_nuclear_energy_systems: 20
+      quantum_information_science: 15
+      advanced_engineering_materials: 10
+      semiconductors_and_microelectronics: 10
+
+    "National Science Foundation":
+      _all_cets: 5  # Baseline boost for all CETs (NSF funds broad research)
+
+    "Department of Agriculture":
+      biotechnologies: 15
+
+    "Environmental Protection Agency":
+      renewable_energy_generation_and_storage: 15
+
+    "Department of Commerce":
+      semiconductors_and_microelectronics: 15
+      communication_and_networking_technologies: 15
+      quantum_information_science: 10
+
+  # Branch/sub-agency priors (more specific than agency-level)
+  # These override/augment agency priors for specific organizational units
+  branches:
+    "Air Force":
+      hypersonics: 20
+      space_technologies_and_systems: 15
+      autonomous_systems: 15
+      directed_energy: 10
+      advanced_engineering_materials: 10
+
+    "Navy":
+      autonomous_systems: 15
+      advanced_engineering_materials: 15
+      directed_energy: 10
+      integrated_sensing_and_cyber: 10
+
+    "Army":
+      autonomous_systems: 15
+      integrated_sensing_and_cyber: 15
+      advanced_engineering_materials: 10
+
+    "Missile Defense Agency":
+      hypersonics: 25
+      directed_energy: 20
+      space_technologies_and_systems: 15
+
+    "Defense Advanced Research Projects Agency":
+      quantum_information_science: 15
+      artificial_intelligence: 15
+      biotechnologies: 15
+      autonomous_systems: 15
+      hypersonics: 15
+      directed_energy: 15
+
+    "National Institutes of Health":
+      biotechnologies: 25
+      artificial_intelligence: 10
+
+# Context-Aware Rules (keyword combination boosts)
+# These boost specific CETs when certain keyword combinations are detected together
+# Helps disambiguate cases where terms could apply to multiple CETs
+# Format: cet_id: [{"keywords": [...], "boost": N}, ...]
+context_rules:
+  enabled: true
+
+  # Medical devices: AI/ML applied to medical/clinical domains
+  # Disambiguates "AI for medical diagnostics" → medical_devices (not pure AI research)
+  medical_devices:
+    - keywords: ["ai", "diagnostic"]
+      boost: 20
+    - keywords: ["ai", "medical"]
+      boost: 20
+    - keywords: ["machine learning", "clinical"]
+      boost: 20
+    - keywords: ["neural network", "patient"]
+      boost: 20
+    - keywords: ["deep learning", "healthcare"]
+      boost: 15
+
+  # Advanced manufacturing: AI/ML applied to manufacturing
+  # Disambiguates "AI for manufacturing" → advanced_manufacturing (not pure AI)
+  advanced_manufacturing:
+    - keywords: ["ai", "manufacturing"]
+      boost: 20
+    - keywords: ["machine learning", "production"]
+      boost: 20
+    - keywords: ["ai", "process control"]
+      boost: 15
+    - keywords: ["machine learning", "quality control"]
+      boost: 15
+    - keywords: ["neural network", "manufacturing"]
+      boost: 15
+
+  # Autonomous systems: AI/ML for autonomous/robotic systems
+  # Disambiguates "AI for autonomous vehicles" → autonomous_systems
+  autonomous_systems:
+    - keywords: ["ai", "autonomous"]
+      boost: 15
+    - keywords: ["machine learning", "robot"]
+      boost: 15
+    - keywords: ["neural network", "autonomous"]
+      boost: 15
+    - keywords: ["deep learning", "navigation"]
+      boost: 12
+
+  # Biotechnologies: AI/ML for genomics/protein research
+  # Disambiguates "ML for genomics" → biotechnologies
+  biotechnologies:
+    - keywords: ["ai", "genomic"]
+      boost: 15
+    - keywords: ["machine learning", "protein"]
+      boost: 15
+    - keywords: ["neural network", "gene"]
+      boost: 15
+    - keywords: ["deep learning", "drug discovery"]
+      boost: 12
+
+  # Space technologies: AI/ML for space applications
+  space_technologies_and_systems:
+    - keywords: ["ai", "satellite"]
+      boost: 15
+    - keywords: ["machine learning", "orbital"]
+      boost: 15
+    - keywords: ["ai", "spacecraft"]
+      boost: 15
+
+  # Semiconductors: AI/ML for chip design
+  semiconductors_and_microelectronics:
+    - keywords: ["ai", "chip design"]
+      boost: 15
+    - keywords: ["machine learning", "semiconductor"]
+      boost: 15
+    - keywords: ["neural network", "circuit"]
+      boost: 12
+
+  # Quantum computing: Specific quantum computing contexts
+  # Distinguishes quantum computing research from quantum physics
+  quantum_information_science:
+    - keywords: ["quantum", "algorithm"]
+      boost: 15
+    - keywords: ["quantum", "computing"]
+      boost: 20
+    - keywords: ["qubit", "error correction"]
+      boost: 18
+    - keywords: ["quantum", "gate"]
+      boost: 15
 
 # Analytics (DuckDB usage)
 analytics:
