@@ -403,6 +403,23 @@ See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for detailed gui
 **Common Error**: `Cannot connect to the Docker daemon`
 - **Solution**: Start Docker Desktop and wait for it to fully initialize
 
+**Common Error**: `rpy2-rinterface` compilation fails (library 'emutls_w' not found)
+- **Cause**: Dagster Cloud's PEX builder is trying to compile `rpy2-rinterface` from source, which requires R and C compilation tools. The `rpy2` package is in `[project.optional-dependencies]` and is only needed for fiscal analysis features, not core ETL.
+- **Solution**: 
+  1. **Temporary workaround**: Comment out the `r` optional dependency in `pyproject.toml` before deploying:
+     ```toml
+     [project.optional-dependencies]
+     # r = ["rpy2>=3.5.0,<4.0.0"]  # Temporarily disabled for Dagster Cloud deployment
+     dev = [...]
+     ```
+     Then restore it after deployment if needed for local development.
+  
+  2. **Permanent solution**: If you don't need fiscal analysis features in Dagster Cloud, remove the `r` optional dependency group entirely from `pyproject.toml`.
+  
+  3. **Alternative**: The code handles missing `rpy2` gracefully with try/except blocks, so the deployment should work even if `rpy2` fails to compile. However, Dagster Cloud's build process may fail before deployment if compilation errors occur.
+  
+  **Note**: This is a known limitation - Dagster Cloud's dependency resolver may attempt to build optional dependencies even though they're not required for the core ETL pipeline.
+
 6. Verify all dependencies are listed in `pyproject.toml`
 
 ### Environment Variables Not Working
