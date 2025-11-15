@@ -113,21 +113,22 @@ jobs:
             --output-md "$INPUT_PROFILE_MD" \
             --gha-output "$GITHUB_OUTPUT"
 
-      - name: Install Poetry
+      - name: Install UV
         if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
         run: |
-          pip install --quiet "poetry==1.8.3"
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install project dependencies
         if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
         run: |
-          poetry install --no-interaction
+          uv sync
 
       - name: Run SBIR ingestion validation
         if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
         id: ingestion_checks
         run: |
-          poetry run python scripts/data/run_sbir_ingestion_checks.py \
+          uv run python scripts/data/run_sbir_ingestion_checks.py \
             --csv-path "$DATA_PATH" \
             --duckdb-path "$METADATA_DIR/ingestion.duckdb" \
             --table-name "sbir_awards_refresh" \
@@ -141,7 +142,7 @@ jobs:
         if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
         id: enrichment_check
         run: |
-          poetry run python scripts/data/run_sbir_enrichment_check.py \
+          uv run python scripts/data/run_sbir_enrichment_check.py \
             --awards-csv "$DATA_PATH" \
             --company-dir "$COMPANY_DIR" \
             --output-json "$ENRICHMENT_SUMMARY_JSON" \
@@ -151,7 +152,7 @@ jobs:
       - name: Run SBIR integration tests
         if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
         run: |
-          poetry run pytest \
+          uv run pytest \
             tests/integration/test_sbir_ingestion_assets.py \
             tests/integration/test_sbir_enrichment_pipeline.py \
             --maxfail=1 --disable-warnings -q
@@ -162,14 +163,14 @@ jobs:
         if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         run: |
           echo "Resetting Neo4j Aura database..."
-          poetry run python scripts/data/reset_neo4j_sbir.py
+          uv run python scripts/data/reset_neo4j_sbir.py
 
       - name: Load SBIR awards into Neo4j Aura
         if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         id: neo4j_load
         run: |
           echo "Loading data to Neo4j Aura: ${NEO4J_URI}"
-          poetry run python scripts/data/run_neo4j_sbir_load.py \
+          uv run python scripts/data/run_neo4j_sbir_load.py \
             --validated-csv "${{ steps.ingestion_checks.outputs.validated_csv_path }}" \
             --output-dir "$METADATA_DIR" \
             --summary-md "$NEO4J_LOAD_SUMMARY_MD" \
@@ -180,7 +181,7 @@ jobs:
         if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
         id: neo4j_smoke
         run: |
-          poetry run python scripts/data/run_neo4j_smoke_checks.py \
+          uv run python scripts/data/run_neo4j_smoke_checks.py \
             --output-json "$NEO4J_SMOKE_CHECK_JSON" \
             --output-md "$NEO4J_SMOKE_CHECK_MD" \
             --gha-output "$GITHUB_OUTPUT" || true

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 #
 # Multi-stage Dockerfile for sbir-etl
-# - builder: prepares wheels (Poetry -> requirements.txt, builds wheels)
+# - builder: prepares wheels (UV -> requirements.txt, builds wheels)
 # - runtime: small runtime image with only wheels + application code
 #
 # Features:
@@ -16,11 +16,10 @@
 #   make docker-build (provided Makefile uses this Dockerfile)
 #
 ARG PYTHON_VERSION=3.11
-ARG POETRY_VERSION=1.7.1
 ARG IMAGE_PY=python:${PYTHON_VERSION}-slim
 
 ########################################################################
-# Builder stage: install system deps, export poetry -> requirements, build wheels
+# Builder stage: install system deps, export UV -> requirements, build wheels
 ########################################################################
 FROM ${IMAGE_PY} AS builder
 
@@ -42,26 +41,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create app dir
 WORKDIR /workspace
 
-# Install Poetry (pin controlled by ARG)
-RUN python -m pip install --upgrade pip setuptools wheel \
- && python -m pip install "poetry==1.7.1"
+# Install UV - fast Python package installer
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency manifests early to leverage layer cache
-COPY pyproject.toml poetry.lock* /workspace/
+COPY pyproject.toml uv.lock* /workspace/
 
-# Ensure README and package sources are available for Poetry metadata when building wheels.
-# Some build tools (Poetry) read README and package metadata from the workspace; copying
-# the project source into the builder context ensures metadata generation succeeds in CI.
+# Ensure README and package sources are available for metadata when building wheels.
+# Copying the project source into the builder context ensures metadata generation succeeds in CI.
 COPY . /workspace/
 
 # Export a requirements.txt for pip-based wheel building (main + dev groups for test tooling)
-# --without-hashes simplifies wheel building in isolated environments
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --with dev
+# UV is much faster than Poetry for this step
+RUN uv pip compile pyproject.toml --extra dev --universal --python-version 3.11 -o requirements.txt
 
 # Build wheels for all requirements (and for this package) into /wheels
 RUN mkdir -p /wheels \
- && pip wheel --wheel-dir=/wheels -r requirements.txt \
- && pip wheel --wheel-dir=/wheels .
+ && python -m pip install --upgrade pip setuptools wheel \
+ && python -m pip wheel --wheel-dir=/wheels -r requirements.txt \
+ && python -m pip wheel --wheel-dir=/wheels .
 
 # At this point /wheels contains all binary/py wheels needed for runtime install
 # Copy wheels + requirements to a known place for runtime stage
@@ -101,7 +99,7 @@ COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
 # This avoids network fetches at runtime and ensures deterministic installs.
 # NOTE: heavy test/dev dependencies (pandas, pyarrow, pyreadstat) are intentionally
 # omitted from the runtime image to keep the image lightweight. CI and test runs
-# should install those packages at container startup (for example via `poetry install`
+# should install those packages at container startup (for example via `uv sync`
 # or `pip install` in the test command). See CI docker-compose.test.yml for the
 # test-time install step.
 RUN pip install --upgrade pip setuptools wheel \
