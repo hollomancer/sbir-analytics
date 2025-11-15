@@ -218,6 +218,95 @@ priors:
       biotechnologies: 25
       artificial_intelligence: 10
 
+# Context-Aware Rules (keyword combination boosts)
+# These boost specific CETs when certain keyword combinations are detected together
+# Helps disambiguate cases where terms could apply to multiple CETs
+# Format: cet_id: [{"keywords": [...], "boost": N}, ...]
+context_rules:
+  enabled: true
+
+  # Medical devices: AI/ML applied to medical/clinical domains
+  # Disambiguates "AI for medical diagnostics" → medical_devices (not pure AI research)
+  medical_devices:
+    - keywords: ["ai", "diagnostic"]
+      boost: 20
+    - keywords: ["ai", "medical"]
+      boost: 20
+    - keywords: ["machine learning", "clinical"]
+      boost: 20
+    - keywords: ["neural network", "patient"]
+      boost: 20
+    - keywords: ["deep learning", "healthcare"]
+      boost: 15
+
+  # Advanced manufacturing: AI/ML applied to manufacturing
+  # Disambiguates "AI for manufacturing" → advanced_manufacturing (not pure AI)
+  advanced_manufacturing:
+    - keywords: ["ai", "manufacturing"]
+      boost: 20
+    - keywords: ["machine learning", "production"]
+      boost: 20
+    - keywords: ["ai", "process control"]
+      boost: 15
+    - keywords: ["machine learning", "quality control"]
+      boost: 15
+    - keywords: ["neural network", "manufacturing"]
+      boost: 15
+
+  # Autonomous systems: AI/ML for autonomous/robotic systems
+  # Disambiguates "AI for autonomous vehicles" → autonomous_systems
+  autonomous_systems:
+    - keywords: ["ai", "autonomous"]
+      boost: 15
+    - keywords: ["machine learning", "robot"]
+      boost: 15
+    - keywords: ["neural network", "autonomous"]
+      boost: 15
+    - keywords: ["deep learning", "navigation"]
+      boost: 12
+
+  # Biotechnologies: AI/ML for genomics/protein research
+  # Disambiguates "ML for genomics" → biotechnologies
+  biotechnologies:
+    - keywords: ["ai", "genomic"]
+      boost: 15
+    - keywords: ["machine learning", "protein"]
+      boost: 15
+    - keywords: ["neural network", "gene"]
+      boost: 15
+    - keywords: ["deep learning", "drug discovery"]
+      boost: 12
+
+  # Space technologies: AI/ML for space applications
+  space_technologies_and_systems:
+    - keywords: ["ai", "satellite"]
+      boost: 15
+    - keywords: ["machine learning", "orbital"]
+      boost: 15
+    - keywords: ["ai", "spacecraft"]
+      boost: 15
+
+  # Semiconductors: AI/ML for chip design
+  semiconductors_and_microelectronics:
+    - keywords: ["ai", "chip design"]
+      boost: 15
+    - keywords: ["machine learning", "semiconductor"]
+      boost: 15
+    - keywords: ["neural network", "circuit"]
+      boost: 12
+
+  # Quantum computing: Specific quantum computing contexts
+  # Distinguishes quantum computing research from quantum physics
+  quantum_information_science:
+    - keywords: ["quantum", "algorithm"]
+      boost: 15
+    - keywords: ["quantum", "computing"]
+      boost: 20
+    - keywords: ["qubit", "error correction"]
+      boost: 18
+    - keywords: ["quantum", "gate"]
+      boost: 15
+
 # Analytics (DuckDB usage)
 analytics:
   use_duckdb: true  # Enable DuckDB for analytics queries

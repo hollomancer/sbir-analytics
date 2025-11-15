@@ -525,6 +525,31 @@ class ApplicabilityModel:
                 for i in range(len(texts)):
                     scores_list[i][cet_id] = 0.0
 
+        # Apply context rules to each document's scores
+        # Context rules check for keyword combinations in the text
+        # Must be done before agency/branch priors
+        context_rules_config = self.config.get("context_rules", {})
+        if context_rules_config.get("enabled", True):
+            # Convert texts to strings if they're dicts (for multi-source mode)
+            text_strings = []
+            for text in texts:
+                if isinstance(text, dict):
+                    # Combine dict sources into single string for context rule matching
+                    text_str = " ".join([
+                        str(text.get("abstract", "")),
+                        str(text.get("keywords", "")),
+                        str(text.get("title", ""))
+                    ])
+                    text_strings.append(text_str)
+                else:
+                    text_strings.append(str(text))
+
+            # Apply context rules per document
+            scores_list = [
+                self._apply_context_rules(scores, text_str)
+                for scores, text_str in zip(scores_list, text_strings)
+            ]
+
         # Apply agency/branch priors to each document's scores
         if agency or branch:
             scores_list = [
@@ -656,6 +681,66 @@ class ApplicabilityModel:
                 if cet_id in adjusted_scores:
                     adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
                     logger.debug(f"Applied branch prior: {branch} -> {cet_id} +{boost}")
+
+        return adjusted_scores
+
+    def _apply_context_rules(
+        self,
+        scores: dict[str, float],
+        text: str,
+    ) -> dict[str, float]:
+        """
+        Apply context-aware rule boosts based on keyword combinations.
+
+        Context rules boost specific CETs when certain keyword combinations are detected.
+        This helps disambiguate cases like "AI for medical diagnostics" → medical_devices
+        rather than artificial_intelligence.
+
+        Args:
+            scores: Base classification scores (CET ID -> score)
+            text: Document text to check for keyword combinations
+
+        Returns:
+            Adjusted scores with context rule boosts applied (clamped to 0-100)
+        """
+        context_rules_config = self.config.get("context_rules", {})
+
+        if not context_rules_config.get("enabled", True):
+            return scores
+
+        adjusted_scores = scores.copy()
+        text_lower = text.lower()
+
+        # Apply rules for each CET
+        for cet_id, rules in context_rules_config.items():
+            if cet_id == "enabled":
+                continue  # Skip the enabled flag
+
+            if cet_id not in adjusted_scores:
+                continue  # Skip if CET not in scores
+
+            if not isinstance(rules, list):
+                continue  # Skip if not a list of rules
+
+            # Check each rule for this CET
+            for rule in rules:
+                if not isinstance(rule, dict):
+                    continue
+
+                keywords = rule.get("keywords", [])
+                boost = rule.get("boost", 0)
+
+                if not keywords or not boost:
+                    continue
+
+                # Check if ALL keywords in the rule are present
+                all_present = all(kw.lower() in text_lower for kw in keywords)
+
+                if all_present:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(
+                        f"Applied context rule to {cet_id}: keywords={keywords}, boost=+{boost}"
+                    )
 
         return adjusted_scores
 
