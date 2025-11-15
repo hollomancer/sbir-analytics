@@ -557,18 +557,107 @@ class MultiSourceCETVectorizer:
 
 ---
 
+---
+
+## Implementation Status
+
+### Phase 1: Completed ✅
+
+**Commit**: `cfece1c` - "feat: implement Phase 1 CET classifier enhancements"
+
+**Implemented**:
+1. ✅ Stop words filtering (30+ SBIR-specific terms)
+2. ✅ Negative keyword penalties (7 CET areas with high false-positive rates)
+3. ✅ Agency/branch contextual priors (8 agencies, 6 branches)
+
+**Files Modified**:
+- `config/cet/classification.yaml` - Added stop words and priors configuration
+- `config/cet/taxonomy.yaml` - Added negative_keywords field for 7 CETs
+- `src/models/cet_models.py` - Added negative_keywords field to CETArea model
+- `src/ml/models/cet_classifier.py` - Implemented enhancement logic
+- `tests/unit/ml/test_cet_enhancements_phase1.py` - Comprehensive unit tests
+
+**Expected Impact**:
+- +5-10% accuracy from agency/branch priors
+- -20-30% false positives from negative keywords
+- Cleaner feature space from stop words
+
+---
+
+### Phase 2: Completed ✅
+
+**Commit**: TBD
+
+**Implemented**:
+1. ✅ Multi-source text vectorization (abstract + keywords + title)
+2. ✅ Configurable weights (default: 50%/30%/20%)
+3. ✅ Backward compatibility with single-source mode
+4. ✅ Optional feature flag (`multi_source.enabled`)
+
+**Files Created**:
+- `src/ml/models/multi_source_vectorizer.py` - MultiSourceCETVectorizer implementation
+- `tests/unit/ml/test_multi_source_vectorization.py` - Comprehensive unit tests
+
+**Files Modified**:
+- `config/cet/classification.yaml` - Added multi_source configuration section
+- `src/ml/models/cet_classifier.py` - Updated to support multi-source mode
+  - `train()` - Accepts dict or string input
+  - `classify()` - Accepts dict or string input
+  - `classify_batch()` - Accepts dict or string input
+  - `_build_pipeline()` - Selects vectorizer based on config
+
+**Configuration**:
+```yaml
+multi_source:
+  enabled: false  # Set to true to enable (requires retraining)
+  abstract_weight: 0.5  # 50%
+  keywords_weight: 0.3  # 30%
+  title_weight: 0.2     # 20%
+```
+
+**Usage**:
+```python
+# Multi-source mode (when enabled in config)
+model.classify({
+    "abstract": "quantum computing research",
+    "keywords": "quantum algorithms qubits",
+    "title": "Quantum Computing Study"
+})
+
+# Single-source mode (backward compatible)
+model.classify("quantum computing research")
+```
+
+**Expected Impact**:
+- +10-15% accuracy, especially for short or vague abstracts
+- Better utilization of available metadata
+- More robust classifications with richer context
+
+**Note**: Requires model retraining to use multi-source mode. Set `multi_source.enabled: true` and retrain classifiers with dict input format.
+
+---
+
 ## Conclusion
 
 The archived **sbir-cet-classifier** offers several proven enhancements that can improve the accuracy and robustness of sbir-etl's CET classification system. The recommended integration roadmap prioritizes:
 
-1. **Low-hanging fruit**: Agency priors, negative keywords, stop words (1 week)
-2. **High-impact**: Multi-source vectorization (2 weeks)
-3. **Advanced**: Context rules, hybrid scoring (2-3 weeks)
+1. ✅ **Phase 1 Complete**: Agency priors, negative keywords, stop words
+2. ✅ **Phase 2 Complete**: Multi-source vectorization
+3. ⏳ **Phase 3 Pending**: Context rules, hybrid scoring (2-3 weeks)
 
-All enhancements can be implemented with low risk using feature flags and comprehensive testing. The total effort for Phase 1-3 is approximately 4-5 weeks.
+**Completed Enhancements**:
+- Stop words filtering
+- Negative keyword penalties
+- Agency/branch contextual priors
+- Multi-source text vectorization
+- Comprehensive unit tests
+- Backward compatibility maintained
+
+**Total Implementation Time**: 2 weeks (Phase 1 + Phase 2)
 
 **Next Steps**:
-1. Review and approve integration roadmap
-2. Set up feature branch: `feature/cet-classifier-enhancements`
-3. Begin Phase 1 implementation
-4. Track progress with drift detection and validation metrics
+1. Optional: Implement Phase 3 (context rules)
+2. Retrain classifiers with `multi_source.enabled: true`
+3. Run drift detection and validation
+4. Measure accuracy improvements on test set
+5. Deploy to production pipeline

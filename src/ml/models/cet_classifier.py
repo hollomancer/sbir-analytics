@@ -27,6 +27,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
 from src.exceptions import CETClassificationError, FileSystemError, ValidationError
+from src.ml.models.multi_source_vectorizer import MultiSourceCETVectorizer
 from src.models.cet_models import CETArea, CETClassification, ClassificationLevel
 
 
@@ -182,20 +183,46 @@ class ApplicabilityModel:
         # Get stop words from config
         stop_words = tfidf_config.get("stop_words", None)
 
-        # TF-IDF Vectorizer with keyword boosting
-        vectorizer = CETAwareTfidfVectorizer(
-            cet_keywords=self.cet_keywords,
-            keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
-            max_features=tfidf_config.get("max_features", 5000),
-            min_df=tfidf_config.get("min_df", 2),
-            max_df=tfidf_config.get("max_df", 0.95),
-            ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
-            sublinear_tf=tfidf_config.get("sublinear_tf", True),
-            use_idf=tfidf_config.get("use_idf", True),
-            smooth_idf=tfidf_config.get("smooth_idf", True),
-            norm=tfidf_config.get("norm", "l2"),
-            stop_words=stop_words,  # Add stop words support
-        )
+        # Check if multi-source vectorization is enabled
+        multi_source_config = self.config.get("multi_source", {})
+        use_multi_source = multi_source_config.get("enabled", False)
+
+        # Choose appropriate vectorizer
+        if use_multi_source:
+            # Multi-source vectorizer (abstract + keywords + title)
+            vectorizer = MultiSourceCETVectorizer(
+                abstract_weight=multi_source_config.get("abstract_weight", 0.5),
+                keywords_weight=multi_source_config.get("keywords_weight", 0.3),
+                title_weight=multi_source_config.get("title_weight", 0.2),
+                cet_keywords=self.cet_keywords,
+                keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
+                max_features=tfidf_config.get("max_features", 5000),
+                min_df=tfidf_config.get("min_df", 2),
+                max_df=tfidf_config.get("max_df", 0.95),
+                ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
+                sublinear_tf=tfidf_config.get("sublinear_tf", True),
+                use_idf=tfidf_config.get("use_idf", True),
+                smooth_idf=tfidf_config.get("smooth_idf", True),
+                norm=tfidf_config.get("norm", "l2"),
+                stop_words=stop_words,
+            )
+            logger.info(f"Using MultiSourceCETVectorizer for {cet_id}")
+        else:
+            # Single-source vectorizer (abstract only) with CET keyword boosting
+            vectorizer = CETAwareTfidfVectorizer(
+                cet_keywords=self.cet_keywords,
+                keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
+                max_features=tfidf_config.get("max_features", 5000),
+                min_df=tfidf_config.get("min_df", 2),
+                max_df=tfidf_config.get("max_df", 0.95),
+                ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
+                sublinear_tf=tfidf_config.get("sublinear_tf", True),
+                use_idf=tfidf_config.get("use_idf", True),
+                smooth_idf=tfidf_config.get("smooth_idf", True),
+                norm=tfidf_config.get("norm", "l2"),
+                stop_words=stop_words,
+            )
+            logger.debug(f"Using CETAwareTfidfVectorizer for {cet_id}")
 
         # Feature selection
         feature_selector = None
@@ -240,12 +267,16 @@ class ApplicabilityModel:
         logger.debug(f"Built pipeline for {cet_id} with {len(steps)} steps")
         return pipeline
 
-    def train(self, X_train: list[str], y_train: pd.DataFrame) -> dict[str, Any]:
+    def train(
+        self, X_train: list[str] | list[dict[str, str]], y_train: pd.DataFrame
+    ) -> dict[str, Any]:
         """
         Train classification models for all CET areas.
 
         Args:
-            X_train: List of document texts
+            X_train: List of document texts. Can be:
+                     - list[str]: List of texts (abstracts) for single-source mode
+                     - list[dict]: List of dicts with 'abstract', 'keywords', 'title' for multi-source
             y_train: DataFrame with binary columns for each CET area (1=applicable, 0=not)
 
         Returns:
@@ -329,7 +360,7 @@ class ApplicabilityModel:
 
     def classify(
         self,
-        text: str,
+        text: str | dict[str, str],
         return_all_scores: bool = False,
         agency: str | None = None,
         branch: str | None = None,
@@ -338,7 +369,9 @@ class ApplicabilityModel:
         Classify a single document into CET areas.
 
         Args:
-            text: Document text to classify
+            text: Document text to classify. Can be:
+                  - str: Single text (abstract) for single-source mode
+                  - dict: {'abstract': str, 'keywords': str, 'title': str} for multi-source mode
             return_all_scores: If True, return scores for all CET areas (default: False)
             agency: Funding agency name for applying contextual priors
             branch: Funding branch/sub-agency for applying contextual priors
@@ -398,7 +431,7 @@ class ApplicabilityModel:
 
     def classify_batch(
         self,
-        texts: list[str],
+        texts: list[str] | list[dict[str, str]],
         batch_size: int | None = None,
         agency: str | None = None,
         branch: str | None = None,
@@ -407,7 +440,9 @@ class ApplicabilityModel:
         Classify multiple documents efficiently.
 
         Args:
-            texts: List of document texts
+            texts: List of document texts. Can be:
+                   - list[str]: List of texts (abstracts) for single-source mode
+                   - list[dict]: List of dicts with 'abstract', 'keywords', 'title' for multi-source
             batch_size: Batch size (default: from config or 1000)
             agency: Funding agency for applying contextual priors (applies to all documents)
             branch: Funding branch for applying contextual priors (applies to all documents)

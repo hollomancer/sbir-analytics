@@ -81,6 +81,15 @@ feature_selection:
   method: "chi2"  # Chi-squared feature selection
   k_best: 3000  # Select top 3000 features
 
+# Multi-Source Text Configuration
+# Combines abstract, keywords, and title with configurable weights
+multi_source:
+  enabled: false  # Set to true to use multi-source vectorization (requires retraining)
+  abstract_weight: 0.5  # Weight for abstract text (50%)
+  keywords_weight: 0.3  # Weight for keywords text (30%)
+  title_weight: 0.2  # Weight for title text (20%)
+  # Note: Weights must sum to 1.0
+
 # Evidence Extraction
 evidence:
   max_statements: 3  # Maximum evidence statements per classification
