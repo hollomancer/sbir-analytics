@@ -5,7 +5,7 @@ Implements sophisticated queries to traverse transition detection pathways:
 - Award → Transition → Contract (basic pathway)
 - Award → Patent → Transition → Contract (patent-backed)
 - Award → CET → Transition (technology-focused)
-- Company → TransitionProfile (company success)
+- Company → Transition Metrics (company success)
 - Aggregations by CET area and confidence levels
 """
 
@@ -116,7 +116,7 @@ class TransitionPathwayQueries:
 
         query = f"""
         MATCH (a:Award) {award_filter}
-        MATCH (a)-[:FILED]->(p:Patent)
+        MATCH (p:Patent)-[:GENERATED_FROM]->(a)
         MATCH (trans:Transition)-[r:ENABLED_BY]->(p)
         WHERE r.contribution_score >= {min_patent_contribution}
         MATCH (trans)-[r2:RESULTED_IN]->(c:Contract)
@@ -202,7 +202,7 @@ class TransitionPathwayQueries:
         limit: int = 100,
     ) -> PathwayResult:
         """
-        Query: Company → TransitionProfile (company success)
+        Query: Company → Transition Metrics (company success)
 
         Retrieves company transition success profiles.
 
@@ -214,26 +214,23 @@ class TransitionPathwayQueries:
         Returns:
             PathwayResult with company transition profiles
         """
-        company_filter = "" if not company_id else f"WHERE c.company_id = '{company_id}'"
+        company_filter = "" if not company_id else f"WHERE (o.company_id = '{company_id}' OR o.organization_id = '{company_id}')"
 
         query = f"""
-        MATCH (c:Company) {company_filter}
-        MATCH (c)-[r:ACHIEVED]->(prof:TransitionProfile)
-        WHERE prof.success_rate >= {min_success_rate}
+        MATCH (o:Organization {{organization_type: "COMPANY"}})
+        {company_filter}
+        WHERE o.transition_success_rate IS NOT NULL
+          AND o.transition_success_rate >= {min_success_rate}
         RETURN {{
-            company_id: c.company_id,
-            company_name: c.name,
-            profile_id: prof.profile_id,
-            total_awards: prof.total_awards,
-            total_transitions: prof.total_transitions,
-            success_rate: prof.success_rate,
-            avg_score: prof.avg_likelihood_score,
-            high_confidence: prof.high_confidence_count,
-            likely_confidence: prof.likely_confidence_count,
-            last_transition: prof.last_transition_date,
-            avg_time_to_transition_days: prof.avg_time_to_transition_days
+            company_id: coalesce(o.company_id, o.organization_id),
+            company_name: o.name,
+            total_awards: o.transition_total_awards,
+            total_transitions: o.transition_total_transitions,
+            success_rate: o.transition_success_rate,
+            avg_score: o.transition_avg_likelihood_score,
+            profile_updated_at: o.transition_profile_updated_at
         }} as pathway
-        ORDER BY prof.success_rate DESC
+        ORDER BY o.transition_success_rate DESC
         LIMIT {limit}
         """
 
@@ -242,7 +239,7 @@ class TransitionPathwayQueries:
             records = [record["pathway"] for record in result]
 
         return PathwayResult(
-            pathway_name="Company → TransitionProfile",
+            pathway_name="Company → Transition Metrics",
             records_count=len(records),
             records=records,
             metadata={"company_id": company_id, "min_success_rate": min_success_rate},
@@ -384,16 +381,16 @@ class TransitionPathwayQueries:
             PathwayResult with top companies
         """
         query = f"""
-        MATCH (c:Company)-[:ACHIEVED]->(prof:TransitionProfile)
-        WHERE prof.total_awards > 0
+        MATCH (o:Organization {{organization_type: "COMPANY"}})
+        WHERE o.transition_success_rate IS NOT NULL
+          AND o.transition_total_awards > 0
         RETURN {{
-            company_id: c.company_id,
-            company_name: c.name,
-            total_awards: prof.total_awards,
-            total_transitions: prof.total_transitions,
-            success_rate: prof.success_rate,
-            avg_score: ROUND(prof.avg_likelihood_score, 4),
-            high_confidence: prof.high_confidence_count
+            company_id: coalesce(o.company_id, o.organization_id),
+            company_name: o.name,
+            total_awards: o.transition_total_awards,
+            total_transitions: o.transition_total_transitions,
+            success_rate: o.transition_success_rate,
+            avg_score: ROUND(o.transition_avg_likelihood_score, 4)
         }} as result
         ORDER BY result.success_rate DESC, result.total_awards DESC
         LIMIT {limit}

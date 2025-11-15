@@ -106,6 +106,40 @@ enrichment:
     memory_delta_warning_mb: 500.0 # WARNING if memory delta > 500MB
     memory_pressure_warn_percent: 80.0 # WARNING if memory > 80% available
     memory_pressure_critical_percent: 95.0 # CRITICAL if memory > 95% available
+
+  # Enhanced matching features for company name data cleaning
+  enhanced_matching:
+    # Phonetic matching - catches misspellings that sound similar
+    # Examples: "Smyth" vs "Smith", "Mikrosystems" vs "Microsystems"
+    enable_phonetic_matching: false # Enable phonetic (sound-alike) matching
+    phonetic_algorithm: "metaphone" # Options: "metaphone", "double_metaphone", "soundex"
+    phonetic_boost: 5 # Score boost (0-10) when phonetic codes match
+
+    # Jaro-Winkler matching - gives extra weight to matching prefixes
+    # Particularly good for company names where first word is distinctive
+    enable_jaro_winkler: false # Enable Jaro-Winkler distance metric
+    jaro_winkler_prefix_weight: 0.1 # Weight for matching prefix (0.0-0.25)
+    jaro_winkler_threshold: 90 # Min score to consider a match (0-100)
+    jaro_winkler_use_as_primary: false # Use Jaro-Winkler as primary scorer (instead of token_set_ratio)
+
+    # Enhanced abbreviations - normalizes common terms to standard abbreviations
+    # Examples: "Technologies" -> "tech", "International" -> "intl"
+    enable_enhanced_abbreviations: false # Enable enhanced abbreviation dictionary
+    custom_abbreviations: {} # Additional custom abbreviations (dict format)
+
+  # Researcher matching configuration
+  researcher_matching:
+    # ORCID-first matching strategy
+    enable_orcid_matching: true # Match by ORCID identifier (highest confidence)
+    orcid_confidence: 100 # Confidence score for ORCID matches
+
+    # Email matching
+    enable_email_matching: true # Match by email address
+    email_confidence: 95 # Confidence score for email matches
+
+    # Affiliation + last name matching
+    enable_affiliation_matching: true # Match by affiliation + last name
+    affiliation_confidence: 80 # Confidence score for affiliation matches
   sam_gov:
     # SAM.gov API configuration
     base_url: "https://api.sam.gov/entity-information/v3"
@@ -121,6 +155,20 @@ enrichment:
     timeout_seconds: 30
     retry_attempts: 3
     retry_backoff_seconds: 2
+
+  patentsview_api:
+    # PatentsView API configuration (PatentSearch API)
+    base_url: "https://search.patentsview.org/api"
+    api_key_env_var: "PATENTSVIEW_API_KEY" # pragma: allowlist secret
+    rate_limit_per_minute: 60  # Conservative default for polite-use policy
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+    # API response caching
+    cache:
+      enabled: true  # Enable caching of API responses
+      cache_dir: "data/cache/patentsview"  # Directory for cache files
+      ttl_hours: 24  # Time-to-live for cache entries (hours)
 
   enrichment_refresh:
     # Iterative refresh configuration for enrichment APIs
@@ -155,6 +203,12 @@ enrichment:
       # Metrics
       enable_metrics: true
       metrics_file: "reports/metrics/enrichment_freshness.json"
+
+      # API response caching
+      cache:
+        enabled: true  # Enable caching of API responses
+        cache_dir: "data/cache/usaspending"  # Directory for cache files
+        ttl_hours: 24  # Time-to-live for cache entries (hours)
 
 extraction:
   sbir:
@@ -221,6 +275,32 @@ transformation:
       - "AWARDED_TO"
       - "FUNDED_BY"
       - "SUBMITTED_BY"
+
+# Company categorization configuration
+company_categorization:
+  # Classification thresholds
+  product_leaning_pct: 51.0 # 51% threshold for Product-leaning
+  service_leaning_pct: 51.0 # 51% threshold for Service-leaning
+  rd_leaning_pct: 51.0 # 51% threshold for R&D-leaning
+  psc_family_diversity_threshold: 6 # >6 PSC families → Mixed
+
+  # Confidence levels
+  low_max_awards: 2 # <=2 awards → Low confidence
+  medium_max_awards: 5 # 2-5 awards → Medium confidence
+  # >5 awards → High confidence
+
+  # Processing
+  batch_size: 100 # Companies per batch
+  parallel_workers: 4 # Parallel processing workers
+
+  # USAspending query settings
+  usaspending_table_name: "usaspending_awards"
+  usaspending_timeout_seconds: 30
+  usaspending_retry_attempts: 3
+
+  # Output options
+  include_contract_details: true
+  include_metadata: true
 
 loading:
   neo4j:

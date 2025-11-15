@@ -309,12 +309,14 @@ RETURN inv.name, inv.entity_category
 
 ---
 
-### 2.4 FUNDED_BY Relationship
+### 2.4 GENERATED_FROM Relationship
 
 Links a Patent to an SBIR Award (integration with SBIR pipeline).
 
+**Note**: Previously documented as `FUNDED_BY`, now consolidated to `GENERATED_FROM` for consistency.
+
 ```cypher
-(patent:Patent)-[r:FUNDED_BY]->(award:Award {
+(patent:Patent)-[r:GENERATED_FROM]->(award:Award {
   # Award Context
   award_id: string,
   award_year: integer,
@@ -329,7 +331,7 @@ Links a Patent to an SBIR Award (integration with SBIR pipeline).
 })
 ```
 
-**Cardinality**: One Patent can have ONE FUNDED_BY relationship (one source award)
+**Cardinality**: One Patent can have ONE GENERATED_FROM relationship (one source award)
 
 **Constraint**: Patent.grant_doc_num should match or fuzzy-match Award.patent_number
 
@@ -337,11 +339,9 @@ Links a Patent to an SBIR Award (integration with SBIR pipeline).
 
 ```cypher
 // Find all SBIR-funded patents for a company
-MATCH (a:Award)-[:FUNDS]->(c:Company)
-
--[:RECEIVED_AWARD]->(award:Award)-[:FUNDED_BY]-(p:Patent)
-
-RETURN p.title, p.appno_date, award.amount
+MATCH (a:Award)<-[:GENERATED_FROM]-(p:Patent)
+MATCH (a)-[:RECIPIENT_OF]->(c:Organization {organization_type: "COMPANY"})
+RETURN p.title, p.appno_date, a.amount
 ```
 
 ---
@@ -435,7 +435,7 @@ Existing SBIR schema node `Award`:
 ### New Relationship
 
 ```cypher
-(patent:Patent)-[r:FUNDED_BY]->(award:Award)
+(patent:Patent)-[r:GENERATED_FROM]->(award:Award)
 ```
 
 **New Fields on Award** (optional, for performance):
@@ -577,7 +577,7 @@ ORDER BY p.appno_date DESC
 Find patents potentially linked to SBIR awards:
 
 ```cypher
-MATCH (a:Award)-[:FUNDED_BY]->(p:Patent)
+MATCH (p:Patent)-[:GENERATED_FROM]->(a:Award)
 WHERE a.phase IN ["II", "Phase II"]
   AND a.fiscal_year >= 2015
 RETURN
@@ -662,7 +662,7 @@ ORDER BY assignment_date DESC
 1. Match `PatentEntity` to `Company` nodes (fuzzy name matching + UEI)
 2. Create `OWNS` relationships (Company → Patent)
 3. Link `Patent` to `Award` via grant_doc_num matching
-4. Create `FUNDED_BY` relationships (Patent → Award)
+4. Create `GENERATED_FROM` relationships (Patent → Award)
 
 ### Phase 5: Compute Metrics
 

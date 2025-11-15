@@ -833,6 +833,103 @@ The iterative enrichment refresh system automatically keeps enrichment data curr
 
 **Documentation**: See [`docs/enrichment/usaspending-iterative-refresh.md`](docs/enrichment/usaspending-iterative-refresh.md) for detailed workflow, configuration, and troubleshooting.
 
+## PatentsView API Integration
+
+**Status**: ✅ **IMPLEMENTED** - PatentsView API client operational
+
+The PatentsView API integration enables enrichment of SBIR companies with patent filing information and reassignment tracking. This helps identify which companies have filed patents and whether those patents were later reassigned to other entities.
+
+### Key Features
+
+- **Patent Query**: Query patents by assignee organization name
+- **Reassignment Tracking**: Identify patents that were reassigned to different companies
+- **Caching**: File-based caching to avoid redundant API calls
+- **Rate Limiting**: Automatic rate limiting to respect API policies
+- **Fuzzy Matching**: Support for company name variations
+
+### Setup
+
+1. **Obtain API Key**: Request a PatentsView API key from the [PatentsView Support Portal](https://patentsview-support.atlassian.net/servicedesk/customer/portals)
+
+2. **Set Environment Variable**:
+   ```bash
+   export PATENTSVIEW_API_KEY=your_api_key_here
+   ```
+
+3. **Configuration**: PatentsView API settings are in `config/base.yaml`:
+   ```yaml
+   enrichment:
+     patentsview_api:
+       base_url: "https://search.patentsview.org/api"
+       api_key_env_var: "PATENTSVIEW_API_KEY"
+       rate_limit_per_minute: 60
+       cache:
+         enabled: true
+         cache_dir: "data/cache/patentsview"
+         ttl_hours: 24
+   ```
+
+### Usage
+
+**Test Script**: Process companies from CSV and generate reports:
+
+```bash
+# Test first 10 companies (quick)
+poetry run python test_patentsview_enrichment.py --limit 10
+
+# Test all companies
+poetry run python test_patentsview_enrichment.py
+
+# Test with a different CSV file
+poetry run python test_patentsview_enrichment.py --dataset path/to/companies.csv
+
+# Test specific company by UEI
+poetry run python test_patentsview_enrichment.py --uei ABC123DEF456
+
+# Export results to CSV
+poetry run python test_patentsview_enrichment.py --output results.csv
+
+# Generate detailed markdown report
+poetry run python test_patentsview_enrichment.py --markdown-report report.md
+```
+
+**Programmatic Usage**:
+
+```python
+from src.enrichers.patentsview import PatentsViewClient, retrieve_company_patents
+
+# Initialize client
+client = PatentsViewClient()
+
+# Retrieve patents for a company
+patents_df = retrieve_company_patents("Company Name", uei="UEI123", duns="123456789")
+
+# Check for reassignments
+from src.enrichers.patentsview import check_patent_reassignments
+reassignments_df = check_patent_reassignments(
+    patent_numbers=["12345678", "87654321"],
+    original_company_name="Company Name",
+    client=client
+)
+
+client.close()
+```
+
+### Output
+
+The test script generates:
+- **Summary Statistics**: Total companies, companies with patents, reassigned patents count
+- **CSV Export**: Company name, UEI, DUNS, patent count, patent numbers, reassignment details
+- **Markdown Report**: Detailed breakdown with patent filing timeline and reassignment analysis
+
+### API Rate Limits
+
+PatentsView API has a rate limit of 45 requests per minute. The client automatically handles rate limiting with exponential backoff retry logic.
+
+### Caching
+
+API responses are cached by default (24-hour TTL) to avoid redundant queries. Cache can be disabled or configured in `config/base.yaml`.
+
 ### Quick Start
 
 ```bash

@@ -18,7 +18,7 @@ This is the canonical reference for the graph schema used by the SBIR ETL loader
 ## Entities and Relationships
 
 - Nodes: Company, Researcher, Award, Patent, SBIRAward
-- Key relationships: `COMPANY_OWNS_AWARD`, `RESEARCHER_WORKED_ON`, `COMPANY_OWNS_PATENT`, `AWARD_FUNDED_PATENT`
+- Key relationships: `COMPANY_OWNS_AWARD`, `INDIVIDUAL_PARTICIPATED_IN`, `COMPANY_OWNS_PATENT`, `AWARD_FUNDED_PATENT`
 
 ## Identifiers
 

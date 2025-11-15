@@ -193,3 +193,4 @@ node_modules/
 # Reports (generated); tracked files remain unaffected
 reports/
 !reports/.gitkeep
+report.md

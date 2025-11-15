@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Award(BaseModel):
@@ -41,7 +41,7 @@ class Award(BaseModel):
     company_name: str = Field(..., description="Company receiving the award", alias="company")
     award_amount: float = Field(..., description="Award amount in USD")
     award_date: date = Field(..., description="Date award was made")
-    program: str = Field(..., description="SBIR or STTR program")
+    program: str | None = Field(None, description="SBIR or STTR program (lenient validator)")
 
     # Optional metadata fields
     phase: str | None = Field(None, description="Phase I, II, or III")
@@ -164,13 +164,37 @@ class Award(BaseModel):
 
     @field_validator("program")
     @classmethod
-    def validate_program(cls, v: str) -> str:
-        """Validate program is SBIR or STTR and normalize to uppercase."""
+    def validate_program(cls, v: str) -> str | None:
+        """Validate program is SBIR or STTR and normalize to uppercase.
+
+        Lenient: Attempts to extract SBIR or STTR from variations like
+        "SBIR/STTR", "SBIR-Phase I", etc. Returns None for invalid values
+        rather than rejecting the entire record.
+        """
+        from loguru import logger
+
         if v is None:
             return v  # type: ignore[unreachable]
-        if v.upper() not in ["SBIR", "STTR"]:
-            raise ValueError("Program must be SBIR or STTR")
-        return v.upper()
+
+        # Normalize to uppercase and strip whitespace
+        normalized = str(v).upper().strip()
+
+        # Exact match (most common case)
+        if normalized in ["SBIR", "STTR"]:
+            return normalized
+
+        # Try to extract SBIR or STTR from variations
+        # Handle cases like "SBIR/STTR", "SBIR-Phase I", "STTR Phase II"
+        if "SBIR" in normalized:
+            logger.warning(f"Program field '{v}' contains SBIR but not exact match - normalizing to SBIR")
+            return "SBIR"
+        if "STTR" in normalized:
+            logger.warning(f"Program field '{v}' contains STTR but not exact match - normalizing to STTR")
+            return "STTR"
+
+        # Invalid value - return None (lenient)
+        logger.warning(f"Program field '{v}' is not SBIR or STTR - setting to None to preserve record")
+        return None
 
     @field_validator("phase")
     @classmethod
@@ -178,7 +202,13 @@ class Award(BaseModel):
         """Validate phase if provided. Normalize to roman I/II/III.
 
         Accepts both "Phase I" format (SBIR.gov) and "I" format (consolidated).
+
+        Lenient: Attempts to normalize numeric phases (1, 2, 3, 4) and handle
+        variations. Returns None for invalid values rather than rejecting the
+        entire record.
         """
+        from loguru import logger
+
         if v is None:
             return v
         sv = str(v).strip()
@@ -186,28 +216,58 @@ class Award(BaseModel):
         if sv.upper().startswith("PHASE "):
             sv = sv.upper().replace("PHASE ", "")
         sv = sv.upper()
-        if sv not in ["I", "II", "III"]:
-            raise ValueError("Phase must be I, II, or III (or Phase I, Phase II, Phase III)")
-        return sv
+
+        # Exact match (most common case)
+        if sv in ["I", "II", "III"]:
+            return sv
+
+        # Try to normalize numeric phases to roman numerals
+        phase_map = {"1": "I", "2": "II", "3": "III", "4": "III"}  # Phase IV -> Phase III
+        if sv in phase_map:
+            normalized = phase_map[sv]
+            if sv == "4":
+                logger.warning(f"Phase field '{v}' is Phase IV (not standard) - normalizing to III")
+            return normalized
+
+        # Handle IV as Phase III (non-standard but occurs in data)
+        if sv == "IV":
+            logger.warning(f"Phase field '{v}' is Phase IV (not standard) - normalizing to III")
+            return "III"
+
+        # Invalid value - return None (lenient)
+        logger.warning(f"Phase field '{v}' is not I/II/III - setting to None to preserve record")
+        return None
 
     @field_validator("fiscal_year")
     @classmethod
     def validate_fiscal_year(cls, v: int | None) -> int | None:
-        """Validate fiscal year range."""
+        """Validate fiscal year range.
+
+        Lenient: Accepts out-of-range years with a warning rather than
+        rejecting the entire record. This preserves historical or future-dated
+        awards.
+        """
+        from loguru import logger
+
         if v is not None and (v < 1983 or v > 2050):
-            raise ValueError("Fiscal year must be between 1983 and 2050")
+            logger.warning(f"Fiscal year {v} is out of typical range (1983-2050) - accepting anyway to preserve record")
         return v
 
     @field_validator("award_year")
     @classmethod
     def validate_award_year_matches_date(cls: Any, v: int | None, info: Any) -> int | None:
-        """If award_year provided, ensure it matches award_date year when award_date exists."""
-        if v is None:
-            return v
+        """Prioritize award_date year over award_year field. Auto-correct if mismatch.
+
+        If award_date exists, its year takes priority:
+        - If award_year is None, populate it from award_date.year
+        - If award_year differs from award_date.year, auto-correct to award_date.year
+        If award_date doesn't exist, award_year is used as-is (fallback).
+        """
         award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
         if award_date_val and isinstance(award_date_val, date):
-            if v != award_date_val.year:
-                raise ValueError("award_year must match award_date year")
+            # award_date is the source of truth - always use its year
+            return award_date_val.year
+        # No award_date available, use award_year as fallback
         return v
 
     @field_validator("company_uei")
@@ -216,77 +276,134 @@ class Award(BaseModel):
         """Normalize and validate UEI if provided.
 
         This validator strips any non-alphanumeric characters (hyphens, spaces,
-        etc.) from the input and then expects the remaining characters to be a
-        12-character alphanumeric UEI. The returned value is uppercased.
+        etc.) from the input. If the result is exactly 12 characters, returns
+        the uppercased UEI. Otherwise, returns None (lenient - accept bad data
+        rather than rejecting the entire record).
         """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("Company UEI must be a string")
+            return None  # Lenient: return None for non-string
         # Remove non-alphanumeric characters commonly present in raw input (spaces, hyphens)
         cleaned = "".join(ch for ch in v if ch.isalnum()).strip()
         if len(cleaned) != 12:
-            raise ValueError(
-                "Company UEI must be a 12-character alphanumeric string after removing separators"
-            )
+            # Lenient: return None instead of raising exception
+            return None
         return cleaned.upper()
 
     @field_validator("company_duns")
     @classmethod
     def validate_company_duns(cls, v: str | None) -> str | None:
-        """Normalize and validate DUNS if provided: must contain 9 digits."""
+        """Normalize and validate DUNS if provided.
+
+        Returns 9-digit DUNS if valid, None if invalid (lenient - accept bad
+        data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("DUNS must be provided as a string")
+            return None  # Lenient: return None for non-string
         digits = "".join(ch for ch in v if ch.isdigit())
         if len(digits) != 9:
-            raise ValueError("DUNS must contain exactly 9 digits")
+            # Lenient: return None instead of raising exception
+            return None
         return digits
 
     @field_validator("company_state")
     @classmethod
     def validate_company_state(cls, v: str | None) -> str | None:
-        """Normalize state code to uppercase 2-letter code."""
+        """Normalize state code to uppercase 2-letter code.
+
+        Returns uppercased 2-letter code if valid, None if invalid (lenient -
+        accept bad data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("State must be a string")
+            return None  # Lenient: return None for non-string
         code = v.strip().upper()
         if len(code) != 2:
-            raise ValueError("State code must be 2 letters")
+            # Lenient: return None instead of raising exception
+            return None
         return code
 
     @field_validator("company_zip")
     @classmethod
     def validate_company_zip(cls, v: str | None) -> str | None:
-        """Normalize ZIP to digits and validate 5 or 9 digits."""
+        """Normalize ZIP to digits and validate 5 or 9 digits.
+
+        Returns digits-only ZIP if valid (5 or 9 digits), None if invalid
+        (lenient - accept bad data rather than rejecting the entire record).
+        """
         if v is None:
             return v
         if not isinstance(v, str):
-            raise ValueError("ZIP must be a string")
+            return None  # Lenient: return None for non-string
         digits = "".join(ch for ch in v if ch.isdigit())
         if len(digits) not in (5, 9):
-            raise ValueError("ZIP code must be 5 or 9 digits")
+            # Lenient: return None instead of raising exception
+            return None
         return digits
 
     @field_validator("number_of_employees", mode="before")
     @classmethod
     def validate_number_of_employees(cls: Any, v) -> int | None:
-        """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative."""
+        """Allow number_of_employees to be provided as a string; coerce to int and validate non-negative.
+
+        Lenient: Accepts floats (rounds to nearest int), extracts digits from
+        text like "approx 500", and returns None for invalid values rather than
+        rejecting the entire record.
+        """
+        from loguru import logger
+
         if v is None or v == "":
             return None
+
         # Accept numeric strings like "1,234"
         if isinstance(v, str):
+            # Try to extract digits from the string
+            cleaned = v.replace(",", "").strip()
             try:
-                v = int(v.replace(",", "").strip())
-            except Exception:
-                raise ValueError("Number of employees must be an integer")
-        if not isinstance(v, int):
-            raise ValueError("Number of employees must be an integer")
-        if v < 0:
-            raise ValueError("Number of employees must be non-negative")
-        return v
+                # Try parsing as float first (handles "123.5")
+                float_val = float(cleaned)
+                if float_val < 0:
+                    logger.warning(f"Number of employees '{v}' is negative - setting to None")
+                    return None
+                # Round to nearest int
+                int_val = round(float_val)
+                if abs(float_val - int_val) > 0.01:  # If it's not close to an integer
+                    logger.warning(f"Number of employees '{v}' is a float - rounding to {int_val}")
+                return int_val
+            except ValueError:
+                # Try extracting just the digits (handles "approx 500")
+                digits = "".join(ch for ch in cleaned if ch.isdigit())
+                if digits:
+                    logger.warning(f"Number of employees '{v}' is not pure numeric - extracting {digits}")
+                    return int(digits)
+                # Can't parse - return None (lenient)
+                logger.warning(f"Number of employees '{v}' cannot be parsed - setting to None to preserve record")
+                return None
+
+        # Handle float values
+        if isinstance(v, float):
+            if v < 0:
+                logger.warning(f"Number of employees {v} is negative - setting to None")
+                return None
+            int_val = round(v)
+            if abs(v - int_val) > 0.01:
+                logger.warning(f"Number of employees {v} is a float - rounding to {int_val}")
+            return int_val
+
+        # Handle int values
+        if isinstance(v, int):
+            if v < 0:
+                logger.warning(f"Number of employees {v} is negative - setting to None")
+                return None
+            return v
+
+        # Unknown type - return None (lenient)
+        logger.warning(f"Number of employees has unexpected type {type(v)} - setting to None to preserve record")
+        return None
 
     @field_validator("award_date")
     @classmethod
@@ -295,12 +412,17 @@ class Award(BaseModel):
 
         Awards should not be dated in the future. This catches data entry errors
         or placeholder dates that should be cleaned.
+
+        Note: This is now lenient - it accepts future dates with a warning logged
+        rather than rejecting the record.
         """
         from datetime import date as date_cls
+        from loguru import logger
 
         today = date_cls.today()
         if v > today:
-            raise ValueError(f"Award date cannot be in the future (got {v}, today is {today})")
+            # Lenient: log warning but accept the date
+            logger.warning(f"Award date is in the future: {v} (today: {today})")
         return v
 
     @field_validator("proposal_award_date")
@@ -310,32 +432,44 @@ class Award(BaseModel):
 
         Proposal dates should precede or match award dates - it doesn't make sense
         for a proposal to be dated after the award decision.
+
+        Note: This is now lenient - it accepts reversed dates with a warning logged
+        rather than rejecting the record.
         """
         if v is None:
             return v
+        from loguru import logger
+
         award_date_val = info.data.get("award_date") if hasattr(info, "data") else None
         if award_date_val and isinstance(award_date_val, date):
             # Proposal should be before or on the same day as award
             if v > award_date_val:
-                raise ValueError(
-                    f"Proposal date ({v}) cannot be after award date ({award_date_val})"
+                # Lenient: log warning but accept the date
+                logger.warning(
+                    f"Proposal date ({v}) is after award date ({award_date_val})"
                 )
         return v
 
     @field_validator("contract_start_date")
     @classmethod
     def validate_contract_start_not_future(cls: Any, v: date | None) -> date | None:
-        """Validate that contract_start_date is not unreasonably far in the future."""
+        """Validate that contract_start_date is not unreasonably far in the future.
+
+        Note: This is now lenient - it accepts far-future dates with a warning logged
+        rather than rejecting the record.
+        """
         if v is None:
             return v
         from datetime import date as date_cls
+        from loguru import logger
 
         today = date_cls.today()
         # Allow up to 2 years in the future for planned contracts
         max_future_date = date_cls(today.year + 2, today.month, today.day)
         if v > max_future_date:
-            raise ValueError(
-                f"Contract start date ({v}) is unreasonably far in future (max: {max_future_date})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract start date ({v}) is far in future (max expected: {max_future_date})"
             )
         return v
 
@@ -347,25 +481,43 @@ class Award(BaseModel):
         Checks:
         1. End date >= start date (if both present)
         2. End date >= proposal/award date (if both present)
+
+        Note: This is now lenient - it accepts invalid date orders with a warning logged
+        rather than rejecting the record.
         """
         if v is None:
             return v
+        from loguru import logger
 
         # Check against contract_start_date if present
         start = info.data.get("contract_start_date") if hasattr(info, "data") else None
         if start and isinstance(start, date) and v < start:
-            raise ValueError(
-                f"Contract end date ({v}) must be on or after start date ({start})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract end date ({v}) is before start date ({start})"
             )
 
         # Check against proposal_award_date if present
         proposal = info.data.get("proposal_award_date") if hasattr(info, "data") else None
         if proposal and isinstance(proposal, date) and v < proposal:
-            raise ValueError(
-                f"Contract end date ({v}) must be on or after proposal date ({proposal})"
+            # Lenient: log warning but accept the date
+            logger.warning(
+                f"Contract end date ({v}) is before proposal date ({proposal})"
             )
 
         return v
+
+    @model_validator(mode="after")
+    def populate_award_year_from_date(self) -> "Award":
+        """Populate award_year from award_date if not already set.
+
+        This runs after all field validation and ensures award_year is always
+        populated when award_date is available. Uses object.__setattr__ to
+        bypass validate_assignment and avoid re-triggering field validators.
+        """
+        if self.award_year is None and self.award_date:
+            object.__setattr__(self, "award_year", self.award_date.year)
+        return self
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -413,6 +565,7 @@ class Award(BaseModel):
             "phase",
             "program",
             "award_amount",
+            "award_date",  # Add award_date to list of copied fields
             "award_year",
             "proposal_award_date",
             "contract_end_date",

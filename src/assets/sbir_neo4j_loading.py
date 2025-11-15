@@ -10,8 +10,11 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, Output, asset, asset_check
 from loguru import logger
 
+from datetime import date
+
 from ..config.loader import get_config
 from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
+from ..loaders.neo4j.organizations import OrganizationLoader
 from ..models.award import Award
 
 # State name to code mapping
@@ -144,8 +147,143 @@ def _get_neo4j_client() -> Neo4jClient | None:
         return None
 
 
+def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, str, str, str, str, dict[str, Any] | None]]:
+    """Detect Phase I → Phase II → Phase III award progressions.
+
+    Matches awards that represent the same project progressing through SBIR/STTR phases.
+
+    Matching criteria:
+    - Same company (via UEI, DUNS, or normalized name)
+    - Same agency
+    - Same program (SBIR or STTR)
+    - Sequential phases (I → II or II → III)
+    - Chronological order (earlier phase comes first)
+
+    Additional scoring factors:
+    - Same topic code (+0.3)
+    - Same PI (+0.2)
+    - Time gap within reasonable bounds (+0.1 if 1-4 years)
+
+    Args:
+        awards: List of Award objects to analyze
+
+    Returns:
+        List of relationship tuples in the format expected by batch_create_relationships:
+        (source_label, source_key, source_id, target_label, target_key, target_id, rel_type, properties)
+    """
+    # Group awards by company identifier for efficient matching
+    company_awards: dict[str, list[Award]] = {}
+
+    for award in awards:
+        if not award.phase or award.phase not in ["I", "II", "III"]:
+            continue
+
+        # Determine company identifier (same logic as main loading code)
+        company_id = None
+        if award.company_uei:
+            company_id = award.company_uei
+        elif award.company_duns:
+            company_id = f"DUNS:{award.company_duns}"
+        elif award.company_name:
+            normalized_name = normalize_company_name(award.company_name)
+            if normalized_name:
+                company_id = f"NAME:{normalized_name}"
+
+        if company_id:
+            if company_id not in company_awards:
+                company_awards[company_id] = []
+            company_awards[company_id].append(award)
+
+    # Detect progressions within each company's awards
+    progressions = []
+    phase_transitions = {"I": "II", "II": "III"}
+
+    for company_id, company_award_list in company_awards.items():
+        # Sort by award date for chronological matching
+        sorted_awards = sorted(
+            company_award_list,
+            key=lambda a: a.award_date if a.award_date else date(1900, 1, 1)
+        )
+
+        for i, earlier_award in enumerate(sorted_awards):
+            if earlier_award.phase not in phase_transitions:
+                continue
+
+            expected_next_phase = phase_transitions[earlier_award.phase]
+
+            # Look for matching later awards in the next phase
+            for later_award in sorted_awards[i + 1:]:
+                if later_award.phase != expected_next_phase:
+                    continue
+
+                # Check basic matching criteria
+                if earlier_award.agency != later_award.agency:
+                    continue
+
+                if earlier_award.program != later_award.program:
+                    continue
+
+                # Ensure chronological order
+                if earlier_award.award_date and later_award.award_date:
+                    if earlier_award.award_date >= later_award.award_date:
+                        continue
+                    years_between = (later_award.award_date - earlier_award.award_date).days / 365.25
+                else:
+                    years_between = None
+
+                # Calculate confidence score
+                confidence = 0.5  # Base confidence for matching company, agency, program
+
+                # Same topic code boosts confidence
+                same_topic = False
+                if (earlier_award.topic_code and later_award.topic_code and
+                    earlier_award.topic_code == later_award.topic_code):
+                    confidence += 0.3
+                    same_topic = True
+
+                # Same PI boosts confidence
+                same_pi = False
+                if (earlier_award.principal_investigator and later_award.principal_investigator and
+                    earlier_award.principal_investigator.lower() == later_award.principal_investigator.lower()):
+                    confidence += 0.2
+                    same_pi = True
+
+                # Reasonable time gap boosts confidence
+                if years_between is not None and 1 <= years_between <= 4:
+                    confidence += 0.1
+
+                # Create relationship properties
+                rel_props = {
+                    "phase_progression": f"{earlier_award.phase}_to_{expected_next_phase}",
+                    "confidence": round(confidence, 2),
+                    "same_topic": same_topic,
+                    "same_pi": same_pi,
+                }
+
+                if years_between is not None:
+                    rel_props["years_between"] = round(years_between, 2)
+
+                # Add relationship tuple (FinancialTransaction -> FinancialTransaction)
+                progressions.append((
+                    "FinancialTransaction",
+                    "transaction_id",
+                    f"txn_award_{earlier_award.award_id}",
+                    "FinancialTransaction",
+                    "transaction_id",
+                    f"txn_award_{later_award.award_id}",
+                    "FOLLOWS",
+                    rel_props,
+                ))
+
+                # Only match each Phase I to the first qualifying Phase II
+                # (to avoid multiple FOLLOWS from one award if there are multiple Phase IIs)
+                break
+
+    return progressions
+
+
 @asset(
-    description="Load validated SBIR awards into Neo4j with Award, Company, Researcher, and Institution nodes",
+    description="Load validated SBIR awards into Neo4j with Award, Organization, Individual, and Institution nodes",
     group_name="neo4j_loading",
     compute_kind="neo4j",
 )
@@ -157,16 +295,17 @@ def neo4j_sbir_awards(
 
     Creates the following nodes:
     - Award nodes with properties from the validated DataFrame
-    - Company nodes (deduplicated by UEI/DUNS/Name)
-    - Researcher nodes (from PI fields, deduplicated by name+email)
-    - ResearchInstitution nodes (from RI fields, deduplicated by name)
+    - Organization nodes (companies, deduplicated by UEI/DUNS/Name)
+    - Individual nodes (researchers from PI fields, deduplicated by name+email)
+    - Organization nodes (research institutions from RI fields, deduplicated by name)
 
     Creates the following relationships:
-    - (Award)-[AWARDED_TO]->(Company)
-    - (Award)-[RESEARCHED_BY]->(Researcher)
-    - (Award)-[CONDUCTED_AT]->(ResearchInstitution)
-    - (Researcher)-[WORKED_ON]->(Award)
-    - (Researcher)-[WORKED_AT]->(Company)
+    - (FinancialTransaction)-[RECIPIENT_OF]->(Organization)
+    - (Individual)-[PARTICIPATED_IN]->(Award)
+    - (Award)-[CONDUCTED_AT]->(Organization)
+    - (Individual)-[WORKED_AT]->(Organization)
+    - (FinancialTransaction)-[FOLLOWS]->(FinancialTransaction) - Phase I → II → III progressions
+    - (FinancialTransaction)-[FUNDED_BY]->(Organization {agency})
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
@@ -191,13 +330,13 @@ def neo4j_sbir_awards(
 
         # Convert DataFrame rows to Award models, then to Neo4j node properties
         award_nodes = []
+        award_objects: list[Award] = []  # Keep Award objects for progression detection
         company_nodes_map: dict[str, dict[str, Any]] = {}
         researcher_nodes_map: dict[str, dict[str, Any]] = {}
         institution_nodes_map: dict[str, dict[str, Any]] = {}
         award_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
-        award_researcher_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
         award_institution_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
-        researcher_award_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # WORKED_ON
+        researcher_award_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # PARTICIPATED_IN
         researcher_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # WORKED_AT
 
         # Track skip reasons
@@ -267,29 +406,43 @@ def neo4j_sbir_awards(
 
                 award = Award.from_sbir_csv(normalized_dict)
 
-                # Create Award node properties
-                award_props = {
-                    "award_id": award.award_id,
-                    "company_name": award.company_name,
-                    "award_amount": award.award_amount,
-                    "award_date": award.award_date.isoformat() if award.award_date else None,
+                # Create FinancialTransaction node properties (unified Award/Contract model)
+                transaction_id = f"txn_award_{award.award_id}"
+                transaction_props = {
+                    "transaction_id": transaction_id,
+                    "transaction_type": "AWARD",
+                    "award_id": award.award_id,  # Legacy ID for backward compatibility
+                    "recipient_name": award.company_name,
+                    "amount": award.award_amount,
+                    "transaction_date": award.award_date.isoformat() if award.award_date else None,
                     "program": award.program,
                     "phase": award.phase,
                     "agency": award.agency,
-                    "branch": award.branch,
-                    "contract": award.contract,
+                    "agency_name": award.agency,  # Will be enriched later
+                    "sub_agency": award.branch,
+                    "title": award.award_title,
+                    "description": award.abstract,
                     "award_year": award.award_year,
-                    "award_title": award.award_title,
-                    "abstract": award.abstract,
+                    "fiscal_year": award.fiscal_year,
+                    "principal_investigator": award.principal_investigator,
+                    "research_institution": award.research_institution,
+                    "completion_date": award.contract_end_date.isoformat() if award.contract_end_date else None,
+                    "start_date": award.contract_start_date.isoformat() if award.contract_start_date else None,
+                    "end_date": award.contract_end_date.isoformat() if award.contract_end_date else None,
                 }
 
-                # Add optional fields if present (for backward compatibility, but we'll also create separate nodes)
+                # Add optional fields if present
                 if award.company_uei:
-                    award_props["company_uei"] = award.company_uei
+                    transaction_props["recipient_uei"] = award.company_uei
                 if award.company_duns:
-                    award_props["company_duns"] = award.company_duns
+                    transaction_props["recipient_duns"] = award.company_duns
+                if award.company_cage:
+                    transaction_props["recipient_cage"] = award.company_cage
+                if award.naics_primary:
+                    transaction_props["naics_code"] = award.naics_primary
 
-                award_nodes.append(award_props)
+                award_nodes.append(transaction_props)
+                award_objects.append(award)  # Keep Award object for progression detection
 
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
                 # Also track all identifiers for cross-walking
@@ -315,11 +468,17 @@ def neo4j_sbir_awards(
                     skipped_no_company_id += 1
 
                 if company_id:
+                    # Generate organization_id from company_id
+                    organization_id = f"org_company_{company_id}"
+                    
                     if company_id not in company_nodes_map:
                         company_props = {
-                            "company_id": company_id,
+                            "organization_id": organization_id,
+                            "company_id": company_id,  # Keep for backward compatibility
                             "name": award.company_name,
                             "normalized_name": normalized_company_name,
+                            "organization_type": "COMPANY",
+                            "source_contexts": ["SBIR"],
                             "id_type": company_id_type,  # Track identification method
                         }
                         # Store all known identifiers for cross-walking
@@ -332,7 +491,7 @@ def neo4j_sbir_awards(
                         if award.company_state:
                             company_props["state"] = award.company_state
                         if award.company_zip:
-                            company_props["zip"] = award.company_zip
+                            company_props["postcode"] = award.company_zip  # Use postcode for consistency
                         company_nodes_map[company_id] = company_props
                     else:
                         # Company already exists - update with additional identifiers (cross-walking)
@@ -346,19 +505,19 @@ def neo4j_sbir_awards(
                             existing_company["city"] = award.company_city
                         if award.company_state and not existing_company.get("state"):
                             existing_company["state"] = award.company_state
-                        if award.company_zip and not existing_company.get("zip"):
-                            existing_company["zip"] = award.company_zip
+                        if award.company_zip and not existing_company.get("postcode"):
+                            existing_company["postcode"] = award.company_zip
 
-                    # Create AWARDED_TO relationship
+                    # Create RECIPIENT_OF relationship (FinancialTransaction -> Organization)
                     award_company_rels.append(
                         (
                             "Award",
                             "award_id",
                             award.award_id,
-                            "Company",
-                            "company_id",
-                            company_id,
-                            "AWARDED_TO",
+                            "Organization",
+                            "organization_id",
+                            organization_id,
+                            "RECIPIENT_OF",
                             None,
                         )
                     )
@@ -376,9 +535,14 @@ def neo4j_sbir_awards(
                         researcher_id = pi_name.lower()
 
                     if researcher_id not in researcher_nodes_map:
+                        individual_id = f"ind_researcher_{researcher_id}"
                         researcher_props = {
-                            "researcher_id": researcher_id,
+                            "individual_id": individual_id,
+                            "researcher_id": researcher_id,  # Keep for backward compatibility
                             "name": pi_name,
+                            "normalized_name": pi_name.upper(),
+                            "individual_type": "RESEARCHER",
+                            "source_contexts": ["SBIR"],
                         }
                         if pi_email:
                             researcher_props["email"] = pi_email
@@ -388,56 +552,50 @@ def neo4j_sbir_awards(
                             researcher_props["phone"] = award.pi_phone
                         researcher_nodes_map[researcher_id] = researcher_props
 
-                    # Create RESEARCHED_BY relationship (Award -> Researcher)
-                    award_researcher_rels.append(
-                        (
-                            "Award",
-                            "award_id",
-                            award.award_id,
-                            "Researcher",
-                            "researcher_id",
-                            researcher_id,
-                            "RESEARCHED_BY",
-                            None,
-                        )
-                    )
-
-                    # Create WORKED_ON relationship (Researcher -> Award)
+                    # Create PARTICIPATED_IN relationship (Individual -> Award)
+                    # Unified relationship replacing RESEARCHED_BY and WORKED_ON
+                    individual_id = f"ind_researcher_{researcher_id}"
                     researcher_award_rels.append(
                         (
-                            "Researcher",
-                            "researcher_id",
-                            researcher_id,
+                            "Individual",
+                            "individual_id",
+                            individual_id,
                             "Award",
                             "award_id",
                             award.award_id,
-                            "WORKED_ON",
-                            None,
+                            "PARTICIPATED_IN",
+                            {"role": "RESEARCHER"},
                         )
                     )
 
-                    # Create WORKED_AT relationship (Researcher -> Company) if company exists
+                    # Create WORKED_AT relationship (Individual -> Organization) if company exists
                     if company_id:
+                        organization_id = f"org_company_{company_id}"
                         researcher_company_rels.append(
                             (
-                                "Researcher",
-                                "researcher_id",
-                                researcher_id,
-                                "Company",
-                                "company_id",
-                                company_id,
+                                "Individual",
+                                "individual_id",
+                                individual_id,
+                                "Organization",
+                                "organization_id",
+                                organization_id,
                                 "WORKED_AT",
                                 None,
                             )
                         )
 
-                # Create Research Institution node if RI name available
+                # Create Research Institution node as Organization if RI name available
                 if award.research_institution:
                     institution_name = award.research_institution.strip()
+                    organization_id = f"org_research_{institution_name}"
 
                     if institution_name not in institution_nodes_map:
                         institution_props = {
+                            "organization_id": organization_id,
                             "name": institution_name,
+                            "normalized_name": institution_name.upper(),
+                            "organization_type": "UNIVERSITY",
+                            "source_contexts": ["RESEARCH"],
                         }
                         if award.ri_poc_name:
                             institution_props["poc_name"] = award.ri_poc_name
@@ -445,15 +603,15 @@ def neo4j_sbir_awards(
                             institution_props["poc_phone"] = award.ri_poc_phone
                         institution_nodes_map[institution_name] = institution_props
 
-                    # Create CONDUCTED_AT relationship
+                    # Create CONDUCTED_AT relationship (Award -> Organization)
                     award_institution_rels.append(
                         (
                             "Award",
                             "award_id",
                             award.award_id,
-                            "ResearchInstitution",
-                            "name",
-                            institution_name,
+                            "Organization",
+                            "organization_id",
+                            organization_id,
                             "CONDUCTED_AT",
                             None,
                         )
@@ -477,70 +635,231 @@ def neo4j_sbir_awards(
                     validation_errors += 1
                 metrics.errors += 1
 
-        # Load Company nodes first
+        # Load Organization nodes (companies) first
         if company_nodes_map:
             company_nodes_list = list(company_nodes_map.values())
             company_metrics = client.batch_upsert_nodes(
-                label="Company", key_property="company_id", nodes=company_nodes_list, metrics=metrics
+                label="Organization", key_property="organization_id", nodes=company_nodes_list, metrics=metrics
             )
             metrics = company_metrics
-            context.log.info(f"Loaded {len(company_nodes_list)} Company nodes")
+            context.log.info(f"Loaded {len(company_nodes_list)} Organization nodes (companies)")
 
-        # Load Award nodes
+        # Load FinancialTransaction nodes (unified Award/Contract model)
         if award_nodes:
-            award_metrics = client.batch_upsert_nodes(
-                label="Award", key_property="award_id", nodes=award_nodes, metrics=metrics
+            transaction_metrics = client.batch_upsert_nodes(
+                label="FinancialTransaction", key_property="transaction_id", nodes=award_nodes, metrics=metrics
             )
-            metrics = award_metrics
-            context.log.info(f"Loaded {len(award_nodes)} Award nodes")
+            metrics = transaction_metrics
+            context.log.info(f"Loaded {len(award_nodes)} FinancialTransaction nodes (AWARD type)")
 
-        # Load Researcher nodes
+        # Load Individual nodes (researchers)
         if researcher_nodes_map:
             researcher_nodes_list = list(researcher_nodes_map.values())
             researcher_metrics = client.batch_upsert_nodes(
-                label="Researcher", key_property="researcher_id", nodes=researcher_nodes_list, metrics=metrics
+                label="Individual", key_property="individual_id", nodes=researcher_nodes_list, metrics=metrics
             )
             metrics = researcher_metrics
-            context.log.info(f"Loaded {len(researcher_nodes_list)} Researcher nodes")
+            context.log.info(f"Loaded {len(researcher_nodes_list)} Individual nodes (researchers)")
 
-        # Load Research Institution nodes
+        # Load Research Institution nodes as Organizations
         if institution_nodes_map:
             institution_nodes_list = list(institution_nodes_map.values())
             institution_metrics = client.batch_upsert_nodes(
-                label="ResearchInstitution", key_property="name", nodes=institution_nodes_list, metrics=metrics
+                label="Organization", key_property="organization_id", nodes=institution_nodes_list, metrics=metrics
             )
             metrics = institution_metrics
-            context.log.info(f"Loaded {len(institution_nodes_list)} ResearchInstitution nodes")
+            context.log.info(f"Loaded {len(institution_nodes_list)} Organization nodes (research institutions)")
 
-        # Create AWARDED_TO relationships (Award -> Company)
+        # Create RECIPIENT_OF relationships (FinancialTransaction -> Organization)
         if award_company_rels:
-            rel_metrics = client.batch_create_relationships(award_company_rels, metrics=metrics)
+            # Update relationship tuples to use FinancialTransaction instead of Award
+            updated_rels = []
+            for rel in award_company_rels:
+                if rel[0] == "Award":
+                    # Convert Award relationships to FinancialTransaction
+                    updated_rels.append((
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{rel[2]}",  # transaction_id from award_id
+                        rel[3],
+                        rel[4],
+                        rel[5],
+                        rel[6],
+                        rel[7],
+                    ))
+                else:
+                    updated_rels.append(rel)
+            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(award_company_rels)} AWARDED_TO relationships")
+            context.log.info(f"Created {len(updated_rels)} RECIPIENT_OF relationships (FinancialTransaction -> Organization)")
 
-        # Create RESEARCHED_BY relationships (Award -> Researcher)
-        if award_researcher_rels:
-            rel_metrics = client.batch_create_relationships(award_researcher_rels, metrics=metrics)
-            metrics = rel_metrics
-            context.log.info(f"Created {len(award_researcher_rels)} RESEARCHED_BY relationships")
-
-        # Create CONDUCTED_AT relationships (Award -> ResearchInstitution)
+        # Create CONDUCTED_AT relationships (FinancialTransaction -> Organization)
         if award_institution_rels:
-            rel_metrics = client.batch_create_relationships(award_institution_rels, metrics=metrics)
+            # Update relationship tuples to use FinancialTransaction instead of Award
+            updated_rels = []
+            for rel in award_institution_rels:
+                if rel[0] == "Award":
+                    updated_rels.append((
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{rel[2]}",
+                        rel[3],
+                        rel[4],
+                        rel[5],
+                        rel[6],
+                        rel[7],
+                    ))
+                else:
+                    updated_rels.append(rel)
+            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(award_institution_rels)} CONDUCTED_AT relationships")
+            context.log.info(f"Created {len(updated_rels)} CONDUCTED_AT relationships (FinancialTransaction -> Organization)")
 
-        # Create WORKED_ON relationships (Researcher -> Award)
+        # Create PARTICIPATED_IN relationships (Individual -> FinancialTransaction)
+        # Unified relationship replacing RESEARCHED_BY and WORKED_ON
         if researcher_award_rels:
-            rel_metrics = client.batch_create_relationships(researcher_award_rels, metrics=metrics)
+            # Update relationship tuples to use FinancialTransaction instead of Award
+            updated_rels = []
+            for rel in researcher_award_rels:
+                if rel[3] == "Award":
+                    updated_rels.append((
+                        rel[0],
+                        rel[1],
+                        rel[2],
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{rel[5]}",  # transaction_id from award_id
+                        rel[6],
+                        rel[7],
+                    ))
+                else:
+                    updated_rels.append(rel)
+            rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(researcher_award_rels)} WORKED_ON relationships")
+            context.log.info(f"Created {len(updated_rels)} PARTICIPATED_IN relationships (Individual -> FinancialTransaction)")
 
-        # Create WORKED_AT relationships (Researcher -> Company)
+        # Create WORKED_AT relationships (Individual -> Organization)
         if researcher_company_rels:
             rel_metrics = client.batch_create_relationships(researcher_company_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(researcher_company_rels)} WORKED_AT relationships")
+            context.log.info(f"Created {len(researcher_company_rels)} WORKED_AT relationships (Individual -> Organization)")
+
+        # Create FUNDED_BY relationships (Award -> Organization {agency})
+        # Extract unique agencies and create Organization nodes for them
+        # Also create sub-agency nodes and SUBSIDIARY_OF relationships
+        agency_orgs_map = {}
+        sub_agency_orgs_map = {}
+        award_agency_rels = []
+        agency_subsidiary_pairs = []
+        
+        for award in award_objects:
+            if award.agency and award.agency_name:
+                agency_code = award.agency
+                agency_name = award.agency_name
+                parent_organization_id = f"org_agency_{agency_code}"
+                
+                # Create parent agency node if not exists
+                if parent_organization_id not in agency_orgs_map:
+                    agency_props = {
+                        "organization_id": parent_organization_id,
+                        "name": agency_name,
+                        "normalized_name": agency_name.upper(),
+                        "organization_type": "AGENCY",
+                        "source_contexts": ["AGENCY"],
+                        "agency_code": agency_code,
+                        "agency_name": agency_name,
+                    }
+                    agency_orgs_map[parent_organization_id] = agency_props
+                
+                # Handle sub-agency if present
+                target_organization_id = parent_organization_id
+                if award.branch and award.sub_agency:
+                    sub_agency_code = award.sub_agency
+                    sub_agency_name = award.sub_agency_name or award.branch
+                    sub_organization_id = f"org_agency_{agency_code}_{sub_agency_code}"
+                    
+                    # Create sub-agency node if not exists
+                    if sub_organization_id not in sub_agency_orgs_map:
+                        sub_agency_props = {
+                            "organization_id": sub_organization_id,
+                            "name": sub_agency_name,
+                            "normalized_name": sub_agency_name.upper(),
+                            "organization_type": "AGENCY",
+                            "source_contexts": ["AGENCY"],
+                            "agency_code": agency_code,
+                            "agency_name": agency_name,
+                            "sub_agency_code": sub_agency_code,
+                            "sub_agency_name": sub_agency_name,
+                        }
+                        sub_agency_orgs_map[sub_organization_id] = sub_agency_props
+                    
+                    # Track SUBSIDIARY_OF relationship (sub-agency -> parent agency)
+                    agency_subsidiary_pairs.append((
+                        "organization_id",
+                        sub_organization_id,
+                        "organization_id",
+                        parent_organization_id,
+                    ))
+                    target_organization_id = sub_organization_id
+                
+                # Create FUNDED_BY relationship (to parent agency or sub-agency)
+                award_agency_rels.append(
+                    (
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{award.award_id}",
+                        "Organization",
+                        "organization_id",
+                        target_organization_id,
+                        "FUNDED_BY",
+                        None,
+                    )
+                )
+        
+        # Load Agency Organization nodes (parent agencies)
+        if agency_orgs_map:
+            agency_nodes_list = list(agency_orgs_map.values())
+            agency_metrics = client.batch_upsert_nodes(
+                label="Organization", key_property="organization_id", nodes=agency_nodes_list, metrics=metrics
+            )
+            metrics = agency_metrics
+            context.log.info(f"Loaded {len(agency_nodes_list)} Organization nodes (parent agencies)")
+        
+        # Load Sub-Agency Organization nodes
+        if sub_agency_orgs_map:
+            sub_agency_nodes_list = list(sub_agency_orgs_map.values())
+            sub_agency_metrics = client.batch_upsert_nodes(
+                label="Organization", key_property="organization_id", nodes=sub_agency_nodes_list, metrics=metrics
+            )
+            metrics = sub_agency_metrics
+            context.log.info(f"Loaded {len(sub_agency_nodes_list)} Organization nodes (sub-agencies)")
+        
+        # Create FUNDED_BY relationships
+        if award_agency_rels:
+            rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)")
+        
+        # Create SUBSIDIARY_OF relationships (sub-agency -> parent agency)
+        if agency_subsidiary_pairs:
+            org_loader = OrganizationLoader(client)
+            org_metrics = org_loader.create_subsidiary_relationships(
+                agency_subsidiary_pairs,
+                source="AGENCY_HIERARCHY",
+                metrics=metrics,
+            )
+            metrics = org_metrics
+            context.log.info(f"Created {len(agency_subsidiary_pairs)} SUBSIDIARY_OF relationships (sub-agency -> parent agency)")
+
+        # Detect and create FOLLOWS relationships (FinancialTransaction -> FinancialTransaction for phase progressions)
+        context.log.info("Detecting award phase progressions...")
+        follows_rels = detect_award_progressions(award_objects)
+        if follows_rels:
+            rel_metrics = client.batch_create_relationships(follows_rels, metrics=metrics)
+            metrics = rel_metrics
+            context.log.info(f"Created {len(follows_rels)} FOLLOWS relationships for award progressions (FinancialTransaction -> FinancialTransaction)")
+        else:
+            context.log.info("No award progressions detected")
 
         # Log comprehensive summary of processing results
         total_rows = len(validated_sbir_awards)
@@ -570,11 +889,11 @@ def neo4j_sbir_awards(
         logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
         logger.info("")
         logger.info("Relationships Created:")
-        logger.info(f"  • AWARDED_TO (Award → Company): {len(award_company_rels)} relationships")
-        logger.info(f"  • RESEARCHED_BY (Award → Researcher): {len(award_researcher_rels)} relationships")
-        logger.info(f"  • CONDUCTED_AT (Award → Institution): {len(award_institution_rels)} relationships")
-        logger.info(f"  • WORKED_ON (Researcher → Award): {len(researcher_award_rels)} relationships")
-        logger.info(f"  • WORKED_AT (Researcher → Company): {len(researcher_company_rels)} relationships")
+        logger.info(f"  • RECIPIENT_OF (FinancialTransaction → Organization): {len(award_company_rels)} relationships")
+        logger.info(f"  • PARTICIPATED_IN (Individual → Award): {len(researcher_award_rels)} relationships")
+        logger.info(f"  • CONDUCTED_AT (Award → Organization): {len(award_institution_rels)} relationships")
+        logger.info(f"  • WORKED_AT (Individual → Organization): {len(researcher_company_rels)} relationships")
+        logger.info(f"  • FOLLOWS (FinancialTransaction → FinancialTransaction): {len(follows_rels)} phase progressions")
         logger.info("=" * 80)
 
         duration = time.time() - start_time

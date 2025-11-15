@@ -3,7 +3,7 @@ Neo4j loaders package for SBIR graph database operations.
 
 This package contains modularized Neo4j loaders for loading various data types
 into the Neo4j graph database, including patents, CET classifications, transitions,
-and profiles.
+profiles, and company categorizations.
 
 Module Structure:
 - client: Base Neo4j client for batch operations and transaction management
@@ -12,6 +12,7 @@ Module Structure:
 - cet: CET taxonomy and enrichment loader
 - transitions: Transition detection loader
 - profiles: Transition profile loader
+- categorization: Company categorization loader (Product/Service/Mixed)
 
 Pipeline Usage:
 1. Client: Establish Neo4j connection and manage transactions
@@ -29,9 +30,14 @@ Exported Classes:
 - CETLoaderConfig: Configuration for CET loading
 - TransitionLoader: Loader for transition detections
 - TransitionProfileLoader: Loader for transition profiles
+- CompanyCategorizationLoader: Loader for company categorizations
+- CompanyCategorizationLoaderConfig: Configuration for categorization loading
 """
 
 from __future__ import annotations
+
+# Categorization module (company Product/Service/Mixed classification)
+from .categorization import CompanyCategorizationLoader, CompanyCategorizationLoaderConfig
 
 # CET module
 from .cet import CETLoader, CETLoaderConfig
@@ -51,6 +57,9 @@ from .profiles import TransitionProfileLoader
 # Transitions module
 from .transitions import TransitionLoader
 
+# Organizations module
+from .organizations import OrganizationLoader
+
 
 __all__ = [
     # Client
@@ -69,4 +78,9 @@ __all__ = [
     "TransitionLoader",
     # Profiles
     "TransitionProfileLoader",
+    # Categorization (Product/Service/Mixed)
+    "CompanyCategorizationLoader",
+    "CompanyCategorizationLoaderConfig",
+    # Organizations
+    "OrganizationLoader",
 ]

@@ -24,6 +24,12 @@ validation:
   max_error_percentage: 0.10   # Allow more errors in dev
 
 enrichment:
+  # Enable enhanced matching features in dev for testing
+  enhanced_matching:
+    enable_phonetic_matching: true # Test phonetic matching in dev
+    enable_jaro_winkler: true # Test Jaro-Winkler in dev
+    enable_enhanced_abbreviations: true # Test enhanced abbreviations in dev
+
   sam_gov:
     rate_limit_per_minute: 30  # Lower rate limit for dev
     timeout_seconds: 60        # Longer timeout for dev debugging

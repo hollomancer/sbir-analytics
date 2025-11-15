@@ -183,7 +183,7 @@ class CETLoader:
         key_property: str = "uei",
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Upsert CET enrichment properties onto Company nodes.
+        """Upsert CET enrichment properties onto Organization nodes (companies).
 
         Each enrichment dict must include the key property (default 'uei').
         Allowed enrichment properties:
@@ -196,7 +196,7 @@ class CETLoader:
 
         Args:
             enrichments: iterable of mappings with key_property and enrichment fields
-            key_property: Company key to MERGE on (default 'uei'); can be 'company_id' if that's your key
+            key_property: Organization key to MERGE on (default 'uei'); can be 'organization_id' or 'company_id' if that's your key
             metrics: optional LoadMetrics
 
         Returns:
@@ -234,13 +234,13 @@ class CETLoader:
             nodes.append(node)
 
         if not nodes:
-            logger.info("No Company CET enrichments to upsert")
+            logger.info("No Organization CET enrichments to upsert")
             return metrics
 
-        logger.info("Upserting {} Company CET enrichment nodes (key={})", len(nodes), key_property)
+        logger.info("Upserting {} Organization CET enrichment nodes (key={})", len(nodes), key_property)
         self.client.config.batch_size = self.config.batch_size
         metrics = self.client.batch_upsert_nodes(
-            label="Company", key_property=key_property, nodes=nodes, metrics=metrics
+            label="Organization", key_property=key_property, nodes=nodes, metrics=metrics
         )
         return metrics
 
@@ -442,10 +442,10 @@ class CETLoader:
         key_property: str = "uei",
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create Company -> CETArea relationships with MERGE semantics.
+        """Create Organization -> CETArea relationships with MERGE semantics.
 
         Relationship schema:
-            (c:Company)-[:SPECIALIZES_IN {{
+            (o:Organization)-[:SPECIALIZES_IN {{
                 score: FLOAT,
                 specialization_score: FLOAT,
                 primary: BOOLEAN,      # True for dominant CET
@@ -454,7 +454,7 @@ class CETLoader:
             }}]->(a:CETArea)
 
         Input rows typically come from cet_company_profiles or company CET enrichment with fields:
-            - key_property (e.g., 'uei' or 'company_id')
+            - key_property (e.g., 'uei', 'organization_id', or 'company_id')
             - dominant_cet or cet_dominant_id
             - dominant_score or cet_dominant_score
             - specialization_score or cet_specialization_score
@@ -503,15 +503,15 @@ class CETLoader:
             props = {k: v for k, v in props.items() if v is not None}
 
             relationships.append(
-                ("Company", key_property, key_val, "CETArea", "cet_id", cet_id, rel_type, props)
+                ("Organization", key_property, key_val, "CETArea", "cet_id", cet_id, rel_type, props)
             )
 
         if not relationships:
-            logger.info("No Company -> CETArea relationships to create")
+            logger.info("No Organization -> CETArea relationships to create")
             return metrics
 
         logger.info(
-            "Creating {} Company -> CETArea relationships (type={}, key={})",
+            "Creating {} Organization -> CETArea relationships (type={}, key={})",
             len(relationships),
             rel_type,
             key_property,
