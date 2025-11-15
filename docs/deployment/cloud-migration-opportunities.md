@@ -78,28 +78,35 @@ This document identifies infrastructure components currently running in Docker c
 - **Jobs**: 10 jobs (SBIR ingestion, ETL, CET, Transition, Fiscal, etc.)
 - **Schedules**: 3 schedules (daily runs)
 - **Sensors**: 1 sensor (USAspending refresh)
-- **Code Locations**: 8+ modules (assets, fiscal_assets, sbir_ingestion, usaspending_ingestion, uspto_assets, cet_assets, transition_assets, etc.)
+- **Code Locations**: **1 Definitions object** (loads from 9 Python modules, but counts as 1 code location)
+  - Modules: `assets`, `fiscal_assets`, `sbir_ingestion`, `usaspending_ingestion`, `uspto_assets`, `cet_assets`, `transition_assets`, etc.
+  - **Important**: Python modules ≠ code locations. Your single `Definitions` object = 1 code location.
 
 **Dagster Cloud Tier Recommendation**:
 
 **Note**: Dagster Cloud does not offer a free plan. The cheapest option is the **Solo Plan** at $10/month. However, all plans include a **30-day free trial** to test before committing.
 
-#### Option 0: Solo Plan ($10/month) - **Cheapest option, but very limited**
+#### Option 0: Solo Plan ($10/month) - **Cheapest option, but limited**
 - **1 user** ⚠️ (single user only)
-- **1 code location** ❌ (you have 8+ modules - **won't work**)
+- **1 code location** ✅ (you have 1 `Definitions` object - **this works!**)
 - **7,500 Dagster Credits/month** (may be tight for your workload)
 - **1 deployment** ✅
 
-**Verdict**: ❌ **Not viable** - You have 8+ code locations and need more than 1 user. This plan won't work for your setup.
+**Verdict**: ✅ **Technically viable** - Your single `Definitions` object counts as 1 code location. However:
+- ⚠️ Only 1 user (not good for teams)
+- ⚠️ Can't have separate dev/staging/prod deployments
+- ⚠️ Limited credits may be tight for your workload
 
-#### Option 1: Starter Plan ($100/month) - **Recommended if you can consolidate**
+**Note**: Your 9 Python modules are just code organization, not separate code locations. They all load into your single `Definitions` object.
+
+#### Option 1: Starter Plan ($100/month) - **Recommended for flexibility**
 - **Up to 3 users** ✅ (good for small team)
-- **5 code locations** ⚠️ (you have 8+ modules - need to consolidate)
+- **5 code locations** ✅ (you have 1 now, room for 4 more - dev/staging/experimental)
 - **30,000 Dagster Credits/month** (likely sufficient for your workload)
 - **1 deployment** ✅
 - **30-day free trial** ✅
 
-**Action Required**: Consolidate your 8+ code location modules into 5 or fewer. You can combine related modules (e.g., merge all `uspto_assets` into one location, combine `transition_assets` modules).
+**No Action Required**: Your current setup already fits! You have 1 code location (your `Definitions` object), so you can use Starter Plan as-is. The 5 code location limit gives you room to add separate deployments for dev/staging/prod if needed later.
 
 **What you can do with Starter Plan**:
 - ✅ Run all your 10 jobs
@@ -137,7 +144,7 @@ This document identifies infrastructure components currently running in Docker c
 - Can connect to Neo4j Aura seamlessly
 - Code location consolidation: You can merge modules by updating `src/definitions.py` to load from fewer locations
 
-**Status**: ⚠️ Mentioned as optional in `archive/openspec/openspec/project.md` but not implemented
+**Status**: ✅ **IMPLEMENTED** - Dagster Cloud Solo Plan is now the primary deployment method. See `docs/deployment/dagster-cloud-migration.md` for setup instructions. Docker Compose remains available as failover.
 
 ---
 
@@ -362,13 +369,11 @@ if os.getenv("DD_API_KEY"):
 
 ### Phase 1: Quick Wins (Low Effort, High Value)
 1. ✅ **Neo4j Aura** - Already set up!
-2. ⚡ **Cloud Logging** - Easiest next step (see above)
-3. **Cloud Object Storage** - High impact, but requires more code changes
+2. ✅ **Dagster Cloud** - **COMPLETED** - Primary deployment method implemented
+3. ⚡ **Cloud Logging** - Easiest next step (see above)
+4. **Cloud Object Storage** - High impact, but requires more code changes
 
-### Phase 2: Orchestration (Medium Effort, High Value)
-4. **Dagster Cloud** - Eliminates container orchestration complexity
-
-### Phase 3: Observability (Medium Effort, Medium Value)
+### Phase 2: Observability (Medium Effort, Medium Value)
 5. **Cloud Metrics** - Better visibility into pipeline performance
 
 ---

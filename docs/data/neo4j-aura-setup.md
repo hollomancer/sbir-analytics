@@ -2,6 +2,8 @@
 
 The weekly SBIR awards refresh workflow can optionally load validated data into a Neo4j Aura cloud instance for testing and analysis.
 
+> **Note**: For general testing setup with Aura Free, see [Neo4j Aura Free Testing Setup](../neo4j-aura-testing.md).
+
 ## Why Neo4j Aura?
 
 **Cost:** Free tier available with generous limits (200k nodes + relationships, 50MB storage)

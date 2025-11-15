@@ -18,13 +18,14 @@ Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
 ## What is this project?
 
-Graph-based ETL that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph. Orchestrated by Dagster, processed with DuckDB/Pandas, deployed via Docker.
+Graph-based ETL that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph. Orchestrated by Dagster (deployed on Dagster Cloud), processed with DuckDB/Pandas, with Docker Compose available as failover.
 
 ## Quick links
 
 - Getting started: `README.md`
 - Architecture overview: `docs/architecture/shared-tech-stack.md`
-- Containerization guide: `docs/deployment/containerization.md`
+- **Production deployment**: `docs/deployment/dagster-cloud-migration.md` (Dagster Cloud - Primary)
+- Containerization guide: `docs/deployment/containerization.md` (Docker - Failover)
 - Statistical reporting guide: `docs/guides/statistical-reporting.md`
 - Neo4j schema reference: `docs/references/schemas/neo4j.md`
 - Decisions (ADRs): `docs/decisions/`

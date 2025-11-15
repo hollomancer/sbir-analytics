@@ -9,6 +9,8 @@ Status: active
 
 # Containerization and Compose Profiles
 
+**Note**: Docker Compose is now a **failover option** for local development and emergency scenarios. **Dagster Cloud Solo Plan** is the primary deployment method. See `docs/deployment/dagster-cloud-migration.md` for production deployment setup.
+
 This guide explains how to build, run, and validate the SBIR ETL stack with Docker. It also documents the consolidated Compose architecture that replaced six fragmented files with a single profile-driven configuration.
 
 ## Quick Start
