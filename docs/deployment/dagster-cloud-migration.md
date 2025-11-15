@@ -62,6 +62,16 @@ This guide documents the migration from Docker Compose-based Dagster deployment 
    - **Python Version**: 3.11
 3. Click **Create Code Location**
 
+**Important**: Your `pyproject.toml` must include a `[tool.dg.project]` block for Dagster Cloud (Dagster+) to recognize your project. This has already been configured in the repository:
+
+```toml
+[tool.dg.project]
+root_module = "src"
+defs_module = "src.definitions"
+code_location_target_module = "src.definitions"
+code_location_name = "sbir-etl-production"
+```
+
 Dagster Cloud will automatically detect your `pyproject.toml` and install dependencies.
 
 ---
@@ -214,6 +224,23 @@ docker compose --profile dev up -d
 2. Verify `pyproject.toml` has all required dependencies
 3. Ensure Python version matches (3.11)
 4. Check for syntax errors in `src/definitions.py`
+
+### Missing PyProjectDagsterBlockException
+
+**Issue**: Error message: `MissingPyProjectDagsterBlockException: Repository contains a pyproject.toml file that is missing or invalid tool.dagster / tool.dg.project block`
+
+**Solution**: 
+This error occurs because Dagster Cloud (Dagster+) requires a `[tool.dg.project]` block in `pyproject.toml`. Ensure your `pyproject.toml` includes:
+
+```toml
+[tool.dg.project]
+root_module = "src"
+defs_module = "src.definitions"
+code_location_target_module = "src.definitions"
+code_location_name = "sbir-etl-production"
+```
+
+This configuration has been added to the repository. If you're still seeing this error, ensure you've pulled the latest changes.
 
 ### Assets Not Loading
 
