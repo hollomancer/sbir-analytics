@@ -95,3 +95,44 @@ class PatentCitation(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
     )
+
+
+class PatentsViewPatent(BaseModel):
+    """Patent data model from PatentsView API."""
+
+    # Core patent information
+    patent_number: str = Field(..., description="Patent number")
+    patent_title: str | None = Field(None, description="Patent title")
+    patent_date: date | None = Field(None, description="Patent date")
+
+    # Assignee information
+    assignee_organization: str | None = Field(None, description="Assignee organization name")
+    assignee_id: str | None = Field(None, description="Assignee ID in PatentsView")
+
+    # Filing and grant dates
+    filing_date: date | None = Field(None, description="Filing date")
+    grant_date: date | None = Field(None, description="Grant date")
+
+    # Inventor information
+    inventors: list[str] = Field(default_factory=list, description="List of inventor names")
+
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )
+
+
+class PatentAssignment(BaseModel):
+    """Patent assignment/reassignment record."""
+
+    patent_number: str = Field(..., description="Patent number")
+    assignee: str | None = Field(None, description="Current assignee")
+    assignor: str | None = Field(None, description="Previous assignee (assignor)")
+    execution_date: date | None = Field(None, description="Assignment execution date")
+    recorded_date: date | None = Field(None, description="Assignment recorded date")
+    assignment_type: str | None = Field(
+        None, description="Assignment type (e.g., ASSIGNMENT, LICENSE)"
+    )
+
+    model_config = ConfigDict(
+        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
+    )

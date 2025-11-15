@@ -156,6 +156,20 @@ enrichment:
     retry_attempts: 3
     retry_backoff_seconds: 2
 
+  patentsview_api:
+    # PatentsView API configuration (PatentSearch API)
+    base_url: "https://search.patentsview.org/api"
+    api_key_env_var: "PATENTSVIEW_API_KEY" # pragma: allowlist secret
+    rate_limit_per_minute: 60  # Conservative default for polite-use policy
+    timeout_seconds: 30
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+    # API response caching
+    cache:
+      enabled: true  # Enable caching of API responses
+      cache_dir: "data/cache/patentsview"  # Directory for cache files
+      ttl_hours: 24  # Time-to-live for cache entries (hours)
+
   enrichment_refresh:
     # Iterative refresh configuration for enrichment APIs
     # Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+

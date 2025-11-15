@@ -132,6 +132,16 @@ class EnrichmentConfig(BaseModel):
             "retry_backoff_seconds": 2,
         }
     )
+    patentsview_api: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "base_url": "https://search.patentsview.org/api",
+            "api_key_env_var": "PATENTSVIEW_API_KEY",
+            "rate_limit_per_minute": 60,
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "retry_backoff_seconds": 2,
+        }
+    )
 
 
 class EnrichmentSourceConfig(BaseModel):
