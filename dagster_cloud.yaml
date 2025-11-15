@@ -1,0 +1,4 @@
+locations:
+- code_source:
+    module_name: src.definitions
+  location_name: sbir-etl-production
