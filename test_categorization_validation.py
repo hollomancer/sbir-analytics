@@ -108,19 +108,19 @@ def _is_rd_psc(psc: str | None) -> bool:
     return psc_str[0] in ("A", "B")
 
 
-def _check_final_two_years_transitions(
+def _check_final_two_years_commercializations(
     contract_dicts: list[dict], classified_contracts: list[dict]
 ) -> tuple[bool, bool]:
-    """Check final two years for successful transitions.
+    """Check final two years for successful commercializations.
     
     Args:
         contract_dicts: Original contract dictionaries with date and amount info
         classified_contracts: Classified contracts with Product/Service classification
         
     Returns:
-        Tuple of (successful_transition, product_transition):
-        - successful_transition: True if final two years have (product OR service) > R&D
-        - product_transition: True if final two years have product > R&D
+        Tuple of (successful_commercialization, product_commercialization):
+        - successful_commercialization: True if final two years have (product OR service) > R&D
+        - product_commercialization: True if final two years have product > R&D
     """
     if not contract_dicts or not classified_contracts:
         return False, False
@@ -171,8 +171,8 @@ def _check_final_two_years_transitions(
     final_two_years = sorted_years[-2:]
     
     # Check if both final two years meet the criteria
-    successful_transition = True
-    product_transition = True
+    successful_commercialization = True
+    product_commercialization = True
     
     for year in final_two_years:
         revenue = year_revenue[year]
@@ -180,15 +180,16 @@ def _check_final_two_years_transitions(
         service_total = revenue.get("service", 0.0)
         rd_total = revenue.get("rd", 0.0)
         
-        # Successful transition: (product OR service) > R&D
-        if (product_total + service_total) <= rd_total:
-            successful_transition = False
+        # Successful commercialization: non-R&D (product OR service) > R&D
+        non_rd_total = product_total + service_total
+        if non_rd_total <= rd_total:
+            successful_commercialization = False
         
-        # Product transition: product > R&D
+        # Product commercialization: product > R&D
         if product_total <= rd_total:
-            product_transition = False
+            product_commercialization = False
     
-    return successful_transition, product_transition
+    return successful_commercialization, product_commercialization
 
 
 def _analyze_consecutive_product_years(
@@ -560,8 +561,8 @@ def categorize_companies(
             # Analyze year-by-year revenue to identify consecutive product-dominant years
             consecutive_product_years = _analyze_consecutive_product_years(contract_dicts, classified_contracts)
             
-            # Check if final two years show transitions (product/service > R&D, and product > R&D)
-            successful_transition, product_transition = _check_final_two_years_transitions(contract_dicts, classified_contracts)
+            # Check if final two years show commercializations (non-R&D > R&D, and product > R&D)
+            successful_commercialization, product_commercialization = _check_final_two_years_commercializations(contract_dicts, classified_contracts)
 
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_result = aggregate_company_classification(
@@ -569,7 +570,7 @@ def categorize_companies(
             )
             
             # Override classification to Product-leaning if final two years show product > R&D
-            if product_transition and company_result.classification != "Product-leaning":
+            if product_commercialization and company_result.classification != "Product-leaning":
                 # Create a new CompanyClassification with Product-leaning classification
                 from src.models.categorization import CompanyClassification
                 company_result = CompanyClassification(
@@ -585,7 +586,7 @@ def categorize_companies(
                     product_dollars=company_result.product_dollars,
                     service_dollars=company_result.service_dollars,
                     agency_breakdown=company_result.agency_breakdown,
-                    override_reason="successful_transition_product_gt_rd",
+                    override_reason="successful_commercialization_product_gt_rd",
                     contracts=company_result.contracts,
                 )
             
@@ -620,20 +621,20 @@ def categorize_companies(
                 years_str = ", ".join(map(str, consecutive_product_years))
                 logger.info(f"  ⚠️  Consecutive product-dominant years: {years_str} (Product > Service for 2+ consecutive years)")
 
-            # Log successful transitions
-            if successful_transition:
-                logger.info(f"  🎯 SUCCESSFUL TRANSITION: Final two years show (product OR service) > R&D revenue")
-            if product_transition:
-                logger.info(f"  🎯 PRODUCT TRANSITION: Final two years show product > R&D revenue (classified as Product-leaning)")
+            # Log successful commercializations
+            if successful_commercialization:
+                logger.info(f"  🎯 SUCCESSFUL COMMERCIALIZATION: Final two years show non-R&D revenue > R&D revenue")
+            if product_commercialization:
+                logger.info(f"  🎯 PRODUCT COMMERCIALIZATION: Final two years show product revenue > R&D revenue (classified as Product-leaning)")
 
             # Print detailed justifications if requested (after aggregation so we have agency breakdown)
             if detailed:
                 print_contract_justifications(name, classified_contracts, detailed=detailed, agency_breakdown=company_result.agency_breakdown)
 
-            # Highlight successful transitions in result log
-            transition_marker = "🎯 " if (successful_transition or product_transition) else ""
+            # Highlight successful commercializations in result log
+            commercialization_marker = "🎯 " if (successful_commercialization or product_commercialization) else ""
             logger.info(
-                f"  Result: {transition_marker}{company_result.classification} "
+                f"  Result: {commercialization_marker}{company_result.classification} "
                 f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) - "
                 f"{company_result.confidence} confidence"
             )
@@ -641,8 +642,8 @@ def categorize_companies(
             # Generate justification
             justification_parts = []
             if company_result.override_reason:
-                if company_result.override_reason == "successful_transition_product_gt_rd":
-                    justification_parts.append("🎯 Product transition: Final two years show product > R&D revenue")
+                if company_result.override_reason == "successful_commercialization_product_gt_rd":
+                    justification_parts.append("🎯 Product commercialization: Final two years show product > R&D revenue")
                 elif company_result.override_reason == "high_psc_diversity":
                     justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
                 elif company_result.override_reason == "insufficient_awards":
@@ -688,8 +689,8 @@ def categorize_companies(
                 "service_based_contracts": service_based_count,
                 "justification": justification,
                 "consecutive_product_years": consecutive_product_years if consecutive_product_years else None,
-                "successful_transition": successful_transition,
-                "product_transition": product_transition,
+                "successful_commercialization": successful_commercialization,
+                "product_commercialization": product_commercialization,
             }
         except Exception as e:
             logger.error(f"Error processing company {company.get('Company Name', 'Unknown')}: {e}")
@@ -819,16 +820,42 @@ def print_summary(results: pd.DataFrame) -> None:
                 )
             logger.info(f"\n  Total: {len(consecutive_product_companies)} companies")
 
-    # Top 10 by contract volume
-    logger.info("\nTop 10 Companies by Contract Count:")
-    top_10 = results.nlargest(10, "award_count")[
-        ["company_name", "classification", "award_count", "total_dollars", "confidence"]
-    ]
-    for idx, (_, row) in enumerate(top_10.iterrows(), 1):
-        logger.info(
-            f"  {idx}. {row['company_name'][:40]}: {row['classification']} "
-            f"({row['award_count']} contracts, ${row['total_dollars']:,.0f}, {row['confidence']} conf)"
-        )
+    # Final lists: Product companies and Commercialized companies
+    logger.info("\n" + "=" * 80)
+    logger.info("FINAL LISTS")
+    logger.info("=" * 80)
+    
+    # Product companies (Product-leaning classification)
+    product_companies = results[results["classification"] == "Product-leaning"].copy()
+    if len(product_companies) > 0:
+        product_companies = product_companies.sort_values("total_dollars", ascending=False)
+        logger.info(f"\n🎯 Product Companies ({len(product_companies)} total):")
+        logger.info("  " + "-" * 76)
+        for idx, (_, row) in enumerate(product_companies.iterrows(), 1):
+            commercialization_marker = "🎯" if row.get("product_commercialization", False) else "  "
+            logger.info(
+                f"  {idx}. {commercialization_marker} {row['company_name'][:50]}: "
+                f"{row['product_pct']:.1f}% Product, {row['service_pct']:.1f}% Service, "
+                f"${row['total_dollars']:,.0f} total ({row['award_count']} contracts)"
+            )
+        logger.info(f"\n  Total: {len(product_companies)} companies")
+    
+    # Commercialized companies (successful commercializations)
+    if "successful_commercialization" in results.columns:
+        commercialized_companies = results[results["successful_commercialization"] == True].copy()
+        if len(commercialized_companies) > 0:
+            commercialized_companies = commercialized_companies.sort_values("total_dollars", ascending=False)
+            logger.info(f"\n🎯 Commercialized Companies ({len(commercialized_companies)} total):")
+            logger.info("  Companies with final two years showing non-R&D revenue > R&D revenue")
+            logger.info("  " + "-" * 76)
+            for idx, (_, row) in enumerate(commercialized_companies.iterrows(), 1):
+                product_commercialization_marker = "🎯" if row.get("product_commercialization", False) else "  "
+                logger.info(
+                    f"  {idx}. {product_commercialization_marker} {row['company_name'][:50]}: "
+                    f"{row['classification']}, {row['product_pct']:.1f}% Product, {row['service_pct']:.1f}% Service, "
+                    f"${row['total_dollars']:,.0f} total ({row['award_count']} contracts)"
+                )
+            logger.info(f"\n  Total: {len(commercialized_companies)} companies")
 
 
 def export_results(results: pd.DataFrame, output_path: str) -> None:
@@ -952,41 +979,41 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write(f"- **Average SBIR % of Total Revenue**: {avg_sbir_pct:.1f}%\n\n")
         f.write("---\n\n")
         
-        # Companies with successful transitions (product OR service > R&D)
-        if "successful_transition" in results.columns:
-            successful_transitions = results[results["successful_transition"] == True]
-            if len(successful_transitions) > 0:
-                f.write("## 🎯 Companies with Successful Transitions\n\n")
-                f.write("Companies whose **final two years** of USAspending data show (Product OR Service) revenue > R&D revenue. ")
-                f.write("These companies have transitioned away from R&D-focused contracts.\n\n")
-                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ | Product Transition |\n")
-                f.write("|---------|---------------|-----------|-----------|-----------|--------|-------------------|\n")
+        # Companies with successful commercializations (non-R&D > R&D)
+        if "successful_commercialization" in results.columns:
+            successful_commercializations = results[results["successful_commercialization"] == True]
+            if len(successful_commercializations) > 0:
+                f.write("## 🎯 Companies with Successful Commercializations\n\n")
+                f.write("Companies whose **final two years** of USAspending data show non-R&D revenue (Product OR Service) > R&D revenue. ")
+                f.write("These companies have successfully commercialized their technology.\n\n")
+                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ | Product Commercialization |\n")
+                f.write("|---------|---------------|-----------|-----------|-----------|--------|-------------------------|\n")
                 
-                for _, row in successful_transitions.iterrows():
+                for _, row in successful_commercializations.iterrows():
                     company = row["company_name"][:40]
                     classification = row["classification"]
                     product_pct = row["product_pct"]
                     service_pct = row["service_pct"]
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
-                    product_transition = "🎯 Yes" if row.get("product_transition", False) else "No"
+                    product_commercialization = "🎯 Yes" if row.get("product_commercialization", False) else "No"
                     
-                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_transition} |\n")
+                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_commercialization} |\n")
                 
-                f.write(f"\n**Total**: {len(successful_transitions)} companies\n\n")
+                f.write(f"\n**Total**: {len(successful_commercializations)} companies\n\n")
                 f.write("---\n\n")
         
-        # Companies with product transitions (product > R&D, classified as Product)
-        if "product_transition" in results.columns:
-            product_transitions = results[results["product_transition"] == True]
-            if len(product_transitions) > 0:
-                f.write("## 🎯 Companies with Product Transitions\n\n")
+        # Companies with product commercializations (product > R&D, classified as Product)
+        if "product_commercialization" in results.columns:
+            product_commercializations = results[results["product_commercialization"] == True]
+            if len(product_commercializations) > 0:
+                f.write("## 🎯 Companies with Product Commercializations\n\n")
                 f.write("Companies whose **final two years** of USAspending data show Product revenue > R&D revenue. ")
                 f.write("These companies are classified as **Product-leaning** regardless of their overall portfolio mix.\n\n")
                 f.write("| Company | Classification | Product % | Service % | Contracts | Total $ |\n")
                 f.write("|---------|---------------|-----------|-----------|-----------|--------|\n")
                 
-                for _, row in product_transitions.iterrows():
+                for _, row in product_commercializations.iterrows():
                     company = row["company_name"][:40]
                     classification = row["classification"]
                     product_pct = row["product_pct"]
@@ -996,7 +1023,7 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     
                     f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
                 
-                f.write(f"\n**Total**: {len(product_transitions)} companies\n\n")
+                f.write(f"\n**Total**: {len(product_commercializations)} companies\n\n")
                 f.write("---\n\n")
         
         # Companies with consecutive product-dominant years
