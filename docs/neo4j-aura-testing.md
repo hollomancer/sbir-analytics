@@ -2,6 +2,8 @@
 
 This guide explains how to use Neo4j Aura Free for testing the SBIR ETL pipeline. Neo4j Aura Free provides a small, cloud-hosted Neo4j instance perfect for testing and development.
 
+> **Note**: For weekly workflow setup, see [Neo4j Aura Setup for Weekly Workflow](../data/neo4j-aura-setup.md).
+
 ## Table of Contents
 
 - [Overview](#overview)
