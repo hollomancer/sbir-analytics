@@ -27,6 +27,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
 from src.exceptions import CETClassificationError, FileSystemError, ValidationError
+from src.ml.models.multi_source_vectorizer import MultiSourceCETVectorizer
 from src.models.cet_models import CETArea, CETClassification, ClassificationLevel
 
 
@@ -143,6 +144,7 @@ class ApplicabilityModel:
         # Build CET keyword mapping
         self.cet_keywords = {area.cet_id: area.keywords for area in cet_areas}
         self.cet_id_to_name = {area.cet_id: area.name for area in cet_areas}
+        self.cet_negative_keywords = {area.cet_id: area.negative_keywords for area in cet_areas}
 
         # Initialize pipelines (one per CET area for binary classification)
         self.pipelines: dict[str, Pipeline] = {}
@@ -178,19 +180,49 @@ class ApplicabilityModel:
         feature_config = self.config.get("feature_selection", {})
         calibration_config = self.config.get("calibration", {})
 
-        # TF-IDF Vectorizer with keyword boosting
-        vectorizer = CETAwareTfidfVectorizer(
-            cet_keywords=self.cet_keywords,
-            keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
-            max_features=tfidf_config.get("max_features", 5000),
-            min_df=tfidf_config.get("min_df", 2),
-            max_df=tfidf_config.get("max_df", 0.95),
-            ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
-            sublinear_tf=tfidf_config.get("sublinear_tf", True),
-            use_idf=tfidf_config.get("use_idf", True),
-            smooth_idf=tfidf_config.get("smooth_idf", True),
-            norm=tfidf_config.get("norm", "l2"),
-        )
+        # Get stop words from config
+        stop_words = tfidf_config.get("stop_words", None)
+
+        # Check if multi-source vectorization is enabled
+        multi_source_config = self.config.get("multi_source", {})
+        use_multi_source = multi_source_config.get("enabled", False)
+
+        # Choose appropriate vectorizer
+        if use_multi_source:
+            # Multi-source vectorizer (abstract + keywords + title)
+            vectorizer = MultiSourceCETVectorizer(
+                abstract_weight=multi_source_config.get("abstract_weight", 0.5),
+                keywords_weight=multi_source_config.get("keywords_weight", 0.3),
+                title_weight=multi_source_config.get("title_weight", 0.2),
+                cet_keywords=self.cet_keywords,
+                keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
+                max_features=tfidf_config.get("max_features", 5000),
+                min_df=tfidf_config.get("min_df", 2),
+                max_df=tfidf_config.get("max_df", 0.95),
+                ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
+                sublinear_tf=tfidf_config.get("sublinear_tf", True),
+                use_idf=tfidf_config.get("use_idf", True),
+                smooth_idf=tfidf_config.get("smooth_idf", True),
+                norm=tfidf_config.get("norm", "l2"),
+                stop_words=stop_words,
+            )
+            logger.info(f"Using MultiSourceCETVectorizer for {cet_id}")
+        else:
+            # Single-source vectorizer (abstract only) with CET keyword boosting
+            vectorizer = CETAwareTfidfVectorizer(
+                cet_keywords=self.cet_keywords,
+                keyword_boost_factor=tfidf_config.get("keyword_boost_factor", 2.0),
+                max_features=tfidf_config.get("max_features", 5000),
+                min_df=tfidf_config.get("min_df", 2),
+                max_df=tfidf_config.get("max_df", 0.95),
+                ngram_range=tuple(tfidf_config.get("ngram_range", [1, 2])),
+                sublinear_tf=tfidf_config.get("sublinear_tf", True),
+                use_idf=tfidf_config.get("use_idf", True),
+                smooth_idf=tfidf_config.get("smooth_idf", True),
+                norm=tfidf_config.get("norm", "l2"),
+                stop_words=stop_words,
+            )
+            logger.debug(f"Using CETAwareTfidfVectorizer for {cet_id}")
 
         # Feature selection
         feature_selector = None
@@ -235,12 +267,16 @@ class ApplicabilityModel:
         logger.debug(f"Built pipeline for {cet_id} with {len(steps)} steps")
         return pipeline
 
-    def train(self, X_train: list[str], y_train: pd.DataFrame) -> dict[str, Any]:
+    def train(
+        self, X_train: list[str] | list[dict[str, str]], y_train: pd.DataFrame
+    ) -> dict[str, Any]:
         """
         Train classification models for all CET areas.
 
         Args:
-            X_train: List of document texts
+            X_train: List of document texts. Can be:
+                     - list[str]: List of texts (abstracts) for single-source mode
+                     - list[dict]: List of dicts with 'abstract', 'keywords', 'title' for multi-source
             y_train: DataFrame with binary columns for each CET area (1=applicable, 0=not)
 
         Returns:
@@ -324,15 +360,21 @@ class ApplicabilityModel:
 
     def classify(
         self,
-        text: str,
+        text: str | dict[str, str],
         return_all_scores: bool = False,
+        agency: str | None = None,
+        branch: str | None = None,
     ) -> list[CETClassification]:
         """
         Classify a single document into CET areas.
 
         Args:
-            text: Document text to classify
+            text: Document text to classify. Can be:
+                  - str: Single text (abstract) for single-source mode
+                  - dict: {'abstract': str, 'keywords': str, 'title': str} for multi-source mode
             return_all_scores: If True, return scores for all CET areas (default: False)
+            agency: Funding agency name for applying contextual priors
+            branch: Funding branch/sub-agency for applying contextual priors
 
         Returns:
             List of CETClassification objects sorted by score (descending)
@@ -345,7 +387,7 @@ class ApplicabilityModel:
                 details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
             )
 
-        scores = self._get_scores([text])[0]
+        scores = self._get_scores([text], agency=agency, branch=branch)[0]
 
         # Get thresholds
         thresholds = self.config.get("confidence_thresholds", {})
@@ -389,15 +431,21 @@ class ApplicabilityModel:
 
     def classify_batch(
         self,
-        texts: list[str],
+        texts: list[str] | list[dict[str, str]],
         batch_size: int | None = None,
+        agency: str | None = None,
+        branch: str | None = None,
     ) -> list[list[CETClassification]]:
         """
         Classify multiple documents efficiently.
 
         Args:
-            texts: List of document texts
+            texts: List of document texts. Can be:
+                   - list[str]: List of texts (abstracts) for single-source mode
+                   - list[dict]: List of dicts with 'abstract', 'keywords', 'title' for multi-source
             batch_size: Batch size (default: from config or 1000)
+            agency: Funding agency for applying contextual priors (applies to all documents)
+            branch: Funding branch for applying contextual priors (applies to all documents)
 
         Returns:
             List of classification lists (one per document)
@@ -422,8 +470,8 @@ class ApplicabilityModel:
             batch = texts[i : i + batch_size]
             logger.debug(f"Processing batch {i//batch_size + 1}/{(len(texts)-1)//batch_size + 1}")
 
-            # Get scores for batch
-            batch_scores = self._get_scores(batch)
+            # Get scores for batch with agency/branch priors
+            batch_scores = self._get_scores(batch, agency=agency, branch=branch)
 
             # Convert to classifications
             for scores in batch_scores:
@@ -433,12 +481,19 @@ class ApplicabilityModel:
         logger.info(f"Batch classification complete: {len(all_classifications)} documents")
         return all_classifications
 
-    def _get_scores(self, texts: list[str]) -> list[dict[str, float]]:
+    def _get_scores(
+        self,
+        texts: list[str],
+        agency: str | None = None,
+        branch: str | None = None,
+    ) -> list[dict[str, float]]:
         """
-        Get classification scores for documents.
+        Get classification scores for documents with negative keyword filtering and priors.
 
         Args:
             texts: List of document texts
+            agency: Funding agency for applying contextual priors
+            branch: Funding branch for applying contextual priors
 
         Returns:
             List of score dictionaries (CET ID -> score)
@@ -454,6 +509,14 @@ class ApplicabilityModel:
                 # Convert to 0-100 scale
                 scores = [float(p * 100) for p in probas]
 
+                # Apply negative keyword penalties for each text
+                negative_keywords = self.cet_negative_keywords.get(cet_id, [])
+                if negative_keywords:
+                    scores = [
+                        self._apply_negative_keyword_penalty(score, text, negative_keywords)
+                        for score, text in zip(scores, texts)
+                    ]
+
                 # Assign scores to the correct text in scores_list
                 for i, score in enumerate(scores):
                     scores_list[i][cet_id] = score
@@ -461,6 +524,38 @@ class ApplicabilityModel:
                 logger.warning(f"Classification failed for {cet_id} for the batch: {e}")
                 for i in range(len(texts)):
                     scores_list[i][cet_id] = 0.0
+
+        # Apply context rules to each document's scores
+        # Context rules check for keyword combinations in the text
+        # Must be done before agency/branch priors
+        context_rules_config = self.config.get("context_rules", {})
+        if context_rules_config.get("enabled", True):
+            # Convert texts to strings if they're dicts (for multi-source mode)
+            text_strings = []
+            for text in texts:
+                if isinstance(text, dict):
+                    # Combine dict sources into single string for context rule matching
+                    text_str = " ".join([
+                        str(text.get("abstract", "")),
+                        str(text.get("keywords", "")),
+                        str(text.get("title", ""))
+                    ])
+                    text_strings.append(text_str)
+                else:
+                    text_strings.append(str(text))
+
+            # Apply context rules per document
+            scores_list = [
+                self._apply_context_rules(scores, text_str)
+                for scores, text_str in zip(scores_list, text_strings)
+            ]
+
+        # Apply agency/branch priors to each document's scores
+        if agency or branch:
+            scores_list = [
+                self._apply_agency_branch_priors(scores, agency=agency, branch=branch)
+                for scores in scores_list
+            ]
 
         return scores_list
 
@@ -505,6 +600,149 @@ class ApplicabilityModel:
             return ClassificationLevel.MEDIUM
         else:
             return ClassificationLevel.LOW
+
+    def _apply_negative_keyword_penalty(
+        self, score: float, text: str, negative_keywords: list[str]
+    ) -> float:
+        """
+        Apply penalty if negative keywords are present in text.
+
+        Negative keywords indicate false positives (e.g., "quantum mechanics" ≠ "quantum computing").
+        Each negative keyword match reduces the score by 30%.
+
+        Args:
+            score: Base classification score
+            text: Document text to check
+            negative_keywords: List of negative keywords for this CET area
+
+        Returns:
+            Penalized score (clamped to 0-100)
+        """
+        if not negative_keywords:
+            return score
+
+        text_lower = text.lower()
+        penalty_multiplier = 1.0
+
+        for neg_kw in negative_keywords:
+            if neg_kw.lower() in text_lower:
+                penalty_multiplier *= 0.7  # 30% reduction per negative keyword
+                logger.debug(f"Negative keyword '{neg_kw}' found, applying penalty")
+
+        penalized_score = score * penalty_multiplier
+        return max(0.0, min(100.0, penalized_score))
+
+    def _apply_agency_branch_priors(
+        self,
+        scores: dict[str, float],
+        agency: str | None = None,
+        branch: str | None = None,
+    ) -> dict[str, float]:
+        """
+        Apply agency/branch contextual score boosts.
+
+        Boosts classification scores based on known agency/branch focus areas.
+        Example: DoD awards get +15 boost for hypersonics, NIH gets +20 for biotechnologies.
+
+        Args:
+            scores: Base classification scores (CET ID -> score)
+            agency: Funding agency name (e.g., "Department of Defense")
+            branch: Funding branch/sub-agency (e.g., "Air Force", "DARPA")
+
+        Returns:
+            Adjusted scores with priors applied (clamped to 0-100)
+        """
+        priors_config = self.config.get("priors", {})
+
+        if not priors_config.get("enabled", True):
+            return scores
+
+        adjusted_scores = scores.copy()
+
+        # Apply agency priors
+        if agency:
+            agency_priors = priors_config.get("agencies", {}).get(agency, {})
+
+            for cet_id, boost in agency_priors.items():
+                if cet_id == "_all_cets":
+                    # Apply baseline boost to all CETs
+                    for cet in adjusted_scores:
+                        adjusted_scores[cet] = min(100.0, adjusted_scores[cet] + boost)
+                    logger.debug(f"Applied agency prior: {agency} -> all CETs +{boost}")
+                elif cet_id in adjusted_scores:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(f"Applied agency prior: {agency} -> {cet_id} +{boost}")
+
+        # Apply branch priors (override/augment agency priors)
+        if branch:
+            branch_priors = priors_config.get("branches", {}).get(branch, {})
+
+            for cet_id, boost in branch_priors.items():
+                if cet_id in adjusted_scores:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(f"Applied branch prior: {branch} -> {cet_id} +{boost}")
+
+        return adjusted_scores
+
+    def _apply_context_rules(
+        self,
+        scores: dict[str, float],
+        text: str,
+    ) -> dict[str, float]:
+        """
+        Apply context-aware rule boosts based on keyword combinations.
+
+        Context rules boost specific CETs when certain keyword combinations are detected.
+        This helps disambiguate cases like "AI for medical diagnostics" → medical_devices
+        rather than artificial_intelligence.
+
+        Args:
+            scores: Base classification scores (CET ID -> score)
+            text: Document text to check for keyword combinations
+
+        Returns:
+            Adjusted scores with context rule boosts applied (clamped to 0-100)
+        """
+        context_rules_config = self.config.get("context_rules", {})
+
+        if not context_rules_config.get("enabled", True):
+            return scores
+
+        adjusted_scores = scores.copy()
+        text_lower = text.lower()
+
+        # Apply rules for each CET
+        for cet_id, rules in context_rules_config.items():
+            if cet_id == "enabled":
+                continue  # Skip the enabled flag
+
+            if cet_id not in adjusted_scores:
+                continue  # Skip if CET not in scores
+
+            if not isinstance(rules, list):
+                continue  # Skip if not a list of rules
+
+            # Check each rule for this CET
+            for rule in rules:
+                if not isinstance(rule, dict):
+                    continue
+
+                keywords = rule.get("keywords", [])
+                boost = rule.get("boost", 0)
+
+                if not keywords or not boost:
+                    continue
+
+                # Check if ALL keywords in the rule are present
+                all_present = all(kw.lower() in text_lower for kw in keywords)
+
+                if all_present:
+                    adjusted_scores[cet_id] = min(100.0, adjusted_scores[cet_id] + boost)
+                    logger.debug(
+                        f"Applied context rule to {cet_id}: keywords={keywords}, boost=+{boost}"
+                    )
+
+        return adjusted_scores
 
     def save(self, filepath: Path) -> None:
         """

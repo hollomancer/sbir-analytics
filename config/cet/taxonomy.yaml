@@ -122,6 +122,19 @@ cet_areas:
       - unsupervised learning
       - transfer learning
       - generative ai
+    negative_keywords:
+      - ai-powered diagnostic
+      - ai-based diagnosis
+      - ai medical imaging
+      - ai-optimized manufacturing
+      - ai process control
+      - using machine learning
+      - using ai
+      - leveraging ml
+      - ml-based analysis
+      - ai-assisted
+      - ai-enhanced
+      - ml-enabled
     parent_cet_id: null
 
   - cet_id: "autonomous_systems"
@@ -139,6 +152,12 @@ cet_areas:
       - autonomous control
       - swarm robotics
       - multi-agent systems
+    negative_keywords:
+      - remote control
+      - teleoperated
+      - manual control
+      - automated
+      - automation
     parent_cet_id: null
 
   - cet_id: "biotechnologies"
@@ -156,6 +175,10 @@ cet_areas:
       - protein engineering
       - metabolic engineering
       - biomedicine
+    negative_keywords:
+      - biomedical device
+      - medical diagnostic
+      - clinical diagnostic
     parent_cet_id: null
 
   - cet_id: "communication_and_networking_technologies"
@@ -267,6 +290,12 @@ cet_areas:
       - qubits
       - quantum networks
       - quantum key distribution
+    negative_keywords:
+      - quantum mechanics
+      - quantum chemistry
+      - quantum field theory
+      - quantum dot
+      - quantum well
     parent_cet_id: null
 
   - cet_id: "renewable_energy_generation_and_storage"
@@ -284,6 +313,13 @@ cet_areas:
       - hydrogen energy
       - grid storage
       - photovoltaic
+    negative_keywords:
+      - solar radiation
+      - wind tunnel
+      - solar heating
+      - battery-powered
+      - using battery
+      - data storage
     parent_cet_id: null
 
   - cet_id: "semiconductors_and_microelectronics"
@@ -301,6 +337,10 @@ cet_areas:
       - advanced packaging
       - silicon
       - transistor
+    negative_keywords:
+      - using semiconductor
+      - semiconductor-based sensor
+      - semiconductor laser
     parent_cet_id: null
 
   - cet_id: "space_technologies_and_systems"
@@ -317,6 +357,12 @@ cet_areas:
       - space exploration
       - space systems
       - on-orbit
+    negative_keywords:
+      - cyberspace
+      - workspace
+      - namespace
+      - aerospace material
+      - space-based sensor
     parent_cet_id: null
 
   - cet_id: "trusted_ai_and_autonomy"
