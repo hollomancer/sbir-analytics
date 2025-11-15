@@ -373,9 +373,25 @@ If you need to rollback to Docker Compose:
 
 ---
 
+## Testing Your Deployment
+
+After setting up Dagster Cloud, follow the comprehensive testing guide to verify everything works:
+
+**See**: `docs/deployment/dagster-cloud-testing-guide.md` for step-by-step testing instructions.
+
+### Quick Test Checklist
+
+1. ✅ Code location deploys successfully
+2. ✅ All assets visible (~117 assets)
+3. ✅ All jobs visible (10 jobs)
+4. ✅ Environment variables configured
+5. ✅ Neo4j connection works
+6. ✅ Test job executes successfully
+7. ✅ Data loads to Neo4j
+
 ## Next Steps
 
-After successful migration:
+After successful migration and testing:
 
 1. Monitor first few scheduled runs
 2. Set up alerts for job failures
