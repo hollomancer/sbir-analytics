@@ -9,6 +9,10 @@
 
 This guide documents the migration from Docker Compose-based Dagster deployment to Dagster Cloud Solo Plan. Dagster Cloud is now the **primary** deployment method, with Docker Compose maintained as a **failover** option for local development and emergency scenarios.
 
+**Deployment Options**:
+- **UI-Based** (this guide): Configure via Dagster Cloud web interface
+- **CLI-Based Serverless**: Deploy using `dagster-cloud` CLI - See `docs/deployment/dagster-cloud-serverless-cli.md`
+
 ## Benefits of Dagster Cloud
 
 - ✅ No container orchestration management

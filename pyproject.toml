@@ -9,6 +9,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "dagster>=1.7.0,<2.0.0",
     "dagster-webserver>=1.7.0,<2.0.0",
+    "dagster-cloud>=1.7.0,<2.0.0",  # CLI for Serverless deployment
     "pandas>=2.2.0,<3.0.0",
     "neo4j>=5.20.0,<6.0.0",
     "duckdb>=1.0.0,<2.0.0",

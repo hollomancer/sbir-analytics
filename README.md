@@ -59,6 +59,8 @@ See `docs/deployment/containerization.md` for full details.
 
 **Primary deployment method**: Dagster Cloud Solo Plan ($10/month)
 
+#### Option A: UI-Based Deployment (Recommended for Initial Setup)
+
 1. **Set up Dagster Cloud:**
    - Create account at [cloud.dagster.io](https://cloud.dagster.io)
    - Start 30-day free trial (no credit card required)
@@ -83,6 +85,32 @@ See `docs/deployment/containerization.md` for full details.
    - Test job execution
 
 See `docs/deployment/dagster-cloud-migration.md` for complete setup instructions.
+
+#### Option B: CLI-Based Serverless Deployment (Recommended for CI/CD)
+
+**Note**: Requires Docker to be running (builds Docker image).
+
+1. **Install CLI:**
+   ```bash
+   pip install dagster-cloud
+   # or: uv pip install dagster-cloud
+   ```
+
+2. **Authenticate:**
+   ```bash
+   export DAGSTER_CLOUD_API_TOKEN="your-api-token"
+   dagster-cloud auth login
+   ```
+
+3. **Deploy:**
+   ```bash
+   dagster-cloud serverless deploy-python-executable \
+     --deployment prod \
+     --location-name sbir-etl-production \
+     --module-name src.definitions
+   ```
+
+See `docs/deployment/dagster-cloud-serverless-cli.md` for complete CLI deployment guide.
 
 **Note**: Docker Compose remains available as a failover option for local development and emergency scenarios.
 

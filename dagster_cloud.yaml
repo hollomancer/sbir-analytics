@@ -1,4 +1,13 @@
+# Dagster Cloud Serverless Configuration
+#
+# This file configures code locations for Dagster Cloud Serverless deployment.
+# Use with: dagster-cloud serverless deploy
+#
+# Documentation: docs/deployment/dagster-cloud-serverless-cli.md
+
 locations:
-- code_source:
-    module_name: src.definitions
-  location_name: sbir-etl-production
+  - location_name: sbir-etl-production
+    code_source:
+      python_module: src.definitions
+    build:
+      python_version: "3.11"
