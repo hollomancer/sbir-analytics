@@ -2,18 +2,6 @@
 
 A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4j graph database for analysis and visualization.
 
-## 🎉 Recent Consolidation Achievements
-
-**Major codebase consolidation completed** (2025-01-01):
-- ✅ **30-60% Code Duplication Reduction** - Systematic consolidation across all modules
-- ✅ **Unified Configuration System** - Single hierarchical PipelineConfig with 16+ schemas
-- ✅ **Consolidated Asset Architecture** - USPTO, CET, and transition assets unified
-- ✅ **Streamlined Docker Setup** - Single docker-compose.yml with profile-based configuration
-- ✅ **Unified Data Models** - Award model replaces separate implementations
-- ✅ **Performance Monitoring** - Consolidated utilities and monitoring systems
-
-The codebase is now significantly more maintainable with reduced duplication, clearer organization, and consistent patterns throughout.
-
 ## CLI Interface
 
 The SBIR CLI provides a rich command-line interface for monitoring and operating the pipeline:
@@ -87,7 +75,6 @@ See [Path Configuration Guide](docs/configuration/paths.md) for complete documen
 - Specs (Kiro): `.kiro/specs/` (Active) | `.kiro/specs/archive/` (Completed)
 - User/Developer Docs: `docs/` (see `docs/index.md`)
 - Agent Steering: `.kiro/steering/` (see `.kiro/steering/README.md`)
-- Historical Reference: `archive/openspec/`
 
 ## Transition Detection System
 
@@ -951,6 +938,137 @@ python scripts/refresh_enrichment.py stats --source usaspending
 
 **Metrics**: `reports/metrics/enrichment_freshness.json`
 
+## Company Categorization
+
+**Status**: ✅ **IMPLEMENTED** - Company categorization system operational
+
+The company categorization system analyzes federal contract portfolios to classify companies as **Product-leaning**, **Service-leaning**, or **Mixed** based on their non-SBIR/STTR federal revenue. This helps identify companies that have successfully commercialized SBIR research into product sales.
+
+### Key Features
+
+- **Product/Service Classification**: Analyzes Product Service Codes (PSC) and contract types to classify revenue
+- **SBIR Exclusion**: Excludes SBIR/STTR awards from analysis to focus on commercial revenue
+- **Agency Breakdown**: Reports revenue proportions by awarding agency
+- **Commercialization Detection**: Identifies companies with successful commercialization (non-R&D revenue > R&D revenue in final two years)
+- **Product Commercialization**: Identifies companies with product revenue > R&D revenue in final two years
+- **DuckDB Integration**: Prioritizes DuckDB bulk data, falls back to USAspending API
+- **Caching**: File-based caching for API responses to avoid redundant queries
+
+### Usage
+
+**Test Script**: Validate categorization against high-volume SBIR companies:
+
+```bash
+# Test first 10 companies (quick)
+poetry run python test_categorization_validation.py --limit 10
+
+# Test all companies
+poetry run python test_categorization_validation.py
+
+# Test specific company by UEI
+poetry run python test_categorization_validation.py --uei ABC123DEF456
+
+# Export results to CSV
+poetry run python test_categorization_validation.py --output results.csv
+
+# Generate detailed markdown report
+poetry run python test_categorization_validation.py --markdown-report report.md
+
+# Load categorized companies to Neo4j
+poetry run python test_categorization_validation.py --load-neo4j
+```
+
+**Programmatic Usage**:
+
+```python
+from src.enrichers.company_categorization import categorize_companies
+from src.transformers.company_categorization import aggregate_company_classification
+
+# Categorize companies from DataFrame
+results = categorize_companies(companies_df)
+```
+
+### Classification Logic
+
+Companies are classified based on:
+1. **Product Service Codes (PSC)**: PSC codes indicate product vs service contracts
+2. **Contract Types**: Fixed-price contracts favor products, cost-reimbursement favors services
+3. **Dollar-weighted Analysis**: Classification weighted by contract dollar amounts
+4. **Commercialization Signals**: Final two years of data analyzed for commercialization patterns
+
+### Output
+
+The test script generates:
+- **Classification Results**: Product-leaning, Service-leaning, or Mixed for each company
+- **Agency Breakdown**: Percentage of revenue from each awarding agency
+- **Commercialization Flags**: Successful commercialization and product commercialization indicators
+- **CSV Export**: Company name, UEI, classification, percentages, agency breakdown
+- **Markdown Report**: Detailed analysis with justifications and evidence
+
+**Configuration**: `config/base.yaml` → `enrichment_refresh.usaspending`
+
+## Neo4j Schema Migration
+
+**Status**: ✅ **AVAILABLE** - Unified schema migration scripts operational
+
+The migration system consolidates Neo4j schema from legacy node types to a unified schema:
+- **Organization**: Unified node for Company, PatentEntity, ResearchInstitution, Agency
+- **Individual**: Unified node for Researcher and PatentEntity individuals
+- **FinancialTransaction**: Unified node for Award and Contract
+- **Relationships**: Consolidated relationship types (PARTICIPATED_IN, RECIPIENT_OF, etc.)
+
+### Migration Scripts
+
+**Main Migration Script**: `scripts/migration/unified_schema_migration.py`
+
+This script orchestrates all migrations in the correct order:
+1. Organization Migration (Company, PatentEntity, ResearchInstitution → Organization)
+2. Individual Migration (Researcher, PatentEntity individuals → Individual)
+3. FinancialTransaction Migration (Award, Contract → FinancialTransaction)
+4. Participated_in Unification (RESEARCHED_BY, WORKED_ON → PARTICIPATED_IN)
+5. TransitionProfile Consolidation (TransitionProfile → Organization properties)
+6. Relationship Consolidation (AWARDED_TO → RECIPIENT_OF, etc.)
+
+### Usage
+
+```bash
+# Dry run to see what would happen
+poetry run python scripts/migration/unified_schema_migration.py --dry-run
+
+# Run all migrations (requires confirmation)
+poetry run python scripts/migration/unified_schema_migration.py
+
+# Run all migrations (skip confirmation)
+poetry run python scripts/migration/unified_schema_migration.py --yes
+
+# Skip specific steps
+poetry run python scripts/migration/unified_schema_migration.py --yes --skip-steps 1,2
+
+# Optimize for speed (larger batches, more connections)
+poetry run python scripts/migration/unified_schema_migration.py --yes --batch-size 2000 --connection-pool-size 30
+```
+
+### Features
+
+- **Idempotent**: All migrations use MERGE operations, safe to re-run
+- **Batch Processing**: Processes large datasets in batches to prevent timeouts
+- **Progress Logging**: Detailed progress logging for long-running migrations
+- **Resume Support**: Can skip completed steps and resume from interruptions
+- **Dry Run Mode**: Preview changes without executing
+
+### Environment Variables
+
+```bash
+export NEO4J_URI=bolt://neo4j:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=your_password
+```
+
+### Documentation
+
+- **Migration Guides**: `docs/migration/` - Detailed guides for each migration step
+- **Schema Documentation**: `docs/schemas/` - Neo4j schema documentation
+
 ## Quick Start
 
 ### Prerequisites
@@ -1236,7 +1354,13 @@ sbir-etl/
 │   ├── benchmark_enrichment.py           # Baseline creation
 │   ├── detect_performance_regression.py  # CI regression check
 │   ├── run_e2e_tests.py                  # E2E test orchestration
-│   └── e2e_health_check.py               # E2E environment validation
+│   ├── e2e_health_check.py               # E2E environment validation
+│   └── migration/                        # Neo4j schema migration scripts
+│       ├── unified_schema_migration.py   # Main migration orchestrator
+│       ├── unified_organization_migration.py
+│       ├── unified_individual_migration.py
+│       ├── unified_financial_transaction_migration.py
+│       └── ...
 │
 ├── docs/
 │   ├── data/                    # Data dictionaries
@@ -1406,25 +1530,6 @@ For detailed guidelines, see [Exception Handling Guide](docs/development/excepti
 3. Update documentation as needed
 4. Use Kiro specs for architectural changes (see `.kiro/specs/` and `AGENTS.md` for workflow)
 5. Ensure performance regression checks pass in CI
-
-### Upcoming Architecture Changes
-
-**Specification System Migration** (Completed): The project has successfully migrated from OpenSpec to Kiro for specification-driven development. This migration:
-- Consolidated all specifications into Kiro's unified format
-- Implemented EARS patterns for requirements documentation
-- Established task-driven development workflows
-- Preserved historical OpenSpec content in `archive/openspec/` for reference
-
-All new development should use the Kiro specification system in `.kiro/specs/`.
-
-**Codebase Consolidation Refactor** (Q1 2025): A comprehensive refactoring effort is planned to consolidate and streamline the codebase architecture. This will:
-- Reduce code duplication by 30-60%
-- Unify configuration management across all components
-- Consolidate asset definitions with clear separation of concerns
-- Establish unified testing framework with consistent patterns
-- Centralize performance monitoring and metrics collection
-
-See [Consolidation Refactor Plan](docs/architecture/consolidation-refactor-plan.md) and [Migration Guide](docs/architecture/consolidation-migration-guide.md) for details.
 
 ## Acknowledgments
 

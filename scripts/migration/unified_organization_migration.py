@@ -94,7 +94,7 @@ def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
     val = os.getenv(name, default)
     if val is None:
-        logger.debug("Environment variable %s is not set and no default provided", name)
+        logger.debug("Environment variable {} is not set and no default provided", name)
     return val
 
 
@@ -104,7 +104,7 @@ def connect(uri: str, user: str, password: str):
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
-    logger.info("Connecting to Neo4j at %s as user %s", uri, user)
+    logger.info("Connecting to Neo4j at {} as user {}", uri, user)
     driver = GraphDatabase.driver(uri, auth=(user, password))
     return driver
 
@@ -566,13 +566,13 @@ def create_agency_organizations(driver, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     with driver.session() as session:
         result = session.run(query)
         count = result.single()["created"] if result.peek() else 0
-        logger.info("✓ Created %d Agency Organization nodes", count)
+        logger.info("✓ Created {} Agency Organization nodes", count)
         return count
 
 
@@ -609,20 +609,20 @@ def update_award_relationships(driver, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute update query:\n%s", update_awarded_to_query)
-        logger.info("DRY RUN: Would execute create query:\n%s", create_funded_by_query)
+        logger.info("DRY RUN: Would execute update query:\n{}", update_awarded_to_query)
+        logger.info("DRY RUN: Would execute create query:\n{}", create_funded_by_query)
         return 0
 
     with driver.session() as session:
         # Update AWARDED_TO
         result1 = session.run(update_awarded_to_query)
         updated_count = result1.single()["updated"] if result1.peek() else 0
-        logger.info("✓ Updated %d AWARDED_TO relationships", updated_count)
+        logger.info("✓ Updated {} AWARDED_TO relationships", updated_count)
 
         # Create FUNDED_BY
         result2 = session.run(create_funded_by_query)
         created_count = result2.single()["created"] if result2.peek() else 0
-        logger.info("✓ Created %d FUNDED_BY relationships", created_count)
+        logger.info("✓ Created {} FUNDED_BY relationships", created_count)
 
         return updated_count + created_count
 
@@ -660,20 +660,20 @@ def update_contract_relationships(driver, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute update query:\n%s", update_awarded_contract_query)
-        logger.info("DRY RUN: Would execute create query:\n%s", create_awarded_by_query)
+        logger.info("DRY RUN: Would execute update query:\n{}", update_awarded_contract_query)
+        logger.info("DRY RUN: Would execute create query:\n{}", create_awarded_by_query)
         return 0
 
     with driver.session() as session:
         # Update AWARDED_CONTRACT
         result1 = session.run(update_awarded_contract_query)
         updated_count = result1.single()["updated"] if result1.peek() else 0
-        logger.info("✓ Updated %d AWARDED_CONTRACT relationships", updated_count)
+        logger.info("✓ Updated {} AWARDED_CONTRACT relationships", updated_count)
 
         # Create AWARDED_BY
         result2 = session.run(create_awarded_by_query)
         created_count = result2.single()["created"] if result2.peek() else 0
-        logger.info("✓ Created %d AWARDED_BY relationships", created_count)
+        logger.info("✓ Created {} AWARDED_BY relationships", created_count)
 
         return updated_count + created_count
 
@@ -722,7 +722,7 @@ def update_other_relationships(driver, dry_run: bool = False) -> int:
 
     if dry_run:
         for query in queries:
-            logger.info("DRY RUN: Would execute:\n%s", query)
+            logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     total_updated = 0
@@ -732,7 +732,7 @@ def update_other_relationships(driver, dry_run: bool = False) -> int:
             count = result.single()["updated"] if result.peek() else 0
             total_updated += count
 
-    logger.info("✓ Updated %d other relationships", total_updated)
+    logger.info("✓ Updated {} other relationships", total_updated)
     return total_updated
 
 
@@ -757,19 +757,19 @@ def create_organization_constraints_and_indexes(driver, dry_run: bool = False) -
 
     if dry_run:
         for stmt in statements:
-            logger.info("DRY RUN: Would execute:\n%s", stmt)
+            logger.info("DRY RUN: Would execute:\n{}", stmt)
         return
 
     with driver.session() as session:
         for stmt in statements:
             try:
                 session.run(stmt)
-                logger.info("✓ Created constraint/index: %s", stmt.split()[2:5])
+                logger.info("✓ Created constraint/index: {}", stmt.split()[2:5])
             except Neo4jError as e:
                 if "already exists" in str(e).lower():
                     logger.info("Constraint/index already exists, skipping")
                 else:
-                    logger.warning("Failed to create constraint/index: %s", e)
+                    logger.warning("Failed to create constraint/index: {}", e)
 
 
 def validate_migration(driver) -> dict[str, Any]:
@@ -809,7 +809,7 @@ def validate_migration(driver) -> dict[str, Any]:
                     record = result.single()
                     results[key] = record["count"] if record else 0
             except Exception as e:
-                logger.warning("Validation query failed for %s: %s", key, e)
+                logger.warning("Validation query failed for {}: {}", key, e)
                 results[key] = None
 
     return results
@@ -822,19 +822,19 @@ def print_validation_results(results: dict[str, Any]) -> None:
     logger.info("=" * 60)
 
     logger.info("\nRemaining legacy nodes:")
-    logger.info("  Companies: %s", results.get("remaining_companies", "N/A"))
-    logger.info("  PatentEntities (non-individuals): %s", results.get("remaining_patent_entities", "N/A"))
-    logger.info("  ResearchInstitutions: %s", results.get("remaining_research_institutions", "N/A"))
+    logger.info("  Companies: {}", results.get("remaining_companies", "N/A"))
+    logger.info("  PatentEntities (non-individuals): {}", results.get("remaining_patent_entities", "N/A"))
+    logger.info("  ResearchInstitutions: {}", results.get("remaining_research_institutions", "N/A"))
 
     logger.info("\nOrganizations by type:")
     org_types = results.get("organizations_by_type", [])
     for org_type in org_types:
-        logger.info("  %s: %d", org_type.get("o.organization_type", "UNKNOWN"), org_type.get("count", 0))
+        logger.info("  {}: {}", org_type.get("o.organization_type", "UNKNOWN"), org_type.get("count", 0))
 
     logger.info("\nRelationships:")
-    logger.info("  AWARDED_TO (Award → Organization): %s", results.get("award_org_relationships", "N/A"))
-    logger.info("  FUNDED_BY (Award → Agency): %s", results.get("agency_funding_relationships", "N/A"))
-    logger.info("  AWARDED_BY (Contract → Agency): %s", results.get("contract_agency_relationships", "N/A"))
+    logger.info("  AWARDED_TO (Award → Organization): {}", results.get("award_org_relationships", "N/A"))
+    logger.info("  FUNDED_BY (Award → Agency): {}", results.get("agency_funding_relationships", "N/A"))
+    logger.info("  AWARDED_BY (Contract → Agency): {}", results.get("contract_agency_relationships", "N/A"))
 
     logger.info("\n" + "=" * 60)
 
