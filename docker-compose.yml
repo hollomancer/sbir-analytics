@@ -268,8 +268,11 @@ services:
     command: >
       sh -c "
         set -eux;
-        echo 'Installing CI test dependencies (pip) inside container';
-        pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
+        echo 'Installing UV for fast dependency management';
+        curl -LsSf https://astral.sh/uv/install.sh | sh;
+        export PATH=\"/root/.cargo/bin:$$PATH\";
+        echo 'Installing CI test dependencies using UV (faster than pip)';
+        uv pip install --system --no-cache pandas pyarrow pyreadstat dagster dagit dagster-core || pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
         echo 'Running fast tests inside container';
         pytest -m fast -q;
         echo 'Running Dagster uspto_validation_job runner (in-process)';

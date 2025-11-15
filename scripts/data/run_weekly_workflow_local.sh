@@ -60,19 +60,20 @@ echo "✓ Profiling complete"
 echo ""
 
 # Step 4: Install dependencies (if needed)
-if ! command -v poetry &> /dev/null; then
-    echo "==> Installing Poetry..."
-    pip install --quiet "poetry==1.8.3"
+if ! command -v uv &> /dev/null; then
+    echo "==> Installing UV..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 echo "==> Step 4: Installing project dependencies..."
-poetry install --no-interaction
+uv sync
 echo "✓ Dependencies installed"
 echo ""
 
 # Step 5: Run SBIR ingestion validation
 echo "==> Step 5: Running ingestion validation..."
-poetry run python scripts/data/run_sbir_ingestion_checks.py \
+uv run python scripts/data/run_sbir_ingestion_checks.py \
   --csv-path "$DATA_PATH" \
   --duckdb-path "$METADATA_DIR/ingestion.duckdb" \
   --table-name "sbir_awards_refresh" \
@@ -86,7 +87,7 @@ echo ""
 
 # Step 6: Run company enrichment coverage
 echo "==> Step 6: Running enrichment coverage..."
-poetry run python scripts/data/run_sbir_enrichment_check.py \
+uv run python scripts/data/run_sbir_enrichment_check.py \
   --awards-csv "$DATA_PATH" \
   --company-dir "$COMPANY_DIR" \
   --output-json "$METADATA_DIR/enrichment_summary.json" \
@@ -96,7 +97,7 @@ echo ""
 
 # Step 7: Run integration tests
 echo "==> Step 7: Running integration tests..."
-SBIR_E2E_AWARD_CSV="$DATA_PATH" poetry run pytest \
+SBIR_E2E_AWARD_CSV="$DATA_PATH" uv run pytest \
   tests/integration/test_sbir_ingestion_assets.py \
   tests/integration/test_sbir_enrichment_pipeline.py \
   --maxfail=1 --disable-warnings -q
@@ -107,12 +108,12 @@ echo ""
 if [ -n "$NEO4J_URI" ]; then
     echo "==> Step 8: Resetting Neo4j database..."
     export NEO4J_URI NEO4J_USER NEO4J_PASSWORD NEO4J_DATABASE
-    poetry run python scripts/data/reset_neo4j_sbir.py
+    uv run python scripts/data/reset_neo4j_sbir.py
     echo "✓ Neo4j reset complete"
     echo ""
 
     echo "==> Step 9: Loading data to Neo4j..."
-    poetry run python scripts/data/run_neo4j_sbir_load.py \
+    uv run python scripts/data/run_neo4j_sbir_load.py \
       --validated-csv "$VALIDATED_CSV" \
       --output-dir "$METADATA_DIR" \
       --summary-md "$METADATA_DIR/neo4j_load_summary.md" || true
@@ -120,7 +121,7 @@ if [ -n "$NEO4J_URI" ]; then
     echo ""
 
     echo "==> Step 10: Running Neo4j smoke checks..."
-    poetry run python scripts/data/run_neo4j_smoke_checks.py \
+    uv run python scripts/data/run_neo4j_smoke_checks.py \
       --output-json "$METADATA_DIR/neo4j_smoke_check.json" \
       --output-md "$METADATA_DIR/neo4j_smoke_check.md" || true
     echo "✓ Neo4j smoke checks complete"

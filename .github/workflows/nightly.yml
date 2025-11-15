@@ -47,37 +47,30 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Poetry
+      - name: Install UV
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry virtual environment
+      - name: Cache UV virtual environment
         uses: actions/cache@v3
         with:
           path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
             venv-${{ runner.os }}-3.11-
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync
 
       - name: Install duckdb and pyreadstat
-        run: |
-          poetry run python -m pip install --upgrade pip
-          poetry run pip install duckdb pyreadstat
+        run: uv pip install duckdb pyreadstat
 
       - name: Run unit tests
         id: test
         run: |
           set -o pipefail
-          poetry run pytest tests/unit/ -v 2>&1 | tee test-unit.log
+          uv run pytest tests/unit/ -v 2>&1 | tee test-unit.log
         continue-on-error: true
 
       - name: Upload logs
@@ -125,31 +118,24 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Poetry
+      - name: Install UV
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry virtual environment
+      - name: Cache UV virtual environment
         uses: actions/cache@v3
         with:
           path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
             venv-${{ runner.os }}-3.11-
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync
 
       - name: Install duckdb and pyreadstat
-        run: |
-          poetry run python -m pip install --upgrade pip
-          poetry run pip install duckdb pyreadstat
+        run: uv pip install duckdb pyreadstat
 
       - name: Wait for Neo4j
         run: |
@@ -164,7 +150,7 @@ jobs:
         id: test
         run: |
           set -o pipefail
-          poetry run pytest tests/integration/ -v 2>&1 | tee test-integration.log
+          uv run pytest tests/integration/ -v 2>&1 | tee test-integration.log
         continue-on-error: true
 
       - name: Upload logs
@@ -195,37 +181,30 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Poetry
+      - name: Install UV
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry virtual environment
+      - name: Cache UV virtual environment
         uses: actions/cache@v3
         with:
           path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
             venv-${{ runner.os }}-3.11-
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: uv sync
 
       - name: Install duckdb and pyreadstat
-        run: |
-          poetry run python -m pip install --upgrade pip
-          poetry run pip install duckdb pyreadstat
+        run: uv pip install duckdb pyreadstat
 
       - name: Run E2E tests
         id: test
         run: |
           set -o pipefail
-          poetry run pytest tests/e2e/ -v 2>&1 | tee test-e2e.log
+          uv run pytest tests/e2e/ -v 2>&1 | tee test-e2e.log
         continue-on-error: true
 
       - name: Upload logs
@@ -320,9 +299,10 @@ jobs:
         run: |
           set -o pipefail
           # Need to install dependencies before running tests
-          curl -sSL https://install.python-poetry.org | python3 -
-          poetry install --no-interaction
-          poetry run pytest -m fast -q 2>&1 | tee test-after-fix.log
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv sync
+          uv run pytest -m fast -q 2>&1 | tee test-after-fix.log
         continue-on-error: true
 
       - name: Upload post-fix logs
