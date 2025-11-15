@@ -32,6 +32,9 @@ except ImportError:
     GraphDatabase = None
     Neo4jError = Exception
 
+# Batch size for processing nodes (adjust based on dataset size and Neo4j performance)
+BATCH_SIZE = 1000
+
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
@@ -52,52 +55,93 @@ def connect(uri: str, user: str, password: str):
     return driver
 
 
-def migrate_researchers_to_individuals(driver, dry_run: bool = False) -> int:
-    """Migrate Researcher nodes to Individual nodes.
+def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+    """Migrate Researcher nodes to Individual nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of individuals created
     """
     logger.info("Step 1: Migrating Researcher nodes to Individual nodes")
 
-    query = """
-    MATCH (r:Researcher)
-    WITH r
-    MERGE (i:Individual {individual_id: 'ind_researcher_' + coalesce(r.researcher_id, toString(id(r)))})
-    SET i.name = r.name,
-        i.normalized_name = upper(r.name),
-        i.email = r.email,
-        i.phone = r.phone,
-        i.individual_type = 'RESEARCHER',
-        i.source_contexts = ['SBIR'],
-        i.researcher_id = r.researcher_id,
-        i.institution = r.institution,
-        i.department = r.department,
-        i.title = r.title,
-        i.expertise = r.expertise,
-        i.bio = r.bio,
-        i.website = r.website,
-        i.orcid = r.orcid,
-        i.linkedin = r.linkedin,
-        i.google_scholar = r.google_scholar,
-        i.created_at = datetime(),
-        i.updated_at = datetime()
-    RETURN count(i) as created
-    """
+    count_query = "MATCH (r:Researcher) RETURN count(r) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would migrate Researcher nodes in batches of %d", batch_size)
         return 0
 
-    with driver.session() as session:
-        result = session.run(query)
-        count = result.single()["created"] if result.peek() else 0
-        logger.info("✓ Created %d Individual nodes from Researcher nodes", count)
-        return count
+    with driver.session(default_access_mode="WRITE") as session:
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found %d Researcher nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No Researcher nodes to migrate")
+            return 0
+
+        batch_query = """
+        MATCH (r:Researcher)
+        WITH r SKIP $skip LIMIT $batch_size
+        MERGE (i:Individual {individual_id: 'ind_researcher_' + coalesce(r.researcher_id, toString(id(r)))})
+        SET i.name = r.name,
+            i.normalized_name = upper(r.name),
+            i.email = r.email,
+            i.phone = r.phone,
+            i.individual_type = 'RESEARCHER',
+            i.source_contexts = ['SBIR'],
+            i.researcher_id = r.researcher_id,
+            i.institution = r.institution,
+            i.department = r.department,
+            i.title = r.title,
+            i.expertise = r.expertise,
+            i.bio = r.bio,
+            i.website = r.website,
+            i.orcid = r.orcid,
+            i.linkedin = r.linkedin,
+            i.google_scholar = r.google_scholar,
+            i.created_at = datetime(),
+            i.updated_at = datetime()
+        RETURN count(i) as created
+        """
+
+        total_created = 0
+        skip = 0
+        batch_num = 1
+        total_batches = (total_count + batch_size - 1) // batch_size
+
+        while skip < total_count:
+            logger.info(
+                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                batch_num,
+                total_batches,
+                skip + 1,
+                min(skip + batch_size, total_count),
+                total_count,
+            )
+            
+            result = session.run(batch_query, skip=skip, batch_size=batch_size)
+            batch_created = result.single()["created"] if result.peek() else 0
+            total_created += batch_created
+            
+            logger.info(
+                "✓ Batch %d/%d complete: Created %d Individual nodes (Total: %d/%d)",
+                batch_num,
+                total_batches,
+                batch_created,
+                total_created,
+                total_count,
+            )
+            
+            skip += batch_size
+            batch_num += 1
+
+        logger.info("✓ Migration complete: Created %d Individual nodes from Researcher nodes", total_created)
+        return total_created
 
 
 def migrate_patent_individuals_to_individuals(driver, dry_run: bool = False) -> int:

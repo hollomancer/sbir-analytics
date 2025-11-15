@@ -35,6 +35,9 @@ except ImportError:
     GraphDatabase = None
     Neo4jError = Exception
 
+# Batch size for processing nodes (adjust based on dataset size and Neo4j performance)
+BATCH_SIZE = 1000
+
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
@@ -55,210 +58,397 @@ def connect(uri: str, user: str, password: str):
     return driver
 
 
-def migrate_companies_to_organizations(driver, dry_run: bool = False) -> int:
-    """Migrate Company nodes to Organization nodes.
+def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+    """Migrate Company nodes to Organization nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of organizations created
     """
     logger.info("Step 1: Migrating Company nodes to Organization nodes")
 
-    query = """
-    MATCH (c:Company)
-    WITH c
-    MERGE (o:Organization {organization_id: 'org_company_' + coalesce(c.company_id, c.uei, c.duns, id(c))})
-    SET o.name = c.name,
-        o.normalized_name = coalesce(c.normalized_name, upper(c.name)),
-        o.address = c.address_line_1,
-        o.city = c.city,
-        o.state = c.state,
-        o.postcode = c.zip_code,
-        o.country = coalesce(c.country, 'US'),
-        o.organization_type = 'COMPANY',
-        o.source_contexts = ['SBIR'],
-        o.uei = c.uei,
-        o.cage = c.cage,
-        o.duns = c.duns,
-        o.business_size = c.business_size,
-        o.company_id = c.company_id,
-        o.naics_primary = c.naics_primary,
-        o.created_at = coalesce(c.created_at, datetime()),
-        o.updated_at = datetime()
-    RETURN count(o) as created
-    """
-
+    # First, get total count
+    count_query = "MATCH (c:Company) RETURN count(c) as total"
+    
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would migrate Company nodes in batches of %d", batch_size)
         return 0
 
-    # Use a session with extended timeout for long-running migration queries
-    # The driver is already configured with extended timeouts in unified_schema_migration.py
     with driver.session(default_access_mode="WRITE") as session:
-        # Execute query - timeout is handled at driver level
-        result = session.run(query)
-        count = result.single()["created"]
-        logger.info("✓ Created %d Organization nodes from Company nodes", count)
-        return count
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found %d Company nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No Company nodes to migrate")
+            return 0
+
+        # Batch processing query
+        batch_query = """
+        MATCH (c:Company)
+        WITH c SKIP $skip LIMIT $batch_size
+        MERGE (o:Organization {organization_id: 'org_company_' + coalesce(c.company_id, c.uei, c.duns, toString(id(c)))})
+        SET o.name = c.name,
+            o.normalized_name = coalesce(c.normalized_name, upper(c.name)),
+            o.address = c.address_line_1,
+            o.city = c.city,
+            o.state = c.state,
+            o.postcode = c.zip_code,
+            o.country = coalesce(c.country, 'US'),
+            o.organization_type = 'COMPANY',
+            o.source_contexts = ['SBIR'],
+            o.uei = c.uei,
+            o.cage = c.cage,
+            o.duns = c.duns,
+            o.business_size = c.business_size,
+            o.company_id = c.company_id,
+            o.naics_primary = c.naics_primary,
+            o.created_at = coalesce(c.created_at, datetime()),
+            o.updated_at = datetime()
+        RETURN count(o) as created
+        """
+
+        total_created = 0
+        skip = 0
+        batch_num = 1
+        total_batches = (total_count + batch_size - 1) // batch_size
+
+        while skip < total_count:
+            logger.info(
+                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                batch_num,
+                total_batches,
+                skip + 1,
+                min(skip + batch_size, total_count),
+                total_count,
+            )
+            
+            result = session.run(batch_query, skip=skip, batch_size=batch_size)
+            batch_created = result.single()["created"]
+            total_created += batch_created
+            
+            logger.info(
+                "✓ Batch %d/%d complete: Created %d Organization nodes (Total: %d/%d)",
+                batch_num,
+                total_batches,
+                batch_created,
+                total_created,
+                total_count,
+            )
+            
+            skip += batch_size
+            batch_num += 1
+
+        logger.info("✓ Migration complete: Created %d Organization nodes from Company nodes", total_created)
+        return total_created
 
 
-def migrate_patent_entities_to_organizations(driver, dry_run: bool = False) -> int:
+def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
     """Migrate PatentEntity nodes (non-individuals) to Organization nodes, merging where appropriate.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of organizations created/updated
     """
     logger.info("Step 2: Migrating PatentEntity nodes (non-individuals) to Organization nodes")
 
-    # First, try to merge with existing Organizations by UEI
-    merge_by_uei_query = """
+    count_query = """
     MATCH (pe:PatentEntity)
     WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
-      AND pe.sbir_uei IS NOT NULL
-      AND EXISTS {
-        MATCH (o:Organization {uei: pe.sbir_uei})
-      }
-    MATCH (o:Organization {uei: pe.sbir_uei})
-    SET o.entity_id = coalesce(o.entity_id, pe.entity_id),
-        o.entity_category = coalesce(o.entity_category, pe.entity_category),
-        o.num_assignments_as_assignee = coalesce(o.num_assignments_as_assignee, 0) + coalesce(pe.num_assignments_as_assignee, 0),
-        o.num_assignments_as_assignor = coalesce(o.num_assignments_as_assignor, 0) + coalesce(pe.num_assignments_as_assignor, 0),
-        o.num_patents_owned = coalesce(o.num_patents_owned, 0) + coalesce(pe.num_patents_owned, 0),
-        o.is_sbir_company = coalesce(o.is_sbir_company, pe.is_sbir_company, false),
-        o.source_contexts = CASE
-            WHEN 'PATENT' IN o.source_contexts THEN o.source_contexts
-            ELSE o.source_contexts + 'PATENT'
-        END,
-        o.updated_at = datetime()
-    WITH pe, o
-    // Update relationships from PatentEntity to Organization
-    MATCH (pe)-[r1:ASSIGNED_TO]->(pa:PatentAssignment)
-    MERGE (o)-[r2:ASSIGNED_TO]->(pa)
-    SET r2 = properties(r1)
-    WITH pe, o
-    MATCH (pe)-[r1:ASSIGNED_FROM]->(pa:PatentAssignment)
-    MERGE (o)-[r2:ASSIGNED_FROM]->(pa)
-    SET r2 = properties(r1)
-    RETURN count(DISTINCT o) as merged
-    """
-
-    # Then create new Organizations for PatentEntities that don't match
-    create_new_query = """
-    MATCH (pe:PatentEntity)
-    WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
-      AND NOT EXISTS {
-        MATCH (o:Organization)
-        WHERE (pe.sbir_uei IS NOT NULL AND o.uei = pe.sbir_uei)
-           OR (pe.normalized_name IS NOT NULL AND o.normalized_name = pe.normalized_name 
-               AND pe.state IS NOT NULL AND o.state = pe.state 
-               AND pe.postcode IS NOT NULL AND o.postcode = pe.postcode)
-      }
-    MERGE (o:Organization {organization_id: 'org_patent_' + coalesce(pe.entity_id, toString(id(pe)))})
-    SET o.name = pe.name,
-        o.normalized_name = coalesce(pe.normalized_name, upper(pe.name)),
-        o.address = pe.address,
-        o.city = pe.city,
-        o.state = pe.state,
-        o.postcode = pe.postcode,
-        o.country = coalesce(pe.country, 'US'),
-        o.organization_type = CASE pe.entity_category
-            WHEN 'UNIVERSITY' THEN 'UNIVERSITY'
-            WHEN 'GOVERNMENT' THEN 'GOVERNMENT'
-            ELSE 'COMPANY'
-        END,
-        o.source_contexts = ['PATENT'],
-        o.entity_id = pe.entity_id,
-        o.entity_category = pe.entity_category,
-        o.num_assignments_as_assignee = pe.num_assignments_as_assignee,
-        o.num_assignments_as_assignor = pe.num_assignments_as_assignor,
-        o.num_patents_owned = pe.num_patents_owned,
-        o.is_sbir_company = pe.is_sbir_company,
-        o.sbir_uei = pe.sbir_uei,
-        o.sbir_company_id = pe.sbir_company_id,
-        o.created_at = coalesce(pe.loaded_date, datetime()),
-        o.updated_at = datetime()
-    WITH pe, o
-    // Update relationships from PatentEntity to Organization
-    MATCH (pe)-[r1:ASSIGNED_TO]->(pa:PatentAssignment)
-    MERGE (o)-[r2:ASSIGNED_TO]->(pa)
-    SET r2 = properties(r1)
-    WITH pe, o
-    MATCH (pe)-[r1:ASSIGNED_FROM]->(pa:PatentAssignment)
-    MERGE (o)-[r2:ASSIGNED_FROM]->(pa)
-    SET r2 = properties(r1)
-    RETURN count(DISTINCT o) as created
+    RETURN count(pe) as total
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute merge query:\n%s", merge_by_uei_query)
-        logger.info("DRY RUN: Would execute create query:\n%s", create_new_query)
+        logger.info("DRY RUN: Would migrate PatentEntity nodes in batches of %d", batch_size)
         return 0
 
-    with driver.session() as session:
-        # Merge with existing Organizations
-        result1 = session.run(merge_by_uei_query)
-        merged_count = result1.single()["merged"] if result1.peek() else 0
-        logger.info("✓ Merged %d PatentEntity nodes with existing Organizations", merged_count)
+    with driver.session(default_access_mode="WRITE") as session:
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found %d PatentEntity nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No PatentEntity nodes to migrate")
+            return 0
 
-        # Create new Organizations
-        result2 = session.run(create_new_query)
-        created_count = result2.single()["created"] if result2.peek() else 0
-        logger.info("✓ Created %d new Organization nodes from PatentEntity nodes", created_count)
+        # Batch processing: First merge with existing Organizations by UEI
+        merge_by_uei_batch_query = """
+        MATCH (pe:PatentEntity)
+        WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
+          AND pe.sbir_uei IS NOT NULL
+          AND EXISTS {
+            MATCH (o:Organization {uei: pe.sbir_uei})
+          }
+        WITH pe SKIP $skip LIMIT $batch_size
+        MATCH (o:Organization {uei: pe.sbir_uei})
+        SET o.entity_id = coalesce(o.entity_id, pe.entity_id),
+            o.entity_category = coalesce(o.entity_category, pe.entity_category),
+            o.num_assignments_as_assignee = coalesce(o.num_assignments_as_assignee, 0) + coalesce(pe.num_assignments_as_assignee, 0),
+            o.num_assignments_as_assignor = coalesce(o.num_assignments_as_assignor, 0) + coalesce(pe.num_assignments_as_assignor, 0),
+            o.num_patents_owned = coalesce(o.num_patents_owned, 0) + coalesce(pe.num_patents_owned, 0),
+            o.is_sbir_company = coalesce(o.is_sbir_company, pe.is_sbir_company, false),
+            o.source_contexts = CASE
+                WHEN 'PATENT' IN o.source_contexts THEN o.source_contexts
+                ELSE o.source_contexts + 'PATENT'
+            END,
+            o.updated_at = datetime()
+        WITH pe, o
+        MATCH (pe)-[r1:ASSIGNED_TO]->(pa:PatentAssignment)
+        MERGE (o)-[r2:ASSIGNED_TO]->(pa)
+        SET r2 = properties(r1)
+        WITH pe, o
+        MATCH (pe)-[r1:ASSIGNED_FROM]->(pa:PatentAssignment)
+        MERGE (o)-[r2:ASSIGNED_FROM]->(pa)
+        SET r2 = properties(r1)
+        RETURN count(DISTINCT o) as merged
+        """
 
-        return merged_count + created_count
+        # Count how many can be merged
+        merge_count_query = """
+        MATCH (pe:PatentEntity)
+        WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
+          AND pe.sbir_uei IS NOT NULL
+          AND EXISTS {
+            MATCH (o:Organization {uei: pe.sbir_uei})
+          }
+        RETURN count(pe) as mergeable
+        """
+        merge_count_result = session.run(merge_count_query)
+        mergeable_count = merge_count_result.single()["mergeable"] if merge_count_result.peek() else 0
+
+        total_merged = 0
+        if mergeable_count > 0:
+            logger.info("Merging %d PatentEntity nodes with existing Organizations...", mergeable_count)
+            skip = 0
+            batch_num = 1
+            total_batches = (mergeable_count + batch_size - 1) // batch_size
+
+            while skip < mergeable_count:
+                logger.info(
+                    "Processing merge batch %d/%d (nodes %d-%d of %d)...",
+                    batch_num,
+                    total_batches,
+                    skip + 1,
+                    min(skip + batch_size, mergeable_count),
+                    mergeable_count,
+                )
+                
+                result = session.run(merge_by_uei_batch_query, skip=skip, batch_size=batch_size)
+                batch_merged = result.single()["merged"] if result.peek() else 0
+                total_merged += batch_merged
+                
+                logger.info(
+                    "✓ Merge batch %d/%d complete: Merged %d nodes (Total: %d/%d)",
+                    batch_num,
+                    total_batches,
+                    batch_merged,
+                    total_merged,
+                    mergeable_count,
+                )
+                
+                skip += batch_size
+                batch_num += 1
+
+        # Then create new Organizations for PatentEntities that don't match
+        create_new_batch_query = """
+        MATCH (pe:PatentEntity)
+        WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
+          AND NOT EXISTS {
+            MATCH (o:Organization)
+            WHERE (pe.sbir_uei IS NOT NULL AND o.uei = pe.sbir_uei)
+               OR (pe.normalized_name IS NOT NULL AND o.normalized_name = pe.normalized_name 
+                   AND pe.state IS NOT NULL AND o.state = pe.state 
+                   AND pe.postcode IS NOT NULL AND o.postcode = pe.postcode)
+          }
+        WITH pe SKIP $skip LIMIT $batch_size
+        MERGE (o:Organization {organization_id: 'org_patent_' + coalesce(pe.entity_id, toString(id(pe)))})
+        SET o.name = pe.name,
+            o.normalized_name = coalesce(pe.normalized_name, upper(pe.name)),
+            o.address = pe.address,
+            o.city = pe.city,
+            o.state = pe.state,
+            o.postcode = pe.postcode,
+            o.country = coalesce(pe.country, 'US'),
+            o.organization_type = CASE pe.entity_category
+                WHEN 'UNIVERSITY' THEN 'UNIVERSITY'
+                WHEN 'GOVERNMENT' THEN 'GOVERNMENT'
+                ELSE 'COMPANY'
+            END,
+            o.source_contexts = ['PATENT'],
+            o.entity_id = pe.entity_id,
+            o.entity_category = pe.entity_category,
+            o.num_assignments_as_assignee = pe.num_assignments_as_assignee,
+            o.num_assignments_as_assignor = pe.num_assignments_as_assignor,
+            o.num_patents_owned = pe.num_patents_owned,
+            o.is_sbir_company = pe.is_sbir_company,
+            o.sbir_uei = pe.sbir_uei,
+            o.sbir_company_id = pe.sbir_company_id,
+            o.created_at = coalesce(pe.loaded_date, datetime()),
+            o.updated_at = datetime()
+        WITH pe, o
+        MATCH (pe)-[r1:ASSIGNED_TO]->(pa:PatentAssignment)
+        MERGE (o)-[r2:ASSIGNED_TO]->(pa)
+        SET r2 = properties(r1)
+        WITH pe, o
+        MATCH (pe)-[r1:ASSIGNED_FROM]->(pa:PatentAssignment)
+        MERGE (o)-[r2:ASSIGNED_FROM]->(pa)
+        SET r2 = properties(r1)
+        RETURN count(DISTINCT o) as created
+        """
+
+        # Count how many need to be created
+        create_count_query = """
+        MATCH (pe:PatentEntity)
+        WHERE pe.entity_category IN ['COMPANY', 'UNIVERSITY', 'GOVERNMENT']
+          AND NOT EXISTS {
+            MATCH (o:Organization)
+            WHERE (pe.sbir_uei IS NOT NULL AND o.uei = pe.sbir_uei)
+               OR (pe.normalized_name IS NOT NULL AND o.normalized_name = pe.normalized_name 
+                   AND pe.state IS NOT NULL AND o.state = pe.state 
+                   AND pe.postcode IS NOT NULL AND o.postcode = pe.postcode)
+          }
+        RETURN count(pe) as creatable
+        """
+        create_count_result = session.run(create_count_query)
+        creatable_count = create_count_result.single()["creatable"] if create_count_result.peek() else 0
+
+        total_created = 0
+        if creatable_count > 0:
+            logger.info("Creating %d new Organization nodes from PatentEntity nodes...", creatable_count)
+            skip = 0
+            batch_num = 1
+            total_batches = (creatable_count + batch_size - 1) // batch_size
+
+            while skip < creatable_count:
+                logger.info(
+                    "Processing create batch %d/%d (nodes %d-%d of %d)...",
+                    batch_num,
+                    total_batches,
+                    skip + 1,
+                    min(skip + batch_size, creatable_count),
+                    creatable_count,
+                )
+                
+                result = session.run(create_new_batch_query, skip=skip, batch_size=batch_size)
+                batch_created = result.single()["created"] if result.peek() else 0
+                total_created += batch_created
+                
+                logger.info(
+                    "✓ Create batch %d/%d complete: Created %d nodes (Total: %d/%d)",
+                    batch_num,
+                    total_batches,
+                    batch_created,
+                    total_created,
+                    creatable_count,
+                )
+                
+                skip += batch_size
+                batch_num += 1
+
+        logger.info(
+            "✓ Migration complete: Merged %d, Created %d Organization nodes from PatentEntity nodes",
+            total_merged,
+            total_created,
+        )
+        return total_merged + total_created
 
 
-def migrate_research_institutions_to_organizations(driver, dry_run: bool = False) -> int:
-    """Migrate ResearchInstitution nodes to Organization nodes.
+def migrate_research_institutions_to_organizations(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+    """Migrate ResearchInstitution nodes to Organization nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of organizations created/updated
     """
     logger.info("Step 3: Migrating ResearchInstitution nodes to Organization nodes")
 
-    query = """
-    MATCH (ri:ResearchInstitution)
-    MERGE (o:Organization {organization_id: 'org_research_' + coalesce(ri.name, toString(id(ri)))})
-    ON CREATE SET
-        o.name = ri.name,
-        o.normalized_name = upper(ri.name),
-        o.address = ri.address,
-        o.city = ri.city,
-        o.state = ri.state,
-        o.country = 'US',
-        o.organization_type = 'UNIVERSITY',
-        o.source_contexts = ['RESEARCH'],
-        o.created_at = datetime(),
-        o.updated_at = datetime()
-    ON MATCH SET
-        o.source_contexts = CASE
-            WHEN 'RESEARCH' IN o.source_contexts THEN o.source_contexts
-            ELSE o.source_contexts + 'RESEARCH'
-        END,
-        o.updated_at = datetime()
-    RETURN count(o) as created
-    """
+    count_query = "MATCH (ri:ResearchInstitution) RETURN count(ri) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would migrate ResearchInstitution nodes in batches of %d", batch_size)
         return 0
 
-    with driver.session() as session:
-        result = session.run(query)
-        count = result.single()["created"] if result.peek() else 0
-        logger.info("✓ Created/updated %d Organization nodes from ResearchInstitution nodes", count)
-        return count
+    with driver.session(default_access_mode="WRITE") as session:
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found %d ResearchInstitution nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No ResearchInstitution nodes to migrate")
+            return 0
+
+        batch_query = """
+        MATCH (ri:ResearchInstitution)
+        WITH ri SKIP $skip LIMIT $batch_size
+        MERGE (o:Organization {organization_id: 'org_research_' + coalesce(ri.name, toString(id(ri)))})
+        ON CREATE SET
+            o.name = ri.name,
+            o.normalized_name = upper(ri.name),
+            o.address = ri.address,
+            o.city = ri.city,
+            o.state = ri.state,
+            o.country = 'US',
+            o.organization_type = 'UNIVERSITY',
+            o.source_contexts = ['RESEARCH'],
+            o.created_at = datetime(),
+            o.updated_at = datetime()
+        ON MATCH SET
+            o.source_contexts = CASE
+                WHEN 'RESEARCH' IN o.source_contexts THEN o.source_contexts
+                ELSE o.source_contexts + 'RESEARCH'
+            END,
+            o.updated_at = datetime()
+        RETURN count(o) as created
+        """
+
+        total_created = 0
+        skip = 0
+        batch_num = 1
+        total_batches = (total_count + batch_size - 1) // batch_size
+
+        while skip < total_count:
+            logger.info(
+                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                batch_num,
+                total_batches,
+                skip + 1,
+                min(skip + batch_size, total_count),
+                total_count,
+            )
+            
+            result = session.run(batch_query, skip=skip, batch_size=batch_size)
+            batch_created = result.single()["created"] if result.peek() else 0
+            total_created += batch_created
+            
+            logger.info(
+                "✓ Batch %d/%d complete: Created/updated %d Organization nodes (Total: %d/%d)",
+                batch_num,
+                total_batches,
+                batch_created,
+                total_created,
+                total_count,
+            )
+            
+            skip += batch_size
+            batch_num += 1
+
+        logger.info("✓ Migration complete: Created/updated %d Organization nodes from ResearchInstitution nodes", total_created)
+        return total_created
 
 
 def create_agency_organizations(driver, dry_run: bool = False) -> int:
