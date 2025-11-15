@@ -89,6 +89,8 @@ NEO4J_PASSWORD=your-aura-password
 NEO4J_DATABASE=neo4j
 ```
 
+**Note**: If you have multiple Neo4j instances (free and paid), you can switch between them by updating these environment variables. See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for detailed guidance on managing multiple instances.
+
 ### Optional: Pipeline Configuration
 
 ```

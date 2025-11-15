@@ -39,8 +39,11 @@ Configure in Dagster Cloud UI → Code Location → Configuration → Environmen
 - [ ] `NEO4J_USER` - Neo4j username (usually `neo4j`)
 - [ ] `NEO4J_PASSWORD` - Neo4j Aura password
 - [ ] `NEO4J_DATABASE` - Database name (usually `neo4j`)
+- [ ] `NEO4J_INSTANCE_TYPE` - Set to `free` or `paid` for tracking (optional)
 - [ ] `SBIR_ETL__PIPELINE__ENVIRONMENT` - Set to `production` (optional)
 - [ ] `PYTHONUNBUFFERED` - Set to `1` (optional)
+
+**Note**: If you have multiple Neo4j instances, you can switch between them by updating these environment variables. See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for guidance.
 
 ### Step 5: Initial Deployment
 - [ ] Trigger initial deployment (or wait for auto-deploy)
@@ -69,6 +72,7 @@ Configure in Dagster Cloud UI → Code Location → Configuration → Environmen
 ## Reference Documentation
 
 - **Complete setup guide**: `docs/deployment/dagster-cloud-migration.md`
+- **Multiple Neo4j instances**: `docs/deployment/dagster-cloud-multiple-neo4j-instances.md`
 - **Migration overview**: `docs/deployment/cloud-migration-opportunities.md`
 - **Docker failover**: `docs/deployment/containerization.md`
 
