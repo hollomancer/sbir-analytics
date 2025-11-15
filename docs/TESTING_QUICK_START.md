@@ -2,6 +2,9 @@
 
 Quick reference for setting up and running tests with different Neo4j instances.
 
+> **Note:** This project supports both **Docker** (local/CI) and **Neo4j Aura** (cloud) for testing.
+> See [TESTING_ENVIRONMENTS_COMPARISON.md](./TESTING_ENVIRONMENTS_COMPARISON.md) for detailed comparison.
+
 ## Test Tiers
 
 | Tier | Instance | Dataset | Duration | Setup |
@@ -214,9 +217,10 @@ export SBIR_ETL__NEO4J__CHECK_NODE_COUNT=true
 
 ## For More Details
 
-- **Full Aura Free guide:** [docs/neo4j-aura-testing.md](./neo4j-aura-testing.md)
+- **Docker vs Aura comparison:** [TESTING_ENVIRONMENTS_COMPARISON.md](./TESTING_ENVIRONMENTS_COMPARISON.md) ⭐
+- **Full Aura Free guide:** [neo4j-aura-testing.md](./neo4j-aura-testing.md)
 - **Configuration schema:** [src/config/schemas.py](../src/config/schemas.py)
-- **Environment examples:** [.env.example](./.env.example), [.env.test.aura](./.env.test.aura)
+- **Environment examples:** [.env.example](../.env.example), [.env.test.aura](../.env.test.aura)
 
 ---
 
