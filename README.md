@@ -55,6 +55,37 @@ make docker-up-dev
 
 See `docs/deployment/containerization.md` for full details.
 
+### Production Deployment (Dagster Cloud)
+
+**Primary deployment method**: Dagster Cloud Solo Plan ($10/month)
+
+1. **Set up Dagster Cloud:**
+   - Create account at [cloud.dagster.io](https://cloud.dagster.io)
+   - Start 30-day free trial (no credit card required)
+   - Connect GitHub repository
+
+2. **Configure code location:**
+   - Module: `src.definitions`
+   - Branch: `main`
+   - Python version: 3.11
+
+3. **Set environment variables in Dagster Cloud UI:**
+   ```
+   NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=your-password
+   NEO4J_DATABASE=neo4j
+   ```
+
+4. **Deploy and verify:**
+   - Dagster Cloud automatically deploys on git push
+   - Verify all assets, jobs, and schedules are visible
+   - Test job execution
+
+See `docs/deployment/dagster-cloud-migration.md` for complete setup instructions.
+
+**Note**: Docker Compose remains available as a failover option for local development and emergency scenarios.
+
 ## Overview
 
 This project implements a five-stage ETL pipeline that processes SBIR award data from multiple government sources and loads it into a Neo4j graph database for analysis and visualization.
@@ -70,10 +101,11 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 ### Key Features
 
 - **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
+- **Dagster Cloud**: Primary deployment method (fully managed, $10/month Solo Plan)
 - **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
 - **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
 - **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
-- **Docker Deployment**: Multi-stage build with dev, test, and prod profiles
+- **Docker Deployment**: Failover option for local development and emergency scenarios
 - **Iterative Enrichment Refresh**: Automatic freshness tracking and refresh for enrichment data
 
 ## Documentation Map
@@ -655,7 +687,8 @@ See **docs/transition/mvp.md** for full documentation, scoring signals, and trou
 
 Deployment
 
-- Containerization guide: docs/deployment/containerization.md
+- **Primary**: Dagster Cloud Solo Plan ($10/month) - See `docs/deployment/dagster-cloud-migration.md`
+- **Failover**: Docker Compose - See `docs/deployment/containerization.md`
 - Development: `docker compose --profile dev up` (bind mounts, live reload)
 - CI Testing: `docker compose --profile ci up` (ephemeral, test execution)
 - Neo4j server guide: docs/neo4j/server.md
