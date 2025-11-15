@@ -6,6 +6,13 @@ on:
     # Run on any PR to any branch
   push:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      use_docker:
+        description: 'Use Docker Neo4j instead of Aura Free'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   detect-changes:
@@ -48,9 +55,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+
+    # Only use Neo4j service container if explicitly requested via workflow_dispatch
     services:
       neo4j:
-        image: neo4j:5
+        image: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j:5') || '' }}
         ports:
           - 7687:7687
           - 7474:7474
@@ -58,11 +67,20 @@ jobs:
           NEO4J_AUTH: none
           NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
         options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-          --health-start-period 40s
+          ${{ (github.event.inputs.use_docker == 'true' && '--health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" --health-interval 10s --health-timeout 5s --health-retries 10 --health-start-period 40s') || '' }}
+
+    env:
+      # Use Neo4j Aura Free by default, Docker as fallback
+      # Aura Free credentials from GitHub secrets (configure in repo settings)
+      NEO4J_URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_URI || 'neo4j+s://test.databases.neo4j.io' }}
+      NEO4J_USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_USERNAME || 'neo4j' }}
+      NEO4J_PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_PASSWORD || '' }}
+      SBIR_ETL__NEO4J__URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_URI || 'neo4j+s://test.databases.neo4j.io' }}
+      SBIR_ETL__NEO4J__USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_USERNAME || 'neo4j' }}
+      SBIR_ETL__NEO4J__PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_PASSWORD || '' }}
+      ENVIRONMENT: ${{ (github.event.inputs.use_docker == 'true' && 'dev') || 'test-aura' }}
+      # Limit sample size for Aura Free (stays within 100K node limit)
+      SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ (github.event.inputs.use_docker == 'true' && '10000') || '1000' }}
 
     strategy:
       matrix:
@@ -71,9 +89,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Wait for Neo4j
+      - name: Display test environment
         run: |
-          echo "Waiting for Neo4j to be ready..."
+          if [ "${{ github.event.inputs.use_docker }}" = "true" ]; then
+            echo "🐳 Using Docker Neo4j (local service container)"
+          else
+            echo "☁️  Using Neo4j Aura Free (cloud)"
+            echo "URI: ${{ env.NEO4J_URI }}"
+          fi
+
+      - name: Wait for Neo4j (Docker only)
+        if: github.event.inputs.use_docker == 'true'
+        run: |
+          echo "Waiting for Neo4j Docker service to be ready..."
           until curl -s -f -o /dev/null "http://localhost:7474"; do
             echo "Neo4j not ready, sleeping..."
             sleep 5
@@ -166,8 +194,132 @@ jobs:
               raise
           PY
 
+      - name: Verify Neo4j connection (Aura Free)
+        if: github.event.inputs.use_docker != 'true'
+        continue-on-error: true
+        run: |
+          echo "Testing connection to Neo4j Aura Free..."
+          poetry run python - <<'PY'
+          import os
+          import sys
+          try:
+              from neo4j import GraphDatabase
+              uri = os.environ.get("NEO4J_URI", "")
+              user = os.environ.get("NEO4J_USERNAME", "neo4j")
+              password = os.environ.get("NEO4J_PASSWORD", "")
+
+              if not uri or not password:
+                  print("⚠️  Warning: Neo4j Aura credentials not configured in GitHub secrets")
+                  print("   Please configure NEO4J_AURA_URI, NEO4J_AURA_USERNAME, NEO4J_AURA_PASSWORD")
+                  print("   See docs/TESTING_QUICK_START.md for setup instructions")
+                  sys.exit(0)  # Don't fail the build, just warn
+
+              print(f"Connecting to: {uri}")
+              driver = GraphDatabase.driver(uri, auth=(user, password))
+              with driver.session() as session:
+                  result = session.run("RETURN 1 as test")
+                  value = result.single()["test"]
+                  assert value == 1
+              driver.close()
+              print("✅ Neo4j Aura Free connection successful!")
+          except Exception as e:
+              print(f"❌ Neo4j Aura Free connection failed: {e}")
+              print("   Tip: Check if your Aura instance is paused at console.neo4j.io")
+              raise
+          PY
+
+      - name: Check initial node count (Aura Free)
+        if: github.event.inputs.use_docker != 'true'
+        continue-on-error: true
+        run: |
+          echo "Checking Neo4j Aura Free node count before tests..."
+          poetry run python - <<'PY'
+          import os
+          import sys
+          try:
+              from neo4j import GraphDatabase
+              uri = os.environ.get("NEO4J_URI", "")
+              user = os.environ.get("NEO4J_USERNAME", "neo4j")
+              password = os.environ.get("NEO4J_PASSWORD", "")
+
+              if not uri or not password:
+                  print("⚠️  Skipping node count check - no Aura credentials")
+                  sys.exit(0)
+
+              driver = GraphDatabase.driver(uri, auth=(user, password))
+              with driver.session() as session:
+                  result = session.run("MATCH (n) RETURN count(n) as count")
+                  count = result.single()["count"]
+                  print(f"📊 Current node count: {count:,}")
+                  if count > 95000:
+                      print(f"⚠️  WARNING: Node count ({count:,}) approaching Aura Free limit (100,000)")
+                      print("   Consider cleaning up test data: MATCH (n) DETACH DELETE n")
+              driver.close()
+          except Exception as e:
+              print(f"Note: Could not check node count: {e}")
+          PY
+
       - name: Run fast tests
+        env:
+          # Pass through environment variables for test configuration
+          NEO4J_URI: ${{ env.NEO4J_URI }}
+          NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
         run: poetry run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Clean up Neo4j test data (Aura Free)
+        if: always() && github.event.inputs.use_docker != 'true'
+        continue-on-error: true
+        run: |
+          echo "Cleaning up Neo4j Aura Free test data..."
+          poetry run python - <<'PY'
+          import os
+          import sys
+          try:
+              from neo4j import GraphDatabase
+              uri = os.environ.get("NEO4J_URI", "")
+              user = os.environ.get("NEO4J_USERNAME", "neo4j")
+              password = os.environ.get("NEO4J_PASSWORD", "")
+
+              if not uri or not password:
+                  print("⚠️  Skipping cleanup - no Aura credentials")
+                  sys.exit(0)
+
+              driver = GraphDatabase.driver(uri, auth=(user, password))
+
+              # Get count before cleanup
+              with driver.session() as session:
+                  before = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
+                  print(f"📊 Nodes before cleanup: {before:,}")
+
+              # Delete test data (with batching for safety)
+              with driver.session() as session:
+                  # Delete in batches to avoid memory issues
+                  batch_size = 10000
+                  total_deleted = 0
+                  while True:
+                      result = session.run(f"""
+                          MATCH (n)
+                          WITH n LIMIT {batch_size}
+                          DETACH DELETE n
+                          RETURN count(n) as deleted
+                      """)
+                      deleted = result.single()["deleted"]
+                      total_deleted += deleted
+                      if deleted == 0:
+                          break
+                      print(f"  Deleted {deleted:,} nodes (total: {total_deleted:,})")
+
+              # Verify cleanup
+              with driver.session() as session:
+                  after = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
+                  print(f"✅ Cleanup complete! Nodes after: {after:,}")
+
+              driver.close()
+          except Exception as e:
+              print(f"⚠️  Cleanup warning: {e}")
+              print("   You may need to manually clean up: MATCH (n) DETACH DELETE n")
+          PY
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

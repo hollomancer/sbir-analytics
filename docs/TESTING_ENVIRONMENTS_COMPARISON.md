@@ -2,6 +2,9 @@
 
 This document explains the overlap between Neo4j Aura Free and Docker-based testing, and when to use each.
 
+> **📣 UPDATE (January 2025):** CI now uses **Neo4j Aura Free by default** (with automatic cleanup).
+> Docker is available as a manual fallback option. See [CI_AURA_SETUP.md](./CI_AURA_SETUP.md) for setup.
+
 ## Quick Comparison
 
 | Feature | Docker (Local/CI) | Neo4j Aura Free | Paid Aura Professional |

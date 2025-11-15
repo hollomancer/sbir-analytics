@@ -31,12 +31,15 @@ neo4j:
   enable_quota_monitoring: true  # Monitor resource usage
 
 # Data extraction limits for testing
+# NOTE: In CI, sample limits are further reduced via environment variables
+# to ensure we stay well within Aura Free's 100K node limit
 extraction:
   sbir:
     csv_path: "data/raw/sbir/awards_data.csv"
-    batch_size: 1000  # Smaller batches
+    batch_size: 500  # Smaller batches for Aura Free
     encoding: "utf-8"
-    sample_limit: 5000  # CRITICAL: Limit to 5000 awards for testing
+    sample_limit: 1000  # CRITICAL: Safe limit for CI (≈2K nodes)
+                        # Can increase to 5000 for local testing (≈10K nodes)
 
     duckdb:
       database_path: ":memory:"
@@ -45,14 +48,14 @@ extraction:
   usaspending:
     database_name: "usaspending"
     table_name: "awards"
-    import_chunk_size: 5000  # Reduced for testing
-    sample_limit: 3000  # Limit USAspending data
+    import_chunk_size: 1000  # Reduced for testing
+    sample_limit: 500  # Limit USAspending data for CI
 
   uspto:
     csv_path: "data/raw/uspto/patent_assignments.csv"
-    batch_size: 1000
+    batch_size: 500
     encoding: "utf-8"
-    sample_limit: 2000  # Limit patent data for testing
+    sample_limit: 300  # Limit patent data for CI
 
 # Reduced enrichment for testing
 enrichment:
