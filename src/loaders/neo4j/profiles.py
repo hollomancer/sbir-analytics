@@ -280,7 +280,7 @@ class TransitionProfileLoader:
         Returns:
             Number of relationships created
         """
-        logger.info("Creating ACHIEVED relationships (Company → TransitionProfile)")
+        logger.info("Creating ACHIEVED relationships (Organization → TransitionProfile)")
 
         rel_count = 0
 
@@ -292,9 +292,10 @@ class TransitionProfileLoader:
                     result = session.run(
                         """
                         UNWIND $profiles AS p
-                        MATCH (c:Company {company_id: p.company_id})
+                        MATCH (o:Organization {organization_type: "COMPANY"})
+                        WHERE o.company_id = p.company_id OR o.organization_id = p.company_id
                         MATCH (prof:TransitionProfile {profile_id: p.profile_id})
-                        MERGE (c)-[r:ACHIEVED]->(prof)
+                        MERGE (o)-[r:ACHIEVED]->(prof)
                         SET r.success_rate = p.success_rate,
                             r.created_at = datetime(p.created_at)
                         RETURN count(r) as created

@@ -99,11 +99,18 @@ class Neo4jClient:
     def create_constraints(self) -> None:
         """Create unique constraints for entity primary keys."""
         constraints = [
+            # Legacy constraints (kept for backward compatibility)
             "CREATE CONSTRAINT company_id IF NOT EXISTS FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
             "CREATE CONSTRAINT award_id IF NOT EXISTS FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
             "CREATE CONSTRAINT researcher_id IF NOT EXISTS FOR (r:Researcher) REQUIRE r.researcher_id IS UNIQUE",
             "CREATE CONSTRAINT patent_id IF NOT EXISTS FOR (p:Patent) REQUIRE p.patent_id IS UNIQUE",
             "CREATE CONSTRAINT institution_name IF NOT EXISTS FOR (i:ResearchInstitution) REQUIRE i.name IS UNIQUE",
+            # Organization constraints
+            "CREATE CONSTRAINT organization_id IF NOT EXISTS FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
+            # Individual constraints
+            "CREATE CONSTRAINT individual_id IF NOT EXISTS FOR (i:Individual) REQUIRE i.individual_id IS UNIQUE",
+            # FinancialTransaction constraints
+            "CREATE CONSTRAINT financial_transaction_id IF NOT EXISTS FOR (ft:FinancialTransaction) REQUIRE ft.transaction_id IS UNIQUE",
         ]
 
         with self.session() as session:
@@ -117,6 +124,7 @@ class Neo4jClient:
     def create_indexes(self) -> None:
         """Create indexes for frequently queried properties."""
         indexes = [
+            # Legacy indexes (kept for backward compatibility)
             "CREATE INDEX company_name IF NOT EXISTS FOR (c:Company) ON (c.name)",
             "CREATE INDEX company_normalized_name IF NOT EXISTS FOR (c:Company) ON (c.normalized_name)",
             "CREATE INDEX company_uei IF NOT EXISTS FOR (c:Company) ON (c.uei)",
@@ -125,6 +133,29 @@ class Neo4jClient:
             "CREATE INDEX researcher_name IF NOT EXISTS FOR (r:Researcher) ON (r.name)",
             "CREATE INDEX patent_number IF NOT EXISTS FOR (p:Patent) ON (p.patent_number)",
             "CREATE INDEX institution_name IF NOT EXISTS FOR (i:ResearchInstitution) ON (i.name)",
+            # Organization indexes
+            "CREATE INDEX organization_name IF NOT EXISTS FOR (o:Organization) ON (o.name)",
+            "CREATE INDEX organization_normalized_name IF NOT EXISTS FOR (o:Organization) ON (o.normalized_name)",
+            "CREATE INDEX organization_type IF NOT EXISTS FOR (o:Organization) ON (o.organization_type)",
+            "CREATE INDEX organization_uei IF NOT EXISTS FOR (o:Organization) ON (o.uei)",
+            "CREATE INDEX organization_duns IF NOT EXISTS FOR (o:Organization) ON (o.duns)",
+            "CREATE INDEX organization_agency_code IF NOT EXISTS FOR (o:Organization) ON (o.agency_code)",
+            # Organization transition metrics indexes
+            "CREATE INDEX organization_transition_success_rate IF NOT EXISTS FOR (o:Organization) ON (o.transition_success_rate)",
+            "CREATE INDEX organization_transition_total_transitions IF NOT EXISTS FOR (o:Organization) ON (o.transition_total_transitions)",
+            "CREATE INDEX organization_transition_total_awards IF NOT EXISTS FOR (o:Organization) ON (o.transition_total_awards)",
+            # Individual indexes
+            "CREATE INDEX individual_name IF NOT EXISTS FOR (i:Individual) ON (i.name)",
+            "CREATE INDEX individual_normalized_name IF NOT EXISTS FOR (i:Individual) ON (i.normalized_name)",
+            "CREATE INDEX individual_type IF NOT EXISTS FOR (i:Individual) ON (i.individual_type)",
+            "CREATE INDEX individual_email IF NOT EXISTS FOR (i:Individual) ON (i.email)",
+            # FinancialTransaction indexes
+            "CREATE INDEX financial_transaction_type IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.transaction_type)",
+            "CREATE INDEX financial_transaction_date IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.transaction_date)",
+            "CREATE INDEX financial_transaction_agency IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.agency)",
+            "CREATE INDEX financial_transaction_award_id IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.award_id)",
+            "CREATE INDEX financial_transaction_contract_id IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.contract_id)",
+            "CREATE INDEX financial_transaction_recipient_uei IF NOT EXISTS FOR (ft:FinancialTransaction) ON (ft.recipient_uei)",
         ]
 
         with self.session() as session:

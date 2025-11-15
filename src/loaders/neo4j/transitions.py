@@ -162,7 +162,7 @@ class TransitionLoader:
         Returns:
             Number of relationships created
         """
-        logger.info("Creating TRANSITIONED_TO relationships (Award → Transition)")
+        logger.info("Creating TRANSITIONED_TO relationships (FinancialTransaction → Transition)")
 
         rel_count = 0
 
@@ -174,9 +174,9 @@ class TransitionLoader:
                     result = session.run(
                         """
                         UNWIND $transitions AS t
-                        MATCH (a:Award {award_id: t.award_id})
+                        MATCH (ft:FinancialTransaction {award_id: t.award_id, transaction_type: 'AWARD'})
                         MATCH (trans:Transition {transition_id: t.transition_id})
-                        MERGE (a)-[r:TRANSITIONED_TO]->(trans)
+                        MERGE (ft)-[r:TRANSITIONED_TO]->(trans)
                         SET r.score = t.likelihood_score,
                             r.confidence = t.confidence,
                             r.detection_date = datetime(t.detected_at),
@@ -220,7 +220,7 @@ class TransitionLoader:
         Returns:
             Number of relationships created
         """
-        logger.info("Creating RESULTED_IN relationships (Transition → Contract)")
+        logger.info("Creating RESULTED_IN relationships (Transition → FinancialTransaction)")
 
         rel_count = 0
 
@@ -233,8 +233,8 @@ class TransitionLoader:
                         """
                         UNWIND $transitions AS t
                         MATCH (trans:Transition {transition_id: t.transition_id})
-                        MATCH (c:Contract {contract_id: t.contract_id})
-                        MERGE (trans)-[r:RESULTED_IN]->(c)
+                        MATCH (ft:FinancialTransaction {contract_id: t.contract_id, transaction_type: 'CONTRACT'})
+                        MERGE (trans)-[r:RESULTED_IN]->(ft)
                         SET r.confidence = t.confidence,
                             r.creation_date = datetime()
                         RETURN count(r) as created
@@ -515,41 +515,30 @@ class TransitionProfileLoader:
         # Compute company-level aggregations
         try:
             with self.driver.session() as session:
-                # Query: For each company, get transition stats
+                # Query: For each organization (company), get transition stats
                 cypher_query = """
-                MATCH (c:Company)<-[:AWARDS]-(a:Award)
-                OPTIONAL MATCH (a)-[tt:TRANSITIONED_TO]->(t:Transition)
-                WITH c.company_id as company_id,
-                     c as company_node,
-                     count(distinct a) as total_awards,
-                     count(distinct case when tt IS NOT NULL then a.award_id end) as total_transitions,
+                MATCH (o:Organization {organization_type: "COMPANY"})<-[:RECIPIENT_OF]-(ft:FinancialTransaction {transaction_type: 'AWARD'})
+                OPTIONAL MATCH (ft)-[tt:TRANSITIONED_TO]->(t:Transition)
+                WITH coalesce(o.company_id, o.organization_id) as company_id,
+                     o as organization_node,
+                     count(distinct ft) as total_awards,
+                     count(distinct case when tt IS NOT NULL then ft.transaction_id end) as total_transitions,
                      avg(case when tt IS NOT NULL then tt.likelihood_score else null end) as avg_likelihood_score
                 WHERE total_awards > 0
-                WITH company_id, company_node, total_awards, total_transitions, avg_likelihood_score,
+                WITH company_id, organization_node, total_awards, total_transitions, avg_likelihood_score,
                      (toFloat(total_transitions) / toFloat(total_awards)) as success_rate
-                MERGE (p:TransitionProfile {profile_id: company_id + "_transition_profile"})
-                ON CREATE SET
-                    p.company_id = company_id,
-                    p.total_awards = total_awards,
-                    p.total_transitions = total_transitions,
-                    p.success_rate = success_rate,
-                    p.avg_likelihood_score = avg_likelihood_score,
-                    p.created_date = datetime()
-                ON MATCH SET
-                    p.total_awards = total_awards,
-                    p.total_transitions = total_transitions,
-                    p.success_rate = success_rate,
-                    p.avg_likelihood_score = avg_likelihood_score,
-                    p.updated_date = datetime()
-                MERGE (company_node)-[:ACHIEVED]->(p)
-                RETURN count(p) as profiles_created
+                SET organization_node.transition_total_awards = total_awards,
+                    organization_node.transition_total_transitions = total_transitions,
+                    organization_node.transition_success_rate = success_rate,
+                    organization_node.transition_avg_likelihood_score = avg_likelihood_score,
+                    organization_node.transition_profile_updated_at = datetime()
+                RETURN count(organization_node) as profiles_updated
                 """
 
                 result = session.run(cypher_query)
-                count = result.single()["profiles_created"]
+                count = result.single()["profiles_updated"] if result.peek() else 0
                 self.stats["profiles_created"] = count
-                self.stats["achieved_relationships"] = count
-                logger.info(f"✓ Created/updated {count} transition profiles")
+                logger.info(f"✓ Updated {count} Organization nodes with transition metrics")
                 return count
 
         except Exception as e:

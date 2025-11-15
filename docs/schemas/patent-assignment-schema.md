@@ -339,7 +339,7 @@ PatentEntity {
 (Patent)-[:ASSIGNED_VIA]->(PatentAssignment)
 (PatentAssignment)-[:ASSIGNED_TO]->(PatentEntity {entity_type: "assignee"})
 (PatentAssignment)-[:ASSIGNED_FROM]->(PatentEntity {entity_type: "assignor"})
-(Patent)-[:FUNDED_BY]->(Award)  # For SBIR-linked patents
+(Patent)-[:GENERATED_FROM]->(Award)  # For SBIR-linked patents
 (Company)-[:OWNS]->(Patent)      # Direct ownership via entity resolution
 ```
 

@@ -14,16 +14,16 @@ The transition detection graph model represents SBIR awards, federal contracts, 
 ### Core Model
 
 ```text
-(Award)-[TRANSITIONED_TO]->(Transition)<-[RESULTED_IN]-(Contract)
+(FinancialTransaction)-[TRANSITIONED_TO]->(Transition)<-[RESULTED_IN]-(FinancialTransaction)
          |                          |
 
-         +--[FUNDED_BY]-->(Company) +--[ENABLED_BY]-->(Patent)
+         +--[RECIPIENT_OF]-->(Organization) +--[ENABLED_BY]-->(Patent)
 
          |                          |
 
          +--[INVOLVES_TECHNOLOGY]->(CETArea)
 
-(Company)-[ACHIEVED]->(TransitionProfile)
+(Patent)-[GENERATED_FROM]->(FinancialTransaction)
 (Transition)-[INVOLVES_TECHNOLOGY]->(CETArea)
 ```
 
@@ -763,10 +763,10 @@ RETURN c
 
 ## Award → Transition → Contract pathway
 
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+MATCH (a:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001", transaction_type: "AWARD"})
 
       -[:TRANSITIONED_TO]->(t:Transition)
-      -[:RESULTED_IN]->(c:Contract)
+      -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 
 RETURN a, t, c
 ```
@@ -874,20 +874,26 @@ ORDER BY transition_count DESC
 
 ---
 
-### 5. FUNDED_BY (Award → Company)
+### 5. FUNDED_BY (FinancialTransaction → Organization {agency})
 
-Represents company that received award.
+Represents agency that funded/awarded a financial transaction.
 
-**Source**: `:Award`
-**Target**: `:Company`
+**Source**: `:FinancialTransaction`
+**Target**: `:Organization {organization_type: "AGENCY"}`
 **Direction**: Directed (outgoing)
+
+**Note**: Unified relationship for both awards (funding agency) and contracts (awarding agency). Previously split into separate relationships.
 
 ### Properties
 
 ```yaml
-recipient_role: String
-  # PRIME, SUBCONTRACTOR, or OTHER
-  # Example: "PRIME"
+transaction_type: String
+  # "AWARD" or "CONTRACT"
+  # Example: "AWARD"
+
+role: String
+  # "FUNDING_AGENCY" for awards, "AWARDING_AGENCY" for contracts
+  # Example: "FUNDING_AGENCY"
 
 created_at: DateTime
   # When relationship created
@@ -896,43 +902,55 @@ created_at: DateTime
 ### Example Cypher
 
 ```cypher
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
-MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
-CREATE (a)-[:FUNDED_BY {recipient_role: "PRIME"}]->(co)
+// Award funding agency
+MATCH (ft:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001"})
+MATCH (agency:Organization {organization_type: "AGENCY", agency_code: "17"})
+CREATE (ft)-[:FUNDED_BY {transaction_type: "AWARD", role: "FUNDING_AGENCY"}]->(agency)
+
+// Contract awarding agency
+MATCH (ft:FinancialTransaction {transaction_id: "txn_contract_FA1234-20-C-0001"})
+MATCH (agency:Organization {organization_type: "AGENCY", agency_code: "17"})
+CREATE (ft)-[:FUNDED_BY {transaction_type: "CONTRACT", role: "AWARDING_AGENCY"}]->(agency)
 ```
 
 ### Query Examples
 
 ```cypher
 
-## Find company that received award
+## Find agency that funded award
 
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})-[:FUNDED_BY]->(co:Company)
-RETURN co
+MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:FUNDED_BY]->(agency:Organization {organization_type: "AGENCY"})
+RETURN agency.name, agency.agency_code
 
-## Companies with multiple awards
+## Agencies with most awards
 
-MATCH (a:Award)-[:FUNDED_BY]->(co:Company)
-RETURN co.name, count(a) as award_count
+MATCH (ft:FinancialTransaction {transaction_type: "AWARD"})-[:FUNDED_BY]->(agency:Organization {organization_type: "AGENCY"})
+RETURN agency.name, count(ft) as award_count
 ORDER BY award_count DESC
 ```
 
 ---
 
-### 6. AWARDED_CONTRACT (Company → Contract)
+### 6. RECIPIENT_OF (FinancialTransaction → Organization)
 
-Represents company that won contract.
+Represents organization that received a financial transaction (award or contract).
 
-**Source**: `:Company`
-**Target**: `:Contract`
+**Source**: `:FinancialTransaction`
+**Target**: `:Organization`
 **Direction**: Directed (outgoing)
+
+**Note**: Previously split into `AWARDED_TO` (for awards) and `AWARDED_CONTRACT` (for contracts), now unified as `RECIPIENT_OF`.
 
 ### Properties
 
 ```yaml
-vendor_role: String
-  # PRIME, SUBCONTRACTOR, or OTHER
-  # Example: "PRIME"
+transaction_type: String
+  # "AWARD" or "CONTRACT"
+  # Example: "AWARD"
+
+role: String (nullable)
+  # "RECIPIENT", "PRIME", "SUBCONTRACTOR", etc.
+  # Example: "RECIPIENT"
 
 created_at: DateTime
   # When relationship created
@@ -941,63 +959,78 @@ created_at: DateTime
 ### Example Cypher
 
 ```cypher
-MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
-MATCH (c:Contract {contract_id: "FA1234-20-C-0001"})
-CREATE (co)-[:AWARDED_CONTRACT {vendor_role: "PRIME"}]->(c)
+// Award recipient
+MATCH (ft:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001"})
+MATCH (o:Organization {uei: "ABC123DEF456"})
+CREATE (ft)-[:RECIPIENT_OF {transaction_type: "AWARD", role: "RECIPIENT"}]->(o)
+
+// Contract recipient
+MATCH (ft:FinancialTransaction {transaction_id: "txn_contract_FA1234-20-C-0001"})
+MATCH (o:Organization {uei: "ABC123DEF456"})
+CREATE (ft)-[:RECIPIENT_OF {transaction_type: "CONTRACT", role: "PRIME"}]->(o)
 ```
 
 ---
 
-### 7. FILED (Company → Patent)
+### 8. SUBSIDIARY_OF (Organization → Organization)
 
-Represents company that filed patent.
+Represents parent-child relationships between organizations.
 
-**Source**: `:Company`
-**Target**: `:Patent`
+**Source**: `:Organization` (child/subsidiary)
+**Target**: `:Organization` (parent)
 **Direction**: Directed (outgoing)
 
 ### Properties
 
 ```yaml
-assignee_type: String
-  # OWNER, LICENSOR, or OTHER
-  # Example: "OWNER"
+source: String
+  # Source of relationship: "CONTRACT_PARENT_UEI" or "AGENCY_HIERARCHY"
+  # Example: "AGENCY_HIERARCHY"
 
 created_at: DateTime
   # When relationship created
+  # Example: 2024-01-15T10:30:00Z
 ```
+
+### Use Cases
+
+1. **Company Subsidiaries**: Links child companies to parent companies using `parent_uei` from contracts
+2. **Agency Hierarchies**: Links sub-agencies to parent agencies using `agency_code` and `sub_agency_code`
 
 ### Example Cypher
 
 ```cypher
-MATCH (co:Company {name: "Acme AI Inc."})
-MATCH (p:Patent {patent_id: "US10123456B2"})
-CREATE (co)-[:FILED {assignee_type: "OWNER"}]->(p)
+// Create agency hierarchy relationship
+MATCH (sub:Organization {organization_id: "org_agency_17_5700"})
+MATCH (parent:Organization {organization_id: "org_agency_17"})
+CREATE (sub)-[:SUBSIDIARY_OF {source: "AGENCY_HIERARCHY", created_at: datetime()}]->(parent)
+
+// Create company subsidiary relationship
+MATCH (child:Organization {uei: "XYZ789GHI012"})
+MATCH (parent:Organization {uei: "ABC123DEF456"})
+CREATE (child)-[:SUBSIDIARY_OF {source: "CONTRACT_PARENT_UEI", created_at: datetime()}]->(parent)
 ```
 
----
-
-### 8. ACHIEVED (Company → TransitionProfile)
-
-Represents company's transition profile.
-
-**Source**: `:Company`
-**Target**: `:TransitionProfile`
-**Direction**: Directed (outgoing)
-
-### Properties
-
-```yaml
-created_at: DateTime
-  # When relationship created
-```
-
-### Example Cypher
+### Query Examples
 
 ```cypher
-MATCH (co:Company {company_id: "company_abc123"})
-MATCH (tp:TransitionProfile {profile_id: "profile_company_abc123"})
-CREATE (co)-[:ACHIEVED]->(tp)
+// Find all subsidiaries of a company
+MATCH (parent:Organization {uei: "ABC123DEF456"})<-[:SUBSIDIARY_OF]-(child:Organization)
+RETURN child.name, child.uei
+
+// Find parent company of a subsidiary
+MATCH (child:Organization {uei: "XYZ789GHI012"})-[:SUBSIDIARY_OF]->(parent:Organization)
+RETURN parent.name, parent.uei
+
+// Find all sub-agencies of DoD
+MATCH (parent:Organization {agency_code: "17", organization_type: "AGENCY"})<-[:SUBSIDIARY_OF]-(sub:Organization)
+WHERE sub.organization_type = "AGENCY"
+RETURN sub.name, sub.sub_agency_code
+
+// Count subsidiaries per parent
+MATCH (parent:Organization)<-[:SUBSIDIARY_OF]-(child:Organization)
+RETURN parent.name, count(child) as subsidiary_count
+ORDER BY subsidiary_count DESC
 ```
 
 ---
@@ -1104,45 +1137,45 @@ CREATE CONSTRAINT profile_profile_id_unique ON (tp:TransitionProfile) ASSERT tp.
 
 ## Award → Transition → Contract pathway
 
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+MATCH (a:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001", transaction_type: "AWARD"})
 
       -[:TRANSITIONED_TO]->(t:Transition)
-      -[:RESULTED_IN]->(c:Contract)
+      -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 
 RETURN a, t, c
 
 ## Award → Patent → Transition → Contract
 
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
+MATCH (a:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001", transaction_type: "AWARD"})
 
-      -[:FUNDED_BY]->(co:Company)
+      -[:RECIPIENT_OF]->(co:Organization {organization_type: "COMPANY"})
 
-      <-[:FILED]-(p:Patent)
+      <-[:GENERATED_FROM]-(p:Patent)
       <-[:ENABLED_BY]-(t:Transition)
 
-      -[:RESULTED_IN]->(c:Contract)
+      -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 
 RETURN a, co, p, t, c
 
 ## Company-level view
 
-MATCH (co:Company {uei: "ABC123DEF456"})  # pragma: allowlist secret
-      <-[:FUNDED_BY]-(a:Award)
+MATCH (co:Organization {uei: "ABC123DEF456", organization_type: "COMPANY"})
+      <-[:RECIPIENT_OF]-(a:FinancialTransaction {transaction_type: "AWARD"})
 
       -[:TRANSITIONED_TO]->(t:Transition)
-      -[:RESULTED_IN]->(c:Contract)
+      -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 
 RETURN co, a, t, c
 
 ## Find HIGH confidence transitions
 
 MATCH (t:Transition {confidence: "HIGH"})
-      <-[:TRANSITIONED_TO]-(a:Award)
-      <-[:FUNDED_BY]-(co:Company)
+      <-[:TRANSITIONED_TO]-(a:FinancialTransaction {transaction_type: "AWARD"})
+      <-[:RECIPIENT_OF]-(co:Organization {organization_type: "COMPANY"})
 
-      -[:RESULTED_IN]->(c:Contract)
+      -[:RESULTED_IN]->(c:FinancialTransaction {transaction_type: "CONTRACT"})
 
-RETURN co.name, a.topic, c.piid, t.likelihood_score
+RETURN co.name, a.title, c.contract_id, t.likelihood_score
 ORDER BY t.likelihood_score DESC
 ```
 

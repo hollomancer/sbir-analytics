@@ -48,6 +48,7 @@ def test_create_company_cet_relationships_dominant_props():
     Validate that CETLoader.create_company_cet_relationships:
     - Emits one relationship tuple for the dominant CET
     - Produces correct relationship properties
+    - Uses Organization nodes instead of Company nodes
     - Updates metrics with the created relationships count
     """
     captured: dict[str, Any] = {}
@@ -81,7 +82,7 @@ def test_create_company_cet_relationships_dominant_props():
     # Tuple structure: (source_label, source_key, source_value, target_label, target_key, target_value, rel_type, props)
     r = relationships[0]
     assert r[0:7] == (
-        "Company",
+        "Organization",
         "uei",
         "UEI-001",
         "CETArea",
@@ -136,7 +137,7 @@ def test_create_company_cet_relationships_alternate_field_names_and_custom_key()
     assert len(relationships) == 1
     r = relationships[0]
     assert r[0:7] == (
-        "Company",
+        "Organization",
         "company_id",
         "C-123",
         "CETArea",

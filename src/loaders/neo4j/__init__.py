@@ -57,6 +57,9 @@ from .profiles import TransitionProfileLoader
 # Transitions module
 from .transitions import TransitionLoader
 
+# Organizations module
+from .organizations import OrganizationLoader
+
 
 __all__ = [
     # Client
@@ -78,4 +81,6 @@ __all__ = [
     # Categorization (Product/Service/Mixed)
     "CompanyCategorizationLoader",
     "CompanyCategorizationLoaderConfig",
+    # Organizations
+    "OrganizationLoader",
 ]

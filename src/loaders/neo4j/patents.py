@@ -68,8 +68,12 @@ class PatentLoader:
             "FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE",
             "CREATE CONSTRAINT patent_assignment_rf_id IF NOT EXISTS "
             "FOR (a:PatentAssignment) REQUIRE a.rf_id IS UNIQUE",
+            # Legacy PatentEntity constraint (kept for backward compatibility)
             "CREATE CONSTRAINT patent_entity_id IF NOT EXISTS "
             "FOR (e:PatentEntity) REQUIRE e.entity_id IS UNIQUE",
+            # Organization constraint for unified entities
+            "CREATE CONSTRAINT organization_id IF NOT EXISTS "
+            "FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
         ]
 
         with self.client.session() as session:
@@ -88,14 +92,20 @@ class PatentLoader:
             "FOR (p:Patent) ON (p.grant_doc_num)",
             "CREATE INDEX patent_assignment_rf_id_idx IF NOT EXISTS "
             "FOR (a:PatentAssignment) ON (a.rf_id)",
+            # Legacy PatentEntity indexes (kept for backward compatibility)
             "CREATE INDEX patent_entity_normalized_name_idx IF NOT EXISTS "
             "FOR (e:PatentEntity) ON (e.normalized_name)",
+            "CREATE INDEX patent_entity_type_idx IF NOT EXISTS "
+            "FOR (e:PatentEntity) ON (e.entity_type)",
+            # Organization indexes for unified entities
+            "CREATE INDEX organization_entity_id_idx IF NOT EXISTS "
+            "FOR (o:Organization) ON (o.entity_id)",
+            "CREATE INDEX organization_normalized_name_idx IF NOT EXISTS "
+            "FOR (o:Organization) ON (o.normalized_name)",
             # Tier 2: High value indexes
             "CREATE INDEX patent_appno_date_idx IF NOT EXISTS " "FOR (p:Patent) ON (p.appno_date)",
             "CREATE INDEX patent_assignment_exec_date_idx IF NOT EXISTS "
             "FOR (a:PatentAssignment) ON (a.exec_date)",
-            "CREATE INDEX patent_entity_type_idx IF NOT EXISTS "
-            "FOR (e:PatentEntity) ON (e.entity_type)",
         ]
 
         with self.client.session() as session:
@@ -276,19 +286,21 @@ class PatentLoader:
         entity_type: str,
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Load PatentEntity nodes (assignees and assignors) into Neo4j.
+        """Load patent entities as Organization nodes (non-individuals) or PatentEntity (individuals).
 
-        Phase 2: Create PatentEntity nodes with address and identifier information.
+        Phase 2: Create Organization nodes for companies/universities/government entities,
+        and PatentEntity nodes for individuals.
 
         Args:
             entities: List of entity dictionaries with keys:
                 - entity_id (required, unique)
                 - name (required)
                 - normalized_name
-                - street
+                - entity_category (COMPANY, INDIVIDUAL, UNIVERSITY, GOVERNMENT)
+                - street/address
                 - city
                 - state
-                - postal_code
+                - postal_code/postcode
                 - country
                 - uei
                 - cage
@@ -300,7 +312,7 @@ class PatentLoader:
             metrics: Optional LoadMetrics to accumulate results
 
         Returns:
-            LoadMetrics with counts of created/updated PatentEntity nodes
+            LoadMetrics with counts of created/updated nodes
         """
         if metrics is None:
             metrics = LoadMetrics()
@@ -309,54 +321,111 @@ class PatentLoader:
             logger.info(f"No {entity_type} entities to load")
             return metrics
 
-        logger.info(f"Loading {len(entities)} PatentEntity nodes (type={entity_type})")
+        logger.info(f"Loading {len(entities)} patent entities (type={entity_type})")
         start_time = time.time()
 
-        # Extract and validate entity data
-        entity_nodes = []
+        # Separate individuals from organizations
+        organization_nodes = []
+        individual_nodes = []
+
         for entity in entities:
             entity_id = entity.get("entity_id")
             name = entity.get("name")
+            entity_category = entity.get("entity_category", "COMPANY")
 
             if not entity_id or not name:
                 logger.warning(f"Skipping entity with missing entity_id or name: {entity}")
                 metrics.errors += 1
                 continue
 
-            # Build node properties
-            node_props = {
-                "entity_id": str(entity_id).strip(),
+            # Build common properties
+            common_props = {
                 "name": str(name).strip(),
-                "normalized_name": entity.get("normalized_name"),
-                "entity_type": entity_type,
-                "street": entity.get("street"),
+                "normalized_name": entity.get("normalized_name") or str(name).upper().strip(),
+                "address": entity.get("street") or entity.get("address"),
                 "city": entity.get("city"),
                 "state": entity.get("state"),
-                "postal_code": entity.get("postal_code"),
-                "country": entity.get("country"),
-                "uei": entity.get("uei"),
-                "cage": entity.get("cage"),
-                "duns": entity.get("duns"),
+                "postcode": entity.get("postal_code") or entity.get("postcode"),
+                "country": entity.get("country") or "US",
             }
 
-            # Remove None values to keep Neo4j clean
-            node_props = {k: v for k, v in node_props.items() if v is not None}
+            if entity_category == "INDIVIDUAL":
+                # Load individuals as Individual nodes
+                ind_id = f"ind_patent_{entity_id}"
+                ind_type = {
+                    "ASSIGNEE": "PATENT_ASSIGNEE",
+                    "ASSIGNOR": "PATENT_ASSIGNOR",
+                }.get(entity_type, "PATENT_ASSIGNEE")
+                
+                individual_props = {
+                    "individual_id": ind_id,
+                    "individual_type": ind_type,
+                    "source_contexts": ["PATENT"],
+                    "entity_id": str(entity_id).strip(),
+                    "entity_type": entity_type,
+                    "num_assignments_as_assignee": entity.get("num_assignments_as_assignee"),
+                    "num_assignments_as_assignor": entity.get("num_assignments_as_assignor"),
+                    **common_props,
+                }
+                individual_props = {k: v for k, v in individual_props.items() if v is not None}
+                individual_nodes.append(individual_props)
+            else:
+                # Load non-individuals as Organization nodes
+                org_id = f"org_patent_{entity_id}"
+                org_type = {
+                    "COMPANY": "COMPANY",
+                    "UNIVERSITY": "UNIVERSITY",
+                    "GOVERNMENT": "GOVERNMENT",
+                }.get(entity_category, "COMPANY")
 
-            entity_nodes.append(node_props)
+                org_props = {
+                    "organization_id": org_id,
+                    "organization_type": org_type,
+                    "source_contexts": ["PATENT"],
+                    "entity_id": str(entity_id).strip(),
+                    "entity_category": entity_category,
+                    "uei": entity.get("uei"),
+                    "cage": entity.get("cage"),
+                    "duns": entity.get("duns"),
+                    "is_sbir_company": entity.get("is_sbir_company"),
+                    "sbir_uei": entity.get("sbir_uei"),
+                    "sbir_company_id": entity.get("sbir_company_id"),
+                    "num_assignments_as_assignee": entity.get("num_assignments_as_assignee"),
+                    "num_assignments_as_assignor": entity.get("num_assignments_as_assignor"),
+                    "num_patents_owned": entity.get("num_patents_owned"),
+                    **common_props,
+                }
+                org_props = {k: v for k, v in org_props.items() if v is not None}
+                organization_nodes.append(org_props)
 
-        # Use batch upsert to create/update PatentEntity nodes
-        metrics = self.client.batch_upsert_nodes(
-            label="PatentEntity",
-            key_property="entity_id",
-            nodes=entity_nodes,
-            metrics=metrics,
-        )
+        # Load Organizations
+        if organization_nodes:
+            metrics = self.client.batch_upsert_nodes(
+                label="Organization",
+                key_property="organization_id",
+                nodes=organization_nodes,
+                metrics=metrics,
+            )
+
+        # Load Individuals
+        if individual_nodes:
+            metrics = self.client.batch_upsert_nodes(
+                label="Individual",
+                key_property="individual_id",
+                nodes=individual_nodes,
+                metrics=metrics,
+            )
 
         duration = time.time() - start_time
+        org_created = metrics.nodes_created.get("Organization", 0)
+        org_updated = metrics.nodes_updated.get("Organization", 0)
+        ind_created = metrics.nodes_created.get("Individual", 0)
+        ind_updated = metrics.nodes_updated.get("Individual", 0)
+
         logger.info(
-            f"PatentEntity loading ({entity_type}) completed in {duration:.2f}s: "
-            f"{metrics.nodes_created.get('PatentEntity', 0)} created, "
-            f"{metrics.nodes_updated.get('PatentEntity', 0)} updated"
+            f"Patent entity loading ({entity_type}) completed in {duration:.2f}s: "
+            f"Organizations: {org_created} created, {org_updated} updated; "
+            f"Individuals: {ind_created} created, {ind_updated} updated"
         )
 
         return metrics
@@ -482,12 +551,26 @@ class PatentLoader:
                     else assignment["execution_date"]
                 )
 
+            # Create relationship to Organization (for non-individuals) or Individual (for individuals)
+            # The batch_create_relationships will only create relationships where nodes exist
             relationships.append(
                 (
                     "PatentAssignment",
                     "rf_id",
                     str(rf_id).strip(),
-                    "PatentEntity",
+                    "Organization",  # For non-individuals
+                    "entity_id",
+                    str(assignor_entity_id).strip(),
+                    "ASSIGNED_FROM",
+                    rel_props,
+                )
+            )
+            relationships.append(
+                (
+                    "PatentAssignment",
+                    "rf_id",
+                    str(rf_id).strip(),
+                    "Individual",  # For individuals
                     "entity_id",
                     str(assignor_entity_id).strip(),
                     "ASSIGNED_FROM",
@@ -556,12 +639,26 @@ class PatentLoader:
                     else assignment["recorded_date"]
                 )
 
+            # Create relationship to Organization (for non-individuals) or Individual (for individuals)
+            # The batch_create_relationships will only create relationships where nodes exist
             relationships.append(
                 (
                     "PatentAssignment",
                     "rf_id",
                     str(rf_id).strip(),
-                    "PatentEntity",
+                    "Organization",  # For non-individuals
+                    "entity_id",
+                    str(assignee_entity_id).strip(),
+                    "ASSIGNED_TO",
+                    rel_props,
+                )
+            )
+            relationships.append(
+                (
+                    "PatentAssignment",
+                    "rf_id",
+                    str(rf_id).strip(),
+                    "Individual",  # For individuals
                     "entity_id",
                     str(assignee_entity_id).strip(),
                     "ASSIGNED_TO",
@@ -650,9 +747,9 @@ class PatentLoader:
         company_patents: list[dict[str, str]],
         metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
-        """Create OWNS relationships (Company → Patent).
+        """Create OWNS relationships (Organization → Patent).
 
-        Phase 4: Link Company nodes to Patent nodes for current ownership.
+        Phase 4: Link Organization nodes (companies) to Patent nodes for current ownership.
 
         Args:
             company_patents: List of company-patent pairs with:
@@ -686,7 +783,7 @@ class PatentLoader:
 
             relationships.append(
                 (
-                    "Company",
+                    "Organization",
                     "uei",
                     str(uei).strip(),
                     "Patent",
