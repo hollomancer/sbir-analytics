@@ -37,7 +37,7 @@ def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
     val = os.getenv(name, default)
     if val is None:
-        logger.debug("Environment variable %s is not set and no default provided", name)
+        logger.debug("Environment variable {} is not set and no default provided", name)
     return val
 
 
@@ -47,7 +47,7 @@ def connect(uri: str, user: str, password: str):
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
-    logger.info("Connecting to Neo4j at %s as user %s", uri, user)
+    logger.info("Connecting to Neo4j at {} as user {}", uri, user)
     driver = GraphDatabase.driver(uri, auth=(user, password))
     return driver
 
@@ -78,9 +78,10 @@ def migrate_awarded_to_to_recipient_of(driver, dry_run: bool = False) -> int:
     SET new.transaction_type = coalesce(ft.transaction_type, 'AWARD'),
         new.created_at = coalesce(r.created_at, datetime()),
         new.migrated_from = 'AWARDED_TO'
-    WITH r
+    WITH r, new
     DELETE r
-    RETURN count(new) as migrated
+    WITH count(new) as migrated
+    RETURN migrated
     """
     
     # Also handle legacy Award nodes if they exist
@@ -90,14 +91,15 @@ def migrate_awarded_to_to_recipient_of(driver, dry_run: bool = False) -> int:
     SET new.transaction_type = 'AWARD',
         new.created_at = coalesce(r.created_at, datetime()),
         new.migrated_from = 'AWARDED_TO'
-    WITH r
+    WITH r, new
     DELETE r
-    RETURN count(new) as migrated
+    WITH count(new) as migrated
+    RETURN migrated
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute FinancialTransaction migration:\n%s", query_ft)
-        logger.info("DRY RUN: Would execute Award migration:\n%s", query_award)
+        logger.info("DRY RUN: Would execute FinancialTransaction migration:\n{}", query_ft)
+        logger.info("DRY RUN: Would execute Award migration:\n{}", query_award)
         return 0
 
     total_migrated = 0
@@ -112,7 +114,7 @@ def migrate_awarded_to_to_recipient_of(driver, dry_run: bool = False) -> int:
         count_award = result_award.single()["migrated"] if result_award.peek() else 0
         total_migrated += count_award
         
-        logger.info("✓ Migrated %d AWARDED_TO relationships to RECIPIENT_OF (%d FinancialTransaction, %d Award)", 
+        logger.info("✓ Migrated {} AWARDED_TO relationships to RECIPIENT_OF ({} FinancialTransaction, {} Award)", 
                    total_migrated, count_ft, count_award)
         return total_migrated
 
@@ -149,8 +151,8 @@ def remove_awarded_contract(driver, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute Contract removal:\n%s", query_contract)
-        logger.info("DRY RUN: Would execute FinancialTransaction removal:\n%s", query_ft)
+        logger.info("DRY RUN: Would execute Contract removal:\n{}", query_contract)
+        logger.info("DRY RUN: Would execute FinancialTransaction removal:\n{}", query_ft)
         return 0
 
     total_removed = 0
@@ -166,7 +168,7 @@ def remove_awarded_contract(driver, dry_run: bool = False) -> int:
         total_removed += count_ft
         
         if total_removed > 0:
-            logger.info("✓ Removed %d AWARDED_CONTRACT relationships (%d Contract, %d FinancialTransaction)", 
+            logger.info("✓ Removed {} AWARDED_CONTRACT relationships ({} Contract, {} FinancialTransaction)", 
                        total_removed, count_contract, count_ft)
         else:
             logger.info("✓ No AWARDED_CONTRACT relationships found (expected)")
@@ -196,14 +198,14 @@ def remove_filed_relationships(driver, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     with driver.session() as session:
         result = session.run(query)
         count = result.single()["deleted"] if result.peek() else 0
         if count > 0:
-            logger.info("✓ Removed %d FILED relationships", count)
+            logger.info("✓ Removed {} FILED relationships", count)
         else:
             logger.info("✓ No FILED relationships found (expected)")
         return count
@@ -230,24 +232,25 @@ def migrate_funded_by_to_generated_from(driver, dry_run: bool = False) -> int:
     query = """
     MATCH (p:Patent)-[r:FUNDED_BY]->(a:Award)
     MERGE (p)-[new:GENERATED_FROM]->(a)
-    SET new.linkage_method = r.linkage_method,
-        new.confidence_score = r.confidence_score,
-        new.linked_date = r.linked_date,
+    SET new.linkage_method = coalesce(r.linkage_method, 'MIGRATED'),
+        new.confidence_score = coalesce(r.confidence_score, 1.0),
+        new.linked_date = coalesce(r.linked_date, datetime()),
         new.migrated_from = 'FUNDED_BY'
-    WITH r
+    WITH r, new
     DELETE r
-    RETURN count(new) as migrated
+    WITH count(new) as migrated
+    RETURN migrated
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     with driver.session() as session:
         result = session.run(query)
         count = result.single()["migrated"] if result.peek() else 0
         if count > 0:
-            logger.info("✓ Migrated %d FUNDED_BY (Patent → Award) relationships to GENERATED_FROM", count)
+            logger.info("✓ Migrated {} FUNDED_BY (Patent → Award) relationships to GENERATED_FROM", count)
         else:
             logger.info("✓ No FUNDED_BY (Patent → Award) relationships found (may already use GENERATED_FROM)")
         return count
@@ -293,7 +296,7 @@ def validate_migration(driver) -> dict[str, Any]:
                     record = result.single()
                     results[key] = record["count"] if record else 0
             except Exception as e:
-                logger.warning("Validation query failed for %s: %s", key, e)
+                logger.warning("Validation query failed for {}: {}", key, e)
                 results[key] = None
 
     return results
@@ -306,24 +309,24 @@ def print_validation_results(results: dict[str, Any]) -> None:
     logger.info("=" * 60)
 
     logger.info("\nRemaining legacy relationships:")
-    logger.info("  AWARDED_TO (FinancialTransaction): %s", results.get("remaining_awarded_to_ft", "N/A"))
-    logger.info("  AWARDED_TO (Award): %s", results.get("remaining_awarded_to_award", "N/A"))
-    logger.info("  AWARDED_CONTRACT (Contract): %s", results.get("remaining_awarded_contract_contract", "N/A"))
-    logger.info("  AWARDED_CONTRACT (FinancialTransaction): %s", results.get("remaining_awarded_contract_ft", "N/A"))
-    logger.info("  FILED: %s", results.get("remaining_filed", "N/A"))
-    logger.info("  FUNDED_BY (Patent → Award): %s", results.get("remaining_funded_by_patent", "N/A"))
+    logger.info("  AWARDED_TO (FinancialTransaction): {}", results.get("remaining_awarded_to_ft", "N/A"))
+    logger.info("  AWARDED_TO (Award): {}", results.get("remaining_awarded_to_award", "N/A"))
+    logger.info("  AWARDED_CONTRACT (Contract): {}", results.get("remaining_awarded_contract_contract", "N/A"))
+    logger.info("  AWARDED_CONTRACT (FinancialTransaction): {}", results.get("remaining_awarded_contract_ft", "N/A"))
+    logger.info("  FILED: {}", results.get("remaining_filed", "N/A"))
+    logger.info("  FUNDED_BY (Patent → Award): {}", results.get("remaining_funded_by_patent", "N/A"))
 
     logger.info("\nNew consolidated relationships:")
-    logger.info("  RECIPIENT_OF (FinancialTransaction): %s", results.get("recipient_of_count_ft", "N/A"))
-    logger.info("  RECIPIENT_OF (Award): %s", results.get("recipient_of_count_award", "N/A"))
-    logger.info("  GENERATED_FROM: %s", results.get("generated_from_count", "N/A"))
+    logger.info("  RECIPIENT_OF (FinancialTransaction): {}", results.get("recipient_of_count_ft", "N/A"))
+    logger.info("  RECIPIENT_OF (Award): {}", results.get("recipient_of_count_award", "N/A"))
+    logger.info("  GENERATED_FROM: {}", results.get("generated_from_count", "N/A"))
 
     logger.info("\nRECIPIENT_OF by transaction type:")
     by_type = results.get("recipient_of_by_type", [])
     for type_data in by_type:
         tx_type = type_data.get("ft.transaction_type", "UNKNOWN")
         count = type_data.get("count", 0)
-        logger.info("  %s: %d", tx_type, count)
+        logger.info("  {}: {}", tx_type, count)
 
     logger.info("\n" + "=" * 60)
 
@@ -385,7 +388,7 @@ def main() -> int:
     try:
         driver = connect(uri, user, password)
     except Exception as e:
-        logger.exception("Failed to connect to Neo4j: %s", e)
+        logger.exception("Failed to connect to Neo4j: {}", e)
         return 1
 
     try:
@@ -403,7 +406,7 @@ def main() -> int:
         return 0
 
     except Exception as e:
-        logger.exception("Migration failed: %s", e)
+        logger.exception("Migration failed: {}", e)
         return 1
 
     finally:
