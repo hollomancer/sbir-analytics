@@ -546,7 +546,7 @@ def create_agency_organizations(driver, dry_run: bool = False) -> int:
         o.sub_agency_name = sub_agency_name,
         o.created_at = datetime(),
         o.updated_at = datetime()
-    WITH o, agency_code, sub_agency_code
+    WITH o, agency_code, sub_agency_code, sub_agency_name, agency_name
     
     // Also handle sub-agencies as separate organizations if they have distinct names
     WHERE sub_agency_code IS NOT NULL AND sub_agency_name IS NOT NULL
