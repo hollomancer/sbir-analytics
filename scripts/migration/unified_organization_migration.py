@@ -35,8 +35,59 @@ except ImportError:
     GraphDatabase = None
     Neo4jError = Exception
 
-# Batch size for processing nodes (adjust based on dataset size and Neo4j performance)
-BATCH_SIZE = 1000
+# Batch size for processing nodes (reduced to 500 for better timeout handling with large datasets)
+BATCH_SIZE = 500
+
+
+def execute_batch_with_retry(
+    session, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
+) -> Any:
+    """Execute a batch query with retry logic for connection timeouts.
+    
+    Args:
+        session: Neo4j session
+        query: Cypher query to execute
+        params: Query parameters
+        max_retries: Maximum retry attempts
+        batch_num: Batch number for logging
+        total_batches: Total batches for logging
+        
+    Returns:
+        Query result
+        
+    Raises:
+        Exception: If query fails after all retries
+    """
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            result = session.run(query, **params)
+            return result
+        except Exception as e:
+            error_str = str(e).lower()
+            is_timeout = "timeout" in error_str or "SessionExpired" in str(type(e).__name__)
+            if attempt < max_retries - 1 and is_timeout:
+                wait_seconds = 2 ** attempt
+                logger.warning(
+                    "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
+                    batch_num,
+                    total_batches,
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+            else:
+                logger.error(
+                    "Batch {}/{} failed after {} attempts: {}",
+                    batch_num,
+                    total_batches,
+                    max_retries,
+                    e,
+                )
+                raise
 
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
@@ -75,14 +126,14 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size
     count_query = "MATCH (c:Company) RETURN count(c) as total"
     
     if dry_run:
-        logger.info("DRY RUN: Would migrate Company nodes in batches of %d", batch_size)
+        logger.info("DRY RUN: Would migrate Company nodes in batches of {}", batch_size)
         return 0
 
     with driver.session(default_access_mode="WRITE") as session:
         # Get total count
         count_result = session.run(count_query)
         total_count = count_result.single()["total"]
-        logger.info("Found %d Company nodes to migrate", total_count)
+        logger.info("Found {} Company nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No Company nodes to migrate")
@@ -92,7 +143,7 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size
         batch_query = """
         MATCH (c:Company)
         WITH c SKIP $skip LIMIT $batch_size
-        MERGE (o:Organization {organization_id: 'org_company_' + coalesce(c.company_id, c.uei, c.duns, toString(id(c)))})
+        MERGE (o:Organization {organization_id: 'org_company_' + coalesce(c.company_id, c.uei, c.duns, elementId(c))})
         SET o.name = c.name,
             o.normalized_name = coalesce(c.normalized_name, upper(c.name)),
             o.address = c.address_line_1,
@@ -120,7 +171,7 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size
 
         while skip < total_count:
             logger.info(
-                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                "Processing batch {}/{} (nodes {}-{} of {})...",
                 batch_num,
                 total_batches,
                 skip + 1,
@@ -128,12 +179,15 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size
                 total_count,
             )
             
-            result = session.run(batch_query, skip=skip, batch_size=batch_size)
+            result = execute_batch_with_retry(
+                session, batch_query, {"skip": skip, "batch_size": batch_size}, 
+                batch_num=batch_num, total_batches=total_batches
+            )
             batch_created = result.single()["created"]
             total_created += batch_created
             
             logger.info(
-                "✓ Batch %d/%d complete: Created %d Organization nodes (Total: %d/%d)",
+                "✓ Batch {}/{} complete: Created {} Organization nodes (Total: {}/{})",
                 batch_num,
                 total_batches,
                 batch_created,
@@ -144,7 +198,7 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False, batch_size
             skip += batch_size
             batch_num += 1
 
-        logger.info("✓ Migration complete: Created %d Organization nodes from Company nodes", total_created)
+        logger.info("✓ Migration complete: Created {} Organization nodes from Company nodes", total_created)
         return total_created
 
 
@@ -168,14 +222,14 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would migrate PatentEntity nodes in batches of %d", batch_size)
+        logger.info("DRY RUN: Would migrate PatentEntity nodes in batches of {}", batch_size)
         return 0
 
     with driver.session(default_access_mode="WRITE") as session:
         # Get total count
         count_result = session.run(count_query)
         total_count = count_result.single()["total"]
-        logger.info("Found %d PatentEntity nodes to migrate", total_count)
+        logger.info("Found {} PatentEntity nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No PatentEntity nodes to migrate")
@@ -228,14 +282,14 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
 
         total_merged = 0
         if mergeable_count > 0:
-            logger.info("Merging %d PatentEntity nodes with existing Organizations...", mergeable_count)
+            logger.info("Merging {} PatentEntity nodes with existing Organizations...", mergeable_count)
             skip = 0
             batch_num = 1
             total_batches = (mergeable_count + batch_size - 1) // batch_size
 
             while skip < mergeable_count:
                 logger.info(
-                    "Processing merge batch %d/%d (nodes %d-%d of %d)...",
+                    "Processing merge batch {}/{} (nodes {}-{} of {})...",
                     batch_num,
                     total_batches,
                     skip + 1,
@@ -243,12 +297,16 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
                     mergeable_count,
                 )
                 
-                result = session.run(merge_by_uei_batch_query, skip=skip, batch_size=batch_size)
-                batch_merged = result.single()["merged"] if result.peek() else 0
+                result = execute_batch_with_retry(
+                    session, merge_by_uei_batch_query, {"skip": skip, "batch_size": batch_size},
+                    batch_num=batch_num, total_batches=total_batches
+                )
+                single_result = result.single()
+                batch_merged = single_result["merged"] if single_result else 0
                 total_merged += batch_merged
                 
                 logger.info(
-                    "✓ Merge batch %d/%d complete: Merged %d nodes (Total: %d/%d)",
+                    "✓ Merge batch {}/{} complete: Merged {} nodes (Total: {}/{})",
                     batch_num,
                     total_batches,
                     batch_merged,
@@ -271,7 +329,7 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
                    AND pe.postcode IS NOT NULL AND o.postcode = pe.postcode)
           }
         WITH pe SKIP $skip LIMIT $batch_size
-        MERGE (o:Organization {organization_id: 'org_patent_' + coalesce(pe.entity_id, toString(id(pe)))})
+        MERGE (o:Organization {organization_id: 'org_patent_' + coalesce(pe.entity_id, elementId(pe))})
         SET o.name = pe.name,
             o.normalized_name = coalesce(pe.normalized_name, upper(pe.name)),
             o.address = pe.address,
@@ -324,14 +382,14 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
 
         total_created = 0
         if creatable_count > 0:
-            logger.info("Creating %d new Organization nodes from PatentEntity nodes...", creatable_count)
+            logger.info("Creating {} new Organization nodes from PatentEntity nodes...", creatable_count)
             skip = 0
             batch_num = 1
             total_batches = (creatable_count + batch_size - 1) // batch_size
 
             while skip < creatable_count:
                 logger.info(
-                    "Processing create batch %d/%d (nodes %d-%d of %d)...",
+                    "Processing create batch {}/{} (nodes {}-{} of {})...",
                     batch_num,
                     total_batches,
                     skip + 1,
@@ -339,12 +397,16 @@ def migrate_patent_entities_to_organizations(driver, dry_run: bool = False, batc
                     creatable_count,
                 )
                 
-                result = session.run(create_new_batch_query, skip=skip, batch_size=batch_size)
-                batch_created = result.single()["created"] if result.peek() else 0
+                result = execute_batch_with_retry(
+                    session, create_new_batch_query, {"skip": skip, "batch_size": batch_size},
+                    batch_num=batch_num, total_batches=total_batches
+                )
+                single_result = result.single()
+                batch_created = single_result["created"] if single_result else 0
                 total_created += batch_created
                 
                 logger.info(
-                    "✓ Create batch %d/%d complete: Created %d nodes (Total: %d/%d)",
+                    "✓ Create batch {}/{} complete: Created {} nodes (Total: {}/{})",
                     batch_num,
                     total_batches,
                     batch_created,
@@ -379,14 +441,14 @@ def migrate_research_institutions_to_organizations(driver, dry_run: bool = False
     count_query = "MATCH (ri:ResearchInstitution) RETURN count(ri) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would migrate ResearchInstitution nodes in batches of %d", batch_size)
+        logger.info("DRY RUN: Would migrate ResearchInstitution nodes in batches of {}", batch_size)
         return 0
 
     with driver.session(default_access_mode="WRITE") as session:
         # Get total count
         count_result = session.run(count_query)
         total_count = count_result.single()["total"]
-        logger.info("Found %d ResearchInstitution nodes to migrate", total_count)
+        logger.info("Found {} ResearchInstitution nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No ResearchInstitution nodes to migrate")
@@ -395,7 +457,7 @@ def migrate_research_institutions_to_organizations(driver, dry_run: bool = False
         batch_query = """
         MATCH (ri:ResearchInstitution)
         WITH ri SKIP $skip LIMIT $batch_size
-        MERGE (o:Organization {organization_id: 'org_research_' + coalesce(ri.name, toString(id(ri)))})
+        MERGE (o:Organization {organization_id: 'org_research_' + coalesce(ri.name, elementId(ri))})
         ON CREATE SET
             o.name = ri.name,
             o.normalized_name = upper(ri.name),
@@ -423,7 +485,7 @@ def migrate_research_institutions_to_organizations(driver, dry_run: bool = False
 
         while skip < total_count:
             logger.info(
-                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                "Processing batch {}/{} (nodes {}-{} of {})...",
                 batch_num,
                 total_batches,
                 skip + 1,
@@ -431,12 +493,15 @@ def migrate_research_institutions_to_organizations(driver, dry_run: bool = False
                 total_count,
             )
             
-            result = session.run(batch_query, skip=skip, batch_size=batch_size)
+            result = execute_batch_with_retry(
+                session, batch_query, {"skip": skip, "batch_size": batch_size},
+                batch_num=batch_num, total_batches=total_batches
+            )
             batch_created = result.single()["created"] if result.peek() else 0
             total_created += batch_created
             
             logger.info(
-                "✓ Batch %d/%d complete: Created/updated %d Organization nodes (Total: %d/%d)",
+                "✓ Batch {}/{} complete: Created/updated {} Organization nodes (Total: {}/{})",
                 batch_num,
                 total_batches,
                 batch_created,
@@ -447,7 +512,7 @@ def migrate_research_institutions_to_organizations(driver, dry_run: bool = False
             skip += batch_size
             batch_num += 1
 
-        logger.info("✓ Migration complete: Created/updated %d Organization nodes from ResearchInstitution nodes", total_created)
+        logger.info("✓ Migration complete: Created/updated {} Organization nodes from ResearchInstitution nodes", total_created)
         return total_created
 
 
@@ -481,7 +546,7 @@ def create_agency_organizations(driver, dry_run: bool = False) -> int:
         o.sub_agency_name = sub_agency_name,
         o.created_at = datetime(),
         o.updated_at = datetime()
-    WITH o, agency_code, sub_agency_code
+    WITH o, agency_code, sub_agency_code, sub_agency_name, agency_name
     
     // Also handle sub-agencies as separate organizations if they have distinct names
     WHERE sub_agency_code IS NOT NULL AND sub_agency_name IS NOT NULL

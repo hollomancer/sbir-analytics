@@ -32,6 +32,60 @@ except ImportError:
     GraphDatabase = None
     Neo4jError = Exception
 
+# Batch size for processing nodes (reduced to 500 for better timeout handling)
+BATCH_SIZE = 500
+
+
+def execute_batch_with_retry(
+    session, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
+) -> Any:
+    """Execute a batch query with retry logic for connection timeouts.
+    
+    Args:
+        session: Neo4j session
+        query: Cypher query to execute
+        params: Query parameters
+        max_retries: Maximum retry attempts
+        batch_num: Batch number for logging
+        total_batches: Total batches for logging
+        
+    Returns:
+        Query result
+        
+    Raises:
+        Exception: If query fails after all retries
+    """
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            result = session.run(query, **params)
+            return result
+        except Exception as e:
+            error_str = str(e).lower()
+            is_timeout = "timeout" in error_str or "SessionExpired" in str(type(e).__name__)
+            if attempt < max_retries - 1 and is_timeout:
+                wait_seconds = 2 ** attempt
+                logger.warning(
+                    "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
+                    batch_num,
+                    total_batches,
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+            else:
+                logger.error(
+                    "Batch {}/{} failed after {} attempts: {}",
+                    batch_num,
+                    total_batches,
+                    max_retries,
+                    e,
+                )
+                raise
+
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
@@ -52,112 +106,202 @@ def connect(uri: str, user: str, password: str):
     return driver
 
 
-def migrate_awards_to_financial_transactions(driver, dry_run: bool = False) -> int:
-    """Migrate Award nodes to FinancialTransaction nodes.
+def migrate_awards_to_financial_transactions(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+    """Migrate Award nodes to FinancialTransaction nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of transactions created
     """
     logger.info("Step 1: Migrating Award nodes to FinancialTransaction nodes")
 
-    query = """
-    MATCH (a:Award)
-    WITH a
-    MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
-    SET ft.transaction_type = 'AWARD',
-        ft.award_id = a.award_id,
-        ft.agency = a.agency,
-        ft.agency_name = a.agency_name,
-        ft.sub_agency = a.branch,
-        ft.recipient_name = a.company_name,
-        ft.recipient_uei = a.company_uei,
-        ft.recipient_duns = a.company_duns,
-        ft.amount = a.award_amount,
-        ft.transaction_date = a.award_date,
-        ft.completion_date = a.completion_date,
-        ft.start_date = a.contract_start_date,
-        ft.end_date = a.contract_end_date,
-        ft.title = a.award_title,
-        ft.description = a.abstract,
-        ft.phase = a.phase,
-        ft.program = a.program,
-        ft.principal_investigator = a.principal_investigator,
-        ft.research_institution = a.research_institution,
-        ft.cet_area = a.cet_area,
-        ft.award_year = a.award_year,
-        ft.fiscal_year = a.fiscal_year,
-        ft.naics_code = a.naics_primary,
-        ft.created_at = coalesce(a.created_at, datetime()),
-        ft.updated_at = datetime()
-    RETURN count(ft) as created
-    """
+    count_query = "MATCH (a:Award) RETURN count(a) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would migrate Award nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session() as session:
-        result = session.run(query)
-        count = result.single()["created"] if result.peek() else 0
-        logger.info("✓ Created %d FinancialTransaction nodes from Award nodes", count)
-        return count
+    with driver.session(default_access_mode="WRITE") as session:
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found {} Award nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No Award nodes to migrate")
+            return 0
+
+        batch_query = """
+        MATCH (a:Award)
+        WITH a SKIP $skip LIMIT $batch_size
+        MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
+        SET ft.transaction_type = 'AWARD',
+            ft.award_id = a.award_id,
+            ft.agency = a.agency,
+            ft.agency_name = a.agency_name,
+            ft.sub_agency = a.branch,
+            ft.recipient_name = a.company_name,
+            ft.recipient_uei = a.company_uei,
+            ft.recipient_duns = a.company_duns,
+            ft.amount = a.award_amount,
+            ft.transaction_date = a.award_date,
+            ft.completion_date = a.completion_date,
+            ft.start_date = a.contract_start_date,
+            ft.end_date = a.contract_end_date,
+            ft.title = a.award_title,
+            ft.description = a.abstract,
+            ft.phase = a.phase,
+            ft.program = a.program,
+            ft.principal_investigator = a.principal_investigator,
+            ft.research_institution = a.research_institution,
+            ft.cet_area = a.cet_area,
+            ft.award_year = a.award_year,
+            ft.fiscal_year = a.fiscal_year,
+            ft.naics_code = a.naics_primary,
+            ft.created_at = coalesce(a.created_at, datetime()),
+            ft.updated_at = datetime()
+        RETURN count(ft) as created
+        """
+
+        total_created = 0
+        skip = 0
+        batch_num = 1
+        total_batches = (total_count + batch_size - 1) // batch_size
+
+        while skip < total_count:
+            logger.info(
+                "Processing batch {}/{} (nodes {}-{} of {})...",
+                batch_num,
+                total_batches,
+                skip + 1,
+                min(skip + batch_size, total_count),
+                total_count,
+            )
+            
+            result = execute_batch_with_retry(
+                session, batch_query, {"skip": skip, "batch_size": batch_size},
+                batch_num=batch_num, total_batches=total_batches
+            )
+            single_result = result.single()
+            batch_created = single_result["created"] if single_result else 0
+            total_created += batch_created
+            
+            logger.info(
+                "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                batch_num,
+                total_batches,
+                batch_created,
+                total_created,
+                total_count,
+            )
+            
+            skip += batch_size
+            batch_num += 1
+
+        logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Award nodes", total_created)
+        return total_created
 
 
-def migrate_contracts_to_financial_transactions(driver, dry_run: bool = False) -> int:
-    """Migrate Contract nodes to FinancialTransaction nodes.
+def migrate_contracts_to_financial_transactions(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+    """Migrate Contract nodes to FinancialTransaction nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
+        batch_size: Number of nodes to process per batch
 
     Returns:
         Number of transactions created
     """
     logger.info("Step 2: Migrating Contract nodes to FinancialTransaction nodes")
 
-    query = """
-    MATCH (c:Contract)
-    WITH c
-    MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
-    SET ft.transaction_type = 'CONTRACT',
-        ft.contract_id = c.contract_id,
-        ft.agency = c.agency,
-        ft.agency_name = c.agency_name,
-        ft.sub_agency = c.sub_agency,
-        ft.sub_agency_name = c.sub_agency_name,
-        ft.recipient_name = c.vendor_name,
-        ft.recipient_uei = c.vendor_uei,
-        ft.amount = c.obligated_amount,
-        ft.base_and_all_options_value = c.base_and_all_options_value,
-        ft.transaction_date = c.action_date,
-        ft.start_date = c.start_date,
-        ft.end_date = c.end_date,
-        ft.title = c.description,
-        ft.description = c.description,
-        ft.competition_type = c.competition_type,
-        ft.piid = c.piid,
-        ft.fain = c.fain,
-        ft.psc_code = c.psc_code,
-        ft.place_of_performance = c.place_of_performance,
-        ft.naics_code = c.naics_code,
-        ft.created_at = coalesce(c.created_at, datetime()),
-        ft.updated_at = datetime()
-    RETURN count(ft) as created
-    """
+    count_query = "MATCH (c:Contract) RETURN count(c) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would migrate Contract nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session() as session:
-        result = session.run(query)
-        count = result.single()["created"] if result.peek() else 0
-        logger.info("✓ Created %d FinancialTransaction nodes from Contract nodes", count)
-        return count
+    with driver.session(default_access_mode="WRITE") as session:
+        # Get total count
+        count_result = session.run(count_query)
+        total_count = count_result.single()["total"]
+        logger.info("Found {} Contract nodes to migrate", total_count)
+        
+        if total_count == 0:
+            logger.info("No Contract nodes to migrate")
+            return 0
+
+        batch_query = """
+        MATCH (c:Contract)
+        WITH c SKIP $skip LIMIT $batch_size
+        MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
+        SET ft.transaction_type = 'CONTRACT',
+            ft.contract_id = c.contract_id,
+            ft.agency = c.agency,
+            ft.agency_name = c.agency_name,
+            ft.sub_agency = c.sub_agency,
+            ft.sub_agency_name = c.sub_agency_name,
+            ft.recipient_name = c.vendor_name,
+            ft.recipient_uei = c.vendor_uei,
+            ft.amount = c.obligated_amount,
+            ft.base_and_all_options_value = c.base_and_all_options_value,
+            ft.transaction_date = c.action_date,
+            ft.start_date = c.start_date,
+            ft.end_date = c.end_date,
+            ft.title = c.description,
+            ft.description = c.description,
+            ft.competition_type = c.competition_type,
+            ft.piid = c.piid,
+            ft.fain = c.fain,
+            ft.psc_code = c.psc_code,
+            ft.place_of_performance = c.place_of_performance,
+            ft.naics_code = c.naics_code,
+            ft.created_at = coalesce(c.created_at, datetime()),
+            ft.updated_at = datetime()
+        RETURN count(ft) as created
+        """
+
+        total_created = 0
+        skip = 0
+        batch_num = 1
+        total_batches = (total_count + batch_size - 1) // batch_size
+
+        while skip < total_count:
+            logger.info(
+                "Processing batch {}/{} (nodes {}-{} of {})...",
+                batch_num,
+                total_batches,
+                skip + 1,
+                min(skip + batch_size, total_count),
+                total_count,
+            )
+            
+            result = execute_batch_with_retry(
+                session, batch_query, {"skip": skip, "batch_size": batch_size},
+                batch_num=batch_num, total_batches=total_batches
+            )
+            single_result = result.single()
+            batch_created = single_result["created"] if single_result else 0
+            total_created += batch_created
+            
+            logger.info(
+                "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                batch_num,
+                total_batches,
+                batch_created,
+                total_created,
+                total_count,
+            )
+            
+            skip += batch_size
+            batch_num += 1
+
+        logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Contract nodes", total_created)
+        return total_created
 
 
 def update_award_relationships(driver, dry_run: bool = False) -> int:
@@ -249,7 +393,8 @@ def update_award_relationships(driver, dry_run: bool = False) -> int:
         for query in queries:
             try:
                 result = session.run(query)
-                count = result.single()["updated"] if result.peek() else 0
+                single_result = result.single()
+                count = single_result["updated"] if single_result else 0
                 total_updated += count
             except Exception as e:
                 logger.warning("Failed to update relationship: %s", e)
@@ -310,7 +455,8 @@ def update_contract_relationships(driver, dry_run: bool = False) -> int:
         for query in queries:
             try:
                 result = session.run(query)
-                count = result.single()["updated"] if result.peek() else 0
+                single_result = result.single()
+                count = single_result["updated"] if single_result else 0
                 total_updated += count
             except Exception as e:
                 logger.warning("Failed to update relationship: %s", e)

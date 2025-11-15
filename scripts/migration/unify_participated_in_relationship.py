@@ -73,9 +73,10 @@ def migrate_researched_by_to_participated_in(driver, dry_run: bool = False) -> i
     SET p.role = 'RESEARCHER',
         p.created_at = coalesce(r.created_at, datetime()),
         p.migrated_from = 'RESEARCHED_BY'
-    WITH r
+    WITH r, p
     DELETE r
-    RETURN count(p) as migrated
+    WITH count(p) as migrated
+    RETURN migrated
     """
 
     if dry_run:
@@ -84,8 +85,9 @@ def migrate_researched_by_to_participated_in(driver, dry_run: bool = False) -> i
 
     with driver.session() as session:
         result = session.run(query)
-        count = result.single()["migrated"] if result.peek() else 0
-        logger.info("✓ Migrated %d RESEARCHED_BY relationships to PARTICIPATED_IN", count)
+        single_result = result.single()
+        count = single_result["migrated"] if single_result else 0
+        logger.info("✓ Migrated {} RESEARCHED_BY relationships to PARTICIPATED_IN", count)
         return count
 
 
@@ -111,7 +113,7 @@ def migrate_worked_on_to_participated_in(driver, dry_run: bool = False) -> int:
     SET p.role = coalesce(p.role, 'RESEARCHER'),
         p.created_at = coalesce(w.created_at, p.created_at, datetime()),
         p.migrated_from = coalesce(p.migrated_from, 'WORKED_ON')
-    WITH w
+    WITH w, p
     DELETE w
     RETURN count(p) as migrated
     """
@@ -122,8 +124,9 @@ def migrate_worked_on_to_participated_in(driver, dry_run: bool = False) -> int:
 
     with driver.session() as session:
         result = session.run(query)
-        count = result.single()["migrated"] if result.peek() else 0
-        logger.info("✓ Migrated %d WORKED_ON relationships to PARTICIPATED_IN", count)
+        single_result = result.single()
+        count = single_result["migrated"] if single_result else 0
+        logger.info("✓ Migrated {} WORKED_ON relationships to PARTICIPATED_IN", count)
         return count
 
 
