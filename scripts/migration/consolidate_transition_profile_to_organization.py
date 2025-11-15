@@ -80,8 +80,9 @@ def migrate_transition_profiles_to_organization(driver, dry_run: bool = False) -
 
     with driver.session() as session:
         result = session.run(query)
-        count = result.single()["updated"] if result.peek() else 0
-        logger.info("✓ Updated %d Organization nodes with transition profile properties", count)
+        single_result = result.single()
+        count = single_result["updated"] if single_result else 0
+        logger.info("✓ Updated {} Organization nodes with transition profile properties", count)
         return count
 
 
@@ -109,8 +110,9 @@ def remove_achieved_relationships(driver, dry_run: bool = False) -> int:
 
     with driver.session() as session:
         result = session.run(query)
-        count = result.single()["deleted"] if result.peek() else 0
-        logger.info("✓ Removed %d ACHIEVED relationships", count)
+        single_result = result.single()
+        count = single_result["deleted"] if single_result else 0
+        logger.info("✓ Removed {} ACHIEVED relationships", count)
         return count
 
 
@@ -138,8 +140,9 @@ def remove_transition_profile_nodes(driver, dry_run: bool = False) -> int:
 
     with driver.session() as session:
         result = session.run(query)
-        count = result.single()["deleted"] if result.peek() else 0
-        logger.info("✓ Removed %d TransitionProfile nodes", count)
+        single_result = result.single()
+        count = single_result["deleted"] if single_result else 0
+        logger.info("✓ Removed {} TransitionProfile nodes", count)
         return count
 
 
@@ -167,7 +170,8 @@ def create_organization_transition_indexes(driver, dry_run: bool = False) -> Non
         for stmt in statements:
             try:
                 session.run(stmt)
-                logger.info("✓ Created index: %s", stmt.split()[5:7])
+                index_name = " ".join(stmt.split()[5:7]) if len(stmt.split()) > 7 else stmt.split()[-1]
+                logger.info("✓ Created index: {}", index_name)
             except Neo4jError as e:
                 if "already exists" in str(e).lower():
                     logger.info("Index already exists, skipping")

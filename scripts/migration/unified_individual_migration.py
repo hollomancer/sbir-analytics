@@ -32,8 +32,59 @@ except ImportError:
     GraphDatabase = None
     Neo4jError = Exception
 
-# Batch size for processing nodes (adjust based on dataset size and Neo4j performance)
-BATCH_SIZE = 1000
+# Batch size for processing nodes (reduced to 500 for better timeout handling with large datasets)
+BATCH_SIZE = 500
+
+
+def execute_batch_with_retry(
+    session, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
+) -> Any:
+    """Execute a batch query with retry logic for connection timeouts.
+    
+    Args:
+        session: Neo4j session
+        query: Cypher query to execute
+        params: Query parameters
+        max_retries: Maximum retry attempts
+        batch_num: Batch number for logging
+        total_batches: Total batches for logging
+        
+    Returns:
+        Query result
+        
+    Raises:
+        Exception: If query fails after all retries
+    """
+    import time
+    
+    for attempt in range(max_retries):
+        try:
+            result = session.run(query, **params)
+            return result
+        except Exception as e:
+            error_str = str(e).lower()
+            is_timeout = "timeout" in error_str or "SessionExpired" in str(type(e).__name__)
+            if attempt < max_retries - 1 and is_timeout:
+                wait_seconds = 2 ** attempt
+                logger.warning(
+                    "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
+                    batch_num,
+                    total_batches,
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+            else:
+                logger.error(
+                    "Batch {}/{} failed after {} attempts: {}",
+                    batch_num,
+                    total_batches,
+                    max_retries,
+                    e,
+                )
+                raise
 
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
@@ -71,14 +122,14 @@ def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size
     count_query = "MATCH (r:Researcher) RETURN count(r) as total"
 
     if dry_run:
-        logger.info("DRY RUN: Would migrate Researcher nodes in batches of %d", batch_size)
+        logger.info("DRY RUN: Would migrate Researcher nodes in batches of {}", batch_size)
         return 0
 
     with driver.session(default_access_mode="WRITE") as session:
         # Get total count
         count_result = session.run(count_query)
         total_count = count_result.single()["total"]
-        logger.info("Found %d Researcher nodes to migrate", total_count)
+        logger.info("Found {} Researcher nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No Researcher nodes to migrate")
@@ -87,7 +138,7 @@ def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size
         batch_query = """
         MATCH (r:Researcher)
         WITH r SKIP $skip LIMIT $batch_size
-        MERGE (i:Individual {individual_id: 'ind_researcher_' + coalesce(r.researcher_id, toString(id(r)))})
+        MERGE (i:Individual {individual_id: 'ind_researcher_' + coalesce(r.researcher_id, elementId(r))})
         SET i.name = r.name,
             i.normalized_name = upper(r.name),
             i.email = r.email,
@@ -116,7 +167,7 @@ def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size
 
         while skip < total_count:
             logger.info(
-                "Processing batch %d/%d (nodes %d-%d of %d)...",
+                "Processing batch {}/{} (nodes {}-{} of {})...",
                 batch_num,
                 total_batches,
                 skip + 1,
@@ -124,12 +175,16 @@ def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size
                 total_count,
             )
             
-            result = session.run(batch_query, skip=skip, batch_size=batch_size)
-            batch_created = result.single()["created"] if result.peek() else 0
+            result = execute_batch_with_retry(
+                session, batch_query, {"skip": skip, "batch_size": batch_size},
+                batch_num=batch_num, total_batches=total_batches
+            )
+            single_result = result.single()
+            batch_created = single_result["created"] if single_result else 0
             total_created += batch_created
             
             logger.info(
-                "✓ Batch %d/%d complete: Created %d Individual nodes (Total: %d/%d)",
+                "✓ Batch {}/{} complete: Created {} Individual nodes (Total: {}/{})",
                 batch_num,
                 total_batches,
                 batch_created,
@@ -140,7 +195,7 @@ def migrate_researchers_to_individuals(driver, dry_run: bool = False, batch_size
             skip += batch_size
             batch_num += 1
 
-        logger.info("✓ Migration complete: Created %d Individual nodes from Researcher nodes", total_created)
+        logger.info("✓ Migration complete: Created {} Individual nodes from Researcher nodes", total_created)
         return total_created
 
 
@@ -212,7 +267,7 @@ def migrate_patent_individuals_to_individuals(driver, dry_run: bool = False) -> 
                AND ((pe.email IS NOT NULL AND i.email = pe.email) OR 
                     (pe.address IS NOT NULL AND i.address = pe.address AND pe.city = i.city)))
       }
-    MERGE (i:Individual {individual_id: 'ind_patent_' + coalesce(pe.entity_id, toString(id(pe)))})
+    MERGE (i:Individual {individual_id: 'ind_patent_' + coalesce(pe.entity_id, elementId(pe))})
     SET i.name = pe.name,
         i.normalized_name = coalesce(pe.normalized_name, upper(pe.name)),
         i.address = pe.address,
