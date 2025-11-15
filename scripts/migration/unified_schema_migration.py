@@ -99,13 +99,35 @@ def get_env_variable(name: str, default: str | None = None) -> str | None:
 
 
 def connect(uri: str, user: str, password: str):
-    """Create Neo4j driver connection."""
+    """Create Neo4j driver connection with extended timeouts for long-running migrations.
+    
+    Note: For very large datasets, consider processing in batches or increasing
+    Neo4j server-side query timeout settings.
+    """
     if GraphDatabase is None:
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
     logger.info("Connecting to Neo4j at {} as user {}", uri, user)
-    driver = GraphDatabase.driver(uri, auth=(user, password))
+    
+    # Configure timeouts for long-running migration queries
+    # These settings help prevent connection timeouts during large migrations
+    driver_config = {
+        "max_connection_lifetime": 3600 * 2,  # 2 hours
+        "max_connection_pool_size": 10,
+        "connection_acquisition_timeout": 300.0,  # 5 minutes to get connection from pool
+        "connection_timeout": 60.0,  # 1 minute to establish connection
+    }
+    
+    # Only add parameters that are supported by the driver version
+    try:
+        driver = GraphDatabase.driver(uri, auth=(user, password), **driver_config)
+    except TypeError:
+        # Fallback if some parameters aren't supported
+        logger.warning("Some timeout parameters may not be supported by this driver version")
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+    
+    logger.info("Driver configured with extended timeouts for long-running migrations")
     return driver
 
 

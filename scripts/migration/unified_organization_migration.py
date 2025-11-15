@@ -95,7 +95,10 @@ def migrate_companies_to_organizations(driver, dry_run: bool = False) -> int:
         logger.info("DRY RUN: Would execute:\n%s", query)
         return 0
 
-    with driver.session() as session:
+    # Use a session with extended timeout for long-running migration queries
+    # The driver is already configured with extended timeouts in unified_schema_migration.py
+    with driver.session(default_access_mode="WRITE") as session:
+        # Execute query - timeout is handled at driver level
         result = session.run(query)
         count = result.single()["created"]
         logger.info("✓ Created %d Organization nodes from Company nodes", count)
