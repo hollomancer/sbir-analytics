@@ -41,12 +41,12 @@ This guide explains how to configure GitHub Actions CI to use Neo4j Aura Free fo
 
 | Secret Name | Value | Example |
 |-------------|-------|---------|
-| `NEO4J_AURA_URI` | Your Aura connection URI | `neo4j+s://a1b2c3d4.databases.neo4j.io` |
-| `NEO4J_AURA_USERNAME` | Neo4j username | `neo4j` |
-| `NEO4J_AURA_PASSWORD` | Password from Aura console | `your-secure-password-here` |
+| `NEO4J_AURA_TEST_URI` | Your Aura connection URI | `neo4j+s://a1b2c3d4.databases.neo4j.io` |
+| `NEO4J_AURA_TEST_USERNAME` | Neo4j username | `neo4j` |
+| `NEO4J_AURA_TEST_PASSWORD` | Password from Aura console | `your-secure-password-here` |
 
 **Important:**
-- Use the **exact secret names** shown above
+- Use the **exact secret names** shown above (note the `_TEST` suffix for test environment)
 - Include `neo4j+s://` in the URI (the `+s` enables TLS)
 - Don't add quotes around values
 
@@ -164,7 +164,7 @@ workflow_dispatch:
 
 **Solution:**
 1. Verify secrets exist: Settings → Secrets and variables → Actions
-2. Check exact names: `NEO4J_AURA_URI`, `NEO4J_AURA_USERNAME`, `NEO4J_AURA_PASSWORD`
+2. Check exact names: `NEO4J_AURA_TEST_URI`, `NEO4J_AURA_TEST_USERNAME`, `NEO4J_AURA_TEST_PASSWORD`
 3. Re-add secrets if misspelled
 
 ---
@@ -254,7 +254,7 @@ Tests taking >10 minutes (normally < 2 min)
 
 **Symptom:**
 ```
-secrets.NEO4J_AURA_URI not found
+secrets.NEO4J_AURA_TEST_URI not found
 ```
 
 **Cause:** Forks don't have access to repository secrets (security feature)
@@ -266,6 +266,7 @@ secrets.NEO4J_AURA_URI not found
 **For organization repos:**
 - Secrets are shared across org repos if configured at org level
 - Check: Organization Settings → Secrets
+- Use same names: `NEO4J_AURA_TEST_URI`, `NEO4J_AURA_TEST_USERNAME`, `NEO4J_AURA_TEST_PASSWORD`
 
 ---
 

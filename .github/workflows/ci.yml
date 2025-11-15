@@ -71,13 +71,13 @@ jobs:
 
     env:
       # Use Neo4j Aura Free by default, Docker as fallback
-      # Aura Free credentials from GitHub secrets (configure in repo settings)
-      NEO4J_URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_URI || 'neo4j+s://test.databases.neo4j.io' }}
-      NEO4J_USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_USERNAME || 'neo4j' }}
-      NEO4J_PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_PASSWORD || '' }}
-      SBIR_ETL__NEO4J__URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_URI || 'neo4j+s://test.databases.neo4j.io' }}
-      SBIR_ETL__NEO4J__USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_USERNAME || 'neo4j' }}
-      SBIR_ETL__NEO4J__PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_PASSWORD || '' }}
+      # Aura Free test credentials from GitHub secrets (configure in repo settings)
+      NEO4J_URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_TEST_URI || 'neo4j+s://test.databases.neo4j.io' }}
+      NEO4J_USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_TEST_USERNAME || 'neo4j' }}
+      NEO4J_PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_TEST_PASSWORD || '' }}
+      SBIR_ETL__NEO4J__URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_TEST_URI || 'neo4j+s://test.databases.neo4j.io' }}
+      SBIR_ETL__NEO4J__USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_TEST_USERNAME || 'neo4j' }}
+      SBIR_ETL__NEO4J__PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_TEST_PASSWORD || '' }}
       ENVIRONMENT: ${{ (github.event.inputs.use_docker == 'true' && 'dev') || 'test-aura' }}
       # Limit sample size for Aura Free (stays within 100K node limit)
       SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ (github.event.inputs.use_docker == 'true' && '10000') || '1000' }}
@@ -209,9 +209,9 @@ jobs:
               password = os.environ.get("NEO4J_PASSWORD", "")
 
               if not uri or not password:
-                  print("⚠️  Warning: Neo4j Aura credentials not configured in GitHub secrets")
-                  print("   Please configure NEO4J_AURA_URI, NEO4J_AURA_USERNAME, NEO4J_AURA_PASSWORD")
-                  print("   See docs/TESTING_QUICK_START.md for setup instructions")
+                  print("⚠️  Warning: Neo4j Aura test credentials not configured in GitHub secrets")
+                  print("   Please configure NEO4J_AURA_TEST_URI, NEO4J_AURA_TEST_USERNAME, NEO4J_AURA_TEST_PASSWORD")
+                  print("   See docs/CI_AURA_SETUP.md for setup instructions")
                   sys.exit(0)  # Don't fail the build, just warn
 
               print(f"Connecting to: {uri}")
