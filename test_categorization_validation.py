@@ -91,6 +91,106 @@ def _extract_year_from_date(date_str: str | None) -> int | None:
     return None
 
 
+def _is_rd_psc(psc: str | None) -> bool:
+    """Check if PSC code indicates R&D (starts with A or B).
+    
+    Args:
+        psc: Product Service Code
+        
+    Returns:
+        True if PSC indicates R&D, False otherwise
+    """
+    if not psc:
+        return False
+    psc_str = str(psc).strip().upper()
+    if len(psc_str) == 0:
+        return False
+    return psc_str[0] in ("A", "B")
+
+
+def _check_final_two_years_transitions(
+    contract_dicts: list[dict], classified_contracts: list[dict]
+) -> tuple[bool, bool]:
+    """Check final two years for successful transitions.
+    
+    Args:
+        contract_dicts: Original contract dictionaries with date and amount info
+        classified_contracts: Classified contracts with Product/Service classification
+        
+    Returns:
+        Tuple of (successful_transition, product_transition):
+        - successful_transition: True if final two years have (product OR service) > R&D
+        - product_transition: True if final two years have product > R&D
+    """
+    if not contract_dicts or not classified_contracts:
+        return False, False
+    
+    # Create a mapping from award_id to classification and PSC for quick lookup
+    classification_map = {c.get("award_id"): c.get("classification") for c in classified_contracts}
+    psc_map = {c.get("award_id"): c.get("psc") for c in classified_contracts}
+    
+    # Group contracts by year, tracking Product, Service (non-R&D), and R&D separately
+    year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0, "rd": 0.0})
+    
+    for contract in contract_dicts:
+        award_id = contract.get("award_id")
+        classification = classification_map.get(award_id)
+        psc = psc_map.get(award_id) or contract.get("psc")
+        amount = contract.get("award_amount") or 0.0
+        
+        if not classification or amount <= 0:
+            continue
+        
+        # Extract year from action_date
+        action_date = contract.get("action_date")
+        year = _extract_year_from_date(action_date)
+        
+        if not year:
+            continue
+        
+        # Check if this is an R&D contract (PSC starts with A or B)
+        is_rd = _is_rd_psc(psc)
+        
+        if classification == "Product":
+            year_revenue[year]["product"] += amount
+        elif is_rd:
+            # R&D contracts (even though classified as Service)
+            year_revenue[year]["rd"] += amount
+        elif classification == "Service":
+            # Non-R&D service contracts
+            year_revenue[year]["service"] += amount
+    
+    if not year_revenue:
+        return False, False
+    
+    # Get the two most recent years
+    sorted_years = sorted(year_revenue.keys())
+    if len(sorted_years) < 2:
+        return False, False
+    
+    final_two_years = sorted_years[-2:]
+    
+    # Check if both final two years meet the criteria
+    successful_transition = True
+    product_transition = True
+    
+    for year in final_two_years:
+        revenue = year_revenue[year]
+        product_total = revenue.get("product", 0.0)
+        service_total = revenue.get("service", 0.0)
+        rd_total = revenue.get("rd", 0.0)
+        
+        # Successful transition: (product OR service) > R&D
+        if (product_total + service_total) <= rd_total:
+            successful_transition = False
+        
+        # Product transition: product > R&D
+        if product_total <= rd_total:
+            product_transition = False
+    
+    return successful_transition, product_transition
+
+
 def _analyze_consecutive_product_years(
     contract_dicts: list[dict], classified_contracts: list[dict]
 ) -> list[int] | None:
@@ -351,18 +451,41 @@ def categorize_companies(
             )
 
             # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
-            if use_api:
-                contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
-            else:
+            # Default to DuckDB, fallback to API if DuckDB unavailable
+            contracts_df = pd.DataFrame()
+            
+            # Try DuckDB first (default behavior) unless API-only mode
+            if not use_api:
                 if extractor is None:
-                    raise ValueError("extractor is required when use_api=False")
-                contracts_df = retrieve_company_contracts(extractor, uei=uei)
+                    logger.warning(f"DuckDB extractor unavailable for {name}, falling back to API")
+                    contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
+                else:
+                    try:
+                        contracts_df = retrieve_company_contracts(extractor, uei=uei)
+                    except Exception as e:
+                        logger.warning(f"DuckDB retrieval failed for {name}, falling back to API: {e}")
+                        contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
+            else:
+                # API-only mode (explicitly requested)
+                contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
 
             # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
-            if use_api:
-                sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
+            sbir_df = pd.DataFrame()
+            
+            # Try DuckDB first for SBIR awards unless API-only mode
+            if not use_api:
+                if extractor is None:
+                    logger.warning(f"DuckDB extractor unavailable for SBIR awards for {name}, falling back to API")
+                    sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
+                else:
+                    try:
+                        sbir_df = retrieve_sbir_awards(extractor, uei=uei)
+                    except Exception as e:
+                        logger.warning(f"DuckDB retrieval failed for SBIR awards for {name}, falling back to API: {e}")
+                        sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
             else:
-                sbir_df = retrieve_sbir_awards(extractor, uei=uei)
+                # API-only mode (explicitly requested)
+                sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
 
             # Calculate SBIR statistics
             sbir_award_count = len(sbir_df) if not sbir_df.empty else 0
@@ -436,15 +559,53 @@ def categorize_companies(
 
             # Analyze year-by-year revenue to identify consecutive product-dominant years
             consecutive_product_years = _analyze_consecutive_product_years(contract_dicts, classified_contracts)
+            
+            # Check if final two years show transitions (product/service > R&D, and product > R&D)
+            successful_transition, product_transition = _check_final_two_years_transitions(contract_dicts, classified_contracts)
 
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_result = aggregate_company_classification(
                 contract_dicts, company_uei=uei, company_name=name
             )
             
+            # Override classification to Product-leaning if final two years show product > R&D
+            if product_transition and company_result.classification != "Product-leaning":
+                # Create a new CompanyClassification with Product-leaning classification
+                from src.models.categorization import CompanyClassification
+                company_result = CompanyClassification(
+                    company_uei=company_result.company_uei,
+                    company_name=company_result.company_name,
+                    classification="Product-leaning",
+                    product_pct=company_result.product_pct,
+                    service_pct=company_result.service_pct,
+                    confidence=company_result.confidence,
+                    award_count=company_result.award_count,
+                    psc_family_count=company_result.psc_family_count,
+                    total_dollars=company_result.total_dollars,
+                    product_dollars=company_result.product_dollars,
+                    service_dollars=company_result.service_dollars,
+                    agency_breakdown=company_result.agency_breakdown,
+                    override_reason="successful_transition_product_gt_rd",
+                    contracts=company_result.contracts,
+                )
+            
+            # Calculate R&D revenue (contracts with PSC codes starting with A or B)
+            rd_dollars = 0.0
+            for contract in contract_dicts:
+                psc = contract.get("psc")
+                if _is_rd_psc(psc):
+                    rd_dollars += contract.get("award_amount", 0.0) or 0.0
+            
+            total_dollars = company_result.total_dollars
+            rd_pct = (rd_dollars / total_dollars * 100) if total_dollars > 0 else 0.0
+            
             logger.info(
                 f"  Dollar breakdown: Product: {company_result.product_pct:.1f}%, "
-                f"Service: {company_result.service_pct:.1f}%"
+                f"Service: {company_result.service_pct:.1f}%, R&D: {rd_pct:.1f}%"
+            )
+            logger.info(
+                f"  Dollar amounts: Product: ${company_result.product_dollars:,.0f}, "
+                f"Service: ${company_result.service_dollars:,.0f}, R&D: ${rd_dollars:,.0f}"
             )
 
             # Log agency breakdown if available
@@ -459,12 +620,20 @@ def categorize_companies(
                 years_str = ", ".join(map(str, consecutive_product_years))
                 logger.info(f"  ⚠️  Consecutive product-dominant years: {years_str} (Product > Service for 2+ consecutive years)")
 
+            # Log successful transitions
+            if successful_transition:
+                logger.info(f"  🎯 SUCCESSFUL TRANSITION: Final two years show (product OR service) > R&D revenue")
+            if product_transition:
+                logger.info(f"  🎯 PRODUCT TRANSITION: Final two years show product > R&D revenue (classified as Product-leaning)")
+
             # Print detailed justifications if requested (after aggregation so we have agency breakdown)
             if detailed:
                 print_contract_justifications(name, classified_contracts, detailed=detailed, agency_breakdown=company_result.agency_breakdown)
 
+            # Highlight successful transitions in result log
+            transition_marker = "🎯 " if (successful_transition or product_transition) else ""
             logger.info(
-                f"  Result: {company_result.classification} "
+                f"  Result: {transition_marker}{company_result.classification} "
                 f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) - "
                 f"{company_result.confidence} confidence"
             )
@@ -472,7 +641,9 @@ def categorize_companies(
             # Generate justification
             justification_parts = []
             if company_result.override_reason:
-                if company_result.override_reason == "high_psc_diversity":
+                if company_result.override_reason == "successful_transition_product_gt_rd":
+                    justification_parts.append("🎯 Product transition: Final two years show product > R&D revenue")
+                elif company_result.override_reason == "high_psc_diversity":
                     justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
                 elif company_result.override_reason == "insufficient_awards":
                     justification_parts.append("Insufficient awards for reliable classification")
@@ -517,6 +688,8 @@ def categorize_companies(
                 "service_based_contracts": service_based_count,
                 "justification": justification,
                 "consecutive_product_years": consecutive_product_years if consecutive_product_years else None,
+                "successful_transition": successful_transition,
+                "product_transition": product_transition,
             }
         except Exception as e:
             logger.error(f"Error processing company {company.get('Company Name', 'Unknown')}: {e}")
@@ -778,6 +951,53 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write(f"- **Companies with SBIR in USAspending**: {companies_with_sbir}/{len(results)}\n")
         f.write(f"- **Average SBIR % of Total Revenue**: {avg_sbir_pct:.1f}%\n\n")
         f.write("---\n\n")
+        
+        # Companies with successful transitions (product OR service > R&D)
+        if "successful_transition" in results.columns:
+            successful_transitions = results[results["successful_transition"] == True]
+            if len(successful_transitions) > 0:
+                f.write("## 🎯 Companies with Successful Transitions\n\n")
+                f.write("Companies whose **final two years** of USAspending data show (Product OR Service) revenue > R&D revenue. ")
+                f.write("These companies have transitioned away from R&D-focused contracts.\n\n")
+                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ | Product Transition |\n")
+                f.write("|---------|---------------|-----------|-----------|-----------|--------|-------------------|\n")
+                
+                for _, row in successful_transitions.iterrows():
+                    company = row["company_name"][:40]
+                    classification = row["classification"]
+                    product_pct = row["product_pct"]
+                    service_pct = row["service_pct"]
+                    contracts = row["award_count"]
+                    total_dollars = row["total_dollars"]
+                    product_transition = "🎯 Yes" if row.get("product_transition", False) else "No"
+                    
+                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_transition} |\n")
+                
+                f.write(f"\n**Total**: {len(successful_transitions)} companies\n\n")
+                f.write("---\n\n")
+        
+        # Companies with product transitions (product > R&D, classified as Product)
+        if "product_transition" in results.columns:
+            product_transitions = results[results["product_transition"] == True]
+            if len(product_transitions) > 0:
+                f.write("## 🎯 Companies with Product Transitions\n\n")
+                f.write("Companies whose **final two years** of USAspending data show Product revenue > R&D revenue. ")
+                f.write("These companies are classified as **Product-leaning** regardless of their overall portfolio mix.\n\n")
+                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ |\n")
+                f.write("|---------|---------------|-----------|-----------|-----------|--------|\n")
+                
+                for _, row in product_transitions.iterrows():
+                    company = row["company_name"][:40]
+                    classification = row["classification"]
+                    product_pct = row["product_pct"]
+                    service_pct = row["service_pct"]
+                    contracts = row["award_count"]
+                    total_dollars = row["total_dollars"]
+                    
+                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
+                
+                f.write(f"\n**Total**: {len(product_transitions)} companies\n\n")
+                f.write("---\n\n")
         
         # Companies with consecutive product-dominant years
         if "consecutive_product_years" in results.columns:
@@ -1057,7 +1277,7 @@ def main():
     parser.add_argument(
         "--use-api",
         action="store_true",
-        help="Use USAspending API instead of DuckDB for contract retrieval",
+        help="Use USAspending API only (disable DuckDB, no fallback)",
     )
     parser.add_argument(
         "--detailed",
@@ -1085,15 +1305,26 @@ def main():
     # Load validation dataset
     companies = load_validation_dataset(args.dataset)
 
-    # Initialize USAspending extractor if not using API
-    extractor = None
+    # Determine retrieval strategy: DuckDB-first with API fallback (default)
     if args.use_api:
-        logger.info("Using USAspending API for contract retrieval")
+        # API-only mode (explicitly requested)
+        logger.info("Using USAspending API only for contract retrieval (DuckDB disabled)")
+        extractor = None
+        use_api = True
     else:
+        # Default: DuckDB-first with API fallback
+        logger.info("Using DuckDB for contract retrieval (API as fallback if DuckDB unavailable)")
         config = get_config()
         db_path = config.duckdb.database_path
-        logger.info(f"Using DuckDB database: {db_path}")
-        extractor = DuckDBUSAspendingExtractor(db_path)
+        try:
+            # Try to initialize DuckDB extractor (primary method)
+            extractor = DuckDBUSAspendingExtractor(db_path)
+            logger.debug(f"DuckDB extractor initialized: {db_path}")
+        except Exception as e:
+            logger.warning(f"Could not initialize DuckDB extractor: {e}")
+            logger.info("Will use API as fallback (DuckDB unavailable)")
+            extractor = None
+        use_api = False
 
     try:
         # Categorize companies
@@ -1102,7 +1333,7 @@ def main():
             extractor,
             limit=args.limit,
             specific_uei=args.uei,
-            use_api=args.use_api,
+            use_api=use_api,
             detailed=args.detailed,
             max_workers=args.max_workers,
         )

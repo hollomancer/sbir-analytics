@@ -800,10 +800,11 @@ def retrieve_company_contracts_api(
 
     all_transactions: list[dict[str, Any]] = []
     page = 1
+    max_pages = 1000  # Safety limit to prevent infinite loops
 
     try:
         logger.info("Fetching transactions from spending_by_transaction endpoint")
-        while True:
+        while page <= max_pages:
             # Build payload with ALL required fields per API contract
             payload = {
                 "filters": filters,
@@ -815,9 +816,10 @@ def retrieve_company_contracts_api(
             }
 
             url = f"{base_url}/search/spending_by_transaction/"
-            logger.debug(f"Fetching page {page} from spending_by_transaction endpoint")
+            logger.debug(f"Fetching page {page} from spending_by_transaction endpoint (company: {uei or company_name or 'Unknown'})")
 
             try:
+                logger.debug(f"Making API request for page {page}...")
                 response = _make_rate_limited_request(
                     "POST",
                     url,
@@ -828,7 +830,9 @@ def retrieve_company_contracts_api(
                         "User-Agent": "SBIR-ETL/1.0",
                     },
                 )
+                logger.debug(f"Received response for page {page}, status: {response.status_code}")
                 data = response.json()
+                logger.debug(f"Parsed JSON response for page {page}, got {len(data.get('results', []))} results")
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     logger.error(f"Rate limit exceeded for page {page}, stopping pagination")
@@ -937,6 +941,20 @@ def retrieve_company_contracts_api(
                 break
 
             page += 1
+            
+            # Safety check: if we've retrieved a very large number of transactions, log warning
+            if len(all_transactions) > 100000:
+                logger.warning(
+                    f"Retrieved {len(all_transactions)} transactions for company {uei or company_name or 'Unknown'}, "
+                    f"stopping pagination at page {page} to prevent excessive data retrieval"
+                )
+                break
+        
+        if page > max_pages:
+            logger.warning(
+                f"Reached maximum page limit ({max_pages}) for company {uei or company_name or 'Unknown'}, "
+                f"stopping pagination. Retrieved {len(all_transactions)} transactions so far."
+            )
 
         logger.info(f"Retrieved {len(all_transactions)} transactions from spending_by_transaction endpoint")
 
@@ -968,9 +986,10 @@ def retrieve_company_contracts_api(
             
             # Try pagination with name search
             name_page = 1
+            name_max_pages = 1000  # Safety limit
             name_transactions: list[dict[str, Any]] = []
             try:
-                while True:
+                while name_page <= name_max_pages:
                     name_payload = {
                         "filters": name_filters,
                         "fields": fields,
@@ -1031,6 +1050,20 @@ def retrieve_company_contracts_api(
                     if not has_next:
                         break
                     name_page += 1
+                    
+                    # Safety check: prevent excessive data retrieval
+                    if len(name_transactions) > 100000:
+                        logger.warning(
+                            f"Retrieved {len(name_transactions)} transactions via name search for company {company_name}, "
+                            f"stopping pagination at page {name_page}"
+                        )
+                        break
+                
+                if name_page > name_max_pages:
+                    logger.warning(
+                        f"Reached maximum page limit ({name_max_pages}) for name search of {company_name}, "
+                        f"stopping pagination. Retrieved {len(name_transactions)} transactions so far."
+                    )
                 
                 if name_transactions:
                     logger.info(
@@ -1433,9 +1466,10 @@ def retrieve_sbir_awards_api(
 
     all_transactions: list[dict[str, Any]] = []
     page = 1
+    max_pages = 1000  # Safety limit to prevent infinite loops
 
     try:
-        while True:
+        while page <= max_pages:
             payload = {
                 "filters": filters,
                 "fields": fields,
@@ -1503,6 +1537,20 @@ def retrieve_sbir_awards_api(
                 break
 
             page += 1
+            
+            # Safety check: prevent excessive data retrieval
+            if len(all_transactions) > 100000:
+                logger.warning(
+                    f"Retrieved {len(all_transactions)} SBIR transactions for company {uei or company_name or 'Unknown'}, "
+                    f"stopping pagination at page {page}"
+                )
+                break
+        
+        if page > max_pages:
+            logger.warning(
+                f"Reached maximum page limit ({max_pages}) for SBIR awards for company {uei or company_name or 'Unknown'}, "
+                f"stopping pagination. Retrieved {len(all_transactions)} transactions so far."
+            )
 
         if not all_transactions:
             logger.debug(f"No SBIR/STTR awards found via API (UEI={uei}, DUNS={duns})")
