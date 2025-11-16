@@ -370,7 +370,7 @@ def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dic
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
 def transformed_patent_entities(
-    context: Any, transformed_assignments: dict[str, Any]
+    context, transformed_assignments: dict[str, Any]
 ) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")

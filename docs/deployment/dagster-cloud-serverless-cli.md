@@ -422,32 +422,19 @@ See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for detailed gui
 
 6. Verify all dependencies are listed in `pyproject.toml`
 
-**Common Error**: `ConnectionResetError: Connection reset by peer` during upload
-- **Cause**: The PEX bundle is too large (500+ MB), causing network timeouts during upload. This happens when unnecessary files (data/, reports/, docs/, tests/, etc.) are included in the bundle.
-- **Solution**: 
-  1. **Create `MANIFEST.in` file** in project root to exclude unnecessary files:
-     ```plaintext
-     # Include only essential source code and configuration
-     include src/**/*
-     include config/**/*
-     include pyproject.toml
-     include README.md
-     
-     # Exclude everything else
-     global-exclude *
-     prune data
-     prune reports
-     prune logs
-     prune metrics
-     prune artifacts
-     prune neo4j
-     prune docs
-     prune archive
-     prune tests
-     prune scripts
-     prune examples
-     # ... (see MANIFEST.in in project root for full list)
-     ```
+**Common Error**: `ConnectionResetError` or `RequestTimeout` during upload
+- **Symptoms**: 
+  - `RequestTimeout: Your socket connection to the server was not read from or written to within the timeout period`
+  - `ConnectionResetError: Connection reset by peer`
+  - Upload fails with HTTP 400 or connection aborted errors
+  
+- **Cause**: The PEX bundle is too large (500+ MB), causing network timeouts during upload to S3. This happens when unnecessary files (data/, reports/, docs/, tests/, etc.) are included in the bundle.
+
+- **Solutions**: 
+  
+  **Option 1: Verify MANIFEST.in is working** (already created)
+  
+  1. **Check `MANIFEST.in` exists** in project root (should already be there)
   
   2. **Verify `pyproject.toml` limits packages**:
      ```toml
@@ -455,9 +442,38 @@ See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for detailed gui
      packages = ["src"]
      ```
   
-  3. **Expected bundle size**: Should reduce from ~522 MB to ~300-370 MB (only `src/`, `config/`, dependencies)
+  3. **Note**: Hatchling may not fully respect `MANIFEST.in` for PEX builds. The PEX builder might include more files than expected.
   
-  4. **Retry deployment** after creating `MANIFEST.in`
+  4. **Retry deployment** - sometimes network issues are transient:
+     ```bash
+     dagster-cloud serverless deploy-python-executable \
+       --deployment prod \
+       --location-name sbir-etl-production \
+       --module-name src.definitions
+     ```
+  
+  **Option 2: Use Docker deployment instead** (Recommended for large codebases)
+  
+  If PEX uploads continue to timeout, use Docker deployment which is more reliable for large codebases:
+  
+  ```bash
+  # Build Docker image locally (or use CI/CD)
+  docker build -t sbir-etl:latest --platform=linux/amd64 .
+  
+  # Deploy using Docker instead of PEX
+  dagster-cloud serverless deploy \
+    --deployment prod \
+    --location-name sbir-etl-production \
+    --package-name sbir-etl
+  ```
+  
+  **Benefits of Docker deployment**:
+  - More reliable for large codebases
+  - Better control over what's included (via `.dockerignore`)
+  - No upload timeout issues
+  - Can use multi-stage builds to reduce image size
+  
+  **Note**: Docker deployment requires Docker to be running and may take longer to build, but avoids upload timeout issues.
   
   **Reference**: [Dagster Cloud Runtime Environment Documentation](https://docs.dagster.io/deployment/dagster-plus/serverless/runtime-environment#include-data-files)
 

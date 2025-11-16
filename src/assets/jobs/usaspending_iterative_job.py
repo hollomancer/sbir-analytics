@@ -14,14 +14,4 @@ usaspending_iterative_enrichment_job = define_asset_job(
         "stale_usaspending_awards",
     ),
     description="USAspending iterative enrichment refresh: identify and refresh stale awards",
-    config={
-        "ops": {
-            "usaspending_refresh_batch": {
-                "config": {
-                    "source": "usaspending",
-                    "force": False,
-                }
-            }
-        }
-    },
 )

@@ -8,7 +8,7 @@ This script:
 4. Updates Transition nodes to reference FinancialTransaction
 
 Usage:
-    python scripts/migration/unified_financial_transaction_migration.py [--dry-run] [--yes]
+    python scripts/migration/unified_financial_transaction_migration.py [--dry-run] [--yes] [--resume] [--batch-size N] [--parallel-workers N]
 
 Environment variables:
     NEO4J_URI: Neo4j connection URI (default: bolt://neo4j:7687)
@@ -19,30 +19,128 @@ Environment variables:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not available, skip loading .env file
+    pass
+
 try:
     from neo4j import GraphDatabase
-    from neo4j.exceptions import Neo4jError
+    from neo4j.exceptions import Neo4jError, SessionExpired
 except ImportError:
-    GraphDatabase = None
-    Neo4jError = Exception
+    GraphDatabase = None  # type: ignore[assignment, misc]
+    Neo4jError = Exception  # type: ignore[assignment, misc]
+    SessionExpired = Exception  # type: ignore[assignment, misc]
 
-# Batch size for processing nodes (reduced to 500 for better timeout handling)
-BATCH_SIZE = 500
+# Default batch size (increased from 500 for better performance)
+DEFAULT_BATCH_SIZE = 2000
+# Checkpoint file location
+CHECKPOINT_DIR = Path("data/state")
+CHECKPOINT_FILE = CHECKPOINT_DIR / "migration_checkpoint.json"
+
+
+class MigrationCheckpoint:
+    """Checkpoint state for migration progress."""
+    
+    def __init__(
+        self,
+        step: str = "",
+        batch_num: int = 0,
+        total_batches: int = 0,
+        processed_ids: list[str] | None = None,
+        total_count: int = 0,
+        timestamp: str | None = None,
+    ):
+        """Initialize checkpoint.
+        
+        Args:
+            step: Current migration step (e.g., "awards", "contracts")
+            batch_num: Current batch number
+            total_batches: Total number of batches
+            processed_ids: List of IDs already processed
+            total_count: Total count of items to process
+            timestamp: ISO timestamp of checkpoint
+        """
+        self.step = step
+        self.batch_num = batch_num
+        self.total_batches = total_batches
+        self.processed_ids = processed_ids or []
+        self.total_count = total_count
+        self.timestamp = timestamp or datetime.now().isoformat()
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert checkpoint to dictionary."""
+        return {
+            "step": self.step,
+            "batch_num": self.batch_num,
+            "total_batches": self.total_batches,
+            "processed_ids": self.processed_ids,
+            "total_count": self.total_count,
+            "timestamp": self.timestamp,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MigrationCheckpoint:
+        """Create checkpoint from dictionary."""
+        return cls(
+            step=data.get("step", ""),
+            batch_num=data.get("batch_num", 0),
+            total_batches=data.get("total_batches", 0),
+            processed_ids=data.get("processed_ids", []),
+            total_count=data.get("total_count", 0),
+            timestamp=data.get("timestamp"),
+        )
+    
+    def save(self, checkpoint_file: Path) -> None:
+        """Save checkpoint to file."""
+        CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+        checkpoint_file.write_text(json.dumps(self.to_dict(), indent=2))
+        logger.debug("Checkpoint saved: step={}, batch={}/{}", self.step, self.batch_num, self.total_batches)
+    
+    @classmethod
+    def load(cls, checkpoint_file: Path) -> MigrationCheckpoint | None:
+        """Load checkpoint from file if it exists."""
+        if not checkpoint_file.exists():
+            return None
+        try:
+            data = json.loads(checkpoint_file.read_text())
+            checkpoint = cls.from_dict(data)
+            logger.info("Loaded checkpoint: step={}, batch={}/{}", checkpoint.step, checkpoint.batch_num, checkpoint.total_batches)
+            return checkpoint
+        except Exception as e:
+            logger.warning("Failed to load checkpoint: {}", e)
+            return None
+    
+    def clear(self, checkpoint_file: Path) -> None:
+        """Clear checkpoint file."""
+        if checkpoint_file.exists():
+            checkpoint_file.unlink()
+            logger.info("Checkpoint cleared")
 
 
 def execute_batch_with_retry(
-    session, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
-) -> Any:
+    driver: Any, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
+) -> dict[str, Any]:
     """Execute a batch query with retry logic for connection timeouts.
     
+    Creates a new session for each attempt to avoid defunct session issues.
+    
     Args:
-        session: Neo4j session
+        driver: Neo4j driver (not session - we create new sessions per attempt)
         query: Cypher query to execute
         params: Query parameters
         max_retries: Maximum retry attempts
@@ -50,20 +148,30 @@ def execute_batch_with_retry(
         total_batches: Total batches for logging
         
     Returns:
-        Query result
+        Dictionary with 'created' count from query result
         
     Raises:
         Exception: If query fails after all retries
     """
-    import time
-    
     for attempt in range(max_retries):
+        session = None
         try:
+            # Create a fresh session for each attempt
+            session = driver.session(default_access_mode="WRITE")
             result = session.run(query, **params)
-            return result
-        except Exception as e:
+            # Consume the result immediately to catch timeouts here too
+            single_result = result.single()
+            created_count = single_result["created"] if single_result else 0
+            session.close()
+            return {"created": created_count}
+        except (SessionExpired, TimeoutError) as e:
+            if session:
+                try:
+                    session.close()
+                except Exception:
+                    pass
             error_str = str(e).lower()
-            is_timeout = "timeout" in error_str or "SessionExpired" in str(type(e).__name__)
+            is_timeout = "timeout" in error_str or isinstance(e, (SessionExpired, TimeoutError))
             if attempt < max_retries - 1 and is_timeout:
                 wait_seconds = 2 ** attempt
                 logger.warning(
@@ -85,6 +193,36 @@ def execute_batch_with_retry(
                     e,
                 )
                 raise
+        except Exception as e:
+            if session:
+                try:
+                    session.close()
+                except Exception:
+                    pass
+            # For non-timeout errors, retry once but fail faster
+            if attempt < max_retries - 1:
+                wait_seconds = 1
+                logger.warning(
+                    "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
+                    batch_num,
+                    total_batches,
+                    attempt + 1,
+                    max_retries,
+                    e,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+            else:
+                logger.error(
+                    "Batch {}/{} failed after {} attempts: {}",
+                    batch_num,
+                    total_batches,
+                    max_retries,
+                    e,
+                )
+                raise
+    # This should never be reached, but mypy needs it for type checking
+    return {"created": 0}
 
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
@@ -95,216 +233,518 @@ def get_env_variable(name: str, default: str | None = None) -> str | None:
     return val
 
 
-def connect(uri: str, user: str, password: str):
-    """Create Neo4j driver connection."""
+def connect(uri: str, user: str, password: str) -> Any:
+    """Create Neo4j driver connection with extended timeouts for long-running migrations."""
     if GraphDatabase is None:
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
     logger.info("Connecting to Neo4j at %s as user %s", uri, user)
-    driver = GraphDatabase.driver(uri, auth=(user, password))
+    
+    # Configure driver with extended timeouts for long-running migrations
+    pool_size = int(os.getenv("NEO4J_POOL_SIZE", "20"))
+    driver_config: dict[str, Any] = {
+        "max_connection_lifetime": 3600 * 2,  # 2 hours
+        "max_connection_pool_size": pool_size,
+        "connection_acquisition_timeout": 300.0,  # 5 minutes to get connection from pool
+        "connection_timeout": 60.0,  # 1 minute to establish connection
+    }
+    
+    # Only add parameters that are supported by the driver version
+    try:
+        driver = GraphDatabase.driver(uri, auth=(user, password), **driver_config)  # type: ignore[misc]
+    except TypeError:
+        # Fallback if some parameters aren't supported
+        logger.warning("Some timeout parameters may not be supported by this driver version")
+        driver = GraphDatabase.driver(uri, auth=(user, password))  # type: ignore[misc]
+    
+    logger.info("Driver configured with extended timeouts for long-running migrations")
     return driver
 
 
-def migrate_awards_to_financial_transactions(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+def collect_award_ids(driver: Any, checkpoint: MigrationCheckpoint | None = None) -> list[str]:
+    """Collect all award IDs, excluding already processed ones.
+    
+    Args:
+        driver: Neo4j driver
+        checkpoint: Optional checkpoint to exclude already processed IDs
+        
+    Returns:
+        List of award IDs to process
+    """
+    logger.info("Collecting award IDs...")
+    processed_set = set(checkpoint.processed_ids) if checkpoint and checkpoint.step == "awards" else set()
+    
+    with driver.session(default_access_mode="READ") as session:
+        if processed_set:
+            # Exclude already processed IDs
+            query = """
+            MATCH (a:Award)
+            WHERE NOT a.award_id IN $processed_ids
+            RETURN collect(a.award_id) as award_ids
+            """
+            result = session.run(query, processed_ids=list(processed_set))
+        else:
+            query = "MATCH (a:Award) RETURN collect(a.award_id) as award_ids"
+            result = session.run(query)
+        
+        record = result.single()
+        award_ids = record["award_ids"] if record else []
+        logger.info("Collected {} award IDs to process", len(award_ids))
+        return award_ids
+
+
+def collect_contract_ids(driver: Any, checkpoint: MigrationCheckpoint | None = None) -> list[str]:
+    """Collect all contract IDs, excluding already processed ones.
+    
+    Args:
+        driver: Neo4j driver
+        checkpoint: Optional checkpoint to exclude already processed IDs
+        
+    Returns:
+        List of contract IDs to process
+    """
+    logger.info("Collecting contract IDs...")
+    processed_set = set(checkpoint.processed_ids) if checkpoint and checkpoint.step == "contracts" else set()
+    
+    with driver.session(default_access_mode="READ") as session:
+        if processed_set:
+            # Exclude already processed IDs
+            query = """
+            MATCH (c:Contract)
+            WHERE NOT c.contract_id IN $processed_ids
+            RETURN collect(c.contract_id) as contract_ids
+            """
+            result = session.run(query, processed_ids=list(processed_set))
+        else:
+            query = "MATCH (c:Contract) RETURN collect(c.contract_id) as contract_ids"
+            result = session.run(query)
+        
+        record = result.single()
+        contract_ids = record["contract_ids"] if record else []
+        logger.info("Collected {} contract IDs to process", len(contract_ids))
+        return contract_ids
+
+
+def migrate_awards_batch(
+    driver: Any,
+    award_ids: list[str],
+    batch_num: int,
+    total_batches: int,
+    checkpoint_file: Path,
+) -> int:
+    """Migrate a batch of awards to FinancialTransaction nodes.
+    
+    Args:
+        driver: Neo4j driver
+        award_ids: List of award IDs to process in this batch
+        batch_num: Current batch number
+        total_batches: Total number of batches
+        checkpoint_file: Path to checkpoint file
+        
+    Returns:
+        Number of transactions created
+    """
+    batch_query = """
+    UNWIND $award_ids as award_id
+    MATCH (a:Award {award_id: award_id})
+    MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
+    SET ft.transaction_type = 'AWARD',
+        ft.award_id = a.award_id,
+        ft.agency = a.agency,
+        ft.agency_name = a.agency_name,
+        ft.sub_agency = a.branch,
+        ft.recipient_name = a.company_name,
+        ft.recipient_uei = a.company_uei,
+        ft.recipient_duns = a.company_duns,
+        ft.amount = a.award_amount,
+        ft.transaction_date = a.award_date,
+        ft.completion_date = a.completion_date,
+        ft.start_date = a.contract_start_date,
+        ft.end_date = a.contract_end_date,
+        ft.title = a.award_title,
+        ft.description = a.abstract,
+        ft.phase = a.phase,
+        ft.program = a.program,
+        ft.principal_investigator = a.principal_investigator,
+        ft.research_institution = a.research_institution,
+        ft.cet_area = a.cet_area,
+        ft.award_year = a.award_year,
+        ft.fiscal_year = a.fiscal_year,
+        ft.naics_code = a.naics_primary,
+        ft.created_at = coalesce(a.created_at, datetime()),
+        ft.updated_at = datetime()
+    RETURN count(ft) as created
+    """
+    
+    result = execute_batch_with_retry(
+        driver,
+        batch_query,
+        {"award_ids": award_ids},
+        batch_num=batch_num,
+        total_batches=total_batches,
+    )
+    return result["created"]
+
+
+def migrate_contracts_batch(
+    driver: Any,
+    contract_ids: list[str],
+    batch_num: int,
+    total_batches: int,
+    checkpoint_file: Path,
+) -> int:
+    """Migrate a batch of contracts to FinancialTransaction nodes.
+    
+    Args:
+        driver: Neo4j driver
+        contract_ids: List of contract IDs to process in this batch
+        batch_num: Current batch number
+        total_batches: Total number of batches
+        checkpoint_file: Path to checkpoint file
+        
+    Returns:
+        Number of transactions created
+    """
+    batch_query = """
+    UNWIND $contract_ids as contract_id
+    MATCH (c:Contract {contract_id: contract_id})
+    MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
+    SET ft.transaction_type = 'CONTRACT',
+        ft.contract_id = c.contract_id,
+        ft.agency = c.agency,
+        ft.agency_name = c.agency_name,
+        ft.sub_agency = c.sub_agency,
+        ft.sub_agency_name = c.sub_agency_name,
+        ft.recipient_name = c.vendor_name,
+        ft.recipient_uei = c.vendor_uei,
+        ft.amount = c.obligated_amount,
+        ft.base_and_all_options_value = c.base_and_all_options_value,
+        ft.transaction_date = c.action_date,
+        ft.start_date = c.start_date,
+        ft.end_date = c.end_date,
+        ft.title = c.description,
+        ft.description = c.description,
+        ft.competition_type = c.competition_type,
+        ft.piid = c.piid,
+        ft.fain = c.fain,
+        ft.psc_code = c.psc_code,
+        ft.place_of_performance = c.place_of_performance,
+        ft.naics_code = c.naics_code,
+        ft.created_at = coalesce(c.created_at, datetime()),
+        ft.updated_at = datetime()
+    RETURN count(ft) as created
+    """
+    
+    result = execute_batch_with_retry(
+        driver,
+        batch_query,
+        {"contract_ids": contract_ids},
+        batch_num=batch_num,
+        total_batches=total_batches,
+    )
+    return result["created"]
+
+
+def migrate_awards_to_financial_transactions(
+    driver: Any,
+    dry_run: bool = False,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    checkpoint_file: Path = CHECKPOINT_FILE,
+    resume: bool = False,
+    parallel_workers: int = 1,
+) -> int:
     """Migrate Award nodes to FinancialTransaction nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
         batch_size: Number of nodes to process per batch
+        checkpoint_file: Path to checkpoint file
+        resume: If True, resume from checkpoint
+        parallel_workers: Number of parallel workers (1 = sequential)
 
     Returns:
         Number of transactions created
     """
     logger.info("Step 1: Migrating Award nodes to FinancialTransaction nodes")
 
-    count_query = "MATCH (a:Award) RETURN count(a) as total"
-
     if dry_run:
         logger.info("DRY RUN: Would migrate Award nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session(default_access_mode="WRITE") as session:
-        # Get total count
-        count_result = session.run(count_query)
-        total_count = count_result.single()["total"]
-        logger.info("Found {} Award nodes to migrate", total_count)
-        
-        if total_count == 0:
-            logger.info("No Award nodes to migrate")
-            return 0
+    # Load checkpoint if resuming
+    checkpoint = None
+    if resume:
+        checkpoint = MigrationCheckpoint.load(checkpoint_file)
+        if checkpoint and checkpoint.step != "awards":
+            # Checkpoint is for a different step, start fresh
+            checkpoint = None
 
-        batch_query = """
-        MATCH (a:Award)
-        WITH a SKIP $skip LIMIT $batch_size
-        MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
-        SET ft.transaction_type = 'AWARD',
-            ft.award_id = a.award_id,
-            ft.agency = a.agency,
-            ft.agency_name = a.agency_name,
-            ft.sub_agency = a.branch,
-            ft.recipient_name = a.company_name,
-            ft.recipient_uei = a.company_uei,
-            ft.recipient_duns = a.company_duns,
-            ft.amount = a.award_amount,
-            ft.transaction_date = a.award_date,
-            ft.completion_date = a.completion_date,
-            ft.start_date = a.contract_start_date,
-            ft.end_date = a.contract_end_date,
-            ft.title = a.award_title,
-            ft.description = a.abstract,
-            ft.phase = a.phase,
-            ft.program = a.program,
-            ft.principal_investigator = a.principal_investigator,
-            ft.research_institution = a.research_institution,
-            ft.cet_area = a.cet_area,
-            ft.award_year = a.award_year,
-            ft.fiscal_year = a.fiscal_year,
-            ft.naics_code = a.naics_primary,
-            ft.created_at = coalesce(a.created_at, datetime()),
-            ft.updated_at = datetime()
-        RETURN count(ft) as created
-        """
+    # Collect award IDs
+    award_ids = collect_award_ids(driver, checkpoint)
+    
+    if not award_ids:
+        logger.info("No Award nodes to migrate")
+        if checkpoint:
+            checkpoint.clear(checkpoint_file)
+        return 0
 
-        total_created = 0
-        skip = 0
-        batch_num = 1
-        total_batches = (total_count + batch_size - 1) // batch_size
+    # Create batches
+    total_batches = (len(award_ids) + batch_size - 1) // batch_size
+    batches = [award_ids[i:i + batch_size] for i in range(0, len(award_ids), batch_size)]
+    
+    # Determine starting batch
+    start_batch = checkpoint.batch_num if checkpoint else 0
+    processed_ids = set(checkpoint.processed_ids) if checkpoint else set()
+    
+    logger.info(
+        "Processing {} awards in {} batches (batch size: {}){}",
+        len(award_ids),
+        total_batches,
+        batch_size,
+        f" (resuming from batch {start_batch + 1})" if start_batch > 0 else "",
+    )
 
-        while skip < total_count:
+    total_created = 0
+    
+    if parallel_workers > 1 and len(batches) > 1:
+        # Parallel processing
+        logger.info("Using {} parallel workers", parallel_workers)
+        with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            futures = {}
+            for batch_idx, batch_ids in enumerate(batches[start_batch:], start=start_batch):
+                future = executor.submit(
+                    migrate_awards_batch,
+                    driver,
+                    batch_ids,
+                    batch_idx + 1,
+                    total_batches,
+                    checkpoint_file,
+                )
+                futures[future] = (batch_idx, batch_ids)
+            
+            for future in as_completed(futures):
+                batch_idx, batch_ids = futures[future]
+                try:
+                    batch_created = future.result()
+                    total_created += batch_created
+                    processed_ids.update(batch_ids)
+                    
+                    # Save checkpoint after each batch
+                    checkpoint = MigrationCheckpoint(
+                        step="awards",
+                        batch_num=batch_idx + 1,
+                        total_batches=total_batches,
+                        processed_ids=list(processed_ids),
+                        total_count=len(award_ids),
+                    )
+                    checkpoint.save(checkpoint_file)
+                    
+                    logger.info(
+                        "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                        batch_idx + 1,
+                        total_batches,
+                        batch_created,
+                        total_created,
+                        len(award_ids),
+                    )
+                except Exception as e:
+                    logger.error("Batch {}/{} failed: {}", batch_idx + 1, total_batches, e)
+                    raise
+    else:
+        # Sequential processing
+        for batch_idx, batch_ids in enumerate(batches[start_batch:], start=start_batch):
             logger.info(
-                "Processing batch {}/{} (nodes {}-{} of {})...",
-                batch_num,
+                "Processing batch {}/{} ({} awards)...",
+                batch_idx + 1,
                 total_batches,
-                skip + 1,
-                min(skip + batch_size, total_count),
-                total_count,
+                len(batch_ids),
             )
             
-            result = execute_batch_with_retry(
-                session, batch_query, {"skip": skip, "batch_size": batch_size},
-                batch_num=batch_num, total_batches=total_batches
+            batch_created = migrate_awards_batch(
+                driver,
+                batch_ids,
+                batch_idx + 1,
+                total_batches,
+                checkpoint_file,
             )
-            single_result = result.single()
-            batch_created = single_result["created"] if single_result else 0
             total_created += batch_created
+            processed_ids.update(batch_ids)
+            
+            # Save checkpoint after each batch
+            checkpoint = MigrationCheckpoint(
+                step="awards",
+                batch_num=batch_idx + 1,
+                total_batches=total_batches,
+                processed_ids=list(processed_ids),
+                total_count=len(award_ids),
+            )
+            checkpoint.save(checkpoint_file)
             
             logger.info(
                 "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
-                batch_num,
+                batch_idx + 1,
                 total_batches,
                 batch_created,
                 total_created,
-                total_count,
+                len(award_ids),
             )
-            
-            skip += batch_size
-            batch_num += 1
 
-        logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Award nodes", total_created)
-        return total_created
+    logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Award nodes", total_created)
+    return total_created
 
 
-def migrate_contracts_to_financial_transactions(driver, dry_run: bool = False, batch_size: int = BATCH_SIZE) -> int:
+def migrate_contracts_to_financial_transactions(
+    driver: Any,
+    dry_run: bool = False,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    checkpoint_file: Path = CHECKPOINT_FILE,
+    resume: bool = False,
+    parallel_workers: int = 1,
+) -> int:
     """Migrate Contract nodes to FinancialTransaction nodes in batches.
 
     Args:
         driver: Neo4j driver
         dry_run: If True, don't execute queries
         batch_size: Number of nodes to process per batch
+        checkpoint_file: Path to checkpoint file
+        resume: If True, resume from checkpoint
+        parallel_workers: Number of parallel workers (1 = sequential)
 
     Returns:
         Number of transactions created
     """
     logger.info("Step 2: Migrating Contract nodes to FinancialTransaction nodes")
 
-    count_query = "MATCH (c:Contract) RETURN count(c) as total"
-
     if dry_run:
         logger.info("DRY RUN: Would migrate Contract nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session(default_access_mode="WRITE") as session:
-        # Get total count
-        count_result = session.run(count_query)
-        total_count = count_result.single()["total"]
-        logger.info("Found {} Contract nodes to migrate", total_count)
-        
-        if total_count == 0:
-            logger.info("No Contract nodes to migrate")
-            return 0
+    # Load checkpoint if resuming
+    checkpoint = None
+    if resume:
+        checkpoint = MigrationCheckpoint.load(checkpoint_file)
+        if checkpoint and checkpoint.step != "contracts":
+            # Checkpoint is for a different step, start fresh
+            checkpoint = None
 
-        batch_query = """
-        MATCH (c:Contract)
-        WITH c SKIP $skip LIMIT $batch_size
-        MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
-        SET ft.transaction_type = 'CONTRACT',
-            ft.contract_id = c.contract_id,
-            ft.agency = c.agency,
-            ft.agency_name = c.agency_name,
-            ft.sub_agency = c.sub_agency,
-            ft.sub_agency_name = c.sub_agency_name,
-            ft.recipient_name = c.vendor_name,
-            ft.recipient_uei = c.vendor_uei,
-            ft.amount = c.obligated_amount,
-            ft.base_and_all_options_value = c.base_and_all_options_value,
-            ft.transaction_date = c.action_date,
-            ft.start_date = c.start_date,
-            ft.end_date = c.end_date,
-            ft.title = c.description,
-            ft.description = c.description,
-            ft.competition_type = c.competition_type,
-            ft.piid = c.piid,
-            ft.fain = c.fain,
-            ft.psc_code = c.psc_code,
-            ft.place_of_performance = c.place_of_performance,
-            ft.naics_code = c.naics_code,
-            ft.created_at = coalesce(c.created_at, datetime()),
-            ft.updated_at = datetime()
-        RETURN count(ft) as created
-        """
+    # Collect contract IDs
+    contract_ids = collect_contract_ids(driver, checkpoint)
+    
+    if not contract_ids:
+        logger.info("No Contract nodes to migrate")
+        if checkpoint:
+            checkpoint.clear(checkpoint_file)
+        return 0
 
-        total_created = 0
-        skip = 0
-        batch_num = 1
-        total_batches = (total_count + batch_size - 1) // batch_size
+    # Create batches
+    total_batches = (len(contract_ids) + batch_size - 1) // batch_size
+    batches = [contract_ids[i:i + batch_size] for i in range(0, len(contract_ids), batch_size)]
+    
+    # Determine starting batch
+    start_batch = checkpoint.batch_num if checkpoint else 0
+    processed_ids = set(checkpoint.processed_ids) if checkpoint else set()
+    
+    logger.info(
+        "Processing {} contracts in {} batches (batch size: {}){}",
+        len(contract_ids),
+        total_batches,
+        batch_size,
+        f" (resuming from batch {start_batch + 1})" if start_batch > 0 else "",
+    )
 
-        while skip < total_count:
+    total_created = 0
+    
+    if parallel_workers > 1 and len(batches) > 1:
+        # Parallel processing
+        logger.info("Using {} parallel workers", parallel_workers)
+        with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            futures = {}
+            for batch_idx, batch_ids in enumerate(batches[start_batch:], start=start_batch):
+                future = executor.submit(
+                    migrate_contracts_batch,
+                    driver,
+                    batch_ids,
+                    batch_idx + 1,
+                    total_batches,
+                    checkpoint_file,
+                )
+                futures[future] = (batch_idx, batch_ids)
+            
+            for future in as_completed(futures):
+                batch_idx, batch_ids = futures[future]
+                try:
+                    batch_created = future.result()
+                    total_created += batch_created
+                    processed_ids.update(batch_ids)
+                    
+                    # Save checkpoint after each batch
+                    checkpoint = MigrationCheckpoint(
+                        step="contracts",
+                        batch_num=batch_idx + 1,
+                        total_batches=total_batches,
+                        processed_ids=list(processed_ids),
+                        total_count=len(contract_ids),
+                    )
+                    checkpoint.save(checkpoint_file)
+                    
+                    logger.info(
+                        "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                        batch_idx + 1,
+                        total_batches,
+                        batch_created,
+                        total_created,
+                        len(contract_ids),
+                    )
+                except Exception as e:
+                    logger.error("Batch {}/{} failed: {}", batch_idx + 1, total_batches, e)
+                    raise
+    else:
+        # Sequential processing
+        for batch_idx, batch_ids in enumerate(batches[start_batch:], start=start_batch):
             logger.info(
-                "Processing batch {}/{} (nodes {}-{} of {})...",
-                batch_num,
+                "Processing batch {}/{} ({} contracts)...",
+                batch_idx + 1,
                 total_batches,
-                skip + 1,
-                min(skip + batch_size, total_count),
-                total_count,
+                len(batch_ids),
             )
             
-            result = execute_batch_with_retry(
-                session, batch_query, {"skip": skip, "batch_size": batch_size},
-                batch_num=batch_num, total_batches=total_batches
+            batch_created = migrate_contracts_batch(
+                driver,
+                batch_ids,
+                batch_idx + 1,
+                total_batches,
+                checkpoint_file,
             )
-            single_result = result.single()
-            batch_created = single_result["created"] if single_result else 0
             total_created += batch_created
+            processed_ids.update(batch_ids)
+            
+            # Save checkpoint after each batch
+            checkpoint = MigrationCheckpoint(
+                step="contracts",
+                batch_num=batch_idx + 1,
+                total_batches=total_batches,
+                processed_ids=list(processed_ids),
+                total_count=len(contract_ids),
+            )
+            checkpoint.save(checkpoint_file)
             
             logger.info(
                 "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
-                batch_num,
+                batch_idx + 1,
                 total_batches,
                 batch_created,
                 total_created,
-                total_count,
+                len(contract_ids),
             )
-            
-            skip += batch_size
-            batch_num += 1
 
-        logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Contract nodes", total_created)
-        return total_created
+    logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Contract nodes", total_created)
+    return total_created
 
 
-def update_award_relationships(driver, dry_run: bool = False) -> int:
+def update_award_relationships(driver: Any, dry_run: bool = False) -> int:
     """Update relationships from Award nodes to FinancialTransaction.
 
     Args:
@@ -403,7 +843,7 @@ def update_award_relationships(driver, dry_run: bool = False) -> int:
     return total_updated
 
 
-def update_contract_relationships(driver, dry_run: bool = False) -> int:
+def update_contract_relationships(driver: Any, dry_run: bool = False) -> int:
     """Update relationships from Contract nodes to FinancialTransaction.
 
     Args:
@@ -465,7 +905,7 @@ def update_contract_relationships(driver, dry_run: bool = False) -> int:
     return total_updated
 
 
-def update_transition_nodes(driver, dry_run: bool = False) -> int:
+def update_transition_nodes(driver: Any, dry_run: bool = False) -> int:
     """Update Transition nodes to reference FinancialTransaction instead of Award/Contract.
 
     Args:
@@ -499,7 +939,7 @@ def update_transition_nodes(driver, dry_run: bool = False) -> int:
         return count
 
 
-def create_financial_transaction_constraints_and_indexes(driver, dry_run: bool = False) -> None:
+def create_financial_transaction_constraints_and_indexes(driver: Any, dry_run: bool = False) -> None:
     """Create constraints and indexes for FinancialTransaction nodes.
 
     Args:
@@ -535,7 +975,7 @@ def create_financial_transaction_constraints_and_indexes(driver, dry_run: bool =
                     logger.warning("Failed to create constraint/index: %s", e)
 
 
-def validate_migration(driver) -> dict[str, Any]:
+def validate_migration(driver: Any) -> dict[str, Any]:
     """Run validation queries to verify migration completeness.
 
     Args:
@@ -560,13 +1000,13 @@ def validate_migration(driver) -> dict[str, Any]:
         "resulted_in_relationships": "MATCH (t:Transition)-[r:RESULTED_IN]->(ft:FinancialTransaction) RETURN count(r) as count",
     }
 
-    results = {}
+    results: dict[str, Any] = {}
     with driver.session() as session:
         for key, query in validation_queries.items():
             try:
                 result = session.run(query)
                 if key == "financial_transactions_by_type":
-                    records = [dict(record) for record in result]
+                    records: list[dict[str, Any]] = [dict(record) for record in result]
                     results[key] = records
                 else:
                     record = result.single()
@@ -628,6 +1068,28 @@ def parse_args():
         action="store_true",
         help="Enable verbose logging.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume migration from last checkpoint.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help=f"Batch size for processing (default: {DEFAULT_BATCH_SIZE}).",
+    )
+    parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for batch processing (default: 1 = sequential).",
+    )
+    parser.add_argument(
+        "--clear-checkpoint",
+        action="store_true",
+        help="Clear existing checkpoint before starting.",
+    )
     return parser.parse_args()
 
 
@@ -639,9 +1101,14 @@ def main() -> int:
         logger.remove()
         logger.add(sys.stderr, level="DEBUG")
 
+    # Clear checkpoint if requested
+    if args.clear_checkpoint and CHECKPOINT_FILE.exists():
+        CHECKPOINT_FILE.unlink()
+        logger.info("Checkpoint cleared")
+
     # Get Neo4j connection details
-    uri = get_env_variable("NEO4J_URI", "bolt://neo4j:7687")
-    user = get_env_variable("NEO4J_USER", "neo4j")
+    uri = get_env_variable("NEO4J_URI", "bolt://neo4j:7687") or "bolt://neo4j:7687"
+    user = get_env_variable("NEO4J_USER", "neo4j") or "neo4j"
     password = get_env_variable("NEO4J_PASSWORD", None)
 
     if not password and not args.dry_run:
@@ -657,19 +1124,37 @@ def main() -> int:
             return 0
 
     try:
-        driver = connect(uri, user, password)
+        driver = connect(uri, user, password or "")
     except Exception as e:
         logger.exception("Failed to connect to Neo4j: %s", e)
         return 1
 
     try:
         # Run migration steps
-        migrate_awards_to_financial_transactions(driver, dry_run=args.dry_run)
-        migrate_contracts_to_financial_transactions(driver, dry_run=args.dry_run)
+        migrate_awards_to_financial_transactions(
+            driver,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            resume=args.resume,
+            parallel_workers=args.parallel_workers,
+        )
+        migrate_contracts_to_financial_transactions(
+            driver,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            resume=args.resume,
+            parallel_workers=args.parallel_workers,
+        )
         update_award_relationships(driver, dry_run=args.dry_run)
         update_contract_relationships(driver, dry_run=args.dry_run)
         update_transition_nodes(driver, dry_run=args.dry_run)
         create_financial_transaction_constraints_and_indexes(driver, dry_run=args.dry_run)
+
+        # Clear checkpoint on successful completion
+        if not args.dry_run and CHECKPOINT_FILE.exists():
+            checkpoint = MigrationCheckpoint.load(CHECKPOINT_FILE)
+            if checkpoint:
+                checkpoint.clear(CHECKPOINT_FILE)
 
         if not args.dry_run and not args.skip_validation:
             results = validate_migration(driver)
@@ -680,6 +1165,7 @@ def main() -> int:
 
     except Exception as e:
         logger.exception("Migration failed: %s", e)
+        logger.info("Checkpoint saved. Run with --resume to continue from where it left off.")
         return 1
 
     finally:
@@ -691,4 +1177,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

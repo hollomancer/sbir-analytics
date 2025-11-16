@@ -63,6 +63,14 @@ from typing import Any
 
 from loguru import logger
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not available, skip loading .env file
+    pass
+
 try:
     from neo4j import GraphDatabase
     from neo4j.exceptions import Neo4jError
