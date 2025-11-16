@@ -42,7 +42,15 @@ class SbirDuckDBConfig(BaseModel):
     """SBIR DuckDB extraction configuration."""
 
     csv_path: str = Field(
-        default="data/raw/sbir/awards_data.csv", description="Path to SBIR CSV file"
+        default="data/raw/sbir/awards_data.csv",
+        description="Path to SBIR CSV file (local fallback path)",
+    )
+    csv_path_s3: str | None = Field(
+        default=None,
+        description="S3 URL for SBIR CSV (auto-built from csv_path if bucket configured)",
+    )
+    use_s3_first: bool = Field(
+        default=True, description="If True, try S3 first, fallback to local csv_path"
     )
     database_path: str = Field(
         default=":memory:", description="DuckDB database path (:memory: for in-memory)"

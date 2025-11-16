@@ -213,7 +213,9 @@ enrichment:
 extraction:
   sbir:
     # SBIR CSV configuration
-    csv_path: "data/raw/sbir/awards_data.csv"
+    csv_path: "data/raw/sbir/awards_data.csv"  # Local fallback path
+    csv_path_s3: null  # Auto-built from csv_path if SBIR_ETL__S3_BUCKET is set
+    use_s3_first: true  # Try S3 first, fallback to local csv_path
     duckdb:
       database_path: ":memory:" # Use in-memory database (or path for persistent)
       table_name: "sbir_awards"

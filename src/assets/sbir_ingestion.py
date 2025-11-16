@@ -49,11 +49,13 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         },
     )
 
-    # Initialize extractor
+    # Initialize extractor with S3-first support
     extractor = SbirDuckDBExtractor(
         csv_path=sbir_config.csv_path,
         duckdb_path=sbir_config.database_path,
         table_name=sbir_config.table_name,
+        csv_path_s3=sbir_config.csv_path_s3,
+        use_s3_first=sbir_config.use_s3_first,
     )
 
     # Import CSV to DuckDB with performance monitoring

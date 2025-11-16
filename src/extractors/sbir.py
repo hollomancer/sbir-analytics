@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
+from ..utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
 from ..utils.duckdb_client import DuckDBClient
 
 
@@ -23,17 +24,36 @@ class SbirDuckDBExtractor:
     """
 
     def __init__(
-        self, csv_path: Path | str, duckdb_path: str = ":memory:", table_name: str = "sbir_awards"
+        self,
+        csv_path: Path | str,
+        duckdb_path: str = ":memory:",
+        table_name: str = "sbir_awards",
+        csv_path_s3: str | None = None,
+        use_s3_first: bool = True,
     ):
         """
         Initialize SBIR DuckDB extractor.
 
         Args:
-            csv_path: Path to SBIR CSV file
+            csv_path: Local path to SBIR CSV file (fallback)
             duckdb_path: Path to DuckDB database (":memory:" for in-memory)
             table_name: Name for DuckDB table
+            csv_path_s3: S3 URL for CSV (optional, auto-built from csv_path if bucket set)
+            use_s3_first: If True, try S3 first, fallback to local
         """
-        self.csv_path = Path(csv_path)
+        # Build S3 path if bucket is configured
+        if csv_path_s3 is None:
+            bucket = get_s3_bucket_from_env()
+            if bucket and use_s3_first:
+                csv_path_s3 = build_s3_path(str(csv_path), bucket)
+
+        # Resolve path with S3-first, local fallback
+        self.csv_path = resolve_data_path(
+            cloud_path=csv_path_s3 or csv_path,
+            local_fallback=Path(csv_path),
+            prefer_local=not use_s3_first,
+        )
+
         self.table_name = table_name
         self.duckdb_client = DuckDBClient(database_path=duckdb_path)
         self._table_identifier = self.duckdb_client.escape_identifier(table_name)
@@ -44,6 +64,7 @@ class SbirDuckDBExtractor:
             csv_path=str(self.csv_path),
             duckdb_path=duckdb_path,
             table_name=table_name,
+            s3_enabled=csv_path_s3 is not None,
         )
 
     def import_csv(

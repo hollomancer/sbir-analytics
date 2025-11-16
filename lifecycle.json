@@ -1,0 +1,15 @@
+{
+  "Rules": [
+    {
+      "ID": "ArchiveOldData",
+      "Status": "Enabled",
+      "Prefix": "data/raw/",
+      "Transitions": [
+        {
+          "Days": 90,
+          "StorageClass": "GLACIER"
+        }
+      ]
+    }
+  ]
+}
