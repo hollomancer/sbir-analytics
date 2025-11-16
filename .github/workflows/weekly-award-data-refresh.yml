@@ -25,16 +25,14 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEFAULT_SOURCE_URL: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+  AWS_REGION: us-east-2
+  STEP_FUNCTIONS_STATE_MACHINE_ARN: ${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}
+  S3_BUCKET: sbir-etl-production-data
 
 jobs:
-  refresh-awards-data:
+  invoke-step-functions:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Lambda invocation is quick
-    env:
-      AWS_REGION: us-east-1
-      LAMBDA_FUNCTION_NAME: sbir-weekly-refresh
-      S3_BUCKET: sbir-etl-production-data
+    timeout-minutes: 5  # Step Functions invocation is quick
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,45 +40,44 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Invoke Lambda function
-        id: invoke_lambda
+      - name: Start Step Functions execution
+        id: sf_execution
         run: |
-          PAYLOAD=$(jq -n \
+          INPUT_PAYLOAD=$(jq -n \
             --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
             --arg source_url "${{ github.event.inputs.source_url || '' }}" \
             --arg s3_bucket "${{ env.S3_BUCKET }}" \
-            --arg neo4j_secret_name "${{ secrets.NEO4J_SECRET_NAME || '' }}" \
             '{
               force_refresh: ($force_refresh == "true"),
               source_url: (if $source_url == "" then null else $source_url end),
-              s3_bucket: $s3_bucket,
-              neo4j_secret_name: (if $neo4j_secret_name == "" then null else $neo4j_secret_name end)
+              s3_bucket: $s3_bucket
             }')
           
-          RESPONSE=$(aws lambda invoke \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --payload "$PAYLOAD" \
-            --cli-binary-format raw-in-base64-out \
-            /tmp/lambda-response.json)
+          EXECUTION_ARN=$(aws stepfunctions start-execution \
+            --state-machine-arn "${{ env.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
+            --input "$INPUT_PAYLOAD" \
+            --query 'executionArn' \
+            --output text)
           
-          cat /tmp/lambda-response.json
-          
-          # Check if Lambda execution succeeded
-          if echo "$RESPONSE" | jq -e '.FunctionError' > /dev/null; then
-            echo "Lambda execution failed"
-            exit 1
-          fi
-          
-          RESULT=$(cat /tmp/lambda-response.json | jq -r '.body' | jq '.')
-          echo "result=$RESULT" >> $GITHUB_OUTPUT
-          
-          STATUS=$(echo "$RESULT" | jq -r '.status')
-          if [ "$STATUS" != "success" ] && [ "$STATUS" != "skipped" ]; then
-            echo "Lambda returned status: $STATUS"
-            exit 1
-          fi
+          echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
+          echo "Started Step Functions execution: $EXECUTION_ARN"
 
-      - name: Display result
+      - name: Wait for completion (optional)
         run: |
-          echo "Lambda execution completed"
-          echo "Result: ${{ steps.invoke_lambda.outputs.result }}"
+          EXECUTION_ARN="${{ steps.sf_execution.outputs.execution_arn }}"
+          echo "Step Functions execution started: $EXECUTION_ARN"
+          echo "Monitor execution at: https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN"
+          echo ""
+          echo "Note: Step Functions will continue running asynchronously."
+          echo "Check CloudWatch Logs or AWS Console for execution status."
+
+      - name: Display execution info
+        run: |
+          echo "## Step Functions Execution"
+          echo ""
+          echo "**Execution ARN:** ${{ steps.sf_execution.outputs.execution_arn }}"
+          echo ""
+          echo "**AWS Console:** https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/${{ steps.sf_execution.outputs.execution_arn }}"
+          echo ""
+          echo "The workflow will continue running in AWS Step Functions."
+          echo "Check CloudWatch Logs for detailed execution logs."

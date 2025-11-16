@@ -41,6 +41,24 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
    uv run pytest -v --cov=src
    ```
 
+### AWS Infrastructure (Production)
+
+The weekly SBIR awards refresh workflow runs on AWS Step Functions with Lambda functions:
+
+- **Step Functions**: Orchestrates the workflow
+- **Lambda Functions**: Execute processing steps
+- **S3**: Stores data and artifacts
+- **Secrets Manager**: Stores Neo4j and GitHub credentials
+
+**Deployment Guide**: [`docs/deployment/aws-infrastructure.md`](docs/deployment/aws-infrastructure.md)
+
+**Quick Deploy**:
+```bash
+cd infrastructure/cdk
+pip install -r requirements.txt
+cdk deploy --all
+```
+
 ### Container Development (Alternative)
 
 For containerized development with Docker Compose:

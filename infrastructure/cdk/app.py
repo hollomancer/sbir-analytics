@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""AWS CDK app for SBIR ETL infrastructure."""
+
+import aws_cdk as cdk
+from stacks.storage import StorageStack
+from stacks.security import SecurityStack
+from stacks.lambda_stack import LambdaStack
+from stacks.step_functions_stack import StepFunctionsStack
+
+app = cdk.App()
+
+# Environment configuration
+env = cdk.Environment(
+    account=app.node.try_get_context("account") or None,
+    region=app.node.try_get_context("region") or "us-east-2",
+)
+
+# Stack dependencies:
+# Storage -> Security -> Lambda -> Step Functions
+
+storage_stack = StorageStack(app, "sbir-etl-storage", env=env)
+security_stack = SecurityStack(
+    app, "sbir-etl-security", env=env, s3_bucket=storage_stack.bucket
+)
+lambda_stack = LambdaStack(
+    app,
+    "sbir-etl-lambda",
+    env=env,
+    s3_bucket=storage_stack.bucket,
+    lambda_role=security_stack.lambda_role,
+)
+step_functions_stack = StepFunctionsStack(
+    app,
+    "sbir-etl-step-functions",
+    env=env,
+    lambda_functions=lambda_stack.functions,
+    execution_role=security_stack.step_functions_role,
+)
+
+app.synth()
+
