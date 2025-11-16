@@ -37,46 +37,100 @@ BATCH_SIZE = 500
 
 
 def execute_batch_with_retry(
-    session, query: str, params: dict[str, Any], max_retries: int = 3, batch_num: int = 0, total_batches: int = 0
-) -> Any:
-    """Execute a batch query with retry logic for connection timeouts.
+    session: Any, query: str, params: dict[str, Any], driver: Any | None = None, max_retries: int = 5, batch_num: int = 0, total_batches: int = 0
+) -> dict[str, Any]:
+    """Execute a batch query with retry logic for connection timeouts and defunct connections.
+    
+    Reuses the session for normal operations, but creates a new session on retry if defunct.
     
     Args:
-        session: Neo4j session
+        session: Neo4j session to use (reused for performance)
         query: Cypher query to execute
         params: Query parameters
-        max_retries: Maximum retry attempts
+        driver: Neo4j driver (only needed for retry with new session)
+        max_retries: Maximum retry attempts (increased to 5 for defunct connection handling)
         batch_num: Batch number for logging
         total_batches: Total batches for logging
         
     Returns:
-        Query result
+        Dictionary with 'created' count from query result
         
     Raises:
         Exception: If query fails after all retries
     """
     import time
     
+    temp_session = None
     for attempt in range(max_retries):
+        current_session = temp_session if temp_session else session
         try:
-            result = session.run(query, **params)
-            return result
+            # Execute the query using the current session
+            result = current_session.run(query, **params)
+            # Consume the result immediately to catch errors
+            single_result = result.single()
+            created_count = single_result["created"] if single_result else 0
+            # Clean up temp session if we used one
+            if temp_session:
+                temp_session.close()
+                temp_session = None
+            return {"created": created_count}
+            
         except Exception as e:
             error_str = str(e).lower()
+            is_defunct = "defunct" in error_str or "connection" in error_str
             is_timeout = "timeout" in error_str or "SessionExpired" in str(type(e).__name__)
-            if attempt < max_retries - 1 and is_timeout:
-                wait_seconds = 2 ** attempt
-                logger.warning(
-                    "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
-                    batch_num,
-                    total_batches,
-                    attempt + 1,
-                    max_retries,
-                    e,
-                    wait_seconds,
-                )
-                time.sleep(wait_seconds)
+            
+            if attempt < max_retries - 1:
+                # For defunct connections, create a temporary new session for retry
+                if is_defunct and driver:
+                    wait_seconds = min(2 ** attempt, 5)
+                    logger.warning(
+                        "Batch {}/{} defunct connection (attempt {}/{}): {}. Creating new session and retrying in {}s...",
+                        batch_num,
+                        total_batches,
+                        attempt + 1,
+                        max_retries,
+                        e,
+                        wait_seconds,
+                    )
+                    time.sleep(wait_seconds)
+                    # Create a temporary new session for the retry
+                    if temp_session:
+                        try:
+                            temp_session.close()
+                        except Exception:
+                            pass
+                    temp_session = driver.session(default_access_mode="WRITE")
+                elif is_timeout:
+                    wait_seconds = min(2 ** attempt, 5)
+                    logger.warning(
+                        "Batch {}/{} timeout (attempt {}/{}): {}. Retrying in {}s...",
+                        batch_num,
+                        total_batches,
+                        attempt + 1,
+                        max_retries,
+                        e,
+                        wait_seconds,
+                    )
+                    time.sleep(wait_seconds)
+                else:
+                    wait_seconds = 1
+                    logger.warning(
+                        "Batch {}/{} failed (attempt {}/{}): {}. Retrying in {}s...",
+                        batch_num,
+                        total_batches,
+                        attempt + 1,
+                        max_retries,
+                        e,
+                        wait_seconds,
+                    )
+                    time.sleep(wait_seconds)
             else:
+                if temp_session:
+                    try:
+                        temp_session.close()
+                    except Exception:
+                        pass
                 logger.error(
                     "Batch {}/{} failed after {} attempts: {}",
                     batch_num,
@@ -85,24 +139,44 @@ def execute_batch_with_retry(
                     e,
                 )
                 raise
+    # This should never be reached, but mypy needs it for type checking
+    return {"created": 0}
 
 
 def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
     val = os.getenv(name, default)
     if val is None:
-        logger.debug("Environment variable %s is not set and no default provided", name)
+        logger.debug("Environment variable {} is not set and no default provided", name)
     return val
 
 
-def connect(uri: str, user: str, password: str):
-    """Create Neo4j driver connection."""
+def connect(uri: str, user: str, password: str) -> Any:
+    """Create Neo4j driver connection with improved settings for defunct connection handling."""
     if GraphDatabase is None:
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
-    logger.info("Connecting to Neo4j at %s as user %s", uri, user)
-    driver = GraphDatabase.driver(uri, auth=(user, password))
+    logger.info("Connecting to Neo4j at {} as user {}", uri, user)
+    
+    # Configure driver with settings to reduce defunct connections
+    pool_size = int(os.getenv("NEO4J_POOL_SIZE", "20"))
+    driver_config: dict[str, Any] = {
+        "max_connection_lifetime": 1800,  # 30 minutes (reduced to avoid stale connections)
+        "max_connection_pool_size": pool_size,
+        "connection_acquisition_timeout": 300.0,  # 5 minutes to get connection from pool
+        "connection_timeout": 60.0,  # 1 minute to establish connection
+    }
+    
+    # Only add parameters that are supported by the driver version
+    try:
+        driver = GraphDatabase.driver(uri, auth=(user, password), **driver_config)  # type: ignore[misc]
+    except TypeError:
+        # Fallback if some parameters aren't supported
+        logger.warning("Some timeout parameters may not be supported by this driver version")
+        driver = GraphDatabase.driver(uri, auth=(user, password))  # type: ignore[misc]
+    
+    logger.info("Driver configured with connection pool size: {}", pool_size)
     return driver
 
 
@@ -125,81 +199,96 @@ def migrate_awards_to_financial_transactions(driver, dry_run: bool = False, batc
         logger.info("DRY RUN: Would migrate Award nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session(default_access_mode="WRITE") as session:
-        # Get total count
-        count_result = session.run(count_query)
-        total_count = count_result.single()["total"]
+    # Collect all award IDs first (much faster than SKIP)
+    logger.info("Collecting award IDs...")
+    with driver.session(default_access_mode="READ") as session:
+        id_result = session.run("MATCH (a:Award) RETURN collect(a.award_id) as award_ids")
+        record = id_result.single()
+        award_ids = record["award_ids"] if record else []
+        total_count = len(award_ids)
         logger.info("Found {} Award nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No Award nodes to migrate")
             return 0
 
-        batch_query = """
-        MATCH (a:Award)
-        WITH a SKIP $skip LIMIT $batch_size
-        MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
-        SET ft.transaction_type = 'AWARD',
-            ft.award_id = a.award_id,
-            ft.agency = a.agency,
-            ft.agency_name = a.agency_name,
-            ft.sub_agency = a.branch,
-            ft.recipient_name = a.company_name,
-            ft.recipient_uei = a.company_uei,
-            ft.recipient_duns = a.company_duns,
-            ft.amount = a.award_amount,
-            ft.transaction_date = a.award_date,
-            ft.completion_date = a.completion_date,
-            ft.start_date = a.contract_start_date,
-            ft.end_date = a.contract_end_date,
-            ft.title = a.award_title,
-            ft.description = a.abstract,
-            ft.phase = a.phase,
-            ft.program = a.program,
-            ft.principal_investigator = a.principal_investigator,
-            ft.research_institution = a.research_institution,
-            ft.cet_area = a.cet_area,
-            ft.award_year = a.award_year,
-            ft.fiscal_year = a.fiscal_year,
-            ft.naics_code = a.naics_primary,
-            ft.created_at = coalesce(a.created_at, datetime()),
-            ft.updated_at = datetime()
-        RETURN count(ft) as created
-        """
+    # Create batches from IDs
+    batches = [award_ids[i:i + batch_size] for i in range(0, len(award_ids), batch_size)]
+    total_batches = len(batches)
+    
+    batch_query = """
+    UNWIND $award_ids as award_id
+    MATCH (a:Award {award_id: award_id})
+    MERGE (ft:FinancialTransaction {transaction_id: 'txn_award_' + a.award_id})
+    SET ft.transaction_type = 'AWARD',
+        ft.award_id = a.award_id,
+        ft.agency = a.agency,
+        ft.agency_name = a.agency_name,
+        ft.sub_agency = a.branch,
+        ft.recipient_name = a.company_name,
+        ft.recipient_uei = a.company_uei,
+        ft.recipient_duns = a.company_duns,
+        ft.amount = a.award_amount,
+        ft.transaction_date = a.award_date,
+        ft.completion_date = a.completion_date,
+        ft.start_date = a.contract_start_date,
+        ft.end_date = a.contract_end_date,
+        ft.title = a.award_title,
+        ft.description = a.abstract,
+        ft.phase = a.phase,
+        ft.program = a.program,
+        ft.principal_investigator = a.principal_investigator,
+        ft.research_institution = a.research_institution,
+        ft.cet_area = a.cet_area,
+        ft.award_year = a.award_year,
+        ft.fiscal_year = a.fiscal_year,
+        ft.naics_code = a.naics_primary,
+        ft.created_at = coalesce(a.created_at, datetime()),
+        ft.updated_at = datetime()
+    RETURN count(ft) as created
+    """
 
-        total_created = 0
-        skip = 0
-        batch_num = 1
-        total_batches = (total_count + batch_size - 1) // batch_size
+    total_created = 0
+    batch_num = 1
 
-        while skip < total_count:
+    import time as time_module
+    start_time = time_module.time()
+    
+    with driver.session(default_access_mode="WRITE") as session:
+        for batch_ids in batches:
+            batch_start_time = time_module.time()
             logger.info(
-                "Processing batch {}/{} (nodes {}-{} of {})...",
+                "Processing batch {}/{} ({} awards)...",
                 batch_num,
                 total_batches,
-                skip + 1,
-                min(skip + batch_size, total_count),
-                total_count,
+                len(batch_ids),
             )
             
             result = execute_batch_with_retry(
-                session, batch_query, {"skip": skip, "batch_size": batch_size},
-                batch_num=batch_num, total_batches=total_batches
+                session, batch_query, {"award_ids": batch_ids},
+                driver=driver, batch_num=batch_num, total_batches=total_batches
             )
-            single_result = result.single()
-            batch_created = single_result["created"] if single_result else 0
+            batch_created = result["created"]
             total_created += batch_created
             
+            batch_duration = time_module.time() - batch_start_time
+            elapsed_time = time_module.time() - start_time
+            avg_time_per_batch = elapsed_time / batch_num
+            remaining_batches = total_batches - batch_num
+            estimated_remaining = remaining_batches * avg_time_per_batch
+            
             logger.info(
-                "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                "✓ Batch {}/{} complete: Created {} nodes in {:.1f}s (Total: {}/{}, Elapsed: {:.1f}s, Est. remaining: {:.1f}s)",
                 batch_num,
                 total_batches,
                 batch_created,
+                batch_duration,
                 total_created,
                 total_count,
+                elapsed_time,
+                estimated_remaining,
             )
             
-            skip += batch_size
             batch_num += 1
 
         logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Award nodes", total_created)
@@ -225,79 +314,94 @@ def migrate_contracts_to_financial_transactions(driver, dry_run: bool = False, b
         logger.info("DRY RUN: Would migrate Contract nodes in batches of {}", batch_size)
         return 0
 
-    with driver.session(default_access_mode="WRITE") as session:
-        # Get total count
-        count_result = session.run(count_query)
-        total_count = count_result.single()["total"]
+    # Collect all contract IDs first (much faster than SKIP)
+    logger.info("Collecting contract IDs...")
+    with driver.session(default_access_mode="READ") as session:
+        id_result = session.run("MATCH (c:Contract) RETURN collect(c.contract_id) as contract_ids")
+        record = id_result.single()
+        contract_ids = record["contract_ids"] if record else []
+        total_count = len(contract_ids)
         logger.info("Found {} Contract nodes to migrate", total_count)
         
         if total_count == 0:
             logger.info("No Contract nodes to migrate")
             return 0
 
-        batch_query = """
-        MATCH (c:Contract)
-        WITH c SKIP $skip LIMIT $batch_size
-        MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
-        SET ft.transaction_type = 'CONTRACT',
-            ft.contract_id = c.contract_id,
-            ft.agency = c.agency,
-            ft.agency_name = c.agency_name,
-            ft.sub_agency = c.sub_agency,
-            ft.sub_agency_name = c.sub_agency_name,
-            ft.recipient_name = c.vendor_name,
-            ft.recipient_uei = c.vendor_uei,
-            ft.amount = c.obligated_amount,
-            ft.base_and_all_options_value = c.base_and_all_options_value,
-            ft.transaction_date = c.action_date,
-            ft.start_date = c.start_date,
-            ft.end_date = c.end_date,
-            ft.title = c.description,
-            ft.description = c.description,
-            ft.competition_type = c.competition_type,
-            ft.piid = c.piid,
-            ft.fain = c.fain,
-            ft.psc_code = c.psc_code,
-            ft.place_of_performance = c.place_of_performance,
-            ft.naics_code = c.naics_code,
-            ft.created_at = coalesce(c.created_at, datetime()),
-            ft.updated_at = datetime()
-        RETURN count(ft) as created
-        """
+    # Create batches from IDs
+    batches = [contract_ids[i:i + batch_size] for i in range(0, len(contract_ids), batch_size)]
+    total_batches = len(batches)
+    
+    batch_query = """
+    UNWIND $contract_ids as contract_id
+    MATCH (c:Contract {contract_id: contract_id})
+    MERGE (ft:FinancialTransaction {transaction_id: 'txn_contract_' + c.contract_id})
+    SET ft.transaction_type = 'CONTRACT',
+        ft.contract_id = c.contract_id,
+        ft.agency = c.agency,
+        ft.agency_name = c.agency_name,
+        ft.sub_agency = c.sub_agency,
+        ft.sub_agency_name = c.sub_agency_name,
+        ft.recipient_name = c.vendor_name,
+        ft.recipient_uei = c.vendor_uei,
+        ft.amount = c.obligated_amount,
+        ft.base_and_all_options_value = c.base_and_all_options_value,
+        ft.transaction_date = c.action_date,
+        ft.start_date = c.start_date,
+        ft.end_date = c.end_date,
+        ft.title = c.description,
+        ft.description = c.description,
+        ft.competition_type = c.competition_type,
+        ft.piid = c.piid,
+        ft.fain = c.fain,
+        ft.psc_code = c.psc_code,
+        ft.place_of_performance = c.place_of_performance,
+        ft.naics_code = c.naics_code,
+        ft.created_at = coalesce(c.created_at, datetime()),
+        ft.updated_at = datetime()
+    RETURN count(ft) as created
+    """
 
-        total_created = 0
-        skip = 0
-        batch_num = 1
-        total_batches = (total_count + batch_size - 1) // batch_size
+    total_created = 0
+    batch_num = 1
 
-        while skip < total_count:
+    import time as time_module
+    start_time = time_module.time()
+    
+    with driver.session(default_access_mode="WRITE") as session:
+        for batch_ids in batches:
+            batch_start_time = time_module.time()
             logger.info(
-                "Processing batch {}/{} (nodes {}-{} of {})...",
+                "Processing batch {}/{} ({} contracts)...",
                 batch_num,
                 total_batches,
-                skip + 1,
-                min(skip + batch_size, total_count),
-                total_count,
+                len(batch_ids),
             )
             
             result = execute_batch_with_retry(
-                session, batch_query, {"skip": skip, "batch_size": batch_size},
-                batch_num=batch_num, total_batches=total_batches
+                session, batch_query, {"contract_ids": batch_ids},
+                driver=driver, batch_num=batch_num, total_batches=total_batches
             )
-            single_result = result.single()
-            batch_created = single_result["created"] if single_result else 0
+            batch_created = result["created"]
             total_created += batch_created
             
+            batch_duration = time_module.time() - batch_start_time
+            elapsed_time = time_module.time() - start_time
+            avg_time_per_batch = elapsed_time / batch_num
+            remaining_batches = total_batches - batch_num
+            estimated_remaining = remaining_batches * avg_time_per_batch
+            
             logger.info(
-                "✓ Batch {}/{} complete: Created {} FinancialTransaction nodes (Total: {}/{})",
+                "✓ Batch {}/{} complete: Created {} nodes in {:.1f}s (Total: {}/{}, Elapsed: {:.1f}s, Est. remaining: {:.1f}s)",
                 batch_num,
                 total_batches,
                 batch_created,
+                batch_duration,
                 total_created,
                 total_count,
+                elapsed_time,
+                estimated_remaining,
             )
             
-            skip += batch_size
             batch_num += 1
 
         logger.info("✓ Migration complete: Created {} FinancialTransaction nodes from Contract nodes", total_created)
@@ -628,6 +732,18 @@ def parse_args():
         action="store_true",
         help="Enable verbose logging.",
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=BATCH_SIZE,
+        help=f"Batch size for processing (default: {BATCH_SIZE}).",
+    )
+    parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for batch processing (default: 1 = sequential). Note: Parallel processing not yet implemented in this version.",
+    )
     return parser.parse_args()
 
 
@@ -664,8 +780,11 @@ def main() -> int:
 
     try:
         # Run migration steps
-        migrate_awards_to_financial_transactions(driver, dry_run=args.dry_run)
-        migrate_contracts_to_financial_transactions(driver, dry_run=args.dry_run)
+        migrate_awards_to_financial_transactions(driver, dry_run=args.dry_run, batch_size=args.batch_size)
+        migrate_contracts_to_financial_transactions(driver, dry_run=args.dry_run, batch_size=args.batch_size)
+        
+        if args.parallel_workers > 1:
+            logger.warning("Parallel workers ({}) specified but not yet implemented. Running sequentially.", args.parallel_workers)
         update_award_relationships(driver, dry_run=args.dry_run)
         update_contract_relationships(driver, dry_run=args.dry_run)
         update_transition_nodes(driver, dry_run=args.dry_run)
