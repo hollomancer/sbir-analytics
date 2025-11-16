@@ -12,16 +12,23 @@ This directory contains AWS CDK code for deploying the SBIR ETL infrastructure t
 ## Setup
 
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
+# Install Python dependencies using uv
+uv sync
 
 # Bootstrap CDK (first time only)
-cdk bootstrap aws://ACCOUNT-ID/us-east-2
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+cdk bootstrap aws://$AWS_ACCOUNT_ID/us-east-2
 ```
 
 ## Deployment
 
 ```bash
+# Make sure dependencies are synced
+uv sync
+
+# Review what will be created
+cdk diff
+
 # Deploy all stacks
 cdk deploy --all
 

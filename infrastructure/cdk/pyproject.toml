@@ -1,0 +1,10 @@
+[project]
+name = "sbir-etl-infrastructure"
+version = "0.1.0"
+description = "AWS CDK infrastructure for SBIR ETL pipeline"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "aws-cdk-lib>=2.100.0",
+    "constructs>=10.0.0",
+]
+

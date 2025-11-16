@@ -1,6 +1,9 @@
 """Lambda functions stack for SBIR ETL."""
 
+from pathlib import Path
+
 from aws_cdk import (
+    CfnOutput,
     Duration,
     Stack,
     aws_lambda as lambda_,
@@ -45,24 +48,34 @@ class LambdaStack(Stack):
 
         # Create Lambda layer for Python dependencies
         # Note: Layer will be created separately via build script
-        python_layer = lambda_.LayerVersion.from_layer_version_arn(
-            self,
-            "PythonDependenciesLayer",
-            layer_version_arn=self.node.try_get_context("lambda_layer_arn") or "",
-        )
+        layer_arn = self.node.try_get_context("lambda_layer_arn")
+        python_layer = None
+        if layer_arn:
+            python_layer = lambda_.LayerVersion.from_layer_version_arn(
+                self,
+                "PythonDependenciesLayer",
+                layer_version_arn=layer_arn,
+            )
 
         for func_name in layer_functions:
+            # Get absolute path to Lambda function code
+            # CDK app.py is in infrastructure/cdk/, so go up 2 levels to project root
+            # Directory names use underscores, function names use hyphens
+            lambda_dir_name = func_name.replace("-", "_")
+            project_root = Path(__file__).parent.parent.parent.parent
+            lambda_code_path = str(project_root / "scripts" / "lambda" / lambda_dir_name)
+            
             func = lambda_.Function(
                 self,
                 f"{func_name.replace('-', '_').title()}Function",
                 function_name=f"sbir-etl-{func_name}",
                 runtime=lambda_.Runtime.PYTHON_3_11,
-                handler=f"{func_name.replace('-', '_')}.lambda_handler",
-                code=lambda_.Code.from_asset(f"scripts/lambda/{func_name}"),
+                handler="lambda_handler.lambda_handler",
+                code=lambda_.Code.from_asset(lambda_code_path),
                 role=lambda_role,
                 timeout=Duration.minutes(15),
                 memory_size=512,
-                layers=[python_layer] if python_layer.layer_version_arn else [],
+                layers=[python_layer] if python_layer else [],
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
                     "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
@@ -78,11 +91,13 @@ class LambdaStack(Stack):
         ]
 
         for func_name in container_functions:
-            func = lambda_.Function(
+            # Container-based Lambda functions using DockerImageFunction
+            # DockerImageFunction accepts EcrImageCode directly
+            func = lambda_.DockerImageFunction(
                 self,
                 f"{func_name.replace('-', '_').title()}Function",
                 function_name=f"sbir-etl-{func_name}",
-                code=lambda_.Code.from_ecr_image(
+                code=lambda_.DockerImageCode.from_ecr(
                     repository=ecr_repo,
                     tag_or_digest=f"{func_name}:latest",
                 ),
@@ -98,5 +113,9 @@ class LambdaStack(Stack):
 
         # Output function ARNs
         for func_name, func in self.functions.items():
-            self.add_output(f"{func_name.replace('-', '_').title()}FunctionArn", value=func.function_arn)
+            CfnOutput(
+                self,
+                f"{func_name.replace('-', '_').title()}FunctionArn",
+                value=func.function_arn,
+            )
 

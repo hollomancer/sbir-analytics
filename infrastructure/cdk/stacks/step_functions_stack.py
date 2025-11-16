@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from aws_cdk import (
+    CfnOutput,
     Duration,
     Stack,
     aws_stepfunctions as sfn,
@@ -53,7 +54,7 @@ class StepFunctionsStack(Stack):
             tracing_enabled=True,
         )
 
-        self.add_output("StateMachineArn", value=self.state_machine.state_machine_arn)
+        CfnOutput(self, "StateMachineArn", value=self.state_machine.state_machine_arn)
 
     def _build_state_machine_definition(self, lambda_functions: dict) -> dict:
         """Build state machine definition programmatically."""

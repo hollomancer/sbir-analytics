@@ -1,6 +1,7 @@
 """S3 bucket stack for SBIR ETL data storage."""
 
 from aws_cdk import (
+    CfnOutput,
     Duration,
     RemovalPolicy,
     Stack,
@@ -42,6 +43,6 @@ class StorageStack(Stack):
         )
 
         # Output bucket name and ARN
-        self.add_output("BucketName", value=self.bucket.bucket_name)
-        self.add_output("BucketArn", value=self.bucket.bucket_arn)
+        CfnOutput(self, "BucketName", value=self.bucket.bucket_name)
+        CfnOutput(self, "BucketArn", value=self.bucket.bucket_arn)
 

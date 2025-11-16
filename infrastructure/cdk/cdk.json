@@ -1,5 +1,5 @@
 {
-  "app": "python app.py",
+  "app": "uv run python app.py",
   "watch": {
     "include": ["**"],
     "exclude": [
@@ -40,7 +40,7 @@
     "@aws-cdk/aws-ec2:launchTemplateDefaultUserData": true,
     "@aws-cdk/aws-ecs:removeDefaultDeploymentAlarm": true,
     "region": "us-east-2",
-    "github_repo": "YOUR_GITHUB_REPO"
+    "github_repo": "hollomancer/sbir-etl"
   }
 }
 

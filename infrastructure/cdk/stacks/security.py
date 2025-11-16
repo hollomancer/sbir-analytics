@@ -1,6 +1,7 @@
 """Security stack: IAM roles and Secrets Manager."""
 
 from aws_cdk import (
+    CfnOutput,
     Stack,
     aws_iam as iam,
     aws_secretsmanager as secretsmanager,
@@ -72,23 +73,21 @@ class SecurityStack(Stack):
         )
 
         # GitHub Actions OIDC role (for GitHub Actions to invoke Step Functions)
-        github_oidc_provider = iam.OpenIdConnectProvider.from_open_id_connect_provider_arn(
-            self,
-            "GitHubOIDCProvider",
-            open_id_connect_provider_arn=f"arn:aws:iam::{self.account}:oidc-provider/token.actions.githubusercontent.com",
-        )
-
+        # Note: OIDC provider must be created first via AWS CLI (see setup guide)
+        # This references an existing provider
+        github_repo = self.node.try_get_context("github_repo") or "YOUR_GITHUB_REPO"
+        
         self.github_actions_role = iam.Role(
             self,
             "GitHubActionsRole",
             assumed_by=iam.WebIdentityPrincipal(
-                github_oidc_provider.open_id_connect_provider_arn,
+                f"arn:aws:iam::{self.account}:oidc-provider/token.actions.githubusercontent.com",
                 conditions={
                     "StringEquals": {
                         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
                     },
                     "StringLike": {
-                        "token.actions.githubusercontent.com:sub": f"repo:{self.node.try_get_context('github_repo')}:*"
+                        "token.actions.githubusercontent.com:sub": f"repo:{github_repo}:*"
                     },
                 },
             ),
@@ -127,8 +126,8 @@ class SecurityStack(Stack):
         )
 
         # Output role ARNs
-        self.add_output("LambdaRoleArn", value=self.lambda_role.role_arn)
-        self.add_output("StepFunctionsRoleArn", value=self.step_functions_role.role_arn)
-        self.add_output("GitHubActionsRoleArn", value=self.github_actions_role.role_arn)
-        self.add_output("Neo4jSecretArn", value=self.neo4j_secret.secret_arn)
+        CfnOutput(self, "LambdaRoleArn", value=self.lambda_role.role_arn)
+        CfnOutput(self, "StepFunctionsRoleArn", value=self.step_functions_role.role_arn)
+        CfnOutput(self, "GitHubActionsRoleArn", value=self.github_actions_role.role_arn)
+        CfnOutput(self, "Neo4jSecretArn", value=self.neo4j_secret.secret_arn)
 

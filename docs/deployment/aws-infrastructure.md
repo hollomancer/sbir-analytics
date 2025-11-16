@@ -73,11 +73,12 @@ The weekly SBIR awards refresh workflow has been migrated from GitHub Actions to
 ```bash
 cd infrastructure/cdk
 
-# Install CDK dependencies
-pip install -r requirements.txt
+# Install CDK dependencies using uv
+uv sync
 
 # Bootstrap CDK (first time only)
-cdk bootstrap aws://ACCOUNT-ID/us-east-2
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+cdk bootstrap aws://$AWS_ACCOUNT_ID/us-east-2
 
 # Deploy all stacks
 cdk deploy --all
