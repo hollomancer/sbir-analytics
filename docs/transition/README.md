@@ -10,8 +10,9 @@ The transition detection system identifies successful transitions of SBIR/STTR-f
 
 New to transition detection? Start here:
 
-1. **[MVP Guide](mvp.md)** - Quick start and minimum viable product overview
-2. **[Detection Algorithm](detection_algorithm.md)** - Core algorithm and methodology
+1. **[Complete Overview](overview.md)** - Comprehensive system overview with quick start
+2. **[MVP Guide](mvp.md)** - Quick start and minimum viable product overview
+3. **[Detection Algorithm](detection_algorithm.md)** - Core algorithm and methodology
 
 ## Core Documentation
 
