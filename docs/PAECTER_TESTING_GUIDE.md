@@ -11,39 +11,90 @@ PaECTER is a patent-specific embedding model from HuggingFace (`mpi-inno-comp/pa
 3. Identify technology transfer relationships
 4. Discover related innovations across your data
 
+## Two Modes of Operation
+
+The PaECTER client supports two modes:
+
+**API Mode (Default - Recommended)**
+- Uses HuggingFace Inference API
+- No model download required (~500MB saved)
+- No local GPU/CPU compute needed
+- Perfect for Dagster Cloud deployment
+- Requires HuggingFace API token (free tier available)
+
+**Local Mode (Optional)**
+- Downloads and runs model locally
+- Requires ~500MB disk space + ~1.5GB RAM
+- Useful for offline work or high-volume batch processing
+- Requires PyTorch and sentence-transformers
+
 ## Quick Start
 
 ### 1. Install Dependencies
 
-The PaECTER functionality requires additional optional dependencies:
-
+**For API Mode (Default - Recommended):**
 ```bash
-# Install PaECTER dependencies
-uv pip install -e ".[paecter]"
+# Already included in base dependencies!
+# huggingface-hub is installed automatically
+```
+
+**For Local Mode (Optional):**
+```bash
+# Install local model dependencies
+uv pip install -e ".[paecter-local]"
 
 # Or install manually
-uv pip install sentence-transformers torch transformers
+pip install sentence-transformers torch transformers
 ```
 
-**Note:** The first time you use PaECTER, it will download the model (~500MB) from HuggingFace. This happens automatically and is cached for future use.
+### 2. Set Up HuggingFace Token (API Mode)
 
-### 2. Run Basic Tests
+Get a free token from [HuggingFace](https://huggingface.co/settings/tokens):
 
 ```bash
-# Run PaECTER integration tests
-uv run pytest tests/integration/test_paecter_client.py -v
+# Set environment variable
+export HF_TOKEN="your_token_here"
 
-# Run with output showing similarity scores
-uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_award_patent_similarity -v -s
+# Or add to your .env file
+echo "HF_TOKEN=your_token_here" >> .env
 ```
 
-### 3. Quick Example
+### 3. Run Quick Test
 
+```bash
+# API mode (default - requires HF_TOKEN)
+export HF_TOKEN="your_token_here"
+python scripts/test_paecter_quick.py
+
+# Local mode (requires sentence-transformers)
+python scripts/test_paecter_quick.py --local
+```
+
+### 4. Run Integration Tests
+
+```bash
+# Local mode tests (default - requires sentence-transformers)
+pytest tests/integration/test_paecter_client.py -v
+
+# API mode tests (requires HF_TOKEN)
+export HF_TOKEN="your_token_here"
+export USE_PAECTER_API=1
+pytest tests/integration/test_paecter_client.py -v
+```
+
+### 5. Quick Examples
+
+**API Mode (Default):**
 ```python
+import os
 from src.ml.paecter_client import PaECTERClient
 
-# Initialize client
+# Set token (or use environment variable)
+os.environ["HF_TOKEN"] = "your_token_here"
+
+# Initialize client (uses API by default)
 client = PaECTERClient()
+# or explicitly: client = PaECTERClient(use_local=False)
 
 # Prepare texts
 award_text = client.prepare_award_text(
@@ -52,18 +103,22 @@ award_text = client.prepare_award_text(
     award_title="Innovative Additive Manufacturing"
 )
 
-patent_text = client.prepare_patent_text(
-    title="Method for Additive Manufacturing",
-    abstract="A system for layer-by-layer metal deposition..."
-)
+# Generate embeddings via API (no model download!)
+result = client.generate_embeddings([award_text])
+print(f"Embedding shape: {result.embeddings.shape}")  # (1, 1024)
+print(f"Mode: {result.inference_mode}")  # "api"
+```
 
-# Generate embeddings
-award_emb = client.generate_embeddings([award_text])
-patent_emb = client.generate_embeddings([patent_text])
+**Local Mode (Optional):**
+```python
+from src.ml.paecter_client import PaECTERClient
 
-# Compute similarity
-similarity = client.compute_similarity(award_emb.embeddings, patent_emb.embeddings)
-print(f"Similarity score: {similarity[0, 0]:.3f}")
+# Initialize client in local mode
+client = PaECTERClient(use_local=True)
+
+# Same API as above, but runs locally
+result = client.generate_embeddings([award_text])
+print(f"Mode: {result.inference_mode}")  # "local"
 ```
 
 ## Testing Approach: Simple to Complex
@@ -283,30 +338,42 @@ def test_award_patent_matching_pipeline():
 
 ## Performance Considerations
 
-### Model Size and Memory
+### Mode Comparison
 
-- **Model download:** ~500MB (first run only)
-- **Model in memory:** ~1.5GB
-- **Batch processing:** Recommended batch size 16-32
-- **CPU vs GPU:** GPU ~10-50x faster for large batches
+**API Mode:**
+- **Setup time:** Instant (no model download)
+- **Memory:** Minimal (~100MB for client)
+- **Throughput:** Depends on API rate limits
+- **Cost:** Free tier available, paid tiers for higher volume
+- **Best for:** Development, testing, Dagster Cloud deployment
+
+**Local Mode:**
+- **Setup time:** ~2-5 minutes (model download on first run)
+- **Model download:** ~500MB (one-time)
+- **Memory:** ~1.5GB when loaded
+- **Throughput:** CPU ~10-50 embeddings/s, GPU ~200-1000+ embeddings/s
+- **Cost:** Free (uses your compute)
+- **Best for:** High-volume batch processing, offline work
 
 ### Scaling Strategies
 
-1. **Small scale (< 10K records):**
-   - Use CPU
-   - Single process
-   - Batch size: 16
+1. **Small scale (< 1K records):**
+   - **Recommended:** API mode
+   - Batch size: 16-32
+   - Simple and fast
 
-2. **Medium scale (10K-100K records):**
-   - Use GPU if available
+2. **Medium scale (1K-100K records):**
+   - **Recommended:** API mode for development, local mode for production
+   - If local: Use GPU if available
    - Batch size: 32-64
    - Save embeddings to Parquet for reuse
 
 3. **Large scale (> 100K records):**
-   - Use GPU
+   - **Recommended:** Local mode with GPU
    - Implement FAISS for similarity search
    - Use incremental updates
    - Consider batching across multiple runs
+   - Or: Use HuggingFace Inference Endpoints for dedicated API capacity
 
 ### Caching
 
@@ -314,42 +381,56 @@ The model automatically caches to `~/.cache/huggingface/` (or `HF_HOME` if set).
 
 ## Troubleshooting
 
-### Import Error: sentence-transformers not found
+### API Mode Issues
 
+**Error: huggingface_hub not found**
 ```bash
-uv pip install sentence-transformers
+pip install huggingface-hub
 ```
 
-### Model download fails (403 Forbidden)
-
-This can happen if HuggingFace is blocking the request. Try:
-
+**Error: Missing HF_TOKEN or rate limited**
 ```bash
-# Set HuggingFace token (if you have one)
+# Get a free token from https://huggingface.co/settings/tokens
 export HF_TOKEN="your_token_here"
 
-# Or try from Python
-from huggingface_hub import login
-login(token="your_token_here")
+# Or add to .env file
+echo "HF_TOKEN=your_token_here" >> .env
 ```
 
-However, `mpi-inno-comp/paecter` is a public model and should not require authentication.
+**API calls timing out or failing**
+- Check your internet connection
+- Verify your HF_TOKEN is valid
+- Try reducing batch size (API may have limits)
+- Consider switching to local mode for high-volume work
 
-### CUDA out of memory
+### Local Mode Issues
 
+**Error: sentence-transformers not found**
+```bash
+pip install sentence-transformers torch transformers
+# Or: uv pip install -e ".[paecter-local]"
+```
+
+**Model download fails (403 Forbidden)**
+The model is public and shouldn't require authentication. Try:
+```bash
+# Clear cache and retry
+rm -rf ~/.cache/huggingface/hub/models--mpi-inno-comp--paecter
+```
+
+**CUDA out of memory**
 Reduce batch size:
-
 ```python
+client = PaECTERClient(use_local=True)
 result = client.generate_embeddings(texts, batch_size=8)  # Reduce from 32
 ```
 
 Or force CPU usage:
-
 ```python
-client = PaECTERClient(device='cpu')
+client = PaECTERClient(use_local=True, device='cpu')
 ```
 
-### Slow embedding generation
+**Slow embedding generation (local mode)**
 
 **Expected performance:**
 - CPU: ~10-50 embeddings/second
@@ -357,9 +438,9 @@ client = PaECTERClient(device='cpu')
 - GPU (A100): ~1000+ embeddings/second
 
 If performance is significantly slower:
-1. Check if GPU is being used: `client.model.device`
+1. Check if GPU is being used (local mode only)
 2. Increase batch size: `batch_size=64`
-3. Profile with: `pytest --profile tests/integration/test_paecter_client.py`
+3. Consider switching to API mode for simpler deployment
 
 ## Sample Data Included
 
@@ -379,11 +460,15 @@ These are intentionally matched to demonstrate similarity scoring.
 
 ## Next Steps
 
-1. **Install dependencies:** `uv pip install -e ".[paecter]"`
-2. **Run basic tests:** `uv run pytest tests/integration/test_paecter_client.py -v`
-3. **Test with your data:** Create `test_paecter_real_data.py` (see Phase 2 above)
-4. **Evaluate quality:** Check similarity scores make sense for known similar pairs
-5. **Scale up:** Move to Dagster pipeline integration (Phase 4)
+1. **Get HuggingFace token:** Sign up at https://huggingface.co/settings/tokens (free)
+2. **Set token:** `export HF_TOKEN="your_token_here"`
+3. **Run quick test:** `python scripts/test_paecter_quick.py`
+4. **Run integration tests:** `USE_PAECTER_API=1 pytest tests/integration/test_paecter_client.py -v`
+5. **Test with your data:** Create `test_paecter_real_data.py` (see Phase 2 above)
+6. **Evaluate quality:** Check similarity scores make sense for known similar pairs
+7. **Scale up:** Move to Dagster pipeline integration (Phase 4)
+
+**Optional:** For local mode testing, install `uv pip install -e ".[paecter-local]"` and run without HF_TOKEN.
 
 ## References
 
@@ -396,13 +481,31 @@ These are intentionally matched to demonstrate similarity scoring.
 
 Common questions and their answers:
 
+**Q: Which mode should I use - API or local?**
+A:
+- **Start with API mode** - it's simpler and works great for testing and development
+- **Switch to local mode** for high-volume batch processing or offline work
+- **Use API mode in Dagster Cloud** - no model download or GPU management needed
+
 **Q: Do I need a GPU?**
-A: No, but it's much faster. CPU works fine for testing and small datasets (< 10K records).
+A:
+- **API mode:** No, everything runs on HuggingFace servers
+- **Local mode:** No, but GPU is 10-50x faster for large batches
+
+**Q: How much does the API cost?**
+A: HuggingFace offers a free tier. For high volume, you can:
+- Upgrade to paid tiers (check HuggingFace pricing)
+- Use HuggingFace Inference Endpoints for dedicated capacity
+- Switch to local mode with your own GPU
 
 **Q: Can I use a different model?**
-A: Yes! The `PaECTERClient` accepts any sentence-transformers compatible model:
+A: Yes! The `PaECTERClient` accepts any compatible model:
 ```python
+# API mode - any HuggingFace model with feature-extraction
 client = PaECTERClient(model_name="AI-Growth-Lab/PatentSBERTa")
+
+# Local mode - any sentence-transformers model
+client = PaECTERClient(use_local=True, model_name="AI-Growth-Lab/PatentSBERTa")
 ```
 
 **Q: How do I integrate with existing CET classification?**
@@ -412,7 +515,10 @@ A: PaECTER embeddings can be used alongside CET classification. In fact, the Bay
 A: PaECTER is fine-tuned with examiner citations and optimized for prior art search. PatentSBERTa is a more general patent BERT model. Both work with our client.
 
 **Q: Can I run this in Dagster Cloud?**
-A: Yes, but you'll need to:
-1. Ensure PyTorch is installed (might need CPU-only version)
-2. Handle model caching (use persistent storage or embed model in deployment)
-3. Consider using HuggingFace Inference API instead for serverless deployment
+A: Yes! **Use API mode** (default) - it's perfect for serverless deployment:
+```python
+# In your Dagster asset
+client = PaECTERClient()  # Uses API mode by default
+result = client.generate_embeddings(texts)
+```
+Just set `HF_TOKEN` in your Dagster Cloud environment variables.

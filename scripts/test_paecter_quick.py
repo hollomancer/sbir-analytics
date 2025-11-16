@@ -5,14 +5,24 @@ This script provides a simple way to test PaECTER embeddings and similarity
 computation with sample SBIR awards and patents.
 
 Usage:
+    # API mode (default - requires HF_TOKEN environment variable)
+    export HF_TOKEN="your_token_here"
     python scripts/test_paecter_quick.py
 
+    # Local mode (requires sentence-transformers, downloads ~500MB model)
+    python scripts/test_paecter_quick.py --local
+
 Requirements:
-    uv pip install -e ".[paecter]"
+    # API mode (default)
+    pip install huggingface-hub
+
+    # Local mode
+    pip install sentence-transformers torch transformers
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -32,8 +42,28 @@ console = Console()
 
 def main():
     """Run quick PaECTER test."""
+    # Check if --local flag is provided
+    use_local = "--local" in sys.argv
+
     console.print("\n[bold blue]PaECTER Quick Test[/bold blue]", style="bold")
     console.print("Testing patent embeddings with sample SBIR and patent data\n")
+
+    if use_local:
+        console.print("[yellow]Mode:[/yellow] Local (using sentence-transformers)")
+        console.print("[dim]Model will be downloaded (~500MB) on first run[/dim]\n")
+    else:
+        console.print("[yellow]Mode:[/yellow] API (using HuggingFace Inference API)")
+        if not os.getenv("HF_TOKEN"):
+            console.print(
+                "[bold red]Warning:[/bold red] HF_TOKEN environment variable not set.\n"
+                "API calls may fail or have rate limits.\n\n"
+                "[yellow]To use API mode:[/yellow]\n"
+                "  export HF_TOKEN=\"your_token_here\"\n\n"
+                "[yellow]Or use local mode instead:[/yellow]\n"
+                "  python scripts/test_paecter_quick.py --local\n"
+            )
+            return 1
+        console.print("[dim]Using HuggingFace API (no model download)[/dim]\n")
 
     # Sample data
     awards = [
@@ -102,16 +132,18 @@ def main():
     # Step 1: Initialize client
     console.print("[yellow]Step 1:[/yellow] Initializing PaECTER client...")
     try:
-        client = PaECTERClient()
+        client = PaECTERClient(use_local=use_local)
         console.print(
-            f"✓ Model loaded: {client.model_name} (dimension: {client.embedding_dim})\n",
+            f"✓ Client initialized: {client.model_name} "
+            f"(dimension: {client.embedding_dim}, mode: {client.inference_mode})\n",
             style="green",
         )
     except ImportError as e:
-        console.print(
-            f"[red]✗ Error: {e}[/red]\n"
-            "[yellow]Install dependencies:[/yellow] uv pip install -e \".[paecter]\""
-        )
+        console.print(f"[red]✗ Error: {e}[/red]\n")
+        if use_local:
+            console.print("[yellow]Install local dependencies:[/yellow] pip install sentence-transformers torch")
+        else:
+            console.print("[yellow]Install API dependencies:[/yellow] pip install huggingface-hub")
         return 1
     except Exception as e:
         console.print(f"[red]✗ Error initializing client: {e}[/red]")
@@ -217,11 +249,18 @@ def main():
     # Summary
     console.print("[bold green]✓ Test completed successfully![/bold green]\n")
 
+    console.print(f"[bold]Test mode:[/bold] {client.inference_mode}")
     console.print("[bold]Next steps:[/bold]")
     console.print("1. Review the similarity scores above")
-    console.print("2. Run full integration tests: [cyan]uv run pytest tests/integration/test_paecter_client.py -v[/cyan]")
-    console.print("3. Test with your real data (see docs/PAECTER_TESTING_GUIDE.md)")
-    console.print("4. Integrate with Dagster pipeline\n")
+
+    if use_local:
+        console.print("2. Try API mode: [cyan]export HF_TOKEN=\"...\" && python scripts/test_paecter_quick.py[/cyan]")
+    else:
+        console.print("2. Try local mode: [cyan]python scripts/test_paecter_quick.py --local[/cyan]")
+
+    console.print("3. Run full integration tests: [cyan]pytest tests/integration/test_paecter_client.py -v[/cyan]")
+    console.print("4. Test with your real data (see docs/PAECTER_TESTING_GUIDE.md)")
+    console.print("5. Integrate with Dagster pipeline\n")
 
     return 0
 
