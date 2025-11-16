@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       force_refresh:
-        description: "Force commit even if CSV hash did not change"
+        description: "Force refresh even if CSV hash did not change"
         required: false
         default: false
         type: boolean
@@ -17,274 +17,70 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
+  id-token: write  # For OIDC authentication to AWS
+  contents: read   # Only read access needed (no Git operations)
 
 concurrency:
   group: awards-data-refresh
   cancel-in-progress: false
 
 env:
-  DATA_PATH: data/raw/sbir/award_data.csv
-  METADATA_DIR: reports/awards_data_refresh
-  INPUT_PROFILE_JSON: reports/awards_data_refresh/inputs_profile.json
-  INPUT_PROFILE_MD: reports/awards_data_refresh/inputs_profile.md
-  ENRICHMENT_SUMMARY_JSON: reports/awards_data_refresh/enrichment_summary.json
-  ENRICHMENT_SUMMARY_MD: reports/awards_data_refresh/enrichment_summary.md
-  NEO4J_LOAD_METRICS_JSON: reports/awards_data_refresh/neo4j_load_metrics.json
-  NEO4J_LOAD_SUMMARY_MD: reports/awards_data_refresh/neo4j_load_summary.md
-  NEO4J_SMOKE_CHECK_JSON: reports/awards_data_refresh/neo4j_smoke_check.json
-  NEO4J_SMOKE_CHECK_MD: reports/awards_data_refresh/neo4j_smoke_check.md
-  COMPANY_DIR: data/raw/sbir
-  COMPANY_SCHEMA_PATH: docs/data/sbir_company_columns.json
-  SCHEMA_PATH: docs/data/sbir_awards_columns.json
   DEFAULT_SOURCE_URL: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
 
 jobs:
   refresh-awards-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5  # Lambda invocation is quick
     env:
-      FORCE_REFRESH: ${{ github.event.inputs.force_refresh || 'false' }}
-      SOURCE_URL: ${{ github.event.inputs.source_url || '' }}
-      # Neo4j Aura connection (optional - set secrets to enable)
-      NEO4J_URI: ${{ secrets.NEO4J_AURA_URI || '' }}
-      NEO4J_USER: ${{ secrets.NEO4J_AURA_USER || '' }}
-      NEO4J_PASSWORD: ${{ secrets.NEO4J_AURA_PASSWORD || '' }}
-      NEO4J_DATABASE: ${{ secrets.NEO4J_AURA_DATABASE || 'neo4j' }}
+      AWS_REGION: us-east-1
+      LAMBDA_FUNCTION_NAME: sbir-weekly-refresh
+      S3_BUCKET: sbir-etl-production-data
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          fetch-depth: 0
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Download SBIR awards CSV
-        id: download
+      - name: Invoke Lambda function
+        id: invoke_lambda
         run: |
-          set -euo pipefail
-          mkdir -p "$(dirname "$DATA_PATH")"
-          url="${SOURCE_URL}"
-          if [ -z "$url" ]; then
-            url="${DEFAULT_SOURCE_URL}"
+          PAYLOAD=$(jq -n \
+            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+            --arg source_url "${{ github.event.inputs.source_url || '' }}" \
+            --arg s3_bucket "${{ env.S3_BUCKET }}" \
+            --arg neo4j_secret_name "${{ secrets.NEO4J_SECRET_NAME || '' }}" \
+            '{
+              force_refresh: ($force_refresh == "true"),
+              source_url: (if $source_url == "" then null else $source_url end),
+              s3_bucket: $s3_bucket,
+              neo4j_secret_name: (if $neo4j_secret_name == "" then null else $neo4j_secret_name end)
+            }')
+          
+          RESPONSE=$(aws lambda invoke \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --payload "$PAYLOAD" \
+            --cli-binary-format raw-in-base64-out \
+            /tmp/lambda-response.json)
+          
+          cat /tmp/lambda-response.json
+          
+          # Check if Lambda execution succeeded
+          if echo "$RESPONSE" | jq -e '.FunctionError' > /dev/null; then
+            echo "Lambda execution failed"
+            exit 1
           fi
-          tmp="${DATA_PATH}.tmp"
-          trap 'rm -f "$tmp"' EXIT
-          curl --retry 5 --retry-delay 5 --fail --location --compressed "$url" -o "$tmp"
-          mv "$tmp" "$DATA_PATH"
-          trap - EXIT
-          echo "source_url=$url" >> "$GITHUB_OUTPUT"
-
-      - name: Check for dataset changes
-        id: csv_diff
-        run: |
-          if git diff --quiet -- "$DATA_PATH"; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+          
+          RESULT=$(cat /tmp/lambda-response.json | jq -r '.body' | jq '.')
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+          
+          STATUS=$(echo "$RESULT" | jq -r '.status')
+          if [ "$STATUS" != "success" ] && [ "$STATUS" != "skipped" ]; then
+            echo "Lambda returned status: $STATUS"
+            exit 1
           fi
 
-      - name: Validate dataset and emit metadata
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        id: validate
+      - name: Display result
         run: |
-          python scripts/data/awards_refresh_validation.py \
-            --csv-path "$DATA_PATH" \
-            --schema-path "$SCHEMA_PATH" \
-            --metadata-dir "$METADATA_DIR" \
-            --summary-path "$METADATA_DIR/latest.md" \
-            --previous-metadata "$METADATA_DIR/latest.json" \
-            --source-url "${{ steps.download.outputs.source_url }}" \
-            --gha-output "$GITHUB_OUTPUT"
-
-      - name: Profile award and company inputs
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        id: profile_inputs
-        run: |
-          python scripts/data/profile_sbir_inputs.py \
-            --award-csv "$DATA_PATH" \
-            --company-dir "$COMPANY_DIR" \
-            --company-schema-path "$COMPANY_SCHEMA_PATH" \
-            --output-json "$INPUT_PROFILE_JSON" \
-            --output-md "$INPUT_PROFILE_MD" \
-            --gha-output "$GITHUB_OUTPUT"
-
-      - name: Install UV
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install project dependencies
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        run: |
-          uv sync
-
-      - name: Run SBIR ingestion validation
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        id: ingestion_checks
-        run: |
-          uv run python scripts/data/run_sbir_ingestion_checks.py \
-            --csv-path "$DATA_PATH" \
-            --duckdb-path "$METADATA_DIR/ingestion.duckdb" \
-            --table-name "sbir_awards_refresh" \
-            --pass-rate-threshold 0.95 \
-            --output-dir "$METADATA_DIR" \
-            --report-json "$METADATA_DIR/sbir_validation_report.json" \
-            --summary-md "$METADATA_DIR/ingestion_summary.md" \
-            --gha-output "$GITHUB_OUTPUT"
-
-      - name: Run company enrichment coverage
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        id: enrichment_check
-        run: |
-          uv run python scripts/data/run_sbir_enrichment_check.py \
-            --awards-csv "$DATA_PATH" \
-            --company-dir "$COMPANY_DIR" \
-            --output-json "$ENRICHMENT_SUMMARY_JSON" \
-            --output-md "$ENRICHMENT_SUMMARY_MD" \
-            --gha-output "$GITHUB_OUTPUT"
-
-      - name: Run SBIR integration tests
-        if: steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true'
-        run: |
-          uv run pytest \
-            tests/integration/test_sbir_ingestion_assets.py \
-            tests/integration/test_sbir_enrichment_pipeline.py \
-            --maxfail=1 --disable-warnings -q
-        env:
-          SBIR_E2E_AWARD_CSV: ${{ env.DATA_PATH }}
-
-      - name: Reset Neo4j database
-        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
-        run: |
-          echo "Resetting Neo4j Aura database..."
-          uv run python scripts/data/reset_neo4j_sbir.py
-
-      - name: Load SBIR awards into Neo4j Aura
-        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
-        id: neo4j_load
-        run: |
-          echo "Loading data to Neo4j Aura: ${NEO4J_URI}"
-          uv run python scripts/data/run_neo4j_sbir_load.py \
-            --validated-csv "${{ steps.ingestion_checks.outputs.validated_csv_path }}" \
-            --output-dir "$METADATA_DIR" \
-            --summary-md "$NEO4J_LOAD_SUMMARY_MD" \
-            --gha-output "$GITHUB_OUTPUT" || true
-        continue-on-error: true
-
-      - name: Run Neo4j Aura smoke checks
-        if: (steps.csv_diff.outputs.changed == 'true' || env.FORCE_REFRESH == 'true') && env.NEO4J_URI != ''
-        id: neo4j_smoke
-        run: |
-          uv run python scripts/data/run_neo4j_smoke_checks.py \
-            --output-json "$NEO4J_SMOKE_CHECK_JSON" \
-            --output-md "$NEO4J_SMOKE_CHECK_MD" \
-            --gha-output "$GITHUB_OUTPUT" || true
-        continue-on-error: true
-
-      - name: Prepare CSV artifact
-        run: |
-          gzip -c "$DATA_PATH" > awards_data.csv.gz
-
-      - name: Upload raw CSV artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbir-awards-csv
-          path: awards_data.csv.gz
-          retention-days: 7
-
-      - name: Upload metadata artifact
-        if: steps.validate.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbir-awards-metadata
-          path: |
-            ${{ steps.validate.outputs.metadata_path }}
-            ${{ steps.validate.outputs.summary_path }}
-            ${{ env.INPUT_PROFILE_JSON }}
-            ${{ env.INPUT_PROFILE_MD }}
-            ${{ steps.ingestion_checks.outputs.raw_metadata_path }}
-            ${{ steps.ingestion_checks.outputs.validated_metadata_path }}
-            ${{ steps.ingestion_checks.outputs.validation_report_path }}
-            ${{ steps.ingestion_checks.outputs.ingestion_summary_path }}
-            ${{ env.ENRICHMENT_SUMMARY_JSON }}
-            ${{ env.ENRICHMENT_SUMMARY_MD }}
-            ${{ env.NEO4J_LOAD_METRICS_JSON }}
-            ${{ env.NEO4J_LOAD_SUMMARY_MD }}
-            ${{ env.NEO4J_SMOKE_CHECK_JSON }}
-            ${{ env.NEO4J_SMOKE_CHECK_MD }}
-          retention-days: 30
-
-      - name: Determine commit requirement
-        id: proceed
-        run: |
-          should="false"
-          if [ "${{ env.FORCE_REFRESH }}" = "true" ]; then
-            should="true"
-          elif [ "${{ steps.csv_diff.outputs.changed }}" = "true" ]; then
-            should="true"
-          fi
-          echo "should_proceed=$should" >> "$GITHUB_OUTPUT"
-
-      - name: No-op note
-        if: steps.proceed.outputs.should_proceed != 'true'
-        run: echo "No data changes detected; skipping commit/PR."
-
-      - name: Set refresh date
-        if: steps.proceed.outputs.should_proceed == 'true'
-        id: stamp
-        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Configure git author
-        if: steps.proceed.outputs.should_proceed == 'true'
-        run: |
-          git config user.name "SBIR Data Bot"
-          git config user.email "sbir-data-bot@users.noreply.github.com"
-
-      - name: Stage refresh artifacts
-        if: steps.proceed.outputs.should_proceed == 'true'
-        run: |
-          git add "$DATA_PATH"
-          git add "$METADATA_DIR"
-
-      - name: Commit refresh artifacts
-        if: steps.proceed.outputs.should_proceed == 'true'
-        run: |
-          if git diff --cached --quiet; then
-            echo "Nothing to commit after staging."
-            exit 0
-          fi
-          git commit -m "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
-
-      - name: Build PR body
-        if: steps.proceed.outputs.should_proceed == 'true'
-        id: pr_body
-        run: |
-          PR_PATH="$RUNNER_TEMP/awards_refresh_pr.md"
-          {
-            echo "## SBIR awards data refresh"
-            echo ""
-            echo "Automated sync of \`$DATA_PATH\` from the SBIR.gov public dataset."
-            echo ""
-            cat "${{ steps.validate.outputs.summary_path }}"
-            echo ""
-            echo "---"
-            echo "Metadata file: \`${{ steps.validate.outputs.metadata_path }}\`"
-          } > "$PR_PATH"
-          echo "path=$PR_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Open pull request
-        if: steps.proceed.outputs.should_proceed == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: data-refresh/${{ steps.stamp.outputs.date }}
-          delete-branch: true
-          title: "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
-          commit-message: "chore(data): refresh sbir awards ${{ steps.stamp.outputs.date }}"
-          body-path: ${{ steps.pr_body.outputs.path }}
-          labels: data,automation
+          echo "Lambda execution completed"
+          echo "Result: ${{ steps.invoke_lambda.outputs.result }}"
