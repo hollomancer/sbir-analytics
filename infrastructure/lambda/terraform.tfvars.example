@@ -1,0 +1,13 @@
+# Example Terraform variables file
+# Copy to terraform.tfvars and update with your values
+
+s3_bucket = "sbir-etl-production-data"
+
+# Optional: Neo4j credentials
+neo4j_secret_name = "sbir-etl/neo4j-credentials"
+neo4j_secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:sbir-etl/neo4j-credentials"
+
+# Lambda configuration
+lambda_timeout = 900  # 15 minutes (max)
+lambda_memory  = 3008  # Max memory for container image
+

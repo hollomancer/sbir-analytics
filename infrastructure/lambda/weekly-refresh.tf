@@ -96,8 +96,8 @@ resource "aws_cloudwatch_log_group" "lambda_weekly_refresh" {
 resource "aws_lambda_function" "weekly_refresh" {
   function_name = "sbir-weekly-refresh"
   role          = aws_iam_role.lambda_weekly_refresh.arn
-  timeout       = 900  # 15 minutes max
-  memory_size   = 3008  # Max memory for container image
+  timeout       = var.lambda_timeout
+  memory_size   = var.lambda_memory
   
   package_type = "Image"
   image_uri     = "${aws_ecr_repository.lambda_weekly_refresh.repository_url}:latest"
@@ -120,6 +120,7 @@ resource "aws_lambda_function" "weekly_refresh" {
 variable "s3_bucket" {
   description = "S3 bucket name for storing CSV files and metadata"
   type        = string
+  default     = "sbir-etl-production-data"
 }
 
 variable "neo4j_secret_name" {
@@ -132,6 +133,18 @@ variable "neo4j_secret_arn" {
   description = "Secrets Manager secret ARN for Neo4j credentials (optional)"
   type        = string
   default     = null
+}
+
+variable "lambda_timeout" {
+  description = "Lambda function timeout in seconds (max 900)"
+  type        = number
+  default     = 900
+}
+
+variable "lambda_memory" {
+  description = "Lambda function memory in MB (max 3008)"
+  type        = number
+  default     = 3008
 }
 
 # Outputs

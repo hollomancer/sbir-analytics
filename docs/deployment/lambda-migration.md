@@ -49,8 +49,18 @@ The weekly award data refresh workflow has been migrated to AWS Lambda to:
 
 ```bash
 cd infrastructure/lambda
+
+# Copy example variables file
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+# Initialize Terraform
 terraform init
+
+# Review changes
 terraform plan
+
+# Apply infrastructure
 terraform apply
 ```
 
@@ -59,6 +69,8 @@ This creates:
 - Lambda function: `sbir-weekly-refresh`
 - IAM role with S3 and Secrets Manager permissions
 - CloudWatch Log Group
+
+**Note**: Update `terraform.tfvars` with your S3 bucket name and optional Neo4j secret ARN before applying.
 
 ### 2. Configure Secrets Manager
 
@@ -143,13 +155,35 @@ s3://sbir-etl-production-data/
     └── ...                               # Other metadata files
 ```
 
-## Monitoring
+## Testing
+
+### Local Testing
+
+Test the Lambda function locally using Docker:
+
+```bash
+# Set AWS credentials (or use AWS profile)
+export AWS_ACCESS_KEY_ID=your-key
+export AWS_SECRET_ACCESS_KEY=your-secret
+export AWS_DEFAULT_REGION=us-east-1
+export S3_BUCKET=sbir-etl-production-data
+
+# Run local test
+./scripts/test/lambda-local-test.sh
+```
+
+This builds the container image and runs the Lambda handler with a test event.
 
 ### CloudWatch Logs
 
 Lambda logs are available in CloudWatch:
 - Log Group: `/aws/lambda/sbir-weekly-refresh`
 - Retention: 30 days
+
+View logs:
+```bash
+aws logs tail /aws/lambda/sbir-weekly-refresh --follow
+```
 
 ### CloudWatch Metrics
 
@@ -159,9 +193,21 @@ Monitor Lambda execution:
 - Errors
 - Throttles
 
+View metrics:
+```bash
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/Lambda \
+  --metric-name Invocations \
+  --dimensions Name=FunctionName,Value=sbir-weekly-refresh \
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+  --period 3600 \
+  --statistics Sum
+```
+
 ### GitHub Actions
 
-The workflow displays Lambda execution results in the Actions UI.
+The workflow displays Lambda execution results in the Actions UI. Check the "Invoke Lambda function" step for execution details.
 
 ## Troubleshooting
 
