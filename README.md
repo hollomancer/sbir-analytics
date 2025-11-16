@@ -1315,9 +1315,14 @@ sbir-etl/
 │       └── ...
 │
 ├── docs/
-│   ├── data/                    # Data dictionaries
-│   ├── deployment/              # Container guides
-│   └── schemas/                 # Neo4j schema docs
+│   ├── testing/                 # Testing documentation and guides
+│   ├── deployment/              # Deployment guides (Dagster Cloud, Docker)
+│   ├── transition/              # Transition detection documentation
+│   ├── ml/                      # Machine learning and CET classifier
+│   ├── architecture/            # Architecture and design documentation
+│   ├── schemas/                 # Neo4j schema documentation
+│   ├── data/                    # Data dictionaries and sources
+│   └── ...                      # Additional documentation
 │
 ├── reports/                     # Generated artifacts (gitignored)
 │   ├── benchmarks/baseline.json     # Cached baseline
@@ -1406,11 +1411,18 @@ GitHub Actions workflows:
 
 ## Documentation
 
-- **Testing**: `docs/testing/e2e-testing-guide.md`
-- **Data Sources**: `docs/data/index.md`, `data/raw/uspto/README.md`
-- **Deployment**: `docs/deployment/containerization.md`
-- **Schemas**: `docs/schemas/patent-neo4j-schema.md`
-- **Specifications**: `.kiro/specs/` (Kiro specification system) - see `AGENTS.md` for workflow guidance
+Comprehensive documentation is organized by topic:
+
+- **Testing**: [`docs/testing/`](docs/testing/README.md) - Testing guides, environment setup, and coverage analysis
+- **Deployment**: [`docs/deployment/`](docs/deployment/README.md) - Dagster Cloud and Docker deployment guides
+- **Transition Detection**: [`docs/transition/`](docs/transition/README.md) - Technology transition detection system
+- **Machine Learning**: [`docs/ml/`](docs/ml/README.md) - CET classifier and ML integration
+- **Architecture**: [`docs/architecture/`](docs/architecture/detailed-overview.md) - System architecture and design patterns
+- **Schemas**: [`docs/schemas/`](docs/references/schemas/neo4j.md) - Neo4j graph schema documentation
+- **Data Sources**: `docs/data/` - Data dictionaries and source documentation
+- **Specifications**: `.kiro/specs/` - Kiro specification system (see `AGENTS.md` for workflow guidance)
+
+For a complete documentation map, see [`docs/index.md`](docs/index.md).
 
 ## Error Handling
 

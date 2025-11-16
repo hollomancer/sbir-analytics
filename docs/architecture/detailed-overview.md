@@ -152,7 +152,7 @@ sbir-etl/
 | File | Purpose |
 |------|---------|
 | `src/definitions.py` | Dagster repository root; loads all assets and job definitions |
-| `pyproject.toml` | Poetry dependencies + Dagster entry point |
+| `pyproject.toml` | Python dependencies (uv) + Dagster entry point |
 | `config/base.yaml` | Default configuration (paths, thresholds, credentials) |
 | `Dockerfile` | Multi-stage Docker build |
 | `docker-compose.yml` | Local dev/test services (Dagster, Neo4j) |

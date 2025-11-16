@@ -445,24 +445,24 @@ def cet_active_learning_candidates(
 
 ```bash
 # Run CET classification tests
-poetry run pytest tests/unit/test_cet_*.py -v
+uv run pytest tests/unit/test_cet_*.py -v
 
 # With coverage
-poetry run pytest tests/unit/test_cet_*.py --cov=src/ml --cov-report=html
+uv run pytest tests/unit/test_cet_*.py --cov=src/ml --cov-report=html
 ```
 
 ### Integration Tests
 
 ```bash
 # Test full CET pipeline (classify → validate → load)
-poetry run pytest tests/integration/test_cet_pipeline.py -v
+uv run pytest tests/integration/test_cet_pipeline.py -v
 ```
 
 ### E2E Tests
 
 ```bash
 # Full pipeline with real data (small sample)
-poetry run pytest tests/e2e/test_cet_e2e.py -v
+uv run pytest tests/e2e/test_cet_e2e.py -v
 
 # Or via Docker
 make docker-e2e-standard
@@ -606,7 +606,7 @@ Tracked in `reports/alerts/`:
 
 ```bash
 # View classification results
-poetry run python -c "
+uv run python -c "
 import pandas as pd
 df = pd.read_parquet('data/processed/enriched_cet_award_classifications.parquet')
 print(df.head(10))
@@ -614,7 +614,7 @@ print(df.describe())
 "
 
 # Check Neo4j CET nodes
-poetry run python << 'PYTHON'
+uv run python << 'PYTHON'
 from src.loaders.neo4j import Neo4jClient, Neo4jConfig
 from src.config.loader import get_config
 
@@ -628,10 +628,10 @@ with client.session() as session:
 PYTHON
 
 # Run CET pipeline
-poetry run dagster job execute -m src.definitions -j cet_full_pipeline_job
+uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
 
 # View Dagster UI
-poetry run dagster dev
+uv run dagster dev
 # Then navigate to http://localhost:3000
 ```
 

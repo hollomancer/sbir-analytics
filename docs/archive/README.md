@@ -7,6 +7,8 @@ This directory contains historical documentation that has been archived but kept
 - `architecture/` - Historical architecture planning documents
 - `fixes/` - Historical bug fix documentation
 - `transition/` - Historical transition detection reports
+- `DOCUMENTATION_CONSOLIDATION_PLAN.md` - Meta-documentation about documentation consolidation (Nov 2025)
+- `EXPLORATION_SUMMARY.md` - Historical codebase exploration results (Nov 2025)
 
 ## When to Archive
 

@@ -12,8 +12,20 @@ Status: active
 This is the canonical reference for the graph schema used by the SBIR ETL loader.
 
 - Loader implementation: `src/loaders/` (MERGE-based idempotent writes)
-- Schema docs (historical): `docs/schemas/`
+- Schema docs (detailed): `docs/schemas/` (see Detailed Schema Documentation below)
 - Changes here must be reflected in loader code and vice versa in the same PR.
+
+## Detailed Schema Documentation
+
+For comprehensive schema documentation, including field-level details, constraints, and examples:
+
+- **[Organization Schema](../../schemas/organization-schema.md)** - Company and organization entities
+- **[Individual Schema](../../schemas/individual-schema.md)** - Researcher and individual entities
+- **[Financial Transaction Schema](../../schemas/financial-transaction-schema.md)** - Award and transaction entities
+- **[Patent Assignment Schema](../../schemas/patent-assignment-schema.md)** - Patent assignment relationships
+- **[Patent Neo4j Schema](../../schemas/patent-neo4j-schema.md)** - Patent entities and fields
+- **[Patent Field Mapping](../../schemas/patent-field-mapping.md)** - USPTO to Neo4j field mapping
+- **[Transition Graph Schema](../../schemas/transition-graph-schema.md)** - Technology transition detection schema
 
 ## Entities and Relationships
 

@@ -125,7 +125,7 @@ except ImportError:
 |---------|---------|---------|----------------|
 | **rapidfuzz** | 2.16.0+ | Fuzzy string matching for entity resolution | Dev dependency → Promote to main |
 
-**Action Required**: Move `rapidfuzz` from `[tool.poetry.group.dev.dependencies]` to `[tool.poetry.dependencies]`
+**Action Required**: Move `rapidfuzz` from dev dependencies to main dependencies (project now uses `uv` for package management)
 
 ### Usage Across Modules
 
@@ -646,10 +646,12 @@ These components are intentionally module-specific:
 
 ## 5. Dependency Installation Strategy
 
+**Note**: The project uses `uv` for package management. The examples below show the `pyproject.toml` format which `uv` can read.
+
 ### Current State (pyproject.toml)
 
 ```toml
-[tool.poetry.dependencies]
+[project.dependencies]
 python = ">=3.11,<3.12"
 dagster = "^1.7.0"
 pandas = "^2.2.0"
@@ -665,7 +667,7 @@ rich = "^13.7.0"
 ### Recommended Updates
 
 ```toml
-[tool.poetry.dependencies]
+[project.dependencies]
 
 ## Core (no changes)
 
@@ -689,16 +691,18 @@ rapidfuzz = "^2.16.0"
 scikit-learn = {version = "^1.4.0", optional = true}
 spacy = {version = "^3.7.0", optional = true}
 
-[tool.poetry.extras]
+[project.optional-dependencies]
 ml = ["scikit-learn", "spacy"]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-cov = "^5.0.0"
-black = "^24.0.0"
-ruff = "^0.5.0"
-mypy = "^1.8.0"
-bandit = "^1.7.0"
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "black>=24.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.8.0",
+    "bandit>=1.7.0",
+]
 
 ## rapidfuzz moved to main dependencies
 
@@ -1000,7 +1004,7 @@ class EvaluationFramework:
 1. **High Reusability**: 85% of dependencies shared across modules
 2. **Consistent Patterns**: Configuration, logging, validation, loading patterns are standardized
 3. **Modular Design**: Clear separation between shared infrastructure and module-specific logic
-4. **Optional ML**: ML dependencies isolated with `poetry extras` - other modules remain lightweight
+4. **Optional ML**: ML dependencies isolated with optional dependencies - other modules remain lightweight
 
 ### ⚠️ Risks
 
