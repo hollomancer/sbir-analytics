@@ -276,6 +276,25 @@ transformation:
       - "FUNDED_BY"
       - "SUBMITTED_BY"
 
+# Organization deduplication configuration
+organization_deduplication:
+  # Pre-loading fuzzy matching thresholds
+  high_threshold: 90  # Auto-merge matches >= 90%
+  low_threshold: 75   # Flag for review matches >= 75%
+  
+  # Multi-key MERGE settings
+  merge_on_uei: true   # Merge nodes with same UEI
+  merge_on_duns: true  # Merge nodes with same DUNS
+  
+  # Merge history tracking
+  track_merge_history: true  # Enable merge history tracking for reversibility
+  
+  # Enhanced matching (passed to company_enricher)
+  enhanced_matching:
+    enable_phonetic_matching: true
+    enable_jaro_winkler: false
+    enable_enhanced_abbreviations: true
+
 # Company categorization configuration
 company_categorization:
   # Classification thresholds
