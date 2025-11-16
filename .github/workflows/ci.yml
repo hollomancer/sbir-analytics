@@ -14,11 +14,14 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
-    # Only run change detection on PRs to optimize CI time
-    if: github.event_name == 'pull_request'
+    # Run change detection on all events to enable path-based filtering
     permissions:
       contents: read
       pull-requests: read
@@ -26,6 +29,8 @@ jobs:
       performance: ${{ steps.filter.outputs.performance }}
       cet: ${{ steps.filter.outputs.cet }}
       transition: ${{ steps.filter.outputs.transition }}
+      docker: ${{ steps.filter.outputs.docker }}
+      docs-only: ${{ steps.filter.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v2
@@ -52,9 +57,31 @@ jobs:
               - 'docs/transition/**'
               - 'Makefile'
               - '.github/workflows/**'
+            docker:
+              - 'Dockerfile'
+              - 'docker-compose.yml'
+              - '.dockerignore'
+              - 'docker/**'
+            docs-only:
+              - '**/*.md'
+              - 'docs/**'
+              - '!**/*.py'
+              - '!**/*.yaml'
+              - '!**/*.yml'
+              - '!**/*.json'
+              - '!**/*.toml'
+              - '!**/*.lock'
+              - '!Makefile'
+              - '!.github/**'
 
   test:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
+    # Skip test job on PRs if only docs changed (but always run on push to main/develop)
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
 
     # Only use Neo4j service container if explicitly requested via workflow_dispatch
     services:
@@ -126,16 +153,32 @@ jobs:
           restore-keys: |
             venv-${{ runner.os }}-${{ matrix.python-version }}-
 
+      - name: Cache pytest cache
+        uses: actions/cache@v3
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('tests/**/*.py', 'src/**/*.py') }}
+          restore-keys: |
+            pytest-${{ runner.os }}-${{ matrix.python-version }}-
+
       - name: Install dependencies
         run: uv sync
 
       - name: Run taxonomy completeness checks
+        # Only run taxonomy checks when CET-related files change or on push to main/develop
+        if: |
+          github.event_name == 'push' ||
+          (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true')
         run: |
           echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
           # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
           uv run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json || true
 
       - name: Evaluate taxonomy checks
+        # Only evaluate when checks were run
+        if: |
+          github.event_name == 'push' ||
+          (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true')
         run: |
           set -e
           PYFILE=$(mktemp)
@@ -164,10 +207,19 @@ jobs:
           python "$PYFILE"
           rm -f "$PYFILE"
 
-      - name: Install duckdb and pyreadstat
+      - name: Cache pip packages (duckdb, pyreadstat)
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: pip-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+          restore-keys: |
+            pip-packages-${{ runner.os }}-
+
+      - name: Install pyreadstat (duckdb already in dependencies)
         run: |
-          # Ensure pip is up-to-date inside the UV environment and install required ML runtime deps
-          uv pip install duckdb pyreadstat
+          # pyreadstat is in dev dependencies but needed for tests
+          # duckdb is already installed via uv sync (it's in main dependencies)
+          uv pip install --cache-dir ~/.cache/pip pyreadstat
 
       - name: Verify pandas, duckdb, and pyreadstat installed
         run: |
@@ -256,10 +308,13 @@ jobs:
           NEO4J_URI: ${{ env.NEO4J_URI }}
           NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
-        run: uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing
+        run: |
+          # Use pytest-xdist for parallelization (auto-detects CPU count)
+          uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n auto
 
       - name: Clean up Neo4j test data (Aura Free)
-        if: always() && github.event.inputs.use_docker != 'true'
+        # Only cleanup if we actually used Aura (not Docker) and have credentials
+        if: always() && github.event.inputs.use_docker != 'true' && env.NEO4J_URI != '' && env.NEO4J_PASSWORD != ''
         continue-on-error: true
         run: |
           echo "Cleaning up Neo4j Aura Free test data..."
@@ -321,8 +376,15 @@ jobs:
           fail_ci_if_error: false
 
   container-build-test:
-    needs: test
+    needs: [test, detect-changes]
     runs-on: ubuntu-latest
+    # Only run when Docker files change or on push to main/develop
+    if: |
+      always() &&
+      needs.test.result == 'success' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
+       github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -396,12 +458,13 @@ jobs:
             reports || true
 
   performance-check:
-    needs: test
-    # Run on PR only if performance files changed, always run on push to main/develop
+    needs: [test, detect-changes]
+    # Run on PR only if performance files changed, always run on push to main/develop (unless docs-only)
     if: |
       always() &&
       needs.test.result == 'success' &&
-      (github.event_name == 'push' || needs.detect-changes.outputs.performance == 'true')
+      (github.event_name == 'push' || needs.detect-changes.outputs.performance == 'true') &&
+      !(github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
@@ -484,7 +547,7 @@ jobs:
             /tmp/regression.json
             /tmp/report.md
             /tmp/report.html
-          retention-days: 30
+          retention-days: 7
 
       - name: Parse regression results
         id: parse_results

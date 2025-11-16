@@ -422,6 +422,45 @@ See `docs/deployment/dagster-cloud-multiple-neo4j-instances.md` for detailed gui
 
 6. Verify all dependencies are listed in `pyproject.toml`
 
+**Common Error**: `ConnectionResetError: Connection reset by peer` during upload
+- **Cause**: The PEX bundle is too large (500+ MB), causing network timeouts during upload. This happens when unnecessary files (data/, reports/, docs/, tests/, etc.) are included in the bundle.
+- **Solution**: 
+  1. **Create `MANIFEST.in` file** in project root to exclude unnecessary files:
+     ```plaintext
+     # Include only essential source code and configuration
+     include src/**/*
+     include config/**/*
+     include pyproject.toml
+     include README.md
+     
+     # Exclude everything else
+     global-exclude *
+     prune data
+     prune reports
+     prune logs
+     prune metrics
+     prune artifacts
+     prune neo4j
+     prune docs
+     prune archive
+     prune tests
+     prune scripts
+     prune examples
+     # ... (see MANIFEST.in in project root for full list)
+     ```
+  
+  2. **Verify `pyproject.toml` limits packages**:
+     ```toml
+     [tool.hatch.build.targets.wheel]
+     packages = ["src"]
+     ```
+  
+  3. **Expected bundle size**: Should reduce from ~522 MB to ~300-370 MB (only `src/`, `config/`, dependencies)
+  
+  4. **Retry deployment** after creating `MANIFEST.in`
+  
+  **Reference**: [Dagster Cloud Runtime Environment Documentation](https://docs.dagster.io/deployment/dagster-plus/serverless/runtime-environment#include-data-files)
+
 ### Environment Variables Not Working
 
 **Issue**: Variables set via CLI don't appear in UI

@@ -1,0 +1,81 @@
+# MANIFEST.in
+# Controls what files are included in the Python package/PEX bundle
+# Used by Dagster Cloud Serverless deployment to reduce bundle size
+
+# Include only essential source code and configuration
+include src/**/*
+include config/**/*
+include pyproject.toml
+include README.md
+
+# Explicitly exclude large/unnecessary directories (prune = exclude directory)
+prune data
+prune reports
+prune logs
+prune metrics
+prune artifacts
+prune neo4j
+prune docs
+prune archive
+prune tests
+prune scripts
+prune examples
+prune .github
+prune .git
+prune .venv
+prune venv
+prune env
+prune ENV
+prune build
+prune dist
+prune htmlcov
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+prune openspec
+prune docker
+
+# Exclude common build artifacts and caches
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude *.egg-info
+global-exclude *.egg
+global-exclude *.log
+global-exclude *.tmp
+global-exclude *.bak
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+
+# Exclude environment and lock files (dependencies resolved from pyproject.toml)
+global-exclude .env
+global-exclude .env.*
+global-exclude uv.lock
+global-exclude poetry.lock
+global-exclude requirements.txt
+
+# Exclude Docker files
+global-exclude docker-compose.yml
+global-exclude Dockerfile
+global-exclude .dockerignore
+
+# Exclude documentation files (except README.md which is explicitly included above)
+global-exclude *.md
+include README.md
+
+# Exclude CI/CD files
+global-exclude .gitlab-ci.yml
+global-exclude .travis.yml
+
+# Exclude IDE files
+global-exclude .vscode/**
+global-exclude .idea/**
+global-exclude *.code-workspace
+
+# Exclude OS files
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude desktop.ini
+

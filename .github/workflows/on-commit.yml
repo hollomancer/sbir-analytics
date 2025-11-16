@@ -1,9 +1,14 @@
 name: On Commit
 
 on:
+  pull_request:
   push:
-    branches-ignore: []
-    # Run on any commit to any branch
+    branches: [main, develop]
+    # Only run on PRs and pushes to main/develop to reduce CI minutes
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   static-analysis:
@@ -142,32 +147,7 @@ jobs:
             .secrets.baseline
           if-no-files-found: ignore
 
-  test:
-    name: Fast Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Cache UV virtual environment
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-3.11-
-      - name: Install dependencies
-        run: uv sync
-      - name: Install duckdb and pyreadstat
-        run: uv pip install duckdb pyreadstat
-      - name: Run fast tests
-        run: uv run pytest -m fast -v
+  # Fast tests removed - already run in ci.yml to avoid duplication
 
   docs-link-check:
     name: Docs Link Check
