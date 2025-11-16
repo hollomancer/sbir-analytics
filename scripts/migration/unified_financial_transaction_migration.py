@@ -229,7 +229,7 @@ def get_env_variable(name: str, default: str | None = None) -> str | None:
     """Get environment variable with optional default."""
     val = os.getenv(name, default)
     if val is None:
-        logger.debug("Environment variable %s is not set and no default provided", name)
+        logger.debug("Environment variable {} is not set and no default provided", name)
     return val
 
 
@@ -239,7 +239,7 @@ def connect(uri: str, user: str, password: str) -> Any:
         raise RuntimeError(
             "neo4j python driver not available. Install 'neo4j' package (pip install neo4j)."
         )
-    logger.info("Connecting to Neo4j at %s as user %s", uri, user)
+    logger.info("Connecting to Neo4j at {} as user {}", uri, user)
     
     # Configure driver with extended timeouts for long-running migrations
     pool_size = int(os.getenv("NEO4J_POOL_SIZE", "20"))
@@ -825,7 +825,7 @@ def update_award_relationships(driver: Any, dry_run: bool = False) -> int:
 
     if dry_run:
         for query in queries:
-            logger.info("DRY RUN: Would execute:\n%s", query)
+            logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     total_updated = 0
@@ -837,9 +837,9 @@ def update_award_relationships(driver: Any, dry_run: bool = False) -> int:
                 count = single_result["updated"] if single_result else 0
                 total_updated += count
             except Exception as e:
-                logger.warning("Failed to update relationship: %s", e)
+                logger.warning("Failed to update relationship: {}", e)
 
-    logger.info("✓ Updated %d Award relationships", total_updated)
+    logger.info("✓ Updated {} Award relationships", total_updated)
     return total_updated
 
 
@@ -887,7 +887,7 @@ def update_contract_relationships(driver: Any, dry_run: bool = False) -> int:
 
     if dry_run:
         for query in queries:
-            logger.info("DRY RUN: Would execute:\n%s", query)
+            logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     total_updated = 0
@@ -899,9 +899,9 @@ def update_contract_relationships(driver: Any, dry_run: bool = False) -> int:
                 count = single_result["updated"] if single_result else 0
                 total_updated += count
             except Exception as e:
-                logger.warning("Failed to update relationship: %s", e)
+                logger.warning("Failed to update relationship: {}", e)
 
-    logger.info("✓ Updated %d Contract relationships", total_updated)
+    logger.info("✓ Updated {} Contract relationships", total_updated)
     return total_updated
 
 
@@ -929,13 +929,13 @@ def update_transition_nodes(driver: Any, dry_run: bool = False) -> int:
     """
 
     if dry_run:
-        logger.info("DRY RUN: Would execute:\n%s", query)
+        logger.info("DRY RUN: Would execute:\n{}", query)
         return 0
 
     with driver.session() as session:
         result = session.run(query)
         count = result.single()["updated"] if result.peek() else 0
-        logger.info("✓ Updated %d Transition nodes", count)
+        logger.info("✓ Updated {} Transition nodes", count)
         return count
 
 
@@ -960,19 +960,19 @@ def create_financial_transaction_constraints_and_indexes(driver: Any, dry_run: b
 
     if dry_run:
         for stmt in statements:
-            logger.info("DRY RUN: Would execute:\n%s", stmt)
+            logger.info("DRY RUN: Would execute:\n{}", stmt)
         return
 
     with driver.session() as session:
         for stmt in statements:
             try:
                 session.run(stmt)
-                logger.info("✓ Created constraint/index: %s", stmt.split()[2:5])
+                logger.info("✓ Created constraint/index: {}", stmt.split()[2:5])
             except Neo4jError as e:
                 if "already exists" in str(e).lower():
                     logger.info("Constraint/index already exists, skipping")
                 else:
-                    logger.warning("Failed to create constraint/index: %s", e)
+                    logger.warning("Failed to create constraint/index: {}", e)
 
 
 def validate_migration(driver: Any) -> dict[str, Any]:
@@ -1012,7 +1012,7 @@ def validate_migration(driver: Any) -> dict[str, Any]:
                     record = result.single()
                     results[key] = record["count"] if record else 0
             except Exception as e:
-                logger.warning("Validation query failed for %s: %s", key, e)
+                logger.warning("Validation query failed for {}: {}", key, e)
                 results[key] = None
 
     return results
@@ -1025,19 +1025,19 @@ def print_validation_results(results: dict[str, Any]) -> None:
     logger.info("=" * 60)
 
     logger.info("\nRemaining legacy nodes:")
-    logger.info("  Awards: %s", results.get("remaining_awards", "N/A"))
-    logger.info("  Contracts: %s", results.get("remaining_contracts", "N/A"))
+    logger.info("  Awards: {}", results.get("remaining_awards", "N/A"))
+    logger.info("  Contracts: {}", results.get("remaining_contracts", "N/A"))
 
     logger.info("\nFinancialTransactions by type:")
     tx_types = results.get("financial_transactions_by_type", [])
     for tx_type in tx_types:
-        logger.info("  %s: %d", tx_type.get("ft.transaction_type", "UNKNOWN"), tx_type.get("count", 0))
+        logger.info("  {}: {}", tx_type.get("ft.transaction_type", "UNKNOWN"), tx_type.get("count", 0))
 
     logger.info("\nRelationships:")
-    logger.info("  AWARDED_TO: %s", results.get("awarded_to_relationships", "N/A"))
-    logger.info("  FUNDED_BY: %s", results.get("funded_by_relationships", "N/A"))
-    logger.info("  TRANSITIONED_TO: %s", results.get("transitioned_to_relationships", "N/A"))
-    logger.info("  RESULTED_IN: %s", results.get("resulted_in_relationships", "N/A"))
+    logger.info("  AWARDED_TO: {}", results.get("awarded_to_relationships", "N/A"))
+    logger.info("  FUNDED_BY: {}", results.get("funded_by_relationships", "N/A"))
+    logger.info("  TRANSITIONED_TO: {}", results.get("transitioned_to_relationships", "N/A"))
+    logger.info("  RESULTED_IN: {}", results.get("resulted_in_relationships", "N/A"))
 
     logger.info("\n" + "=" * 60)
 
