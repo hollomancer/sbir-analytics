@@ -50,6 +50,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'uv'
 
       - name: Install UV
         run: |
@@ -132,6 +133,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'uv'
 
       - name: Install UV
         run: |
@@ -203,6 +205,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'uv'
 
       - name: Install UV
         run: |
@@ -293,6 +296,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: 'uv'
 
       - name: Install formatters
         run: python -m pip install --disable-pip-version-check -q black isort
