@@ -16,6 +16,7 @@ from ..config.loader import get_config
 from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 from ..loaders.neo4j.organizations import OrganizationLoader
 from ..models.award import Award
+from ..utils.company_canonicalizer import canonicalize_companies_from_awards
 
 # State name to code mapping
 STATE_NAME_TO_CODE = {
@@ -324,9 +325,23 @@ def neo4j_sbir_awards(
     metrics = LoadMetrics()
 
     try:
-        # Ensure constraints exist
+        # Ensure constraints exist (deprecated - migrations handle this, but keep for backward compatibility)
         client.create_constraints()
         client.create_indexes()
+
+        # STEP 1: Pre-loading deduplication - canonicalize companies before processing
+        config = get_config()
+        dedup_config = config.organization_deduplication
+        context.log.info("Pre-processing: Canonicalizing companies...")
+        
+        canonical_map = canonicalize_companies_from_awards(
+            validated_sbir_awards,
+            high_threshold=dedup_config.get("high_threshold", 90),
+            low_threshold=dedup_config.get("low_threshold", 75),
+            enhanced_config=dedup_config.get("enhanced_matching"),
+        )
+        
+        context.log.info(f"Canonicalized {len(canonical_map)} companies")
 
         # Convert DataFrame rows to Award models, then to Neo4j node properties
         award_nodes = []
@@ -445,22 +460,46 @@ def neo4j_sbir_awards(
                 award_objects.append(award)  # Keep Award object for progression detection
 
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
-                # Also track all identifiers for cross-walking
-                company_id = None
-                company_id_type = None  # Track identification method
+                # Use canonical mapping from pre-loading deduplication
                 normalized_company_name = normalize_company_name(award.company_name) if award.company_name else ""
-
+                
+                # Build original key
                 if award.company_uei:
-                    company_id = award.company_uei
-                    company_id_type = "uei"
+                    original_key = award.company_uei
                 elif award.company_duns:
-                    company_id = f"DUNS:{award.company_duns}"
-                    company_id_type = "duns"
+                    original_key = f"DUNS:{award.company_duns}"
                 elif normalized_company_name:
-                    # Use normalized company name as final fallback
-                    company_id = f"NAME:{normalized_company_name}"
-                    company_id_type = "name"
-                    companies_by_name_only += 1
+                    original_key = f"NAME:{normalized_company_name}"
+                else:
+                    original_key = None
+                
+                # Map to canonical using pre-loading deduplication result
+                company_id = None
+                company_id_type = None
+                
+                if original_key and original_key in canonical_map:
+                    canonical_key = canonical_map[original_key]
+                    if canonical_key.startswith("UEI:"):
+                        company_id = canonical_key[4:]  # Remove "UEI:" prefix
+                        company_id_type = "uei"
+                    elif canonical_key.startswith("DUNS:"):
+                        company_id = canonical_key[5:]  # Remove "DUNS:" prefix
+                        company_id_type = "duns"
+                    else:
+                        company_id = canonical_key  # Keep full "NAME:..." for name-based
+                        company_id_type = "name"
+                elif original_key:
+                    # Fallback to original logic if not in canonical map
+                    if award.company_uei:
+                        company_id = award.company_uei
+                        company_id_type = "uei"
+                    elif award.company_duns:
+                        company_id = f"DUNS:{award.company_duns}"
+                        company_id_type = "duns"
+                    elif normalized_company_name:
+                        company_id = f"NAME:{normalized_company_name}"
+                        company_id_type = "name"
+                        companies_by_name_only += 1
                 else:
                     # Track awards without any company identifier
                     if skipped_no_company_id < 10:
@@ -635,14 +674,22 @@ def neo4j_sbir_awards(
                     validation_errors += 1
                 metrics.errors += 1
 
-        # Load Organization nodes (companies) first
+        # Load Organization nodes (companies) first - using multi-key MERGE
         if company_nodes_map:
             company_nodes_list = list(company_nodes_map.values())
-            company_metrics = client.batch_upsert_nodes(
-                label="Organization", key_property="organization_id", nodes=company_nodes_list, metrics=metrics
+            company_metrics = client.batch_upsert_organizations_with_multi_key(
+                nodes=company_nodes_list,
+                metrics=metrics,
+                merge_on_uei=dedup_config.get("merge_on_uei", True),
+                merge_on_duns=dedup_config.get("merge_on_duns", True),
+                track_merge_history=dedup_config.get("track_merge_history", True),
             )
             metrics = company_metrics
-            context.log.info(f"Loaded {len(company_nodes_list)} Organization nodes (companies)")
+            context.log.info(
+                f"Loaded {len(company_nodes_list)} Organization nodes (companies): "
+                f"{metrics.nodes_created.get('Organization', 0)} created, "
+                f"{metrics.nodes_updated.get('Organization', 0)} updated"
+            )
 
         # Load FinancialTransaction nodes (unified Award/Contract model)
         if award_nodes:

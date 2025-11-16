@@ -23,10 +23,10 @@ Locations referenced in this runbook:
     (idempotent user/role creation and optional admin rotation)
     ```
 
-  - Schema apply scaffold: `scripts/neo4j/apply_schema.py`
+  - Migration CLI: `scripts/neo4j/migrate.py`
 
-    ```sbir-etl/scripts/neo4j/apply_schema.py#L1-240
-    (idempotent index/constraint application scaffold)
+    ```sbir-etl/scripts/neo4j/migrate.py#L1-50
+    (versioned schema migrations - see docs/migrations/README.md)
     ```
 
   - Backup: `scripts/neo4j/backup.sh`
@@ -145,20 +145,24 @@ NEO4J_PASSWORD=<admin_password> ./scripts/neo4j/bootstrap_users.sh --ingest-user
 
 Schema bootstrap
 
-- Run the schema-apply scaffold to create indexes/constraints before running loaders:
+- Migrations run automatically when `Neo4jClient` is initialized (if `auto_migrate=True`, which is the default).
+- To run migrations manually:
 
-```sbir-etl/scripts/neo4j/apply_schema.py#L1-20
+```bash
+# Check current version
+python scripts/neo4j/migrate.py current
 
-## Dry-run:
+# View migration history
+python scripts/neo4j/migrate.py history
 
-python scripts/neo4j/apply_schema.py --dry-run
+# Upgrade to latest
+NEO4J_PASSWORD=<admin_password> python scripts/neo4j/migrate.py upgrade
 
-## Apply:
-
-NEO4J_PASSWORD=<admin_password> python scripts/neo4j/apply_schema.py
+# Dry-run (preview changes)
+python scripts/neo4j/migrate.py upgrade --dry-run
 ```
 
-- The scaffold contains example statements; adapt `SCHEMA_STATEMENTS` to your production schema as needed.
+- See `docs/migrations/README.md` for detailed migration documentation.
 
 Backup & restore
 
@@ -229,8 +233,11 @@ Troubleshooting checklist
 3. Dumps fail inside container:
    - Ensure sufficient disk space in the container host and the volume used for temporary dumps (`/backups`).
    - Examine `neo4j-admin` output by running the command manually inside a container for diagnostics.
-4. Schema install fails:
-   - Check `scripts/neo4j/apply_schema.py` logs; inspect error text to determine if the statements are already present or incompatible with the server version.
+4. Migration failures:
+   - Check migration logs in Neo4j client initialization
+   - Run `python scripts/neo4j/migrate.py history` to see applied migrations
+   - Check `migrations/versions/` for migration definitions
+   - See `docs/migrations/README.md` for troubleshooting
 5. Slow imports or OOM:
    - Increase `server.memory.heap.max_size` and `server.memory.pagecache.size` in `config/neo4j/neo4j.conf` and restart.
    - Consider chunked loads and prefer offline import tools for large initial imports.
@@ -251,12 +258,12 @@ Where to look in the repo
 
 - Compose override: `docker/neo4j.compose.override.yml`
 - Neo4j config template: `config/neo4j/neo4j.conf`
-- Bootstrap / schema / backup / restore: `scripts/neo4j/*`
+- Bootstrap / migrations / backup / restore: `scripts/neo4j/*`
 - Makefile neo4j wrappers: `Makefile` (search `neo4j-` targets)
 - General containerization and runbook: `docs/deployment/containerization.md`
 
 If you'd like, I can next:
 
 - Implement automated CI job for scheduled backups (uploading to a configured S3 bucket).
-- Harden `apply_schema.py` to include full production schema and version-aware compatibility checks.
+- Migrations are versioned and tracked in Neo4j. See `docs/migrations/README.md` for details.
 - Add example TLS configuration and an integration test that validates TLS-enabled Bolt connections.
