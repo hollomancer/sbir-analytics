@@ -21,9 +21,7 @@ from typing import Any
 
 from loguru import logger
 
-from src.config.schemas import Neo4jConfig
 from src.extractors.uspto_extractor import USPTOExtractor
-from src.loaders.neo4j.client import Neo4jClient
 
 from .utils import (
     AssetCheckResult,
@@ -481,25 +479,3 @@ def uspto_company_linkage_check(
         ),
         metadata=metadata,
     )
-
-
-# Neo4j loading assets
-def _get_neo4j_client() -> Neo4jClient | None:
-    """Create and return a Neo4j client, or None if unavailable."""
-    if Neo4jClient is None or Neo4jConfig is None:
-        logger.warning("Neo4jClient unavailable; skipping Neo4j operations")  # type: ignore[unreachable]
-        return None
-
-    try:
-        config = Neo4jConfig(
-            uri=DEFAULT_NEO4J_URI,
-            username=DEFAULT_NEO4J_USER,
-            password=DEFAULT_NEO4J_PASSWORD,
-            database=DEFAULT_NEO4J_DATABASE,
-        )
-        client = Neo4jClient(config)
-        logger.info(f"Created Neo4j client for {DEFAULT_NEO4J_URI}")
-        return client
-    except Exception as e:
-        logger.error(f"Failed to create Neo4j client: {e}")
-        return None
