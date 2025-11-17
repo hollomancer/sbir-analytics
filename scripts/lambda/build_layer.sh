@@ -3,11 +3,20 @@
 
 set -e
 
-LAYER_DIR="lambda/layers/python-dependencies"
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+LAYER_DIR="${PROJECT_ROOT}/lambda/layers/python-dependencies"
 OUTPUT_DIR="/tmp/lambda-layer"
 PYTHON_VERSION="3.11"
 
 echo "Building Lambda layer for Python dependencies..."
+
+# Verify requirements file exists
+if [ ! -f "${LAYER_DIR}/requirements.txt" ]; then
+    echo "ERROR: Requirements file not found at: ${LAYER_DIR}/requirements.txt"
+    exit 1
+fi
 
 # Create output directory structure
 mkdir -p "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
