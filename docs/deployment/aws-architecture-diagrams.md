@@ -24,7 +24,6 @@ graph TB
             L6[Lambda: reset-neo4j<br/>Layer]
             L7[Lambda: load-neo4j<br/>Container Image]
             L8[Lambda: smoke-checks<br/>Layer]
-            L9[Lambda: create-pr<br/>Layer]
         end
         
         subgraph "Storage"
@@ -34,7 +33,6 @@ graph TB
         
         subgraph "External"
             NEO4J[Neo4j Aura<br/>Cloud Database]
-            GH[GitHub API<br/>PR Creation]
             SBIR[SBIR.gov<br/>CSV Download]
         end
     end
@@ -48,7 +46,6 @@ graph TB
     SF --> L6
     SF --> L7
     SF --> L8
-    SF --> L9
     
     L1 --> S3
     L1 --> SBIR
@@ -63,14 +60,10 @@ graph TB
     L7 --> NEO4J
     L8 --> SM
     L8 --> NEO4J
-    L9 --> S3
-    L9 --> SM
-    L9 --> GH
     
     SM -.->|Provides Credentials| L6
     SM -.->|Provides Credentials| L7
     SM -.->|Provides Credentials| L8
-    SM -.->|Provides Token| L9
     
     style GA fill:#2088ff
     style SF fill:#ff9900
@@ -104,8 +97,7 @@ stateDiagram-v2
     EnrichmentChecks --> ResetNeo4j: Success
     ResetNeo4j --> LoadNeo4j: Success (Optional)
     LoadNeo4j --> SmokeChecks: Success
-    SmokeChecks --> CreatePR: Success
-    CreatePR --> [*]: Success
+    SmokeChecks --> [*]: Success
     
     CheckChanges --> EndNoChanges: No Changes
     EndNoChanges --> [*]
@@ -118,7 +110,6 @@ stateDiagram-v2
     ResetNeo4j --> ErrorHandler: Error
     LoadNeo4j --> ErrorHandler: Error
     SmokeChecks --> ErrorHandler: Error
-    CreatePR --> ErrorHandler: Error
     
     ErrorHandler --> [*]
     
@@ -156,12 +147,10 @@ flowchart LR
         L5[Enrichment]
         L6[Load]
         L7[Smoke]
-        L8[PR]
     end
     
     subgraph "Output"
         NEO4J[(Neo4j Aura)]
-        GH[GitHub PR]
     end
     
     SBIR -->|HTTP GET| L1
@@ -179,8 +168,6 @@ flowchart LR
     L6 -->|Load| NEO4J
     ART -->|Read| L7
     L7 -->|Query| NEO4J
-    ART -->|Read| L8
-    L8 -->|Create| GH
     
     CONFIG -.->|Controls Flow| L1
     CONFIG -.->|Controls Flow| L2
@@ -189,7 +176,6 @@ flowchart LR
     CONFIG -.->|Controls Flow| L5
     CONFIG -.->|Controls Flow| L6
     CONFIG -.->|Controls Flow| L7
-    CONFIG -.->|Controls Flow| L8
 ```
 
 ## AWS Services Relationship Diagram
@@ -221,7 +207,6 @@ graph TB
     
     subgraph "External Services"
         NEO4J[Neo4j Aura]
-        GH[GitHub API]
         SBIR[SBIR.gov]
     end
     
@@ -242,7 +227,6 @@ graph TB
     
     SM -->|Credentials| NEO4J
     L1 -->|Connect| NEO4J
-    L1 -->|API Calls| GH
     L1 -->|Download| SBIR
     
     SF -->|Logs| CW

@@ -129,18 +129,6 @@
     "SmokeChecks": {
       "Type": "Task",
       "Resource": "${lambda.smoke-checks.arn}",
-      "Next": "CreatePR",
-      "Retry": [
-        {
-          "ErrorEquals": ["States.TaskFailed"],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 3
-        }
-      ]
-    },
-    "CreatePR": {
-      "Type": "Task",
-      "Resource": "${lambda.create-pr.arn}",
       "End": true,
       "Retry": [
         {

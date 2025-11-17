@@ -19,10 +19,9 @@ The state machine is defined in `infrastructure/step-functions/weekly-refresh-st
 5. **EnrichmentChecks**: Runs enrichment coverage analysis
 6. **ResetNeo4j**: Resets Neo4j database (optional)
 7. **LoadNeo4j**: Loads validated awards into Neo4j
-8. **SmokeChecks**: Validates Neo4j data integrity
-9. **CreatePR**: Creates GitHub PR with results
-10. **EndNoChanges**: Success state when no changes detected
-11. **ErrorHandler**: Catches and handles errors
+8. **SmokeChecks**: Validates Neo4j data integrity (workflow completes)
+9. **EndNoChanges**: Success state when no changes detected
+10. **ErrorHandler**: Catches and handles errors
 
 ## Input Format
 
@@ -42,7 +41,7 @@ The state machine is defined in `infrastructure/step-functions/weekly-refresh-st
   "execution_arn": "arn:aws:states:...",
   "output": {
     "status": "success",
-    "pr_url": "https://github.com/...",
+    "smoke_check_json_s3_key": "artifacts/2025-01-15/neo4j_smoke_check.json",
     ...
   }
 }

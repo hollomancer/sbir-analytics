@@ -43,7 +43,6 @@ class LambdaStack(Stack):
             "enrichment-checks",
             "reset-neo4j",
             "smoke-checks",
-            "create-pr",
         ]
 
         # Create Lambda layer for Python dependencies
@@ -79,7 +78,6 @@ class LambdaStack(Stack):
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
                     "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
-                    "GITHUB_SECRET_NAME": "sbir-etl/github-token",
                 },
             )
             self.functions[func_name] = func

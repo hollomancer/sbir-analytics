@@ -17,7 +17,6 @@ Each function is in its own directory:
 - **enrichment-checks**: Runs enrichment coverage analysis
 - **reset-neo4j**: Resets Neo4j database
 - **smoke-checks**: Runs Neo4j smoke checks
-- **create-pr**: Creates GitHub PR with results
 
 ### Container-based Functions (Dagster-dependent)
 

@@ -44,12 +44,6 @@ The weekly SBIR awards refresh workflow has been migrated from GitHub Actions to
   }
   ```
 
-- **GitHub Token Secret**: `sbir-etl/github-token`
-  ```json
-  {
-    "token": "ghp_..."
-  }
-  ```
 
 ### IAM Roles
 
@@ -98,13 +92,6 @@ aws secretsmanager create-secret \
   }' \
   --region us-east-2
 
-# GitHub token
-aws secretsmanager create-secret \
-  --name sbir-etl/github-token \
-  --secret-string '{
-    "token": "ghp_..."
-  }' \
-  --region us-east-2
 ```
 
 ### 3. Build and Deploy Lambda Layer
@@ -162,7 +149,6 @@ Add the following secrets to your GitHub repository:
 - `enrichment-checks`: Runs enrichment coverage analysis
 - `reset-neo4j`: Resets Neo4j database
 - `smoke-checks`: Runs Neo4j smoke checks
-- `create-pr`: Creates GitHub PR with results
 
 ### Container-based Functions (Dagster-dependent)
 
@@ -182,8 +168,7 @@ The state machine orchestrates the workflow:
 5. **EnrichmentChecks** → Runs enrichment coverage
 6. **ResetNeo4j** → Resets database (optional)
 7. **LoadNeo4j** → Loads data into Neo4j
-8. **SmokeChecks** → Validates Neo4j data
-9. **CreatePR** → Creates GitHub PR
+8. **SmokeChecks** → Validates Neo4j data (workflow completes)
 
 ## Monitoring
 

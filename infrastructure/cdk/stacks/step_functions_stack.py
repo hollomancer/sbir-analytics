@@ -189,18 +189,6 @@ class StepFunctionsStack(Stack):
                 "SmokeChecks": {
                     "Type": "Task",
                     "Resource": lambda_functions["smoke-checks"].function_arn,
-                    "Next": "CreatePR",
-                    "Retry": [
-                        {
-                            "ErrorEquals": ["States.TaskFailed"],
-                            "IntervalSeconds": 2,
-                            "MaxAttempts": 3,
-                        }
-                    ],
-                },
-                "CreatePR": {
-                    "Type": "Task",
-                    "Resource": lambda_functions["create-pr"].function_arn,
                     "End": True,
                     "Retry": [
                         {

@@ -134,7 +134,6 @@ Lambda functions use these environment variables:
 
 - `S3_BUCKET`: S3 bucket name
 - `NEO4J_SECRET_NAME`: Secrets Manager secret name for Neo4j
-- `GITHUB_SECRET_NAME`: Secrets Manager secret name for GitHub token
 
 ## Error Handling
 
