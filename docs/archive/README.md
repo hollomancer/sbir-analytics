@@ -47,3 +47,4 @@ For current documentation, see:
 - `.kiro/specs/` - Active specifications and requirements
 - `README.md` - Project overview and quick start
 
+
