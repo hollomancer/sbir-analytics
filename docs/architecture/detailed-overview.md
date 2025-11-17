@@ -2,14 +2,17 @@
 
 ## Executive Summary
 
-The **sbir-etl** is a robust, production-grade ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
+The **sbir-etl** is a robust, cloud-native ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
 
 **Key Characteristics:**
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
-- **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j (graph storage)
-- **Orchestration**: Dagster (workflow DAG, asset dependencies, observability)
-- **Deployment**: Docker (containerized dev/test/prod profiles)
-- **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, DuckDB, Pandas, Pydantic, scikit-learn
+- **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j Aura (cloud graph storage)
+- **Orchestration**: Dagster Cloud Solo Plan (primary), AWS Step Functions (scheduled workflows)
+- **Compute**: AWS Lambda functions (serverless processing), Dagster Cloud agents
+- **Storage**: AWS S3 (primary data lake), local filesystem (development fallback)
+- **Database**: Neo4j Aura (cloud-hosted production), Docker Neo4j (local development)
+- **Deployment**: Cloud-first (Dagster Cloud + AWS + Neo4j Aura), Docker (local development)
+- **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, AWS Lambda, S3, DuckDB, Pandas, Pydantic, scikit-learn
 
 ---
 
@@ -715,9 +718,13 @@ Each transition is flagged with:
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Orchestration** | Dagster 1.7+ | Workflow DAG, asset dependencies, observability |
+| **Orchestration** | Dagster Cloud Solo Plan | Managed workflow DAG, asset dependencies, cloud observability |
+| **Compute** | AWS Lambda | Serverless compute for scheduled data refresh workflows |
+| **Storage** | AWS S3 | Primary data lake for CSV files, intermediate results, artifacts |
+| **Secrets Management** | AWS Secrets Manager | Secure storage for Neo4j credentials, API keys |
+| **Database (Production)** | Neo4j Aura | Cloud-hosted graph database, free tier available |
+| **Database (Development)** | Neo4j 5.x (Docker) | Local graph database for development and testing |
 | **Data Processing** | DuckDB + Pandas | Efficient CSV/SQL processing + transformation |
-| **Database** | Neo4j 5.x | Graph storage, relationship traversal |
 | **Configuration** | Pydantic 2.x | Type-safe YAML loading with validation |
 | **ML Classification** | scikit-learn | TF-IDF + Logistic Regression for CET |
 | **Fuzzy Matching** | RapidFuzz 3.x | Company name matching (vendor resolution) |
@@ -725,60 +732,93 @@ Each transition is flagged with:
 | **Logging** | Loguru | Structured logging |
 | **CLI** | Typer + Rich | Interactive dashboard commands |
 | **Testing** | Pytest + Pytest-Cov | Unit/integration/E2E tests |
-| **Containerization** | Docker + Docker Compose | Dev/test/prod profiles |
+| **Local Development** | Docker + Docker Compose | Local dev/test environment (secondary deployment) |
 
-### 6.2 Data Flow Connections
+### 6.2 Data Flow Connections (Cloud Architecture)
 
 ```
-SBIR.gov CSV
-    ↓
-SbirDuckDBExtractor (DuckDB import)
-    ↓
-raw_sbir_awards (Parquet)
-    ↓
-Pydantic Validation (Award model)
-    ↓
-validated_sbir_awards
-    ↓
 ┌─────────────────────────────────────────┐
-│   Multi-stage Enrichment                │
+│   Data Sources                           │
 ├─────────────────────────────────────────┤
-│ • SAM.gov company lookup (httpx + retry)│
-│ • USAspending fuzzy matching (RapidFuzz)│
-│ • NAICS code assignment (fallback)     │
-│ • Patent linking (DuckDB joins)         │
-└─────────────────────────────────────────┘
-    ↓
-enriched_sbir_awards
-    ↓
+│ • SBIR.gov CSV (weekly downloads)        │
+│ • USAspending PostgreSQL dumps          │
+│ • USPTO patent files                    │
+└─────────────────────┬───────────────────┘
+                      ↓
+┌─────────────────────────────────────────┐
+│   AWS Lambda / Dagster Assets           │
+│   (Download & Upload to S3)             │
+└─────────────────────┬───────────────────┘
+                      ↓
+┌─────────────────────────────────────────┐
+│   AWS S3 Data Lake                      │
+├─────────────────────────────────────────┤
+│ • Raw CSVs                               │
+│ • Intermediate Parquet files            │
+│ • Processed datasets                    │
+└─────────────────────┬───────────────────┘
+                      ↓
+┌─────────────────────────────────────────┐
+│   Dagster Cloud / Lambda Processing     │
+├─────────────────────────────────────────┤
+│ • DuckDB extraction (S3 → DataFrame)    │
+│ • Pydantic validation                   │
+│ • Multi-stage enrichment                │
+│   - SAM.gov API lookups                 │
+│   - USAspending fuzzy matching          │
+│   - NAICS code assignment               │
+└─────────────────────┬───────────────────┘
+                      ↓
+┌─────────────────────────────────────────┐
+│   S3 Enriched Data Storage              │
+│   (enriched_sbir_awards.parquet)        │
+└─────────────────────┬───────────────────┘
+                      ↓
 ┌─────────────────────────────────────────┐
 │   Parallel Transformations              │
 ├─────────────────────────────────────────┤
 │ ├─ CET Classification (scikit-learn ML) │
 │ ├─ Transition Detection (6-signal)      │
 │ ├─ Fiscal Analysis (StateIO via R)      │
-│ ├─ Patent Chain (Neo4j pattern)         │
-│ └─ Company Aggregation (Pandas group_by)│
-└─────────────────────────────────────────┘
-    ↓
+│ ├─ Patent Chain Analysis                │
+│ └─ Company Aggregation                  │
+└─────────────────────┬───────────────────┘
+                      ↓
 ┌─────────────────────────────────────────┐
-│   Neo4j Loading (Batch Upsert)          │
+│   Neo4j Aura Loading (Batch Upsert)    │
 ├─────────────────────────────────────────┤
 │ CREATE CONSTRAINT ... UNIQUE            │
 │ CREATE INDEX ...                        │
 │ MERGE (node {id}) ON CREATE/MATCH ...   │
 │ CREATE (n)-[rel]->(m) ...               │
+└─────────────────────┬───────────────────┘
+                      ↓
+┌─────────────────────────────────────────┐
+│   Neo4j Aura Cloud Database             │
+│   (Queryable Knowledge Graph)           │
 └─────────────────────────────────────────┘
-    ↓
-Neo4j Graph Database (Queryable Knowledge Graph)
+
+Local Development Alternative:
+- S3 → Local filesystem fallback (data/ directory)
+- Neo4j Aura → Docker Neo4j (docker-compose.yml)
+- Dagster Cloud → Local Dagster (dagster dev)
 ```
 
 ### 6.3 Neo4j Integration
 
-**Connection Flow:**
+**Production (Neo4j Aura):**
 
 ```python
-# 1. Configure Neo4j
+# 1. Configure Neo4j Aura (Production)
+neo4j_config = Neo4jConfig(
+    uri=os.getenv("NEO4J_URI", "neo4j+s://xxxxx.databases.neo4j.io"),
+    username=os.getenv("NEO4J_USERNAME", "neo4j"),
+    password=os.getenv("NEO4J_PASSWORD"),  # Stored in AWS Secrets Manager
+    database="neo4j",
+    batch_size=5000
+)
+
+# Local Development Alternative
 neo4j_config = Neo4jConfig(
     uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
     username=os.getenv("NEO4J_USERNAME", "neo4j"),
