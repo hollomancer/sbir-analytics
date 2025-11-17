@@ -4,10 +4,71 @@ This directory contains comprehensive deployment documentation for the SBIR ETL 
 
 ## Deployment Overview
 
-The SBIR ETL project supports two deployment strategies:
+The SBIR ETL project supports multiple deployment strategies optimized for different use cases:
 
-1. **Dagster Cloud (Primary)** - Managed Dagster Cloud serverless deployment (recommended)
-2. **Docker Compose (Failover)** - Self-hosted containerized deployment
+1. **Dagster Cloud + AWS (Primary Production)** - Fully managed cloud deployment (recommended)
+2. **AWS Lambda + Step Functions** - Serverless scheduled workflows
+3. **Docker Compose (Development/Failover)** - Self-hosted containerized deployment
+
+## Deployment Decision Tree
+
+```
+┌─────────────────────────────────────┐
+│   What are you deploying?           │
+└──────────────┬──────────────────────┘
+               │
+               ├─── Production? ─────────────────────────────┐
+               │                                              │
+               │                                              ▼
+               │                              ┌───────────────────────────┐
+               │                              │  Use Dagster Cloud        │
+               │                              │  + Neo4j Aura + S3        │
+               │                              │                           │
+               │                              │  Benefits:                │
+               │                              │  • Fully managed          │
+               │                              │  • Auto-scaling           │
+               │                              │  • Built-in observability │
+               │                              │  • $10/month + AWS costs  │
+               │                              └───────────────────────────┘
+               │
+               ├─── Scheduled workflows? ─────────────────────┐
+               │                                              │
+               │                                              ▼
+               │                              ┌───────────────────────────┐
+               │                              │  Use AWS Lambda           │
+               │                              │  + Step Functions         │
+               │                              │                           │
+               │                              │  Benefits:                │
+               │                              │  • Serverless (no servers)│
+               │                              │  • Pay-per-execution      │
+               │                              │  • CloudWatch monitoring  │
+               │                              │  • Ideal for weekly runs  │
+               │                              └───────────────────────────┘
+               │
+               └─── Development/Testing? ────────────────────┐
+                                                             │
+                                                             ▼
+                                              ┌───────────────────────────┐
+                                              │  Use Docker Compose       │
+                                              │  + Local Dagster          │
+                                              │                           │
+                                              │  Benefits:                │
+                                              │  • Fast local iteration   │
+                                              │  • No cloud costs         │
+                                              │  • Full control           │
+                                              │  • Works offline          │
+                                              └───────────────────────────┘
+```
+
+### Quick Deployment Selector
+
+| Scenario | Recommended Deployment | Guide |
+|----------|----------------------|-------|
+| **Production ETL pipeline** | Dagster Cloud + Neo4j Aura + S3 | [Dagster Cloud Migration](dagster-cloud-migration.md) |
+| **Weekly SBIR data refresh** | AWS Lambda + Step Functions | [AWS Lambda Setup](aws-lambda-setup.md) |
+| **Local development** | Docker Compose + Local Dagster | [Containerization Guide](containerization.md) |
+| **CI/CD testing** | Docker Compose (ci profile) | [Container CI](.github/workflows/container-ci.yml) |
+| **Emergency failover** | Docker Compose | [Containerization Guide](containerization.md) |
 
 ## Quick Start
 

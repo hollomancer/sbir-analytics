@@ -4,14 +4,29 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
 
 ## Quick Start
 
-### Prerequisites
+### Production Deployment (Cloud-First Architecture)
+
+The SBIR ETL pipeline is designed for cloud deployment with the following architecture:
+
+- **Orchestration**: Dagster Cloud Solo Plan or AWS Step Functions
+- **Compute**: AWS Lambda functions (for scheduled workflows)
+- **Storage**: AWS S3 (primary data storage)
+- **Database**: Neo4j Aura (cloud-hosted graph database)
+- **Secrets**: AWS Secrets Manager
+
+**Deployment Guides**:
+- **[Dagster Cloud Setup](docs/deployment/dagster-cloud-migration.md)** - Primary orchestration platform
+- **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions setup
+- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
+
+### Prerequisites (Local Development)
 
 - **Python**: 3.11 or 3.12
 - **uv**: For dependency management ([install uv](https://github.com/astral-sh/uv))
-- **Neo4j Aura**: Neo4j cloud instance (Free tier available)
+- **Neo4j Aura**: Neo4j cloud instance (Free tier available) - [Setup Guide](docs/data/neo4j-aura-setup.md)
 - **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
 
-### Local Development
+### Local Development Setup
 
 1. **Clone and install dependencies:**
    ```bash
@@ -146,12 +161,15 @@ This project implements a five-stage ETL pipeline that processes SBIR award data
 
 ### Key Features
 
+- **Cloud-First Architecture**: AWS S3 + Lambda + Neo4j Aura for production deployment
 - **Dagster Orchestration**: Asset-based pipeline with dependency management and observability
-- **Dagster Cloud**: Primary deployment method (fully managed, $10/month Solo Plan)
+- **Dagster Cloud**: Primary orchestration platform (fully managed, $10/month Solo Plan)
+- **AWS Lambda**: Serverless compute for scheduled data refresh workflows
+- **Neo4j Aura**: Cloud-hosted graph database for production (free tier available)
+- **S3 Data Lake**: Primary data storage with automatic fallback to local filesystem
 - **DuckDB Processing**: Efficient querying of CSV and PostgreSQL dump data
-- **Neo4j Graph Database**: Patent chains, award relationships, technology transition tracking
 - **Pydantic Configuration**: Type-safe YAML configuration with environment overrides
-- **Docker Deployment**: Failover option for local development and emergency scenarios
+- **Docker Deployment**: Local development and testing environment (secondary option)
 - **Iterative Enrichment Refresh**: Automatic freshness tracking and refresh for enrichment data
 
 ### Major Systems

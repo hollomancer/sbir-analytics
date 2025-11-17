@@ -1,4 +1,66 @@
-# Quick Start - Running Dagster
+# Quick Start Guide
+
+## Deployment Options
+
+The SBIR ETL pipeline supports two deployment modes:
+
+### Production (Cloud) - Recommended
+
+**Architecture**: Dagster Cloud + AWS Lambda + Neo4j Aura + S3
+
+**Deployment Guides**:
+- **[Dagster Cloud Setup](docs/deployment/dagster-cloud-migration.md)** - Primary orchestration
+- **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions
+- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database
+- **[S3 Data Migration](docs/deployment/s3-data-migration.md)** - S3 data lake setup
+
+**Benefits**:
+- Fully managed infrastructure
+- Serverless scaling
+- Cost-effective ($10/month Dagster Solo + AWS free tier)
+- Production-ready observability
+
+### Local Development - For Testing
+
+**Architecture**: Local Dagster + Docker Neo4j + Local Filesystem
+
+---
+
+## Running Dagster Locally (Development)
+
+### Prerequisites
+
+1. **Install dependencies**:
+   ```bash
+   uv sync
+   ```
+
+2. **Configure Neo4j Aura** (recommended) or **start local Neo4j**:
+   ```bash
+   # Option A: Neo4j Aura (cloud)
+   # Create free instance at https://neo4j.com/cloud/aura
+   # Set environment variables:
+   export NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+   export NEO4J_USER=neo4j
+   export NEO4J_PASSWORD=your-password
+
+   # Option B: Local Docker Neo4j
+   docker-compose --profile dev up neo4j -d
+   export NEO4J_URI=bolt://localhost:7687
+   export NEO4J_USER=neo4j
+   export NEO4J_PASSWORD=neo4j
+   ```
+
+3. **Configure data storage**:
+   ```bash
+   # Option A: Use S3 (requires AWS credentials)
+   export SBIR_ETL_USE_S3=true
+   export SBIR_ETL_S3_BUCKET=your-bucket-name
+
+   # Option B: Use local filesystem (development)
+   export SBIR_ETL_USE_S3=false
+   # Data will be stored in data/ directory
+   ```
 
 ## Running Dagster UI
 

@@ -39,19 +39,36 @@ These libraries are already installed and used across all modules:
 - Asset checks for data quality validation
 - Partitioned assets for incremental processing
 
+### Cloud Storage & Compute
+
+| Library | Version | Usage | Modules |
+|---------|---------|-------|---------|
+| **boto3** | 1.34.0+ | AWS SDK for Python - S3, Lambda, Secrets Manager integration | All (production) |
+| **botocore** | 1.34.0+ | Low-level AWS SDK (dependency of boto3) | All (production) |
+
+### Shared AWS Patterns
+
+- S3-first data access with local filesystem fallback
+- Automatic S3 path resolution (`s3://bucket/key` or `data/local/path`)
+- AWS Secrets Manager for credential management (Neo4j, API keys)
+- Lambda function packaging with layers for shared dependencies
+
 ### Storage & Database
 
 | Library | Version | Usage | Modules |
 |---------|---------|-------|---------|
 | **neo4j** | 5.20.0+ | Graph database driver, Cypher queries, relationship management | All |
-| **duckdb** | 1.0.0+ | In-memory SQL analytics for large datasets | SBIR, USPTO (optional for CET) |
+| **duckdb** | 1.0.0+ | In-memory SQL analytics for large datasets (works with S3) | SBIR, USPTO (optional for CET) |
 
-### Shared Patterns
+### Shared Database Patterns
 
+- **Production**: Neo4j Aura (cloud-hosted, `neo4j+s://` protocol)
+- **Development**: Docker Neo4j (local, `bolt://` protocol)
 - Batch Neo4j writes (1K nodes/transaction)
 - MERGE operations for idempotent upserts
 - Index creation before bulk loads
 - Relationship property storage for metadata
+- DuckDB S3 integration for direct CSV querying from S3
 
 ### Logging & Observability
 
@@ -139,7 +156,7 @@ except ImportError:
 
 ### 3.1 Configuration Management System
 
-**Shared Pattern**: Three-layer YAML → Pydantic → Environment Variables
+**Shared Pattern**: Three-layer YAML → Pydantic → Environment Variables + AWS Secrets Manager
 
 **File Structure** (all modules use this):
 
@@ -192,11 +209,21 @@ def load_config(config_name: str, config_class: type[BaseModel]) -> BaseModel:
 
 ```bash
 
-## Shared infrastructure
+## Shared infrastructure (Production - Cloud)
 
 export SBIR_ETL_ENV=prod
-export SBIR_ETL_NEO4J_URI=bolt://localhost:7687
+export SBIR_ETL_NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io  # Neo4j Aura
+export SBIR_ETL_NEO4J_PASSWORD=${AWS_SECRET}  # Retrieved from AWS Secrets Manager
 export SBIR_ETL_LOG_LEVEL=INFO
+export SBIR_ETL_S3_BUCKET=sbir-etl-data-prod
+export SBIR_ETL_USE_S3=true
+
+## Shared infrastructure (Development - Local)
+
+export SBIR_ETL_ENV=dev
+export SBIR_ETL_NEO4J_URI=bolt://localhost:7687  # Docker Neo4j
+export SBIR_ETL_NEO4J_PASSWORD=neo4j
+export SBIR_ETL_USE_S3=false  # Use local filesystem
 
 ## Module-specific overrides
 
