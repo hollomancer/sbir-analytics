@@ -3,9 +3,15 @@
 This module tests the PaECTER embedding generation functionality using
 sample SBIR award and patent data.
 
-Tests are marked as integration tests and require the sentence-transformers
-library and internet connectivity for model download (first run only).
+By default, tests use local mode (requires sentence-transformers).
+To test API mode, set HF_TOKEN environment variable and use use_local=False.
+
+Tests are marked as integration tests and require:
+- API mode: huggingface_hub library + HF_TOKEN env var
+- Local mode: sentence-transformers library (first run downloads ~500MB model)
 """
+
+import os
 
 import numpy as np
 import pytest
@@ -87,9 +93,22 @@ def paecter_client():
 
     This fixture creates a single client instance that is reused across all tests
     in this module to avoid reloading the model multiple times.
+
+    Uses local mode by default (requires sentence-transformers).
+    Set USE_PAECTER_API=1 environment variable to test API mode instead.
     """
-    pytest.importorskip("sentence_transformers")
-    return PaECTERClient()
+    use_api = os.getenv("USE_PAECTER_API") == "1"
+
+    if use_api:
+        # API mode - requires HF_TOKEN
+        pytest.importorskip("huggingface_hub")
+        if not os.getenv("HF_TOKEN"):
+            pytest.skip("HF_TOKEN environment variable required for API mode")
+        return PaECTERClient(use_local=False)
+    else:
+        # Local mode - requires sentence-transformers
+        pytest.importorskip("sentence_transformers")
+        return PaECTERClient(use_local=True)
 
 
 @pytest.mark.integration
@@ -99,9 +118,17 @@ class TestPaECTERClient:
 
     def test_client_initialization(self, paecter_client):
         """Test that client initializes successfully."""
-        assert paecter_client.model is not None
+        assert paecter_client.inference_mode in ("api", "local")
         assert paecter_client.embedding_dim == 1024  # PaECTER produces 1024-dim embeddings
         assert paecter_client.model_name == "mpi-inno-comp/paecter"
+
+        # Check mode-specific attributes
+        if paecter_client.inference_mode == "local":
+            assert hasattr(paecter_client, "model")
+            assert paecter_client.model is not None
+        else:
+            assert hasattr(paecter_client, "client")
+            assert paecter_client.client is not None
 
     def test_generate_embeddings_single(self, paecter_client):
         """Test embedding generation for a single text."""
@@ -325,18 +352,34 @@ class TestPaECTERClient:
 
 
 @pytest.mark.integration
+def test_api_mode_requires_huggingface_hub():
+    """Test that API mode requires huggingface_hub."""
+    try:
+        import huggingface_hub  # noqa: F401
+
+        # If we get here, huggingface_hub is installed
+        # API mode should work (even without token, just won't make requests)
+        client = PaECTERClient(use_local=False)
+        assert client.inference_mode == "api"
+        assert client.client is not None
+    except ImportError:
+        # If huggingface_hub is not installed, verify our error handling
+        with pytest.raises(ImportError, match="huggingface_hub is required"):
+            PaECTERClient(use_local=False)
+
+
+@pytest.mark.integration
 @pytest.mark.slow
-def test_paecter_import_error_handling():
-    """Test that appropriate error is raised when sentence-transformers is not installed."""
-    # This test is tricky because if sentence_transformers IS installed, we can't test
-    # the error handling. We'll just verify the client works when it IS installed.
+def test_local_mode_requires_sentence_transformers():
+    """Test that local mode requires sentence-transformers."""
     try:
         import sentence_transformers  # noqa: F401
 
         # If we get here, sentence_transformers is installed
-        client = PaECTERClient()
+        client = PaECTERClient(use_local=True)
+        assert client.inference_mode == "local"
         assert client.model is not None
     except ImportError:
         # If sentence_transformers is not installed, verify our error handling
         with pytest.raises(ImportError, match="sentence-transformers is required"):
-            PaECTERClient()
+            PaECTERClient(use_local=True)

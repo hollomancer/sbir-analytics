@@ -1,35 +1,17 @@
 """PaECTER client for generating patent and SBIR award embeddings.
 
-This module provides a cloud-first interface to the PaECTER model from HuggingFace
+This module provides a simple interface to the PaECTER model from HuggingFace
 (mpi-inno-comp/paecter) for generating embeddings from patent and award text.
+
+By default, this client uses the HuggingFace Inference API (no local model download
+or GPU required). You can optionally use local inference with sentence-transformers.
 
 PaECTER (Patent Embeddings using Citation-informed TransformERs) generates
 1024-dimensional dense vector embeddings optimized for patent similarity tasks.
 
-Cloud-First Approach:
-1. Try HuggingFace Inference API (if HUGGINGFACE_API_TOKEN is set)
-2. Fall back to local GPU/CPU if API unavailable
-
-Benefits:
-- No model downloads in development (~500MB saved)
-- Serverless scaling via HuggingFace infrastructure
-- Pay-per-use pricing (~$0.0002/1k tokens)
-- Automatic fallback for offline/large batch scenarios
-
 References:
     - Model: https://huggingface.co/mpi-inno-comp/paecter
     - Paper: https://arxiv.org/pdf/2402.19411
-
-Usage:
-    >>> # Cloud-first (default) - uses Inference API if token available
-    >>> client = PaECTERClient()
-    >>>
-    >>> # Force local GPU (skip API)
-    >>> client = PaECTERClient(prefer_cloud=False)
-    >>>
-    >>> # Generate embeddings
-    >>> texts = ["Patent about solar cells", "Innovation in AI"]
-    >>> result = client.generate_embeddings(texts)
 """
 
 from __future__ import annotations
@@ -37,10 +19,20 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Any, Literal
 
 import numpy as np
 from loguru import logger
+
+try:
+    from huggingface_hub import InferenceClient
+except ImportError:
+    InferenceClient = None  # type: ignore
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None  # type: ignore
 
 
 @dataclass
@@ -52,131 +44,114 @@ class EmbeddingResult:
     generation_timestamp: float
     input_count: int
     dimension: int
-    backend: str  # "cloud" or "local"
-
-
-@runtime_checkable
-class EmbeddingBackend(Protocol):
-    """Protocol for embedding generation backends."""
-
-    def generate_embeddings(
-        self, texts: list[str], normalize: bool = True, **kwargs
-    ) -> np.ndarray:
-        """Generate embeddings for texts."""
-        ...
-
-    def is_available(self) -> bool:
-        """Check if backend is available."""
-        ...
+    inference_mode: Literal["api", "local"]
 
 
 class PaECTERClient:
-    """Client for interacting with the PaECTER embedding model (cloud-first).
+    """Client for interacting with the PaECTER embedding model.
 
-    This client automatically selects the best available backend:
-    1. HuggingFace Inference API (cloud) - if HUGGINGFACE_API_TOKEN is set
-    2. Local GPU/CPU - fallback for offline or large batch scenarios
+    By default, uses HuggingFace Inference API (no model download required).
+    Optionally supports local inference with sentence-transformers.
 
     The model uses mean pooling and processes the first 512 tokens (~393 words)
-    of the input text, generating 1024-dimensional embeddings.
+    of the input text.
 
     Attributes:
         model_name: HuggingFace model identifier
-        backend: Active embedding backend (cloud or local)
+        inference_mode: "api" or "local"
         embedding_dim: Dimension of output embeddings (1024 for PaECTER)
-        backend_type: Type of backend being used ("cloud" or "local")
 
-    Example:
-        >>> # Cloud-first (uses API if available)
+    Example (API mode - default):
+        >>> # Set HF_TOKEN environment variable or pass token parameter
         >>> client = PaECTERClient()
-        >>> texts = ["Novel method for solar cell efficiency", "Deep learning for drug discovery"]
+        >>> texts = ["Novel method for solar cell efficiency"]
         >>> result = client.generate_embeddings(texts)
-        >>> print(result.embeddings.shape)  # (2, 1024)
-        >>> print(result.backend)  # "cloud" or "local"
-        >>>
-        >>> # Force local GPU
-        >>> client = PaECTERClient(prefer_cloud=False)
+        >>> print(result.embeddings.shape)
+        (1, 1024)
+
+    Example (local mode):
+        >>> client = PaECTERClient(use_local=True)
+        >>> result = client.generate_embeddings(texts)
     """
 
     def __init__(
         self,
         model_name: str = "mpi-inno-comp/paecter",
-        prefer_cloud: bool = True,
-        api_token: str | None = None,
+        use_local: bool = False,
+        hf_token: str | None = None,
         device: str | None = None,
         cache_folder: str | None = None,
     ):
-        """Initialize the PaECTER client with cloud-first approach.
+        """Initialize the PaECTER client.
 
         Args:
             model_name: HuggingFace model identifier (default: mpi-inno-comp/paecter)
-            prefer_cloud: If True, try HuggingFace Inference API first (default: True)
-            api_token: HuggingFace API token. If None, reads from HUGGINGFACE_API_TOKEN env var.
-            device: Device for local inference ('cpu', 'cuda', etc.). Only used if using local backend.
-            cache_folder: Custom cache folder for local model files. Only used if using local backend.
+            use_local: If True, use local sentence-transformers. If False (default), use API.
+            hf_token: HuggingFace API token. If None, read from HF_TOKEN env var.
+            device: Device for local inference ('cpu', 'cuda'). Only used if use_local=True.
+            cache_folder: Cache folder for local model. Only used if use_local=True.
 
         Raises:
-            RuntimeError: If no backend is available
+            ImportError: If required dependencies are not installed
+            RuntimeError: If initialization fails
         """
         self.model_name = model_name
-        self.backend: EmbeddingBackend | None = None
-        self.backend_type: str = "unknown"
-        self.embedding_dim: int = 1024  # PaECTER standard dimension
+        self.embedding_dim = 1024  # PaECTER embeddings are 1024-dimensional
 
-        # Determine if cloud should be preferred
-        prefer_cloud = prefer_cloud and bool(
-            os.getenv("ML_PREFER_CLOUD", "true").lower() in ("true", "1", "yes")
-        )
+        if use_local:
+            self._init_local_mode(device, cache_folder)
+        else:
+            self._init_api_mode(hf_token)
 
-        if prefer_cloud:
-            # Try cloud first
-            try:
-                from .huggingface_inference import HuggingFaceInferenceClient
-
-                cloud_backend = HuggingFaceInferenceClient(
-                    model_name=model_name,
-                    api_token=api_token,
-                )
-
-                if cloud_backend.is_available():
-                    self.backend = cloud_backend  # type: ignore
-                    self.backend_type = "cloud"
-                    logger.info(f"Using HuggingFace Inference API for {model_name}")
-                    return
-
-            except Exception as e:
-                logger.warning(
-                    f"HuggingFace Inference API not available: {e}. Falling back to local GPU/CPU."
-                )
-
-        # Fallback to local GPU/CPU
-        try:
-            from .huggingface_inference import LocalGPUClient
-
-            logger.info(f"Loading {model_name} for local inference...")
-            local_backend = LocalGPUClient(
-                model_name=model_name,
-                device=device,
+    def _init_api_mode(self, hf_token: str | None):
+        """Initialize API mode using HuggingFace Inference API."""
+        if InferenceClient is None:
+            raise ImportError(
+                "huggingface_hub is required for API mode. "
+                "Install with: pip install huggingface-hub"
             )
 
-            if local_backend.is_available():
-                self.backend = local_backend  # type: ignore
-                self.backend_type = "local"
-                logger.info(f"Using local GPU/CPU for {model_name}")
-                return
+        # Get token from parameter or environment
+        token = hf_token or os.getenv("HF_TOKEN")
+        if not token:
+            logger.warning(
+                "No HuggingFace token provided. API calls may fail or have rate limits. "
+                "Set HF_TOKEN environment variable or pass hf_token parameter."
+            )
 
+        self.inference_mode = "api"
+        self.client = InferenceClient(token=token)
+        logger.info(f"Initialized PaECTER client in API mode: {self.model_name}")
+
+    def _init_local_mode(self, device: str | None, cache_folder: str | None):
+        """Initialize local mode using sentence-transformers."""
+        if SentenceTransformer is None:
+            raise ImportError(
+                "sentence-transformers is required for local mode. "
+                "Install with: pip install 'sbir-etl[paecter-local]' or "
+                "pip install sentence-transformers"
+            )
+
+        self.inference_mode = "local"
+        logger.info(f"Loading PaECTER model locally: {self.model_name}")
+
+        try:
+            kwargs: dict[str, Any] = {}
+            if device is not None:
+                kwargs["device"] = device
+            if cache_folder is not None:
+                kwargs["cache_folder"] = cache_folder
+
+            self.model = SentenceTransformer(self.model_name, **kwargs)
+            self.embedding_dim = self.model.get_sentence_embedding_dimension()  # type: ignore
+
+            logger.info(
+                f"Successfully loaded local PaECTER model. "
+                f"Embedding dimension: {self.embedding_dim}"
+            )
         except Exception as e:
-            logger.error(f"Failed to initialize local GPU/CPU backend: {e}")
-            raise RuntimeError(
-                f"No embedding backend available. Tried cloud and local. Last error: {e}"
-            ) from e
-
-        # If we got here, no backend is available
-        raise RuntimeError(
-            "No embedding backend available. "
-            "Either set HUGGINGFACE_API_TOKEN for cloud API "
-            "or install sentence-transformers for local inference."
-        )
+            logger.error(f"Failed to load local PaECTER model: {e}")
+            raise RuntimeError(f"Failed to load model {self.model_name}: {e}") from e
 
     def generate_embeddings(
         self,
@@ -190,8 +165,8 @@ class PaECTERClient:
         Args:
             texts: List of text strings to embed
             batch_size: Number of texts to process in each batch
-            show_progress_bar: Whether to show progress bar (only for local backend)
-            normalize: Whether to normalize embeddings to unit length (recommended for cosine similarity)
+            show_progress_bar: Whether to show progress bar (local mode only)
+            normalize: Whether to normalize embeddings to unit length (recommended)
 
         Returns:
             EmbeddingResult containing embeddings and metadata
@@ -205,38 +180,26 @@ class PaECTERClient:
             >>> texts = ["First patent abstract", "Second patent abstract"]
             >>> result = client.generate_embeddings(texts)
             >>> similarities = result.embeddings @ result.embeddings.T
-            >>> print(f"Using {result.backend} backend")
         """
         if not texts:
             raise ValueError("texts cannot be empty")
 
-        if self.backend is None:
-            raise RuntimeError("No embedding backend available")
-
-        logger.debug(
-            f"Generating embeddings for {len(texts)} texts using {self.backend_type} backend"
-        )
+        logger.debug(f"Generating embeddings for {len(texts)} texts using {self.inference_mode} mode")
         start_time = time.time()
 
         try:
-            # Generate embeddings using active backend
-            embeddings = self.backend.generate_embeddings(
-                texts=texts,
-                normalize=normalize,
-                batch_size=batch_size,
-                # Only pass show_progress_bar to local backend
-                **(
-                    {"show_progress_bar": show_progress_bar}
-                    if self.backend_type == "local"
-                    else {}
-                ),
-            )
+            if self.inference_mode == "api":
+                embeddings = self._generate_embeddings_api(texts, batch_size, normalize)
+            else:
+                embeddings = self._generate_embeddings_local(
+                    texts, batch_size, show_progress_bar, normalize
+                )
 
             generation_time = time.time() - start_time
             logger.info(
                 f"Generated {len(texts)} embeddings in {generation_time:.2f}s "
                 f"({len(texts)/generation_time:.1f} embeddings/s) "
-                f"using {self.backend_type} backend"
+                f"[{self.inference_mode} mode]"
             )
 
             return EmbeddingResult(
@@ -244,13 +207,62 @@ class PaECTERClient:
                 model_version=self.model_name,
                 generation_timestamp=time.time(),
                 input_count=len(texts),
-                dimension=embeddings.shape[1] if len(embeddings.shape) > 1 else 0,
-                backend=self.backend_type,
+                dimension=self.embedding_dim,
+                inference_mode=self.inference_mode,
             )
 
         except Exception as e:
             logger.error(f"Failed to generate embeddings: {e}")
             raise RuntimeError(f"Embedding generation failed: {e}") from e
+
+    def _generate_embeddings_api(
+        self, texts: list[str], batch_size: int, normalize: bool
+    ) -> np.ndarray:
+        """Generate embeddings using HuggingFace Inference API."""
+        all_embeddings = []
+
+        # Process in batches to avoid API limits
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+
+            # Use feature extraction endpoint
+            response = self.client.feature_extraction(
+                batch,
+                model=self.model_name,
+            )
+
+            # Convert to numpy array
+            batch_embeddings = np.array(response)
+
+            # Handle both single and batch responses
+            if len(batch) == 1 and batch_embeddings.ndim == 1:
+                batch_embeddings = batch_embeddings.reshape(1, -1)
+
+            all_embeddings.append(batch_embeddings)
+
+            logger.debug(f"Processed batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+
+        embeddings = np.vstack(all_embeddings)
+
+        # Normalize if requested
+        if normalize:
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            embeddings = embeddings / norms
+
+        return embeddings
+
+    def _generate_embeddings_local(
+        self, texts: list[str], batch_size: int, show_progress_bar: bool, normalize: bool
+    ) -> np.ndarray:
+        """Generate embeddings using local sentence-transformers model."""
+        embeddings = self.model.encode(
+            texts,
+            batch_size=batch_size,
+            show_progress_bar=show_progress_bar,
+            normalize_embeddings=normalize,
+            convert_to_numpy=True,
+        )
+        return embeddings  # type: ignore
 
     def compute_similarity(
         self, embeddings1: np.ndarray, embeddings2: np.ndarray
@@ -273,24 +285,6 @@ class PaECTERClient:
         """
         # If embeddings are already normalized, cosine similarity is just dot product
         return embeddings1 @ embeddings2.T
-
-    def get_backend_info(self) -> dict[str, str]:
-        """Get information about the active backend.
-
-        Returns:
-            Dictionary with backend information
-
-        Example:
-            >>> client = PaECTERClient()
-            >>> info = client.get_backend_info()
-            >>> print(info)
-            {'backend': 'cloud', 'model': 'mpi-inno-comp/paecter'}
-        """
-        return {
-            "backend": self.backend_type,
-            "model": self.model_name,
-            "embedding_dimension": str(self.embedding_dim),
-        }
 
     @staticmethod
     def prepare_patent_text(title: str | None, abstract: str | None) -> str:
@@ -350,18 +344,3 @@ class PaECTERClient:
             parts.append(abstract.strip())
 
         return " ".join(parts) if parts else ""
-
-    @staticmethod
-    def check_cloud_availability() -> bool:
-        """Check if HuggingFace Inference API is available.
-
-        Returns:
-            True if HUGGINGFACE_API_TOKEN is set, False otherwise
-
-        Example:
-            >>> if PaECTERClient.check_cloud_availability():
-            ...     print("Cloud API available")
-            ... else:
-            ...     print("Will use local GPU/CPU")
-        """
-        return bool(os.getenv("HUGGINGFACE_API_TOKEN"))

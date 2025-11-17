@@ -194,3 +194,9 @@ node_modules/
 reports/
 !reports/.gitkeep
 report.md
+
+# AWS CDK / Infrastructure build artifacts
+**/cdk.out/
+*.template.json
+*.assets.json
+infrastructure/**/.venv/

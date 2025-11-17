@@ -1913,6 +1913,7 @@ dependencies = [
     { name = "dagster-webserver" },
     { name = "duckdb" },
     { name = "httpx" },
+    { name = "huggingface-hub" },
     { name = "jellyfish" },
     { name = "loguru" },
     { name = "memory-profiler" },
@@ -1948,7 +1949,7 @@ dev = [
     { name = "types-requests" },
     { name = "types-tqdm" },
 ]
-paecter = [
+paecter-local = [
     { name = "sentence-transformers" },
     { name = "torch" },
     { name = "transformers" },
@@ -1965,6 +1966,7 @@ requires-dist = [
     { name = "dagster-webserver", specifier = ">=1.7.0,<2.0.0" },
     { name = "duckdb", specifier = ">=1.0.0,<2.0.0" },
     { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
+    { name = "huggingface-hub", specifier = ">=0.20.0,<1.0.0" },
     { name = "jellyfish", specifier = ">=1.0.0,<2.0.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
     { name = "memory-profiler" },
@@ -1986,18 +1988,18 @@ requires-dist = [
     { name = "rich", specifier = ">=13.7.0,<14.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5.0,<1.0.0" },
     { name = "scikit-learn", specifier = ">=1.4.0,<2.0.0" },
-    { name = "sentence-transformers", marker = "extra == 'paecter'", specifier = ">=2.7.0,<3.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'paecter-local'", specifier = ">=2.7.0,<3.0.0" },
     { name = "spacy", specifier = ">=3.7.0,<4.0.0" },
     { name = "tenacity", specifier = ">=8.2.3,<9.0.0" },
-    { name = "torch", marker = "extra == 'paecter'", specifier = ">=2.0.0,<3.0.0" },
-    { name = "transformers", marker = "extra == 'paecter'", specifier = ">=4.35.0,<5.0.0" },
+    { name = "torch", marker = "extra == 'paecter-local'", specifier = ">=2.0.0,<3.0.0" },
+    { name = "transformers", marker = "extra == 'paecter-local'", specifier = ">=4.35.0,<5.0.0" },
     { name = "typer", specifier = ">=0.12.0,<1.0.0" },
     { name = "types-psutil", marker = "extra == 'dev'", specifier = ">=5.9.0,<6.0.0" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0,<7.0.0" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0,<3.0.0" },
     { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.66.0,<5.0.0" },
 ]
-provides-extras = ["paecter", "dev"]
+provides-extras = ["paecter-local", "dev"]
 
 [[package]]
 name = "scikit-learn"

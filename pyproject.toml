@@ -29,12 +29,13 @@ dependencies = [
     "rich>=13.7.0,<14.0.0",
     "boto3>=1.34.0,<2.0.0",  # AWS SDK for S3 access
     "cloudpathlib[s3]>=0.23.0,<1.0.0",  # Cloud-agnostic path handling with S3 support
+    "huggingface-hub>=0.20.0,<1.0.0",  # PaECTER API client (lightweight, no torch required)
 ]
 
 [project.optional-dependencies]
 # r = ["rpy2>=3.5.0,<4.0.0"]  # Temporarily disabled for Dagster Cloud deployment (requires R compilation)
-paecter = [
-    "sentence-transformers>=2.7.0,<3.0.0",  # PaECTER model support
+paecter-local = [
+    "sentence-transformers>=2.7.0,<3.0.0",  # PaECTER local model support
     "torch>=2.0.0,<3.0.0",  # Required by sentence-transformers
     "transformers>=4.35.0,<5.0.0",  # HuggingFace transformers
 ]
