@@ -1,25 +1,24 @@
 """Neo4j loader for Organization relationships."""
 
-from datetime import datetime
 from typing import Any
 
 from loguru import logger
 
-from .client import LoadMetrics, Neo4jClient
+from .base import BaseNeo4jLoader
+from .client import LoadMetrics
 
 
-class OrganizationLoader:
-    """Loader for Organization-to-Organization relationships."""
+class OrganizationLoader(BaseNeo4jLoader):
+    """Loader for Organization-to-Organization relationships.
 
-    def __init__(self, client: Neo4jClient):
-        """Initialize with Neo4j client."""
-        self.client = client
+    Extends BaseNeo4jLoader to provide simplified relationship creation
+    with consistent logging and metrics tracking.
+    """
 
     def create_subsidiary_relationships(
         self,
-        subsidiary_pairs: list[tuple[str, str, str, str]],  # (child_key, child_value, parent_key, parent_value)
+        subsidiary_pairs: list[tuple[str, str, str, str]],
         source: str = "UNKNOWN",
-        metrics: LoadMetrics | None = None,
     ) -> LoadMetrics:
         """Create SUBSIDIARY_OF relationships between Organizations.
 
@@ -30,37 +29,50 @@ class OrganizationLoader:
                 where keys are property names (e.g., "uei", "organization_id") and values are
                 the actual values to match on.
             source: Source of the relationship data (e.g., "CONTRACT_PARENT_UEI", "AGENCY_HIERARCHY")
-            metrics: Optional LoadMetrics to accumulate results
 
         Returns:
             LoadMetrics with counts of created relationships
+
+        Example:
+            >>> loader = OrganizationLoader(client)
+            >>> metrics = loader.create_subsidiary_relationships(
+            ...     subsidiary_pairs=[
+            ...         ("uei", "ABC123", "uei", "PARENT456"),
+            ...         ("organization_id", "ORG-001", "organization_id", "ORG-PARENT"),
+            ...     ],
+            ...     source="CONTRACT_PARENT_UEI"
+            ... )
         """
-        if metrics is None:
-            metrics = LoadMetrics()
-
         if not subsidiary_pairs:
-            logger.info("No SUBSIDIARY_OF relationships to create")
-            return metrics
+            logger.info(f"{self.loader_name}: No SUBSIDIARY_OF relationships to create")
+            return self.metrics
 
-        logger.info(f"Creating {len(subsidiary_pairs)} SUBSIDIARY_OF relationships (source: {source})")
-        start_time = datetime.utcnow()
+        logger.info(
+            f"{self.loader_name}: Creating {len(subsidiary_pairs)} SUBSIDIARY_OF relationships "
+            f"(source: {source})"
+        )
 
-        relationships: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
+        # Build relationship list in simplified format
+        relationships: list[tuple[Any, Any, dict[str, Any] | None]] = []
         for child_key, child_value, parent_key, parent_value in subsidiary_pairs:
             if not child_value or not parent_value:
-                logger.warning(f"Skipping SUBSIDIARY_OF relationship with missing values: child={child_value}, parent={parent_value}")
-                metrics.errors += 1
+                logger.warning(
+                    f"Skipping SUBSIDIARY_OF relationship with missing values: "
+                    f"child={child_value}, parent={parent_value}"
+                )
+                self.metrics.errors += 1
                 continue
+
+            # Note: We're creating relationships between organizations potentially
+            # matched on different keys (e.g., child by organization_id, parent by UEI)
+            # This requires a more complex query than the base method supports
+            # So we'll use the client directly for this special case
+            from datetime import datetime
 
             relationships.append(
                 (
-                    "Organization",
-                    child_key,
                     str(child_value).strip(),
-                    "Organization",
-                    parent_key,
                     str(parent_value).strip(),
-                    "SUBSIDIARY_OF",
                     {
                         "source": source,
                         "created_at": datetime.utcnow().isoformat(),
@@ -68,14 +80,46 @@ class OrganizationLoader:
                 )
             )
 
-        if relationships:
-            metrics = self.client.batch_create_relationships(relationships=relationships, metrics=metrics)
+        if not relationships:
+            return self.metrics
 
-        duration = (datetime.utcnow() - start_time).total_seconds()
-        logger.info(
-            f"SUBSIDIARY_OF relationship creation completed in {duration:.2f}s: "
-            f"{metrics.relationships_created.get('SUBSIDIARY_OF', 0)} created"
+        # For this special case where source and target might use different keys,
+        # we need to use a custom query instead of the base class method
+        full_relationships: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []
+
+        for i, (child_key, child_value, parent_key, parent_value) in enumerate(
+            subsidiary_pairs
+        ):
+            if i < len(relationships):  # Only include valid relationships
+                _, _, properties = relationships[
+                    i - (len(subsidiary_pairs) - len(relationships))
+                ]
+                full_relationships.append(
+                    (
+                        "Organization",
+                        child_key,
+                        str(child_value).strip() if child_value else None,
+                        "Organization",
+                        parent_key,
+                        str(parent_value).strip() if parent_value else None,
+                        "SUBSIDIARY_OF",
+                        properties,
+                    )
+                )
+
+        # Use client directly for complex relationship creation
+        self.metrics = self.client.batch_create_relationships(
+            relationships=full_relationships,
+            metrics=self.metrics,
         )
 
-        return metrics
+        logger.info(
+            f"{self.loader_name}: SUBSIDIARY_OF relationships created - "
+            f"{self.metrics.relationships_created.get('SUBSIDIARY_OF', 0)} created"
+        )
+
+        return self.metrics
+
 
