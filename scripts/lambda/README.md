@@ -44,7 +44,47 @@ See [`docs/deployment/aws-lambda-setup.md`](../../docs/deployment/aws-lambda-set
 
 ## Deployment
 
-Functions are deployed automatically via CDK. To update manually:
+### Automatic Deployment (Recommended)
+
+Functions are automatically deployed when changes are pushed to `main` or `master` branch. The GitHub Actions workflow (`.github/workflows/lambda-deploy.yml`) will:
+
+1. **Detect changes** in Lambda code, containers, or CDK infrastructure
+2. **Build container images** (for `ingestion-checks` and `load-neo4j`) and push to ECR
+3. **Build and publish Lambda layer** (if layer functions or dependencies changed)
+4. **Deploy via CDK** to update all Lambda functions
+
+The workflow triggers on:
+- Push to `main`/`master` with changes to:
+  - `lambda/**`
+  - `scripts/lambda/**`
+  - `infrastructure/cdk/**`
+- Manual trigger via GitHub Actions UI (with optional flags)
+
+### Manual Deployment
+
+If you need to deploy manually:
+
+```bash
+# 1. Build and push container images (for container-based functions)
+export AWS_ACCOUNT_ID=123456789012
+./scripts/lambda/build_containers.sh
+
+# 2. Build and publish Lambda layer (if dependencies changed)
+./scripts/lambda/build_layer.sh
+aws lambda publish-layer-version \
+  --layer-name sbir-etl-python-dependencies \
+  --zip-file fileb:///tmp/python-dependencies-layer.zip \
+  --compatible-runtimes python3.11
+
+# 3. Deploy via CDK
+cd infrastructure/cdk
+uv sync
+cdk deploy sbir-etl-lambda
+```
+
+### Updating Individual Function Code (Quick Update)
+
+For quick code-only updates without rebuilding containers/layers:
 
 ```bash
 # Package function
@@ -57,4 +97,6 @@ aws lambda update-function-code \
   --zip-file fileb://function.zip \
   --region us-east-2
 ```
+
+**Note:** This only updates the function code, not dependencies. For dependency changes, use CDK deployment.
 
