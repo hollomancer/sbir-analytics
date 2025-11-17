@@ -7,10 +7,13 @@
 
 ## Overview
 
-The SBIR ETL pipeline uses a flexible, configuration-driven approach to file system paths. All paths are configurable via YAML configuration files and can be overridden using environment variables, making the pipeline portable across different deployment environments.
+The SBIR ETL pipeline uses a flexible, configuration-driven approach to file system paths that supports both cloud storage (AWS S3) and local filesystem. All paths are configurable via YAML configuration files and can be overridden using environment variables, making the pipeline portable across different deployment environments.
+
+**Cloud-First Architecture**: The pipeline automatically detects S3 paths (`s3://bucket/key`) and uses boto3 for cloud storage operations, with automatic fallback to local filesystem for development.
 
 ## Table of Contents
 
+- [Cloud Storage (AWS S3)](#cloud-storage-aws-s3)
 - [Configuration Structure](#configuration-structure)
 - [Default Paths](#default-paths)
 - [Environment Variable Overrides](#environment-variable-overrides)
@@ -18,6 +21,105 @@ The SBIR ETL pipeline uses a flexible, configuration-driven approach to file sys
 - [Validation](#validation)
 - [Docker Deployment](#docker-deployment)
 - [Troubleshooting](#troubleshooting)
+
+## Cloud Storage (AWS S3)
+
+### S3 Path Support
+
+The pipeline supports AWS S3 paths for cloud-first deployments:
+
+```yaml
+paths:
+  # S3 paths (production)
+  data_root: "s3://sbir-etl-data-prod"
+  raw_data: "s3://sbir-etl-data-prod/raw"
+  usaspending_dump_file: "s3://sbir-etl-data-prod/usaspending/dump.zip"
+
+  # Local paths (development)
+  # data_root: "data"
+  # raw_data: "data/raw"
+```
+
+### S3 Configuration
+
+Enable S3 storage via environment variables:
+
+```bash
+# Production (S3)
+export SBIR_ETL_USE_S3=true
+export SBIR_ETL_S3_BUCKET=sbir-etl-data-prod
+export AWS_REGION=us-east-1
+
+# Development (local filesystem)
+export SBIR_ETL_USE_S3=false
+```
+
+### S3 Path Resolution
+
+The path resolver automatically handles S3 paths:
+
+```python
+from src.config.loader import get_config
+
+config = get_config()
+
+# Resolves to S3 path if USE_S3=true
+# Resolves to local path if USE_S3=false
+dump_file = config.paths.resolve_path("usaspending_dump_file")
+
+# Examples:
+# S3:    s3://sbir-etl-data-prod/usaspending/dump.zip
+# Local: /home/user/sbir-etl/data/usaspending/dump.zip
+```
+
+### S3 Access Patterns
+
+```python
+import boto3
+from src.utils.s3 import get_s3_client, s3_file_exists, download_from_s3
+
+# Check if S3 file exists
+if s3_file_exists("s3://bucket/key.parquet"):
+    # Download to local temp file
+    local_path = download_from_s3("s3://bucket/key.parquet", "/tmp/key.parquet")
+
+# Upload to S3
+upload_to_s3("/tmp/output.parquet", "s3://bucket/output.parquet")
+
+# Stream from S3 with pandas
+import pandas as pd
+df = pd.read_parquet("s3://bucket/data.parquet")  # DuckDB supports this too!
+```
+
+### S3 + DuckDB Integration
+
+DuckDB can directly query S3 files:
+
+```python
+import duckdb
+
+# Load AWS credentials
+duckdb.sql("""
+    INSTALL httpfs;
+    LOAD httpfs;
+    SET s3_region='us-east-1';
+""")
+
+# Query S3 CSV directly
+df = duckdb.sql("""
+    SELECT * FROM read_csv_auto('s3://sbir-etl-data-prod/raw/sbir_awards.csv')
+    WHERE award_amount > 100000
+""").df()
+```
+
+### S3 Best Practices
+
+1. **Use S3 for production** - Scalable, durable, managed
+2. **Use local filesystem for development** - Faster iteration, no AWS costs
+3. **Store credentials securely** - Use AWS Secrets Manager or IAM roles
+4. **Enable versioning** - Protect against accidental deletions
+5. **Use lifecycle policies** - Archive old data to S3 Glacier
+6. **Monitor costs** - Use S3 analytics to track storage and transfer costs
 
 ## Configuration Structure
 
