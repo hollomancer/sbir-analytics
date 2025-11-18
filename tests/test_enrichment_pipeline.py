@@ -24,32 +24,10 @@ from src.utils.performance_monitor import PerformanceMonitor
 
 @pytest.fixture
 def sample_sbir_data():
-    """Sample SBIR awards data for testing."""
-    return pd.DataFrame(
-        [
-            {
-                "Company": "Acme Innovations Inc",
-                "UEI": "A1B2C3D4E5F6G7H8",
-                "Duns": "123456789",
-                "Contract": "C-2023-0001",
-                "Award Title": "Advanced Widget Development",
-            },
-            {
-                "Company": "BioTech Labs LLC",
-                "UEI": "",
-                "Duns": "987654321",
-                "Contract": "C-2023-0002",
-                "Award Title": "Biotech Research Platform",
-            },
-            {
-                "Company": "NanoWorks Corporation",
-                "UEI": "",  # No UEI for fuzzy matching test
-                "Duns": "",
-                "Contract": "C-2023-0003",
-                "Award Title": "Nanotechnology Solutions",
-            },
-        ]
-    )
+    """Sample SBIR awards data for testing - uses consolidated utility."""
+    from tests.utils.fixtures import create_sample_sbir_data
+
+    return create_sample_sbir_data(num_records=3)
 
 
 @pytest.fixture
