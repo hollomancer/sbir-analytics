@@ -108,11 +108,11 @@ company_size: String
 
 created_at: DateTime
   # When node was created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node was last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -228,11 +228,11 @@ place_of_performance: String (nullable)
 
 created_at: DateTime
   # When node created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -296,7 +296,7 @@ confidence: String
 
 detection_date: DateTime
   # When detection occurred
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 detection_method: String
   # Method/version of detector
@@ -321,11 +321,11 @@ evidence_bundle: Text (JSON)
 
 created_at: DateTime
   # When node created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -402,11 +402,11 @@ naics_primary: String (nullable)
 
 created_at: DateTime
   # When node created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -495,11 +495,11 @@ ipc_codes: List<String> (nullable)
 
 created_at: DateTime
   # When node created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -562,11 +562,11 @@ keywords: List<String>
 
 created_at: DateTime
   # When node created in graph
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When node last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -640,11 +640,11 @@ total_contract_value: Long (nullable)
 
 created_at: DateTime
   # When profile created
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime
   # When profile last updated
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Constraints
@@ -694,7 +694,7 @@ contract_id: String
 
 created_at: DateTime
   # When relationship created
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 notes: String (nullable)
   # Additional context
@@ -989,7 +989,7 @@ source: String
 
 created_at: DateTime
   # When relationship created
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ### Use Cases

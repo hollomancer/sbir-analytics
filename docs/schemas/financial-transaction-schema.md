@@ -172,11 +172,11 @@ contract_type: String (nullable)
 ```yaml
 created_at: DateTime (nullable)
   # Creation timestamp
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 
 updated_at: DateTime (nullable)
   # Last update timestamp
-  # Example: 2024-01-15T10:30:00Z
+  # Example: 2025-01-15T10:30:00Z
 ```
 
 ## Constraints

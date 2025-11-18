@@ -347,7 +347,7 @@ python -m sbir_cet_classifier.cli.app export \
 
 python -m sbir_cet_classifier.cli.app enrichment enrich \
 
-  --fiscal-year 2024 --max-workers 4
+  --fiscal-year 2025 --max-workers 4
 ```
 
 ---
@@ -1095,7 +1095,7 @@ python -m sbir_cet_classifier.cli.app export \
 
 python -m sbir_cet_classifier.cli.app enrichment enrich \
 
-  --fiscal-year 2024 --max-workers 4
+  --fiscal-year 2025 --max-workers 4
 ```
 
 ###REST API Endpoints

@@ -105,7 +105,7 @@ sbir-cli metrics show
 
 ## Filter by date range
 
-sbir-cli metrics show --start-date 2024-01-01 --end-date 2024-12-31
+sbir-cli metrics show --start-date 2025-01-01 --end-date 2025-12-31
 
 ## Filter by asset group
 
@@ -140,7 +140,7 @@ sbir-cli metrics export --format csv --output metrics.csv
 
 ## Export with date filter
 
-sbir-cli metrics export --start-date 2024-01-01 --format json --output jan_metrics.json
+sbir-cli metrics export --start-date 2025-01-01 --format json --output jan_metrics.json
 ```
 
 ### Ingest Commands

@@ -35,7 +35,7 @@ conn = duckdb.connect()
 conn.execute("""
     SELECT company_id, COUNT(*) as award_count, SUM(award_amount) as total_funding
     FROM awards
-    WHERE fiscal_year BETWEEN 2020 AND 2024
+    WHERE fiscal_year BETWEEN 2020 AND 2025
     GROUP BY company_id
     HAVING award_count >= 3
 """)

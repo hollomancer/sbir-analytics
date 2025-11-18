@@ -157,7 +157,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
   "sources": {
     "usaspending": {
       "source": "usaspending",
-      "timestamp": "2024-01-20T10:00:00",
+      "timestamp": "2025-01-20T10:00:00",
       "sla_days": 1,
       "records": {
         "total": 1000,
@@ -183,7 +183,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
       }
     }
   },
-  "last_updated": "2024-01-20T10:05:00"
+  "last_updated": "2025-01-20T10:05:00"
 }
 ```
 

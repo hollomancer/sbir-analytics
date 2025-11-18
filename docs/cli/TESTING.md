@@ -283,7 +283,7 @@ def test_metrics_table():
     console = Mock()
     metrics = [
         {
-            "timestamp": "2024-01-01T00:00:00",
+            "timestamp": "2025-01-01T00:00:00",
             "asset_key": "test",
             "duration_seconds": 10.0,
             "records_processed": 100,

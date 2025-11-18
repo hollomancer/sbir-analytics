@@ -58,10 +58,10 @@ Represents a detected commercialization transition from SBIR award to federal co
 
 | Field | Type | Nullable | Constraints | Description | Example | Related |
 |-------|------|----------|-------------|-------------|---------|---------|
-| `detection_date` | DateTime | No | ISO 8601 | Timestamp of detection | `2024-01-15T10:30:00Z` | Audit trail |
+| `detection_date` | DateTime | No | ISO 8601 | `2025-01-15T10:30:00Z` |
 | `detection_method` | String | Yes | Version string | Detection algorithm version | `transition_detector_v1` | Reproducibility |
-| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2024-01-15T10:30:00Z` | Audit trail |
-| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2024-01-15T10:30:00Z` | Audit trail |
+| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2025-01-15T10:30:00Z` | Audit trail |
+| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2025-01-15T10:30:00Z` | Audit trail |
 
 ### Evidence & Signals
 
@@ -160,8 +160,8 @@ Represents an SBIR award.
 
 | Field | Type | Nullable | Constraints | Description | Example | Related |
 |-------|------|----------|-------------|-------------|---------|---------|
-| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2024-01-15T10:30:00Z` | Audit trail |
-| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2024-01-15T10:30:00Z` | Audit trail |
+| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2025-01-15T10:30:00Z` | Audit trail |
+| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2025-01-15T10:30:00Z` | Audit trail |
 | `data_source` | String | Yes | SBIR.gov, etc. | Data source system | `SBIR.gov` | Data lineage |
 
 ---
@@ -277,8 +277,8 @@ Represents a federal contract.
 
 | Field | Type | Nullable | Constraints | Description | Example | Related |
 |-------|------|----------|-------------|-------------|---------|---------|
-| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2024-01-15T10:30:00Z` | Audit trail |
-| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2024-01-15T10:30:00Z` | Audit trail |
+| `created_at` | DateTime | No | ISO 8601 | Record creation time | `2025-01-15T10:30:00Z` | Audit trail |
+| `updated_at` | DateTime | No | ISO 8601 | Last update time | `2025-01-15T10:30:00Z` | Audit trail |
 | `data_source` | String | Yes | USAspending, etc. | Data source system | `USAspending.gov` | Data lineage |
 
 ---
@@ -368,7 +368,7 @@ Represents mapping from award recipient to contract vendor.
 |-------|------|-------------|---------|
 | `match_type` | Enum | UEI, CAGE, DUNS, FUZZY_NAME | `UEI` |
 | `confidence` | Float | Match confidence (0.0-1.0) | `0.99` |
-| `resolution_date` | DateTime | Resolution timestamp | `2024-01-15T10:30:00Z` |
+| `resolution_date` | DateTime | Resolution timestamp | `2025-01-15T10:30:00Z` |
 
 ### Matched Identifiers
 
@@ -602,8 +602,8 @@ Represents company-level aggregated statistics.
 | Float | Decimal number | 0.0 to 1.0 (usually) | `0.7625` |
 | Double | High precision decimal | Full IEEE 754 range | `0.123456789` |
 | Boolean | True/False | Two values | `true` |
-| Date | YYYY-MM-DD | Per calendar | `2024-01-15` |
-| DateTime | ISO 8601 | Timestamp | `2024-01-15T10:30:00Z` |
+| Date | YYYY-MM-DD | Per calendar | `2025-01-15` |
+| DateTime | ISO 8601 | Timestamp | `2025-01-15T10:30:00Z` |
 | Enum | Predefined values | Specific set | `LIKELY` |
 | Object | JSON structure | Nested data | `{...}` |
 | List | Array of items | Any element type | `[...]` |

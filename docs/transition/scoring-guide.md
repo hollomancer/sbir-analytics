@@ -143,7 +143,7 @@ Scenario 2: Within-Year Commercialization
 
 Scenario 3: Delayed Commercialization
   Award Completion: 2023-01-15
-  Contract Start: 2024-06-01 (502 days)
+  Contract Start: 2025-06-01 (502 days)
   Window: 366–730 days
   Score: 0.50 × 0.20 = 0.10
   Interpretation: Delayed transition; weaker signal

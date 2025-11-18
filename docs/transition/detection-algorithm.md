@@ -450,7 +450,7 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
   "contract_id": "FA1234-20-C-0001",
   "likelihood_score": 0.70625,
   "confidence": "LIKELY",
-  "detection_date": "2024-01-15T10:30:00Z",
+  "detection_date": "2025-01-15T10:30:00Z",
   "evidence": { ... }
 }
 ```
