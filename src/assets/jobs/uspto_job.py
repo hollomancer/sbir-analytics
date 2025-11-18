@@ -21,7 +21,7 @@ Notes:
     Dagster run config or environment variables consumed by the assets.
 """
 
-from dagster import AssetSelection, build_assets_job
+from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
 
 # Import the USPTO asset definitions. These are expected to be defined in the
@@ -33,35 +33,23 @@ from dagster import AssetSelection, build_assets_job
 try:
     from src.assets.uspto_assets import raw_uspto_assignments, validated_uspto_assignments
 except Exception:  # pragma: no cover - defensive import for repository load-time
-    # If assets cannot be imported (e.g., dependencies missing at import time),
-    # set placeholders so the module still defines `uspto_validation_job` symbol.
-    raw_uspto_assignments = None  # type: ignore
-    validated_uspto_assignments = None  # type: ignore
-
-
-# Build an assets job that materializes the USPTO extraction + validation flow.
-# The job is named `uspto_validation_job` and only includes the two assets we care about.
-# Downstream consumers (or CI) can call this job to materialize assets and evaluate checks.
-if raw_uspto_assignments is not None and validated_uspto_assignments is not None:
-    uspto_validation_job = build_assets_job(
+    uspto_validation_job = build_placeholder_job(
         name="uspto_validation_job",
-        assets=[raw_uspto_assignments, validated_uspto_assignments],
-        selection=AssetSelection.keys(
-            raw_uspto_assignments.key,
-            validated_uspto_assignments.key,
-        ),
-        description=(
-            "Materialize USPTO assignment assets and run basic validators (rf_id uniqueness). "
-            "This job is intended for CI and lightweight validation runs."
-        ),
+        description="Placeholder job (USPTO assets unavailable at import time).",
     )
 else:
-    # Fallback placeholder job for environments where assets couldn't be imported.
-    # This allows repository introspection without failing import in constrained environments.
-    uspto_validation_job = build_assets_job(  # type: ignore[unreachable]
-        name="uspto_validation_job_placeholder",
-        assets=[],
-        description="Placeholder job (USPTO assets unavailable at import time).",
+    uspto_validation_job = build_job_from_spec(
+        JobSpec(
+            name="uspto_validation_job",
+            description=(
+                "Materialize USPTO assignment assets and run basic validators (rf_id uniqueness). "
+                "This job is intended for CI and lightweight validation runs."
+            ),
+            assets=(
+                raw_uspto_assignments,
+                validated_uspto_assignments,
+            ),
+        )
     )
 
 

@@ -256,6 +256,31 @@ class PerformanceMonitor:
             }
         return summary
 
+    def _aggregate_metrics(self, summary: dict[str, dict[str, Any]]) -> dict[str, float]:
+        """Compute aggregate metrics shared across reporting paths."""
+
+        total_operations = sum(s.get("count", 0) for s in summary.values())
+        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
+        max_peak_memory = max(
+            (s.get("max_peak_memory_mb", 0.0) for s in summary.values()), default=0.0
+        )
+        avg_memory_delta = (
+            sum(s.get("avg_memory_delta_mb", 0.0) for s in summary.values()) / len(summary)
+            if summary
+            else 0.0
+        )
+        avg_operation_duration = (
+            (total_duration / total_operations) if total_operations else 0.0
+        )
+
+        return {
+            "total_operations": total_operations,
+            "total_duration": total_duration,
+            "avg_operation_duration": avg_operation_duration,
+            "max_peak_memory_mb": max_peak_memory,
+            "avg_memory_delta_mb": avg_memory_delta,
+        }
+
     def reset_metrics(self) -> None:
         """Clear all collected metrics."""
         self.metrics.clear()
@@ -268,15 +293,13 @@ class PerformanceMonitor:
     def get_performance_report(self) -> dict[str, Any]:
         """Return a comprehensive performance report with summary and overall stats."""
         summary = self.get_metrics_summary()
-        total_operations = sum(s.get("count", 0) for s in summary.values())
-        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
-        avg_operation_duration = (total_duration / total_operations) if total_operations else 0.0
+        aggregates = self._aggregate_metrics(summary)
         return {
             "summary": summary,
             "overall": {
-                "total_operations": total_operations,
-                "total_duration": total_duration,
-                "avg_operation_duration": avg_operation_duration,
+                "total_operations": aggregates["total_operations"],
+                "total_duration": aggregates["total_duration"],
+                "avg_operation_duration": aggregates["avg_operation_duration"],
             },
             "psutil_available": _PSUTIL_AVAILABLE,
             "timestamp": time.time(),
@@ -289,20 +312,13 @@ class PerformanceMonitor:
             Dictionary with metrics formatted for performance_reporting and statistical_reporter
         """
         summary = self.get_metrics_summary()
-        total_operations = sum(s.get("count", 0) for s in summary.values())
-        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
-        max_peak_memory = max(
-            (s.get("max_peak_memory_mb", 0.0) for s in summary.values()), default=0.0
-        )
-        avg_memory_delta = sum(
-            (s.get("avg_memory_delta_mb", 0.0) for s in summary.values())
-        ) / len(summary) if summary else 0.0
+        aggregates = self._aggregate_metrics(summary)
 
         return {
-            "total_duration_seconds": total_duration,
-            "total_operations": total_operations,
-            "peak_memory_mb": max_peak_memory,
-            "avg_memory_delta_mb": avg_memory_delta,
+            "total_duration_seconds": aggregates["total_duration"],
+            "total_operations": aggregates["total_operations"],
+            "peak_memory_mb": aggregates["max_peak_memory_mb"],
+            "avg_memory_delta_mb": aggregates["avg_memory_delta_mb"],
             "psutil_available": _PSUTIL_AVAILABLE,
             "timestamp": time.time(),
             "summary": summary,
@@ -315,19 +331,13 @@ class PerformanceMonitor:
             Dictionary with key metrics that can be checked against thresholds
         """
         summary = self.get_metrics_summary()
-        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
-        max_peak_memory = max(
-            (s.get("max_peak_memory_mb", 0.0) for s in summary.values()), default=0.0
-        )
-        avg_memory_delta = sum(
-            (s.get("avg_memory_delta_mb", 0.0) for s in summary.values())
-        ) / len(summary) if summary else 0.0
+        aggregates = self._aggregate_metrics(summary)
 
         return {
-            "total_duration_seconds": total_duration,
-            "peak_memory_mb": max_peak_memory,
-            "avg_memory_delta_mb": avg_memory_delta,
-            "operation_count": sum(s.get("count", 0) for s in summary.values()),
+            "total_duration_seconds": aggregates["total_duration"],
+            "peak_memory_mb": aggregates["max_peak_memory_mb"],
+            "avg_memory_delta_mb": aggregates["avg_memory_delta_mb"],
+            "operation_count": aggregates["total_operations"],
         }
 
 
