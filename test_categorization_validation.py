@@ -377,13 +377,13 @@ def load_validation_dataset(path: str | None = None) -> pd.DataFrame:
     """
     if path is None:
         # Default path from spec
-        path = "data/raw/sbir/over-100-awards-company_search_1763075384.csv"
+        path = "data/raw/sbir/over-100-awards-2005-2025-company_search_1763156580.csv"
 
     dataset_path = Path(path)
     if not dataset_path.exists():
         logger.error(f"Validation dataset not found: {dataset_path}")
         logger.info(
-            "Expected location: data/raw/sbir/over-100-awards-company_search_1763075384.csv"
+            "Expected location: data/raw/sbir/over-100-awards-2005-2025-company_search_1763156580.csv"
         )
         sys.exit(1)
 

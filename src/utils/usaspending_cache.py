@@ -62,10 +62,11 @@ class USAspendingCache(BaseDataFrameCache):
         if cache_type is None:
             cache_type = self._get_default_cache_type()
 
-        # Add USAspending-specific metadata
-        metadata["uei"] = uei
-        metadata["duns"] = duns
-        metadata["company_name"] = company_name
+        # Remove uei, duns, company_name from metadata if present to avoid conflict
+        # with explicit keyword arguments. These are passed as explicit args, not in metadata.
+        metadata.pop("uei", None)
+        metadata.pop("duns", None)
+        metadata.pop("company_name", None)
 
         super().set(
             df=df,

@@ -527,7 +527,7 @@ class USAspendingAPIClient:
         try:
             from src.utils.path_utils import ensure_parent_dir
         
-        ensure_parent_dir(self.state_file)
+            ensure_parent_dir(self.state_file)
             with open(self.state_file, "w") as f:
                 json.dump(state, f, indent=2, default=str)
         except Exception as e:

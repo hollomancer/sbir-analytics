@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -79,7 +79,7 @@ class CLIConfig(BaseModel):
 
     @field_validator("progress_refresh_rate", "dashboard_refresh_rate")
     @classmethod
-    def validate_refresh_rate(cls, value: float | int) -> float | int:
+    def validate_refresh_rate(cls, value: Union[float, int]) -> Union[float, int]:
         if value <= 0:
             raise ValueError("Refresh rate must be positive")
         return value
@@ -178,7 +178,7 @@ class PathsConfig(BaseModel):
         return pattern.sub(replacer, value)
 
     def resolve_path(
-        self, path_key: str, create_parent: bool = False, project_root: Path | None = None
+        self, path_key: str, create_parent: bool = False, project_root: Optional[Path] = None
     ) -> Path:
         if not hasattr(self, path_key):
             raise ValueError(f"Unknown path key: {path_key}")
