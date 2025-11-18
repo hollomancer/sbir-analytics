@@ -295,18 +295,12 @@ class ContractExtractor:
             extent_competed = get_col(99)  # Column 99: extent_competed
             competition_type = self._parse_competition_type(extent_competed)
 
-            # Parse dates
-            def parse_date(date_str: str | None) -> date | None:
-                if not date_str or date_str == "\\N":
-                    return None
-                try:
-                    return datetime.strptime(date_str[:8], "%Y%m%d").date()
-                except (ValueError, TypeError):
-                    return None
-
-            action_date = parse_date(get_col(2))
-            start_date = parse_date(get_col(71))  # period_of_performance_start_date
-            end_date = parse_date(get_col(70))  # period_of_performance_current_end_date
+            # Parse dates using centralized utility with 8-digit format support
+            from src.utils.date_utils import parse_date
+            
+            action_date = parse_date(get_col(2), allow_8digit=True, strict=False)
+            start_date = parse_date(get_col(71), allow_8digit=True, strict=False)  # period_of_performance_start_date
+            end_date = parse_date(get_col(70), allow_8digit=True, strict=False)  # period_of_performance_current_end_date
 
             # Fallback to action_date if start_date missing
             if not start_date:

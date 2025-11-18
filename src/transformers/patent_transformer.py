@@ -199,26 +199,10 @@ class PatentAssignmentTransformer:
 
     @staticmethod
     def _parse_date(value: Any | None) -> date | None:
-        # Delegate to models' parsing where possible; keep simple ISO acceptance here
-        if value is None or value == "":
-            return None
-        if isinstance(value, date):
-            return value
-        try:
-            # accept ISO YYYY-MM-DD
-            from datetime import datetime
-
-            return datetime.fromisoformat(str(value)).date()
-        except Exception:
-            # fallback: try common formats
-            for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
-                try:
-                    from datetime import datetime
-
-                    return datetime.strptime(str(value), fmt).date()
-                except Exception:
-                    continue
-        return None
+        """Parse date using centralized utility."""
+        from src.utils.date_utils import parse_date
+        
+        return parse_date(value, strict=False)
 
     # ------------------------
     # Conveyance parsing

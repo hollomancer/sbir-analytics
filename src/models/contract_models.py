@@ -98,15 +98,12 @@ class ContractPeriod(BaseModel):
     )
     @classmethod
     def parse_dates(cls, v):
-        if v is None:
+        from src.utils.date_utils import parse_date
+        
+        result = parse_date(v, strict=True)
+        if result is None:
             return None
-        if isinstance(v, date | datetime):
-            return v.date() if isinstance(v, datetime) else v
-        # Attempt ISO parse
-        try:
-            return date.fromisoformat(str(v))
-        except Exception:
-            raise ValueError("Dates must be ISO-formatted strings or date objects")
+        return result
 
 
 class ContractDescription(BaseModel):

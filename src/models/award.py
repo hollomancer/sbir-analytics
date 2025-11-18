@@ -709,7 +709,9 @@ class RawAward(BaseModel):
         # Use pydantic model_dump to get a plain dict of values (pydantic v2)
         data = self.model_dump()
 
-        # Parse dates (attempt ISO first, then YYYY-MM-DD, then common US formats)
+        # Parse dates using centralized utility
+        from src.utils.date_utils import parse_date
+        
         date_fields = [
             "award_date",
             "proposal_award_date",
@@ -717,27 +719,10 @@ class RawAward(BaseModel):
             "contract_end_date",
             "solicitation_date",
         ]
-        us_formats = ("%m/%d/%Y", "%m-%d-%Y", "%m/%d/%y")
         for f in date_fields:
             val = data.get(f)
-            if isinstance(val, str):
-                parsed = None
-                s = val.strip()
-                # Try ISO first (handles 'YYYY-MM-DD' and ISO datetimes)
-                try:
-                    parsed = datetime.fromisoformat(s).date()
-                except Exception:
-                    # Try explicit YYYY-MM-DD
-                    try:
-                        parsed = datetime.strptime(s, "%Y-%m-%d").date()
-                    except Exception:
-                        # Try common US formats
-                        for fmt in us_formats:
-                            try:
-                                parsed = datetime.strptime(s, fmt).date()
-                                break
-                            except Exception:
-                                parsed = None
+            if val is not None:
+                parsed = parse_date(val, strict=False)
                 data[f] = parsed
 
         # Coerce award_amount if provided as string

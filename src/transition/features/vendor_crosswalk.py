@@ -94,25 +94,17 @@ def _fuzzy_score(a: str, b: str) -> float:
 
 
 def _iso_date(val: str | date | datetime | None) -> str | None:
-    if val is None:
-        return None
-    if isinstance(val, datetime):
-        return val.date().isoformat()
-    if isinstance(val, date):
-        return val.isoformat()
-    s = str(val).strip()
-    # Try simple ISO parse
-    try:
-        return date.fromisoformat(s).isoformat()
-    except Exception:
-        # attempt common formats
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
-            try:
-                return datetime.strptime(s, fmt).date().isoformat()
-            except Exception:
-                continue
-    # fallback: return raw string (but caller should be aware)
-    return s
+    """Format date as ISO string using centralized utility."""
+    from src.utils.date_utils import format_date_iso, parse_date
+    
+    # Try to format directly first
+    result = format_date_iso(val)
+    if result is not None:
+        return result
+    
+    # If formatting failed, try parsing first
+    parsed = parse_date(val, strict=False)
+    return format_date_iso(parsed) if parsed else str(val) if val else None
 
 
 # ---------------------------------------------------------------------------

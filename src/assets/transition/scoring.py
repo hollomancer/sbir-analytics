@@ -75,12 +75,11 @@ def transformed_transition_scores(
 
     # Helpers (local to keep module import-safe)
     def _parse_date_any(v: Any):
-        try:
-            dt = pd.to_datetime(v, errors="coerce", utc=False)
-            # to_datetime may return NaT
-            return None if pd.isna(dt) else dt.to_pydatetime()
-        except Exception:
-            return None
+        """Parse date using centralized utility, returning datetime."""
+        from src.utils.date_utils import parse_date
+        
+        result = parse_date(v, return_datetime=True, strict=False)
+        return result if isinstance(result, datetime) else None
 
     def _award_date_from_row(r: pd.Series | None):
         if r is None:

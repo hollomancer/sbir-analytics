@@ -243,15 +243,12 @@ class FederalContract(BaseModel):
     @classmethod
     def validate_and_parse_dates(cls, v):
         """Parse and validate date fields from various input formats."""
-        if v is None:
+        from src.utils.date_utils import parse_date
+        
+        result = parse_date(v, strict=True)
+        if result is None:
             return None
-        if isinstance(v, date | datetime):
-            return v.date() if isinstance(v, datetime) else v
-        # attempt ISO parse
-        try:
-            return date.fromisoformat(str(v))
-        except Exception:
-            raise ValueError("Dates must be ISO-formatted strings or date objects")
+        return result
 
     @model_validator(mode="after")
     def validate_date_logic(self):

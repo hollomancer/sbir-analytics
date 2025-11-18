@@ -31,31 +31,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 # ---- Utilities ----
-DATE_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
-def _parse_date(value: Any) -> date | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, date):
-        return value
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, str):
-        s = value.strip()
-        # Accept ISO-like strings
-        if DATE_ISO_RE.match(s):
-            try:
-                return date.fromisoformat(s)
-            except ValueError:
-                pass
-        # Try other common formats
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
-            try:
-                return datetime.strptime(s, fmt).date()
-            except ValueError:
-                continue
-    raise ValueError(f"Could not parse date from value: {value!r}")
+# Use centralized date parsing utility
+from src.utils.date_utils import parse_date as _parse_date
 
 
 def _normalize_identifier(val: str | None) -> str | None:

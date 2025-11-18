@@ -544,44 +544,11 @@ def validate_date_fields(
         total_rows = 0
 
         def parse_date(val: Any) -> datetime | None:
-            """Try to parse date from various formats."""
-            if val is None:
-                return None
-
-            val_str = str(val).strip()
-            if not val_str or val_str.lower() in ("nan", "nat", "none", "null"):
-                return None
-
-            # Try common date formats
-            for fmt in [
-                "%Y-%m-%d",
-                "%Y/%m/%d",
-                "%m/%d/%Y",
-                "%m-%d-%Y",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y/%m/%d %H:%M:%S",
-            ]:
-                try:
-                    return datetime.strptime(val_str, fmt)
-                except ValueError:
-                    continue
-
-            # Try pandas-style timestamp parsing
-            try:
-                if pd is not None:
-                    pd_date = pd.to_datetime(val_str)
-                    # Convert pandas Timestamp to datetime
-                    if hasattr(pd_date, "to_pydatetime"):
-                        py_date = pd_date.to_pydatetime()
-                        return py_date if isinstance(py_date, datetime) else None
-                    # Fallback: convert to datetime if it's already a datetime-like object
-                    if hasattr(pd_date, "timestamp"):
-                        return datetime.fromtimestamp(pd_date.timestamp())
-                    return None
-            except Exception:
-                pass
-
-            return None
+            """Parse date using centralized utility, returning datetime."""
+            from src.utils.date_utils import parse_date as parse_date_util
+            
+            result = parse_date_util(val, return_datetime=True, strict=False)
+            return result if isinstance(result, datetime) else None
 
         for row in iter_rows_from_path(file_path, chunk_size=chunk_size):
             total_rows += 1

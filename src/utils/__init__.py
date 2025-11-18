@@ -48,6 +48,14 @@ from .error_handling import (
     safe_execute,
 )
 
+# Date utilities
+from .date_utils import (
+    format_date_iso,
+    parse_date,
+    parse_date_safe,
+    validate_date_range,
+)
+
 
 __all__ = [
     # Logging
@@ -92,4 +100,9 @@ __all__ = [
     "log_and_raise",
     "retry_with_backoff",
     "safe_execute",
+    # Date utilities
+    "parse_date",
+    "parse_date_safe",
+    "format_date_iso",
+    "validate_date_range",
 ]
