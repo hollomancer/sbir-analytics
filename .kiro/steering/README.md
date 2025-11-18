@@ -113,3 +113,7 @@ quick-reference.md (Quick Lookup)
 2. Keep cross-references updated
 3. Update this README if document purposes change
 4. Ensure `quick-reference.md` stays current
+
+## Specification System
+
+For details on the active Kiro specification system and the archived OpenSpec content, refer to the [Specification System Documentation](../../docs/specifications/README.md).

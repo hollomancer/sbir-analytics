@@ -1,18 +1,8 @@
-<!-- SPECIFICATION SYSTEM:START -->
-
 # AI Agent Instructions
 
-##Using Kiro Specs
+## Specification System
 
-Use `.kiro/specs/` for all development work:
-
-- Planning new features or capabilities
-- Architecture changes and design decisions
-- Requirements documentation with EARS patterns
-- Task-driven implementation planning
-- Design documentation and implementation tasks
-
-<!-- SPECIFICATION SYSTEM:END -->
+This project uses **Kiro specifications** (`.kiro/specs/`) for all active development, planning, and requirements documentation. Historical OpenSpec content is archived in `archive/openspec/` for reference.
 
 ## Project: SBIR Analytics
 

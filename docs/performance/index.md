@@ -196,8 +196,7 @@ The SBIR ETL pipeline now has working CSV import functionality with excellent pe
 
 ## Enrichment Benchmarks
 
-**Document Version:** 1.0
-**Last Updated:** January 2024
+**Last Updated:** November 2025
 **Audience:** DevOps, Performance Engineers, System Operators
 
 ---

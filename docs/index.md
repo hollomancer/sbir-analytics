@@ -11,10 +11,10 @@ Status: active
 
 Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 
-- Specs and requirements live in `.kiro/specs/` (Kiro is the source of truth for designs, tasks, and requirements).
-- User and developer docs live under `docs/` (this site).
-- Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
-- Historical OpenSpec content is archived in `archive/openspec/`.
+-   **Kiro specifications** (`.kiro/specs/`) are the source of truth for designs, tasks, and requirements.
+-   User and developer documentation lives under `docs/` (this site).
+-   Agent steering documents live in `.kiro/steering/` (architectural patterns and guidance for AI agents).
+-   Historical OpenSpec content is archived in `archive/openspec/` for reference.
 
 ## What is this project?
 
@@ -34,22 +34,21 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 ### Getting Started
 - Getting started: [`README.md`](../README.md)
 - Quick start (local dev): [`QUICK_START.md`](../QUICK_START.md)
-- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
+- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
-- **[Production deployment](deployment/dagster-cloud-migration.md)** - Dagster Cloud (Primary)
-- **[AWS Infrastructure](deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions
-- **[Neo4j Aura Setup](data/neo4j-aura-setup.md)** - Cloud graph database
-- **[S3 Data Migration](deployment/s3-data-migration.md)** - S3 data lake
+- **[Production deployment](deployment/dagster-cloud-deployment-guide.md)** - Dagster Cloud (Primary)
+- **[AWS Infrastructure](deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions
 - [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
 
 ### Reference
 - Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
-- Neo4j schema reference: [`references/schemas/neo4j.md`](references/schemas/neo4j.md)
+- Neo4j schema reference: [`schemas/neo4j.md`](schemas/neo4j.md)
 - Data dictionaries: [`data/dictionaries/`](data/dictionaries/)
 - Configuration: [`configuration/paths.md`](configuration/paths.md)
 - Decisions (ADRs): [`decisions/`](decisions/)
+- Specification System: [`specifications/README.md`](specifications/README.md)
 
 ## Conventions
 
