@@ -30,20 +30,18 @@ pytestmark = pytest.mark.fast
 
 @pytest.fixture
 def sample_cet_areas():
-    """Sample CET areas for testing."""
+    """Sample CET areas for testing - uses consolidated utility."""
+    from tests.utils.fixtures import create_sample_cet_area
+
     return [
-        CETArea(
+        create_sample_cet_area(
             cet_id="cet001",
             name="Artificial Intelligence",
-            definition="AI technologies including machine learning and neural networks",
-            keywords=["machine learning", "neural network", "deep learning", "AI"],
             taxonomy_version="NSTC-2025Q1",
         ),
-        CETArea(
+        create_sample_cet_area(
             cet_id="cet002",
             name="Quantum Computing",
-            definition="Quantum technologies for computing and cryptography",
-            keywords=["quantum computing", "qubits", "quantum algorithm"],
             taxonomy_version="NSTC-2025Q1",
         ),
     ]

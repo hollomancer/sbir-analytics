@@ -69,14 +69,10 @@ def sample_signals():
 
 @pytest.fixture
 def sample_award_data() -> dict:
-    """Sample award data for testing."""
-    return {
-        "award_id": "AWARD-123",
-        "agency": "DOD",
-        "department": "Air Force",
-        "completion_date": date(2024, 1, 15),
-        "vendor_id": "VENDOR-001",
-    }
+    """Sample award data fixture - uses consolidated utility."""
+    from tests.utils.fixtures import create_sample_award_data
+
+    return create_sample_award_data()
 
 
 @pytest.fixture

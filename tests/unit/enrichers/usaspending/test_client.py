@@ -71,15 +71,10 @@ def sample_recipient_data():
 
 @pytest.fixture
 def sample_award_data():
-    """Sample award API response."""
-    return {
-        "award_id": "AWD001",
-        "piid": "PIID123",
-        "modification_number": "0",
-        "action_date": "2023-01-15",
-        "last_modified_date": "2023-01-20",
-        "recipient_uei": "UEI123456789",
-    }
+    """Sample award data fixture - uses consolidated utility."""
+    from tests.utils.fixtures import create_sample_award_data
+
+    return create_sample_award_data()
 
 
 @pytest.fixture
