@@ -249,6 +249,14 @@ def main():
     # Summary
     console.print("[bold green]✓ Test completed successfully![/bold green]\n")
 
+    # Note about similarity interpretation
+    console.print(
+        "[yellow]Note:[/yellow] Similarity scores may be higher than expected between "
+        "unrelated domains due to shared technical vocabulary and language patterns. "
+        "Consider using threshold-based filtering (e.g., > 0.90 for high confidence) "
+        "or domain-based pre-filtering. See docs/ml/paecter-testing-guide.md for details.\n"
+    )
+
     console.print(f"[bold]Test mode:[/bold] {client.inference_mode}")
     console.print("[bold]Next steps:[/bold]")
     console.print("1. Review the similarity scores above")

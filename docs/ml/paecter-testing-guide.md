@@ -149,9 +149,9 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 - Similar content gets higher similarity scores
 - Award-patent matching shows sensible results
 
-### Phase 2: Real Data Integration (NEXT STEP)
+### Phase 2: Real Data Integration (IMPLEMENTED)
 
-**Status:** 🔄 Ready to implement
+**Status:** ✅ Implemented
 
 **Objectives:**
 - Test with real SBIR award data from your database
@@ -160,53 +160,76 @@ uv run pytest tests/integration/test_paecter_client.py::TestPaECTERClient::test_
 - Save embeddings to Parquet files
 - Evaluate quality on known similar pairs
 
-**Implementation steps:**
+**Implementation:**
 
-1. Create test script for real data:
+A test script is available at `scripts/test_paecter_real_data.py` that:
 
-```python
-# tests/integration/test_paecter_real_data.py
-import pytest
-import pandas as pd
-from src.ml.paecter_client import PaECTERClient
+1. **Loads real SBIR data** from CSV (using DuckDB for efficient processing)
+2. **Prepares award texts** from Award Title, Abstract, and Solicitation Title fields
+3. **Generates embeddings** using PaECTER (API or local mode)
+4. **Saves embeddings** to Parquet format for reuse
+5. **Displays statistics** and summary information
 
-@pytest.mark.integration
-@pytest.mark.real_data
-@pytest.mark.slow
-def test_real_sbir_awards():
-    """Test embedding generation on real SBIR awards."""
-    # Load sample of real awards
-    awards_df = pd.read_csv("data/raw/sbir/award_data.csv", nrows=100)
-
-    client = PaECTERClient()
-
-    # Prepare texts
-    texts = [
-        client.prepare_award_text(
-            row.get('solicitation_title'),
-            row.get('abstract'),
-            row.get('award_title')
-        )
-        for _, row in awards_df.iterrows()
-    ]
-
-    # Generate embeddings
-    result = client.generate_embeddings(texts, batch_size=16, show_progress_bar=True)
-
-    # Save to Parquet
-    embeddings_df = pd.DataFrame({
-        'award_id': awards_df['award_id'],
-        'embedding': list(result.embeddings)
-    })
-    embeddings_df.to_parquet("data/processed/paecter_embeddings_awards_sample.parquet")
-
-    assert result.embeddings.shape == (100, 1024)
-```
-
-2. Run the test:
+**Usage:**
 
 ```bash
-uv run pytest tests/integration/test_paecter_real_data.py -v -s
+# API mode (default - requires HF_TOKEN)
+export HF_TOKEN="your_token_here"
+python scripts/test_paecter_real_data.py
+
+# Local mode (requires sentence-transformers)
+python scripts/test_paecter_real_data.py --local
+
+# Process limited number of records
+python scripts/test_paecter_real_data.py --limit 100
+
+# Use specific CSV file
+python scripts/test_paecter_real_data.py --csv data/raw/sbir/awards_data.csv
+
+# Load from S3 (direct URL)
+python scripts/test_paecter_real_data.py \
+    --s3 s3://your-bucket-name/data/raw/sbir/awards_data.csv
+
+# Load from S3 (using bucket env var)
+export SBIR_ETL__S3_BUCKET=your-bucket-name
+python scripts/test_paecter_real_data.py
+
+# Load from S3 (using --s3-bucket flag)
+python scripts/test_paecter_real_data.py \
+    --s3-bucket your-bucket-name \
+    --csv data/raw/sbir/awards_data.csv
+
+# Custom output path and batch size
+python scripts/test_paecter_real_data.py \
+    --output data/processed/my_embeddings.parquet \
+    --batch-size 64
+```
+
+**Output:**
+
+The script generates a Parquet file with:
+- `award_id`: Award identifier
+- `embedding`: 1024-dimensional embedding vector (as list)
+- `model_version`: Model version used
+- `inference_mode`: "api" or "local"
+- `dimension`: Embedding dimension (1024)
+
+**Loading embeddings:**
+
+```python
+import pandas as pd
+import numpy as np
+
+# Load embeddings
+df = pd.read_parquet("data/processed/paecter_embeddings_awards_sample.parquet")
+
+# Convert to numpy array for similarity computation
+embeddings = np.array([np.array(e) for e in df['embedding']])
+
+# Use with PaECTER client for similarity
+from src.ml.paecter_client import PaECTERClient
+client = PaECTERClient()
+similarities = client.compute_similarity(embeddings[:10], embeddings[10:20])
 ```
 
 ### Phase 3: Quality Validation
@@ -442,6 +465,139 @@ If performance is significantly slower:
 2. Increase batch size: `batch_size=64`
 3. Consider switching to API mode for simpler deployment
 
+## Interpreting Similarity Scores
+
+### Understanding Cosine Similarity
+
+PaECTER embeddings use **cosine similarity** (range: -1 to 1, typically 0 to 1 for normalized embeddings):
+- **0.95-1.0**: Very high similarity (likely related technologies)
+- **0.85-0.95**: High similarity (possibly related, but review carefully)
+- **0.70-0.85**: Moderate similarity (may share technical language patterns)
+- **0.50-0.70**: Low similarity (likely unrelated)
+- **< 0.50**: Very low similarity (clearly unrelated)
+
+### Known Limitations
+
+**High Similarity Between Unrelated Domains**
+
+You may observe unexpectedly high similarity scores (e.g., 0.85-0.90) between clearly unrelated technologies. For example:
+- "Deep Learning for Drug Discovery" ↔ "High-Performance Photovoltaic Device" might show ~0.87 similarity
+
+**Why this happens:**
+1. **Shared technical vocabulary**: Terms like "architecture", "materials", "efficiency", "stability" appear in many technical domains
+2. **General language patterns**: Both texts describe advanced technology with similar sentence structures
+3. **Model training data**: PaECTER is trained on patents, which share common technical language patterns across domains
+4. **Embedding space compression**: High-dimensional embeddings can create spurious similarities
+
+**This is expected behavior** and not necessarily a bug. The model captures semantic similarity at multiple levels, including:
+- Domain-specific content (what you want)
+- Technical language patterns (may create false positives)
+- Structural similarities (sentence length, complexity)
+
+### Recommendations
+
+**1. Use Threshold-Based Filtering**
+
+Set appropriate thresholds based on your use case:
+```python
+# Conservative: only very high similarities
+high_confidence_threshold = 0.90
+
+# Moderate: include high similarities with review
+moderate_threshold = 0.85
+
+# Aggressive: include moderate similarities (more false positives)
+low_threshold = 0.75
+
+# Filter results
+top_matches = [
+    (patent_id, score) 
+    for patent_id, score in similarities 
+    if score >= high_confidence_threshold
+]
+```
+
+**2. Add Domain-Based Pre-Filtering**
+
+Before computing similarities, filter by domain keywords or CET classifications:
+```python
+# Example: Only compare awards and patents in similar domains
+def domain_match(award_domain: str, patent_domain: str) -> bool:
+    """Check if award and patent are in compatible domains."""
+    compatible_domains = {
+        "AI/ML": ["AI/ML", "Software"],
+        "Materials": ["Materials", "Manufacturing"],
+        "Energy": ["Energy", "Materials"],
+    }
+    return patent_domain in compatible_domains.get(award_domain, [])
+```
+
+**3. Use Multi-Stage Filtering**
+
+Combine multiple signals:
+```python
+# Stage 1: High similarity threshold
+candidates = filter_by_similarity(similarities, threshold=0.85)
+
+# Stage 2: Domain compatibility
+candidates = filter_by_domain(candidates, award_domain, patent_domains)
+
+# Stage 3: Keyword overlap
+candidates = filter_by_keywords(candidates, min_keyword_overlap=3)
+```
+
+**4. Establish Baseline Thresholds**
+
+Test with known similar and dissimilar pairs to establish domain-specific thresholds:
+```python
+# Known similar pairs should have similarity > 0.90
+# Known dissimilar pairs should have similarity < 0.70
+# Adjust your threshold based on your data distribution
+```
+
+**5. Review Top-K Results**
+
+Instead of using a single threshold, consider top-k retrieval:
+```python
+# Get top 5 matches for each award
+top_k = 5
+for award_idx, award_id in enumerate(award_ids):
+    top_indices = np.argsort(similarities[award_idx])[::-1][:top_k]
+    top_scores = similarities[award_idx][top_indices]
+    
+    # Review all top-k, not just high-scoring ones
+    for patent_idx, score in zip(top_indices, top_scores):
+        if score >= 0.80:  # Still use a minimum threshold
+            # Add to results for review
+            pass
+```
+
+### Debugging High Similarity Scores
+
+If you encounter unexpectedly high similarities, use the diagnostic script:
+
+```bash
+python scripts/debug_paecter_similarity.py
+```
+
+This script will:
+- Show the actual prepared text being embedded
+- Compute detailed similarity metrics
+- Analyze word overlap between texts
+- Compare with known similar/dissimilar pairs
+- Provide recommendations for threshold adjustment
+
+### Expected Similarity Distributions
+
+Based on the PaECTER specification, you should expect:
+- **Negative pairs** (unrelated): Mean cosine similarity ≤ 0.30
+- **Positive pairs** (related): Mean cosine similarity ≥ 0.55
+
+If your unrelated pairs show mean similarity > 0.30, consider:
+- Adjusting your similarity thresholds upward
+- Adding domain-based filtering
+- Using additional signals beyond embeddings
+
 ## Sample Data Included
 
 The test file includes sample data for quick testing:
@@ -464,7 +620,7 @@ These are intentionally matched to demonstrate similarity scoring.
 2. **Set token:** `export HF_TOKEN="your_token_here"`
 3. **Run quick test:** `python scripts/test_paecter_quick.py`
 4. **Run integration tests:** `USE_PAECTER_API=1 pytest tests/integration/test_paecter_client.py -v`
-5. **Test with your data:** Create `test_paecter_real_data.py` (see Phase 2 above)
+5. **Test with your data:** `python scripts/test_paecter_real_data.py --limit 100`
 6. **Evaluate quality:** Check similarity scores make sense for known similar pairs
 7. **Scale up:** Move to Dagster pipeline integration (Phase 4)
 

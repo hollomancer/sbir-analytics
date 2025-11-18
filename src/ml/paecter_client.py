@@ -37,11 +37,20 @@ except ImportError:
 
 @dataclass
 class EmbeddingResult:
-    """Result from embedding generation."""
+    """Result from embedding generation.
+
+    Attributes:
+        embeddings: Generated embedding vectors (N x D array)
+        model_version: Model identifier (e.g., "mpi-inno-comp/paecter")
+        generation_timestamp: Elapsed time in seconds for generation (not epoch timestamp)
+        input_count: Number of input texts processed
+        dimension: Embedding dimension (1024 for PaECTER)
+        inference_mode: "api" or "local"
+    """
 
     embeddings: np.ndarray
     model_version: str
-    generation_timestamp: float
+    generation_timestamp: float  # Elapsed time in seconds (not epoch timestamp)
     input_count: int
     dimension: int
     inference_mode: Literal["api", "local"]
@@ -205,7 +214,7 @@ class PaECTERClient:
             return EmbeddingResult(
                 embeddings=embeddings,
                 model_version=self.model_name,
-                generation_timestamp=time.time(),
+                generation_timestamp=generation_time,  # Store elapsed time, not epoch timestamp
                 input_count=len(texts),
                 dimension=self.embedding_dim,
                 inference_mode=self.inference_mode,
