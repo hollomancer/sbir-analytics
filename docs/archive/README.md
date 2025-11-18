@@ -1,3 +1,11 @@
+---
+Type: Overview
+Owner: docs@project
+Last-Reviewed: 2025-01-XX
+Status: active
+
+---
+
 # Archived Documentation
 
 This directory contains historical documentation that has been archived but kept for reference.

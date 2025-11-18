@@ -1,3 +1,11 @@
+---
+Type: Reference
+Owner: docs@project
+Last-Reviewed: 2025-01-XX
+Status: active
+
+---
+
 # Neo4j Migrations
 
 This directory contains Neo4j schema migrations managed using a custom migration system.

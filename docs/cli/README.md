@@ -1,3 +1,11 @@
+---
+Type: Reference
+Owner: docs@project
+Last-Reviewed: 2025-01-XX
+Status: active
+
+---
+
 # SBIR CLI Reference Guide
 
 The SBIR CLI provides a comprehensive command-line interface for monitoring and operating the SBIR analytics pipeline using Rich terminal UI.

@@ -1,3 +1,11 @@
+---
+Type: Overview
+Owner: docs@project
+Last-Reviewed: 2025-01-XX
+Status: active
+
+---
+
 # Architecture Decision Records (ADRs)
 
 This directory contains Architecture Decision Records (ADRs) for the SBIR Transition Detection ETL project.

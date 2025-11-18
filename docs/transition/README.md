@@ -1,3 +1,11 @@
+---
+Type: Overview
+Owner: docs@project
+Last-Reviewed: 2025-01-XX
+Status: active
+
+---
+
 # Transition Detection Documentation
 
 This directory contains comprehensive documentation for the technology transition detection system in the SBIR ETL project.
