@@ -74,7 +74,7 @@ except Exception:  # pragma: no cover - allow this module to exist even if model
     PatentAssignment = None  # type: ignore
 
 
-SUPPORTED_EXTENSIONS = [".dta", ".csv", ".parquet"]
+SUPPORTED_EXTENSIONS = [".dta", ".csv", ".parquet", ".tsv"]
 
 
 class USPTOExtractor:
@@ -171,6 +171,9 @@ class USPTOExtractor:
         ext = path.suffix.lower()
         if ext == ".csv":
             yield from self._stream_csv(path, chunk_size)
+        elif ext == ".tsv":
+            # TSV is tab-separated CSV, use CSV reader with tab delimiter
+            yield from self._stream_csv(path, chunk_size, delimiter="\t")
         elif ext == ".dta":
             yield from self._stream_dta(path, chunk_size)
         elif ext == ".parquet":
@@ -261,12 +264,12 @@ class USPTOExtractor:
     # ----------------------------
     # File format-specific readers
     # ----------------------------
-    def _stream_csv(self, path: Path, chunk_size: int) -> Generator[dict, None, None]:
+    def _stream_csv(self, path: Path, chunk_size: int, delimiter: str = ",") -> Generator[dict, None, None]:
         if pd is None:
             raise RuntimeError("pandas is required to read CSV files for USPTO extraction")
-        logger.debug("Streaming CSV %s with chunk_size=%d", path, chunk_size)
+        logger.debug("Streaming CSV %s with chunk_size=%d, delimiter=%r", path, chunk_size, delimiter)
         try:
-            for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True):
+            for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True, delimiter=delimiter):
                 yield from chunk.to_dict(orient="records")
         except Exception:
             logger.exception("CSV streaming failed for %s", path)

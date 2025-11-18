@@ -213,7 +213,7 @@ enrichment:
 extraction:
   sbir:
     # SBIR CSV configuration
-    csv_path: "data/raw/sbir/awards_data.csv"  # Local fallback path
+    csv_path: "data/raw/sbir/award_data.csv"  # Local fallback path
     csv_path_s3: null  # Auto-built from csv_path if SBIR_ETL__S3_BUCKET is set
     use_s3_first: true  # Try S3 first, fallback to local csv_path
     duckdb:
@@ -641,3 +641,39 @@ cli:
   api_timeout_seconds: 30
   max_concurrent_operations: 4
   cache_metrics_seconds: 60
+
+# PaECTER (Patent Embeddings) configuration
+ml:
+  paecter:
+    # Provider selection: "huggingface" (default, uses API) or "local" (requires sentence-transformers)
+    provider: "huggingface"
+    use_local: false  # Set to true to use local model instead of API
+    
+    # API configuration (for HuggingFace Inference API)
+    api:
+      token_env: "HF_TOKEN"  # Environment variable for HuggingFace API token
+      batch_size: 32  # Batch size for API requests
+      max_qps: 10  # Maximum queries per second (client-side throttle)
+      timeout_seconds: 60
+      max_retries: 5
+      retry_backoff_seconds: 2.0
+    
+    # Local model configuration (when use_local=true)
+    local:
+      model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
+      device: "auto"  # "auto", "cpu", or "cuda"
+      batch_size: 32
+    
+    # Text processing
+    text:
+      max_length: 512  # Maximum token length (truncation)
+      award_fields: ["solicitation_title", "abstract", "award_title"]
+      patent_fields: ["title", "abstract"]
+    
+    # Similarity computation
+    similarity_threshold: 0.80  # Minimum similarity score to include in results
+    top_k: 10  # Number of top matches to return per award
+    
+    # Validation thresholds
+    coverage_threshold_awards: 0.95  # 95% of awards must have valid embeddings
+    coverage_threshold_patents: 0.98  # 98% of patents must have valid embeddings
