@@ -12,6 +12,61 @@ from ..exceptions import ExtractionError, FileSystemError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
 
 
+def _import_usaspending_table(
+    context: AssetExecutionContext,
+    *,
+    log_label: str,
+    table_name: str,
+    table_oid: str,
+) -> Output[pd.DataFrame]:
+    """Helper to import a USAspending table and emit consistent Dagster metadata."""
+    config = get_config()
+    dump_path = config.paths.resolve_path("usaspending_dump_file")
+
+    context.log.info(
+        f"Starting USAspending {log_label} extraction",
+        extra={
+            "dump_path": str(dump_path),
+            "duckdb_path": config.duckdb.database_path,
+        },
+    )
+
+    extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
+    success = extractor.import_postgres_dump(dump_path, table_name)
+    if not success:
+        raise ExtractionError(
+            "Failed to import USAspending dump",
+            component="assets.usaspending_ingestion",
+            operation="import_dump",
+            details={"dump_path": str(dump_path), "table_name": table_name},
+        )
+
+    full_table_name = f"{table_name}_{table_oid}"
+    table_info = extractor.get_table_info(full_table_name)
+    sample_df = extractor.query_awards(table_name=full_table_name, limit=100)
+
+    context.log.info(
+        f"{log_label.replace('_', ' ').title()} extraction complete",
+        extra={
+            "table_name": table_info.get("table_name"),
+            "row_count": table_info.get("row_count"),
+            "columns": len(table_info.get("columns", [])),
+        },
+    )
+
+    metadata = {
+        "table_name": table_info.get("table_name"),
+        "row_count": table_info.get("row_count"),
+        "num_columns": len(table_info.get("columns", [])),
+        "columns": MetadataValue.json(
+            [col["column_name"] for col in table_info.get("columns", [])]
+        ),
+        "preview": MetadataValue.md(sample_df.head(10).to_markdown()),
+    }
+
+    return Output(value=sample_df, metadata=metadata)
+
+
 @asset(
     description="USAspending recipient lookup table loaded into DuckDB",
     group_name="extraction",
@@ -24,62 +79,12 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     Returns:
         pandas DataFrame with recipient data
     """
-    # Get configuration
-    config = get_config()
-
-    # Get USAspending dump path from configuration
-    dump_path = config.paths.resolve_path("usaspending_dump_file")
-
-    context.log.info(
-        "Starting USAspending recipient_lookup extraction",
-        extra={
-            "dump_path": str(dump_path),
-            "duckdb_path": config.duckdb.database_path,
-        },
+    return _import_usaspending_table(
+        context,
+        log_label="recipient_lookup",
+        table_name="raw_usaspending_recipients",
+        table_oid="5412",
     )
-
-    # Initialize extractor
-    extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
-
-    # Import dump
-    table_name = "raw_usaspending_recipients"
-    success = extractor.import_postgres_dump(dump_path, table_name)
-
-    if not success:
-        raise ExtractionError(
-            "Failed to import USAspending dump",
-            component="assets.usaspending_ingestion",
-            operation="import_dump",
-            details={"dump_path": str(dump_path), "table_name": table_name},
-        )
-
-    # Get table info
-    table_info = extractor.get_table_info(f"{table_name}_5412")  # recipient_lookup OID
-
-    # Sample data for metadata
-    sample_df = extractor.query_awards(table_name=f"{table_name}_5412", limit=100)
-
-    context.log.info(
-        "Recipient lookup extraction complete",
-        extra={
-            "table_name": table_info.get("table_name"),
-            "row_count": table_info.get("row_count"),
-            "columns": len(table_info.get("columns", [])),
-        },
-    )
-
-    # Create metadata
-    metadata = {
-        "table_name": table_info.get("table_name"),
-        "row_count": table_info.get("row_count"),
-        "num_columns": len(table_info.get("columns", [])),
-        "columns": MetadataValue.json(
-            [col["column_name"] for col in table_info.get("columns", [])]
-        ),
-        "preview": MetadataValue.md(sample_df.head(10).to_markdown()),
-    }
-
-    return Output(value=sample_df, metadata=metadata)
 
 
 @asset(
@@ -94,62 +99,12 @@ def raw_usaspending_transactions(context: AssetExecutionContext) -> Output[pd.Da
     Returns:
         pandas DataFrame with transaction data
     """
-    # Get configuration
-    config = get_config()
-
-    # Get USAspending dump path from configuration
-    dump_path = config.paths.resolve_path("usaspending_dump_file")
-
-    context.log.info(
-        "Starting USAspending transaction_normalized extraction",
-        extra={
-            "dump_path": str(dump_path),
-            "duckdb_path": config.duckdb.database_path,
-        },
+    return _import_usaspending_table(
+        context,
+        log_label="transaction_normalized",
+        table_name="raw_usaspending_transactions",
+        table_oid="5420",
     )
-
-    # Initialize extractor
-    extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
-
-    # Import dump
-    table_name = "raw_usaspending_transactions"
-    success = extractor.import_postgres_dump(dump_path, table_name)
-
-    if not success:
-        raise ExtractionError(
-            "Failed to import USAspending dump",
-            component="assets.usaspending_ingestion",
-            operation="import_dump",
-            details={"dump_path": str(dump_path), "table_name": table_name},
-        )
-
-    # Get table info
-    table_info = extractor.get_table_info(f"{table_name}_5420")  # transaction_normalized OID
-
-    # Sample data for metadata
-    sample_df = extractor.query_awards(table_name=f"{table_name}_5420", limit=100)
-
-    context.log.info(
-        "Transaction normalized extraction complete",
-        extra={
-            "table_name": table_info.get("table_name"),
-            "row_count": table_info.get("row_count"),
-            "columns": len(table_info.get("columns", [])),
-        },
-    )
-
-    # Create metadata
-    metadata = {
-        "table_name": table_info.get("table_name"),
-        "row_count": table_info.get("row_count"),
-        "num_columns": len(table_info.get("columns", [])),
-        "columns": MetadataValue.json(
-            [col["column_name"] for col in table_info.get("columns", [])]
-        ),
-        "preview": MetadataValue.md(sample_df.head(10).to_markdown()),
-    }
-
-    return Output(value=sample_df, metadata=metadata)
 
 
 @asset(

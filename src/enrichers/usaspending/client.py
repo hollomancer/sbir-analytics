@@ -90,6 +90,7 @@ class USAspendingAPIClient:
         method: str,
         endpoint: str,
         params: dict[str, Any] | None = None,
+        *,
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Make an HTTP request to USAspending API with retry logic.
@@ -362,6 +363,62 @@ class USAspendingAPIClient:
         except USAspendingAPIError as e:
             logger.warning(f"Failed to fetch transactions for UEI {uei}: {e}")
             return []
+
+    async def autocomplete_recipient(
+        self,
+        search_text: str,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        """Call the USAspending recipient autocomplete endpoint."""
+        payload = {
+            "search_text": search_text,
+            "limit": limit,
+        }
+        return await self._make_request(
+            "POST",
+            "/autocomplete/recipient/",
+            params=payload,
+        )
+
+    async def search_transactions(
+        self,
+        filters: dict[str, Any],
+        fields: list[str],
+        page: int = 1,
+        limit: int = 100,
+        sort: str | None = "Transaction Amount",
+        order: str | None = "desc",
+        extra_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Search the spending_by_transaction endpoint with consistent defaults."""
+        payload: dict[str, Any] = {
+            "filters": filters,
+            "fields": fields,
+            "page": page,
+            "limit": limit,
+        }
+        if sort:
+            payload["sort"] = sort
+        if order:
+            payload["order"] = order
+        if extra_payload:
+            payload.update(extra_payload)
+
+        return await self._make_request(
+            "POST",
+            "/search/spending_by_transaction/",
+            params=payload,
+        )
+
+    async def fetch_award_details(self, award_id: str) -> dict[str, Any] | None:
+        """Fetch detailed award information for PSC fallbacks."""
+        try:
+            return await self._make_request("GET", f"/awards/{award_id}/")
+        except USAspendingAPIError as e:
+            if "404" in str(e) or "not found" in str(e).lower():
+                logger.debug(f"Award not found for id: {award_id}")
+                return None
+            raise
 
     async def enrich_award(
         self,

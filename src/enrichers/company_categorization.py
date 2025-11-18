@@ -24,168 +24,50 @@ Key Functions:
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
+import asyncio
 import re
 import threading
-import time
-from collections import deque
-from datetime import datetime, timedelta
 from typing import Any
 
-import httpx
 import pandas as pd
 from loguru import logger
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from src.config.loader import get_config
+from src.enrichers.usaspending import (
+    USAspendingAPIClient,
+    USAspendingAPIError,
+    USAspendingRateLimitError,
+)
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.utils.usaspending_cache import USAspendingCache
 
 
-class RateLimiter:
-    """Thread-safe rate limiter for USAspending API calls.
-    
-    Tracks request timestamps and enforces rate limits by waiting when necessary.
-    Thread-safe for use in parallel processing scenarios.
-    """
-
-    def __init__(self, rate_limit_per_minute: int = 120):
-        """Initialize rate limiter.
-        
-        Args:
-            rate_limit_per_minute: Maximum requests allowed per minute
-        """
-        self.rate_limit_per_minute = rate_limit_per_minute
-        self.request_times: deque[datetime] = deque(maxlen=rate_limit_per_minute)
-        self._lock = threading.Lock()  # Thread-safe lock
-
-    def wait_if_needed(self) -> None:
-        """Wait if rate limit would be exceeded.
-        
-        Removes requests older than 1 minute and waits if we're at the limit.
-        Thread-safe for concurrent access.
-        """
-        with self._lock:
-            now = datetime.now()
-            # Remove requests older than 1 minute
-            cutoff_time = now - timedelta(seconds=60)
-            while self.request_times and self.request_times[0] < cutoff_time:
-                self.request_times.popleft()
-
-            # If we're at the limit, wait until the oldest request is 60 seconds old
-            if len(self.request_times) >= self.rate_limit_per_minute:
-                oldest = self.request_times[0]
-                wait_seconds = 60 - (now - oldest).total_seconds() + 0.5  # Add 0.5s buffer
-                if wait_seconds > 0:
-                    logger.debug(f"Rate limit reached ({self.rate_limit_per_minute}/min), waiting {wait_seconds:.1f} seconds")
-                    # Release lock during sleep to allow other threads to check
-                    self._lock.release()
-                    try:
-                        time.sleep(wait_seconds)
-                    finally:
-                        self._lock.acquire()
-                    # Recalculate after sleep
-                    now = datetime.now()
-                    cutoff_time = now - timedelta(seconds=60)
-                    while self.request_times and self.request_times[0] < cutoff_time:
-                        self.request_times.popleft()
-
-            # Record this request
-            self.request_times.append(datetime.now())
+_api_client: USAspendingAPIClient | None = None
+_api_client_lock = threading.Lock()
 
 
-# Global rate limiter instance (initialized on first use, thread-safe)
-_rate_limiter: RateLimiter | None = None
-_rate_limiter_lock = threading.Lock()
+def _get_usaspending_client() -> USAspendingAPIClient:
+    """Get or initialize a shared USAspending API client."""
+    global _api_client
+    if _api_client is None:
+        with _api_client_lock:
+            if _api_client is None:
+                _api_client = USAspendingAPIClient()
+                logger.debug("Initialized shared USAspendingAPIClient for company categorization")
+    return _api_client
 
 
-def _get_rate_limiter() -> RateLimiter:
-    """Get or create the global rate limiter instance.
-    
-    Returns:
-        RateLimiter instance configured from config
-    """
-    global _rate_limiter
-    if _rate_limiter is None:
-        with _rate_limiter_lock:
-            # Double-check pattern for thread safety
-            if _rate_limiter is None:
-                try:
-                    config = get_config()
-                    rate_limit = config.enrichment_refresh.usaspending.rate_limit_per_minute
-                except Exception:
-                    # Fallback to conservative default if config unavailable
-                    rate_limit = 120
-                    logger.warning(f"Could not load rate limit from config, using default: {rate_limit}/min")
-                _rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)
-    return _rate_limiter
-
-
-def _make_rate_limited_request(
-    method: str,
-    url: str,
-    rate_limiter: RateLimiter | None = None,
-    timeout: int = 30,
-    max_retries: int = 3,
-    **kwargs: Any,
-) -> httpx.Response:
-    """Make an HTTP request with rate limiting and retry logic.
-    
-    Args:
-        method: HTTP method (GET, POST)
-        url: Full URL to request
-        rate_limiter: Optional rate limiter instance (uses global if None)
-        timeout: Request timeout in seconds
-        max_retries: Maximum number of retry attempts
-        **kwargs: Additional arguments to pass to httpx request
-        
-    Returns:
-        httpx.Response object
-        
-    Raises:
-        httpx.HTTPError: If request fails after all retries
-    """
-    if rate_limiter is None:
-        rate_limiter = _get_rate_limiter()
-    
-    @retry(
-        stop=stop_after_attempt(max_retries),
-        wait=wait_exponential(multiplier=2.0, min=2, max=30),
-        retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException, httpx.RequestError)),
-        reraise=True,
-    )
-    def _do_request() -> httpx.Response:
-        # Wait for rate limit before making request
-        rate_limiter.wait_if_needed()
-        
-        # Make the request
-        with httpx.Client(timeout=timeout) as client:
-            if method.upper() == "GET":
-                response = client.get(url, **kwargs)
-            elif method.upper() == "POST":
-                response = client.post(url, **kwargs)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
-            # Check for rate limit status code - raise_for_status will convert to HTTPStatusError for retry
-            if response.status_code == 429:
-                logger.warning("Received 429 rate limit response, will retry with backoff")
-            
-            response.raise_for_status()
-            return response
-    
+def _run_async(coro):
+    """Run an async coroutine from synchronous contexts."""
     try:
-        return _do_request()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429:
-            logger.error(f"Rate limit exceeded after {max_retries} retries for {url}")
-        raise
-    except (httpx.TimeoutException, httpx.RequestError) as e:
-        logger.error(f"Request failed after {max_retries} retries for {url}: {e}")
+        return asyncio.run(coro)
+    except RuntimeError as exc:
+        if "asyncio.run()" in str(exc):
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(coro)
+            finally:
+                loop.close()
         raise
 
 
@@ -348,11 +230,7 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
     return unique_variations
 
 
-def _fuzzy_match_recipient(
-    company_name: str,
-    base_url: str = "https://api.usaspending.gov/api/v2",
-    timeout: int = 10,
-) -> dict[str, Any] | None:
+def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
     """Use USAspending autocomplete API to find the best recipient match for a company name.
 
     Tries multiple normalized variations of the company name to improve matching success
@@ -360,8 +238,6 @@ def _fuzzy_match_recipient(
 
     Args:
         company_name: Company name to search for
-        base_url: USAspending API base URL
-        timeout: Request timeout in seconds
 
     Returns:
         Dictionary with matched recipient info (uei, name, etc.) or None if no match
@@ -382,25 +258,11 @@ def _fuzzy_match_recipient(
     best_candidate = None
 
     # Try each variation until we find a match
+    client = _get_usaspending_client()
+
     for idx, search_name in enumerate(name_variations, 1):
         try:
-            url = f"{base_url}/autocomplete/recipient/"
-            payload = {
-                "search_text": search_name,
-                "limit": 5,  # Get top 5 matches for potential validation
-            }
-
-            response = _make_rate_limited_request(
-                "POST",
-                url,
-                timeout=timeout,
-                json=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "User-Agent": "SBIR-ETL/1.0",
-                },
-            )
-            data = response.json()
+            data = _run_async(client.autocomplete_recipient(search_name, limit=5))
 
             results = data.get("results", [])
             if not results:
@@ -472,18 +334,14 @@ def _fuzzy_match_recipient(
                 "duns": matched_duns,
             }
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                logger.warning(f"Rate limit exceeded during autocomplete for '{search_name}', skipping remaining variations")
-                break  # Don't try more variations if rate limited
-            logger.debug(f"HTTP {e.response.status_code} error during autocomplete for variation '{search_name}': {e}")
-            continue  # Try next variation
-        except (httpx.TimeoutException, httpx.RequestError) as e:
-            logger.debug(f"Connection error during autocomplete for variation '{search_name}': {e}")
-            continue  # Try next variation
-        except Exception as e:
-            logger.debug(f"Unexpected error during autocomplete for variation '{search_name}': {e}")
-            continue  # Try next variation
+        except USAspendingRateLimitError as e:
+            logger.warning(
+                f"Rate limit exceeded during autocomplete for '{search_name}', stopping search: {e}"
+            )
+            break
+        except USAspendingAPIError as e:
+            logger.debug(f"Autocomplete error for variation '{search_name}': {e}")
+            continue
 
     # If we found a candidate with valid name but no UEI/DUNS, return it
     # This will be used for direct name search
@@ -645,8 +503,6 @@ def retrieve_company_contracts_api(
     uei: str | None = None,
     duns: str | None = None,
     company_name: str | None = None,
-    base_url: str = "https://api.usaspending.gov/api/v2",
-    timeout: int = 30,
     page_size: int = 100,  # API maximum limit is 100
     max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
@@ -666,8 +522,6 @@ def retrieve_company_contracts_api(
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
         company_name: Company name (used as fallback when UEI/DUNS are invalid)
-        base_url: USAspending API base URL
-        timeout: Request timeout in seconds
         page_size: Number of results per page
         max_psc_lookups: Unused (kept for API compatibility)
 
@@ -711,6 +565,8 @@ def retrieve_company_contracts_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = USAspendingCache(enabled=False)
 
+    client = _get_usaspending_client()
+
     # Check cache first (non-SBIR contracts)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
     if cached_result is not None:
@@ -722,7 +578,7 @@ def retrieve_company_contracts_api(
     matched_name = None
     if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.info(f"Attempting fuzzy match via autocomplete for: {company_name}")
-        match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
+        match_result = _fuzzy_match_recipient(company_name)
 
         if match_result:
             # Use the matched identifiers instead of the original name
@@ -805,60 +661,27 @@ def retrieve_company_contracts_api(
     try:
         logger.info("Fetching transactions from spending_by_transaction endpoint")
         while page <= max_pages:
-            # Build payload with ALL required fields per API contract
-            payload = {
-                "filters": filters,
-                "fields": fields,
-                "sort": "Transaction Amount",  # Required field per API docs
-                "order": "desc",
-                "page": page,
-                "limit": page_size,
-            }
-
-            url = f"{base_url}/search/spending_by_transaction/"
-            logger.debug(f"Fetching page {page} from spending_by_transaction endpoint (company: {uei or company_name or 'Unknown'})")
-
+            logger.debug(
+                f"Fetching page {page} from spending_by_transaction endpoint (company: {uei or company_name or 'Unknown'})"
+            )
             try:
-                logger.debug(f"Making API request for page {page}...")
-                response = _make_rate_limited_request(
-                    "POST",
-                    url,
-                    timeout=timeout,
-                    json=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "User-Agent": "SBIR-ETL/1.0",
-                    },
+                data = _run_async(
+                    client.search_transactions(
+                        filters=filters,
+                        fields=fields,
+                        page=page,
+                        limit=page_size,
+                        sort="Transaction Amount",
+                        order="desc",
+                    )
                 )
-                logger.debug(f"Received response for page {page}, status: {response.status_code}")
-                data = response.json()
-                logger.debug(f"Parsed JSON response for page {page}, got {len(data.get('results', []))} results")
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.error(f"Rate limit exceeded for page {page}, stopping pagination")
-                    if page == 1:
-                        return pd.DataFrame()
-                    break
-                # Log detailed error response for debugging
-                try:
-                    error_detail = e.response.json()
-                    logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
-                    logger.error(f"Error details: {error_detail}")
-                    logger.debug(f"Request payload: {payload}")
-                except Exception:
-                    logger.error(f"HTTP {e.response.status_code} error fetching transactions from USAspending API: {e}")
+            except USAspendingRateLimitError as e:
+                logger.error(f"Rate limit exceeded for page {page}, stopping pagination: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
-            except (httpx.TimeoutException, httpx.RequestError) as e:
-                logger.error(f"Connection error fetching transactions from USAspending API (page {page}): {e}")
-                if page == 1:
-                    return pd.DataFrame()
-                # Wait a bit before retrying next page
-                time.sleep(2)
-                break
-            except Exception as e:
-                logger.error(f"Unexpected error fetching transactions from USAspending API: {e}")
+            except USAspendingAPIError as e:
+                logger.error(f"API error fetching transactions (page {page}): {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -990,27 +813,23 @@ def retrieve_company_contracts_api(
             name_transactions: list[dict[str, Any]] = []
             try:
                 while name_page <= name_max_pages:
-                    name_payload = {
-                        "filters": name_filters,
-                        "fields": fields,
-                        "sort": "Transaction Amount",
-                        "order": "desc",
-                        "page": name_page,
-                        "limit": page_size,
-                    }
-                    name_response = _make_rate_limited_request(
-                        "POST",
-                        f"{base_url}/search/spending_by_transaction/",
-                        timeout=timeout,
-                        json=name_payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "User-Agent": "SBIR-ETL/1.0",
-                        },
-                    )
-                    name_data = name_response.json()
+                    try:
+                        name_data = _run_async(
+                            client.search_transactions(
+                                filters=name_filters,
+                                fields=fields,
+                                page=name_page,
+                                limit=page_size,
+                                sort="Transaction Amount",
+                                order="desc",
+                            )
+                        )
+                    except (USAspendingRateLimitError, USAspendingAPIError) as e:
+                        logger.debug(f"Name-based fallback search error on page {name_page}: {e}")
+                        break
+
                     name_results = name_data.get("results", [])
-                    
+
                     if not name_results:
                         break
                     
@@ -1134,30 +953,20 @@ def retrieve_company_contracts_api(
         return pd.DataFrame()
 
 
-def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str, Any] | None:
+def _fetch_award_details(award_id: str) -> dict[str, Any] | None:
     """Fetch detailed award information including PSC code.
 
     This is used as a fallback when the transaction endpoint doesn't return PSC codes.
 
     Args:
         award_id: Award identifier (PIID or generated_internal_id)
-        base_url: USAspending API base URL
-        timeout: Request timeout in seconds
 
     Returns:
         Award details dict with PSC code, or None if fetch fails
     """
     try:
-        url = f"{base_url}/awards/{award_id}/"
-        response = _make_rate_limited_request(
-            "GET",
-            url,
-            timeout=timeout,
-            headers={
-                "User-Agent": "SBIR-ETL/1.0",
-            },
-        )
-        award_data = response.json()
+        client = _get_usaspending_client()
+        award_data = _run_async(client.fetch_award_details(award_id))
 
         # Debug: Log the structure of the response to understand where PSC is located
         if isinstance(award_data, dict):
@@ -1196,16 +1005,11 @@ def _fetch_award_details(award_id: str, base_url: str, timeout: int) -> dict[str
 
         return None
 
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            logger.debug(f"Award {award_id} not found in individual award endpoint (404)")
-        elif e.response.status_code == 429:
-            logger.warning(f"Rate limit exceeded fetching award details for {award_id}")
-        else:
-            logger.warning(f"HTTP {e.response.status_code} error fetching award details for {award_id}: {e}")
+    except USAspendingRateLimitError as e:
+        logger.warning(f"Rate limit exceeded fetching award details for {award_id}: {e}")
         return None
-    except (httpx.TimeoutException, httpx.RequestError) as e:
-        logger.warning(f"Connection error fetching award details for {award_id}: {e}")
+    except USAspendingAPIError as e:
+        logger.warning(f"API error fetching award details for {award_id}: {e}")
         return None
     except Exception as e:
         logger.warning(f"Unexpected error fetching award details for {award_id}: {e}")
@@ -1360,8 +1164,6 @@ def retrieve_sbir_awards_api(
     uei: str | None = None,
     duns: str | None = None,
     company_name: str | None = None,
-    base_url: str = "https://api.usaspending.gov/api/v2",
-    timeout: int = 30,
     page_size: int = 100,  # API maximum limit is 100
 ) -> pd.DataFrame:
     """Retrieve ONLY SBIR/STTR awards for a company from USAspending API (for reporting).
@@ -1378,8 +1180,6 @@ def retrieve_sbir_awards_api(
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
         company_name: Company name (used as fallback when UEI/DUNS are invalid)
-        base_url: USAspending API base URL
-        timeout: Request timeout in seconds
         page_size: Number of results per page
 
     Returns:
@@ -1407,6 +1207,8 @@ def retrieve_sbir_awards_api(
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
         cache = USAspendingCache(enabled=False)
 
+    client = _get_usaspending_client()
+
     # Check cache first (SBIR awards only)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
     if cached_result is not None:
@@ -1417,7 +1219,7 @@ def retrieve_sbir_awards_api(
     fuzzy_matched = False
     if not (valid_uei or valid_duns) and valid_name and company_name:
         logger.debug(f"Attempting fuzzy match via autocomplete for SBIR awards: {company_name}")
-        match_result = _fuzzy_match_recipient(company_name, base_url=base_url, timeout=timeout)
+        match_result = _fuzzy_match_recipient(company_name)
 
         if match_result:
             matched_uei = match_result.get("uei")
@@ -1470,44 +1272,26 @@ def retrieve_sbir_awards_api(
 
     try:
         while page <= max_pages:
-            payload = {
-                "filters": filters,
-                "fields": fields,
-                "sort": "Transaction Amount",
-                "order": "desc",
-                "page": page,
-                "limit": page_size,
-            }
-
-            url = f"{base_url}/search/spending_by_transaction/"
-
             try:
-                response = _make_rate_limited_request(
-                    "POST",
-                    url,
-                    timeout=timeout,
-                    json=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "User-Agent": "SBIR-ETL/1.0",
-                    },
+                data = _run_async(
+                    client.search_transactions(
+                        filters=filters,
+                        fields=fields,
+                        page=page,
+                        limit=page_size,
+                        sort="Transaction Amount",
+                        order="desc",
+                    )
                 )
-                data = response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    logger.error(f"Rate limit exceeded for SBIR awards page {page}, stopping pagination")
-                    if page == 1:
-                        return pd.DataFrame()
-                    break
-                logger.error(f"HTTP {e.response.status_code} error fetching SBIR awards from API: {e}")
+            except USAspendingRateLimitError as e:
+                logger.error(f"Rate limit exceeded for SBIR awards page {page}, stopping pagination: {e}")
                 if page == 1:
                     return pd.DataFrame()
                 break
-            except (httpx.TimeoutException, httpx.RequestError) as e:
-                logger.error(f"Connection error fetching SBIR awards from API (page {page}): {e}")
+            except USAspendingAPIError as e:
+                logger.error(f"API error fetching SBIR awards page {page}: {e}")
                 if page == 1:
                     return pd.DataFrame()
-                time.sleep(2)
                 break
 
             results = data.get("results", [])
