@@ -92,3 +92,74 @@ class TestAssetColumnHelper:
         assert result.get("title") is not None
         assert result.get("abstract") is not None
 
+    def test_find_text_columns_award_all_found(self):
+        """Test finding all text columns for awards."""
+        df = pd.DataFrame(
+            {
+                "Award_Title": ["A"],
+                "Abstract": ["B"],
+                "Solicitation": ["C"],
+            }
+        )
+        result = AssetColumnHelper.find_text_columns(df, entity_type="award")
+        assert result["title"] == "Award_Title"
+        assert result["abstract"] == "Abstract"
+        assert result["solicitation"] == "Solicitation"
+
+    def test_find_text_columns_award_title_excludes_solicitation(self):
+        """Test that award title doesn't match solicitation columns."""
+        df = pd.DataFrame(
+            {
+                "Solicitation_Title": ["A"],
+                "Award_Title": ["B"],
+                "Abstract": ["C"],
+            }
+        )
+        result = AssetColumnHelper.find_text_columns(df, entity_type="award")
+        # Should prefer Award_Title over Solicitation_Title for title
+        assert result["title"] == "Award_Title"
+        assert result["solicitation"] == "Solicitation_Title"
+
+    def test_find_text_columns_award_partial_matches(self):
+        """Test finding text columns with partial matches."""
+        df = pd.DataFrame(
+            {
+                "Title_Text": ["A"],
+                "Abstract_Content": ["B"],
+                "Topic_Solicitation": ["C"],
+            }
+        )
+        result = AssetColumnHelper.find_text_columns(df, entity_type="award")
+        assert result["title"] == "Title_Text"
+        assert result["abstract"] == "Abstract_Content"
+        assert result["solicitation"] == "Topic_Solicitation"
+
+    def test_find_text_columns_patent_all_found(self):
+        """Test finding all text columns for patents."""
+        df = pd.DataFrame({"Title": ["A"], "Abstract": ["B"]})
+        result = AssetColumnHelper.find_text_columns(df, entity_type="patent")
+        assert result["title"] == "Title"
+        assert result["abstract"] == "Abstract"
+
+    def test_find_text_columns_patent_partial_matches(self):
+        """Test finding patent text columns with partial matches."""
+        df = pd.DataFrame({"Patent_Title": ["A"], "Abstract_Text": ["B"]})
+        result = AssetColumnHelper.find_text_columns(df, entity_type="patent")
+        assert result["title"] == "Patent_Title"
+        assert result["abstract"] == "Abstract_Text"
+
+    def test_find_text_columns_some_not_found(self):
+        """Test finding text columns when some are not found."""
+        df = pd.DataFrame({"Title": ["A"], "Other": ["B"]})
+        result = AssetColumnHelper.find_text_columns(df, entity_type="award")
+        assert result["title"] == "Title"
+        assert result["abstract"] is None
+        assert result["solicitation"] is None
+
+    def test_find_text_columns_generic_entity(self):
+        """Test finding text columns for generic entity type."""
+        df = pd.DataFrame({"Title": ["A"], "Abstract": ["B"]})
+        result = AssetColumnHelper.find_text_columns(df, entity_type="generic")
+        assert result["title"] == "Title"
+        assert result["abstract"] == "Abstract"
+

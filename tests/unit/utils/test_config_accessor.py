@@ -82,3 +82,56 @@ class TestConfigAccessor:
         result = ConfigAccessor.get_nested(config, "ml.paecter.use_local")
         assert result is True
 
+    def test_get_nested_dict(self):
+        """Test get_nested_dict method."""
+        config = MagicMock()
+        config.ml = MagicMock()
+        config.ml.paecter = {"use_local": True, "batch_size": 32}
+
+        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        assert result == {"use_local": True, "batch_size": 32}
+
+    def test_get_nested_dict_with_default(self):
+        """Test get_nested_dict with default."""
+        config = MagicMock()
+        config.ml = None
+
+        result = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
+        assert result == {}
+
+    def test_get_nested_dict_pydantic_model(self):
+        """Test get_nested_dict from Pydantic model."""
+        from pydantic import BaseModel
+
+        class TestModel(BaseModel):
+            use_local: bool = True
+
+        config = MagicMock()
+        config.ml = MagicMock()
+        config.ml.paecter = TestModel()
+
+        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        assert result == {"use_local": True}
+
+    def test_get_nested_dict_legacy_dict_method(self):
+        """Test get_nested_dict from object with dict() method."""
+        class LegacyObj:
+            def dict(self):
+                return {"use_local": True}
+
+        config = MagicMock()
+        config.ml = MagicMock()
+        config.ml.paecter = LegacyObj()
+
+        result = ConfigAccessor.get_nested_dict(config, "ml.paecter")
+        assert result == {"use_local": True}
+
+    def test_get_nested_dict_not_dict(self):
+        """Test get_nested_dict when value is not a dict."""
+        config = MagicMock()
+        config.ml = MagicMock()
+        config.ml.paecter = "not_a_dict"
+
+        result = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
+        assert result == {}
+

@@ -85,3 +85,32 @@ class TestColumnFinder:
 
         assert result is None
 
+    def test_find_columns_by_patterns(self):
+        """Test finding multiple columns by pattern mappings."""
+        df = pd.DataFrame({"Award_Title": ["A"], "Abstract": ["B"], "Solicitation": ["C"]})
+        pattern_map = {
+            "title": ["title"],
+            "abstract": ["abstract"],
+            "solicitation": ["solicitation"],
+        }
+        result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
+        assert result["title"] == "Award_Title"
+        assert result["abstract"] == "Abstract"
+        assert result["solicitation"] == "Solicitation"
+
+    def test_find_columns_by_patterns_partial_match(self):
+        """Test finding multiple columns with partial matches."""
+        df = pd.DataFrame({"Title_Text": ["A"], "Abstract_Content": ["B"]})
+        pattern_map = {"title": ["title"], "abstract": ["abstract"]}
+        result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
+        assert result["title"] == "Title_Text"
+        assert result["abstract"] == "Abstract_Content"
+
+    def test_find_columns_by_patterns_some_not_found(self):
+        """Test finding columns when some are not found."""
+        df = pd.DataFrame({"Title": ["A"], "Other": ["B"]})
+        pattern_map = {"title": ["title"], "abstract": ["abstract"]}
+        result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
+        assert result["title"] == "Title"
+        assert result["abstract"] is None
+
