@@ -22,7 +22,7 @@ from typing import Any
 from loguru import logger
 from pydantic import Field
 
-from .base import BaseLoaderConfig
+from .base import BaseLoaderConfig, BaseNeo4jLoader
 from .client import LoadMetrics, Neo4jClient
 
 
@@ -35,15 +35,18 @@ class PatentLoaderConfig(BaseLoaderConfig):
     )
 
 
-class PatentLoader:
+class PatentLoader(BaseNeo4jLoader):
     """Loads USPTO patent assignment data into Neo4j graph database.
 
     Implements a phased loading strategy for patents, assignments, entities,
     relationships, and SBIR integration.
 
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+
     Attributes:
         client: Neo4jClient instance for graph operations
         config: PatentLoaderConfig with batch size and feature flags
+        metrics: LoadMetrics for tracking operations (from base class)
     """
 
     def __init__(self, client: Neo4jClient, config: PatentLoaderConfig | None = None) -> None:
@@ -53,7 +56,7 @@ class PatentLoader:
             client: Neo4jClient instance for Neo4j operations
             config: Optional PatentLoaderConfig (uses defaults if not provided)
         """
-        self.client = client
+        super().__init__(client)
         self.config = config or PatentLoaderConfig()
         logger.info(
             f"PatentLoader initialized with batch_size={self.config.batch_size}, "
@@ -75,14 +78,7 @@ class PatentLoader:
             "CREATE CONSTRAINT organization_id IF NOT EXISTS "
             "FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
         ]
-
-        with self.client.session() as session:
-            for constraint in constraints:
-                try:
-                    session.run(constraint)
-                    logger.info(f"Created constraint: {constraint}")
-                except Exception as e:
-                    logger.warning(f"Constraint may already exist: {e}")
+        super().create_constraints(constraints)
 
     def create_indexes(self) -> None:
         """Create indexes for frequently queried patent properties."""
@@ -107,14 +103,7 @@ class PatentLoader:
             "CREATE INDEX patent_assignment_exec_date_idx IF NOT EXISTS "
             "FOR (a:PatentAssignment) ON (a.exec_date)",
         ]
-
-        with self.client.session() as session:
-            for index in indexes:
-                try:
-                    session.run(index)
-                    logger.info(f"Created index: {index}")
-                except Exception as e:
-                    logger.warning(f"Index may already exist: {e}")
+        super().create_indexes(indexes)
 
     def load_patents(
         self, patents: list[dict[str, Any]], metrics: LoadMetrics | None = None

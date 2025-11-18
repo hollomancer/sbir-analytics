@@ -27,7 +27,7 @@ from typing import Any
 
 from loguru import logger
 
-from .base import BaseLoaderConfig
+from .base import BaseLoaderConfig, BaseNeo4jLoader
 from .client import LoadMetrics, Neo4jClient
 
 
@@ -35,7 +35,7 @@ class CETLoaderConfig(BaseLoaderConfig):
     """Configuration for CET loading operations."""
 
 
-class CETLoader:
+class CETLoader(BaseNeo4jLoader):
     """Loads CET taxonomy and enrichment properties into Neo4j.
 
     Responsibilities:
@@ -43,13 +43,16 @@ class CETLoader:
       - Idempotently upsert CETArea nodes
       - Add CET enrichment properties to Company and Award nodes
 
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+
     Attributes:
         client: Neo4jClient for graph operations
         config: CETLoaderConfig with batch size and feature flags
+        metrics: LoadMetrics for tracking operations (from base class)
     """
 
     def __init__(self, client: Neo4jClient, config: CETLoaderConfig | None = None) -> None:
-        self.client = client
+        super().__init__(client)
         self.config = config or CETLoaderConfig()
         logger.info(
             "CETLoader initialized with batch_size={}, create_indexes={}, create_constraints={}",
@@ -64,7 +67,7 @@ class CETLoader:
 
     def create_constraints(self) -> None:
         """Create uniqueness constraints for CETArea and ensure existence of key entity constraints."""
-        statements = [
+        constraints = [
             # CETArea uniqueness on cet_id
             "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
             "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
@@ -74,30 +77,16 @@ class CETLoader:
             "CREATE CONSTRAINT company_id IF NOT EXISTS "
             "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
         ]
-
-        with self.client.session() as session:
-            for stmt in statements:
-                try:
-                    session.run(stmt)
-                    logger.info("Created/verified constraint: {}", stmt)
-                except Exception as exc:
-                    logger.warning("Constraint may already exist or failed: {}", exc)
+        super().create_constraints(constraints)
 
     def create_indexes(self) -> None:
         """Create indexes for frequently queried CETArea properties."""
-        statements = [
+        indexes = [
             "CREATE INDEX cetarea_name_idx IF NOT EXISTS FOR (c:CETArea) ON (c.name)",
             "CREATE INDEX cetarea_taxonomy_version_idx IF NOT EXISTS "
             "FOR (c:CETArea) ON (c.taxonomy_version)",
         ]
-
-        with self.client.session() as session:
-            for stmt in statements:
-                try:
-                    session.run(stmt)
-                    logger.info("Created/verified index: {}", stmt)
-                except Exception as exc:
-                    logger.warning("Index may already exist or failed: {}", exc)
+        super().create_indexes(indexes)
 
     # -------------------------------------------------------------------------
     # CETArea upsert
