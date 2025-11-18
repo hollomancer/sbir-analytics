@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,7 +39,7 @@ class SbirDuckDBConfig(BaseModel):
         default="data/raw/sbir/awards_data.csv",
         description="Path to SBIR CSV file (local fallback path)",
     )
-    csv_path_s3: str | None = Field(
+    csv_path_s3: Optional[str] = Field(
         default=None,
         description="S3 URL for SBIR CSV (auto-built from csv_path if bucket configured)",
     )

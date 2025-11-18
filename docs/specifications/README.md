@@ -86,3 +86,16 @@ For active development, use the Kiro specifications in `.kiro/specs/`.
 -   **Do not modify content** within the `archive/openspec/` directory.
 -   If you need to reference past decisions, consult the `archive/openspec/` content and its `migration_mapping.json` for traceability.
 -   Ensure that any changes to architecture, data contracts, or requirements are reflected in the appropriate Kiro specifications.
+
+---
+
+## 4. Connecting Specifications, Steering Docs, and Documentation
+
+To keep specs, steering guidance, and user-facing docs aligned:
+
+1. **Start with steering patterns** – review the [Steering Documents Guide](../../.kiro/steering/README.md) to confirm you’re following the latest architectural patterns before editing specs or docs.
+2. **Update the relevant Kiro spec** – capture requirements, design decisions, and acceptance criteria in `.kiro/specs/<spec-name>/`.
+3. **Link back from docs** – when a spec drives doc changes (e.g., a new deployment workflow), add a brief reference or URL in the affected doc pointing to the governing spec so readers know the source of truth.
+4. **Use this README as the bridge** – mention the spec in both directions (spec ↔ doc) so future contributors can trace updates quickly.
+
+By explicitly cross-linking specs, steering guidance, and documentation, we avoid siloed knowledge and keep architecture changes discoverable.

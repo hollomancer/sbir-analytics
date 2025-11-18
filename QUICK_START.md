@@ -9,7 +9,7 @@ The SBIR ETL pipeline supports two deployment modes:
 **Architecture**: Dagster Cloud + AWS Lambda + Neo4j Aura + S3
 
 **Deployment Guides**:
-- **[Dagster Cloud Setup](docs/deployment/dagster-cloud-migration.md)** - Primary orchestration
+- **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites & env vars
 - **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions
 - **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database
 - **[S3 Data Migration](docs/deployment/s3-data-migration.md)** - S3 data lake setup

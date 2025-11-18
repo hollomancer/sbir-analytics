@@ -15,7 +15,7 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 - **Secrets**: AWS Secrets Manager
 
 **Deployment Guides**:
-- **[Dagster Cloud Setup](docs/deployment/dagster-cloud-migration.md)** - Primary orchestration platform
+- **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites and env vars
 - **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions setup
 - **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
 
@@ -104,20 +104,14 @@ See [`docs/deployment/containerization.md`](docs/deployment/containerization.md)
    - Branch: `main`
    - Python version: 3.11
 
-3. **Set environment variables in Dagster Cloud UI:**
-   ```
-   NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=your-password
-   NEO4J_DATABASE=neo4j
-   ```
+3. **Set environment variables in Dagster Cloud UI** (see [Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md) for the canonical list).
 
 4. **Deploy and verify:**
    - Dagster Cloud automatically deploys on git push
    - Verify all assets, jobs, and schedules are visible
    - Test job execution
 
-See [`docs/deployment/dagster-cloud-migration.md`](docs/deployment/dagster-cloud-migration.md) for complete setup instructions.
+See [`docs/deployment/dagster-cloud-overview.md`](docs/deployment/dagster-cloud-overview.md) plus the [Dagster Cloud Deployment Guide](docs/deployment/dagster-cloud-deployment-guide.md) for complete instructions.
 
 #### Option B: CLI-Based Serverless Deployment (Recommended for CI/CD)
 

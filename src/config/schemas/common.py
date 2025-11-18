@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Optional
 
 
 class PercentageMappingMixin:
@@ -44,8 +44,8 @@ class FloatRangeValidatorMixin:
         value: Any,
         *,
         field_name: str,
-        lower_bound: float | None = None,
-        upper_bound: float | None = None,
+        lower_bound: Optional[float] = None,
+        upper_bound: Optional[float] = None,
     ) -> float:
         try:
             number = float(value)
