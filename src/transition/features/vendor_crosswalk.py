@@ -455,7 +455,9 @@ class VendorCrosswalk:
 
     def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(path)
         with open(path, "w", encoding="utf-8") as fh:
             for rec in self.to_list_of_dicts():
                 fh.write(json.dumps(rec, default=str) + "\n")

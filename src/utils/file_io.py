@@ -19,9 +19,8 @@ import pandas as pd
 from loguru import logger
 
 
-def _ensure_parent_dir(path: Path) -> None:
-    """Ensure parent directory exists for a given path."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+# Import centralized path utilities
+from src.utils.path_utils import ensure_parent_dir as _ensure_parent_dir
 
 
 def _to_jsonable(x: Any) -> Any:

@@ -32,7 +32,9 @@ class FreshnessStore:
         if parquet_path is None:
             parquet_path = Path("data/derived/enrichment_freshness.parquet")
         self.parquet_path = Path(parquet_path)
-        self.parquet_path.parent.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(self.parquet_path)
 
     def load_all(self) -> pd.DataFrame:
         """Load all freshness records from Parquet.

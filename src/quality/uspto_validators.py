@@ -168,24 +168,8 @@ def iter_rows_from_path(
         raise ValueError(f"Unsupported extension for USPTO validator: {ext}")
 
 
-def _ensure_path_list(path_or_paths: str | Path | Iterable[str | Path]) -> list[Path]:
-    """Normalize a single path or an iterable of paths into a list of ``Path`` objects."""
-
-    if isinstance(path_or_paths, str | Path):
-        return [Path(path_or_paths)]
-
-    if isinstance(path_or_paths, Iterable):
-        paths: list[Path] = []
-        for item in path_or_paths:
-            if isinstance(item, str | Path):
-                paths.append(Path(item))
-            else:
-                raise TypeError(f"Unsupported path entry type: {type(item)!r}")
-        if not paths:
-            raise ValueError("At least one parent path must be provided for validation")
-        return paths
-
-    raise TypeError(f"Unsupported parent path type: {type(path_or_paths)!r}")
+# Use centralized path utilities
+from src.utils.path_utils import normalize_path_list as _ensure_path_list
 
 
 def validate_rf_id_uniqueness_from_iterator(
@@ -813,8 +797,10 @@ class USPTODataQualityValidator:
 
     def __init__(self, config: USPTOValidationConfig | None = None) -> None:
         self.config = config or USPTOValidationConfig()
-        self.config.fail_output_dir.mkdir(parents=True, exist_ok=True)
-        self.config.report_output_dir.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_dir
+        
+        ensure_dir(self.config.fail_output_dir)
+        ensure_dir(self.config.report_output_dir)
         self._failure_samples: list[dict[str, Any]] = []
 
     def _write_failure_sample(self, label: str, sample: list[dict[str, Any]]) -> str | None:

@@ -57,7 +57,9 @@ class NAICSEnricher:
 
     def load_usaspending_index(self, force: bool = False) -> None:
         cache = Path(self.config.cache_path)
-        cache.parent.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(cache)
         if cache.exists() and not force:
             logger.info("Loading persisted NAICS index from %s", cache)
             df = pd.read_parquet(cache)

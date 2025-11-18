@@ -73,7 +73,9 @@ class CheckpointStore:
         if parquet_path is None:
             parquet_path = Path("data/state/enrichment_checkpoints.parquet")
         self.parquet_path = Path(parquet_path)
-        self.parquet_path.parent.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(self.parquet_path)
 
     def save_checkpoint(self, checkpoint: EnrichmentCheckpoint) -> None:
         """Save or update a checkpoint.

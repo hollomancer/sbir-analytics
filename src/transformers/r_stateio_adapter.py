@@ -136,7 +136,9 @@ class RStateIOAdapter(EconomicModelInterface):
             cache_dir = Path("data/processed/fiscal_cache")
         self.cache_dir = Path(cache_dir)
         if self.cache_enabled:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            from src.utils.path_utils import ensure_dir
+            
+            ensure_dir(self.cache_dir)
 
         self._cache: dict[str, pd.DataFrame] = {}
 

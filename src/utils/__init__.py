@@ -56,6 +56,16 @@ from .date_utils import (
     validate_date_range,
 )
 
+# Path utilities
+from .path_utils import (
+    ensure_dir,
+    ensure_parent_dir,
+    ensure_path_exists,
+    normalize_path_list,
+    resolve_path,
+    safe_path_join,
+)
+
 
 __all__ = [
     # Logging
@@ -105,4 +115,11 @@ __all__ = [
     "parse_date_safe",
     "format_date_iso",
     "validate_date_range",
+    # Path utilities
+    "ensure_dir",
+    "ensure_parent_dir",
+    "ensure_path_exists",
+    "normalize_path_list",
+    "resolve_path",
+    "safe_path_join",
 ]

@@ -60,7 +60,9 @@ class USAspendingAPIClient:
         self.state_file = Path(
             self.config.get("state_file", "data/state/enrichment_refresh_state.json")
         )
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(self.state_file)
 
         logger.info(
             f"Initialized USAspendingAPIClient: base_url={self.base_url}, "
@@ -523,7 +525,9 @@ class USAspendingAPIClient:
             state: State dictionary to save
         """
         try:
-            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+            from src.utils.path_utils import ensure_parent_dir
+        
+        ensure_parent_dir(self.state_file)
             with open(self.state_file, "w") as f:
                 json.dump(state, f, indent=2, default=str)
         except Exception as e:

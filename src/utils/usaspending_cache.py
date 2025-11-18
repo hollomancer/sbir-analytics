@@ -36,7 +36,9 @@ class USAspendingCache:
         self.ttl_hours = ttl_hours
 
         if self.enabled:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            from src.utils.path_utils import ensure_dir
+            
+            ensure_dir(self.cache_dir)
             logger.debug(f"USAspending cache initialized at {self.cache_dir} (TTL: {ttl_hours}h)")
 
     def _generate_cache_key(
