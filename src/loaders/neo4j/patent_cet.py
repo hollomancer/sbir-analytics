@@ -29,9 +29,16 @@ Relationship schema
 
 Usage example
 -------------
-from sbir_etl.src.loaders.neo4j_patent_loader import Neo4jPatentCETLoader
+from src.loaders.neo4j import Neo4jClient, Neo4jConfig, Neo4jPatentCETLoader
 
-loader = Neo4jPatentCETLoader(uri="bolt://localhost:7687", user="neo4j", password="password")
+config = Neo4jConfig(
+    uri="bolt://localhost:7687",
+    username="neo4j",
+    password="password",
+    database="neo4j",
+)
+client = Neo4jClient(config)
+loader = Neo4jPatentCETLoader(client=client, auto_create_constraints=True)
 loader.ensure_constraints()
 loader.upsert_cet_areas([{"id": "artificial_intelligence", "name": "AI", "taxonomy_version": "2025.1"}])
 loader.upsert_patents([{"patent_id": "US123", "title": "ML for sensors", "assignee": "Acme", "application_year": 2022}])
@@ -46,121 +53,56 @@ loader.link_patent_cet([
         "taxonomy_version": "2025.1",
     }
 ])
-loader.close()
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
 from typing import Any
 
-from ...exceptions import ConfigurationError, DependencyError
+from loguru import logger
+
+from .base import BaseNeo4jLoader
+from .client import Neo4jClient
 
 
-# Import neo4j lazily; avoid import error at module import time
-try:
-    from neo4j import Driver, GraphDatabase, Transaction
-except Exception:  # pragma: no cover - optional dependency
-    GraphDatabase = None  # type: ignore
-    Driver = None  # type: ignore
-    Transaction = None  # type: ignore
-
-
-@dataclass
-class Neo4jConfig:
-    uri: str
-    user: str
-    password: str
-    database: str = "neo4j"
-    max_connection_lifetime: int = 3600  # seconds
-    # Add other driver configs here if needed
-
-
-class Neo4jPatentCETLoader:
+class Neo4jPatentCETLoader(BaseNeo4jLoader):
     """
     Loader for CET patent classifications into Neo4j, using idempotent MERGE operations.
 
-    This class can either receive a pre-configured neo4j.Driver or create one
-    from URI/user/password. All operations are batched to keep transactions
-    modest in size.
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+
+    All operations are batched to keep transactions modest in size.
+
+    Attributes:
+        client: Neo4jClient for graph operations
+        metrics: LoadMetrics for tracking operations (from base class)
     """
 
     def __init__(
         self,
-        driver: Driver | None = None,
-        *,
-        uri: str | None = None,
-        user: str | None = None,
-        password: str | None = None,
-        database: str = "neo4j",
-        max_connection_lifetime: int = 3600,
+        client: Neo4jClient,
         auto_create_constraints: bool = False,
         batch_size: int = 1000,
     ) -> None:
         """
         Initialize the loader.
 
-        Either provide an existing neo4j.Driver in `driver`, or pass uri/user/password.
-
         Parameters
         ----------
-        driver : neo4j.Driver, optional
-            Pre-existing driver instance.
-        uri : str, optional
-            Neo4j bolt URI, e.g., "bolt://localhost:7687".
-        user : str, optional
-            Neo4j username.
-        password : str, optional
-            Neo4j password.
-        database : str
-            Database name ("neo4j" by default).
-        max_connection_lifetime : int
-            Driver max connection lifetime in seconds.
+        client : Neo4jClient
+            Neo4jClient instance for database operations.
         auto_create_constraints : bool
             When True, will attempt to create uniqueness constraints on first use.
         batch_size : int
             Default batch size for batched operations.
         """
-        if driver is None:
-            if GraphDatabase is None:  # pragma: no cover
-                raise DependencyError(
-                    "Neo4j driver is not available. Install the 'neo4j' package to use this loader.",
-                    dependency_name="neo4j",
-                    component="loader.neo4j_patent",
-                    details={"install_command": "pip install neo4j"},
-                )
-            if not (uri and user and password):
-                raise ConfigurationError(
-                    "Provide either a driver or uri/user/password",
-                    component="loader.neo4j_patent",
-                    operation="__init__",
-                    details={
-                        "driver_provided": driver is not None,
-                        "uri_provided": uri is not None,
-                        "user_provided": user is not None,
-                        "password_provided": password is not None,
-                    },
-                )
-            self._driver = GraphDatabase.driver(
-                uri, auth=(user, password), max_connection_lifetime=max_connection_lifetime
-            )
-        else:
-            self._driver = driver
-        self._db = database
+        super().__init__(client)
         self._auto_create_constraints = auto_create_constraints
         self._batch_size = int(batch_size) if batch_size and batch_size > 0 else 1000
 
         if self._auto_create_constraints:
             self.ensure_constraints()
-
-    # -----------------------
-    # Lifecycle
-    # -----------------------
-    def close(self) -> None:
-        """Close the underlying neo4j driver."""
-        if self._driver is not None:
-            self._driver.close()
 
     # -----------------------
     # Constraints
@@ -171,13 +113,11 @@ class Neo4jPatentCETLoader:
         - CETArea.id
         - Patent.id
         """
-        stmts = [
+        constraints = [
             "CREATE CONSTRAINT IF NOT EXISTS FOR (c:CETArea) REQUIRE c.id IS UNIQUE",
             "CREATE CONSTRAINT IF NOT EXISTS FOR (p:Patent) REQUIRE p.id IS UNIQUE",
         ]
-        with self._driver.session(database=self._db) as session:
-            for cypher in stmts:
-                session.execute_write(lambda tx, c=cypher: tx.run(c).consume())
+        super().create_constraints(constraints)
 
     # -----------------------
     # Upserts (MERGE)
@@ -380,7 +320,7 @@ class Neo4jPatentCETLoader:
         """
         total = 0
         batch_size = max(1, self._batch_size)
-        with self._driver.session(database=self._db) as session:
+        with self.client.session() as session:
             for i in range(0, len(rows), batch_size):
                 chunk = rows[i : i + batch_size]
                 session.execute_write(lambda tx, c=chunk: tx.run(cypher, rows=c).consume())

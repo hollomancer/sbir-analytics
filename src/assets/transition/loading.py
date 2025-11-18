@@ -424,38 +424,48 @@ def loaded_transition_profiles(
             metadata={"status": "empty"},
         )
 
-    driver = _get_neo4j_driver()
-    if driver is None:
-        context.log.warning("Neo4j driver unavailable; skipping profile creation")
+    client = _get_neo4j_client()
+    if client is None:
+        context.log.warning("Neo4j client unavailable; skipping profile creation")
         return Output(
-            {"skipped": True, "reason": "Neo4j driver unavailable"},
+            {"skipped": True, "reason": "Neo4j client unavailable"},
             metadata={"status": "skipped"},
         )
 
     try:
-        loader = TransitionProfileLoader(driver=driver)
+        loader = TransitionProfileLoader(client=client)
         start_time = time.time()
 
         # Create transition profiles (Task 15.1-15.4)
-        stats = loader.load_transition_profiles(
+        metrics = loader.load_profiles(
             transitions_df=transformed_transition_detections,
             awards_df=enriched_sbir_awards,
         )
 
         duration = time.time() - start_time
-        stats["duration_seconds"] = duration
+
+        profiles_created = metrics.nodes_created.get("TransitionProfile", 0)
+        relationships_created = metrics.relationships_created.get("ACHIEVED", 0)
 
         context.log.info(
-            f"\u2713 Created {stats.get('profiles_created', 0)} profiles in {duration:.1f}s"
+            f"\u2713 Created {profiles_created} profiles, {relationships_created} relationships in {duration:.1f}s"
         )
 
         metadata = {
-            "profiles_created": stats.get("profiles_created", 0),
-            "achieved_relationships": stats.get("achieved_relationships", 0),
+            "profiles_created": profiles_created,
+            "achieved_relationships": relationships_created,
             "duration_seconds": duration,
+            "errors": metrics.errors,
         }
 
-        return Output(stats, metadata=metadata)
+        return Output(
+            {
+                "profiles_created": profiles_created,
+                "achieved_relationships": relationships_created,
+                "errors": metrics.errors,
+            },
+            metadata=metadata,
+        )
 
     except Exception as e:
         context.log.error(f"Failed to create transition profiles: {e}")

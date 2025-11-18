@@ -3,16 +3,21 @@ Neo4j Transition Profile Loader for Company-Level Transition Analytics.
 
 Loads company transition profiles (aggregated company-level metrics) into Neo4j
 as TransitionProfile nodes and creates relationships to Company nodes.
+
+Refactored to inherit from BaseNeo4jLoader for consistency.
 """
 
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
 from loguru import logger
-from neo4j import Driver
+
+from .base import BaseNeo4jLoader
+from .client import LoadMetrics, Neo4jClient
 
 
-class TransitionProfileLoader:
+class TransitionProfileLoader(BaseNeo4jLoader):
     """
     Load company transition profiles into Neo4j graph database.
 
@@ -21,28 +26,28 @@ class TransitionProfileLoader:
     - Calculating success rates, average scores, and timing statistics
     - Creating ACHIEVED relationships from Companies to profiles
     - Batch MERGE operations for idempotency
+
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+
+    Attributes:
+        client: Neo4jClient for graph operations
+        metrics: LoadMetrics for tracking operations (from base class)
     """
 
     def __init__(
         self,
-        driver: Driver,
+        client: Neo4jClient,
         batch_size: int = 500,
     ):
         """
         Initialize Transition Profile Loader.
 
         Args:
-            driver: Neo4j driver instance
+            client: Neo4jClient instance
             batch_size: Number of profiles per transaction (default: 500)
         """
-        self.driver = driver
+        super().__init__(client)
         self.batch_size = batch_size
-        self.stats = {
-            "profiles_created": 0,
-            "profiles_updated": 0,
-            "relationships_created": 0,
-            "errors": 0,
-        }
 
     def calculate_company_profiles(
         self,
@@ -179,55 +184,41 @@ class TransitionProfileLoader:
 
     def ensure_indexes(self) -> None:
         """Create indexes for TransitionProfile nodes."""
-        with self.driver.session() as session:
-            try:
-                # Index on profile_id
-                session.run(
-                    "CREATE INDEX profile_id_index IF NOT EXISTS "
-                    "FOR (p:TransitionProfile) ON (p.profile_id)"
-                )
-                logger.info("✓ Created index on TransitionProfile.profile_id")
-
-                # Index on company_id for lookups
-                session.run(
-                    "CREATE INDEX profile_company_id_index IF NOT EXISTS "
-                    "FOR (p:TransitionProfile) ON (p.company_id)"
-                )
-                logger.info("✓ Created index on TransitionProfile.company_id")
-
-                # Index on success_rate for ranking
-                session.run(
-                    "CREATE INDEX profile_success_rate_index IF NOT EXISTS "
-                    "FOR (p:TransitionProfile) ON (p.success_rate)"
-                )
-                logger.info("✓ Created index on TransitionProfile.success_rate")
-
-            except Exception as e:
-                logger.error(f"Failed to create indexes: {e}")
-                raise
+        indexes = [
+            "CREATE INDEX profile_id_index IF NOT EXISTS "
+            "FOR (p:TransitionProfile) ON (p.profile_id)",
+            "CREATE INDEX profile_company_id_index IF NOT EXISTS "
+            "FOR (p:TransitionProfile) ON (p.company_id)",
+            "CREATE INDEX profile_success_rate_index IF NOT EXISTS "
+            "FOR (p:TransitionProfile) ON (p.success_rate)",
+        ]
+        super().create_indexes(indexes)
 
     def load_profile_nodes(
         self,
         profiles_df: pd.DataFrame,
-    ) -> int:
+        metrics: LoadMetrics | None = None,
+    ) -> LoadMetrics:
         """
         Load transition profile nodes into Neo4j.
 
         Args:
             profiles_df: DataFrame with company profile data
+            metrics: Optional LoadMetrics to accumulate results
 
         Returns:
-            Number of profiles created/updated
+            LoadMetrics with counts of created/updated nodes
         """
+        if metrics is None:
+            metrics = LoadMetrics()
+
         if profiles_df.empty:
             logger.warning("No profiles to load")
-            return 0
+            return metrics
 
         logger.info(f"Loading {len(profiles_df):,} transition profile nodes")
 
-        total_processed = 0
-
-        with self.driver.session() as session:
+        with self.client.session() as session:
             for i in range(0, len(profiles_df), self.batch_size):
                 batch = profiles_df.iloc[i : i + self.batch_size]
                 batch_size_actual = len(batch)
@@ -253,38 +244,44 @@ class TransitionProfileLoader:
                         profiles=[t.to_dict() for _, t in batch.iterrows()],
                     )
                     count = result.single()["created"]
-                    self.stats["profiles_created"] += count
-                    total_processed += batch_size_actual
+                    metrics.nodes_created["TransitionProfile"] = (
+                        metrics.nodes_created.get("TransitionProfile", 0) + count
+                    )
 
                     if (i // self.batch_size + 1) % 5 == 0:
-                        logger.info(f"  Processed {total_processed:,} profiles")
+                        logger.info(f"  Processed {i + batch_size_actual:,} profiles")
 
                 except Exception as e:
                     logger.error(f"Failed to load batch {i//self.batch_size}: {e}")
-                    self.stats["errors"] += 1
+                    metrics.errors += batch_size_actual
 
-        logger.info(f"✓ Loaded {self.stats['profiles_created']:,} profile nodes")
+        logger.info(
+            f"✓ Loaded {metrics.nodes_created.get('TransitionProfile', 0):,} profile nodes"
+        )
 
-        return total_processed
+        return metrics
 
     def create_achieved_relationships(
         self,
         profiles_df: pd.DataFrame,
-    ) -> int:
+        metrics: LoadMetrics | None = None,
+    ) -> LoadMetrics:
         """
         Create ACHIEVED relationships from Companies to TransitionProfiles.
 
         Args:
             profiles_df: DataFrame with company_id and profile_id
+            metrics: Optional LoadMetrics to accumulate results
 
         Returns:
-            Number of relationships created
+            LoadMetrics with counts of created relationships
         """
+        if metrics is None:
+            metrics = LoadMetrics()
+
         logger.info("Creating ACHIEVED relationships (Organization → TransitionProfile)")
 
-        rel_count = 0
-
-        with self.driver.session() as session:
+        with self.client.session() as session:
             for i in range(0, len(profiles_df), self.batch_size):
                 batch = profiles_df.iloc[i : i + self.batch_size]
 
@@ -311,22 +308,26 @@ class TransitionProfileLoader:
                         ],
                     )
                     count = result.single()["created"]
-                    rel_count += count
+                    metrics.relationships_created["ACHIEVED"] = (
+                        metrics.relationships_created.get("ACHIEVED", 0) + count
+                    )
 
                 except Exception as e:
                     logger.error(f"Failed to create ACHIEVED relationships: {e}")
-                    self.stats["errors"] += 1
+                    metrics.errors += len(batch)
 
-        self.stats["relationships_created"] += rel_count
-        logger.info(f"✓ Created {rel_count:,} ACHIEVED relationships")
+        logger.info(
+            f"✓ Created {metrics.relationships_created.get('ACHIEVED', 0):,} ACHIEVED relationships"
+        )
 
-        return rel_count
+        return metrics
 
     def load_profiles(
         self,
         transitions_df: pd.DataFrame,
         awards_df: pd.DataFrame | None = None,
-    ) -> dict[str, int]:
+        metrics: LoadMetrics | None = None,
+    ) -> LoadMetrics:
         """
         End-to-end profile loading orchestration.
 
@@ -335,10 +336,14 @@ class TransitionProfileLoader:
         Args:
             transitions_df: DataFrame with transition detections
             awards_df: Optional DataFrame with award information for timing calcs
+            metrics: Optional LoadMetrics to accumulate results
 
         Returns:
-            Statistics dictionary
+            LoadMetrics with loading statistics
         """
+        if metrics is None:
+            metrics = LoadMetrics()
+
         logger.info("Starting transition profile loading orchestration")
 
         # Calculate profiles
@@ -346,22 +351,22 @@ class TransitionProfileLoader:
 
         if profiles_df.empty:
             logger.warning("No profiles to load")
-            return self.stats
+            return metrics
 
         # Ensure indexes exist
         self.ensure_indexes()
 
         # Load profile nodes
-        self.load_profile_nodes(profiles_df)
+        metrics = self.load_profile_nodes(profiles_df, metrics=metrics)
 
         # Create relationships
-        self.create_achieved_relationships(profiles_df)
+        metrics = self.create_achieved_relationships(profiles_df, metrics=metrics)
 
         logger.info("✓ Transition profile loading complete")
-        logger.info(f"Statistics: {self.stats}")
+        logger.info(
+            f"Statistics: {metrics.nodes_created.get('TransitionProfile', 0)} profiles, "
+            f"{metrics.relationships_created.get('ACHIEVED', 0)} relationships, "
+            f"{metrics.errors} errors"
+        )
 
-        return self.stats
-
-    def get_stats(self) -> dict[str, int]:
-        """Return loading statistics."""
-        return self.stats.copy()
+        return metrics

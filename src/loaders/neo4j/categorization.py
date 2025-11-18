@@ -43,16 +43,19 @@ class CompanyCategorizationLoaderConfig(BaseLoaderConfig):
     )
 
 
-class CompanyCategorizationLoader:
+class CompanyCategorizationLoader(BaseNeo4jLoader):
     """Loads company categorization data into Neo4j Company nodes.
 
     Enriches existing Company nodes with classification properties based on
     USAspending contract portfolio analysis. Uses idempotent MERGE operations
     to support reprocessing and updates.
 
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+
     Attributes:
         client: Neo4jClient for graph operations
         config: CompanyCategorizationLoaderConfig with batch size and flags
+        metrics: LoadMetrics for tracking operations (from base class)
     """
 
     def __init__(
@@ -66,7 +69,7 @@ class CompanyCategorizationLoader:
             client: Neo4j client for database operations
             config: Optional configuration (uses defaults if not provided)
         """
-        self.client = client
+        super().__init__(client)
         self.config = config or CompanyCategorizationLoaderConfig()
         logger.info(
             "CompanyCategorizationLoader initialized with batch_size={}, "
@@ -82,7 +85,7 @@ class CompanyCategorizationLoader:
 
     def create_indexes(self) -> None:
         """Create indexes for categorization properties on Company nodes."""
-        statements = [
+        indexes = [
             # Index on classification for filtering queries
             "CREATE INDEX company_classification_idx IF NOT EXISTS "
             "FOR (c:Company) ON (c.classification)",
@@ -93,14 +96,7 @@ class CompanyCategorizationLoader:
             "CREATE INDEX company_classification_confidence_idx IF NOT EXISTS "
             "FOR (c:Company) ON (c.classification, c.categorization_confidence)",
         ]
-
-        with self.client.session() as session:
-            for stmt in statements:
-                try:
-                    session.run(stmt)
-                    logger.info("Created/verified index: {}", stmt)
-                except Exception as exc:
-                    logger.warning("Index may already exist or failed: {}", exc)
+        super().create_indexes(indexes)
 
     # -------------------------------------------------------------------------
     # Company categorization enrichment
