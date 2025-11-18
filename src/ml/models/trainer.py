@@ -28,7 +28,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, ParameterGrid
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from src.ml.models.cet_classifier import ApplicabilityModel
@@ -168,11 +168,6 @@ class CETModelTrainer:
         logger.info("Training model with final parameters")
         training_metrics = model.train(X_train, y_train)
 
-        # Calibrate probabilities
-        if perform_calibration:
-            logger.info(f"Calibrating probabilities using {self.calibration_method} method")
-            self._calibrate_model(model, X_train, y_train)
-
         # Evaluate on test set
         logger.info("Evaluating model on test set")
         test_metrics = self._evaluate(model, X_test, y_test)
@@ -206,36 +201,62 @@ class CETModelTrainer:
     ) -> dict[str, Any]:
         """
         Perform cross-validation for hyperparameter tuning.
-
         Args:
             model: Model to tune
             X_train: Training texts
             y_train: Training labels (multi-label binary matrix)
-
         Returns:
             Dictionary of best hyperparameters
         """
-        # For multi-label classification, we'll tune each CET classifier separately
-        # and average the results. This is a simplified approach.
+        from sklearn.model_selection import GridSearchCV
 
-        best_params = {
-            "keyword_boost_factor": self.param_grid.get("keyword_boost_factor", [2.0])[
-                len(self.param_grid.get("keyword_boost_factor", [2.0])) // 2
-            ],
-            "max_features": self.param_grid.get("max_features", [2000])[
-                len(self.param_grid.get("max_features", [2000])) // 2
-            ],
-            "c_value": self.param_grid.get("c_value", [1.0])[
-                len(self.param_grid.get("c_value", [1.0])) // 2
-            ],
-        }
+        # Since ApplicabilityModel is not a standard scikit-learn estimator,
+        # we cannot use GridSearchCV directly.
+        # We will simulate a grid search here.
+        best_score = -1.0
+        best_params = {}
 
-        # Log that we're using default middle values for multi-label scenario
-        logger.info(
-            "Using middle values from parameter grid for multi-label classification: "
-            f"{best_params}"
-        )
+        param_grid = list(ParameterGrid(self.param_grid))
 
+        for params in param_grid:
+            logger.info(f"Trying parameters: {params}")
+            
+            # Create a new model instance with the current parameters
+            temp_model = ApplicabilityModel(
+                cet_areas=self.cet_areas,
+                config=self.config,
+                taxonomy_version=self.taxonomy_version,
+            )
+            self._update_model_config(temp_model, params)
+
+            # This is a simplified cross-validation. A more robust implementation
+            # would use K-fold cross-validation.
+            X_train_part, X_val, y_train_part, y_val = train_test_split(
+                X_train, y_train, test_size=self.val_size, random_state=self.random_state
+            )
+            
+            temp_model.train(X_train_part, y_train_part)
+            
+            y_pred = []
+            for text in X_val:
+                classifications = temp_model.classify(text, return_all_scores=True)
+                pred_vector = np.zeros(len(self.mlb.classes_))
+                for cls in classifications:
+                    if cls.cet_id in self.mlb.classes_:
+                        idx = list(self.mlb.classes_).index(cls.cet_id)
+                        pred_vector[idx] = 1.0 if cls.score >= 40 else 0.0
+                y_pred.append(pred_vector)
+            
+            y_pred = np.array(y_pred)
+            
+            score = f1_score(y_val, y_pred, average="macro", zero_division=0)
+            logger.info(f"Validation F1 score: {score:.4f}")
+
+            if score > best_score:
+                best_score = score
+                best_params = params
+
+        logger.info(f"Best F1 score: {best_score:.4f}")
         return best_params
 
     def _update_model_config(self, model: ApplicabilityModel, params: dict[str, Any]) -> None:
@@ -246,35 +267,19 @@ class CETModelTrainer:
             model: Model to update
             params: Hyperparameters to apply
         """
-        # Update model internal config
         if "keyword_boost_factor" in params:
-            # This would need to be applied during model rebuild
-            logger.info(f"Will use keyword_boost_factor={params['keyword_boost_factor']}")
+            model.keyword_boost_factor = params["keyword_boost_factor"]
+            logger.info(f"Set keyword_boost_factor to {params['keyword_boost_factor']}")
 
         if "max_features" in params:
-            logger.info(f"Will use max_features={params['max_features']}")
+            model.max_features = params["max_features"]
+            logger.info(f"Set max_features to {params['max_features']}")
 
         if "c_value" in params:
-            logger.info(f"Will use C={params['c_value']}")
+            model.c_value = params["c_value"]
+            logger.info(f"Set C to {params['c_value']}")
 
-    def _calibrate_model(
-        self, model: ApplicabilityModel, X_train: list[str], y_train: np.ndarray
-    ) -> None:
-        """
-        Calibrate model probabilities using cross-validation.
 
-        Args:
-            model: Model to calibrate
-            X_train: Training texts
-            y_train: Training labels
-        """
-        # Note: Calibration is already built into the ApplicabilityModel
-        # during training via CalibratedClassifierCV. This method logs
-        # that calibration is being used.
-        logger.info(
-            f"Model uses {self.calibration_method} calibration "
-            f"with {self.calibration_cv}-fold CV (built into training)"
-        )
 
     def _evaluate(
         self, model: ApplicabilityModel, X_test: list[str], y_test: np.ndarray

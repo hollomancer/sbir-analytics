@@ -56,61 +56,22 @@ class EmbeddingResult:
     inference_mode: Literal["api", "local"]
 
 
+from src.ml.config import PaECTERClientConfig
+
 class PaECTERClient:
-    """Client for interacting with the PaECTER embedding model.
+    """Client for interacting with the PaECTER embedding model."""
 
-    By default, uses HuggingFace Inference API (no model download required).
-    Optionally supports local inference with sentence-transformers.
-
-    The model uses mean pooling and processes the first 512 tokens (~393 words)
-    of the input text.
-
-    Attributes:
-        model_name: HuggingFace model identifier
-        inference_mode: "api" or "local"
-        embedding_dim: Dimension of output embeddings (1024 for PaECTER)
-
-    Example (API mode - default):
-        >>> # Set HF_TOKEN environment variable or pass token parameter
-        >>> client = PaECTERClient()
-        >>> texts = ["Novel method for solar cell efficiency"]
-        >>> result = client.generate_embeddings(texts)
-        >>> print(result.embeddings.shape)
-        (1, 1024)
-
-    Example (local mode):
-        >>> client = PaECTERClient(use_local=True)
-        >>> result = client.generate_embeddings(texts)
-    """
-
-    def __init__(
-        self,
-        model_name: str = "mpi-inno-comp/paecter",
-        use_local: bool = False,
-        hf_token: str | None = None,
-        device: str | None = None,
-        cache_folder: str | None = None,
-    ):
-        """Initialize the PaECTER client.
-
-        Args:
-            model_name: HuggingFace model identifier (default: mpi-inno-comp/paecter)
-            use_local: If True, use local sentence-transformers. If False (default), use API.
-            hf_token: HuggingFace API token. If None, read from HF_TOKEN env var.
-            device: Device for local inference ('cpu', 'cuda'). Only used if use_local=True.
-            cache_folder: Cache folder for local model. Only used if use_local=True.
-
-        Raises:
-            ImportError: If required dependencies are not installed
-            RuntimeError: If initialization fails
-        """
-        self.model_name = model_name
+    def __init__(self, config: PaECTERClientConfig):
+        """Initialize the PaECTER client."""
+        self.config = config
+        self.model_name = config.model_name
         self.embedding_dim = 1024  # PaECTER embeddings are 1024-dimensional
+        self.cache: dict[str, np.ndarray] = {}
 
-        if use_local:
-            self._init_local_mode(device, cache_folder)
+        if self.config.use_local:
+            self._init_local_mode(config.device, config.cache_folder)
         else:
-            self._init_api_mode(hf_token)
+            self._init_api_mode(config.hf_token)
 
     def _init_api_mode(self, hf_token: str | None):
         """Initialize API mode using HuggingFace Inference API."""
@@ -193,28 +154,70 @@ class PaECTERClient:
         if not texts:
             raise ValueError("texts cannot be empty")
 
-        logger.debug(f"Generating embeddings for {len(texts)} texts using {self.inference_mode} mode")
+        if self.config.enable_cache:
+            cached_embeddings = []
+            texts_to_process = []
+            indices_to_process = []
+            
+            for i, text in enumerate(texts):
+                if text in self.cache:
+                    cached_embeddings.append((i, self.cache[text]))
+                else:
+                    texts_to_process.append(text)
+                    indices_to_process.append(i)
+
+            if not texts_to_process:
+                logger.debug("All embeddings found in cache.")
+                embeddings = np.zeros((len(texts), self.embedding_dim))
+                for i, embedding in cached_embeddings:
+                    embeddings[i] = embedding
+                return EmbeddingResult(
+                    embeddings=embeddings,
+                    model_version=self.model_name,
+                    generation_timestamp=0.0,
+                    input_count=len(texts),
+                    dimension=self.embedding_dim,
+                    inference_mode=self.inference_mode,
+                )
+        else:
+            texts_to_process = texts
+
+        logger.debug(f"Generating embeddings for {len(texts_to_process)} texts using {self.inference_mode} mode")
         start_time = time.time()
 
         try:
             if self.inference_mode == "api":
-                embeddings = self._generate_embeddings_api(texts, batch_size, normalize)
+                new_embeddings = self._generate_embeddings_api(texts_to_process, batch_size, normalize)
             else:
-                embeddings = self._generate_embeddings_local(
-                    texts, batch_size, show_progress_bar, normalize
+                new_embeddings = self._generate_embeddings_local(
+                    texts_to_process, batch_size, show_progress_bar, normalize
                 )
+
+            if self.config.enable_cache:
+                for text, embedding in zip(texts_to_process, new_embeddings):
+                    self.cache[text] = embedding
+
+                # Combine cached and new embeddings
+                embeddings = np.zeros((len(texts), self.embedding_dim))
+                for i, embedding in cached_embeddings:
+                    embeddings[i] = embedding
+                
+                for i, embedding in zip(indices_to_process, new_embeddings):
+                    embeddings[i] = embedding
+            else:
+                embeddings = new_embeddings
 
             generation_time = time.time() - start_time
             logger.info(
-                f"Generated {len(texts)} embeddings in {generation_time:.2f}s "
-                f"({len(texts)/generation_time:.1f} embeddings/s) "
+                f"Generated {len(texts_to_process)} embeddings in {generation_time:.2f}s "
+                f"({len(texts_to_process)/generation_time:.1f} embeddings/s if generation_time > 0 else 0) "
                 f"[{self.inference_mode} mode]"
             )
 
             return EmbeddingResult(
                 embeddings=embeddings,
                 model_version=self.model_name,
-                generation_timestamp=generation_time,  # Store elapsed time, not epoch timestamp
+                generation_timestamp=generation_time,
                 input_count=len(texts),
                 dimension=self.embedding_dim,
                 inference_mode=self.inference_mode,

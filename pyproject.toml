@@ -21,6 +21,7 @@ dependencies = [
     "psutil",
     "memory_profiler",
     "scikit-learn>=1.4.0,<2.0.0",
+    "joblib>=1.4.2,<2.0.0",
     "spacy>=3.7.0,<4.0.0",
     "numpy<2",
     "httpx>=0.27.0,<1.0.0",
