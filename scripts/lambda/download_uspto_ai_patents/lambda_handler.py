@@ -10,9 +10,20 @@ import boto3
 
 s3_client = boto3.client("s3")
 
-# USPTO AI Patent Dataset URL
-# Note: Update with actual download URL from USPTO research datasets page
-USPTO_AI_PATENT_BASE_URL = "https://www.uspto.gov/ip-policy/economic-research/research-datasets"
+# USPTO AI Patent Dataset URLs
+# Research datasets page: https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset
+# Developer portal: https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv
+#
+# Direct download URLs (latest 2023 release)
+USPTO_AI_PATENT_BASE = "https://www.uspto.gov/sites/default/files/documents"
+USPTO_AI_PATENT_DEFAULT_URLS = {
+    "csv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2023.csv.zip",
+    "dta": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2023.dta.zip",
+    "tsv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2020.tsv.zip",  # 2020 release has TSV
+}
+
+USPTO_AI_PATENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
+USPTO_AI_PATENT_DEVELOPER_PORTAL = "https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv"
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -35,11 +46,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         force_refresh = event.get("force_refresh", False)
 
         # Construct URL if not provided
-        # Note: This is a placeholder; update with actual AI Patent Dataset download URL
         if not source_url:
-            # The AI Patent Dataset may be available as a direct download link
-            # Update this URL based on the actual USPTO research datasets page
-            source_url = f"{USPTO_AI_PATENT_BASE_URL}/artificial-intelligence-patent-dataset"
+            # Use default CSV format URL (2023 release)
+            source_url = USPTO_AI_PATENT_DEFAULT_URLS.get("csv")
+            print(f"Using default USPTO AI Patent Dataset URL (CSV format): {source_url}")
+            print(f"Note: Other formats available at {USPTO_AI_PATENT_DATASET_PAGE}")
 
         # Download data
         print(f"Downloading USPTO AI Patent Dataset from {source_url}")

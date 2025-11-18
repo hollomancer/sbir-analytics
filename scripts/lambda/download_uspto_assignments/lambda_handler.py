@@ -10,9 +10,20 @@ import boto3
 
 s3_client = boto3.client("s3")
 
-# USPTO Patent Assignment Dataset URL
-# Note: Update with actual download URL from USPTO research datasets page
-USPTO_ASSIGNMENT_BASE_URL = "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
+# USPTO Patent Assignment Dataset URLs
+# Research datasets page: https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset
+# Legacy page: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
+#
+# Direct download URLs (2023 release - latest as of 2024)
+USPTO_ASSIGNMENT_BASE = "https://www.uspto.gov/sites/default/files/documents"
+USPTO_ASSIGNMENT_DEFAULT_URLS = {
+    "csv": f"{USPTO_ASSIGNMENT_BASE}/assignment_data_2023.csv",
+    "dta": f"{USPTO_ASSIGNMENT_BASE}/assignment_data_2023.dta",
+    # Parquet format may not be available - CSV and DTA are the standard formats
+}
+
+USPTO_ASSIGNMENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset"
+USPTO_ASSIGNMENT_LEGACY_PAGE = "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -38,14 +49,25 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Construct URL if not provided
         if not source_url:
-            # USPTO provides multiple formats - construct URL based on format
-            # This is a placeholder; update with actual USPTO download URL structure
-            if file_format == "dta":
-                source_url = f"{USPTO_ASSIGNMENT_BASE_URL}?format=dta"
-            elif file_format == "parquet":
-                source_url = f"{USPTO_ASSIGNMENT_BASE_URL}?format=parquet"
+            # Use default URL based on format (2023 release)
+            if file_format in USPTO_ASSIGNMENT_DEFAULT_URLS:
+                source_url = USPTO_ASSIGNMENT_DEFAULT_URLS[file_format]
+                print(f"Using default USPTO Patent Assignment URL ({file_format} format): {source_url}")
+                print(f"Note: This is the 2023 release. Check {USPTO_ASSIGNMENT_DATASET_PAGE} for newer releases.")
             else:
-                source_url = f"{USPTO_ASSIGNMENT_BASE_URL}?format=csv"
+                # Unknown format - try to construct URL or provide helpful error
+                if file_format == "parquet":
+                    raise ValueError(
+                        f"Parquet format is not available for USPTO Patent Assignment Dataset. "
+                        f"Available formats: csv, dta. "
+                        f"See {USPTO_ASSIGNMENT_DATASET_PAGE} for available formats."
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown format '{file_format}'. Available formats: csv, dta. "
+                        f"Or provide source_url directly. "
+                        f"See {USPTO_ASSIGNMENT_DATASET_PAGE} for more information."
+                    )
 
         # Download data
         print(f"Downloading USPTO Patent Assignment data ({file_format}) from {source_url}")

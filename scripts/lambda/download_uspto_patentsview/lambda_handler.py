@@ -11,18 +11,36 @@ import boto3
 s3_client = boto3.client("s3")
 
 # PatentsView bulk download URLs
-# Note: These URLs may need to be updated based on actual PatentsView download page structure
-PATENTSVIEW_BASE_URL = "https://patentsview.org/download/data-download-tables"
-# Common PatentsView table names
-PATENTSVIEW_TABLES = [
-    "patent",
-    "assignee",
-    "inventor",
-    "location",
-    "cpc_subsection",
-    "nber_subcategory",
-    "uspc_mainclass",
-]
+# PatentsView provides bulk data downloads via S3
+# Documentation: https://patentsview.org/downloads/data-downloads
+# Direct S3 download URLs for bulk data tables
+PATENTSVIEW_S3_BASE = "https://s3.amazonaws.com/data.patentsview.org/download"
+
+# Mapping of table names to S3 download URLs
+PATENTSVIEW_DOWNLOAD_URLS = {
+    "patent": f"{PATENTSVIEW_S3_BASE}/patents.zip",
+    "patents": f"{PATENTSVIEW_S3_BASE}/patents.zip",
+    "assignee": f"{PATENTSVIEW_S3_BASE}/assignees.zip",
+    "assignees": f"{PATENTSVIEW_S3_BASE}/assignees.zip",
+    "inventor": f"{PATENTSVIEW_S3_BASE}/inventors.zip",
+    "inventors": f"{PATENTSVIEW_S3_BASE}/inventors.zip",
+    "location": f"{PATENTSVIEW_S3_BASE}/locations.zip",
+    "locations": f"{PATENTSVIEW_S3_BASE}/locations.zip",
+    "citation": f"{PATENTSVIEW_S3_BASE}/citations.zip",
+    "citations": f"{PATENTSVIEW_S3_BASE}/citations.zip",
+    "cpc": f"{PATENTSVIEW_S3_BASE}/cpcs.zip",
+    "cpcs": f"{PATENTSVIEW_S3_BASE}/cpcs.zip",
+    "nber": f"{PATENTSVIEW_S3_BASE}/nber_subcategories.zip",
+    "nber_subcategory": f"{PATENTSVIEW_S3_BASE}/nber_subcategories.zip",
+    "uspc": f"{PATENTSVIEW_S3_BASE}/uspcs.zip",
+    "uspcs": f"{PATENTSVIEW_S3_BASE}/uspcs.zip",
+    "foreign_citation": f"{PATENTSVIEW_S3_BASE}/foreign_citations.zip",
+    "foreign_citations": f"{PATENTSVIEW_S3_BASE}/foreign_citations.zip",
+    "lawyer": f"{PATENTSVIEW_S3_BASE}/lawyers.zip",
+    "lawyers": f"{PATENTSVIEW_S3_BASE}/lawyers.zip",
+}
+
+PATENTSVIEW_DOWNLOADS_PAGE = "https://patentsview.org/downloads/data-downloads"
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -49,9 +67,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Construct URL if not provided
         if not source_url:
-            # PatentsView uses specific download endpoints - this is a placeholder
-            # Actual URL structure may vary; update based on PatentsView API documentation
-            source_url = f"{PATENTSVIEW_BASE_URL}?table={dataset_type}"
+            # Try to construct URL from known table mappings
+            table_key = dataset_type.lower()
+            if table_key in PATENTSVIEW_DOWNLOAD_URLS:
+                source_url = PATENTSVIEW_DOWNLOAD_URLS[table_key]
+                print(f"Using default PatentsView URL for '{dataset_type}': {source_url}")
+            else:
+                raise ValueError(
+                    f"Unknown dataset_type '{dataset_type}' and no source_url provided. "
+                    f"Known types: {', '.join(sorted(set(k for k in PATENTSVIEW_DOWNLOAD_URLS.keys() if not k.endswith('s'))))}. "
+                    f"Or provide source_url directly. "
+                    f"See {PATENTSVIEW_DOWNLOADS_PAGE} for more options."
+                )
 
         # Download data
         print(f"Downloading PatentsView {dataset_type} from {source_url}")

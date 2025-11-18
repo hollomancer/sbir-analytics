@@ -29,6 +29,18 @@ on:
           - csv
           - dta
           - parquet
+      patentsview_url:
+        description: "PatentsView download URL (find at https://patentsview.org/downloads/data-downloads)"
+        required: false
+        type: string
+      assignments_url:
+        description: "USPTO Assignments download URL (find at https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset)"
+        required: false
+        type: string
+      ai_patents_url:
+        description: "USPTO AI Patents download URL (find at https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset)"
+        required: false
+        type: string
 
 permissions:
   id-token: write  # For OIDC authentication to AWS
@@ -67,15 +79,36 @@ jobs:
         if: contains(steps.datasets.outputs.datasets, 'patentsview')
         id: patentsview
         run: |
+          # PatentsView has default URLs built into the Lambda function
+          # For manual runs, you can override with patentsview_url input
+          # For scheduled runs, defaults are used (no override needed)
+          # Default: downloads "patent" table from PatentsView S3
+          SOURCE_URL="${{ github.event.inputs.patentsview_url }}"
+          
           FUNCTION_NAME="sbir-etl-download-uspto-patentsview"
-          PAYLOAD=$(jq -n \
-            --arg s3_bucket "${{ env.S3_BUCKET }}" \
-            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
-            '{
-              s3_bucket: $s3_bucket,
-              dataset_type: "patent",
-              force_refresh: ($force_refresh == "true")
-            }')
+          if [ -n "$SOURCE_URL" ]; then
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg dataset_type "patent" \
+              --arg source_url "$SOURCE_URL" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                dataset_type: $dataset_type,
+                source_url: $source_url,
+                force_refresh: ($force_refresh == "true")
+              }')
+          else
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg dataset_type "patent" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                dataset_type: $dataset_type,
+                force_refresh: ($force_refresh == "true")
+              }')
+          fi
           
           RESPONSE=$(aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
@@ -99,17 +132,37 @@ jobs:
         if: contains(steps.datasets.outputs.datasets, 'assignments')
         id: assignments
         run: |
+          # USPTO Assignments has default URLs built into the Lambda function (2023 CSV/DTA releases)
+          # For manual runs, you can override with assignments_url input
+          # For scheduled runs, defaults are used (no override needed)
+          SOURCE_URL="${{ github.event.inputs.assignments_url }}"
+          
           FUNCTION_NAME="sbir-etl-download-uspto-assignments"
           FORMAT="${{ github.event.inputs.format || 'csv' }}"
-          PAYLOAD=$(jq -n \
-            --arg s3_bucket "${{ env.S3_BUCKET }}" \
-            --arg format "$FORMAT" \
-            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
-            '{
-              s3_bucket: $s3_bucket,
-              format: $format,
-              force_refresh: ($force_refresh == "true")
-            }')
+          
+          if [ -n "$SOURCE_URL" ]; then
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg source_url "$SOURCE_URL" \
+              --arg format "$FORMAT" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                source_url: $source_url,
+                format: $format,
+                force_refresh: ($force_refresh == "true")
+              }')
+          else
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg format "$FORMAT" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                format: $format,
+                force_refresh: ($force_refresh == "true")
+              }')
+          fi
           
           RESPONSE=$(aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
@@ -133,14 +186,31 @@ jobs:
         if: contains(steps.datasets.outputs.datasets, 'ai_patents')
         id: ai_patents
         run: |
+          # USPTO AI Patents has default URL built into the Lambda function (2023 CSV release)
+          # For manual runs, you can override with ai_patents_url input
+          # For scheduled runs, defaults are used (no override needed)
+          SOURCE_URL="${{ github.event.inputs.ai_patents_url }}"
+          
           FUNCTION_NAME="sbir-etl-download-uspto-ai-patents"
-          PAYLOAD=$(jq -n \
-            --arg s3_bucket "${{ env.S3_BUCKET }}" \
-            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
-            '{
-              s3_bucket: $s3_bucket,
-              force_refresh: ($force_refresh == "true")
-            }')
+          if [ -n "$SOURCE_URL" ]; then
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg source_url "$SOURCE_URL" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                source_url: $source_url,
+                force_refresh: ($force_refresh == "true")
+              }')
+          else
+            PAYLOAD=$(jq -n \
+              --arg s3_bucket "${{ env.S3_BUCKET }}" \
+              --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+              '{
+                s3_bucket: $s3_bucket,
+                force_refresh: ($force_refresh == "true")
+              }')
+          fi
           
           RESPONSE=$(aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
