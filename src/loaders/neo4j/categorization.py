@@ -207,23 +207,24 @@ class CompanyCategorizationLoader:
         for i in range(0, len(categorization_data), self.config.batch_size):
             batch = categorization_data[i : i + self.config.batch_size]
 
-            # Build Cypher query for batch update
+            # Build Cypher query for batch update using query builder
+            from ..query_builder import Neo4jQueryBuilder
+            
             if self.config.update_existing_only:
                 # Only update existing Company nodes (safer)
-                query = """
-                UNWIND $batch AS item
-                MATCH (c:Company {uei: item.uei})
-                SET c += item.props
-                RETURN count(c) as updated_count
-                """
+                query = Neo4jQueryBuilder.build_batch_match_update_query(
+                    label="Company",
+                    key_property="uei",
+                    return_count=True,
+                )
             else:
                 # Create Company node if it doesn't exist (more permissive)
-                query = """
-                UNWIND $batch AS item
-                MERGE (c:Company {uei: item.uei})
-                SET c += item.props
-                RETURN count(c) as updated_count
-                """
+                query = Neo4jQueryBuilder.build_batch_merge_query(
+                    label="Company",
+                    key_property="uei",
+                    include_hash_check=False,
+                    return_counts=True,
+                )
 
             try:
                 with self.client.session() as session:

@@ -107,61 +107,8 @@ except Exception:  # pragma: no cover
         WARN = "WARN"
 
 
-def _ensure_parent_dir(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def save_dataframe_parquet(df: pd.DataFrame, path: Path) -> None:
-    """Persist a DataFrame to parquet, falling back to NDJSON if pyarrow not present."""
-    _ensure_parent_dir(path)
-    try:
-        df.to_parquet(path, index=False)
-    except Exception:
-        # Fallback to NDJSON in the same directory with .ndjson suffix
-        ndjson_path = path.with_suffix(".ndjson")
-
-        # Convert values to JSON-serializable, handling NaN/NaT/NumPy scalars and nested containers
-        def _to_jsonable(x):
-            try:
-                if pd.isna(x):
-                    return None
-            except Exception:
-                pass
-            # pandas Timestamps
-            if hasattr(x, "isoformat"):
-                try:
-                    return x.isoformat()
-                except Exception:
-                    pass
-            # NumPy scalars
-            try:
-                import numpy as _np
-
-                if isinstance(x, _np.generic):
-                    try:
-                        return x.item()
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            # Containers
-            if isinstance(x, dict):
-                return {str(k): _to_jsonable(v) for k, v in x.items()}
-            if isinstance(x, list | tuple | set):
-                return [_to_jsonable(v) for v in list(x)]
-            return x
-
-        with ndjson_path.open("w", encoding="utf-8") as fh:
-            for _, row in df.iterrows():
-                record = {k: _to_jsonable(v) for k, v in row.items()}
-                fh.write(json.dumps(record) + "\n")
-        logger.warning("Parquet save failed; wrote NDJSON fallback", path=str(ndjson_path))
-
-
-def write_json(path: Path, payload: dict[str, Any]) -> None:
-    _ensure_parent_dir(path)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, ensure_ascii=False)
+# Import centralized file I/O utilities
+from src.utils.file_io import save_dataframe_parquet, write_json
 
 
 def now_utc_iso() -> str:

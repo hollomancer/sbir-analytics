@@ -177,8 +177,9 @@ class CheckpointStore:
             df: DataFrame with all checkpoints
         """
         try:
-            self.parquet_path.parent.mkdir(parents=True, exist_ok=True)
-            df.to_parquet(self.parquet_path, index=False, engine="pyarrow")
+            from src.utils.file_io import save_dataframe_parquet
+            
+            save_dataframe_parquet(df, self.parquet_path, index=False, engine="pyarrow")
         except Exception as e:
             logger.error(f"Failed to save checkpoints: {e}")
             raise

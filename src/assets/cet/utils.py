@@ -149,53 +149,11 @@ except Exception:  # pragma: no cover - fallback stubs when dagster is not insta
 # ============================================================================
 
 
-def save_dataframe_parquet(df: pd.DataFrame, dest: Path, index: bool = False) -> None:
-    """
-    Save DataFrame to Parquet, ensuring parent directory exists.
+# Import centralized file I/O utilities
+from src.utils.file_io import save_dataframe_parquet
 
-    Args:
-        df: pandas DataFrame to save
-        dest: destination Path to write (file)
-        index: whether to include DataFrame index in output
-    """
-    dest = Path(dest)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    # Attempt parquet write first (preferred). pandas will raise ImportError
-    # if no parquet engine is available.
-    try:
-        df.to_parquet(dest, index=index)
-        logger.info("Wrote taxonomy parquet", path=str(dest), rows=len(df))
-        return
-    except ImportError as exc:
-        # Specific fallback when parquet engine is missing; write NDJSON as a portable alternative.
-        logger.warning(
-            "Parquet engine unavailable, falling back to newline-delimited JSON (NDJSON): %s",
-            exc,
-        )
-        json_dest = dest.with_suffix(".json")
-        try:
-            # orient='records' with lines=True produces NDJSON (one JSON object per line)
-            df.to_json(json_dest, orient="records", lines=True, date_format="iso")
-            logger.info("Wrote taxonomy JSON fallback (NDJSON)", path=str(json_dest), rows=len(df))
-            # Touch the original parquet destination so callers that assert the parquet
-            # path exists (e.g., tests checking `path.exists()`) will observe a file.
-            # The touched file is empty, but serves as a presence marker in environments
-            # without a parquet engine.
-            try:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.touch()
-                logger.info("Touched parquet placeholder file (JSON fallback used)", path=str(dest))
-            except Exception:
-                logger.exception("Failed to touch parquet placeholder file: %s", dest)
-            return
-        except Exception as jexc:
-            logger.exception("Failed to write JSON fallback for taxonomy: %s", jexc)
-            # Raise original ImportError to indicate the primary failure (parquet engine missing)
-            raise
-    except Exception as exc:
-        # Any other unexpected exception during parquet write should be propagated
-        logger.exception("Failed to write taxonomy parquet: %s", exc)
-        raise
+# Re-export for backward compatibility
+__all__ = ["save_dataframe_parquet"]
 
 
 def _read_parquet_or_ndjson(

@@ -198,8 +198,10 @@ class PatentsViewCache:
             cache_path = self._get_cache_path(cache_key)
             metadata_path = self._get_metadata_path(cache_key)
 
-            # Save DataFrame
-            df.to_parquet(cache_path, index=False)
+            # Save DataFrame using centralized utility
+            from src.utils.file_io import save_dataframe_parquet
+            
+            save_dataframe_parquet(df, cache_path, index=False)
 
             # Save metadata
             metadata = {

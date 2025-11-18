@@ -170,7 +170,9 @@ class NAICSEnricher:
         df = pd.DataFrame(rows)
         # ensure deterministic ordering
         df = df.sort_values(["key_type", "key"]).reset_index(drop=True)
-        df.to_parquet(cache, index=False)
+        from src.utils.file_io import save_dataframe_parquet
+        
+        save_dataframe_parquet(df, cache, index=False)
         logger.info("Persisted NAICS index to %s (rows=%d)", cache, len(df))
 
     def _process_line(self, line: str) -> None:

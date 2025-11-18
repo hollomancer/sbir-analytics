@@ -355,12 +355,14 @@ class BaseNeo4jLoader(ABC):
                     {"key": key_value, "props": props} for key_value, props in batch
                 ]
 
-                query = f"""
-                UNWIND $batch AS item
-                MATCH (n:{label} {{{key_property}: item.key}})
-                SET n += item.props
-                RETURN count(n) as updated_count
-                """
+                # Use query builder for consistent query construction
+                from ..query_builder import Neo4jQueryBuilder
+                
+                query = Neo4jQueryBuilder.build_batch_match_update_query(
+                    label=label,
+                    key_property=key_property,
+                    return_count=True,
+                )
 
                 try:
                     result = session.run(query, batch=batch_data)

@@ -163,10 +163,9 @@ class ChunkedEnricher:
         Yields:
             DataFrame chunks of size chunk_size
         """
-        for start_idx in range(0, len(self.sbir_df), self.chunk_size):
-            end_idx = min(start_idx + self.chunk_size, len(self.sbir_df))
-            chunk = self.sbir_df.iloc[start_idx:end_idx].copy()
-            yield chunk
+        from src.utils.chunking import chunk_dataframe
+        
+        yield from chunk_dataframe(self.sbir_df, self.chunk_size)
 
     def enrich_chunk(
         self, chunk: pd.DataFrame, chunk_num: int

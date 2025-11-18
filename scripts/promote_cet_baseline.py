@@ -101,24 +101,12 @@ def validate_baseline_structure(obj: dict[str, Any]) -> bool:
     return True
 
 
+# Use centralized atomic write utility
+from src.utils.file_io import write_json_atomic
+
 def atomic_write_json(target: Path, data: dict[str, Any]) -> None:
     """Write JSON atomically to target path using a temp file + os.replace."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(prefix="cet_baseline_", suffix=".json", dir=str(target.parent))
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, indent=2, sort_keys=True, default=str)
-            fh.flush()
-            os.fsync(fh.fileno())
-        # Atomic replace
-        os.replace(tmp_path, str(target))
-    finally:
-        # If tmp file still exists for any reason, remove it
-        try:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-        except Exception:
-            pass
+    write_json_atomic(target, data, indent=2, sort_keys=True, default=str)
 
 
 def run_git_commit_and_push(paths: [Path], message: str, push: bool = False) -> int:

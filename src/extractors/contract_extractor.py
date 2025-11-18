@@ -515,8 +515,9 @@ class ContractExtractor:
         if all_contracts:
             logger.info(f"Writing {len(all_contracts):,} contracts to {output_file}")
             df = pd.DataFrame(all_contracts)
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            df.to_parquet(output_file, index=False, compression="snappy")
+            from src.utils.file_io import save_dataframe_parquet
+            
+            save_dataframe_parquet(df, output_file, index=False, compression="snappy")
             logger.success(f"Contracts saved to {output_file}")
         else:
             logger.warning("No contracts extracted")

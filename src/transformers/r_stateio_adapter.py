@@ -264,8 +264,9 @@ class RStateIOAdapter(EconomicModelInterface):
         # Save to file cache
         cache_file = self.cache_dir / f"{cache_key}.parquet"
         try:
-            cache_file.parent.mkdir(parents=True, exist_ok=True)
-            result_df.to_parquet(cache_file, index=False)
+            from src.utils.file_io import save_dataframe_parquet
+            
+            save_dataframe_parquet(result_df, cache_file, index=False)
             logger.debug(f"Cached results to {cache_file}")
         except Exception as e:
             logger.warning(f"Failed to save cache file {cache_file}: {e}")

@@ -114,6 +114,8 @@ class TransitionLoader:
                 batch_size_actual = len(batch)
 
                 try:
+                    # Note: This query has specific SET clauses, so we keep the custom query
+                    # but could be refactored to use query builder in the future
                     result = session.run(
                         """
                         UNWIND $transitions AS t

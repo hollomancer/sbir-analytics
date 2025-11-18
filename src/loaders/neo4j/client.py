@@ -289,22 +289,15 @@ class Neo4jClient:
                     node["__hash"] = _compute_node_hash(node)
 
                 try:
-                    # Use UNWIND to batch process all nodes in a single query
-                    # Only update nodes when their hash has changed
-                    query = f"""
-                    UNWIND $batch AS node
-                    MERGE (n:{label} {{{key_property}: node.{key_property}}})
-                    ON CREATE SET n = node, n.__new = true
-                    ON MATCH SET n.__new = false
-                    WITH n, node,
-                        CASE WHEN NOT n.__new AND (n.__hash IS NULL OR n.__hash <> node.__hash)
-                             THEN true ELSE false END AS needs_update
-                    FOREACH (x IN CASE WHEN needs_update THEN [1] ELSE [] END |
-                        SET n += node
+                    # Use query builder for consistent query construction
+                    from .query_builder import Neo4jQueryBuilder
+                    
+                    query = Neo4jQueryBuilder.build_batch_merge_query(
+                        label=label,
+                        key_property=key_property,
+                        include_hash_check=True,
+                        return_counts=True,
                     )
-                    RETURN count(CASE WHEN n.__new THEN 1 END) as created_count,
-                           count(CASE WHEN needs_update THEN 1 END) as updated_count
-                    """
 
                     result = session.run(query, batch=valid_batch)
                     record = result.single()

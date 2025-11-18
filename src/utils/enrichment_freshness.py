@@ -141,8 +141,9 @@ class FreshnessStore:
             df: DataFrame with all freshness records
         """
         try:
-            self.parquet_path.parent.mkdir(parents=True, exist_ok=True)
-            df.to_parquet(self.parquet_path, index=False, engine="pyarrow")
+            from src.utils.file_io import save_dataframe_parquet
+            
+            save_dataframe_parquet(df, self.parquet_path, index=False, engine="pyarrow")
             logger.debug(f"Saved {len(df)} freshness records to {self.parquet_path}")
         except Exception as e:
             logger.error(f"Failed to save freshness records: {e}")
