@@ -144,10 +144,11 @@ def _env_bool(key: str, default: bool) -> bool:
 try:
     from neo4j import Driver
 
-    from src.loaders.neo4j import Neo4jClient
+    from src.loaders.neo4j import Neo4jClient, Neo4jConfig
 except Exception:
     Driver = None  # type: ignore
     Neo4jClient = None  # type: ignore
+    Neo4jConfig = None  # type: ignore
 
 # Neo4j configuration defaults
 DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
@@ -163,8 +164,12 @@ TRANSITION_LOAD_SUCCESS_THRESHOLD = _env_float(
 
 
 def _get_neo4j_driver() -> Any:
-    """Create and return a Neo4j driver, or None if unavailable."""
-    if Driver is None or Neo4jClient is None:
+    """Create and return a Neo4j driver, or None if unavailable.
+    
+    DEPRECATED: Use _get_neo4j_client() instead. This function is kept for
+    backward compatibility with TransitionProfileLoader.
+    """
+    if Driver is None:
         logger.warning("Neo4j driver unavailable; skipping Neo4j operations")
         return None
 
@@ -178,6 +183,30 @@ def _get_neo4j_driver() -> Any:
         driver.verify_connectivity()
         logger.info("✓ Connected to Neo4j")
         return driver
+    except Exception as e:
+        logger.error(f"Failed to connect to Neo4j: {e}")
+        raise
+
+
+def _get_neo4j_client() -> Any:
+    """Create and return a Neo4jClient, or None if unavailable."""
+    if Neo4jClient is None or Neo4jConfig is None:
+        logger.warning("Neo4j client unavailable; skipping Neo4j operations")
+        return None
+
+    try:
+        config = Neo4jConfig(
+            uri=DEFAULT_NEO4J_URI,
+            username=DEFAULT_NEO4J_USER,
+            password=DEFAULT_NEO4J_PASSWORD,
+            database=DEFAULT_NEO4J_DATABASE,
+        )
+        client = Neo4jClient(config)
+        # Verify connectivity
+        with client.session() as session:
+            session.run("RETURN 1")
+        logger.info("✓ Connected to Neo4j via Neo4jClient")
+        return client
     except Exception as e:
         logger.error(f"Failed to connect to Neo4j: {e}")
         raise

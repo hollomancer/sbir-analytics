@@ -8,6 +8,7 @@ Key features:
 - Common logging patterns and metrics reporting
 - Helper methods for schema management
 - Simplified node and relationship loading patterns
+- BaseLoaderConfig for consistent configuration patterns
 """
 
 from __future__ import annotations
@@ -17,8 +18,33 @@ from datetime import datetime
 from typing import Any
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from .client import LoadMetrics, Neo4jClient
+
+
+class BaseLoaderConfig(BaseModel):
+    """Base configuration for Neo4j loaders.
+
+    Provides common configuration fields that all loaders share.
+    Individual loaders can extend this with additional fields.
+    """
+
+    batch_size: int = Field(
+        default=1000,
+        ge=1,
+        description="Number of records to process per batch",
+    )
+    create_indexes: bool = Field(
+        default=True,
+        description="Whether to create indexes during initialization",
+    )
+    create_constraints: bool = Field(
+        default=True,
+        description="Whether to create constraints during initialization",
+    )
+
+    model_config = {"frozen": False}  # Allow mutation for backward compatibility
 
 
 class BaseNeo4jLoader(ABC):

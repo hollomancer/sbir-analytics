@@ -3,14 +3,20 @@ Neo4j Transition Loader for Transition Detection Pipeline.
 
 Loads transition detections into Neo4j as Transition nodes and creates
 relationships to Awards, Contracts, Patents, and CET areas.
+
+Refactored to use BaseNeo4jLoader for consistency with other loaders.
 """
+
+from __future__ import annotations
 
 import pandas as pd
 from loguru import logger
-from neo4j import Driver
+
+from .base import BaseNeo4jLoader
+from .client import LoadMetrics, Neo4jClient
 
 
-class TransitionLoader:
+class TransitionLoader(BaseNeo4jLoader):
     """
     Load transition detections into Neo4j graph database.
 
@@ -19,64 +25,37 @@ class TransitionLoader:
     - Creating indexes for performance
     - Batch MERGE operations for idempotency
     - Relationship creation (TRANSITIONED_TO, RESULTED_IN, etc.)
+
+    Refactored to inherit from BaseNeo4jLoader for consistency.
+    Uses Neo4jClient instead of Driver directly.
     """
 
     def __init__(
         self,
-        driver: Driver,
-        batch_size: int = 1000,
+        client: Neo4jClient,
     ):
         """
         Initialize Transition Loader.
 
         Args:
-            driver: Neo4j driver instance
-            batch_size: Number of transitions per transaction (default: 1000)
+            client: Neo4jClient instance for graph operations
         """
-        self.driver = driver
-        self.batch_size = batch_size
-        self.stats = {
-            "transitions_created": 0,
-            "transitions_updated": 0,
-            "relationships_created": 0,
-            "errors": 0,
-        }
+        super().__init__(client)
+        # Note: batch_size is now controlled by client.config.batch_size
 
     def ensure_indexes(self) -> None:
         """Create indexes for Transition nodes and relationships."""
-        with self.driver.session() as session:
-            try:
-                # Index on transition_id (primary lookup)
-                session.run(
-                    "CREATE INDEX transition_id_index IF NOT EXISTS "
-                    "FOR (t:Transition) ON (t.transition_id)"
-                )
-                logger.info("✓ Created index on Transition.transition_id")
-
-                # Index on confidence for filtering
-                session.run(
-                    "CREATE INDEX transition_confidence_index IF NOT EXISTS "
-                    "FOR (t:Transition) ON (t.confidence)"
-                )
-                logger.info("✓ Created index on Transition.confidence")
-
-                # Index on likelihood_score for ranking
-                session.run(
-                    "CREATE INDEX transition_score_index IF NOT EXISTS "
-                    "FOR (t:Transition) ON (t.likelihood_score)"
-                )
-                logger.info("✓ Created index on Transition.likelihood_score")
-
-                # Index on detection_date for time-based queries
-                session.run(
-                    "CREATE INDEX transition_date_index IF NOT EXISTS "
-                    "FOR (t:Transition) ON (t.detection_date)"
-                )
-                logger.info("✓ Created index on Transition.detection_date")
-
-            except Exception as e:
-                logger.error(f"Failed to create indexes: {e}")
-                raise
+        indexes = [
+            "CREATE INDEX transition_id_index IF NOT EXISTS "
+            "FOR (t:Transition) ON (t.transition_id)",
+            "CREATE INDEX transition_confidence_index IF NOT EXISTS "
+            "FOR (t:Transition) ON (t.confidence)",
+            "CREATE INDEX transition_score_index IF NOT EXISTS "
+            "FOR (t:Transition) ON (t.likelihood_score)",
+            "CREATE INDEX transition_date_index IF NOT EXISTS "
+            "FOR (t:Transition) ON (t.detection_date)",
+        ]
+        self.create_indexes(indexes)
 
     def load_transition_nodes(
         self,
@@ -106,16 +85,18 @@ class TransitionLoader:
 
         logger.info(f"Loading {len(transitions_df):,} transition nodes")
 
+        # Convert DataFrame to list of dicts for batch processing
+        batch_size = self.client.config.batch_size
         total_processed = 0
 
-        with self.driver.session() as session:
-            for i in range(0, len(transitions_df), self.batch_size):
-                batch = transitions_df.iloc[i : i + self.batch_size]
+        with self.client.session() as session:
+            for i in range(0, len(transitions_df), batch_size):
+                batch = transitions_df.iloc[i : i + batch_size]
                 batch_size_actual = len(batch)
 
                 try:
-                    # Note: This query has specific SET clauses, so we keep the custom query
-                    # but could be refactored to use query builder in the future
+                    # Note: This query uses datetime() in Cypher, so we keep custom query
+                    # but use client.session() from base class
                     result = session.run(
                         """
                         UNWIND $transitions AS t
@@ -133,19 +114,21 @@ class TransitionLoader:
                         """,
                         transitions=[t.to_dict() for _, t in batch.iterrows()],
                     )
-                    count = result.single()["created"]
-                    self.stats["transitions_created"] += count
+                    count = result.single()["created"] if result.peek() else 0
+                    self.metrics.nodes_created["Transition"] = (
+                        self.metrics.nodes_created.get("Transition", 0) + count
+                    )
                     total_processed += batch_size_actual
 
-                    if (i // self.batch_size + 1) % 5 == 0:
+                    if (i // batch_size + 1) % 5 == 0:
                         logger.info(f"  Processed {total_processed:,} transitions")
 
                 except Exception as e:
-                    logger.error(f"Failed to load batch {i//self.batch_size}: {e}")
-                    self.stats["errors"] += 1
+                    logger.error(f"Failed to load batch {i//batch_size}: {e}")
+                    self.metrics.errors += batch_size_actual
 
         logger.info(
-            f"✓ Loaded {self.stats['transitions_created']:,} transition nodes "
+            f"✓ Loaded {self.metrics.nodes_created.get('Transition', 0):,} transition nodes "
             f"({total_processed:,} total)"
         )
 
@@ -166,11 +149,12 @@ class TransitionLoader:
         """
         logger.info("Creating TRANSITIONED_TO relationships (FinancialTransaction → Transition)")
 
+        batch_size = self.client.config.batch_size
         rel_count = 0
 
-        with self.driver.session() as session:
-            for i in range(0, len(transitions_df), self.batch_size):
-                batch = transitions_df.iloc[i : i + self.batch_size]
+        with self.client.session() as session:
+            for i in range(0, len(transitions_df), batch_size):
+                batch = transitions_df.iloc[i : i + batch_size]
 
                 try:
                     result = session.run(
@@ -197,14 +181,16 @@ class TransitionLoader:
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"] if result.peek() else 0
                     rel_count += count
 
                 except Exception as e:
                     logger.error(f"Failed to create TRANSITIONED_TO relationships: {e}")
-                    self.stats["errors"] += 1
+                    self.metrics.errors += len(batch)
 
-        self.stats["relationships_created"] += rel_count
+        self.metrics.relationships_created["TRANSITIONED_TO"] = (
+            self.metrics.relationships_created.get("TRANSITIONED_TO", 0) + rel_count
+        )
         logger.info(f"✓ Created {rel_count:,} TRANSITIONED_TO relationships")
 
         return rel_count
@@ -224,11 +210,12 @@ class TransitionLoader:
         """
         logger.info("Creating RESULTED_IN relationships (Transition → FinancialTransaction)")
 
+        batch_size = self.client.config.batch_size
         rel_count = 0
 
-        with self.driver.session() as session:
-            for i in range(0, len(transitions_df), self.batch_size):
-                batch = transitions_df.iloc[i : i + self.batch_size]
+        with self.client.session() as session:
+            for i in range(0, len(transitions_df), batch_size):
+                batch = transitions_df.iloc[i : i + batch_size]
 
                 try:
                     result = session.run(
@@ -250,14 +237,16 @@ class TransitionLoader:
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"] if result.peek() else 0
                     rel_count += count
 
                 except Exception as e:
                     logger.error(f"Failed to create RESULTED_IN relationships: {e}")
-                    self.stats["errors"] += 1
+                    self.metrics.errors += len(batch)
 
-        self.stats["relationships_created"] += rel_count
+        self.metrics.relationships_created["RESULTED_IN"] = (
+            self.metrics.relationships_created.get("RESULTED_IN", 0) + rel_count
+        )
         logger.info(f"✓ Created {rel_count:,} RESULTED_IN relationships")
 
         return rel_count
@@ -285,11 +274,12 @@ class TransitionLoader:
 
         logger.info("Creating ENABLED_BY relationships (Transition → Patent)")
 
+        batch_size = self.client.config.batch_size
         rel_count = 0
 
-        with self.driver.session() as session:
-            for i in range(0, len(patent_transitions_df), self.batch_size):
-                batch = patent_transitions_df.iloc[i : i + self.batch_size]
+        with self.client.session() as session:
+            for i in range(0, len(patent_transitions_df), batch_size):
+                batch = patent_transitions_df.iloc[i : i + batch_size]
 
                 try:
                     result = session.run(
@@ -311,14 +301,16 @@ class TransitionLoader:
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"] if result.peek() else 0
                     rel_count += count
 
                 except Exception as e:
                     logger.error(f"Failed to create ENABLED_BY relationships: {e}")
-                    self.stats["errors"] += 1
+                    self.metrics.errors += len(batch)
 
-        self.stats["relationships_created"] += rel_count
+        self.metrics.relationships_created["ENABLED_BY"] = (
+            self.metrics.relationships_created.get("ENABLED_BY", 0) + rel_count
+        )
         logger.info(f"✓ Created {rel_count:,} ENABLED_BY relationships")
 
         return rel_count
@@ -347,11 +339,12 @@ class TransitionLoader:
             f"Creating INVOLVES_TECHNOLOGY relationships for {len(cet_transitions):,} transitions"
         )
 
+        batch_size = self.client.config.batch_size
         rel_count = 0
 
-        with self.driver.session() as session:
-            for i in range(0, len(cet_transitions), self.batch_size):
-                batch = cet_transitions.iloc[i : i + self.batch_size]
+        with self.client.session() as session:
+            for i in range(0, len(cet_transitions), batch_size):
+                batch = cet_transitions.iloc[i : i + batch_size]
 
                 try:
                     result = session.run(
@@ -373,14 +366,16 @@ class TransitionLoader:
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"] if result.peek() else 0
                     rel_count += count
 
                 except Exception as e:
                     logger.error(f"Failed to create INVOLVES_TECHNOLOGY relationships: {e}")
-                    self.stats["errors"] += 1
+                    self.metrics.errors += len(batch)
 
-        self.stats["relationships_created"] += rel_count
+        self.metrics.relationships_created["INVOLVES_TECHNOLOGY"] = (
+            self.metrics.relationships_created.get("INVOLVES_TECHNOLOGY", 0) + rel_count
+        )
         logger.info(f"✓ Created {rel_count:,} INVOLVES_TECHNOLOGY relationships")
 
         return rel_count
@@ -400,9 +395,12 @@ class TransitionLoader:
             patent_transitions_df: Optional DataFrame with patent linkages
 
         Returns:
-            Statistics dictionary
+            Statistics dictionary (backward compatible format)
         """
         logger.info("Starting transition loading orchestration")
+
+        # Reset metrics for fresh run
+        self.reset_metrics()
 
         # Ensure indexes exist
         self.ensure_indexes()
@@ -417,13 +415,24 @@ class TransitionLoader:
         self.create_involves_technology_relationships(transitions_df)
 
         logger.info("✓ Transition loading complete")
-        logger.info(f"Statistics: {self.stats}")
+        self.log_summary()
 
-        return self.stats
+        # Return backward-compatible stats format
+        return self.get_stats()
 
     def get_stats(self) -> dict[str, int]:
-        """Return loading statistics."""
-        return self.stats.copy()
+        """Return loading statistics in backward-compatible format."""
+        return {
+            "transitions_created": self.metrics.nodes_created.get("Transition", 0),
+            "transitions_updated": self.metrics.nodes_updated.get("Transition", 0),
+            "relationships_created": sum(self.metrics.relationships_created.values()),
+            "errors": self.metrics.errors,
+        }
+
+
+# Keep TransitionProfileLoader separate for now - can be refactored later if needed
+# It has different patterns and is less frequently used
+from neo4j import Driver
 
 
 class TransitionProfileLoader:
@@ -443,6 +452,9 @@ class TransitionProfileLoader:
     - avg_likelihood_score: Average transition score
     - avg_time_to_transition: Average days to transition (optional)
     - created_date: ISO datetime of profile creation
+
+    NOTE: This loader still uses Driver directly. Consider refactoring to use
+    Neo4jClient and BaseNeo4jLoader in a future update.
     """
 
     def __init__(

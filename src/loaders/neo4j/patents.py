@@ -16,23 +16,23 @@ Neo4jClient for batch operations and transaction management.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from loguru import logger
+from pydantic import Field
 
+from .base import BaseLoaderConfig
 from .client import LoadMetrics, Neo4jClient
 
 
-@dataclass
-class PatentLoaderConfig:
+class PatentLoaderConfig(BaseLoaderConfig):
     """Configuration for patent loading operations."""
 
-    batch_size: int = 1000
-    create_indexes: bool = True
-    create_constraints: bool = True
-    link_to_sbir: bool = True
+    link_to_sbir: bool = Field(
+        default=True,
+        description="Whether to link patents to SBIR awards and companies",
+    )
 
 
 class PatentLoader:

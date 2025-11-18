@@ -22,6 +22,7 @@ from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
     Output,
+    _get_neo4j_client,
     _get_neo4j_driver,
     _prepare_transition_dataframe,
     asset,
@@ -31,8 +32,7 @@ from .utils import (
 
 # Neo4j loader imports
 try:
-    from ...loaders.neo4j import TransitionLoader
-    from ...loaders.neo4j.transition_loader import TransitionProfileLoader
+    from ...loaders.neo4j import TransitionLoader, TransitionProfileLoader
 except Exception:
     TransitionLoader = None
     TransitionProfileLoader = None
@@ -76,11 +76,11 @@ def loaded_transitions(
             metadata={"status": "empty", "rows": 0},
         )
 
-    driver = _get_neo4j_driver()
-    if driver is None:
-        context.log.warning("Neo4j driver unavailable; skipping load")
+    client = _get_neo4j_client()
+    if client is None:
+        context.log.warning("Neo4j client unavailable; skipping load")
         return Output(
-            {"skipped": True, "reason": "Neo4j driver unavailable"},
+            {"skipped": True, "reason": "Neo4j client unavailable"},
             metadata={"status": "skipped"},
         )
 
@@ -90,7 +90,7 @@ def loaded_transitions(
         context.log.info(f"Prepared {len(prep_df)} transitions for loading")
 
         # Load transitions
-        loader = TransitionLoader(driver=driver)
+        loader = TransitionLoader(client=client)
         start_time = time.time()
 
         # Ensure indexes
@@ -239,11 +239,11 @@ def loaded_transition_relationships(
             metadata={"status": "empty"},
         )
 
-    driver = _get_neo4j_driver()
-    if driver is None:
-        context.log.warning("Neo4j driver unavailable; skipping relationships")
+    client = _get_neo4j_client()
+    if client is None:
+        context.log.warning("Neo4j client unavailable; skipping relationships")
         return Output(
-            {"skipped": True, "reason": "Neo4j driver unavailable"},
+            {"skipped": True, "reason": "Neo4j client unavailable"},
             metadata={"status": "skipped"},
         )
 
@@ -251,7 +251,7 @@ def loaded_transition_relationships(
         # Prepare data
         prep_df = _prepare_transition_dataframe(transformed_transition_detections)
 
-        loader = TransitionLoader(driver=driver)
+        loader = TransitionLoader(client=client)
         start_time = time.time()
 
         # Create relationships (14.1-14.7)

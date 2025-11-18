@@ -24,22 +24,23 @@ The loader updates Company nodes with:
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from loguru import logger
+from pydantic import Field
 
+from .base import BaseLoaderConfig, BaseNeo4jLoader
 from .client import LoadMetrics, Neo4jClient
 
 
-@dataclass
-class CompanyCategorizationLoaderConfig:
+class CompanyCategorizationLoaderConfig(BaseLoaderConfig):
     """Configuration for company categorization loading operations."""
 
-    batch_size: int = 1000
-    create_indexes: bool = True
-    update_existing_only: bool = True  # Only update existing Company nodes
+    update_existing_only: bool = Field(
+        default=True,
+        description="Only update existing Company nodes (do not create new ones)",
+    )
 
 
 class CompanyCategorizationLoader:

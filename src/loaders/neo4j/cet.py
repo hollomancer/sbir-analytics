@@ -22,22 +22,17 @@ Notes:
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from loguru import logger
 
+from .base import BaseLoaderConfig
 from .client import LoadMetrics, Neo4jClient
 
 
-@dataclass
-class CETLoaderConfig:
+class CETLoaderConfig(BaseLoaderConfig):
     """Configuration for CET loading operations."""
-
-    batch_size: int = 1000
-    create_indexes: bool = True
-    create_constraints: bool = True
 
 
 class CETLoader:

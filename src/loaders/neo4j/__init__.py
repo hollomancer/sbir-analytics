@@ -37,7 +37,7 @@ Exported Classes:
 from __future__ import annotations
 
 # Base module
-from .base import BaseNeo4jLoader
+from .base import BaseLoaderConfig, BaseNeo4jLoader
 
 # Categorization module (company Product/Service/Mixed classification)
 from .categorization import CompanyCategorizationLoader, CompanyCategorizationLoaderConfig
@@ -66,6 +66,7 @@ from .organizations import OrganizationLoader
 
 __all__ = [
     # Base
+    "BaseLoaderConfig",
     "BaseNeo4jLoader",
     # Client
     "Neo4jClient",

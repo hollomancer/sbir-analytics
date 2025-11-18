@@ -1,4 +1,13 @@
-"""Example Dagster assets demonstrating the ETL pipeline structure."""
+"""Example Dagster assets demonstrating the ETL pipeline structure.
+
+This module contains example/demo assets used for:
+- Testing the lazy import mechanism in src/assets/__init__.py
+- Documentation and examples of asset patterns
+- Development and learning purposes
+
+NOTE: These assets use hardcoded example data and are NOT used in production pipelines.
+They are kept for testing and documentation purposes only.
+"""
 
 import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, asset, asset_check
