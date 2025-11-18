@@ -369,6 +369,23 @@ class DuckDBUSAspendingExtractor:
         except Exception as e:
             return {"table_name": table_name, "error": str(e)}
 
+    def resolve_physical_table_name(self, base_name: str) -> str:
+        """Resolve the physical DuckDB table name created during import.
+
+        Some imports materialize tables with OID suffixes (e.g., raw_table_5412).
+        This helper finds the first matching table with the expected prefix.
+        """
+        conn = self.connect()
+        try:
+            pattern = f"{base_name}\\_%"
+            query = r"SELECT name FROM duckdb_tables() WHERE name LIKE ? ESCAPE '\\' ORDER BY name"
+            rows = conn.execute(query, [pattern]).fetchall()
+            if rows:
+                return rows[0][0]
+        except Exception:
+            pass
+        return base_name
+
     def list_dump_tables(self, dump_file: Path) -> list:
         """List all tables in a PostgreSQL dump without importing.
 

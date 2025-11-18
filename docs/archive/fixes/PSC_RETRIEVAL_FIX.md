@@ -85,17 +85,16 @@ The `retrieve_company_contracts_api()` function accepts these parameters:
 def retrieve_company_contracts_api(
     uei: str | None = None,
     duns: str | None = None,
-    base_url: str = "https://api.usaspending.gov/api/v2",
-    timeout: int = 30,
     page_size: int = 100,
-    max_psc_lookups: int = 100,  # Limit for Step 2 API calls
 ) -> pd.DataFrame:
 ```
 
-- **max_psc_lookups**: Controls how many individual award details to fetch
-  - Default: 100 awards
-  - Increase for more complete data (trade-off: slower, more API load)
-  - Decrease for faster testing
+- PSC codes are now fetched directly from the transaction endpoint whenever possible.
+  A small built-in fallback limit fetches detailed award data when PSC values are
+  missing, so no explicit tuning is required.
+
+> Note: The fallback currently caps additional award-detail lookups at ~50 per call,
+> keeping PSC coverage high without hammering the API.
 
 ## Performance
 
@@ -105,10 +104,9 @@ def retrieve_company_contracts_api(
   - 100 awards: ~50 seconds
   - 1000 awards: ~500 seconds (8+ minutes)
 
-**Recommendation**: For production, set `max_psc_lookups` based on your needs:
-- Testing: 10-20 awards
-- Validation: 50-100 awards
-- Production: 100-500 awards (balance accuracy vs. performance)
+**Recommendation**: Monitor PSC coverage logs; the fallback will automatically
+inspect detailed award records for a small subset of missing PSCs, keeping both accuracy
+and performance balanced without manual tuning.
 
 ## Related Files
 
@@ -153,6 +151,6 @@ def retrieve_company_contracts_api(
 
 1. Test the fix with your validation dataset
 2. Verify PSC code coverage is acceptable
-3. Adjust `max_psc_lookups` based on your performance requirements
+3. Monitor PSC fallback logs (built-in lookup limit) to ensure coverage meets expectations
 4. Run full categorization pipeline with API mode
 5. Compare results with DuckDB mode for consistency

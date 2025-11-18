@@ -25,6 +25,7 @@ from pydantic import Field
 from ..config.loader import get_config
 from ..enrichers.usaspending import USAspendingAPIClient
 from ..exceptions import ValidationError
+from ..utils.async_tools import run_sync
 from ..utils.enrichment_freshness import FreshnessStore, update_freshness_ledger
 from ..utils.enrichment_metrics import EnrichmentMetricsCollector
 
@@ -272,7 +273,7 @@ def usaspending_refresh_batch(
         tasks = [process_award(row) for _, row in stale_awards_batch.iterrows()]
         await asyncio.gather(*tasks)
 
-    asyncio.run(process_batch())
+    run_sync(process_batch())
 
     context.log.info(
         f"Refresh complete: {stats['success']} success, "

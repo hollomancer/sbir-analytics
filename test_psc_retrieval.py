@@ -43,15 +43,12 @@ def test_psc_retrieval():
         return
 
     print(f"\nTesting with UEI: {test_uei}")
-    print(f"Fetching contracts (limited to 2 PSC lookups for debugging)...")
+    print("Fetching contracts (PSC fallback lookups limited internally)...")
     print()
 
     try:
         # Retrieve contracts with limited PSC lookups for quick testing
-        contracts_df = retrieve_company_contracts_api(
-            uei=test_uei,
-            max_psc_lookups=2  # Limit to 2 for debugging to see detailed logs
-        )
+        contracts_df = retrieve_company_contracts_api(uei=test_uei)
 
         if contracts_df.empty:
             print("❌ No contracts found for this UEI")

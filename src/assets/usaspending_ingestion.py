@@ -17,7 +17,6 @@ def _import_usaspending_table(
     *,
     log_label: str,
     table_name: str,
-    table_oid: str,
 ) -> Output[pd.DataFrame]:
     """Helper to import a USAspending table and emit consistent Dagster metadata."""
     config = get_config()
@@ -41,13 +40,14 @@ def _import_usaspending_table(
             details={"dump_path": str(dump_path), "table_name": table_name},
         )
 
-    full_table_name = f"{table_name}_{table_oid}"
-    table_info = extractor.get_table_info(full_table_name)
-    sample_df = extractor.query_awards(table_name=full_table_name, limit=100)
+    physical_table = extractor.resolve_physical_table_name(table_name)
+    table_info = extractor.get_table_info(physical_table)
+    sample_df = extractor.query_awards(table_name=physical_table, limit=100)
 
     context.log.info(
         f"{log_label.replace('_', ' ').title()} extraction complete",
         extra={
+            "logical_table": table_name,
             "table_name": table_info.get("table_name"),
             "row_count": table_info.get("row_count"),
             "columns": len(table_info.get("columns", [])),
@@ -83,7 +83,6 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
         context,
         log_label="recipient_lookup",
         table_name="raw_usaspending_recipients",
-        table_oid="5412",
     )
 
 
@@ -103,7 +102,6 @@ def raw_usaspending_transactions(context: AssetExecutionContext) -> Output[pd.Da
         context,
         log_label="transaction_normalized",
         table_name="raw_usaspending_transactions",
-        table_oid="5420",
     )
 
 

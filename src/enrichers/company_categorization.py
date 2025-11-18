@@ -24,7 +24,6 @@ Key Functions:
     - extract_sbir_phase: Extract SBIR phase from contract description
 """
 
-import asyncio
 import re
 import threading
 from typing import Any
@@ -39,11 +38,13 @@ from src.enrichers.usaspending import (
     USAspendingRateLimitError,
 )
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
+from src.utils.async_tools import run_sync
 from src.utils.usaspending_cache import USAspendingCache
 
 
 _api_client: USAspendingAPIClient | None = None
 _api_client_lock = threading.Lock()
+PSC_DETAIL_LOOKUP_LIMIT = 50
 
 
 def _get_usaspending_client() -> USAspendingAPIClient:
@@ -55,20 +56,6 @@ def _get_usaspending_client() -> USAspendingAPIClient:
                 _api_client = USAspendingAPIClient()
                 logger.debug("Initialized shared USAspendingAPIClient for company categorization")
     return _api_client
-
-
-def _run_async(coro):
-    """Run an async coroutine from synchronous contexts."""
-    try:
-        return asyncio.run(coro)
-    except RuntimeError as exc:
-        if "asyncio.run()" in str(exc):
-            loop = asyncio.new_event_loop()
-            try:
-                return loop.run_until_complete(coro)
-            finally:
-                loop.close()
-        raise
 
 
 def _is_valid_identifier(value: str | None) -> bool:
@@ -262,7 +249,7 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
 
     for idx, search_name in enumerate(name_variations, 1):
         try:
-            data = _run_async(client.autocomplete_recipient(search_name, limit=5))
+            data = run_sync(client.autocomplete_recipient(search_name, limit=5))
 
             results = data.get("results", [])
             if not results:
@@ -504,7 +491,6 @@ def retrieve_company_contracts_api(
     duns: str | None = None,
     company_name: str | None = None,
     page_size: int = 100,  # API maximum limit is 100
-    max_psc_lookups: int = 100,
 ) -> pd.DataFrame:
     """Retrieve all federal contracts for a company from USAspending API (excluding SBIR/STTR).
 
@@ -518,12 +504,14 @@ def retrieve_company_contracts_api(
     2. Second: Use autocomplete API for fuzzy name matching to find UEI/DUNS
     3. Third: Fall back to direct name-based search
 
+    When PSC codes are missing from the transaction endpoint, a small number of
+    detailed award lookups are performed automatically (see PSC_DETAIL_LOOKUP_LIMIT).
+
     Args:
         uei: Company UEI (Unique Entity Identifier)
         duns: Company DUNS number
         company_name: Company name (used as fallback when UEI/DUNS are invalid)
         page_size: Number of results per page
-        max_psc_lookups: Unused (kept for API compatibility)
 
     Returns:
         DataFrame with columns:
@@ -655,6 +643,7 @@ def retrieve_company_contracts_api(
     ]
 
     all_transactions: list[dict[str, Any]] = []
+    psc_detail_lookups = 0
     page = 1
     max_pages = 1000  # Safety limit to prevent infinite loops
 
@@ -665,7 +654,7 @@ def retrieve_company_contracts_api(
                 f"Fetching page {page} from spending_by_transaction endpoint (company: {uei or company_name or 'Unknown'})"
             )
             try:
-                data = _run_async(
+                data = run_sync(
                     client.search_transactions(
                         filters=filters,
                         fields=fields,
@@ -750,6 +739,15 @@ def retrieve_company_contracts_api(
                         f"No award ID found in transaction response. Available keys: {list(transaction.keys())}"
                     )
 
+                if (
+                    (not psc_value or (isinstance(psc_value, str) and not psc_value.strip()))
+                    and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT
+                ):
+                    fallback_details = _fetch_award_details(processed_transaction["award_id"])
+                    if fallback_details and fallback_details.get("psc"):
+                        processed_transaction["psc"] = fallback_details["psc"]
+                        psc_detail_lookups += 1
+
                 all_transactions.append(processed_transaction)
 
             # Check if there are more pages
@@ -814,7 +812,7 @@ def retrieve_company_contracts_api(
             try:
                 while name_page <= name_max_pages:
                     try:
-                        name_data = _run_async(
+                        name_data = run_sync(
                             client.search_transactions(
                                 filters=name_filters,
                                 fields=fields,
@@ -860,6 +858,15 @@ def retrieve_company_contracts_api(
                         
                         if not processed_transaction["award_id"]:
                             processed_transaction["award_id"] = f"UNKNOWN_{len(name_transactions)}"
+                        
+                        if (
+                            (not psc_value or (isinstance(psc_value, str) and not psc_value.strip()))
+                            and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT
+                        ):
+                            fallback_details = _fetch_award_details(processed_transaction["award_id"])
+                            if fallback_details and fallback_details.get("psc"):
+                                processed_transaction["psc"] = fallback_details["psc"]
+                                psc_detail_lookups += 1
                         
                         name_transactions.append(processed_transaction)
                     
@@ -954,19 +961,10 @@ def retrieve_company_contracts_api(
 
 
 def _fetch_award_details(award_id: str) -> dict[str, Any] | None:
-    """Fetch detailed award information including PSC code.
-
-    This is used as a fallback when the transaction endpoint doesn't return PSC codes.
-
-    Args:
-        award_id: Award identifier (PIID or generated_internal_id)
-
-    Returns:
-        Award details dict with PSC code, or None if fetch fails
-    """
+    """Fetch detailed award information including PSC code as a fallback."""
     try:
         client = _get_usaspending_client()
-        award_data = _run_async(client.fetch_award_details(award_id))
+        award_data = run_sync(client.fetch_award_details(award_id))
 
         # Debug: Log the structure of the response to understand where PSC is located
         if isinstance(award_data, dict):
@@ -1273,7 +1271,7 @@ def retrieve_sbir_awards_api(
     try:
         while page <= max_pages:
             try:
-                data = _run_async(
+                data = run_sync(
                     client.search_transactions(
                         filters=filters,
                         fields=fields,
