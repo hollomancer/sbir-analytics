@@ -103,12 +103,9 @@ def stale_usaspending_awards(
         )
 
     # Filter enriched awards to stale ones
-    award_id_col = None
-    for col in ["award_id", "Award_ID", "id", "ID"]:
-        if col in enriched_sbir_awards.columns:
-            award_id_col = col
-            break
+    from ...utils.asset_column_helper import AssetColumnHelper
 
+    award_id_col = AssetColumnHelper.find_award_id_column(enriched_sbir_awards)
     if not award_id_col:
         context.log.warning("Could not find award ID column")
         return Output(value=pd.DataFrame(), metadata={"stale_count": 0})

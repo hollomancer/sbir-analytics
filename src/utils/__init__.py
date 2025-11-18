@@ -15,6 +15,13 @@ from .logging_config import (
 from .metrics import MetricsCollector, PipelineMetrics
 from .text_normalization import normalize_company_name, normalize_name, normalize_recipient_name
 
+# Column discovery utilities
+from .column_finder import ColumnFinder
+from .asset_column_helper import AssetColumnHelper
+
+# Configuration utilities
+from .config_accessor import ConfigAccessor
+
 
 __all__ = [
     # Logging
@@ -37,4 +44,9 @@ __all__ = [
     "normalize_name",
     "normalize_company_name",
     "normalize_recipient_name",
+    # Column discovery
+    "ColumnFinder",
+    "AssetColumnHelper",
+    # Configuration
+    "ConfigAccessor",
 ]

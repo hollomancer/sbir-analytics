@@ -42,6 +42,7 @@ from src.models.statistical_reports import (
 )
 from src.utils.metrics import MetricsCollector
 from src.utils.performance_monitor import performance_monitor
+from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 
 
 try:
@@ -1034,55 +1035,50 @@ class StatisticalReporter:
         self, pipeline_metrics: PipelineMetrics, output_file: Path
     ) -> Path:
         """Generate simple HTML report when Plotly is unavailable."""
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Pipeline Report - {pipeline_metrics.run_id}</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                h1, h2, h3 {{ color: #333; }}
-                table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #4CAF50; color: white; }}
-                .metric {{ font-size: 1.2em; font-weight: bold; color: #4CAF50; }}
-            </style>
-        </head>
-        <body>
-            <h1>Pipeline Statistical Report</h1>
-            <p><strong>Run ID:</strong> {pipeline_metrics.run_id}</p>
-            <p><strong>Generated:</strong> {pipeline_metrics.timestamp.isoformat()}</p>
+        # Build metric cards
+        metric_cards = [
+            HTMLReportBuilder.create_metric_card(
+                "Total Records", f"{pipeline_metrics.total_records_processed:,}"
+            ),
+            HTMLReportBuilder.create_metric_card(
+                "Success Rate", f"{pipeline_metrics.overall_success_rate:.1%}"
+            ),
+            HTMLReportBuilder.create_metric_card(
+                "Duration", f"{pipeline_metrics.duration.total_seconds():.2f}s"
+            ),
+        ]
+        metric_grid = HTMLReportBuilder.create_metric_grid(metric_cards)
 
-            <h2>Overall Statistics</h2>
-            <p class="metric">Total Records: {pipeline_metrics.total_records_processed:,}</p>
-            <p class="metric">Success Rate: {pipeline_metrics.overall_success_rate:.1%}</p>
-            <p class="metric">Duration: {pipeline_metrics.duration.total_seconds():.2f}s</p>
-
-            <h2>Module Reports</h2>
-            <table>
-                <tr>
-                    <th>Module</th>
-                    <th>Records Processed</th>
-                    <th>Success Rate</th>
-                    <th>Duration (s)</th>
-                </tr>
-        """
-
+        # Build module reports table
+        module_table_data = []
         for module_name, module in pipeline_metrics.module_metrics.items():
-            html += f"""
-                <tr>
-                    <td>{module_name}</td>
-                    <td>{module.records_processed:,} / {module.records_in:,}</td>
-                    <td>{module.success_rate:.1%}</td>
-                    <td>{module.execution_time.total_seconds():.2f}</td>
-                </tr>
-            """
+            module_table_data.append(
+                {
+                    "Module": module_name,
+                    "Records Processed": f"{module.records_processed:,} / {module.records_in:,}",
+                    "Success Rate": f"{module.success_rate:.1%}",
+                    "Duration (s)": f"{module.execution_time.total_seconds():.2f}",
+                }
+            )
+        module_table = HTMLReportBuilder.create_table(
+            module_table_data,
+            ["Module", "Records Processed", "Success Rate", "Duration (s)"],
+            "Module Reports",
+        )
 
-        html += """
-            </table>
-        </body>
-        </html>
-        """
+        # Combine content
+        content = f"""
+{metric_grid}
+{module_table}
+"""
+
+        # Generate full report
+        html = HTMLReportBuilder.create_report_layout(
+            title=f"Pipeline Statistical Report - {pipeline_metrics.run_id}",
+            content=content,
+            status="PASS",
+            timestamp=pipeline_metrics.timestamp.isoformat(),
+        )
 
         with open(output_file, "w") as f:
             f.write(html)

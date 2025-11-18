@@ -63,13 +63,13 @@ def clean_duns(v: str | None) -> str:
 
 
 def normalize_name(v: str | None) -> str:
-    """Lowercase, remove punctuation, collapse whitespace."""
-    if not v or str(v).strip() == "":
-        return ""
-    s = str(v).strip().lower()
-    s = re.sub(r"[^\w\s]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    """Lowercase, remove punctuation, collapse whitespace.
+    
+    Uses centralized text normalization utility.
+    """
+    from src.utils.text_normalization import normalize_name as normalize_name_util
+    
+    return normalize_name_util(v, remove_suffixes=True)
 
 
 # ---- Canonical selection helpers ----

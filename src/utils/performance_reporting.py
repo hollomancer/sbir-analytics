@@ -19,6 +19,8 @@ from typing import Any
 
 from loguru import logger
 
+from ..reporting.formats.html_templates import HTMLReportBuilder
+
 
 @dataclass
 class PerformanceMetrics:
@@ -388,230 +390,74 @@ class PerformanceReporter:
                 status = "WARNING"
                 status_color = "orange"
 
-        html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        h1 {{
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-        }}
-        h2 {{
-            color: #34495e;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }}
-        .header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }}
-        .status-badge {{
-            padding: 10px 20px;
-            border-radius: 4px;
-            color: white;
-            font-weight: bold;
-            background-color: {status_color};
-        }}
-        .timestamp {{
-            color: #7f8c8d;
-            font-size: 14px;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }}
-        th {{
-            background-color: #ecf0f1;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #bdc3c7;
-        }}
-        td {{
-            padding: 12px;
-            border-bottom: 1px solid #ecf0f1;
-        }}
-        tr:hover {{
-            background-color: #f9f9f9;
-        }}
-        .metric-value {{
-            font-weight: 600;
-            color: #2980b9;
-        }}
-        .delta-positive {{
-            color: #e74c3c;
-        }}
-        .delta-negative {{
-            color: #27ae60;
-        }}
-        .delta-neutral {{
-            color: #95a5a6;
-        }}
-        .alert {{
-            padding: 12px;
-            margin-bottom: 15px;
-            border-left: 4px solid;
-            background-color: #f9f9f9;
-        }}
-        .alert-failure {{
-            border-left-color: #e74c3c;
-            background-color: #fadbd8;
-        }}
-        .alert-warning {{
-            border-left-color: #f39c12;
-            background-color: #fdebd0;
-        }}
-        .metric-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        .metric-card {{
-            background-color: #ecf0f1;
-            padding: 20px;
-            border-radius: 4px;
-            border-left: 4px solid #3498db;
-        }}
-        .metric-card-label {{
-            font-size: 12px;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }}
-        .metric-card-value {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #2c3e50;
-        }}
-        .footer {{
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ecf0f1;
-            color: #95a5a6;
-            font-size: 12px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>{title}</h1>
-            <div class="status-badge">{status}</div>
-        </div>
+        # Build metric cards
+        metric_cards = [
+            HTMLReportBuilder.create_metric_card(
+                "Duration", f"{metrics.total_duration_seconds:.2f}s"
+            ),
+            HTMLReportBuilder.create_metric_card(
+                "Throughput", f"{metrics.records_per_second:.0f} rec/s"
+            ),
+            HTMLReportBuilder.create_metric_card(
+                "Peak Memory", f"{metrics.peak_memory_mb:.0f} MB"
+            ),
+        ]
+        if metrics.match_rate is not None:
+            metric_cards.append(
+                HTMLReportBuilder.create_metric_card(
+                    "Match Rate", f"{metrics.match_rate:.1%}"
+                )
+            )
+        metric_grid = HTMLReportBuilder.create_metric_grid(metric_cards)
 
-        <div class="timestamp">Generated: {metrics.timestamp or datetime.now().isoformat()}</div>
+        # Build alerts
+        alerts = []
+        for msg in regressions.get("failures", []):
+            alerts.append(HTMLReportBuilder.create_alert(msg, "failure"))
+        for msg in regressions.get("warnings", []):
+            alerts.append(HTMLReportBuilder.create_alert(msg, "warning"))
+        alerts_html = "\n".join(alerts)
 
-        <div class="metric-grid">
-            <div class="metric-card">
-                <div class="metric-card-label">Duration</div>
-                <div class="metric-card-value">{metrics.total_duration_seconds:.2f}s</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-card-label">Throughput</div>
-                <div class="metric-card-value">{metrics.records_per_second:.0f} rec/s</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-card-label">Peak Memory</div>
-                <div class="metric-card-value">{metrics.peak_memory_mb:.0f} MB</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-card-label">Match Rate</div>
-                <div class="metric-card-value">{metrics.match_rate:.1%}</div>
-            </div>
-        </div>
+        # Build performance metrics table
+        perf_table_data = [
+            {"Metric": "Total Duration", "Value": f"{metrics.total_duration_seconds:.2f} seconds"},
+            {"Metric": "Throughput", "Value": f"{metrics.records_per_second:.0f} records/second"},
+            {"Metric": "Peak Memory", "Value": f"{metrics.peak_memory_mb:.0f} MB"},
+            {"Metric": "Avg Memory Delta", "Value": f"{metrics.avg_memory_delta_mb:.0f} MB"},
+        ]
+        perf_table = HTMLReportBuilder.create_table(perf_table_data, ["Metric", "Value"], "Performance Metrics")
 
-        {"".join([
-            f'<div class="alert alert-failure"><strong>❌ Failure:</strong> {msg}</div>'
-            for msg in regressions.get("failures", [])
-        ])}
+        # Build enrichment statistics table
+        enrich_table_data = [
+            {"Statistic": "Total Awards", "Value": stats.get("total_awards", 0)},
+            {"Statistic": "Matched Awards", "Value": stats.get("matched_awards", 0)},
+            {"Statistic": "Match Rate", "Value": f"{stats.get('match_rate', 0):.1%}"},
+            {"Statistic": "Exact Matches", "Value": stats.get("exact_matches", 0)},
+            {"Statistic": "Fuzzy Matches", "Value": stats.get("fuzzy_matches", 0)},
+        ]
+        enrich_table = HTMLReportBuilder.create_table(enrich_table_data, ["Statistic", "Value"], "Enrichment Statistics")
 
-        {"".join([
-            f'<div class="alert alert-warning"><strong>⚠️ Warning:</strong> {msg}</div>'
-            for msg in regressions.get("warnings", [])
-        ])}
+        # Build regression section if present
+        regression_section = ""
+        if regressions:
+            regression_section = f"<h2>Regression Analysis</h2>{self._html_regression_section(regressions)}"
 
-        <h2>Performance Metrics</h2>
-        <table>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-            <tr>
-                <td>Total Duration</td>
-                <td class="metric-value">{metrics.total_duration_seconds:.2f} seconds</td>
-            </tr>
-            <tr>
-                <td>Throughput</td>
-                <td class="metric-value">{metrics.records_per_second:.0f} records/second</td>
-            </tr>
-            <tr>
-                <td>Peak Memory</td>
-                <td class="metric-value">{metrics.peak_memory_mb:.0f} MB</td>
-            </tr>
-            <tr>
-                <td>Avg Memory Delta</td>
-                <td class="metric-value">{metrics.avg_memory_delta_mb:.0f} MB</td>
-            </tr>
-        </table>
+        # Combine content
+        content = f"""
+{metric_grid}
+{alerts_html}
+{perf_table}
+{enrich_table}
+{regression_section}
+"""
 
-        <h2>Enrichment Statistics</h2>
-        <table>
-            <tr>
-                <th>Statistic</th>
-                <th>Value</th>
-            </tr>
-            <tr>
-                <td>Total Awards</td>
-                <td class="metric-value">{stats.get('total_awards', 0)}</td>
-            </tr>
-            <tr>
-                <td>Matched Awards</td>
-                <td class="metric-value">{stats.get('matched_awards', 0)}</td>
-            </tr>
-            <tr>
-                <td>Match Rate</td>
-                <td class="metric-value">{stats.get('match_rate', 0):.1%}</td>
-            </tr>
-            <tr>
-                <td>Exact Matches</td>
-                <td class="metric-value">{stats.get('exact_matches', 0)}</td>
-            </tr>
-            <tr>
-                <td>Fuzzy Matches</td>
-                <td class="metric-value">{stats.get('fuzzy_matches', 0)}</td>
-            </tr>
-        </table>
-
-        {"<h2>Regression Analysis</h2>" + self._html_regression_section(regressions) if regressions else ""}
-
-        <div class="footer">
-            <p>Performance Report Generated by SBIR-ETL Enrichment Pipeline</p>
-        </div>
-    </div>
-</body>
-</html>"""
+        # Generate full report
+        html = HTMLReportBuilder.create_report_layout(
+            title=title,
+            content=content,
+            status=status,
+            timestamp=metrics.timestamp or datetime.now().isoformat(),
+        )
         return html
 
     @staticmethod

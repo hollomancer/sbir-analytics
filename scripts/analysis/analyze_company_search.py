@@ -55,17 +55,13 @@ except Exception:
 # Helpers
 # -------------------------
 def normalize_name_for_matching(s: str | None) -> str:
-    if not s:
-        return ""
-    s2 = str(s).strip().lower()
-    # Remove common punctuation
-    s2 = re.sub(r"[^\w\s]", " ", s2)
-    # Normalize common company abbreviations minimally (helps token match)
-    s2 = re.sub(r"\b(incorporated|incorporation)\b", "inc", s2)
-    s2 = re.sub(r"\b(company|co)\b", "company", s2)
-    s2 = re.sub(r"\b(limited|ltd)\b", "ltd", s2)
-    s2 = re.sub(r"\s+", " ", s2).strip()
-    return s2
+    """Normalize name for matching using centralized utility.
+    
+    Uses centralized text normalization utility with suffix normalization.
+    """
+    from src.utils.text_normalization import normalize_name as normalize_name_util
+    
+    return normalize_name_util(s, remove_suffixes=False)
 
 
 def digits_only(s: str | None) -> str:

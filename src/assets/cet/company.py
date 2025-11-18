@@ -226,25 +226,19 @@ def transformed_cet_company_profiles() -> Output:
                 df_awards = pd.DataFrame()
 
             if not df_awards.empty and "award_id" in df_cls.columns:
-                # Try to find award ID column in enriched awards
-                award_id_col = None
-                for col in ["award_id", "Award ID", "id"]:
-                    if col in df_awards.columns:
-                        award_id_col = col
-                        break
+                # Try to find award ID column in enriched awards using helper
+                from ...utils.asset_column_helper import AssetColumnHelper
+
+                award_id_col = AssetColumnHelper.find_award_id_column(df_awards)
 
                 if award_id_col:
-                    # Try to find company identifier columns
-                    company_id_col = None
-                    company_name_col = None
-                    for col in ["company_uei", "UEI", "company_id"]:
-                        if col in df_awards.columns:
-                            company_id_col = col
-                            break
-                    for col in ["Company", "company_name", "company"]:
-                        if col in df_awards.columns:
-                            company_name_col = col
-                            break
+                    # Try to find company identifier columns using ColumnFinder
+                    from ...utils.column_finder import ColumnFinder
+
+                    company_id_col = ColumnFinder.find_id_column(df_awards, "company")
+                    company_name_col = ColumnFinder.find_column_by_patterns(
+                        df_awards, ["company", "company_name"]
+                    )
 
                     # Join on award_id
                     if company_id_col:

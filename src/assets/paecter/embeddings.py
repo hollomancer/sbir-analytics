@@ -28,6 +28,8 @@ from loguru import logger
 
 from ...config.loader import get_config
 from ...ml.paecter_client import PaECTERClient
+from ...utils.asset_column_helper import AssetColumnHelper
+from ...utils.config_accessor import ConfigAccessor
 from ...utils.performance_monitor import performance_monitor
 
 
@@ -58,36 +60,22 @@ def paecter_embeddings_awards(
     )
 
     # Initialize PaECTER client
-    use_local = config.ml.get("paecter", {}).get("use_local", False) if hasattr(config, "ml") else False
+    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
     client = PaECTERClient(use_local=use_local)
 
-    # Find award ID column
-    award_id_col = next(
-        (c for c in validated_sbir_awards.columns 
-         if "contract" in c.lower() or "tracking" in c.lower() or "award_id" in c.lower()),
-        None
-    )
+    # Find award ID column using helper
+    award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
     if not award_id_col:
         award_ids = validated_sbir_awards.index.astype(str)
         context.log.warning("No award ID column found, using index")
     else:
         award_ids = validated_sbir_awards[award_id_col].astype(str)
 
-    # Find text columns
-    solicitation_col = next(
-        (c for c in validated_sbir_awards.columns 
-         if "solicitation" in c.lower() or "topic" in c.lower()),
-        None
-    )
-    title_col = next(
-        (c for c in validated_sbir_awards.columns 
-         if ("award" in c.lower() or "title" in c.lower()) and "solicitation" not in c.lower()),
-        None
-    )
-    abstract_col = next(
-        (c for c in validated_sbir_awards.columns if "abstract" in c.lower()),
-        None
-    )
+    # Find text columns using helper
+    text_cols = AssetColumnHelper.find_text_columns(validated_sbir_awards, entity_type="award")
+    solicitation_col = text_cols.get("solicitation")
+    title_col = text_cols.get("title")
+    abstract_col = text_cols.get("abstract")
 
     # Prepare texts
     texts = []
@@ -110,7 +98,7 @@ def paecter_embeddings_awards(
 
     # Generate embeddings with performance monitoring
     with performance_monitor.monitor_block("paecter_generate_award_embeddings"):
-        batch_size = config.ml.get("paecter", {}).get("batch_size", 32) if hasattr(config, "ml") else 32
+        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -181,7 +169,7 @@ def paecter_embeddings_patents(
     context.log.info("Starting PaECTER embedding generation for USPTO patents")
 
     # Initialize PaECTER client
-    use_local = config.ml.get("paecter", {}).get("use_local", False) if hasattr(config, "ml") else False
+    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
     client = PaECTERClient(use_local=use_local)
 
     # Try to load from transformed_patents JSONL file first
@@ -253,22 +241,18 @@ def paecter_embeddings_patents(
     if patents_df is None or len(patents_df) == 0:
         raise ValueError("No patent data available for embedding generation")
 
-    # Find patent ID column
-    patent_id_col = next(
-        (c for c in patents_df.columns 
-         if ("patent" in c.lower() and ("id" in c.lower() or "number" in c.lower())) or 
-            "grant_number" in c.lower() or "grant_doc_num" in c.lower()),
-        None
-    )
+    # Find patent ID column using helper
+    patent_id_col = AssetColumnHelper.find_patent_id_column(patents_df)
     if not patent_id_col:
         patent_ids = patents_df.index.astype(str)
         context.log.warning("No patent ID column found, using index")
     else:
         patent_ids = patents_df[patent_id_col].astype(str)
 
-    # Find text columns
-    title_col = next((c for c in patents_df.columns if "title" in c.lower()), None)
-    abstract_col = next((c for c in patents_df.columns if "abstract" in c.lower()), None)
+    # Find text columns using helper
+    text_cols = AssetColumnHelper.find_text_columns(patents_df, entity_type="patent")
+    title_col = text_cols.get("title")
+    abstract_col = text_cols.get("abstract")
 
     # Prepare texts
     texts = []
@@ -290,7 +274,7 @@ def paecter_embeddings_patents(
 
     # Generate embeddings with performance monitoring
     with performance_monitor.monitor_block("paecter_generate_patent_embeddings"):
-        batch_size = config.ml.get("paecter", {}).get("batch_size", 32) if hasattr(config, "ml") else 32
+        batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
         result = client.generate_embeddings(
             texts,
             batch_size=batch_size,
@@ -364,7 +348,7 @@ def paecter_award_patent_similarity(
     patent_embeddings = np.array([np.array(e) for e in paecter_embeddings_patents["embedding"]])
 
     # Initialize client for similarity computation
-    use_local = config.ml.get("paecter", {}).get("use_local", False) if hasattr(config, "ml") else False
+    use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
     client = PaECTERClient(use_local=use_local)
 
     # Compute similarities with performance monitoring
@@ -372,7 +356,7 @@ def paecter_award_patent_similarity(
         similarities = client.compute_similarity(award_embeddings, patent_embeddings)
 
     # Get similarity threshold from config
-    threshold = config.ml.get("paecter", {}).get("similarity_threshold", 0.80) if hasattr(config, "ml") else 0.80
+    threshold = ConfigAccessor.get_nested(config, "ml.paecter.similarity_threshold", 0.80)
 
     # Find matches above threshold
     matches = []
@@ -424,8 +408,10 @@ def paecter_awards_coverage_check(
     paecter_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
+    from ...utils.config_accessor import ConfigAccessor
+
     config = get_config()
-    threshold = config.ml.get("paecter", {}).get("coverage_threshold_awards", 0.95) if hasattr(config, "ml") else 0.95
+    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_awards", 0.95)
     
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
@@ -460,8 +446,10 @@ def paecter_patents_coverage_check(
     paecter_embeddings_patents: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that patent embedding coverage meets quality threshold."""
+    from ...utils.config_accessor import ConfigAccessor
+
     config = get_config()
-    threshold = config.ml.get("paecter", {}).get("coverage_threshold_patents", 0.98) if hasattr(config, "ml") else 0.98
+    threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_patents", 0.98)
     
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0

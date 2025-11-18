@@ -269,6 +269,54 @@ class PerformanceMonitor:
             "timestamp": time.time(),
         }
 
+    def export_metrics_for_reporting(self) -> dict[str, Any]:
+        """Export metrics in standard format for reporting modules.
+
+        Returns:
+            Dictionary with metrics formatted for performance_reporting and statistical_reporter
+        """
+        summary = self.get_metrics_summary()
+        total_operations = sum(s.get("count", 0) for s in summary.values())
+        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
+        max_peak_memory = max(
+            (s.get("max_peak_memory_mb", 0.0) for s in summary.values()), default=0.0
+        )
+        avg_memory_delta = sum(
+            (s.get("avg_memory_delta_mb", 0.0) for s in summary.values())
+        ) / len(summary) if summary else 0.0
+
+        return {
+            "total_duration_seconds": total_duration,
+            "total_operations": total_operations,
+            "peak_memory_mb": max_peak_memory,
+            "avg_memory_delta_mb": avg_memory_delta,
+            "psutil_available": _PSUTIL_AVAILABLE,
+            "timestamp": time.time(),
+            "summary": summary,
+        }
+
+    def get_metrics_for_alerts(self) -> dict[str, Any]:
+        """Get metrics in format suitable for alert generation.
+
+        Returns:
+            Dictionary with key metrics that can be checked against thresholds
+        """
+        summary = self.get_metrics_summary()
+        total_duration = sum(s.get("total_duration", 0.0) for s in summary.values())
+        max_peak_memory = max(
+            (s.get("max_peak_memory_mb", 0.0) for s in summary.values()), default=0.0
+        )
+        avg_memory_delta = sum(
+            (s.get("avg_memory_delta_mb", 0.0) for s in summary.values())
+        ) / len(summary) if summary else 0.0
+
+        return {
+            "total_duration_seconds": total_duration,
+            "peak_memory_mb": max_peak_memory,
+            "avg_memory_delta_mb": avg_memory_delta,
+            "operation_count": sum(s.get("count", 0) for s in summary.values()),
+        }
+
 
 # Global instance and convenience helpers
 performance_monitor = PerformanceMonitor()

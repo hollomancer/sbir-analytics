@@ -65,15 +65,13 @@ def clean_duns(v: str | None) -> str:
 
 
 def normalize_name(s: str | None) -> str:
-    if not s:
-        return ""
-    t = str(s).strip().lower()
-    t = re.sub(r"[^\w\s]", " ", t)
-    t = re.sub(r"\b(incorporated|incorporation)\b", "inc", t)
-    t = re.sub(r"\b(company|co)\b", "company", t)
-    t = re.sub(r"\b(limited|ltd)\b", "ltd", t)
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
+    """Normalize name using centralized utility.
+    
+    Uses centralized text normalization utility with suffix normalization.
+    """
+    from src.utils.text_normalization import normalize_name as normalize_name_util
+    
+    return normalize_name_util(s, remove_suffixes=False)
 
 
 def build_block_key(name_norm: str, prefix_len: int = 2) -> str:
