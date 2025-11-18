@@ -37,9 +37,9 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 
 ### Current State
 
-- Consolidated architecture with 153 Python files in `src/` (well-structured)
+- Consolidated architecture with 231 Python files in `src/` (well-structured)
 - Configuration system: 33/33 tests passing, 88% coverage
-- Workflows: ci, container-ci, neo4j-smoke, performance-regression-check, secret-scan
+- Workflows: ci, deploy, nightly, static-analysis, lambda-deploy, uspto-data-refresh, weekly-award-data-refresh, branch_deployments
 - Archived spec: `.kiro/specs/archive/codebase-consolidation-refactor/`
 
 ## Key Directories
@@ -53,7 +53,14 @@ src/
   assets/               # Consolidated Dagster asset definitions
     ├── uspto_assets.py # Unified USPTO assets (transformation, loading, AI)
     ├── cet_assets.py   # Consolidated CET classification
-    └── transition_assets.py # Unified transition detection
+    ├── transition_assets.py # Unified transition detection
+    ├── fiscal_assets.py # Fiscal returns analysis
+    ├── ma_detection.py # M&A detection assets
+    ├── company_categorization.py # Company categorization assets
+    ├── paecter/        # PaECTER embeddings and similarity
+    ├── jobs/           # Dagster job definitions (cet, fiscal, transition, uspto, paecter, usaspending)
+    └── sensors/        # Dagster sensors (usaspending refresh)
+  cli/                  # Command-line interface (commands, display, integration)
   config/schemas.py     # Hierarchical PipelineConfig (16+ consolidated schemas)
   utils/performance_monitor.py # Consolidated monitoring and alerts
   utils/quality_*.py     # Baselines, dashboards
@@ -68,9 +75,14 @@ docs/
 archive/openspec/       # Archived OpenSpec content (historical reference)
 
 .github/workflows/
-  performance-regression-check.yml  # Benchmark + regression detection
-  container-ci.yml                   # Test runner (Docker)
-  neo4j-smoke.yml                    # Integration tests
+  ci.yml                # Main CI pipeline
+  deploy.yml            # Deployment workflows
+  nightly.yml           # Nightly builds and tests
+  static-analysis.yml   # Code quality checks
+  lambda-deploy.yml     # Lambda function deployment
+  uspto-data-refresh.yml # USPTO data refresh automation
+  weekly-award-data-refresh.yml # Weekly award data refresh
+  branch_deployments.yml # Branch-based deployments
 ```
 
 ## Workflows
@@ -86,7 +98,6 @@ pytest -v --cov=src
 ### Container (Docker)
 
 ```bash
-cp .env.example .env    # Set NEO4J_USER/PASSWORD
 make docker-build
 make docker-up-dev      # Dev stack with bind mounts
 make docker-test        # Run tests in container
@@ -122,6 +133,8 @@ make docker-test        # Run tests in container
 **Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=src`
 **Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`
 **Run fiscal analysis:** Use `fiscal_returns_mvp_job` (core) or `fiscal_returns_full_job` (with sensitivity)
+**Run PaECTER analysis:** Use `paecter_job` for embedding generation and award-patent similarity computation
+**Use CLI tools:** Run `uv run python -m src.cli.main <command>` for dashboard, metrics, status, and enrichment operations
 
 ## References
 
