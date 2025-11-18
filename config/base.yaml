@@ -247,6 +247,31 @@ extraction:
     normalize_entity_names: true
     detect_conveyances: true
 
+    # USPTO data download configuration (Lambda functions)
+    download:
+      # PatentsView dataset (comprehensive patent data)
+      patentsview:
+        enabled: true
+        base_url: "https://patentsview.org/download/data-download-tables"
+        schedule: "monthly"  # GitHub Actions cron schedule
+        tables: ["patent", "assignee", "inventor"]  # Which tables to download
+        s3_prefix: "raw/uspto/patentsview"
+      
+      # Patent Assignment Dataset (patent transfers and assignments)
+      assignments:
+        enabled: true
+        base_url: "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
+        format: "csv"  # Options: csv, dta, parquet
+        schedule: "monthly"  # USPTO updates monthly
+        s3_prefix: "raw/uspto/assignments"
+      
+      # Artificial Intelligence Patent Dataset
+      ai_patents:
+        enabled: true
+        base_url: "https://www.uspto.gov/ip-policy/economic-research/research-datasets"
+        schedule: "quarterly"  # Updated less frequently
+        s3_prefix: "raw/uspto/ai_patents"
+
 validation:
   # Schema validation settings
   strict_schema: true

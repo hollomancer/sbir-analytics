@@ -1,0 +1,212 @@
+name: USPTO Patent Data Refresh
+
+on:
+  schedule:
+    # Run monthly on the 1st at 9 AM UTC (USPTO typically updates monthly)
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: "Which USPTO dataset to download"
+        required: true
+        type: choice
+        options:
+          - all
+          - patentsview
+          - assignments
+          - ai_patents
+      force_refresh:
+        description: "Force refresh even if data hash did not change"
+        required: false
+        default: false
+        type: boolean
+      format:
+        description: "File format for assignments (csv, dta, parquet)"
+        required: false
+        default: "csv"
+        type: choice
+        options:
+          - csv
+          - dta
+          - parquet
+
+permissions:
+  id-token: write  # For OIDC authentication to AWS
+  contents: read   # Only read access needed
+
+concurrency:
+  group: uspto-data-refresh
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+
+jobs:
+  download-uspto-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Determine datasets to download
+        id: datasets
+        run: |
+          DATASET="${{ github.event.inputs.dataset || 'all' }}"
+          if [ "$DATASET" = "all" ]; then
+            echo "datasets=patentsview assignments ai_patents" >> $GITHUB_OUTPUT
+          else
+            echo "datasets=$DATASET" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download PatentsView data
+        if: contains(steps.datasets.outputs.datasets, 'patentsview')
+        id: patentsview
+        run: |
+          FUNCTION_NAME="sbir-etl-download-uspto-patentsview"
+          PAYLOAD=$(jq -n \
+            --arg s3_bucket "${{ env.S3_BUCKET }}" \
+            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+            '{
+              s3_bucket: $s3_bucket,
+              dataset_type: "patent",
+              force_refresh: ($force_refresh == "true")
+            }')
+          
+          RESPONSE=$(aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload "$(echo $PAYLOAD | jq -c .)" \
+            --region "${{ env.AWS_REGION }}" \
+            /tmp/patentsview-response.json)
+          
+          cat /tmp/patentsview-response.json | jq '.'
+          
+          STATUS=$(cat /tmp/patentsview-response.json | jq -r '.statusCode // 500')
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ PatentsView download failed"
+            exit 1
+          fi
+          
+          echo "✅ PatentsView download successful"
+          cat /tmp/patentsview-response.json | jq '.body' > /tmp/patentsview-result.json
+          echo "result_file=/tmp/patentsview-result.json" >> $GITHUB_OUTPUT
+
+      - name: Download USPTO Assignments
+        if: contains(steps.datasets.outputs.datasets, 'assignments')
+        id: assignments
+        run: |
+          FUNCTION_NAME="sbir-etl-download-uspto-assignments"
+          FORMAT="${{ github.event.inputs.format || 'csv' }}"
+          PAYLOAD=$(jq -n \
+            --arg s3_bucket "${{ env.S3_BUCKET }}" \
+            --arg format "$FORMAT" \
+            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+            '{
+              s3_bucket: $s3_bucket,
+              format: $format,
+              force_refresh: ($force_refresh == "true")
+            }')
+          
+          RESPONSE=$(aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload "$(echo $PAYLOAD | jq -c .)" \
+            --region "${{ env.AWS_REGION }}" \
+            /tmp/assignments-response.json)
+          
+          cat /tmp/assignments-response.json | jq '.'
+          
+          STATUS=$(cat /tmp/assignments-response.json | jq -r '.statusCode // 500')
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ USPTO Assignments download failed"
+            exit 1
+          fi
+          
+          echo "✅ USPTO Assignments download successful"
+          cat /tmp/assignments-response.json | jq '.body' > /tmp/assignments-result.json
+          echo "result_file=/tmp/assignments-result.json" >> $GITHUB_OUTPUT
+
+      - name: Download USPTO AI Patents
+        if: contains(steps.datasets.outputs.datasets, 'ai_patents')
+        id: ai_patents
+        run: |
+          FUNCTION_NAME="sbir-etl-download-uspto-ai-patents"
+          PAYLOAD=$(jq -n \
+            --arg s3_bucket "${{ env.S3_BUCKET }}" \
+            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+            '{
+              s3_bucket: $s3_bucket,
+              force_refresh: ($force_refresh == "true")
+            }')
+          
+          RESPONSE=$(aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload "$(echo $PAYLOAD | jq -c .)" \
+            --region "${{ env.AWS_REGION }}" \
+            /tmp/ai-patents-response.json)
+          
+          cat /tmp/ai-patents-response.json | jq '.'
+          
+          STATUS=$(cat /tmp/ai-patents-response.json | jq -r '.statusCode // 500')
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ USPTO AI Patents download failed"
+            exit 1
+          fi
+          
+          echo "✅ USPTO AI Patents download successful"
+          cat /tmp/ai-patents-response.json | jq '.body' > /tmp/ai-patents-result.json
+          echo "result_file=/tmp/ai-patents-result.json" >> $GITHUB_OUTPUT
+
+      - name: Display download summary
+        if: always()
+        run: |
+          echo "## USPTO Data Download Summary"
+          echo ""
+          
+          if [ -f "/tmp/patentsview-result.json" ]; then
+            echo "### PatentsView"
+            cat /tmp/patentsview-result.json | jq -r '
+              "**S3 Key:** \(.s3_key)\n" +
+              "**File Size:** \(.file_size | tonumber / 1024 / 1024 | floor) MB\n" +
+              "**SHA256:** \(.sha256[0:16])...\n" +
+              "**Downloaded:** \(.downloaded_at)\n"
+            '
+          fi
+          
+          if [ -f "/tmp/assignments-result.json" ]; then
+            echo "### USPTO Patent Assignments"
+            cat /tmp/assignments-result.json | jq -r '
+              "**S3 Key:** \(.s3_key)\n" +
+              "**Format:** \(.format)\n" +
+              "**File Size:** \(.file_size | tonumber / 1024 / 1024 | floor) MB\n" +
+              "**SHA256:** \(.sha256[0:16])...\n" +
+              "**Downloaded:** \(.downloaded_at)\n"
+            '
+          fi
+          
+          if [ -f "/tmp/ai-patents-result.json" ]; then
+            echo "### USPTO AI Patents"
+            cat /tmp/ai-patents-result.json | jq -r '
+              "**S3 Key:** \(.s3_key)\n" +
+              "**File Size:** \(.file_size | tonumber / 1024 / 1024 | floor) MB\n" +
+              "**SHA256:** \(.sha256[0:16])...\n" +
+              "**Downloaded:** \(.downloaded_at)\n"
+            '
+          fi
+          
+          echo ""
+          echo "**AWS Console:** https://console.aws.amazon.com/s3/buckets/${{ env.S3_BUCKET }}?region=${{ env.AWS_REGION }}&prefix=raw/uspto/"
+
+      - name: Upload download results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspto-download-results
+          path: |
+            /tmp/*-result.json
+          if-no-files-found: warn
+          retention-days: 7
+

@@ -43,6 +43,10 @@ class LambdaStack(Stack):
             "enrichment-checks",
             "reset-neo4j",
             "smoke-checks",
+            # USPTO download functions
+            "download-uspto-patentsview",
+            "download-uspto-assignments",
+            "download-uspto-ai-patents",
         ]
 
         # Create Lambda layer for Python dependencies
@@ -72,8 +76,8 @@ class LambdaStack(Stack):
                 handler="lambda_handler.lambda_handler",
                 code=lambda_.Code.from_asset(lambda_code_path),
                 role=lambda_role,
-                timeout=Duration.minutes(15),
-                memory_size=512,
+                timeout=Duration.minutes(15) if not func_name.startswith("download-uspto") else Duration.minutes(30),  # Longer timeout for large downloads
+                memory_size=512 if not func_name.startswith("download-uspto") else 1024,  # More memory for USPTO downloads
                 layers=[python_layer] if python_layer else [],
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
