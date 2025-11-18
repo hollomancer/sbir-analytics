@@ -321,3 +321,20 @@ class TestMetricsCollector:
         assert summary["run_id"] == "nonexistent"
         assert summary["stages"] == 0
         assert summary["total_records"] == 0
+
+    def test_multiple_runs(self, tmp_path):
+        """Test tracking metrics for multiple pipeline runs."""
+        collector = MetricsCollector(output_dir=tmp_path)
+
+        # Run 1
+        collector.start_stage("run-123", "extract")
+        collector.start_stage("run-123", "validate")
+
+        # Run 2
+        collector.start_stage("run-456", "extract")
+
+        summary1 = collector.get_summary("run-123")
+        summary2 = collector.get_summary("run-456")
+
+        assert summary1["stages"] == 2
+        assert summary2["stages"] == 1
