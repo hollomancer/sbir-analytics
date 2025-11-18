@@ -1,11 +1,11 @@
 """Lambda function to download USPTO Patent Assignment Dataset and upload to S3."""
 
 import hashlib
-import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
+
 import boto3
 
 s3_client = boto3.client("s3")
@@ -14,11 +14,11 @@ s3_client = boto3.client("s3")
 # Research datasets page: https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset
 # Legacy page: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
 #
-# Direct download URLs (2023 release - latest as of 2024)
-USPTO_ASSIGNMENT_BASE = "https://www.uspto.gov/sites/default/files/documents"
+# Direct download URLs (2024 release - latest as of 2025)
+USPTO_ASSIGNMENT_BASE = "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023"
 USPTO_ASSIGNMENT_DEFAULT_URLS = {
-    "csv": f"{USPTO_ASSIGNMENT_BASE}/assignment_data_2023.csv",
-    "dta": f"{USPTO_ASSIGNMENT_BASE}/assignment_data_2023.dta",
+    "csv": f"{USPTO_ASSIGNMENT_BASE}/csv.zip",
+    "dta": f"{USPTO_ASSIGNMENT_BASE}/dta.zip",
     # Parquet format may not be available - CSV and DTA are the standard formats
 }
 
@@ -134,4 +134,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

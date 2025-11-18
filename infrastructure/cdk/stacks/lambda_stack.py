@@ -6,8 +6,8 @@ from aws_cdk import (
     CfnOutput,
     Duration,
     Stack,
-    aws_lambda as lambda_,
     aws_ecr as ecr,
+    aws_lambda as lambda_,
 )
 from constructs import Construct
 
@@ -27,13 +27,24 @@ class LambdaStack(Stack):
 
         self.functions = {}
 
+        project_root = Path(__file__).parent.parent.parent.parent
+
         # ECR repository for container images
-        ecr_repo = ecr.Repository(
-            self,
-            "LambdaContainerRepo",
-            repository_name="sbir-etl-lambda",
-            image_scan_on_push=True,
-        )
+        # Import existing repository if it exists, otherwise create new
+        import_existing_ecr = self.node.try_get_context("import_existing_ecr") == "true"
+        if import_existing_ecr:
+            ecr_repo = ecr.Repository.from_repository_name(
+                self,
+                "LambdaContainerRepo",
+                repository_name="sbir-etl-lambda",
+            )
+        else:
+            ecr_repo = ecr.Repository(
+                self,
+                "LambdaContainerRepo",
+                repository_name="sbir-etl-lambda",
+                image_scan_on_push=True,
+            )
 
         # Lambda functions using Layers (lightweight)
         layer_functions = [
@@ -65,9 +76,13 @@ class LambdaStack(Stack):
             # CDK app.py is in infrastructure/cdk/, so go up 2 levels to project root
             # Directory names use underscores, function names use hyphens
             lambda_dir_name = func_name.replace("-", "_")
-            project_root = Path(__file__).parent.parent.parent.parent
             lambda_code_path = str(project_root / "scripts" / "lambda" / lambda_dir_name)
-            
+
+            # AWS currently caps Lambda timeout at 15 minutes, so USPTO download
+            # functions cannot request the 30 minutes noted in the spec.
+            timeout_minutes = 15
+            memory_size = 512 if not func_name.startswith("download-uspto") else 1024
+
             func = lambda_.Function(
                 self,
                 f"{func_name.replace('-', '_').title()}Function",
@@ -76,8 +91,8 @@ class LambdaStack(Stack):
                 handler="lambda_handler.lambda_handler",
                 code=lambda_.Code.from_asset(lambda_code_path),
                 role=lambda_role,
-                timeout=Duration.minutes(15) if not func_name.startswith("download-uspto") else Duration.minutes(30),  # Longer timeout for large downloads
-                memory_size=512 if not func_name.startswith("download-uspto") else 1024,  # More memory for USPTO downloads
+                timeout=Duration.minutes(timeout_minutes),
+                memory_size=memory_size,
                 layers=[python_layer] if python_layer else [],
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
@@ -87,31 +102,36 @@ class LambdaStack(Stack):
             self.functions[func_name] = func
 
         # Lambda functions using Container images (Dagster-dependent)
+        # Only create if container images are available (built via GitHub Actions)
+        create_container_functions = (
+            self.node.try_get_context("create_container_functions") != "false"
+        )
         container_functions = [
             "ingestion-checks",
             "load-neo4j",
         ]
 
-        for func_name in container_functions:
-            # Container-based Lambda functions using DockerImageFunction
-            # DockerImageFunction accepts EcrImageCode directly
-            func = lambda_.DockerImageFunction(
-                self,
-                f"{func_name.replace('-', '_').title()}Function",
-                function_name=f"sbir-etl-{func_name}",
-                code=lambda_.DockerImageCode.from_ecr(
-                    repository=ecr_repo,
-                    tag_or_digest=f"{func_name}:latest",
-                ),
-                role=lambda_role,
-                timeout=Duration.minutes(30),  # Longer timeout for Dagster functions
-                memory_size=2048,  # More memory for Dagster
-                environment={
-                    "S3_BUCKET": s3_bucket.bucket_name,
-                    "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
-                },
-            )
-            self.functions[func_name] = func
+        if create_container_functions:
+            for func_name in container_functions:
+                # Container-based Lambda functions using DockerImageFunction
+                # DockerImageFunction accepts EcrImageCode directly
+                func = lambda_.DockerImageFunction(
+                    self,
+                    f"{func_name.replace('-', '_').title()}Function",
+                    function_name=f"sbir-etl-{func_name}",
+                    code=lambda_.DockerImageCode.from_ecr(
+                        repository=ecr_repo,
+                        tag_or_digest=f"{func_name}:latest",
+                    ),
+                    role=lambda_role,
+                    timeout=Duration.minutes(15),
+                    memory_size=2048,  # More memory for Dagster
+                    environment={
+                        "S3_BUCKET": s3_bucket.bucket_name,
+                        "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
+                    },
+                )
+                self.functions[func_name] = func
 
         # Output function ARNs
         for func_name, func in self.functions.items():
@@ -120,4 +140,3 @@ class LambdaStack(Stack):
                 f"{func_name.replace('-', '_').title()}FunctionArn",
                 value=func.function_arn,
             )
-

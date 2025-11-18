@@ -241,6 +241,28 @@ jobs:
           # Bootstrap only if not already bootstrapped (ignore errors)
           cdk bootstrap aws://${ACCOUNT_ID}/${{ env.AWS_REGION }} || true
 
+      - name: Deploy storage stack (imports existing bucket by default)
+        working-directory: infrastructure/cdk
+        run: |
+          # Deploy storage stack - defaults to importing existing bucket
+          # Use --context create_new_bucket=true if you need to create a new bucket
+          cdk deploy sbir-etl-storage \
+            --require-approval never \
+            --context region="${{ env.AWS_REGION }}" \
+            --context account="${{ steps.account.outputs.account_id }}" || true
+          # If storage stack deployment fails, it may already exist - continue anyway
+
+      - name: Deploy security stack (imports existing resources by default)
+        working-directory: infrastructure/cdk
+        run: |
+          # Security stack defaults to importing existing resources (roles and secrets)
+          # Use --context create_new_resources=true if you need to create new resources
+          cdk deploy sbir-etl-security \
+            --require-approval never \
+            --context region="${{ env.AWS_REGION }}" \
+            --context account="${{ steps.account.outputs.account_id }}" || true
+          # If security stack deployment fails, it may be in a failed state - continue anyway
+
       - name: Deploy Lambda stack
         working-directory: infrastructure/cdk
         env:

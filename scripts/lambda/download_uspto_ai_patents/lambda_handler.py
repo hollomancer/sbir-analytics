@@ -1,11 +1,11 @@
 """Lambda function to download USPTO AI Patent Dataset and upload to S3."""
 
 import hashlib
-import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
+
 import boto3
 
 s3_client = boto3.client("s3")
@@ -15,11 +15,11 @@ s3_client = boto3.client("s3")
 # Developer portal: https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv
 #
 # Direct download URLs (latest 2023 release)
-USPTO_AI_PATENT_BASE = "https://www.uspto.gov/sites/default/files/documents"
+USPTO_AI_PATENT_BASE = "https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023"
 USPTO_AI_PATENT_DEFAULT_URLS = {
-    "csv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2023.csv.zip",
-    "dta": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2023.dta.zip",
-    "tsv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions_2020.tsv.zip",  # 2020 release has TSV
+    "csv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions.csv.zip",
+    "dta": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions.dta.zip",
+    # Note: TSV format is available in 2020 release only
 }
 
 USPTO_AI_PATENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
@@ -59,6 +59,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         with urlopen(req, timeout=600) as response:  # Longer timeout for large files
             data = response.read()
+            content_type = response.headers.get("Content-Type", "") or ""
 
         # Compute hash
         file_hash = hashlib.sha256(data).hexdigest()
@@ -68,13 +69,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         date_str = timestamp.strftime("%Y-%m-%d")
         
         # Determine file extension from content type or URL
-        content_type = response.headers.get("Content-Type", "")
-        if "csv" in content_type.lower() or source_url.endswith(".csv"):
-            file_ext = ".csv"
-        elif "json" in content_type.lower() or source_url.endswith(".json"):
-            file_ext = ".json"
-        elif "zip" in content_type.lower() or source_url.endswith(".zip"):
+        lower_content_type = content_type.lower()
+        lower_url = source_url.lower()
+        if "zip" in lower_content_type or lower_url.endswith(".zip"):
             file_ext = ".zip"
+        elif "csv" in lower_content_type or lower_url.endswith(".csv"):
+            file_ext = ".csv"
+        elif "json" in lower_content_type or lower_url.endswith(".json"):
+            file_ext = ".json"
         else:
             file_ext = ".csv"  # Default
         
@@ -86,7 +88,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             Bucket=s3_bucket,
             Key=s3_key,
             Body=data,
-            ContentType=content_type or "application/octet-stream",
+            ContentType=content_type or ("application/zip" if file_ext == ".zip" else "application/octet-stream"),
             Metadata={
                 "sha256": file_hash,
                 "source_url": source_url,
@@ -119,4 +121,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

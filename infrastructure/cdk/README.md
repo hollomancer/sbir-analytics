@@ -30,14 +30,53 @@ uv sync
 cdk diff
 
 # Deploy all stacks
+# Note: Storage stack defaults to importing existing bucket
 cdk deploy --all
 
 # Deploy specific stack
+# Default: imports existing bucket (if it exists)
 cdk deploy sbir-etl-storage
+# To create a new bucket instead:
+cdk deploy sbir-etl-storage --context create_new_bucket=true
+
 cdk deploy sbir-etl-security
 cdk deploy sbir-etl-lambda
 cdk deploy sbir-etl-step-functions
 ```
+
+### Handling Existing Resources
+
+**Storage Stack**: Defaults to importing the existing bucket `sbir-etl-production-data`:
+```bash
+# Default: imports existing bucket (no context needed)
+cdk deploy sbir-etl-storage
+
+# To create a new bucket (will fail if bucket already exists)
+cdk deploy sbir-etl-storage --context create_new_bucket="true"
+```
+
+**Security Stack**: Defaults to importing existing IAM roles and Secrets Manager secrets:
+```bash
+# Default: imports existing resources (roles and secrets)
+cdk deploy sbir-etl-security
+
+# To create new resources (will fail if they already exist)
+cdk deploy sbir-etl-security --context create_new_resources="true"
+```
+
+### Fixing Failed Deployments
+
+If a stack is in `ROLLBACK_COMPLETE` or `CREATE_FAILED` state, you must delete it before redeploying:
+
+```bash
+# Delete the failed stack via AWS CLI
+aws cloudformation delete-stack --stack-name sbir-etl-security --region us-east-2
+
+# Wait for deletion to complete, then redeploy
+cdk deploy sbir-etl-security
+```
+
+Or delete via AWS Console: CloudFormation → Stacks → Select stack → Delete
 
 ## Stacks
 
