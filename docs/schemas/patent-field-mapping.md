@@ -76,7 +76,7 @@ This document provides a comprehensive field-by-field mapping from USPTO patent 
 | source_table | "documentid" | Constant |
 | source_rf_id | rf_id | Foreign key reference |
 | loaded_date | NOW() | Timestamp |
-| data_version | "april-2024" | Configuration |
+| data_version | "november-2025" | Configuration |
 
 ---
 

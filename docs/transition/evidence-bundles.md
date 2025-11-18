@@ -51,7 +51,7 @@ An **evidence bundle** is a comprehensive audit trail that documents how and why
   "contract_id": "FA1234-20-C-0001",
   "likelihood_score": 0.75,
   "confidence": "LIKELY",
-  "detection_date": "2024-01-15T10:30:00Z",
+  "detection_date": "2025-01-15T10:30:00Z",
   "detection_method": "transition_detector_v1",
 
   "summary": "Award recipient Acme AI Inc. (UEI: ABC123) awarded Phase II contract from DoD within 6 months after completion",
@@ -552,7 +552,7 @@ Each signal contains:
   "contract_id": "FA1234-20-C-0001",
   "likelihood_score": 0.8275,
   "confidence": "LIKELY",
-  "detection_date": "2024-01-15T10:30:00Z",
+  "detection_date": "2025-01-15T10:30:00Z",
   "detection_method": "transition_detector_v1",
   "summary": "DoD Phase II award (Acme AI) → Air Force sole source contract 45 days post-completion",
 
@@ -680,7 +680,7 @@ Each signal contains:
   "contract_id": "NSF-2020-1234567",
   "likelihood_score": 0.5825,
   "confidence": "POSSIBLE",
-  "detection_date": "2024-01-15T10:30:00Z",
+  "detection_date": "2025-01-15T10:30:00Z",
   "summary": "NSF Phase II award → NSF contract 8 months later; fuzzy name match (0.82)",
 
   "signals": {
