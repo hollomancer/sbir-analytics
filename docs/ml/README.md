@@ -19,18 +19,18 @@ The CET classification system uses machine learning to categorize SBIR/STTR awar
 Start with these guides to understand and use the CET classifier:
 
 1. **[CET Integration Guide](cet-integration.md)** - How to integrate CET classification into your workflow
-2. **[CET Classifier](cet_classifier.md)** - Core classifier documentation and usage
+2. **[CET Classifier](cet-classifier.md)** - Core classifier documentation and usage
 
 ## Detailed Documentation
 
 ### Core Classifier
 
-- **[CET Classifier](cet_classifier.md)** - Main classifier documentation
+- **[CET Classifier](cet-classifier.md)** - Main classifier documentation
   - Model architecture and features
   - Training process and evaluation
   - Usage examples and API reference
 
-- **[CET Classifier Appendix](cet_classifier_appendix.md)** - Extended technical details
+- **[CET Classifier Appendix](cet-classifier-appendix.md)** - Extended technical details
   - Detailed feature engineering
   - Model evaluation metrics
   - Performance analysis and tuning
@@ -38,7 +38,7 @@ Start with these guides to understand and use the CET classifier:
 
 ### Training Data
 
-- **[CET Award Training Data](cet_award_training_data.md)** - Training data documentation
+- **[CET Award Training Data](cet-award-training-data.md)** - Training data documentation
   - Data sources and collection methodology
   - Data labeling and annotation process
   - Training dataset characteristics

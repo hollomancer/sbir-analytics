@@ -141,6 +141,8 @@ Add the following secrets to your GitHub repository:
 
 ## Lambda Functions
 
+For detailed Lambda function development and setup, see the [Lambda Setup Guide](aws-lambda-setup.md).
+
 ### Layer-based Functions (Lightweight)
 
 - `download-csv`: Downloads CSV from SBIR.gov
@@ -156,6 +158,8 @@ Add the following secrets to your GitHub repository:
 - `load-neo4j`: Loads validated awards into Neo4j using Dagster assets
 
 ## Step Functions State Machine
+
+For detailed Step Functions configuration and orchestration, see the [Step Functions Guide](step-functions-guide.md).
 
 The state machine orchestrates the workflow:
 

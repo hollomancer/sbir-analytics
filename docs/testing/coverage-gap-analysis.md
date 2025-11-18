@@ -1,3 +1,11 @@
+---
+Type: Reference
+Owner: docs@project
+Last-Reviewed: 2025-11-10
+Status: active
+
+---
+
 # Test Coverage Gap Analysis
 **Generated**: 2025-11-10
 **Branch**: claude/provide-an-011CUxxWGBwGV1DEx5LS15Mn

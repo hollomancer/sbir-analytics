@@ -7,7 +7,7 @@ This document describes the lightweight CET patent classifier components, featur
 - ✅ October 26, 2025 exploration delivered a production-ready classifier with 232/232 tests passing and >85% coverage.
 - ✅ Three packaged artifacts are maintained as appendices: a quick reference, comprehensive analysis, and CLI/API checklists.
 - ✅ 21 CET categories, taxonomy versioning, and configuration guidance consolidated here for sbir-etl engineers.
-- 📎 For the deep-dive reports—including diagrams, architecture walkthroughs, and training notes—see `docs/ml/cet_classifier_appendix.md`.
+- 📎 For the deep-dive reports—including diagrams, architecture walkthroughs, and training notes—see [`docs/ml/cet-classifier-appendix.md`](cet-classifier-appendix.md).
 
 ## Award ApplicabilityModel (Awards)
 

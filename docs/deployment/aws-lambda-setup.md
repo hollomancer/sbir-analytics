@@ -2,6 +2,8 @@
 
 This guide covers developing and deploying Lambda functions for the SBIR ETL pipeline.
 
+> **See also**: [AWS Infrastructure Guide](aws-infrastructure.md) for overall architecture, [Step Functions Guide](step-functions-guide.md) for orchestration.
+
 ## Lambda Function Structure
 
 Each Lambda function follows this pattern:

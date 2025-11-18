@@ -47,6 +47,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 ### Reference
 - Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
 - Neo4j schema reference: [`references/schemas/neo4j.md`](references/schemas/neo4j.md)
+- Data dictionaries: [`data/dictionaries/`](data/dictionaries/)
 - Configuration: [`configuration/paths.md`](configuration/paths.md)
 - Decisions (ADRs): [`decisions/`](decisions/)
 

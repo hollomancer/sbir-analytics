@@ -105,13 +105,13 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 ## Documentation
 
 **Comprehensive Guides** (6,126 lines total):
-- 📖 [Detection Algorithm](detection_algorithm.md) - How the system works end-to-end
-- 📖 [Scoring Guide](scoring_guide.md) - Detailed scoring breakdown + tuning
-- 📖 [Vendor Matching](vendor_matching.md) - Vendor resolution methods + validation
-- 📖 [Evidence Bundles](evidence_bundles.md) - Evidence structure + interpretation
+- 📖 [Detection Algorithm](detection-algorithm.md) - How the system works end-to-end
+- 📖 [Scoring Guide](scoring-guide.md) - Detailed scoring breakdown + tuning
+- 📖 [Vendor Matching](vendor-matching.md) - Vendor resolution methods + validation
+- 📖 [Evidence Bundles](evidence-bundles.md) - Evidence structure + interpretation
 - 📖 [Neo4j Schema](../schemas/transition-graph-schema.md) - Graph model + queries
-- 📖 [CET Integration](cet_integration.md) - Technology area alignment
-- 📖 [Data Dictionary](../data-dictionaries/transition_fields_dictionary.md) - Field reference
+- 📖 [CET Integration](cet-integration.md) - Technology area alignment
+- 📖 [Data Dictionary](../data/dictionaries/transition-fields-dictionary.md) - Field reference
 
 **Quick Reference**:
 - 📋 [MVP Guide](mvp.md) - Minimal viable product

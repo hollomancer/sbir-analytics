@@ -20,19 +20,19 @@ New to transition detection? Start here:
 
 1. **[Complete Overview](overview.md)** - Comprehensive system overview with quick start
 2. **[MVP Guide](mvp.md)** - Quick start and minimum viable product overview
-3. **[Detection Algorithm](detection_algorithm.md)** - Core algorithm and methodology
+3. **[Detection Algorithm](detection-algorithm.md)** - Core algorithm and methodology
 
 ## Core Documentation
 
 ### Detection and Scoring
 
-- **[Detection Algorithm](detection_algorithm.md)** - Core detection methodology
+- **[Detection Algorithm](detection-algorithm.md)** - Core detection methodology
   - Signal detection logic
   - Transition identification
   - Algorithm implementation details
   - Confidence scoring
 
-- **[Scoring Guide](scoring_guide.md)** - Detailed transition scoring
+- **[Scoring Guide](scoring-guide.md)** - Detailed transition scoring
   - Scoring methodology
   - Signal weights and factors
   - Score interpretation
@@ -40,13 +40,13 @@ New to transition detection? Start here:
 
 ### Data Integration
 
-- **[Vendor Matching](vendor_matching.md)** - Vendor resolution and matching
+- **[Vendor Matching](vendor-matching.md)** - Vendor resolution and matching
   - Name normalization
   - Entity resolution algorithms
   - Matching confidence scoring
   - Disambiguation strategies
 
-- **[Evidence Bundles](evidence_bundles.md)** - Evidence collection and structure
+- **[Evidence Bundles](evidence-bundles.md)** - Evidence collection and structure
   - Evidence types and sources
   - Bundle structure and organization
   - Evidence quality assessment
@@ -54,7 +54,7 @@ New to transition detection? Start here:
 
 ### Integration Points
 
-- **[CET Integration](cet_integration.md)** - CET classification alignment
+- **[CET Integration](cet-integration.md)** - CET classification alignment
   - CET signal incorporation
   - Commercialization indicators
   - Classification-based scoring
@@ -140,7 +140,7 @@ dagster asset materialize -m src.definitions --select transition_profiles
 
 ### Querying Transitions
 
-See the [Transition Queries](../queries/transition_queries.md) documentation for Neo4j query examples.
+See the [Transition Queries](../queries/transition-queries.md) documentation for Neo4j query examples.
 
 ### Graph Schema
 

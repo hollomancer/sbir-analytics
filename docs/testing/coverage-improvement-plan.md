@@ -1,3 +1,11 @@
+---
+Type: How-to
+Owner: docs@project
+Last-Reviewed: 2025-11-09
+Status: active
+
+---
+
 # Test Coverage Improvement Plan
 ## SBIR ETL Project - Comprehensive Testing Roadmap
 

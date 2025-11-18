@@ -675,9 +675,9 @@ Represents company-level aggregated statistics.
 
 ## Related Documentation
 
-- **Algorithm Details**: `docs/transition/detection_algorithm.md`
-- **Scoring Guide**: `docs/transition/scoring_guide.md`
-- **Evidence Structure**: `docs/transition/evidence_bundles.md`
+- **Algorithm Details**: `docs/transition/detection-algorithm.md`
+- **Scoring Guide**: `docs/transition/scoring-guide.md`
+- **Evidence Structure**: `docs/transition/evidence-bundles.md`
 - **Neo4j Schema**: `docs/schemas/transition-graph-schema.md`
 - **Configuration**: `config/transition/detection.yaml`
 - **Data Models**: `src/models/transition_models.py`

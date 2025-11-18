@@ -1086,5 +1086,5 @@ RETURN cet_area, patent_backed, patent_backed_transitions
 - **Configuration**: `config/transition/detection.yaml`
 - **Neo4j**: `CETArea` nodes and `INVOLVES_TECHNOLOGY` relationships
 - **NIST CET**: https://www.nist.gov/programs/critical-emerging-technologies
-- **Scoring Integration**: `docs/transition/scoring_guide.md`
+- **Scoring Integration**: `docs/transition/scoring-guide.md`
 - **Analytics**: `src/transition/analysis/analytics.py`

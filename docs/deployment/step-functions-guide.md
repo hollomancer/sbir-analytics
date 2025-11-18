@@ -2,6 +2,8 @@
 
 This guide covers the Step Functions state machine that orchestrates the SBIR weekly refresh workflow.
 
+> **See also**: [AWS Infrastructure Guide](aws-infrastructure.md) for overall architecture, [Lambda Setup Guide](aws-lambda-setup.md) for function development.
+
 ## Overview
 
 The Step Functions state machine (`sbir-etl-weekly-refresh`) orchestrates the entire weekly SBIR awards refresh workflow, replacing the previous GitHub Actions-based workflow.

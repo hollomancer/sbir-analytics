@@ -644,6 +644,6 @@ uv run dagster dev
 - **Neo4j Loading**: `src/assets/cet/loading.py` (180 lines)
 - **Validation**: `src/assets/cet/validation.py` (250+ lines)
 - **Taxonomy**: `config/cet/taxonomy.yaml`
-- **Documentation**: `docs/ml/cet_classifier.md`, `docs/ml/cet_award_training_data.md`
+- **Documentation**: [`docs/ml/cet-classifier.md`](cet-classifier.md), [`docs/ml/cet-award-training-data.md`](cet-award-training-data.md)
 - **Tests**: `tests/unit/test_cet_*.py`, `tests/integration/test_cet_*.py`
 
