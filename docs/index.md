@@ -32,23 +32,23 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 ## Quick links
 
 ### Getting Started
-- Getting started: `README.md`
-- Quick start (local dev): `QUICK_START.md`
-- Architecture overview: `docs/architecture/detailed-overview.md`
-- Shared tech stack: `docs/architecture/shared-tech-stack.md`
+- Getting started: [`README.md`](../README.md)
+- Quick start (local dev): [`QUICK_START.md`](../QUICK_START.md)
+- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
+- Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
-- **[Production deployment](docs/deployment/dagster-cloud-migration.md)** - Dagster Cloud (Primary)
-- **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions
-- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database
-- **[S3 Data Migration](docs/deployment/s3-data-migration.md)** - S3 data lake
-- [Containerization guide](docs/deployment/containerization.md) - Docker (Development/Failover)
+- **[Production deployment](deployment/dagster-cloud-migration.md)** - Dagster Cloud (Primary)
+- **[AWS Infrastructure](deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions
+- **[Neo4j Aura Setup](data/neo4j-aura-setup.md)** - Cloud graph database
+- **[S3 Data Migration](deployment/s3-data-migration.md)** - S3 data lake
+- [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
 
 ### Reference
-- Statistical reporting guide: `docs/guides/statistical-reporting.md`
-- Neo4j schema reference: `docs/references/schemas/neo4j.md`
-- Configuration: `docs/configuration/paths.md`
-- Decisions (ADRs): `docs/decisions/`
+- Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
+- Neo4j schema reference: [`references/schemas/neo4j.md`](references/schemas/neo4j.md)
+- Configuration: [`configuration/paths.md`](configuration/paths.md)
+- Decisions (ADRs): [`decisions/`](decisions/)
 
 ## Conventions
 

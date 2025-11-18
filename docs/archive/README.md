@@ -15,6 +15,8 @@ This directory contains historical documentation that has been archived but kept
 - `architecture/` - Historical architecture planning documents
   - `openspec-to-kiro-migration-guide.md` - Completed OpenSpec→Kiro migration (Oct 2025)
   - `consolidation-summary.md` - Completed codebase consolidation (Jan 2025)
+  - `CODE_REDUNDANCY_ANALYSIS.md` - Code redundancy analysis and recommendations (Nov 2025)
+  - `DESIGN_PATTERNS_GAP_ANALYSIS.md` - Design patterns gap analysis (Oct 2025, 91.3% complete)
 - `deployment/` - Historical deployment planning documents
   - `cloud-migration-opportunities.md` - Cloud migration planning (completed Nov 2025 with AWS+Aura deployment)
 - `ml/` - Historical ML/CET analysis documents
@@ -22,6 +24,8 @@ This directory contains historical documentation that has been archived but kept
 - `fixes/` - Historical bug fix documentation
 - `transition/` - Historical transition detection reports
 - `DOCUMENTATION_CONSOLIDATION_PLAN.md` - Meta-documentation about documentation consolidation (Nov 2025)
+- `DOCUMENTATION_OPTIMIZATION_ANALYSIS.md` - Comprehensive documentation optimization analysis (Jan 2025)
+- `DOCUMENTATION_OPTIMIZATION_SUMMARY.md` - Executive summary of documentation optimization (Jan 2025)
 - `EXPLORATION_SUMMARY.md` - Historical codebase exploration results (Nov 2025)
 - `MARKDOWN_DOCUMENTATION_ANALYSIS.md` - Comprehensive markdown documentation analysis (Nov 2025)
 - `MIGRATION_COMPLETE.md` - Migration completion marker
