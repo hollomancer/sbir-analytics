@@ -488,6 +488,3 @@ class TestContextRulesRealWorldScenarios:
         assert adjusted_scores["artificial_intelligence"] == 70.0
         assert adjusted_scores["advanced_manufacturing"] == 77.0  # 55 + 22
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

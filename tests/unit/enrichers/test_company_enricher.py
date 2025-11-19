@@ -387,7 +387,3 @@ def test_normalize_company_name_extended():
     assert normalize_company_name("  Multiple   Spaces  ") == "multiple spaces"
     assert normalize_company_name("123 Tech Inc") == "123 tech inc"
 
-
-if __name__ == "__main__":
-    # quick smoke run
-    pytest.main([__file__])

@@ -350,6 +350,3 @@ class TestMultiSourceVectorizerIntegration:
         assert X_abstract.nnz > 0
         assert X_keywords.nnz > 0
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

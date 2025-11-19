@@ -188,6 +188,3 @@ def test_address_parsing_variants():
     assert st3 is not None  # it will put the string into street
     assert c3 is None or isinstance(c3, str)
 
-
-if __name__ == "__main__":
-    pytest.main()

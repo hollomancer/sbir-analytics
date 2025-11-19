@@ -269,6 +269,3 @@ class TestStopWordsIntegration:
         # Verify stop words are passed to vectorizer
         assert vectorizer.stop_words == ["sbir", "sttr", "phase", "award"]
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
