@@ -244,11 +244,12 @@ In Dagster environments, these checks can block downstream assets if thresholds 
 
 If you want to integrate this into a Dagster job, import the transition assets and asset checks from `src/assets/transition/` and register them in your definitions. The code is import-safe and can run in constrained environments.
 
-## Commands reference
+You can also execute the MVP pipeline directly through the CLI without relying on the legacy shim:
 
-- Run:
-  - make transition-mvp-run
-- Clean:
-  - make transition-mvp-clean
+- Run interactively:
+  - `uv run sbir-cli transition mvp`
+  - `uv run sbir-cli transition mvp --contracts-path data/processed/contracts_sample.parquet --no-seed`
+- Clean artifacts:
+  - `make transition-mvp-clean`
 
 Artifacts appear under data/processed and reports/validation after a successful run.

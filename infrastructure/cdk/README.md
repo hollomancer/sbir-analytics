@@ -82,8 +82,10 @@ Or delete via AWS Console: CloudFormation → Stacks → Select stack → Delete
 
 1. **StorageStack**: S3 bucket for data storage
 2. **SecurityStack**: IAM roles and Secrets Manager
-3. **LambdaStack**: Lambda functions
+3. **LambdaStack**: Lambda functions (layer-based only; container-based functions migrated to Dagster Cloud)
 4. **StepFunctionsStack**: Step Functions state machine
+
+**Note**: Infrastructure is managed exclusively via AWS CDK. Terraform files have been removed in favor of CDK for consistency and maintainability.
 
 ## Configuration
 

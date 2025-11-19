@@ -15,9 +15,9 @@ This plan details the refactoring of three large asset files (totaling 8,828 lin
 
 | File | Lines | Assets | Checks | Helpers | Issues |
 |------|-------|--------|--------|---------|--------|
-| `cet_assets.py` | 3,593 | 19 | 3 | 24 | Hard to navigate, multiple concerns |
-| `uspto_assets.py` | 2,992 | 33 | 8 | 56 | Too many assets in one file |
-| `transition_assets.py` | 2,243 | 18 | 8 | 28 | Mix of extraction, transformation, loading |
+| `cet_assets.py` | 3,593 | 19 | 3 | 24 | Hard to navigate, multiple concerns *(legacy)* |
+| `uspto_assets.py` | 2,992 | 33 | 8 | 56 | Too many assets in one file *(legacy)* |
+| `transition_assets.py` | 2,243 | 18 | 8 | 28 | Mix of extraction, transformation, loading *(legacy)* |
 | **Total** | **8,828** | **70** | **19** | **108** | **Maintainability issues** |
 
 > Note: these legacy files have been replaced by packages (`src/assets/cet/`, `src/assets/uspto/`,
@@ -71,7 +71,7 @@ We'll use a **safe, incremental approach**:
 
 ## 1. CET Assets Refactoring
 
-### Current Structure (cet_assets.py - 3,593 lines)
+### Historical Structure (cet_assets.py - 3,593 lines)
 
 **Assets (19):**
 - Taxonomy: `raw_cet_taxonomy` (1)

@@ -15,9 +15,8 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
     *   [Step 1: Deploy Infrastructure with CDK](#step-1-deploy-infrastructure-with-cdk)
     *   [Step 2: Create Secrets](#step-2-create-secrets)
     *   [Step 3: Build and Deploy Lambda Layer](#step-3-build-and-deploy-lambda-layer)
-    *   [Step 4: Build and Push Container Images](#step-4-build-and-push-container-images)
-    *   [Step 5: Deploy Lambda Functions](#step-5-deploy-lambda-functions)
-    *   [Step 6: Configure GitHub Actions](#step-6-configure-github-actions)
+    *   [Step 4: Deploy Lambda Functions](#step-4-deploy-lambda-functions)
+    *   [Step 5: Configure GitHub Actions](#step-5-configure-github-actions)
 6.  [Lambda Functions](#6-lambda-functions)
     *   [Lambda Function Structure](#lambda-function-structure)
     *   [Packaging Options](#packaging-options)
@@ -97,10 +96,11 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
     *   Contains all project dependencies
     *   Includes scripts and documentation
 
-4.  **Infrastructure** (`infrastructure/lambda/weekly-refresh.tf`)
-    *   Terraform configuration for Lambda function
+4.  **Infrastructure** (`infrastructure/cdk/stacks/lambda_stack.py`)
+    *   CDK (Python) configuration for Lambda functions
+    *   **Note**: Infrastructure is managed via AWS CDK, not Terraform
     *   IAM roles and policies
-    *   ECR repository for container image
+    *   **Note**: Container-based Lambda functions have been migrated to Dagster Cloud
 
 ## 3. Prerequisites
 
@@ -109,7 +109,7 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
 3.  AWS CDK installed (`npm install -g aws-cdk`)
 4.  Docker (for building container images)
 5.  Python 3.11+
-6.  Terraform installed (for infrastructure)
+6.  AWS CDK CLI installed (for infrastructure deployment)
 
 ## 4. Infrastructure Components
 
@@ -197,17 +197,9 @@ aws lambda publish-layer-version \
   --region us-east-2
 ```
 
-### Step 4: Build and Push Container Images
+### Step 4: Deploy Lambda Functions
 
-```bash
-# Set AWS account ID
-export AWS_ACCOUNT_ID=123456789012
-
-# Build and push containers
-./scripts/lambda/build_containers.sh
-```
-
-### Step 5: Deploy Lambda Functions
+**Note**: Container-based Lambda functions (ingestion-checks, load-neo4j) have been migrated to Dagster Cloud. Only layer-based Lambda functions are deployed via CDK.
 
 The Lambda functions are deployed automatically via CDK. If you need to update them manually:
 
@@ -221,7 +213,7 @@ aws lambda update-function-code \
   --region us-east-2
 ```
 
-### Step 6: Configure GitHub Actions
+### Step 5: Configure GitHub Actions
 
 Add the following secrets to your GitHub repository:
 
@@ -798,7 +790,7 @@ The workflow displays Lambda execution results in the Actions UI. Check the "Inv
 1.  **Lambda timeout**: Increase timeout in CDK stack or optimize function
 2.  **S3 permissions**: Verify IAM role has S3 read/write permissions
 3.  **Secrets Manager**: Ensure secret names match exactly
-4.  **Container images**: Verify ECR repository exists and images are pushed
+4.  **Lambda functions**: Verify all layer-based Lambda functions are deployed via CDK
 5.  **State transition errors**: Check Lambda function logs
 6.  **Input/output format**: Ensure JSON structure matches expected format
 
@@ -838,7 +830,7 @@ If S3 uploads fail:
 
 If Neo4j operations fail:
 - Verify secret exists in Secrets Manager
-- Check secret ARN matches Terraform configuration
+- Check secret ARN matches CDK configuration
 - Verify Neo4j credentials are correct
 - Check network connectivity from Lambda
 
@@ -893,6 +885,6 @@ To rollback to GitHub Actions workflow:
 
 -   [AWS Lambda Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
 -   [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
--   [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+-   [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 -   [cloudpathlib documentation](https://cloudpathlib.drivendata.org/)
 -   [boto3 S3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html)

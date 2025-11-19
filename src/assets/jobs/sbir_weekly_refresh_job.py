@@ -1,22 +1,38 @@
-"""SBIR weekly refresh job for Dagster Cloud execution.
+"""Dagster job for SBIR weekly refresh pipeline."""
 
-This job replaces the container-based Lambda functions (ingestion-checks, load-neo4j)
-with a unified Dagster job that can be triggered from Step Functions or scheduled.
-"""
+from __future__ import annotations
 
-from dagster import AssetSelection, define_asset_job
+from dagster import JobDefinition
 
-# Job that runs the full SBIR weekly refresh pipeline:
-# 1. Extract and validate SBIR awards (raw_sbir_awards, validated_sbir_awards, sbir_validation_report)
-# 2. Load validated awards into Neo4j (neo4j_sbir_awards)
-sbir_weekly_refresh_job = define_asset_job(
-    name="sbir_weekly_refresh_job",
-    selection=AssetSelection.keys(
-        "raw_sbir_awards",
-        "validated_sbir_awards",
-        "sbir_validation_report",
-        "neo4j_sbir_awards",
-    ),
-    description="Weekly SBIR data refresh: extract, validate, and load awards into Neo4j",
-)
+try:
+    from ..sbir_ingestion import raw_sbir_awards, sbir_validation_report, validated_sbir_awards
+    from ..sbir_neo4j_loading import neo4j_sbir_awards
+except Exception:  # pragma: no cover - handles optional Dagster deps
+    raw_sbir_awards = None  # type: ignore
+    validated_sbir_awards = None  # type: ignore
+    sbir_validation_report = None  # type: ignore
+    neo4j_sbir_awards = None  # type: ignore
 
+from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
+
+
+def _build_job() -> JobDefinition:
+    assets = [raw_sbir_awards, validated_sbir_awards, sbir_validation_report, neo4j_sbir_awards]
+    if any(asset is None for asset in assets):  # type: ignore[arg-type]
+        return build_placeholder_job(
+            name="sbir_weekly_refresh_job",
+            description="Placeholder job (SBIR assets unavailable at import time).",
+        )
+
+    return build_job_from_spec(
+        JobSpec(
+            name="sbir_weekly_refresh_job",
+            description="Weekly SBIR data refresh: extract, validate, and load awards into Neo4j",
+            assets=assets,  # type: ignore[arg-type]
+        )
+    )
+
+
+sbir_weekly_refresh_job = _build_job()
+
+__all__ = ["sbir_weekly_refresh_job"]

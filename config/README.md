@@ -12,6 +12,8 @@ Contains default settings that are version controlled and shared across all envi
 
 Environment-specific settings that override base configuration. These files contain settings that differ between development, staging, and production environments.
 
+**Note**: `config/prod.yaml` is the comprehensive production configuration file. It includes all production settings including CET extensions, Dagster schedules, and detailed operational parameters.
+
 ### 3. Environment Variables
 
 Runtime overrides using environment variables with the pattern `SBIR_ETL__SECTION__KEY=value`. These take highest precedence and are useful for secrets and deployment-specific settings.

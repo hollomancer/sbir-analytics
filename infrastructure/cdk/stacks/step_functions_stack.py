@@ -136,11 +136,12 @@ class StepFunctionsStack(Stack):
                             },
                         },
                     ],
-                    "Next": "IngestionChecks",
+                    "Next": "TriggerDagsterRefresh",
                 },
-                "IngestionChecks": {
+                "TriggerDagsterRefresh": {
                     "Type": "Task",
-                    "Resource": lambda_functions["ingestion-checks"].function_arn,
+                    "Resource": lambda_functions["trigger-dagster-refresh"].function_arn,
+                    "Comment": "Triggers sbir_weekly_refresh_job in Dagster Cloud (replaces ingestion-checks and load-neo4j)",
                     "Next": "EnrichmentChecks",
                     "Retry": [
                         {
@@ -165,23 +166,11 @@ class StepFunctionsStack(Stack):
                 "ResetNeo4j": {
                     "Type": "Task",
                     "Resource": lambda_functions["reset-neo4j"].function_arn,
-                    "Next": "LoadNeo4j",
-                    "Retry": [
-                        {
-                            "ErrorEquals": ["States.TaskFailed"],
-                            "IntervalSeconds": 2,
-                            "MaxAttempts": 2,
-                        }
-                    ],
-                },
-                "LoadNeo4j": {
-                    "Type": "Task",
-                    "Resource": lambda_functions["load-neo4j"].function_arn,
                     "Next": "SmokeChecks",
                     "Retry": [
                         {
                             "ErrorEquals": ["States.TaskFailed"],
-                            "IntervalSeconds": 5,
+                            "IntervalSeconds": 2,
                             "MaxAttempts": 2,
                         }
                     ],
