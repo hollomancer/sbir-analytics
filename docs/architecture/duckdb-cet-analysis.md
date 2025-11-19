@@ -385,7 +385,7 @@ relationships = relationships_df.to_dict('records')
 
 ```python
 
-## src/assets/cet_assets.py
+## src/assets/cet/
 
 import duckdb
 import pandas as pd

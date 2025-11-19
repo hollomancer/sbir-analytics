@@ -21,7 +21,7 @@ This document describes the expected format, paths, and workflows for the CET aw
     - `save_dataset_metadata_json(dataset, out_path)`
 
 - Dagster asset:
-  - `src/assets/cet_assets.py`
+  - `src/assets/cet/`
     - `cet_award_training_dataset`: loads, validates, persists training data to processed storage and emits a checks JSON
 
 - Pydantic models:

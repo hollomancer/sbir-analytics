@@ -202,7 +202,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 1. **Check freshness ledger**:
 
    ```bash
-   python scripts/refresh_enrichment.py list-stale --source usaspending
+   uv run sbir-cli enrich list-stale --source usaspending
    ```
 
 2. **Verify SLA threshold**: Awards must be older than `sla_staleness_days` to be considered stale

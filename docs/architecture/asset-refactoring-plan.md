@@ -20,6 +20,9 @@ This plan details the refactoring of three large asset files (totaling 8,828 lin
 | `transition_assets.py` | 2,243 | 18 | 8 | 28 | Mix of extraction, transformation, loading |
 | **Total** | **8,828** | **70** | **19** | **108** | **Maintainability issues** |
 
+> Note: these legacy files have been replaced by packages (`src/assets/cet/`, `src/assets/uspto/`,
+> `src/assets/transition/`). The historical metrics above are preserved for context.
+
 ### Pain Points
 
 1. **Hard to Navigate** - Finding specific assets requires scrolling through thousands of lines
@@ -434,7 +437,7 @@ dagster dev  # Visit http://localhost:3000
 
 ```python
 # In src/definitions.py
-from .assets.cet_assets import (
+from .assets.cet import (
     raw_cet_taxonomy,
     enriched_cet_award_classifications,
     # ... 19 more assets
@@ -463,7 +466,7 @@ from .assets.cet import (
 **Update test imports:**
 ```python
 # OLD
-from src.assets.cet_assets import raw_cet_taxonomy
+from src.assets.cet import raw_cet_taxonomy
 
 # NEW
 from src.assets.cet.taxonomy import raw_cet_taxonomy

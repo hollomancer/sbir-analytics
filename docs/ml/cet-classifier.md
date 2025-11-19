@@ -104,7 +104,7 @@ The goals for this stack:
     - `train_and_evaluate(...)`: convenience wrapper
 
 - Dagster assets
-  - `src/assets/cet_assets.py`
+  - `src/assets/cet/`
     - `train_cet_patent_classifier`: trains and persists model artifact
     - `cet_patent_classifications`: batch-infers classifications for patents
 
