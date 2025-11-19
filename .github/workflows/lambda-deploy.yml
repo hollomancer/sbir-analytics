@@ -214,15 +214,14 @@ jobs:
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
+          python-version: "3.11"
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
 
       - name: Sync dependencies
         working-directory: infrastructure/cdk

@@ -1,0 +1,65 @@
+name: Setup Neo4j Service
+description: |
+  Sets up Neo4j environment variables for use with Neo4j service containers.
+  
+  Note: Service containers must be defined at the job level. This action sets environment
+  variables that should be used with a service configuration like:
+  
+  ```yaml
+  services:
+    neo4j:
+      image: neo4j:5
+      ports:
+        - 7687:7687
+        - 7474:7474
+      env:
+        NEO4J_AUTH: ${{ inputs.auth-mode == 'none' && 'none' || format('{0}/{1}', inputs.username, inputs.password) }}
+      options: >-
+        --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
+        --health-interval=10s
+        --health-timeout=5s
+        --health-retries=12
+  ```
+
+inputs:
+  username:
+    description: Neo4j username
+    required: false
+    default: "neo4j"
+  password:
+    description: Neo4j password
+    required: false
+    default: "password"
+  auth-mode:
+    description: Auth mode - 'password' or 'none'
+    required: false
+    default: "password"
+  uri:
+    description: Neo4j URI (defaults to bolt://localhost:7687 for service containers)
+    required: false
+    default: "bolt://localhost:7687"
+
+outputs:
+  neo4j-uri:
+    description: Neo4j connection URI
+    value: ${{ inputs.uri }}
+  neo4j-username:
+    description: Neo4j username
+    value: ${{ inputs.username }}
+  neo4j-password:
+    description: Neo4j password
+    value: ${{ inputs.password }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set Neo4j environment variables
+      run: |
+        echo "NEO4J_URI=${{ inputs.uri }}" >> $GITHUB_ENV
+        echo "NEO4J_USERNAME=${{ inputs.username }}" >> $GITHUB_ENV
+        echo "NEO4J_PASSWORD=${{ inputs.password }}" >> $GITHUB_ENV
+        echo "SBIR_ETL__NEO4J__URI=${{ inputs.uri }}" >> $GITHUB_ENV
+        echo "SBIR_ETL__NEO4J__USERNAME=${{ inputs.username }}" >> $GITHUB_ENV
+        echo "SBIR_ETL__NEO4J__PASSWORD=${{ inputs.password }}" >> $GITHUB_ENV
+      shell: bash
+

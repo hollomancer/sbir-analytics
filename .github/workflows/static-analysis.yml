@@ -55,26 +55,14 @@ jobs:
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-      - name: Cache UV installation
-        id: cache-uv
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/uv
-          key: uv-install-${{ runner.os }}
-          restore-keys: |
-            uv-install-
-      - name: Install UV (if not cached)
-        if: steps.cache-uv.outputs.cache-hit != 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install dependencies
-        run: uv sync
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
       - name: Run Ruff linter
         run: uv run ruff check src tests
 
@@ -88,26 +76,14 @@ jobs:
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-      - name: Cache UV installation
-        id: cache-uv
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/uv
-          key: uv-install-${{ runner.os }}
-          restore-keys: |
-            uv-install-
-      - name: Install UV (if not cached)
-        if: steps.cache-uv.outputs.cache-hit != 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install dependencies
-        run: uv sync
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
       - name: Run Ruff formatter check
         run: uv run ruff format --check src tests
 
@@ -121,26 +97,14 @@ jobs:
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-      - name: Cache UV installation
-        id: cache-uv
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/uv
-          key: uv-install-${{ runner.os }}
-          restore-keys: |
-            uv-install-
-      - name: Install UV (if not cached)
-        if: steps.cache-uv.outputs.cache-hit != 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install dependencies
-        run: uv sync
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
       - name: Run MyPy type checker
         run: uv run mypy src
 
@@ -154,26 +118,14 @@ jobs:
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-      - name: Cache UV installation
-        id: cache-uv
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/uv
-          key: uv-install-${{ runner.os }}
-          restore-keys: |
-            uv-install-
-      - name: Install UV (if not cached)
-        if: steps.cache-uv.outputs.cache-hit != 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install dependencies
-        run: uv sync
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
       - name: Run Bandit security linter
         run: uv run bandit -r src -c pyproject.toml
 

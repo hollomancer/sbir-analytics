@@ -46,38 +46,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-
-      - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Cache UV virtual environment
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-3.11-
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: pip-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            pip-packages-${{ runner.os }}-
-
-      - name: Install pyreadstat (duckdb already in dependencies)
-        run: uv pip install --cache-dir ~/.cache/pip pyreadstat
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "true"
 
       - name: Run slow unit tests only (fast tests already covered in PR CI)
         id: test
@@ -129,47 +105,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "true"
 
-      - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Cache UV virtual environment
-        uses: actions/cache@v3
+      - name: Setup Neo4j environment
+        uses: ./.github/actions/setup-neo4j-service
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-3.11-
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: pip-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            pip-packages-${{ runner.os }}-
-
-      - name: Install pyreadstat (duckdb already in dependencies)
-        run: uv pip install --cache-dir ~/.cache/pip pyreadstat
+          username: neo4j
+          password: password
+          auth-mode: password
+          uri: bolt://localhost:7687
 
       - name: Wait for Neo4j
-        run: |
-          echo "Waiting for Neo4j to be ready..."
-          until curl -s -f -o /dev/null "http://localhost:7474"; do
-            echo "Neo4j not ready, sleeping..."
-            sleep 5
-          done
-          echo "Neo4j is ready!"
+        uses: ./.github/actions/wait-for-neo4j
+        with:
+          method: http
+          uri: http://localhost:7474
+          timeout: "120"
 
       - name: Run integration tests
         id: test
@@ -201,38 +159,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-
-      - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Cache UV virtual environment
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-3.11-
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: pip-packages-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            pip-packages-${{ runner.os }}-
-
-      - name: Install pyreadstat (duckdb already in dependencies)
-        run: uv pip install --cache-dir ~/.cache/pip pyreadstat
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "true"
 
       - name: Run E2E tests
         id: test
