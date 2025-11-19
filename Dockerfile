@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libharfbuzz-dev \
     libjpeg-dev \
     libpng-dev \
-    libtiff5-dev \
+    libtiff-dev \
     libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -103,23 +103,13 @@ ENV PATH=/usr/local/bin:$PATH \
 
 # Install tini, utilities, and R runtime required at runtime
 # R runtime (without dev tools) needed for rpy2 to work
+# R will pull in its own dependencies, we just need the base runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
     tini \
     r-base \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev \
-    libfontconfig1 \
-    libfreetype6 \
-    libfribidi0 \
-    libharfbuzz0b \
-    libjpeg62-turbo \
-    libpng16-16 \
-    libtiff5 \
-    libicu72 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user/group early (uid/gid stable across runs)
