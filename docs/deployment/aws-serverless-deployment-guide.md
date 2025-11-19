@@ -91,10 +91,9 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
     *   Uploads CSV and metadata to S3
     *   Optionally loads data to Neo4j
 
-3.  **Lambda Container Image** (`docker/lambda/Dockerfile`)
-    *   Based on AWS Lambda Python 3.11 runtime
-    *   Contains all project dependencies
-    *   Includes scripts and documentation
+3.  **Lambda Functions** (Layer-based only)
+    *   All Lambda functions use Python layers (no containers)
+    *   Container-based functions migrated to Dagster Cloud
 
 4.  **Infrastructure** (`infrastructure/cdk/stacks/lambda_stack.py`)
     *   CDK (Python) configuration for Lambda functions
@@ -107,7 +106,7 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
 1.  AWS Account with appropriate permissions
 2.  AWS CLI configured
 3.  AWS CDK installed (`npm install -g aws-cdk`)
-4.  Docker (for building container images)
+4.  Docker (optional, for local testing only)
 5.  Python 3.11+
 6.  AWS CDK CLI installed (for infrastructure deployment)
 
@@ -290,27 +289,22 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
 **Pros**: Fast cold starts, easy updates, smaller packages
 **Cons**: 250MB layer limit, dependency management complexity
 
-#### Option B: Container Images (Recommended for Dagster Functions)
+#### Option B: Dagster Cloud (For Complex Pipelines)
 
-**Use for**: Functions using Dagster or large dependencies
+**Use for**: Functions requiring Dagster, complex orchestration, or long-running processes
+
+**Note**: Container-based Lambda functions have been migrated to Dagster Cloud. Use the `trigger-dagster-refresh` Lambda function to trigger Dagster Cloud jobs instead.
 
 **Steps**:
 
-1.  Create Dockerfile in `lambda/containers/{function-name}/Dockerfile`
-2.  Create `requirements.txt` with dependencies
-3.  Build and push:
-    ```bash
-    ./scripts/lambda/build_containers.sh
-    ```
-4.  Deploy function (via CDK)
+1.  Define Dagster job in `src/assets/jobs/`
+2.  Deploy to Dagster Cloud
+3.  Use `trigger-dagster-refresh` Lambda to trigger jobs via API
 
-**Pros**: No size limits, includes all dependencies, easier local testing
-**Cons**: Slower cold starts (~1-2s), requires Docker
+**Pros**: Full Dagster orchestration, better observability, no Lambda timeout limits
+**Cons**: Requires Dagster Cloud account
 
-#### Option C: Hybrid Approach
-
--   Use Layers for lightweight functions
--   Use Containers for Dagster-dependent functions
+See [Lambda to Dagster Migration](lambda-to-dagster-migration.md) for details.
 
 ### Local Testing
 
@@ -815,9 +809,9 @@ If Lambda times out (15-minute limit):
 ### Script Not Found
 
 If scripts fail with "Script not found":
-- Verify scripts are copied to container image
-- Check Dockerfile COPY commands
-- Ensure scripts are executable
+- Verify Lambda layer includes all dependencies
+- Check that function code is properly packaged
+- Ensure scripts are included in the Lambda deployment package
 
 ### S3 Access Denied
 

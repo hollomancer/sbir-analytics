@@ -40,10 +40,9 @@ Each function is in its own directory:
 
 ### Container Images
 
-```bash
-export AWS_ACCOUNT_ID=123456789012
-./build_containers.sh
-```
+**DEPRECATED**: Container-based Lambda functions have been migrated to Dagster Cloud. The `build_containers.sh` script is deprecated and will exit with an error if run.
+
+See [Lambda to Dagster Migration](../../docs/deployment/lambda-to-dagster-migration.md) for details.
 
 ## Testing
 
@@ -55,10 +54,11 @@ See [`docs/deployment/aws-lambda-setup.md`](../../docs/deployment/aws-lambda-set
 
 Functions are automatically deployed when changes are pushed to `main` or `master` branch. The GitHub Actions workflow (`.github/workflows/lambda-deploy.yml`) will:
 
-1. **Detect changes** in Lambda code, containers, or CDK infrastructure
-2. **Build container images** (for `ingestion-checks` and `load-neo4j`) and push to ECR
-3. **Build and publish Lambda layer** (if layer functions or dependencies changed)
-4. **Deploy via CDK** to update all Lambda functions
+1. **Detect changes** in Lambda code or CDK infrastructure
+2. **Build and publish Lambda layer** (if layer functions or dependencies changed)
+3. **Deploy via CDK** to update all Lambda functions
+
+**Note**: Container-based functions have been migrated to Dagster Cloud. No container builds are needed.
 
 The workflow triggers on:
 - Push to `main`/`master` with changes to:
@@ -72,26 +72,24 @@ The workflow triggers on:
 If you need to deploy manually:
 
 ```bash
-# 1. Build and push container images (for container-based functions)
-export AWS_ACCOUNT_ID=123456789012
-./scripts/lambda/build_containers.sh
-
-# 2. Build and publish Lambda layer (if dependencies changed)
+# 1. Build and publish Lambda layer (if dependencies changed)
 ./scripts/lambda/build_layer.sh
 aws lambda publish-layer-version \
   --layer-name sbir-etl-python-dependencies \
   --zip-file fileb:///tmp/python-dependencies-layer.zip \
   --compatible-runtimes python3.11
 
-# 3. Deploy via CDK
+# 2. Deploy via CDK
 cd infrastructure/cdk
 uv sync
 cdk deploy sbir-etl-lambda
 ```
 
+**Note**: Container-based functions have been migrated to Dagster Cloud. No container builds are needed.
+
 ### Updating Individual Function Code (Quick Update)
 
-For quick code-only updates without rebuilding containers/layers:
+For quick code-only updates without rebuilding layers:
 
 ```bash
 # Package function
