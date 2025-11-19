@@ -10,7 +10,7 @@ from loguru import logger
 from .metrics import MetricComparison, PerformanceMetrics
 
 try:
-    from src.reporting.formats.html_templates import HTMLReportBuilder
+    from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 except Exception:
     HTMLReportBuilder = None  # type: ignore[assignment, unused-ignore]
 
@@ -159,11 +159,12 @@ class PerformanceReporter:
 
         return "\n".join(lines)
 
-    def format_comparison_markdown(self, comparison: MetricComparison) -> str:
+    def format_comparison_markdown(self, comparison: MetricComparison, title: str = "Performance Comparison Report") -> str:
         """Format comparison as Markdown report.
 
         Args:
             comparison: MetricComparison results
+            title: Report title
 
         Returns:
             Markdown formatted report
@@ -172,7 +173,7 @@ class PerformanceReporter:
         current = comparison.current_metrics
 
         lines = [
-            "## Performance Comparison Report",
+            f"## {title}",
             "",
             f"**Status:** `{comparison.regression_severity}`",
             "",
@@ -386,7 +387,7 @@ class PerformanceReporter:
         </div>
         """
 
-        return HTMLReportBuilder.build_page(title, content)
+        return HTMLReportBuilder.create_report_layout(title, content, status)
 
     def _html_regression_section(self, regressions: dict[str, Any]) -> str:
         """Generate HTML for regression analysis section."""
@@ -407,6 +408,75 @@ class PerformanceReporter:
             })
             
         return HTMLReportBuilder.create_table(table_data, ["Metric", "Value"], "Regression Analysis")
+
+    def save_markdown_report(
+        self,
+        comparison: MetricComparison,
+        output_path: Any,
+        title: str = "Performance Comparison Report",
+    ) -> None:
+        """Save comparison report as Markdown file.
+
+        Args:
+            comparison: MetricComparison results
+            output_path: Path to save report to
+            title: Report title
+        """
+        from pathlib import Path
+
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        markdown = self.format_comparison_markdown(comparison, title)
+        path.write_text(markdown)
+        logger.info(f"Saved Markdown report to {path}")
+
+    def save_html_report(
+        self,
+        comparison: MetricComparison,
+        output_path: Any,
+        title: str = "Performance Report",
+    ) -> None:
+        """Save comparison report as HTML file.
+
+        Args:
+            comparison: MetricComparison results
+            output_path: Path to save report to
+            title: Report title
+        """
+        from pathlib import Path
+
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create benchmark data from comparison for HTML generation
+        benchmark_data = {
+            "performance_metrics": {
+                "total_duration_seconds": comparison.current_metrics.total_duration_seconds,
+                "records_per_second": comparison.current_metrics.records_per_second,
+                "peak_memory_mb": comparison.current_metrics.peak_memory_mb,
+                "avg_memory_delta_mb": comparison.current_metrics.avg_memory_delta_mb,
+            },
+            "enrichment_stats": {},
+            "regressions": {
+                "analysis": {
+                    "time_delta_percent": comparison.time_delta_percent,
+                    "memory_delta_percent": comparison.memory_delta_percent,
+                    "match_rate_delta_percent": comparison.match_rate_delta_percent,
+                },
+                "failures": [msg for msg in comparison.regression_messages if comparison.regression_severity == "FAILURE"],
+                "warnings": [msg for msg in comparison.regression_messages if comparison.regression_severity == "WARNING"],
+            },
+        }
+
+        if comparison.current_metrics.match_rate is not None:
+            benchmark_data["enrichment_stats"]["match_rate"] = comparison.current_metrics.match_rate
+            benchmark_data["enrichment_stats"]["matched_awards"] = comparison.current_metrics.matched_records or 0
+            benchmark_data["enrichment_stats"]["total_awards"] = comparison.current_metrics.total_records or 0
+
+        html = self.generate_html_report(benchmark_data, comparison, title)
+        path.write_text(html)
+        logger.info(f"Saved HTML report to {path}")
 
 
 def load_historical_metrics(metrics_dir: str | Any) -> list[tuple[str, PerformanceMetrics]]:

@@ -201,3 +201,4 @@ report.md
 *.template.json
 *.assets.json
 infrastructure/**/.venv/
+results.csv

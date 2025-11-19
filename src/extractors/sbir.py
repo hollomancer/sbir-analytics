@@ -7,7 +7,7 @@ import pandas as pd
 from loguru import logger
 
 from ..utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
-from ..utils.duckdb_client import DuckDBClient
+from ..utils.data.duckdb_client import DuckDBClient
 
 
 class SbirDuckDBExtractor:

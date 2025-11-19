@@ -333,14 +333,15 @@ class TestPerformanceReporter:
         assert isinstance(markdown, str)
         assert len(markdown) > 0
 
-    def test_generate_html_report(self, baseline_metrics, current_metrics):
+    def test_generate_html_report(self, baseline_metrics, current_metrics, sample_benchmark_data):
         """Test HTML report generation."""
         reporter = PerformanceReporter()
 
         comparison = reporter.compare_metrics(baseline_metrics, current_metrics)
         html = reporter.generate_html_report(
-            title="Performance Report",
+            benchmark_data=sample_benchmark_data,
             comparison=comparison,
+            title="Performance Report",
         )
 
         assert isinstance(html, str)
@@ -602,7 +603,7 @@ class TestEdgeCases:
         # Should return empty list without error
         assert len(metrics_list) == 0
 
-    def test_generate_html_report_special_characters(self, baseline_metrics, current_metrics):
+    def test_generate_html_report_special_characters(self, baseline_metrics, current_metrics, sample_benchmark_data):
         """Test HTML generation handles special characters."""
         reporter = PerformanceReporter()
 
@@ -613,8 +614,9 @@ class TestEdgeCases:
         ]
 
         html = reporter.generate_html_report(
-            title="Test <Report> & Title",
+            benchmark_data=sample_benchmark_data,
             comparison=comparison,
+            title="Test <Report> & Title",
         )
 
         # Should escape special characters properly

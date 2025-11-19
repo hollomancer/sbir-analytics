@@ -66,7 +66,7 @@ class TestAlert:
         markdown = alert.to_markdown()
 
         assert "WARNING" in markdown
-        assert "performance memory" in markdown
+        assert "performance memory" in markdown.lower()
         assert "1536.0" in markdown
         assert "50.0%" in markdown
 

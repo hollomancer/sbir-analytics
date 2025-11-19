@@ -1,8 +1,8 @@
 """SBIR award validation rules and quality checks."""
 
-import re
 from __future__ import annotations
 
+import re
 from datetime import date
 from types import SimpleNamespace
 from typing import Any, Optional, Union
