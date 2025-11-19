@@ -5,6 +5,9 @@ from datetime import date, datetime
 import pytest
 from pydantic import ValidationError
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.cet_models import (
     CETArea,
     CETAssessment,

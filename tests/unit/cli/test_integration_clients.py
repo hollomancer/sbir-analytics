@@ -120,13 +120,16 @@ class TestNeo4jClient:
 
     @pytest.fixture
     def mock_config(self) -> Mock:
-        """Create mock config."""
-        config = Mock()
-        config.neo4j = Mock()
-        config.neo4j.uri = "bolt://localhost:7687"
-        config.neo4j.username = "neo4j"
-        config.neo4j.password = "password"  # pragma: allowlist secret
-        config.neo4j.database = "neo4j"
+        """Create mock config using consolidated utility."""
+        from tests.utils.config_mocks import create_mock_pipeline_config
+
+        config = create_mock_pipeline_config()
+        # Ensure neo4j config is set
+        if hasattr(config, "neo4j"):
+            config.neo4j.uri = "bolt://localhost:7687"
+            config.neo4j.username = "neo4j"
+            config.neo4j.password = "password"  # pragma: allowlist secret
+            config.neo4j.database = "neo4j"
         return config
 
     @pytest.fixture

@@ -13,12 +13,6 @@ on:
   push:
     branches: [main, develop]
   workflow_dispatch:
-    inputs:
-      use_docker:
-        description: 'Use Docker Neo4j instead of Aura Free'
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -76,12 +70,11 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
             transition:
-              - 'src/assets/transition_assets.py'
-              - 'tests/integration/test_transition_mvp_chain.py'
-              - 'tests/unit/transition/test_transition_signals_and_boosts.py'
+              - 'src/assets/transition/**'
+              - 'src/assets/jobs/transition_job.py'
+              - 'tests/e2e/transition/**'
+              - 'tests/integration/transition/**'
               - 'docs/transition/**'
-              - 'Makefile'
-              - '.github/workflows/**'
             docker:
               - 'Dockerfile'
               - 'docker-compose.yml'
@@ -111,32 +104,31 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
 
-    # Only use Neo4j service container if explicitly requested via workflow_dispatch
     services:
       neo4j:
-        image: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j:5') || '' }}
+        image: ${{ env.NEO4J_IMAGE }}
         ports:
           - 7687:7687
           - 7474:7474
         env:
-          NEO4J_AUTH: none
+          NEO4J_AUTH: neo4j/${{ env.NEO4J_PASSWORD }}
           NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
         options: >-
-          ${{ (github.event.inputs.use_docker == 'true' && '--health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" --health-interval 10s --health-timeout 5s --health-retries 10 --health-start-period 40s') || '' }}
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 40s
 
     env:
-      # Use Neo4j Aura Free by default, Docker as fallback
-      # Aura Free test credentials from GitHub secrets (configure in repo settings)
-      NEO4J_URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_TEST_URI || 'neo4j+s://test.databases.neo4j.io' }}
-      NEO4J_USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_TEST_USERNAME || 'neo4j' }}
-      NEO4J_PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_TEST_PASSWORD || '' }}
-      SBIR_ETL__NEO4J__URI: ${{ (github.event.inputs.use_docker == 'true' && 'bolt://localhost:7687') || secrets.NEO4J_AURA_TEST_URI || 'neo4j+s://test.databases.neo4j.io' }}
-      SBIR_ETL__NEO4J__USERNAME: ${{ (github.event.inputs.use_docker == 'true' && 'neo4j') || secrets.NEO4J_AURA_TEST_USERNAME || 'neo4j' }}
-      SBIR_ETL__NEO4J__PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_TEST_PASSWORD || '' }}
-      ENVIRONMENT: ${{ (github.event.inputs.use_docker == 'true' && 'dev') || 'test-aura' }}
-      # Limit sample size for Aura Free (stays within 100K node limit)
-      # See env.AURA_SAMPLE_LIMIT (1000) and env.DOCKER_SAMPLE_LIMIT (10000) for default values
-      SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ (github.event.inputs.use_docker == 'true' && env.DOCKER_SAMPLE_LIMIT) || env.AURA_SAMPLE_LIMIT }}
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
+      SBIR_ETL__NEO4J__URI: bolt://localhost:7687
+      SBIR_ETL__NEO4J__USERNAME: ${{ env.NEO4J_USERNAME }}
+      SBIR_ETL__NEO4J__PASSWORD: ${{ env.NEO4J_PASSWORD }}
+      ENVIRONMENT: dev
+      SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ env.DOCKER_SAMPLE_LIMIT }}
 
     strategy:
       matrix:
@@ -146,18 +138,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Display test environment
-        run: |
-          if [ "${{ github.event.inputs.use_docker }}" = "true" ]; then
-            echo "🐳 Using Docker Neo4j (local service container)"
-          else
-            echo "☁️  Using Neo4j Aura Free (cloud)"
-            echo "URI: ${{ env.NEO4J_URI }}"
-          fi
+        run: echo "🐳 Using Dockerized Neo4j service for tests"
 
-      - name: Wait for Neo4j (Docker only)
-        if: github.event.inputs.use_docker == 'true'
+      - name: Wait for Neo4j
         run: |
-          echo "Waiting for Neo4j Docker service to be ready..."
+          echo "Waiting for Neo4j service to be ready..."
           until curl -s -f -o /dev/null "http://localhost:7474"; do
             echo "Neo4j not ready, sleeping..."
             sleep 5
@@ -206,71 +191,6 @@ jobs:
               raise
           PY
 
-      - name: Verify Neo4j connection (Aura Free)
-        if: github.event.inputs.use_docker != 'true'
-        continue-on-error: true
-        run: |
-          echo "Testing connection to Neo4j Aura Free..."
-          uv run python - <<'PY'
-          import os
-          import sys
-          try:
-              from neo4j import GraphDatabase
-              uri = os.environ.get("NEO4J_URI", "")
-              user = os.environ.get("NEO4J_USERNAME", "neo4j")
-              password = os.environ.get("NEO4J_PASSWORD", "")
-
-              if not uri or not password:
-                  print("⚠️  Warning: Neo4j Aura test credentials not configured in GitHub secrets")
-                  print("   Please configure NEO4J_AURA_TEST_URI, NEO4J_AURA_TEST_USERNAME, NEO4J_AURA_TEST_PASSWORD")
-                  print("   See docs/CI_AURA_SETUP.md for setup instructions")
-                  sys.exit(0)  # Don't fail the build, just warn
-
-              print(f"Connecting to: {uri}")
-              driver = GraphDatabase.driver(uri, auth=(user, password))
-              with driver.session() as session:
-                  result = session.run("RETURN 1 as test")
-                  value = result.single()["test"]
-                  assert value == 1
-              driver.close()
-              print("✅ Neo4j Aura Free connection successful!")
-          except Exception as e:
-              print(f"❌ Neo4j Aura Free connection failed: {e}")
-              print("   Tip: Check if your Aura instance is paused at console.neo4j.io")
-              raise
-          PY
-
-      - name: Check initial node count (Aura Free)
-        if: github.event.inputs.use_docker != 'true'
-        continue-on-error: true
-        run: |
-          echo "Checking Neo4j Aura Free node count before tests..."
-          uv run python - <<'PY'
-          import os
-          import sys
-          try:
-              from neo4j import GraphDatabase
-              uri = os.environ.get("NEO4J_URI", "")
-              user = os.environ.get("NEO4J_USERNAME", "neo4j")
-              password = os.environ.get("NEO4J_PASSWORD", "")
-
-              if not uri or not password:
-                  print("⚠️  Skipping node count check - no Aura credentials")
-                  sys.exit(0)
-
-              driver = GraphDatabase.driver(uri, auth=(user, password))
-              with driver.session() as session:
-                  result = session.run("MATCH (n) RETURN count(n) as count")
-                  count = result.single()["count"]
-                  print(f"📊 Current node count: {count:,}")
-                  if count > 95000:
-                      print(f"⚠️  WARNING: Node count ({count:,}) approaching Aura Free limit (100,000)")
-                      print("   Consider cleaning up test data: MATCH (n) DETACH DELETE n")
-              driver.close()
-          except Exception as e:
-              print(f"Note: Could not check node count: {e}")
-          PY
-
       - name: Run fast tests
         env:
           # Pass through environment variables for test configuration
@@ -280,14 +200,6 @@ jobs:
         run: |
           # Use pytest-xdist for parallelization (auto-detects CPU count)
           uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n auto
-
-      - name: Clean up Neo4j test data (Aura Free)
-        # Only cleanup if we actually used Aura (not Docker) and have credentials
-        if: always() && github.event.inputs.use_docker != 'true' && env.NEO4J_URI != '' && env.NEO4J_PASSWORD != ''
-        continue-on-error: true
-        run: |
-          echo "Cleaning up Neo4j Aura Free test data..."
-          uv run python scripts/ci/cleanup_neo4j_aura.py
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -378,15 +290,10 @@ jobs:
   performance-check:
     name: Performance Regression Check
     needs: [detect-changes]
-    # Condition: Run on push OR (PR with performance changes AND not docs-only)
-    # Note: Removed test dependency - performance checks can run independently
-    if: |
-      always() &&
-      (github.event_name == 'push' || needs.detect-changes.outputs.performance == 'true') &&
-      !(github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only == 'true')
+    # Condition: Run only when performance-sensitive files change (or workflow_dispatch)
+    if: needs.detect-changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

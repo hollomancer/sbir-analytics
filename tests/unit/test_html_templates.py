@@ -2,6 +2,9 @@
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 
 

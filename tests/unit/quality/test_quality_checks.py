@@ -12,6 +12,9 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.models import QualitySeverity
 from src.quality.checks import (
     check_completeness,

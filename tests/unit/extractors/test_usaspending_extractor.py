@@ -510,9 +510,21 @@ class TestModuleFunctions:
     @patch("src.extractors.usaspending.DuckDBUSAspendingExtractor")
     def test_extract_usaspending_from_config(self, mock_extractor_class, mock_get_config):
         """Test extract_usaspending_from_config function."""
-        mock_config = Mock()
-        mock_config.extractors.usaspending.dump_file = "/path/to/dump.zip"
-        mock_config.extractors.usaspending.db_path = "/path/to/db"
+        from tests.utils.config_mocks import create_mock_pipeline_config
+
+        mock_config = create_mock_pipeline_config()
+        # Set extractors.usaspending settings
+        if hasattr(mock_config, "extraction"):
+            if not hasattr(mock_config.extraction, "usaspending"):
+                mock_config.extraction.usaspending = Mock()
+            mock_config.extraction.usaspending.dump_file = "/path/to/dump.zip"
+            mock_config.extraction.usaspending.db_path = "/path/to/db"
+        # Also check for extractors attribute (backward compatibility)
+        if not hasattr(mock_config, "extraction") and hasattr(mock_config, "extractors"):
+            if not hasattr(mock_config.extractors, "usaspending"):
+                mock_config.extractors.usaspending = Mock()
+            mock_config.extractors.usaspending.dump_file = "/path/to/dump.zip"
+            mock_config.extractors.usaspending.db_path = "/path/to/db"
         mock_get_config.return_value = mock_config
 
         mock_extractor = Mock()

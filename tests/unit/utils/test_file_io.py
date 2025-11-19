@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.data.file_io import (
     read_parquet_or_ndjson,
     save_dataframe_parquet,

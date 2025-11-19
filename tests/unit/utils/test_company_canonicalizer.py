@@ -3,6 +3,9 @@
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.company_canonicalizer import canonicalize_companies_from_awards
 
 

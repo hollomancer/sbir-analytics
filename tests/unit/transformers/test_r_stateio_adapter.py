@@ -43,8 +43,14 @@ def mock_r_packages():
 
 @pytest.fixture
 def mock_config():
-    """Mock configuration for testing."""
-    config = MagicMock()
+    """Mock configuration for testing using consolidated utility."""
+    from tests.utils.config_mocks import create_mock_pipeline_config
+
+    config = create_mock_pipeline_config()
+    # Set stateio_model_version if needed
+    if hasattr(config, "fiscal_analysis"):
+        config.fiscal_analysis.stateio_model_version = "v2.1"
+    # Also set as direct attribute for backward compatibility
     config.stateio_model_version = "v2.1"
     return config
 

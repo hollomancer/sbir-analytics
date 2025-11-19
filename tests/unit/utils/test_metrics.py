@@ -15,6 +15,11 @@ from pathlib import Path
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
+import pytest
+
 from src.utils.metrics import MetricsCollector, PipelineMetrics
 
 

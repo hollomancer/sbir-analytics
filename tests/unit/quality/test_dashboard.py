@@ -16,6 +16,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
+import pytest
+
 from src.quality.dashboard import DashboardMetrics, QualityDashboard
 
 

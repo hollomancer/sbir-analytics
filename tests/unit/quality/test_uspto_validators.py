@@ -14,6 +14,9 @@ from pathlib import Path
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.quality.uspto_validators import (
     USPTODataQualityValidator,
     USPTOValidationConfig,

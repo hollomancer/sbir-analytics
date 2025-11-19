@@ -5,6 +5,9 @@ from datetime import date, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.enrichment import (
     EnrichmentDeltaEvent,
     EnrichmentFreshnessRecord,

@@ -15,6 +15,11 @@ from typing import Any
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
+import pytest
+
 from src.models.statistical_reports import (
     ModuleMetrics,
     PerformanceMetrics,

@@ -13,6 +13,9 @@ from typing import Any
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
 from src.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 from src.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer

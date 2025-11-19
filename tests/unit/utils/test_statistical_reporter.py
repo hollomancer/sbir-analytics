@@ -9,6 +9,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport, StatisticalReport
 from src.models.statistical_reports import (
     ModuleMetrics,

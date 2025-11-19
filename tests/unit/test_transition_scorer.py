@@ -13,54 +13,25 @@ pytestmark = pytest.mark.fast
 
 from src.models.transition_models import CompetitionType, ConfidenceLevel, FederalContract
 from src.transition.detection.scoring import TransitionScorer
+from tests.utils.config_mocks import create_mock_transition_scorer_config
 
 
 @pytest.fixture
 def default_config() -> dict:
     """Default configuration for TransitionScorer tests."""
+    # Use the consolidated config mock utility
+    config_obj = create_mock_transition_scorer_config()
+    # Convert to dict format expected by TransitionScorer
     return {
-        "base_score": 0.15,
-        "confidence_thresholds": {"high": 0.85, "likely": 0.65, "possible": 0.00},
+        "base_score": config_obj.base_score,
+        "confidence_thresholds": config_obj.confidence_thresholds,
         "scoring": {
-            "agency_continuity": {
-                "enabled": True,
-                "weight": 0.25,
-                "same_agency_bonus": 0.25,
-                "cross_service_bonus": 0.125,
-                "different_dept_bonus": 0.05,
-            },
-            "timing_proximity": {
-                "enabled": True,
-                "weight": 0.20,
-                "windows": [
-                    {"range": [0, 90], "score": 1.0},  # 0-3 months
-                    {"range": [91, 365], "score": 0.75},  # 3-12 months
-                    {"range": [366, 730], "score": 0.5},  # 12-24 months
-                ],
-                "beyond_window_penalty": 0.0,
-            },
-            "competition_type": {
-                "enabled": True,
-                "weight": 0.20,
-                "sole_source_bonus": 0.20,
-                "limited_competition_bonus": 0.10,
-                "full_and_open_bonus": 0.0,
-            },
-            "patent_signal": {
-                "enabled": True,
-                "weight": 0.15,
-                "has_patent_bonus": 0.05,
-                "patent_pre_contract_bonus": 0.03,
-                "patent_topic_match_bonus": 0.02,
-                "patent_similarity_threshold": 0.7,
-            },
-            "cet_alignment": {
-                "enabled": True,
-                "weight": 0.10,
-                "same_cet_area_bonus": 0.05,
-                "related_cet_area_bonus": 0.02,
-            },
-            "text_similarity": {"enabled": False, "weight": 0.0},
+            "agency_continuity": config_obj.scoring.agency_continuity.model_dump(),
+            "timing_proximity": config_obj.scoring.timing_proximity.model_dump(),
+            "competition_type": config_obj.scoring.competition_type.model_dump(),
+            "patent_signal": config_obj.scoring.patent_signal.model_dump(),
+            "cet_alignment": config_obj.scoring.cet_alignment.model_dump(),
+            "text_similarity": config_obj.scoring.text_similarity.model_dump() if hasattr(config_obj.scoring, "text_similarity") else {"enabled": False, "weight": 0.0},
         },
     }
 

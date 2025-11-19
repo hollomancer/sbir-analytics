@@ -12,6 +12,9 @@ from datetime import datetime
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.quality.baseline import BaselineComparison, QualityBaseline, QualityBaselineManager
 
 

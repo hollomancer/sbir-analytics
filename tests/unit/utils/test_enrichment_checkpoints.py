@@ -13,6 +13,11 @@ Tests cover:
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+
+pytestmark = pytest.mark.fast
+
 import pandas as pd
 import pytest
 

@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.quality import (
     ChangesSummary,
     DataHygieneMetrics,

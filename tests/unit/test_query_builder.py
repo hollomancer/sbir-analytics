@@ -1,5 +1,10 @@
 """Unit tests for Neo4j query builder."""
 
+import pytest
+
+
+pytestmark = pytest.mark.fast
+
 from src.loaders.neo4j.query_builder import Neo4jQueryBuilder
 
 

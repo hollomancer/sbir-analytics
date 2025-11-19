@@ -7,6 +7,9 @@ from datetime import date
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.quality import QualitySeverity
 from src.validators.sbir_awards import (
     EMAIL_REGEX,

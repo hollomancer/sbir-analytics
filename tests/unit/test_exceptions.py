@@ -10,6 +10,9 @@ Tests cover:
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.exceptions import (
     APIError,
     CETClassificationError,

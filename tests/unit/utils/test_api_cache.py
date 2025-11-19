@@ -8,6 +8,9 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.cache.api_cache import APICache
 
 

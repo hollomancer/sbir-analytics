@@ -19,8 +19,6 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Only run change detection on PRs to optimize CI time
-    if: github.event_name == 'pull_request'
     permissions:
       contents: read
       pull-requests: read
@@ -52,12 +50,11 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
-  lint:
-    name: Ruff Lint
+  analysis:
+    name: Code Quality Suite
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Skip on docs-only PRs (always run on push to main/develop)
+    timeout-minutes: 25
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
@@ -71,79 +68,23 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      - name: Run Ruff linter
+      - name: Run Ruff lint
         run: uv run ruff check src tests
-
-  format-check:
-    name: Ruff Format Check
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Skip on docs-only PRs (always run on push to main/develop)
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-      - name: Run Ruff formatter check
+      - name: Run Ruff format check
         run: uv run ruff format --check src tests
-
-  type-check:
-    name: MyPy Type Check
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Skip on docs-only PRs (always run on push to main/develop)
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
       - name: Run MyPy type checker
         run: uv run mypy src
-
-  security-scan:
-    name: Bandit Security Scan
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Skip on docs-only PRs (always run on push to main/develop)
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-      - name: Run Bandit security linter
+      - name: Run Bandit
         run: uv run bandit -r src -c pyproject.toml
 
   secret-scan:
     name: Secret Scan
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Reduced from 30 - secret scanning shouldn't take that long
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

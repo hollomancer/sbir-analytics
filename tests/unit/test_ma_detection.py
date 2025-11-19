@@ -1,6 +1,10 @@
 from datetime import date
 
 import pandas as pd
+import pytest
+
+
+pytestmark = pytest.mark.fast
 
 from src.assets.ma_detection import company_mergers_and_acquisitions
 

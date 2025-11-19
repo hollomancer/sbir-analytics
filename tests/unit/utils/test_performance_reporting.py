@@ -2,6 +2,9 @@
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.monitoring import (
     MetricComparison,
     PerformanceMetrics,
