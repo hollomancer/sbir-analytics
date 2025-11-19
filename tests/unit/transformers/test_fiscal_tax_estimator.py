@@ -10,32 +10,7 @@ pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal.taxes import FiscalTaxEstimator, TaxEstimationStats
 
-
-@pytest.fixture
-def sample_components_df():
-    """Sample components DataFrame for testing."""
-    return pd.DataFrame(
-        [
-            {
-                "state": "CA",
-                "bea_sector": "11",
-                "fiscal_year": 2023,
-                "wage_impact": Decimal("100000"),
-                "proprietor_income_impact": Decimal("50000"),
-                "gross_operating_surplus": Decimal("30000"),
-                "consumption_impact": Decimal("20000"),
-            },
-            {
-                "state": "TX",
-                "bea_sector": "21",
-                "fiscal_year": 2023,
-                "wage_impact": Decimal("200000"),
-                "proprietor_income_impact": Decimal("100000"),
-                "gross_operating_surplus": Decimal("60000"),
-                "consumption_impact": Decimal("40000"),
-            },
-        ]
-    )
+# sample_components_df fixture is now in tests/unit/transformers/conftest.py
 
 
 @pytest.fixture

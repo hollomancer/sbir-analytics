@@ -11,21 +11,7 @@ pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal.sensitivity import FiscalUncertaintyQuantifier, UncertaintyResult
 
-
-@pytest.fixture
-def sample_scenario_results_df():
-    """Sample scenario results DataFrame for testing."""
-    np.random.seed(42)
-    return pd.DataFrame(
-        {
-            "scenario_id": range(1, 101),
-            "individual_income_tax_rate": np.random.uniform(0.18, 0.26, 100),
-            "corporate_income_tax_rate": np.random.uniform(0.15, 0.21, 100),
-            "economic_multiplier": np.random.uniform(1.7, 2.3, 100),
-            "discount_rate": np.random.uniform(0.01, 0.07, 100),
-            "total_tax_receipt": np.random.uniform(100000, 200000, 100),
-        }
-    )
+# sample_scenario_results_df fixture is now in tests/unit/transformers/conftest.py
 
 
 @pytest.fixture

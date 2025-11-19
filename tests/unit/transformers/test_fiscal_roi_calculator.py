@@ -10,30 +10,7 @@ pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal.roi import FiscalROICalculator
 
-
-@pytest.fixture
-def sample_tax_estimates_df():
-    """Sample tax estimates DataFrame for testing."""
-    return pd.DataFrame(
-        [
-            {
-                "state": "CA",
-                "bea_sector": "11",
-                "fiscal_year": 2023,
-                "total_tax_receipt": Decimal("50000"),
-                "naics_coverage_rate": 0.95,
-                "geographic_resolution_rate": 0.90,
-            },
-            {
-                "state": "TX",
-                "bea_sector": "21",
-                "fiscal_year": 2023,
-                "total_tax_receipt": Decimal("75000"),
-                "naics_coverage_rate": 0.92,
-                "geographic_resolution_rate": 0.88,
-            },
-        ]
-    )
+# sample_tax_estimates_df fixture is now in tests/unit/transformers/conftest.py
 
 
 @pytest.fixture

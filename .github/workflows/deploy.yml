@@ -1,4 +1,10 @@
 name: Serverless Deployment
+
+# Permissions: Minimal required permissions for deployment
+permissions:
+  contents: read
+  id-token: write  # For OIDC authentication to Dagster Cloud
+
 on:
   push:
     branches:
