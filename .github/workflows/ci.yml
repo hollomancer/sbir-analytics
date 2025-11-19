@@ -1,5 +1,11 @@
 name: CI
 
+# Permissions: Minimal required permissions for security
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write  # For Codecov and performance checks
+
 on:
   pull_request:
     branches-ignore: []
@@ -20,14 +26,24 @@ concurrency:
 
 env:
   # Shared configuration values
-  PYTHON_VERSION: "3.11"
-  NEO4J_IMAGE: "neo4j:5"
-  NEO4J_USERNAME: "neo4j"
-  NEO4J_PASSWORD: "password"
-  DEFAULT_TIMEOUT: 30
+  PYTHON_VERSION: "3.11"  # Python version for all jobs
+  NEO4J_IMAGE: "neo4j:5"  # Neo4j Docker image version
+  NEO4J_USERNAME: "neo4j"  # Default Neo4j username for test containers
+  NEO4J_PASSWORD: "password"  # Default Neo4j password for test containers (pragma: allowlist secret)
+  DEFAULT_TIMEOUT: 30  # Default job timeout in minutes
+  # Performance test configuration
+  PERFORMANCE_SAMPLE_SIZE: "500"  # Sample size for performance regression tests
+  PERFORMANCE_BASELINE_CACHE_KEY: "benchmark-baseline-main"  # Cache key for performance baseline
+  # Test configuration
+  AURA_SAMPLE_LIMIT: "1000"  # Sample limit for Aura Free (stays within 100K node limit)
+  DOCKER_SAMPLE_LIMIT: "10000"  # Sample limit for Docker Neo4j (no limit)
+  # Artifact retention
+  DEFAULT_RETENTION_DAYS: "7"  # Default artifact retention in days
+  CET_ARTIFACT_RETENTION_DAYS: "14"  # CET artifacts retained longer for analysis
 
 jobs:
   detect-changes:
+    name: Detect File Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # Run change detection on all events to enable path-based filtering
@@ -84,10 +100,12 @@ jobs:
               - '!.github/**'
 
   test:
+    name: Unit Tests
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Skip test job on PRs if only docs changed (but always run on push to main/develop)
+    # On push events, we could skip detect-changes, but we need it for docs-only filtering
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
@@ -117,7 +135,8 @@ jobs:
       SBIR_ETL__NEO4J__PASSWORD: ${{ (github.event.inputs.use_docker == 'true' && '') || secrets.NEO4J_AURA_TEST_PASSWORD || '' }}
       ENVIRONMENT: ${{ (github.event.inputs.use_docker == 'true' && 'dev') || 'test-aura' }}
       # Limit sample size for Aura Free (stays within 100K node limit)
-      SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ (github.event.inputs.use_docker == 'true' && '10000') || '1000' }}
+      # See env.AURA_SAMPLE_LIMIT (1000) and env.DOCKER_SAMPLE_LIMIT (10000) for default values
+      SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: ${{ (github.event.inputs.use_docker == 'true' && env.DOCKER_SAMPLE_LIMIT) || env.AURA_SAMPLE_LIMIT }}
 
     strategy:
       matrix:
@@ -271,7 +290,7 @@ jobs:
           uv run python scripts/ci/cleanup_neo4j_aura.py
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           flags: unittests
@@ -279,13 +298,15 @@ jobs:
           fail_ci_if_error: false
 
   container-build-test:
-    needs: [test, detect-changes]
+    name: Container Build and Test
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Only run when Docker files change or on push to main/develop
+    # Condition: Run on push, PR with docker changes, or manual dispatch
+    # Note: Removed test dependency - this job can run in parallel with tests
+    # The container build/test doesn't depend on unit test results
     if: |
       always() &&
-      needs.test.result == 'success' &&
       (github.event_name == 'push' ||
        (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
        github.event_name == 'workflow_dispatch')
@@ -355,11 +376,12 @@ jobs:
           if-no-files-found: ignore
 
   performance-check:
-    needs: [test, detect-changes]
-    # Run on PR only if performance files changed, always run on push to main/develop (unless docs-only)
+    name: Performance Regression Check
+    needs: [detect-changes]
+    # Condition: Run on push OR (PR with performance changes AND not docs-only)
+    # Note: Removed test dependency - performance checks can run independently
     if: |
       always() &&
-      needs.test.result == 'success' &&
       (github.event_name == 'push' || needs.detect-changes.outputs.performance == 'true') &&
       !(github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only == 'true')
     runs-on: ubuntu-latest
@@ -384,8 +406,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: reports/benchmarks/baseline.json
-          key: benchmark-baseline-main
+          key: benchmark-baseline-${{ github.ref_name }}-${{ hashFiles('scripts/performance/**/*.py') }}
           restore-keys: |
+            benchmark-baseline-${{ github.ref_name }}-
+            benchmark-baseline-main-
             benchmark-baseline-
 
       - name: Check if baseline exists
@@ -405,7 +429,7 @@ jobs:
         run: |
           mkdir -p reports/benchmarks
           uv run python scripts/performance/detect_performance_regression.py \
-            --sample-size 500 \
+            --sample-size ${{ env.PERFORMANCE_SAMPLE_SIZE }} \
             --output-json /tmp/regression.json \
             --output-markdown /tmp/report.md \
             --output-html /tmp/report.html \
@@ -430,7 +454,7 @@ jobs:
         run: |
           export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}"
           uv run python scripts/performance/benchmark_enrichment.py \
-            --sample-size 500 \
+            --sample-size ${{ env.PERFORMANCE_SAMPLE_SIZE }} \
             --save-as-baseline
 
       - name: Upload reports
@@ -442,7 +466,7 @@ jobs:
             /tmp/regression.json
             /tmp/report.md
             /tmp/report.html
-          retention-days: "7"
+          retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
       - name: Parse regression results
         id: parse_results
@@ -567,8 +591,10 @@ jobs:
           fi
 
   cet-tests:
+    name: CET Tests (Pipeline & Smoke)
     needs: test
-    # Run on PR only if CET files changed, skip on push to main/develop (use cet-dev-e2e instead)
+    # Condition: PR only, test passed, CET files changed
+    # Note: On push events, use cet-dev-e2e job instead
     if: |
       always() &&
       needs.test.result == 'success' &&
@@ -733,7 +759,7 @@ jobs:
         uses: ./.github/actions/upload-artifacts
         with:
           name: cet-${{ matrix.test-type }}-artifacts
-          retention-days: "14"
+          retention-days: ${{ env.CET_ARTIFACT_RETENTION_DAYS }}
           path: |
             data/processed/cet_*.parquet
             data/processed/cet_*.json
@@ -747,7 +773,7 @@ jobs:
         run: echo "CET ${{ matrix.test-type }} test completed successfully"
 
   cet-dev-e2e:
-    name: CET Dev E2E (dev compose)
+    name: CET Dev E2E (Docker Compose)
     needs: test
     # Only run on push to main/develop, skip on PRs
     if: |
@@ -840,7 +866,7 @@ jobs:
             reports/analytics/**
             reports/alerts/**
             reports/benchmarks/**
-          retention-days: "14"
+          retention-days: ${{ env.CET_ARTIFACT_RETENTION_DAYS }}
           if-no-files-found: warn
 
       - name: Tear down dev compose stack (always)
@@ -910,7 +936,7 @@ jobs:
           name: transition-mvp-precision-audit-sample
           path: reports/validation/vendor_resolution_audit_sample.csv
           if-no-files-found: warn
-          retention-days: "7"
+          retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
       - name: Gate on validation summary
         id: gate
@@ -936,7 +962,7 @@ jobs:
           path: |
             reports/validation/transition_mvp.json
           if-no-files-found: warn
-          retention-days: "7"
+          retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
       - name: Upload processed artifacts
         if: always()
@@ -950,4 +976,4 @@ jobs:
             data/processed/transition_analytics.*
             data/processed/contracts_sample.*
           if-no-files-found: warn
-          retention-days: "7"
+          retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}

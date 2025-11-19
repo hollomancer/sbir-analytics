@@ -33,10 +33,38 @@ runs:
         cache: 'uv'
       shell: bash
 
+    - name: Cache UV installation
+      uses: actions/cache@v4
+      id: cache-uv
+      with:
+        path: |
+          $HOME/.cargo/bin/uv
+          $HOME/.local/bin/uv
+        key: uv-binary-${{ runner.os }}-latest
+        restore-keys: |
+          uv-binary-${{ runner.os }}-
+      shell: bash
+
     - name: Install UV
+      if: steps.cache-uv.outputs.cache-hit != 'true'
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Add UV to PATH
+      if: steps.cache-uv.outputs.cache-hit == 'true'
+      run: |
+        # UV might be in cargo bin or local bin
+        if [ -f "$HOME/.cargo/bin/uv" ]; then
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        elif [ -f "$HOME/.local/bin/uv" ]; then
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        else
+          # Fallback: install if not found in cache
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        fi
       shell: bash
 
     - name: Cache UV virtual environment
@@ -82,4 +110,5 @@ runs:
         # duckdb is already installed via uv sync (it's in main dependencies)
         uv pip install --cache-dir ~/.cache/pip pyreadstat
       shell: bash
+
 

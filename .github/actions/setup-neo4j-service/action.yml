@@ -1,9 +1,10 @@
-name: Setup Neo4j Service
+name: Setup Neo4j Environment
 description: |
   Sets up Neo4j environment variables for use with Neo4j service containers.
   
-  Note: Service containers must be defined at the job level. This action sets environment
-  variables that should be used with a service configuration like:
+  Note: This action only sets environment variables. Service containers must be defined
+  at the job level. This action sets environment variables that should be used with a
+  service configuration like:
   
   ```yaml
   services:
