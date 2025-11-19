@@ -14,6 +14,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.models.quality import ChangesSummary, DataHygieneMetrics
+
 
 class ReportFormat(str, Enum):
     """Supported report output formats."""
@@ -55,6 +57,7 @@ class ModuleMetrics(BaseModel):
 
     # Module identification
     module_name: str = Field(..., description="Name of the pipeline module")
+    run_id: str = Field(..., description="Pipeline run identifier")
     stage: str = Field(
         ..., description="Pipeline stage (extract, validate, enrich, transform, load)"
     )
@@ -79,6 +82,12 @@ class ModuleMetrics(BaseModel):
     # Quality metrics
     quality_metrics: dict[str, float] = Field(
         default_factory=dict, description="Module-specific quality scores"
+    )
+    data_hygiene: Optional[DataHygieneMetrics] = Field(
+        None, description="Data hygiene metrics if applicable"
+    )
+    changes_summary: Optional[ChangesSummary] = Field(
+        None, description="Summary of changes made if applicable"
     )
 
     # Enrichment-specific metrics (optional)
@@ -315,3 +324,5 @@ class ExecutiveSummary(BaseModel):
     )
 
     model_config = ConfigDict(validate_assignment=True)
+ModuleMetrics.model_rebuild()
+PipelineMetrics.model_rebuild()

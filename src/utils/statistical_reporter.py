@@ -232,6 +232,9 @@ class StatisticalReporter:
             peak_memory_mb=peak_memory_mb,
             average_cpu_percent=average_cpu_percent,
             module_specific_metrics=metrics_data.get("module_specific", {}),
+            run_id=run_id,
+            data_hygiene=data_hygiene,
+            changes_summary=changes_summary,
         )
 
         logger.info(
@@ -416,7 +419,7 @@ class StatisticalReporter:
 | Total Records Processed | {report.total_records_processed:,} |
 | Overall Success Rate | {report.overall_success_rate:.1%} |
 | Total Duration | {report.total_duration_seconds:.2f}s |
-| Average Throughput | {report.total_records_processed / report.total_duration_seconds:.0f} records/sec |
+| Average Throughput | {(report.total_records_processed / report.total_duration_seconds) if report.total_duration_seconds > 0 else 0:.0f} records/sec |
 
 """
 
