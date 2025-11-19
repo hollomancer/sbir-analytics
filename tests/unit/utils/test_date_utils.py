@@ -5,7 +5,7 @@ from datetime import date, datetime
 import pytest
 
 # Import directly to avoid duckdb dependency in utils/__init__.py
-from src.utils.date_utils import (
+from src.utils.common.date_utils import (
     format_date_iso,
     parse_date,
     parse_date_safe,

@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.utils.file_io import (
+from src.utils.data.file_io import (
     read_parquet_or_ndjson,
     save_dataframe_parquet,
     write_json,

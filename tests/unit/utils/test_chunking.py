@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from src.utils.chunking import (
+from src.utils.data.chunking import (
     ChunkIterator,
     batch_process,
     chunk_dataframe,

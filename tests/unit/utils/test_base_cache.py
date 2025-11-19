@@ -9,7 +9,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.base_cache import BaseDataFrameCache
+from src.utils.cache.base_cache import BaseDataFrameCache
 
 
 class TestCache(BaseDataFrameCache):
@@ -111,7 +111,7 @@ class TestBaseDataFrameCache:
         result = cache.get(uei="TEST123")
         assert result is None
 
-    @patch("src.utils.base_cache.save_dataframe_parquet")
+    @patch("src.utils.cache.base_cache.save_dataframe_parquet")
     def test_set_when_disabled(self, mock_save, disabled_cache):
         """Test set does nothing when cache is disabled."""
         df = pd.DataFrame({"col": [1, 2, 3]})
@@ -119,7 +119,7 @@ class TestBaseDataFrameCache:
 
         mock_save.assert_not_called()
 
-    @patch("src.utils.base_cache.save_dataframe_parquet")
+    @patch("src.utils.cache.base_cache.save_dataframe_parquet")
     def test_set_saves_dataframe(self, mock_save, cache):
         """Test set saves DataFrame and metadata."""
         df = pd.DataFrame({"col": [1, 2, 3]})

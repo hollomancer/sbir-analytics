@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.logging_config import (
+from src.utils.common.logging_config import (
     LogContext,
     configure_logging_from_config,
     log_with_context,

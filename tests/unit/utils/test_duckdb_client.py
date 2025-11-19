@@ -14,7 +14,7 @@ import csv
 
 import pytest
 
-from src.utils.duckdb_client import DuckDBClient
+from src.utils.data.duckdb_client import DuckDBClient
 
 
 pytestmark = pytest.mark.fast
