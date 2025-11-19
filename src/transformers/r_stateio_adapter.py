@@ -28,6 +28,7 @@ try:
         build_state_model,
         build_useeior_state_models,
         calculate_impacts_with_useeior,
+        calculate_value_added_ratios,
         extract_economic_components_from_impacts,
         format_demand_vector_from_shocks,
         get_state_value_added,
@@ -40,6 +41,7 @@ except ImportError:
     build_state_model = None  # type: ignore
     build_useeior_state_models = None  # type: ignore
     calculate_impacts_with_useeior = None  # type: ignore
+    calculate_value_added_ratios = None  # type: ignore
     extract_economic_components_from_impacts = None  # type: ignore
     format_demand_vector_from_shocks = None  # type: ignore
     get_state_value_added = None  # type: ignore
@@ -508,13 +510,21 @@ class RStateIOAdapter(EconomicModelInterface):
                     logger.warning(f"Could not extract N matrix for {state}: {e}")
                     production_by_sector = None
 
-                # Get value added components from StateIO for ratios
-                va_components = {}
+                # Get value added components from StateIO and calculate ratios
+                va_ratios_df = pd.DataFrame()
                 if self.stateio is not None:
                     try:
                         va_components = get_state_value_added(self.stateio, state, year)
+                        # Convert to ratios DataFrame
+                        va_ratios_df = calculate_value_added_ratios(
+                            va_components, converter=self._pandas_converter
+                        )
+                        if not va_ratios_df.empty:
+                            logger.debug(
+                                f"Calculated value added ratios for {len(va_ratios_df)} sectors in {state}"
+                            )
                     except Exception as e:
-                        logger.debug(f"Could not get value added for {state}: {e}")
+                        logger.debug(f"Could not get value added ratios for {state}: {e}")
 
                 # Build result row for each sector shock
                 for _, shock_row in state_shocks.iterrows():
@@ -528,29 +538,46 @@ class RStateIOAdapter(EconomicModelInterface):
                         # Fallback: estimate from shock amount with multiplier
                         production_impact = Decimal(str(shock_amt)) * Decimal("2.0")
 
+                    # Get value added ratios for this specific sector
+                    # Try to use actual ratios from StateIO data
+                    wage_ratio = Decimal("0.4")  # Default
+                    gos_ratio = Decimal("0.3")  # Default
+                    tax_ratio = Decimal("0.15")  # Default
+                    proprietor_ratio = Decimal("0.0")  # Default
+                    used_actual_ratios = False
+
+                    if not va_ratios_df.empty:
+                        # Look up sector-specific ratios
+                        sector_ratios = va_ratios_df[va_ratios_df["sector"] == str(sector)]
+                        if not sector_ratios.empty:
+                            wage_ratio = Decimal(str(sector_ratios["wage_ratio"].iloc[0]))
+                            gos_ratio = Decimal(str(sector_ratios["gos_ratio"].iloc[0]))
+                            tax_ratio = Decimal(str(sector_ratios["tax_ratio"].iloc[0]))
+                            proprietor_ratio = Decimal(
+                                str(sector_ratios["proprietor_income_ratio"].iloc[0])
+                            )
+                            used_actual_ratios = True
+                            logger.debug(
+                                f"Using StateIO ratios for {state}/{sector}: "
+                                f"wage={wage_ratio:.3f}, gos={gos_ratio:.3f}, tax={tax_ratio:.3f}"
+                            )
+                        else:
+                            logger.debug(
+                                f"No StateIO ratios for sector {sector}, using defaults"
+                            )
+
                     # Calculate value added components using ratios
-                    # If we have GVA data, use ratios; otherwise use defaults
-                    wage_impact = Decimal("0")
-                    gos_impact = Decimal("0")
-                    tax_impact = Decimal("0")
+                    wage_impact = production_impact * wage_ratio
+                    gos_impact = production_impact * gos_ratio
+                    tax_impact = production_impact * tax_ratio
+                    proprietor_impact = production_impact * proprietor_ratio
 
-                    if va_components:
-                        # Extract ratios from GVA components
-                        # This requires understanding the GVA data structure
-                        # For now, use typical ratios
-                        wage_ratio = Decimal("0.4")  # Typical wage share of GVA
-                        gos_ratio = Decimal("0.3")  # Typical GOS share
-                        tax_ratio = Decimal("0.15")  # Typical tax share
-
-                        # Apply to production impact
-                        wage_impact = production_impact * wage_ratio
-                        gos_impact = production_impact * gos_ratio
-                        tax_impact = production_impact * tax_ratio
-                    else:
-                        # Use default ratios
-                        wage_impact = production_impact * Decimal("0.4")
-                        gos_impact = production_impact * Decimal("0.3")
-                        tax_impact = production_impact * Decimal("0.15")
+                    # Determine quality flags based on whether we used actual or default ratios
+                    quality_flags = (
+                        "useeior_with_stateio_ratios"
+                        if used_actual_ratios
+                        else "useeior_with_default_ratios"
+                    )
 
                     all_results.append(
                         {
@@ -558,16 +585,14 @@ class RStateIOAdapter(EconomicModelInterface):
                             "bea_sector": sector,
                             "fiscal_year": shock_row["fiscal_year"],
                             "wage_impact": wage_impact,
-                            "proprietor_income_impact": Decimal(
-                                "0"
-                            ),  # May need separate extraction
+                            "proprietor_income_impact": proprietor_impact,
                             "gross_operating_surplus": gos_impact,
                             "consumption_impact": production_impact * Decimal("0.2"),
                             "tax_impact": tax_impact,
                             "production_impact": production_impact,
                             "model_version": model_version,
                             "confidence": Decimal("0.85"),
-                            "quality_flags": "useeior_computation",
+                            "quality_flags": quality_flags,
                         }
                     )
 

@@ -140,6 +140,183 @@ def get_state_value_added(
     return components
 
 
+def convert_r_gva_to_dataframe(
+    r_object: Any,
+    converter: Any | None = None,
+) -> pd.DataFrame | None:
+    """Convert R GVA object to pandas DataFrame.
+
+    Args:
+        r_object: R object from StateIO GVA functions
+        converter: Optional pandas2ri converter for rpy2 conversion
+
+    Returns:
+        DataFrame with GVA components by sector, or None if conversion fails
+    """
+    if not RPY2_AVAILABLE:
+        logger.warning("rpy2 not available, cannot convert R GVA object")
+        return None
+
+    if r_object is None:
+        return None
+
+    try:
+        # Try conversion with pandas2ri
+        if converter is not None:
+            from rpy2.robjects.conversion import localconverter
+
+            with localconverter(ro.default_converter + converter):
+                df = ro.conversion.rpy2py(r_object)
+        else:
+            # Fall back to direct pandas2ri conversion
+            from rpy2.robjects import pandas2ri
+
+            df = pandas2ri.rpy2py(r_object)
+
+        # Ensure it's a DataFrame
+        if not isinstance(df, pd.DataFrame):
+            logger.warning(f"R GVA object converted to {type(df)}, not DataFrame")
+            # Try to convert to DataFrame if it's a Series or array
+            if hasattr(df, "to_frame"):
+                df = df.to_frame()
+            else:
+                return None
+
+        return df
+
+    except Exception as e:
+        logger.warning(f"Failed to convert R GVA object to DataFrame: {e}")
+        return None
+
+
+def calculate_value_added_ratios(
+    va_components: dict[str, Any],
+    converter: Any | None = None,
+) -> pd.DataFrame:
+    """Calculate value added ratios by sector from StateIO GVA components.
+
+    This function converts R GVA objects to DataFrames and calculates ratios
+    of each component (wages, GOS, taxes) relative to total industry output.
+
+    Args:
+        va_components: Dictionary of GVA components from get_state_value_added()
+        converter: Optional pandas2ri converter for rpy2 conversion
+
+    Returns:
+        DataFrame with columns:
+        - sector: BEA sector code
+        - wage_ratio: Wage share of output
+        - gos_ratio: GOS share of output
+        - tax_ratio: Tax share of output
+        - proprietor_income_ratio: Proprietor income share (if available)
+
+    Note:
+        If conversion fails or data is unavailable, returns empty DataFrame.
+        Caller should use default ratios when this returns empty.
+    """
+    if not va_components:
+        logger.debug("No value added components provided")
+        return pd.DataFrame()
+
+    try:
+        # Convert each component to DataFrame
+        wages_df = convert_r_gva_to_dataframe(va_components.get("wages"), converter)
+        gos_df = convert_r_gva_to_dataframe(va_components.get("gos"), converter)
+        taxes_df = convert_r_gva_to_dataframe(va_components.get("taxes"), converter)
+        gva_df = convert_r_gva_to_dataframe(va_components.get("gva"), converter)
+
+        # If we have GVA total, use it to calculate ratios
+        if gva_df is not None and not gva_df.empty:
+            # GVA DataFrame structure depends on StateIO API
+            # Typically: sectors as index/column, values as data
+            logger.debug(f"GVA DataFrame shape: {gva_df.shape}, columns: {gva_df.columns.tolist()}")
+
+            # Try to identify sector column and value columns
+            # StateIO typically returns DataFrames with BEA sector codes as index
+            if wages_df is not None and gos_df is not None and taxes_df is not None:
+                # Calculate ratios by sector
+                ratios_data = []
+
+                # Align DataFrames by sector (assuming sectors in index or a column)
+                # This is a simplified approach - actual implementation may need adjustment
+                sectors = None
+                if hasattr(wages_df, "index"):
+                    sectors = wages_df.index
+                elif "sector" in wages_df.columns:
+                    sectors = wages_df["sector"]
+                elif "BEA" in wages_df.columns:
+                    sectors = wages_df["BEA"]
+
+                if sectors is not None:
+                    for sector in sectors:
+                        try:
+                            # Extract values for this sector
+                            # Assume first numeric column contains the values
+                            wage_val = _extract_sector_value(wages_df, sector)
+                            gos_val = _extract_sector_value(gos_df, sector)
+                            tax_val = _extract_sector_value(taxes_df, sector)
+
+                            # Calculate total value added for this sector
+                            total_va = wage_val + gos_val + tax_val
+
+                            # Calculate ratios (avoid division by zero)
+                            if total_va > 0:
+                                ratios_data.append(
+                                    {
+                                        "sector": str(sector),
+                                        "wage_ratio": float(wage_val / total_va),
+                                        "gos_ratio": float(gos_val / total_va),
+                                        "tax_ratio": float(tax_val / total_va),
+                                        "proprietor_income_ratio": 0.0,  # TODO: extract if available
+                                    }
+                                )
+                        except Exception as e:
+                            logger.debug(f"Could not calculate ratios for sector {sector}: {e}")
+                            continue
+
+                if ratios_data:
+                    return pd.DataFrame(ratios_data)
+
+        logger.debug("Could not calculate value added ratios from components")
+        return pd.DataFrame()
+
+    except Exception as e:
+        logger.warning(f"Failed to calculate value added ratios: {e}")
+        return pd.DataFrame()
+
+
+def _extract_sector_value(df: pd.DataFrame, sector: str | int) -> float:
+    """Extract numeric value for a sector from GVA DataFrame.
+
+    Args:
+        df: DataFrame with sector data
+        sector: Sector code to extract
+
+    Returns:
+        Numeric value for the sector
+
+    Raises:
+        ValueError: If sector not found or value cannot be extracted
+    """
+    # Try index lookup first
+    if sector in df.index:
+        # Get the first numeric column value
+        numeric_cols = df.select_dtypes(include=["number"]).columns
+        if len(numeric_cols) > 0:
+            return float(df.loc[sector, numeric_cols[0]])
+
+    # Try column lookup
+    if "sector" in df.columns or "BEA" in df.columns:
+        sector_col = "sector" if "sector" in df.columns else "BEA"
+        sector_row = df[df[sector_col] == sector]
+        if not sector_row.empty:
+            numeric_cols = sector_row.select_dtypes(include=["number"]).columns
+            if len(numeric_cols) > 0:
+                return float(sector_row[numeric_cols[0]].iloc[0])
+
+    raise ValueError(f"Could not extract value for sector {sector}")
+
+
 def build_useeior_state_models(
     useeior_pkg: Any,
     modelname: str,

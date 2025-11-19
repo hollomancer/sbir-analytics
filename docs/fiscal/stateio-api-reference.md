@@ -273,3 +273,42 @@ Common formats:
 5. **Value Added**: Use `getStateGVA()` or individual component functions
 6. **Integration**: Consider using USEEIOR's `buildTwoRegionModels()` for easier integration
 7. **Caching**: Model building can be expensive - cache results
+
+## Python Integration
+
+The Python adapter (`RStateIOAdapter`) now includes improved value added extraction:
+
+### Value Added Ratio Extraction
+
+The adapter automatically:
+1. Fetches GVA components (wages, GOS, taxes) from StateIO for each state
+2. Converts R data structures to pandas DataFrames
+3. Calculates sector-specific ratios of each component relative to total value added
+4. Applies these actual ratios instead of hardcoded defaults
+
+### Quality Flags
+
+Impact results include quality flags indicating data source:
+- `useeior_with_stateio_ratios`: Used actual StateIO GVA ratios (highest quality)
+- `useeior_with_default_ratios`: Used default ratios (fallback when StateIO data unavailable)
+- `placeholder_computation`: Used placeholder computation (when R packages unavailable)
+
+### Example Usage
+
+```python
+from src.transformers.r_stateio_adapter import RStateIOAdapter
+import pandas as pd
+from decimal import Decimal
+
+adapter = RStateIOAdapter()
+
+shocks = pd.DataFrame({
+    "state": ["CA"],
+    "bea_sector": ["11"],
+    "fiscal_year": [2023],
+    "shock_amount": [Decimal("1000000")]
+})
+
+results = adapter.compute_impacts(shocks)
+# Results include sector-specific value added impacts with quality flags
+```

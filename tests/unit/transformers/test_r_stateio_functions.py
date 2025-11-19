@@ -574,6 +574,127 @@ class TestComputeImpactsViaUSEEIORStateModels:
         assert call_args[1]["perspective"] == "FINAL"
 
 
+class TestValueAddedRatioCalculation:
+    """Tests for value added ratio calculation functions."""
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", False)
+    def test_convert_r_gva_no_rpy2(self):
+        """Test convert_r_gva_to_dataframe when rpy2 not available."""
+        result = r_stateio.convert_r_gva_to_dataframe(Mock())
+        assert result is None
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    def test_convert_r_gva_none_input(self):
+        """Test convert_r_gva_to_dataframe with None input."""
+        result = r_stateio.convert_r_gva_to_dataframe(None)
+        assert result is None
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("src.transformers.r_stateio_functions.ro")
+    def test_convert_r_gva_to_dataframe_success(self, mock_ro):
+        """Test successful conversion of R GVA object to DataFrame."""
+        mock_r_obj = Mock()
+        mock_df = pd.DataFrame({"sector": ["11", "21"], "value": [1000, 2000]})
+
+        # Mock pandas2ri conversion
+        with patch("rpy2.robjects.pandas2ri.rpy2py", return_value=mock_df):
+            result = r_stateio.convert_r_gva_to_dataframe(mock_r_obj)
+
+            assert isinstance(result, pd.DataFrame)
+            assert len(result) == 2
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("src.transformers.r_stateio_functions.ro")
+    def test_convert_r_gva_series_to_dataframe(self, mock_ro):
+        """Test conversion of R object to Series, then to DataFrame."""
+        mock_r_obj = Mock()
+        mock_series = pd.Series([1000, 2000], index=["11", "21"])
+
+        with patch("rpy2.robjects.pandas2ri.rpy2py", return_value=mock_series):
+            result = r_stateio.convert_r_gva_to_dataframe(mock_r_obj)
+
+            # Should convert Series to DataFrame
+            assert isinstance(result, pd.DataFrame)
+
+    def test_calculate_value_added_ratios_empty_components(self):
+        """Test calculate_value_added_ratios with empty components."""
+        result = r_stateio.calculate_value_added_ratios({})
+        assert isinstance(result, pd.DataFrame)
+        assert result.empty
+
+    @patch("src.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
+    def test_calculate_value_added_ratios_success(self, mock_convert):
+        """Test successful calculation of value added ratios."""
+        # Mock GVA DataFrames
+        wages_df = pd.DataFrame({"11": [400], "21": [200]}).T
+        gos_df = pd.DataFrame({"11": [300], "21": [150]}).T
+        taxes_df = pd.DataFrame({"11": [150], "21": [75]}).T
+        gva_df = pd.DataFrame({"11": [850], "21": [425]}).T
+
+        # Mock conversion to return these DataFrames
+        mock_convert.side_effect = [wages_df, gos_df, taxes_df, gva_df]
+
+        va_components = {
+            "wages": Mock(),
+            "gos": Mock(),
+            "taxes": Mock(),
+            "gva": Mock(),
+        }
+
+        result = r_stateio.calculate_value_added_ratios(va_components)
+
+        assert isinstance(result, pd.DataFrame)
+        if not result.empty:
+            assert "sector" in result.columns
+            assert "wage_ratio" in result.columns
+            assert "gos_ratio" in result.columns
+            assert "tax_ratio" in result.columns
+
+    def test_extract_sector_value_from_index(self):
+        """Test _extract_sector_value with sector in index."""
+        df = pd.DataFrame({"value": [1000, 2000]}, index=["11", "21"])
+
+        result = r_stateio._extract_sector_value(df, "11")
+        assert result == 1000.0
+
+    def test_extract_sector_value_from_column(self):
+        """Test _extract_sector_value with sector in column."""
+        df = pd.DataFrame({"sector": ["11", "21"], "value": [1000, 2000]})
+
+        result = r_stateio._extract_sector_value(df, "11")
+        assert result == 1000.0
+
+    def test_extract_sector_value_not_found(self):
+        """Test _extract_sector_value raises error when sector not found."""
+        df = pd.DataFrame({"value": [1000, 2000]}, index=["11", "21"])
+
+        with pytest.raises(ValueError, match="Could not extract value"):
+            r_stateio._extract_sector_value(df, "99")
+
+    @patch("src.transformers.r_stateio_functions.convert_r_gva_to_dataframe")
+    def test_calculate_ratios_with_zero_total(self, mock_convert):
+        """Test ratio calculation handles zero total value added gracefully."""
+        # All zeros - should skip this sector
+        wages_df = pd.DataFrame({"11": [0]}).T
+        gos_df = pd.DataFrame({"11": [0]}).T
+        taxes_df = pd.DataFrame({"11": [0]}).T
+        gva_df = pd.DataFrame({"11": [0]}).T
+
+        mock_convert.side_effect = [wages_df, gos_df, taxes_df, gva_df]
+
+        va_components = {
+            "wages": Mock(),
+            "gos": Mock(),
+            "taxes": Mock(),
+            "gva": Mock(),
+        }
+
+        result = r_stateio.calculate_value_added_ratios(va_components)
+
+        # Should return empty DataFrame (no valid ratios)
+        assert isinstance(result, pd.DataFrame)
+
+
 class TestEdgeCases:
     """Tests for edge cases in R StateIO functions."""
 
