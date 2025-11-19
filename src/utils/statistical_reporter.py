@@ -15,6 +15,8 @@ Features:
 - Integration with existing performance monitoring utilities
 """
 
+from __future__ import annotations
+
 import json
 import os
 from datetime import datetime

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -38,7 +38,7 @@ class FiscalTaxEstimator:
     surplus, and consumption into federal tax receipts using configurable tax rates.
     """
 
-    def __init__(self, config: Any | None = None):
+    def __init__(self, config: Optional[Any] = None):
         """Initialize the fiscal tax estimator.
 
         Args:

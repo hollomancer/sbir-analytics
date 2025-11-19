@@ -1,21 +1,22 @@
-"""Shim for backward compatibility.
+"""Performance monitoring package.
 
-This module has been refactored into src.utils.monitoring.
-Please update imports to use the new location.
+This package provides tools for tracking execution time, memory usage,
+and generating performance reports.
 """
 
-from src.utils.monitoring import (
-    MetricComparison,
-    PerformanceMetrics,
+from .core import (
     PerformanceMonitor,
-    PerformanceReporter,
-    analyze_performance_trend,
-    load_historical_metrics,
     monitor_block,
     monitor_memory,
     performance_monitor,
     time_block,
     time_function,
+)
+from .metrics import MetricComparison, PerformanceMetrics
+from .reporting import (
+    PerformanceReporter,
+    analyze_performance_trend,
+    load_historical_metrics,
 )
 
 __all__ = [

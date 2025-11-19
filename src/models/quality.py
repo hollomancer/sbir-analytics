@@ -1,7 +1,9 @@
 """Pydantic models for data quality reporting."""
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,12 +24,12 @@ class QualityIssue(BaseModel):
 
     field: str = Field(..., description="Field name with the issue")
     # Make these optional to match validators which may omit value/expected/rule
-    value: Any | None = Field(None, description="Actual value that caused the issue")
-    expected: Any | None = Field(None, description="Expected value or format")
+    value: Optional[Any] = Field(None, description="Actual value that caused the issue")
+    expected: Optional[Any] = Field(None, description="Expected value or format")
     message: str = Field(..., description="Human-readable error message")
     severity: QualitySeverity = Field(..., description="Issue severity level")
-    rule: str | None = Field(None, description="Validation rule that failed")
-    row_index: int | None = Field(None, description="Row index in the dataset")
+    rule: Optional[str] = Field(None, description="Validation rule that failed")
+    row_index: Optional[int] = Field(None, description="Row index in the dataset")
 
     model_config = ConfigDict(validate_assignment=True, use_enum_values=True)
 
@@ -74,9 +76,9 @@ class InsightRecommendation(BaseModel):
     )
 
     # Context
-    current_value: float | None = Field(None, description="Current metric value")
-    expected_value: float | None = Field(None, description="Expected or baseline value")
-    deviation: float | None = Field(None, description="Deviation from expected (%)")
+    current_value: Optional[float] = Field(None, description="Current metric value")
+    expected_value: Optional[float] = Field(None, description="Expected or baseline value")
+    deviation: Optional[float] = Field(None, description="Deviation from expected (%)")
 
     # Action items
     recommendations: list[str] = Field(
@@ -190,10 +192,10 @@ class ModuleReport(BaseModel):
     throughput_records_per_second: float = Field(..., description="Processing throughput")
 
     # Quality metrics
-    data_hygiene: DataHygieneMetrics | None = Field(
+    data_hygiene: Optional[DataHygieneMetrics] = Field(
         None, description="Data hygiene metrics if applicable"
     )
-    changes_summary: ChangesSummary | None = Field(
+    changes_summary: Optional[ChangesSummary] = Field(
         None, description="Summary of changes made if applicable"
     )
 
@@ -225,10 +227,10 @@ class StatisticalReport(BaseModel):
     )
 
     # Aggregate quality metrics
-    aggregate_data_hygiene: DataHygieneMetrics | None = Field(
+    aggregate_data_hygiene: Optional[DataHygieneMetrics] = Field(
         None, description="Aggregated data hygiene metrics"
     )
-    aggregate_changes: ChangesSummary | None = Field(None, description="Aggregated changes summary")
+    aggregate_changes: Optional[ChangesSummary] = Field(None, description="Aggregated changes summary")
 
     # Insights and recommendations
     insights: list[InsightRecommendation] = Field(
@@ -271,12 +273,12 @@ class EnrichmentResult(BaseModel):
     )
 
     # Quality metrics
-    confidence_score: float | None = Field(
+    confidence_score: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Confidence in enrichment accuracy"
     )
 
     # Error information
-    error_message: str | None = Field(None, description="Error message if enrichment failed")
+    error_message: Optional[str] = Field(None, description="Error message if enrichment failed")
 
     model_config = ConfigDict(validate_assignment=True)
 

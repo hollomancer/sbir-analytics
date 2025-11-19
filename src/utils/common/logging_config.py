@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from ..config.loader import get_config
+from src.config.loader import get_config
 
 
 # Context variables for structured logging

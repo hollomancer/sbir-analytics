@@ -35,7 +35,7 @@ from tenacity import (
 
 from src.config.loader import get_config
 from src.exceptions import APIError, ConfigurationError
-from src.utils.patentsview_cache import PatentsViewCache
+from src.utils.cache.api_cache import APICache
 
 
 class RateLimiter:
@@ -145,8 +145,11 @@ class PatentsViewClient:
         cache_enabled = cache_config.get("enabled", True)
         cache_dir = cache_config.get("cache_dir", "data/cache/patentsview")
         cache_ttl = cache_config.get("ttl_hours", 24)
-        self.cache = PatentsViewCache(
-            cache_dir=cache_dir, enabled=cache_enabled, ttl_hours=cache_ttl
+        self.cache = APICache(
+            cache_dir=cache_dir,
+            enabled=cache_enabled,
+            ttl_hours=cache_ttl,
+            default_cache_type="patents",
         )
 
         # HTTP client with default headers

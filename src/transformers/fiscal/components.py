@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -38,7 +38,7 @@ class FiscalComponentCalculator:
     their reasonableness and consistency.
     """
 
-    def __init__(self, config: Any | None = None):
+    def __init__(self, config: Optional[Any] = None):
         """Initialize the fiscal component calculator.
 
         Args:

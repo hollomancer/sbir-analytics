@@ -36,6 +36,9 @@ __all__: list[str] = [
     "Company",
     "CompanyMatch",
     "RawCompany",
+    # Organizations
+    "Organization",
+    "OrganizationMatch",
     # Patents
     "Patent",
     "PatentCitation",
@@ -77,6 +80,9 @@ _lazy_mapping: dict[str, tuple] = {
     "Company": ("src.models.company", "Company"),
     "CompanyMatch": ("src.models.company", "CompanyMatch"),
     "RawCompany": ("src.models.company", "RawCompany"),
+    # Organization models
+    "Organization": ("src.models.organization", "Organization"),
+    "OrganizationMatch": ("src.models.organization", "OrganizationMatch"),
     # Patent models
     "Patent": ("src.models.patent", "Patent"),
     "PatentCitation": ("src.models.patent", "PatentCitation"),

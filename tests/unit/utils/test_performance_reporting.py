@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.utils.performance_monitor import (
+from src.utils.monitoring import (
     MetricComparison,
     PerformanceMetrics,
     PerformanceReporter,

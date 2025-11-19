@@ -4,6 +4,8 @@ This module provides utilities for validating file system paths on startup,
 ensuring that required directories exist and files are accessible.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from loguru import logger

@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from loguru import logger
@@ -26,7 +26,7 @@ class ROICalculationResult:
     """Result of ROI calculation with detailed metrics."""
 
     roi_ratio: float
-    payback_period_years: float | None
+    payback_period_years: Optional[float]
     net_present_value: Decimal
     benefit_cost_ratio: float
     total_investment: Decimal
@@ -42,7 +42,7 @@ class FiscalROICalculator:
     investments, computing ROI metrics with temporal discounting.
     """
 
-    def __init__(self, config: Any | None = None):
+    def __init__(self, config: Optional[Any] = None):
         """Initialize the fiscal ROI calculator.
 
         Args:
@@ -81,7 +81,7 @@ class FiscalROICalculator:
         investment: Decimal,
         annual_returns: Decimal,
         discount_rate: float = 0.0,
-    ) -> float | None:
+    ) -> Optional[float]:
         """Calculate payback period in years.
 
         Args:
@@ -122,7 +122,7 @@ class FiscalROICalculator:
         sbir_investment: Decimal,
         discount_rate: float = 0.03,
         time_horizon_years: int = 10,
-        analysis_date: datetime | None = None,
+        analysis_date: Optional[datetime] = None,
     ) -> FiscalReturnSummary:
         """Calculate comprehensive ROI summary from tax estimates and investment.
 

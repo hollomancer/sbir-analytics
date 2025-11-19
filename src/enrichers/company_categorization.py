@@ -39,7 +39,7 @@ from src.enrichers.usaspending import (
 )
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.utils.async_tools import run_sync
-from src.utils.usaspending_cache import USAspendingCache
+from src.utils.cache.api_cache import APICache
 
 
 _api_client: USAspendingAPIClient | None = None
@@ -544,14 +544,15 @@ def retrieve_company_contracts_api(
     try:
         config = get_config()
         cache_config = config.enrichment_refresh.usaspending.cache
-        cache = USAspendingCache(
+        cache = APICache(
             cache_dir=cache_config.cache_dir,
             enabled=cache_config.enabled,
             ttl_hours=cache_config.ttl_hours,
+            default_cache_type="contracts",
         )
     except Exception as e:
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")
-        cache = USAspendingCache(enabled=False)
+        cache = APICache(cache_dir="data/cache/usaspending", enabled=False)
 
     client = _get_usaspending_client()
 

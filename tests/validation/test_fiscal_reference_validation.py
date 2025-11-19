@@ -5,6 +5,8 @@ results and handles edge cases correctly. When a reference R implementation
 is available, these tests can be extended to validate exact numerical results.
 """
 
+from __future__ import annotations
+
 from decimal import Decimal
 
 import pandas as pd

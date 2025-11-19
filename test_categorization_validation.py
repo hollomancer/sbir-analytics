@@ -684,7 +684,7 @@ def categorize_companies(
                 "sbir_dollars": sbir_dollars,
                 "sbir_pct_of_total": sbir_pct_of_total,
                 "non_sbir_dollars": non_sbir_dollars,
-                "non_sbir_contracts": company_result.award_count,
+                "non_sbir_contracts": len(contracts_df),
                 "cost_based_contracts": cost_based_count,
                 "service_based_contracts": service_based_count,
                 "justification": justification,

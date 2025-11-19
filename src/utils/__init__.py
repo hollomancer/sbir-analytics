@@ -1,7 +1,7 @@
 """Shared utilities for the SBIR ETL pipeline."""
 
-from .duckdb_client import DuckDBClient, get_duckdb_client
-from .logging_config import (
+from src.utils.data.duckdb_client import DuckDBClient, get_duckdb_client
+from src.utils.common.logging_config import (
     LogContext,
     configure_logging_from_config,
     log_debug,
@@ -23,7 +23,7 @@ from .asset_column_helper import AssetColumnHelper
 from .config_accessor import ConfigAccessor
 
 # File I/O utilities
-from .file_io import (
+from src.utils.data.file_io import (
     read_parquet_or_ndjson,
     save_dataframe_parquet,
     write_json,
@@ -32,7 +32,7 @@ from .file_io import (
 )
 
 # Chunking utilities
-from .chunking import (
+from src.utils.data.chunking import (
     ChunkIterator,
     batch_process,
     chunk_dataframe,
@@ -49,7 +49,7 @@ from .error_handling import (
 )
 
 # Date utilities
-from .date_utils import (
+from src.utils.common.date_utils import (
     format_date_iso,
     parse_date,
     parse_date_safe,
@@ -57,7 +57,7 @@ from .date_utils import (
 )
 
 # Path utilities
-from .path_utils import (
+from src.utils.common.path_utils import (
     ensure_dir,
     ensure_parent_dir,
     ensure_path_exists,

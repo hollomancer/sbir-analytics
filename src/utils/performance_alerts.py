@@ -14,6 +14,8 @@ Features:
 - JSON/Markdown alert formatting
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
