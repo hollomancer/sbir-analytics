@@ -39,123 +39,27 @@ env:
   REPAIR_MAX_RUNTIME_MIN: "15"
 
 jobs:
-  test-unit:
-    name: Run Unit Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "true"
-
-      - name: Run slow unit tests only (fast tests already covered in PR CI)
-        id: test
-        run: |
-          set -o pipefail
-          # Focus on slow tests that might not run in PR CI
-          uv run pytest tests/unit/ -m "slow" -v 2>&1 | tee test-unit.log || \
-          # If no slow tests, run all unit tests as fallback
-          uv run pytest tests/unit/ -v 2>&1 | tee test-unit.log
-        continue-on-error: true
-
-      - name: Upload logs
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: nightly-unit-test-logs
-          path: test-unit.log
-
-      - name: Set failure flag
-        id: flags
-        run: |
-          if [ "${{ steps.test.outcome }}" != "success" ]; then
-            echo "failed=true" >> $GITHUB_OUTPUT
-          else
-            echo "failed=false" >> $GITHUB_OUTPUT
-          fi
-
-  test-integration:
-    name: Run Integration Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    services:
-      neo4j:
-        image: neo4j:5
-        ports:
-          - 7687:7687
-          - 7474:7474
-        env:
-          NEO4J_AUTH: neo4j/password
-        options: >-
-          --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
-    env:
-      NEO4J_URI: bolt://localhost:7687
-      NEO4J_USERNAME: neo4j
-      NEO4J_PASSWORD: password  # pragma: allowlist secret
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "true"
-
-      - name: Setup Neo4j environment
-        uses: ./.github/actions/setup-neo4j-service
-        with:
-          username: neo4j
-          password: password
-          auth-mode: password
-          uri: bolt://localhost:7687
-
-      - name: Wait for Neo4j
-        uses: ./.github/actions/wait-for-neo4j
-        with:
-          method: http
-          uri: http://localhost:7474
-          timeout: "120"
-
-      - name: Run integration tests
-        id: test
-        run: |
-          set -o pipefail
-          uv run pytest tests/integration/ -v 2>&1 | tee test-integration.log
-        continue-on-error: true
-
-      - name: Upload logs
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: nightly-integration-test-logs
-          path: test-integration.log
-
-      - name: Set failure flag
-        id: flags
-        run: |
-          if [ "${{ steps.test.outcome }}" != "success" ]; then
-            echo "failed=true" >> $GITHUB_OUTPUT
-          else
-            echo "failed=false" >> $GITHUB_OUTPUT
-          fi
-
-  test-e2e:
-    name: Run E2E Tests
+  tests:
+    name: Run Nightly Test Suites
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unit
+            pytest_target: "tests/unit/"
+            pytest_args: '-m "slow" -v'
+            needs_neo4j: false
+          - suite: integration
+            pytest_target: "tests/integration/"
+            pytest_args: "-v"
+            needs_neo4j: true
+          - suite: e2e
+            pytest_target: "tests/e2e/"
+            pytest_args: "-v"
+            needs_neo4j: false
     steps:
       - uses: actions/checkout@v4
 
@@ -168,43 +72,102 @@ jobs:
           cache-pytest: "false"
           install-pyreadstat: "true"
 
-      - name: Run E2E tests
-        id: test
+      - name: Start Neo4j service
+        if: matrix.needs_neo4j == true
+        run: |
+          docker run -d --name nightly-neo4j \
+            -e NEO4J_AUTH=neo4j/password \
+            -p 7687:7687 -p 7474:7474 \
+            neo4j:5
+          echo "Waiting for Neo4j..."
+          until curl -s -f -o /dev/null http://localhost:7474; do
+            echo "Neo4j not ready, sleeping..."
+            sleep 5
+          done
+          echo "Neo4j is ready."
+
+      - name: Run ${{ matrix.suite }} tests
+        id: run-tests
+        continue-on-error: true
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: password
         run: |
           set -o pipefail
-          uv run pytest tests/e2e/ -v 2>&1 | tee test-e2e.log
-        continue-on-error: true
+          echo "Executing suite: ${{ matrix.suite }}"
+          cmd="uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}"
+          echo "Command: $cmd"
+          eval "$cmd" 2>&1 | tee test-${{ matrix.suite }}.log
+
+      - name: Stop Neo4j service
+        if: always() && matrix.needs_neo4j == true
+        run: |
+          docker stop nightly-neo4j >/dev/null 2>&1 || true
+          docker rm nightly-neo4j >/dev/null 2>&1 || true
 
       - name: Upload logs
         if: always()
         uses: ./.github/actions/upload-artifacts
         with:
-          name: nightly-e2e-test-logs
-          path: test-e2e.log
+          name: nightly-${{ matrix.suite }}-logs
+          path: test-${{ matrix.suite }}.log
 
-      - name: Set failure flag
-        id: flags
+      - name: Upload suite status
+        if: always()
         run: |
-          if [ "${{ steps.test.outcome }}" != "success" ]; then
-            echo "failed=true" >> $GITHUB_OUTPUT
-          else
-            echo "failed=false" >> $GITHUB_OUTPUT
-          fi
+          mkdir -p status
+          cat <<JSON > status/${{ matrix.suite }}.json
+          {
+            "suite": "${{ matrix.suite }}",
+            "status": "${{ steps.run-tests.outcome }}"
+          }
+          JSON
+      - name: Publish status artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-status-${{ matrix.suite }}
+          path: status/${{ matrix.suite }}.json
 
   diagnose:
     name: Diagnose Test Failures
-    needs: [test-unit, test-integration, test-e2e]
+    needs: tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    if: |
-      needs.test-unit.outputs.failed == 'true' ||
-      needs.test-integration.outputs.failed == 'true' ||
-      needs.test-e2e.outputs.failed == 'true'
+    timeout-minutes: 10
+    if: always()
+    outputs:
+      failed: ${{ steps.summary.outputs.failed }}
     steps:
-      - name: Set failure flag
-        id: flags
+      - name: Download status artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-status-*
+          merge-multiple: true
+          path: statuses
+      - name: Summarize results
+        id: summary
         run: |
-          echo "failed=true" >> $GITHUB_OUTPUT
+          set -e
+          if [ ! -d statuses ]; then
+            echo "No status artifacts found."
+            echo "failed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          overall=false
+          mkdir -p reports
+          for file in statuses/*.json; do
+            suite=$(jq -r '.suite' "$file")
+            status=$(jq -r '.status' "$file")
+            echo "Suite ${suite}: ${status}"
+            if [ "$status" != "success" ]; then
+              overall=true
+            fi
+          done
+          echo "failed=$overall" >> $GITHUB_OUTPUT
+          if [ "$overall" = "true" ]; then
+            exit 0
+          fi
 
   attempt_repair:
     name: Attempt minimal, reversible fixes
@@ -227,22 +190,19 @@ jobs:
           git switch -c "$branch"
           echo "branch=$branch" >> $GITHUB_OUTPUT
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'uv'
-
-      - name: Install formatters
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv pip install black isort
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
 
       - name: Autofix (black + isort)
         run: |
-          black . || true
-          isort . || true
+          uv run black . || true
+          uv run isort . || true
 
       - name: Fix common CI YAML issues
         run: |
@@ -271,10 +231,6 @@ jobs:
         if: steps.commit.outputs.changed == 'true'
         run: |
           set -o pipefail
-          # Need to install dependencies before running tests
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.cargo/bin:$PATH"
-          uv sync
           uv run pytest -m fast -q 2>&1 | tee test-after-fix.log
         continue-on-error: true
 
