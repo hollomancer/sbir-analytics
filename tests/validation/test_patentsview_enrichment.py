@@ -6,22 +6,22 @@ filed patents and checks if any of those patents were later reassigned to other 
 
 Usage:
     # Test first 10 companies (quick)
-    poetry run python test_patentsview_enrichment.py --limit 10
+    poetry run python tests/validation/test_patentsview_enrichment.py --limit 10
 
     # Test all companies
-    poetry run python test_patentsview_enrichment.py
+    poetry run python tests/validation/test_patentsview_enrichment.py
 
     # Test with a different CSV file
-    poetry run python test_patentsview_enrichment.py --dataset path/to/companies.csv
+    poetry run python tests/validation/test_patentsview_enrichment.py --dataset path/to/companies.csv
 
     # Test specific company by UEI
-    poetry run python test_patentsview_enrichment.py --uei ABC123DEF456
+    poetry run python tests/validation/test_patentsview_enrichment.py --uei ABC123DEF456
 
     # Export results to CSV
-    poetry run python test_patentsview_enrichment.py --output results.csv
+    poetry run python tests/validation/test_patentsview_enrichment.py --output results.csv
 
     # Generate detailed markdown report
-    poetry run python test_patentsview_enrichment.py --markdown-report report.md
+    poetry run python tests/validation/test_patentsview_enrichment.py --markdown-report report.md
 """
 
 import argparse

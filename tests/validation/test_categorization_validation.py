@@ -10,27 +10,27 @@ contract revenue that reflects the company's product vs service business model.
 
 Usage:
     # Test first 10 companies (quick)
-    poetry run python test_categorization_validation.py --limit 10
+    poetry run python tests/validation/test_categorization_validation.py --limit 10
 
     # Test all companies
-    poetry run python test_categorization_validation.py
+    poetry run python tests/validation/test_categorization_validation.py
 
     # Test with a different CSV file (all equivalent):
-    poetry run python test_categorization_validation.py --dataset path/to/companies.csv
-    poetry run python test_categorization_validation.py -d path/to/companies.csv
-    poetry run python test_categorization_validation.py --csv path/to/companies.csv
+    poetry run python tests/validation/test_categorization_validation.py --dataset path/to/companies.csv
+    poetry run python tests/validation/test_categorization_validation.py -d path/to/companies.csv
+    poetry run python tests/validation/test_categorization_validation.py --csv path/to/companies.csv
 
     # Test specific company by UEI
-    poetry run python test_categorization_validation.py --uei ABC123DEF456
+    poetry run python tests/validation/test_categorization_validation.py --uei ABC123DEF456
 
     # Export results to CSV
-    poetry run python test_categorization_validation.py --output results.csv
+    poetry run python tests/validation/test_categorization_validation.py --output results.csv
 
     # Generate detailed markdown report
-    poetry run python test_categorization_validation.py --markdown-report report.md
+    poetry run python tests/validation/test_categorization_validation.py --markdown-report report.md
 
     # Load to Neo4j after categorization
-    poetry run python test_categorization_validation.py --load-neo4j
+    poetry run python tests/validation/test_categorization_validation.py --load-neo4j
 """
 
 import argparse

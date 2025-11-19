@@ -21,7 +21,7 @@ Quick guide for testing the company categorization system against the high-volum
 ### 1. Test First 10 Companies (Fastest - ~2 minutes)
 
 ```bash
-uv run python test_categorization_validation.py --limit 10
+uv run python tests/validation/test_categorization_validation.py --limit 10
 ```
 
 **Expected Output:**
@@ -56,7 +56,7 @@ Classification Distribution:
 ### 2. Test Specific Company by UEI
 
 ```bash
-uv run python test_categorization_validation.py --uei ABC123DEF456
+uv run python tests/validation/test_categorization_validation.py --uei ABC123DEF456
 ```
 
 Shows detailed analysis for a single company.
@@ -64,7 +64,7 @@ Shows detailed analysis for a single company.
 ### 3. Test All Companies + Export Results
 
 ```bash
-uv run python test_categorization_validation.py --output validation_results.csv
+uv run python tests/validation/test_categorization_validation.py --output validation_results.csv
 ```
 
 Processes all 200+ companies and exports to CSV (~20-30 minutes).
@@ -72,7 +72,7 @@ Processes all 200+ companies and exports to CSV (~20-30 minutes).
 ### 4. Test and Load to Neo4j
 
 ```bash
-uv run python test_categorization_validation.py --limit 20 --load-neo4j
+uv run python tests/validation/test_categorization_validation.py --limit 20 --load-neo4j
 ```
 
 Tests 20 companies and loads results to Neo4j.
@@ -103,7 +103,7 @@ You'll need to load USAspending database dump first. See main README for instruc
 ### Step 2: Run Initial Test (10 companies)
 
 ```bash
-uv run python test_categorization_validation.py --limit 10 --verbose
+uv run python tests/validation/test_categorization_validation.py --limit 10 --verbose
 ```
 
 This will:
@@ -125,7 +125,7 @@ Look for companies you know and verify classifications make sense:
 
 ```bash
 # Example: Check a specific aerospace company
-uv run python test_categorization_validation.py --uei <KNOWN_UEI>
+uv run python tests/validation/test_categorization_validation.py --uei <KNOWN_UEI>
 ```
 
 **Manual validation checklist:**
@@ -137,7 +137,7 @@ uv run python test_categorization_validation.py --uei <KNOWN_UEI>
 ### Step 4: Run Full Validation
 
 ```bash
-uv run python test_categorization_validation.py --output full_validation.csv
+uv run python tests/validation/test_categorization_validation.py --output full_validation.csv
 ```
 
 **This will take 20-30 minutes** depending on database size and network.
@@ -177,10 +177,10 @@ Uncertain         15
 
 ```bash
 # Test with small batch first
-uv run python test_categorization_validation.py --limit 20 --load-neo4j
+uv run python tests/validation/test_categorization_validation.py --limit 20 --load-neo4j
 
 # If successful, load all
-uv run python test_categorization_validation.py --load-neo4j --output full_results.csv
+uv run python tests/validation/test_categorization_validation.py --load-neo4j --output full_results.csv
 ```
 
 Then query Neo4j:
@@ -268,7 +268,7 @@ Here are some well-known SBIR companies you can use for manual validation:
 Find their UEIs in the dataset and test:
 
 ```bash
-uv run python test_categorization_validation.py --uei <THEIR_UEI>
+uv run python tests/validation/test_categorization_validation.py --uei <THEIR_UEI>
 ```
 
 ---
@@ -310,7 +310,7 @@ conn.close()
 ```bash
 # Process in chunks of 50
 for i in 0 50 100 150; do
-    uv run python test_categorization_validation.py \
+    uv run python tests/validation/test_categorization_validation.py \
         --limit 50 \
         --output results_chunk_$i.csv
 done
@@ -354,7 +354,7 @@ pd.concat(chunks).to_csv('full_results.csv', index=False)
 5. **Load to Neo4j for Analysis**
    ```bash
    # After validation looks good
-   uv run python test_categorization_validation.py --load-neo4j
+   uv run python tests/validation/test_categorization_validation.py --load-neo4j
    ```
 
 ---

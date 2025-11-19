@@ -23,7 +23,7 @@ This guide explains how to test the company categorization system at different l
 Run the automated test script:
 
 ```bash
-uv run python test_categorization_quick.py
+uv run python tests/validation/test_categorization_quick.py
 ```
 
 This tests:
