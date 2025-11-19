@@ -3,7 +3,6 @@
 A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4j graph database for analysis and visualization.
 
 ## Quick Start
-
 ### Production Deployment (Cloud-First Architecture)
 
 The SBIR ETL pipeline is designed for cloud deployment with the following architecture:
@@ -19,42 +18,69 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 - **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions setup
 - **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
 
-### Prerequisites (Local Development)
+### Local Development Setup
+
+#### Prerequisites
 
 - **Python**: 3.11 or 3.12
 - **uv**: For dependency management ([install uv](https://github.com/astral-sh/uv))
 - **Neo4j Aura**: Neo4j cloud instance (Free tier available) - [Setup Guide](docs/data/neo4j-aura-setup.md)
 - **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
 
-### Local Development Setup
+#### 1. Clone and Install
 
-1. **Clone and install dependencies:**
-   ```bash
-   git clone <repository-url>
-   cd sbir-etl
-   uv sync
-   ```
+```bash
+git clone <repository-url>
+cd sbir-etl
+uv sync
+```
 
-2. **Set up Neo4j Aura:**
-   - Create a Neo4j Aura instance at [neo4j.com/cloud/aura](https://neo4j.com/cloud/aura)
-   - Copy your connection URI and credentials
+#### 2. Configure Environment
 
-3. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env: set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
-   ```
+Create a `.env` file from the example:
 
-4. **Run the pipeline:**
-   ```bash
-   uv run dagster dev
-   # Open http://localhost:3000 and materialize the assets
-   ```
+```bash
+cp .env.example .env
+```
 
-5. **Run tests:**
-   ```bash
-   uv run pytest -v --cov=src
-   ```
+**Configure Neo4j:**
+- **Option A (Recommended):** Use Neo4j Aura (Cloud). Set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`.
+- **Option B (Local):** Use Docker.
+  ```bash
+  docker-compose --profile dev up neo4j -d
+  # Set NEO4J_URI=bolt://localhost:7687 in .env
+  ```
+
+**Configure Data Storage:**
+- **Option A (S3):** Set `SBIR_ETL_USE_S3=true` and `SBIR_ETL_S3_BUCKET=your-bucket` in `.env`.
+- **Option B (Local):** Set `SBIR_ETL_USE_S3=false` (default). Data will be stored in `data/`.
+
+#### 3. Run the Pipeline
+
+**Important:** You must use the `-m` flag to avoid import errors.
+
+```bash
+uv run dagster dev -m src.definitions
+```
+
+Open **http://localhost:3000** to view the Dagster UI.
+
+#### 4. Materialize Assets
+
+1. Navigate to the **Assets** tab in the UI.
+2. Click **Materialize** on desired assets (e.g., `raw_sbir_awards`).
+3. Monitor progress in the **Runs** tab.
+
+Or via CLI:
+```bash
+uv run dagster asset materialize -m src.definitions -s raw_sbir_awards
+```
+
+#### 5. Run Tests
+
+```bash
+uv run pytest -v --cov=src
+```
 
 ### AWS Infrastructure (Production)
 

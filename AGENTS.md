@@ -75,46 +75,11 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
   branch_deployments.yml # Branch-based deployments
 ```
 
-## Workflows
+## Workflows & Guidelines
 
-### Local (uv)
-
-```bash
-uv sync
-uv run dagster dev  # http://localhost:3000
-pytest -v --cov=src
-```
-
-### Container (Docker)
-
-```bash
-make docker-build
-make docker-up-dev      # Dev stack with bind mounts
-make docker-test        # Run tests in container
-```
-
-## Guidelines
-
-### Code Quality:
-- Format: `black src tests` (line-length: 100)
-- Lint: `ruff check src tests`
-- Type: `mypy src`
-- Security: `bandit -r src`
-
-### Performance:
-- Baselines: `reports/benchmarks/baseline.json` (CI-cached)
-- Alerts: `reports/alerts/*.json`
-- Thresholds: `config/base.yaml`
-
-### Testing:
-- Coverage: ≥80% (CI enforced)
-- Isolation: Use `tmp_path`, avoid global state
-- Neo4j: Assumes healthy container
-
-### Documentation:
-- User changes → README.md
-- New data sources → `docs/data/`
-- Neo4j changes → `docs/schemas/`
+- **Testing & Quality**: See [`docs/testing/index.md`](docs/testing/index.md) for all commands (local, Docker, CI).
+- **Development Standards**: See [`CONTRIBUTING.md`](CONTRIBUTING.md) for code quality, formatting, and PR process.
+- **Deployment**: See [`docs/deployment/README.md`](docs/deployment/README.md).
 
 ## Common Patterns
 

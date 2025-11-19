@@ -74,29 +74,17 @@ git checkout -b feature/your-feature-name
 
 ### 3. Run Code Quality Checks
 
-Before committing, ensure your code passes all quality checks:
+See the [Testing Index](docs/testing/index.md) for the complete list of commands.
 
 ```bash
+# Run all checks (lint, type, test)
+make check-all
 
-## Format code with black
-
-black .
-
-## Lint with ruff
-
-ruff check . --fix
-
-## Type check with mypy
-
-mypy src/
-
-## Run tests with coverage
-
-pytest --cov=src --cov-report=term-missing
-
-## Security scan with bandit
-
-bandit -r src/
+# Or run individually:
+uv run black .
+uv run ruff check . --fix
+uv run mypy src/
+uv run pytest -v --cov=src
 ```
 
 ### 4. Commit Your Changes
@@ -181,9 +169,18 @@ Then create a pull request on the repository.
       """
   ```
 
+### Logging Standards
+
+We use `loguru` for structured logging. See the [Logging Standards Guide](docs/development/logging-standards.md) for details on:
+- When to use `logger` vs `console.print`
+- Structured context and log levels
+- Performance considerations
+
 ### Exception Handling
 
 All custom exceptions must use the centralized exception hierarchy in `src/exceptions.py`. This provides structured error information, retry guidance, and consistent logging.
+
+For detailed patterns and best practices, see the [Exception Handling Guide](docs/development/exception-handling.md).
 
 #### When to Use Custom Exceptions
 
