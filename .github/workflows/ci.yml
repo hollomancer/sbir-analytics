@@ -408,12 +408,13 @@ jobs:
 
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: ci-compose-logs
           path: |
             logs
             reports || true
+          if-no-files-found: ignore
 
   performance-check:
     needs: [test, detect-changes]
@@ -498,14 +499,14 @@ jobs:
 
       - name: Upload reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: performance-reports
           path: |
             /tmp/regression.json
             /tmp/report.md
             /tmp/report.html
-          retention-days: 7
+          retention-days: "7"
 
       - name: Parse regression results
         id: parse_results
@@ -743,10 +744,10 @@ jobs:
 
       - name: Upload CET artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: cet-pipeline-artifacts
-          retention-days: 14
+          retention-days: "14"
           path: |
             data/processed/cet_*.parquet
             data/processed/cet_*.json
@@ -1044,7 +1045,7 @@ jobs:
 
       - name: Upload CET artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: cet-dev-e2e-artifacts
           path: |
@@ -1055,7 +1056,7 @@ jobs:
             reports/analytics/**
             reports/alerts/**
             reports/benchmarks/**
-          retention-days: 14
+          retention-days: "14"
           if-no-files-found: warn
 
       - name: Tear down dev compose stack (always)
@@ -1120,12 +1121,12 @@ jobs:
 
       - name: Upload precision audit sample
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: transition-mvp-precision-audit-sample
           path: reports/validation/vendor_resolution_audit_sample.csv
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: "7"
 
       - name: Gate on validation summary
         id: gate
@@ -1253,17 +1254,17 @@ jobs:
 
       - name: Upload validation summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: transition-mvp-validation
           path: |
             reports/validation/transition_mvp.json
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: "7"
 
       - name: Upload processed artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: transition-mvp-artifacts
           path: |
@@ -1273,4 +1274,4 @@ jobs:
             data/processed/transition_analytics.*
             data/processed/contracts_sample.*
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: "7"

@@ -66,8 +66,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload logs
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: ./.github/actions/upload-artifacts
         with:
           name: nightly-unit-test-logs
           path: test-unit.log
@@ -137,8 +137,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload logs
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: ./.github/actions/upload-artifacts
         with:
           name: nightly-integration-test-logs
           path: test-integration.log
@@ -176,8 +176,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload logs
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: ./.github/actions/upload-artifacts
         with:
           name: nightly-e2e-test-logs
           path: test-e2e.log
@@ -275,8 +275,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload post-fix logs
-        uses: actions/upload-artifact@v4
         if: steps.commit.outputs.changed == 'true'
+        uses: ./.github/actions/upload-artifacts
         with:
           name: nightly-test-after-fix
           path: test-after-fix.log
@@ -458,13 +458,14 @@ jobs:
           docker compose --profile dev down --remove-orphans --volumes
 
       - name: Upload logs and artifacts on failure
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
+        if: failure()
+        uses: ./.github/actions/upload-artifacts
         with:
           name: neo4j-smoke-logs
           path: |
             logs/
             reports/ || true
+          if-no-files-found: ignore
 
       - name: Success note
         if: ${{ success() }}

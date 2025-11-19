@@ -272,11 +272,11 @@ jobs:
 
       - name: Upload download results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: uspto-download-results
           path: |
             /tmp/*-result.json
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: "7"
 
