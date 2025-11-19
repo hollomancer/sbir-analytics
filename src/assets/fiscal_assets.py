@@ -490,9 +490,11 @@ def economic_impacts(
         adapter = RStateIOAdapter(config=config.fiscal_analysis)
         if not adapter.is_available():
             context.log.warning(
-                "R StateIO adapter not available. This may require: "
-                "1. Install rpy2: poetry install --extras r"
-                "2. Install StateIO R package in R: install.packages('stateior')"
+                "R StateIO adapter not available. This may require:\n"
+                "1. Install rpy2: poetry install --extras r\n"
+                "2. Install StateIO R package in R "
+                "(set CRAN mirror first): options(repos = c(CRAN = 'https://cloud.r-project.org')); "
+                "install.packages('remotes'); remotes::install_github('USEPA/stateio')"
             )
             # Return placeholder DataFrame with same structure
             return _create_placeholder_impacts(economic_shocks, context)

@@ -12,9 +12,13 @@ This document provides reference information for EPA's StateIO (`stateior`) and 
 ### Installation
 
 ```r
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 install.packages("remotes")
 remotes::install_github("USEPA/stateio")
 ```
+
+> Setting the `CRAN` mirror once per session with `options(repos = c(CRAN = "https://cloud.r-project.org"))`
+> avoids non-interactive installation failures when R has not been configured with a default mirror.
 
 StateIO constructs two-region models for a specific state and the rest of the U.S., detailing industries and commodities at the BEA summary level. It's used for state-level economic impact analysis.
 
@@ -26,6 +30,7 @@ StateIO constructs two-region models for a specific state and the rest of the U.
 ### Installation
 
 ```r
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 install.packages("remotes")
 remotes::install_github("USEPA/useeior")
 ```
@@ -237,12 +242,10 @@ sudo apt-get install r-base
 
 #### 2. Install R Packages
 
-Start R console and run:
+Start an R console and configure the CRAN mirror (needed for non-interactive sessions) before installing packages:
 
 ```r
-
-## Install remotes if needed
-
+options(repos = c(CRAN = "https://cloud.r-project.org"))
 install.packages("remotes")
 
 ## Install StateIO
@@ -254,9 +257,14 @@ remotes::install_github("USEPA/stateio")
 remotes::install_github("USEPA/useeior")
 
 ## Verify installation
-
 library(stateior)
 library(useeior)
+```
+
+**Non-interactive example**:
+
+```bash
+R -e "options(repos = c(CRAN = 'https://cloud.r-project.org')); install.packages('remotes'); remotes::install_github('USEPA/stateio'); remotes::install_github('USEPA/useeior')"
 ```
 
 ###3. Install Python rpy2

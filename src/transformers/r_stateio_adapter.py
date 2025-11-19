@@ -467,20 +467,37 @@ class RStateIOAdapter(EconomicModelInterface):
 
         # Group shocks by state
         states = shocks_df["state"].unique().tolist()
-        all_results = []
+        all_results: list[dict[str, Any]] = []
+        successful_states: list[str] = []
+        failed_states: list[str] = []
+
+        logger.debug(
+            "Building USEEIOR two-region models for %s using %s (year=%s)",
+            states,
+            modelname,
+            year,
+        )
+
+        try:
+            # Build the full set of state models once. This is expensive,
+            # so we avoid rebuilding inside the per-state loop.
+            state_models = build_useeior_state_models(self.useeio, modelname, year=year)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to build USEEIOR state models with {modelname}: {exc}"
+            ) from exc
 
         for state in states:
             state_shocks = shocks_df[shocks_df["state"] == state].copy()
 
             try:
-                logger.debug(f"Building USEEIOR model for state: {state}")
+                logger.debug(f"Using USEEIOR model for state: {state}")
 
-                # Build state models (cached per state/year)
-                # Note: This can be expensive - consider caching
-                state_models = build_useeior_state_models(self.useeio, modelname, year=year)
-
-                # Get state-specific model
-                state_model = state_models.rx2(state)
+                # Get state-specific model from the list
+                try:
+                    state_model = state_models.rx2(state)
+                except Exception as exc:
+                    raise RuntimeError(f"State {state} not present in USEEIOR models: {exc}") from exc
 
                 # Format shocks as demand vector
                 demand = format_demand_vector_from_shocks(self.useeio, state_model, state_shocks)
@@ -607,10 +624,12 @@ class RStateIOAdapter(EconomicModelInterface):
                     )
 
                 logger.info(f"Computed impacts for {state} using USEEIOR")
+                successful_states.append(state)
 
             except Exception as e:
+                failed_states.append(state)
                 logger.error(f"Failed to compute impacts for {state}: {e}")
-                # Add placeholder row for failed state
+                # Add placeholder row for failed state so caller is aware of the gap
                 for _, shock_row in state_shocks.iterrows():
                     all_results.append(
                         {
@@ -629,6 +648,13 @@ class RStateIOAdapter(EconomicModelInterface):
                         }
                     )
                 continue
+
+        if not successful_states:
+            # Propagate failure so the caller can fall back to the pure StateIO path.
+            raise RuntimeError(
+                "USEEIOR integration failed for all states; "
+                f"falling back to StateIO. Failed states: {failed_states}"
+            )
 
         # Convert to DataFrame
         result_df = pd.DataFrame(all_results)

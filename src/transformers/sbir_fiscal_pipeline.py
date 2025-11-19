@@ -319,6 +319,17 @@ class SBIRFiscalImpactCalculator:
             .reset_index()
         )
 
+        summary.rename(
+            columns={
+                "award_total": "total_awards",
+                "tax_impact": "total_tax_impact",
+                "jobs_created": "total_jobs_created",
+                "wage_impact": "total_wage_impact",
+                "production_impact": "total_production_impact",
+            },
+            inplace=True,
+        )
+
         # Add sector descriptions
         summary["sector_description"] = summary["bea_sector"].apply(
             self.naics_mapper.get_bea_code_description

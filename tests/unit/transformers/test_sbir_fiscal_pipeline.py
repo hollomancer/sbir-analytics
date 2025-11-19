@@ -237,6 +237,9 @@ class TestSBIRFiscalImpactCalculator:
         assert len(summary) == 2  # Sectors 54 and 62
         assert "bea_sector" in summary.columns
         assert "sector_description" in summary.columns
+        assert "total_awards" in summary.columns
+        assert "total_tax_impact" in summary.columns
+        assert "total_jobs_created" in summary.columns
 
         # Check descriptions added
         assert "Professional" in summary[summary["bea_sector"] == "54"]["sector_description"].iloc[0]
