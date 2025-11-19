@@ -21,6 +21,7 @@ concurrency:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     # Run change detection on all events to enable path-based filtering
     permissions:
       contents: read
@@ -77,6 +78,7 @@ jobs:
   test:
     needs: [detect-changes]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Skip test job on PRs if only docs changed (but always run on push to main/develop)
     if: |
       github.event_name == 'push' ||
@@ -159,33 +161,7 @@ jobs:
         if: |
           github.event_name == 'push' ||
           (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true')
-        run: |
-          set -e
-          PYFILE=$(mktemp)
-          cat > "$PYFILE" << 'PY'
-          import json, sys
-          p = 'data/processed/cet_taxonomy_checks.json'
-          try:
-              with open(p, 'r', encoding='utf-8') as fh:
-                  data = json.load(fh)
-          except Exception:
-              print(f'Checks file not found at {p}; skipping taxonomy evaluation.')
-              sys.exit(0)
-          comp = data.get('completeness', {}) or {}
-          missing_required = bool(comp.get('missing_required_fields', False))
-          mk = comp.get('areas_missing_keywords_count')
-          if mk is None:
-              ak = comp.get('areas_missing_keywords') or []
-              mk = len(ak)
-          total = comp.get('total_areas') or data.get('cet_count') or 0
-          issues = missing_required or (mk > 0) or (total != 21)
-          if issues:
-              print(f'CET taxonomy checks failed: missing_required={missing_required} missing_keywords={mk} total={total}')
-              sys.exit(1)
-          print('CET taxonomy checks passed.')
-          PY
-          python "$PYFILE"
-          rm -f "$PYFILE"
+        run: uv run python scripts/ci/evaluate_taxonomy_checks.py
 
       - name: Verify pandas, duckdb, and pyreadstat installed
         run: |
@@ -284,54 +260,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Cleaning up Neo4j Aura Free test data..."
-          uv run python - <<'PY'
-          import os
-          import sys
-          try:
-              from neo4j import GraphDatabase
-              uri = os.environ.get("NEO4J_URI", "")
-              user = os.environ.get("NEO4J_USERNAME", "neo4j")
-              password = os.environ.get("NEO4J_PASSWORD", "")
-
-              if not uri or not password:
-                  print("⚠️  Skipping cleanup - no Aura credentials")
-                  sys.exit(0)
-
-              driver = GraphDatabase.driver(uri, auth=(user, password))
-
-              # Get count before cleanup
-              with driver.session() as session:
-                  before = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
-                  print(f"📊 Nodes before cleanup: {before:,}")
-
-              # Delete test data (with batching for safety)
-              with driver.session() as session:
-                  # Delete in batches to avoid memory issues
-                  batch_size = 10000
-                  total_deleted = 0
-                  while True:
-                      result = session.run(f"""
-                          MATCH (n)
-                          WITH n LIMIT {batch_size}
-                          DETACH DELETE n
-                          RETURN count(n) as deleted
-                      """)
-                      deleted = result.single()["deleted"]
-                      total_deleted += deleted
-                      if deleted == 0:
-                          break
-                      print(f"  Deleted {deleted:,} nodes (total: {total_deleted:,})")
-
-              # Verify cleanup
-              with driver.session() as session:
-                  after = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
-                  print(f"✅ Cleanup complete! Nodes after: {after:,}")
-
-              driver.close()
-          except Exception as e:
-              print(f"⚠️  Cleanup warning: {e}")
-              print("   You may need to manually clean up: MATCH (n) DETACH DELETE n")
-          PY
+          uv run python scripts/ci/cleanup_neo4j_aura.py
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -344,6 +273,7 @@ jobs:
   container-build-test:
     needs: [test, detect-changes]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Only run when Docker files change or on push to main/develop
     if: |
       always() &&
@@ -433,19 +363,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
 
       - name: Cache baseline benchmark
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: reports/benchmarks/baseline.json
           key: benchmark-baseline-main
@@ -468,7 +396,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p reports/benchmarks
-          python scripts/performance/detect_performance_regression.py \
+          uv run python scripts/performance/detect_performance_regression.py \
             --sample-size 500 \
             --output-json /tmp/regression.json \
             --output-markdown /tmp/report.md \
@@ -493,7 +421,7 @@ jobs:
         if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
         run: |
           export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}"
-          python scripts/performance/benchmark_enrichment.py \
+          uv run python scripts/performance/benchmark_enrichment.py \
             --sample-size 500 \
             --save-as-baseline
 
@@ -1132,125 +1060,17 @@ jobs:
         id: gate
         run: |
           set -euo pipefail
-          SUMMARY="reports/validation/transition_mvp.json"
-          if [ ! -f "${SUMMARY}" ]; then
-            echo "::error file=${SUMMARY}::Validation summary not found. Make sure the MVP run produced reports/validation/transition_mvp.json"
-            exit 2
-          fi
-
-          python - <<'PY'
-          import json, sys
-          from pathlib import Path
-
-          summary_path = Path("reports/validation/transition_mvp.json")
-          data = json.loads(summary_path.read_text(encoding="utf-8"))
-
-          gates = data.get("gates", {})
-          cs = gates.get("contracts_sample", {})
-          vr = gates.get("vendor_resolution", {})
-
-          cs_pass = bool(cs.get("passed", False))
-          vr_pass = bool(vr.get("passed", False))
-
-          print("Transition MVP validation summary:")
-          print(json.dumps(data, indent=2))
-
-          failures = []
-          if not cs_pass:
-              failures.append("contracts_sample coverage gate failed")
-          if not vr_pass:
-              failures.append("vendor_resolution rate gate failed")
-
-          if failures:
-              for f in failures:
-                  print(f"::error::{f}")
-              sys.exit(1)
-          else:
-              print("All gates passed.")
-          PY
+          uv run python scripts/ci/gate_transition_validation.py
 
       - name: Gate on evidence completeness
         run: |
           set -euo pipefail
-          EV="data/processed/transitions_evidence.checks.json"
-          if [ ! -f "${EV}" ]; then
-            echo "::error file=${EV}::Evidence checks JSON not found. Ensure transition_evidence_v1 ran."
-            exit 2
-          fi
-          python - <<'PY'
-          import json, sys
-          from pathlib import Path
-          p = Path("data/processed/transitions_evidence.checks.json")
-          data = json.loads(p.read_text(encoding="utf-8"))
-          comp = (data.get("completeness") or {})
-          complete = bool(comp.get("complete", False))
-          print("Evidence checks:", json.dumps(comp, indent=2))
-          if not complete:
-              th = comp.get("threshold")
-              ca = comp.get("candidates_above_threshold")
-              er = comp.get("evidence_rows_for_above_threshold")
-              print(f"::error::Evidence completeness gate failed: {er}/{ca} candidates at ≥{th}")
-              sys.exit(1)
-          print("Evidence completeness gate passed.")
-          PY
+          uv run python scripts/ci/gate_transition_evidence.py
 
       - name: Gate on analytics checks
         run: |
           set -euo pipefail
-          AC="data/processed/transition_analytics.checks.json"
-          if [ ! -f "${AC}" ]; then
-            echo "::error file=${AC}::Analytics checks JSON not found. Ensure transition_analytics ran."
-            exit 2
-          fi
-          python - <<'PY'
-          import json, os, sys
-          from pathlib import Path
-
-          p = Path("data/processed/transition_analytics.checks.json")
-          data = json.loads(p.read_text(encoding="utf-8"))
-
-          award = data.get("award_transition_rate") or {}
-          company = data.get("company_transition_rate") or {}
-          a_den = int(award.get("denominator") or 0)
-          c_den = int(company.get("denominator") or 0)
-          a_rate = float(award.get("rate") or 0.0)
-          c_rate = float(company.get("rate") or 0.0)
-
-          # Basic sanity checks
-          denom_ok = (a_den > 0) and (c_den > 0)
-          rate_bounds_ok = (0.0 <= a_rate <= 1.0) and (0.0 <= c_rate <= 1.0)
-
-          # Optional minimum thresholds from env
-          def _env_float(key, default):
-              try:
-                  return float(os.environ.get(key, str(default)))
-              except Exception:
-                  return default
-
-          min_award_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE", 0.0)
-          min_company_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", 0.0)
-          min_ok = (a_rate >= min_award_rate) and (c_rate >= min_company_rate)
-
-          print("Analytics checks:", json.dumps({
-              "award": {"denominator": a_den, "rate": a_rate, "min_rate": min_award_rate},
-              "company": {"denominator": c_den, "rate": c_rate, "min_rate": min_company_rate},
-              "sanity": {"denominators_positive": denom_ok, "rates_within_0_1": rate_bounds_ok},
-          }, indent=2))
-
-          if not denom_ok:
-              print("::error::Analytics gate failed: zero denominators (award or company).")
-              sys.exit(1)
-          if not rate_bounds_ok:
-              print("::error::Analytics gate failed: rates outside [0,1].")
-              sys.exit(1)
-          if not min_ok:
-              print(f"::error::Analytics gate failed: rates below minimums "
-                    f"(award: {a_rate:.2%} < {min_award_rate:.2%} "
-                    f"or company: {c_rate:.2%} < {min_company_rate:.2%}).")
-              sys.exit(1)
-
-          print("Analytics checks gate passed.")
-          PY
+          uv run python scripts/ci/gate_transition_analytics.py
 
       - name: Upload validation summary
         if: always()

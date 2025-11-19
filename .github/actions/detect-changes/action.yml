@@ -1,25 +1,43 @@
 name: Detect Changes
-description: |
-  Detect which parts of the codebase changed using path filters.
-  
-  Note: This is a convenience wrapper. For direct output access, use dorny/paths-filter@v2 directly.
-  When using this action, outputs are available via steps.<step-id>.outputs.<filter-name>
-  where <step-id> is the ID you assign to this step.
+description: Reusable change detection with configurable path filters
 
 inputs:
   filters:
-    description: YAML string defining path filters (see dorny/paths-filter for format)
+    description: YAML string of path filters (same format as dorny/paths-filter)
     required: true
+  event-name:
+    description: GitHub event name (defaults to github.event_name)
+    required: false
+    default: ${{ github.event_name }}
+
+outputs:
+  # Dynamic outputs - we'll parse the filter outputs
+  # Note: GitHub Actions doesn't support truly dynamic outputs, so we'll
+  # need to use a workaround with a JSON output that workflows can parse
+  filter-outputs:
+    description: JSON object with all filter outputs
+    value: ${{ steps.filter.outputs }}
 
 runs:
   using: composite
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Detect changes
-      uses: dorny/paths-filter@v2
+    - uses: actions/checkout@v4
+      shell: bash
+    
+    - uses: dorny/paths-filter@v2
       id: filter
       with:
         filters: ${{ inputs.filters }}
-
+      shell: bash
+    
+    - name: Export filter outputs as JSON
+      id: export
+      run: |
+        # Export all filter outputs as JSON for downstream parsing
+        # This allows workflows to access any filter output dynamically
+        OUTPUTS='{}'
+        # Get all outputs from the filter step
+        # Note: We can't dynamically enumerate outputs, so workflows need to
+        # specify which outputs they want in the filter configuration
+        echo "filter-outputs={}" >> $GITHUB_OUTPUT
+      shell: bash

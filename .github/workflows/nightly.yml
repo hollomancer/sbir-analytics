@@ -195,6 +195,7 @@ jobs:
     name: Diagnose Test Failures
     needs: [test-unit, test-integration, test-e2e]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: |
       needs.test-unit.outputs.failed == 'true' ||
       needs.test-integration.outputs.failed == 'true' ||
@@ -474,6 +475,7 @@ jobs:
   markdown-lint:
     name: Markdown Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4

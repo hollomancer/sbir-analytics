@@ -23,6 +23,7 @@ jobs:
   dagster_cloud_default_deploy:
     name: Dagster Serverless Deploy
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     outputs:
       build_info: ${{ steps.parse-workspace.outputs.build_info }}
 
@@ -58,6 +59,7 @@ jobs:
   dagster_cloud_docker_deploy:
     name: Docker Deploy
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     if: needs.dagster_cloud_default_deploy.outputs.build_info
     needs: dagster_cloud_default_deploy
     strategy:

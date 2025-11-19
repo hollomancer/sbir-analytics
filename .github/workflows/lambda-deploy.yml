@@ -17,11 +17,6 @@ on:
         required: false
         default: false
         type: boolean
-      skip_container_build:
-        description: 'Skip container image builds (deprecated - containers removed)'
-        required: false
-        default: true
-        type: boolean
       skip_layer_build:
         description: 'Skip Lambda layer build'
         required: false
@@ -45,8 +40,8 @@ env:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      containers-changed: ${{ steps.filter.outputs.containers }}
       layer-functions-changed: ${{ steps.filter.outputs.layer-functions }}
       cdk-changed: ${{ steps.filter.outputs.cdk }}
       lambda-code-changed: ${{ steps.filter.outputs.lambda-code }}
@@ -56,8 +51,6 @@ jobs:
         id: filter
         with:
           filters: |
-            containers:
-              - 'lambda/containers/**'
             layer-functions:
               - 'scripts/lambda/**'
               - 'lambda/layers/**'
@@ -67,44 +60,6 @@ jobs:
               - 'lambda/**'
               - 'scripts/lambda/**'
               - 'infrastructure/cdk/**'
-
-  build-containers:
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: |
-      (needs.detect-changes.outputs.containers-changed == 'true' || 
-       needs.detect-changes.outputs.cdk-changed == 'true' ||
-       github.event.inputs.force_deploy == 'true') &&
-      github.event.inputs.skip_container_build != 'true'
-    timeout-minutes: 30
-    steps:
-      - name: Configure AWS credentials
-        uses: ./.github/actions/setup-aws-credentials
-        with:
-          role-arn: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-docker-buildx
-
-      - name: Get AWS account ID
-        id: account
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "ECR_URI=$ACCOUNT_ID.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}" >> $GITHUB_OUTPUT
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      # Container builds removed - ingestion-checks and load-neo4j migrated to Dagster Cloud
-      # See: src/assets/jobs/sbir_weekly_refresh_job.py
-      - name: Note container migration
-        run: |
-          echo "Container-based Lambda functions (ingestion-checks, load-neo4j) have been migrated to Dagster Cloud."
-          echo "Use trigger-dagster-refresh Lambda function to trigger sbir_weekly_refresh_job instead."
 
   build-layer:
     runs-on: ubuntu-latest
@@ -171,7 +126,7 @@ jobs:
 
   deploy-cdk:
     runs-on: ubuntu-latest
-    needs: [detect-changes, build-containers, build-layer]
+    needs: [detect-changes, build-layer]
     if: |
       needs.detect-changes.outputs.lambda-code-changed == 'true' ||
       needs.detect-changes.outputs.cdk-changed == 'true' ||
@@ -264,8 +219,6 @@ jobs:
           if [ -n "${{ needs.build-layer.outputs.layer-arn }}" ]; then
             echo "**Lambda Layer:** ${{ needs.build-layer.outputs.layer-arn }}"
           fi
-          echo ""
-          echo "**Container Images:** Built and pushed to ECR"
           echo ""
           echo "**CDK Stack:** sbir-etl-lambda deployed"
           echo ""
