@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.assets.cet_assets import enriched_cet_award_classifications
+from src.assets.cet import enriched_cet_award_classifications
 from src.ml.models.dummy_pipeline import DummyPipeline
 
 

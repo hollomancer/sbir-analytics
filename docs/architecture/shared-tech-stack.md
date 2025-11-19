@@ -340,15 +340,10 @@ def my_asset_quality_check(my_asset: pd.DataFrame) -> AssetCheckResult:
 ## src/assets/__init__.py
 
 from dagster import load_assets_from_modules
-from . import sbir_assets, uspto_assets, cet_assets
+from src import assets
 
-all_assets = [
-
-    *load_assets_from_modules([sbir_assets]),
-    *load_assets_from_modules([uspto_assets]),
-    *load_assets_from_modules([cet_assets])
-
-]
+asset_modules = assets.iter_asset_modules()
+all_assets = load_assets_from_modules(asset_modules)
 ```
 
 ### 3.4 Neo4j Loader Patterns

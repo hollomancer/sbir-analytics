@@ -1,255 +1,144 @@
-"""Dagster assets package for SBIR ETL pipeline.
+"""Asset discovery utilities for SBIR ETL.
 
-This package avoids importing asset modules at package import time to prevent
-heavy optional dependencies (e.g., dagster, neo4j, duckdb) from causing import
-errors during test collection or in constrained environments.
-
-Consumers should import specific assets directly, for example:
-
-    from src.assets.example_assets import raw_sbir_data
-
-This module exposes a lazy import mechanism: accessing a symbol defined in
-``__all__`` will dynamically import the underlying module and attribute on
-first access and cache it for subsequent lookups.
+This package previously exposed a large lazy-import registry for all Dagster assets.
+That approach required manual updates whenever a new asset module was added or renamed.
+The helpers below provide automatic discovery for assets, asset checks, jobs, and sensors
+so callers (primarily the Dagster repository definitions) can keep themselves in sync
+with the actual package layout.
 """
 
-from importlib import import_module
-from typing import Any
+from __future__ import annotations
+
+import importlib
+import logging
+import pkgutil
+from functools import lru_cache
+from types import ModuleType
+from typing import Iterable, Iterator, Sequence
+
+LOG = logging.getLogger(__name__)
 
 
-# Public API exported by this package. Keep this list in sync with the lazy mapping below.
-__all__: list[str] = [
-    "raw_sbir_data",
-    "validated_sbir_data",
-    "raw_uspto_assignments",
-    "raw_uspto_assignees",
-    "raw_uspto_assignors",
-    "raw_uspto_documentids",
-    "raw_uspto_conveyances",
-    "parsed_uspto_assignments",
-    "parsed_uspto_documentids",
-    "parsed_uspto_conveyances",
-    "validated_uspto_assignments",
-    "uspto_rf_id_asset_check",
-    "uspto_completeness_asset_check",
-    "uspto_referential_asset_check",
-    "transformed_patent_assignments",
-    "transformed_patents",
-    "transformed_patent_entities",
-    "uspto_transformation_success_check",
-    "uspto_company_linkage_check",
-    "neo4j_patents",
-    "neo4j_patent_assignments",
-    "neo4j_patent_entities",
-    "neo4j_patent_relationships",
-    "patent_load_success_rate",
-    "assignment_load_success_rate",
-    "patent_relationship_cardinality",
-    "raw_uspto_ai_extract",
-    "uspto_ai_deduplicate",
-    "raw_uspto_ai_human_sample_extraction",
-    "neo4j_cetarea_nodes",
-    "neo4j_award_cet_enrichment",
-    "neo4j_company_cet_enrichment",
-    "neo4j_award_cet_relationships",
-    "neo4j_company_cet_relationships",
-    "contracts_ingestion",
-    "contracts_sample",
-    "vendor_resolution",
-    "transition_scores_v1",
-    "transition_evidence_v1",
-    "transition_detections",
-    "transition_analytics",
-    "transition_analytics_quality_check",
-    "transition_detections_quality_check",
-    "loaded_transitions",
-    "transition_node_count_check",
-    "loaded_transition_relationships",
-    "transition_relationships_check",
-    "loaded_transition_profiles",
+def _iter_package_modules(
+    package: ModuleType,
+    *,
+    skip_prefixes: Sequence[str] = (),
+) -> Iterator[str]:
+    """Yield fully-qualified module names contained within a package."""
+
+    prefix = package.__name__ + "."
+    for module_info in pkgutil.walk_packages(package.__path__, prefix=prefix):
+        if any(module_info.name.startswith(skip) for skip in skip_prefixes):
+            continue
+        yield module_info.name
+
+
+def _safe_import(module_name: str) -> ModuleType | None:
+    """Import a module and swallow errors with a log entry.
+
+    Dagster repository loading should be resilient even if a subset of modules fails to import.
+    """
+    try:
+        return importlib.import_module(module_name)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        LOG.warning("Failed to import module %s: %s", module_name, exc)
+        return None
+
+
+@lru_cache(maxsize=1)
+def _asset_module_names() -> tuple[str, ...]:
+    """Cached tuple of module names that contain Dagster assets."""
+
+    package = importlib.import_module(__name__)
+    skip = (
+        f"{__name__}.jobs",
+        f"{__name__}.sensors",
+    )
+    return tuple(_iter_package_modules(package, skip_prefixes=skip))
+
+
+def iter_asset_modules() -> list[ModuleType]:
+    """Return all asset modules discovered under src.assets (excluding jobs/sensors)."""
+
+    modules: list[ModuleType] = []
+    for module_name in _asset_module_names():
+        module = _safe_import(module_name)
+        if module:
+            modules.append(module)
+    return modules
+
+
+@lru_cache(maxsize=1)
+def _job_module_names() -> tuple[str, ...]:
+    """Return fully-qualified module names for job definitions."""
+
+    package = importlib.import_module(f"{__name__}.jobs")
+    return tuple(_iter_package_modules(package))
+
+
+def iter_job_modules() -> list[ModuleType]:
+    """Import and return modules that define Dagster jobs."""
+
+    modules: list[ModuleType] = []
+    for module_name in _job_module_names():
+        module = _safe_import(module_name)
+        if module:
+            modules.append(module)
+    return modules
+
+
+@lru_cache(maxsize=1)
+def _sensor_module_names() -> tuple[str, ...]:
+    """Return module names for Dagster sensors."""
+
+    try:
+        package = importlib.import_module(f"{__name__}.sensors")
+    except ModuleNotFoundError:
+        return ()
+    return tuple(_iter_package_modules(package))
+
+
+def iter_sensor_modules() -> list[ModuleType]:
+    """Import and return modules that define Dagster sensors."""
+
+    modules: list[ModuleType] = []
+    for module_name in _sensor_module_names():
+        module = _safe_import(module_name)
+        if module:
+            modules.append(module)
+    return modules
+
+
+def iter_public_jobs() -> list["JobDefinition"]:
+    """Return Dagster JobDefinitions discovered in job modules."""
+
+    from dagster import JobDefinition  # Imported lazily to keep module import-safe
+
+    jobs: list[JobDefinition] = []
+    for module in iter_job_modules():
+        for value in vars(module).values():
+            if isinstance(value, JobDefinition):
+                jobs.append(value)
+    return jobs
+
+
+def iter_public_sensors() -> list["SensorDefinition"]:
+    """Return Dagster SensorDefinitions discovered in sensor modules."""
+
+    from dagster import SensorDefinition  # Imported lazily
+
+    sensors: list[SensorDefinition] = []
+    for module in iter_sensor_modules():
+        for value in vars(module).values():
+            if isinstance(value, SensorDefinition):
+                sensors.append(value)
+    return sensors
+
+
+__all__ = [
+    "iter_asset_modules",
+    "iter_job_modules",
+    "iter_sensor_modules",
+    "iter_public_jobs",
+    "iter_public_sensors",
 ]
-
-# Map exported symbol -> (module_path, attribute_name).
-# Module paths are package-qualified so importlib can resolve them.
-_lazy_mapping: dict[str, tuple[str, str]] = {
-    # example_assets
-    "raw_sbir_data": ("src.assets.example_assets", "raw_sbir_data"),
-    "validated_sbir_data": ("src.assets.example_assets", "validated_sbir_data"),
-    # uspto_assets
-    "raw_uspto_assignments": ("src.assets.uspto_assets", "raw_uspto_assignments"),
-    "raw_uspto_assignees": ("src.assets.uspto_assets", "raw_uspto_assignees"),
-    "raw_uspto_assignors": ("src.assets.uspto_assets", "raw_uspto_assignors"),
-    "raw_uspto_documentids": ("src.assets.uspto_assets", "raw_uspto_documentids"),
-    "raw_uspto_conveyances": ("src.assets.uspto_assets", "raw_uspto_conveyances"),
-    "parsed_uspto_assignments": ("src.assets.uspto_assets", "parsed_uspto_assignments"),
-    "parsed_uspto_documentids": ("src.assets.uspto_assets", "parsed_uspto_documentids"),
-    "parsed_uspto_conveyances": ("src.assets.uspto_assets", "parsed_uspto_conveyances"),
-    # uspto_validation_assets (consolidated)
-    "validated_uspto_assignments": (
-        "src.assets.uspto_assets",
-        "validated_uspto_assignments",
-    ),
-    "uspto_rf_id_asset_check": ("src.assets.uspto_assets", "uspto_rf_id_asset_check"),
-    "uspto_completeness_asset_check": (
-        "src.assets.uspto_assets",
-        "uspto_completeness_asset_check",
-    ),
-    "uspto_referential_asset_check": (
-        "src.assets.uspto_assets",
-        "uspto_referential_asset_check",
-    ),
-    # uspto_transformation_assets (consolidated)
-    "transformed_patent_assignments": (
-        "src.assets.uspto_assets",
-        "transformed_patent_assignments",
-    ),
-    "transformed_patents": ("src.assets.uspto_assets", "transformed_patents"),
-    "transformed_patent_entities": (
-        "src.assets.uspto_assets",
-        "transformed_patent_entities",
-    ),
-    "uspto_transformation_success_check": (
-        "src.assets.uspto_assets",
-        "uspto_transformation_success_check",
-    ),
-    "uspto_company_linkage_check": (
-        "src.assets.uspto_assets",
-        "uspto_company_linkage_check",
-    ),
-    # uspto_neo4j_loading_assets (consolidated)
-    "neo4j_patents": ("src.assets.uspto_assets", "loaded_patents"),
-    "neo4j_patent_assignments": (
-        "src.assets.uspto_assets",
-        "loaded_patent_assignments",
-    ),
-    "neo4j_patent_entities": ("src.assets.uspto_assets", "loaded_patent_entities"),
-    "neo4j_patent_relationships": (
-        "src.assets.uspto_assets",
-        "loaded_patent_relationships",
-    ),
-    "patent_load_success_rate": (
-        "src.assets.uspto_assets",
-        "patent_load_success_rate",
-    ),
-    "assignment_load_success_rate": (
-        "src.assets.uspto_assets",
-        "assignment_load_success_rate",
-    ),
-    "patent_relationship_cardinality": (
-        "src.assets.uspto_assets",
-        "patent_relationship_cardinality",
-    ),
-    # uspto_ai_extraction_assets (consolidated)
-    "raw_uspto_ai_extract": (
-        "src.assets.uspto_assets",
-        "raw_uspto_ai_extract",
-    ),
-    "uspto_ai_deduplicate": (
-        "src.assets.uspto_assets",
-        "uspto_ai_deduplicate",
-    ),
-    "raw_uspto_ai_human_sample_extraction": (
-        "src.assets.uspto_assets",
-        "raw_uspto_ai_human_sample_extraction",
-    ),
-    # cet_assets (consolidated)
-    "neo4j_cetarea_nodes": (
-        "src.assets.cet_assets",
-        "neo4j_cetarea_nodes",
-    ),
-    "neo4j_award_cet_enrichment": (
-        "src.assets.cet_assets",
-        "neo4j_award_cet_enrichment",
-    ),
-    "neo4j_company_cet_enrichment": (
-        "src.assets.cet_assets",
-        "neo4j_company_cet_enrichment",
-    ),
-    "neo4j_award_cet_relationships": (
-        "src.assets.cet_assets",
-        "neo4j_award_cet_relationships",
-    ),
-    "neo4j_company_cet_relationships": (
-        "src.assets.cet_assets",
-        "neo4j_company_cet_relationships",
-    ),
-    # transition_assets
-    "contracts_ingestion": ("src.assets.transition_assets", "raw_contracts"),
-    "contracts_sample": ("src.assets.transition_assets", "validated_contracts_sample"),
-    "vendor_resolution": ("src.assets.transition_assets", "enriched_vendor_resolution"),
-    "transition_scores_v1": ("src.assets.transition_assets", "transformed_transition_scores"),
-    "transition_evidence_v1": ("src.assets.transition_assets", "transformed_transition_evidence"),
-    "transition_detections": ("src.assets.transition_assets", "transformed_transition_detections"),
-    "transition_analytics": ("src.assets.transition_assets", "transformed_transition_analytics"),
-    # transition asset checks
-    "contracts_sample_quality_check": (
-        "src.assets.transition_assets",
-        "contracts_sample_quality_check",
-    ),
-    "vendor_resolution_quality_check": (
-        "src.assets.transition_assets",
-        "vendor_resolution_quality_check",
-    ),
-    "transition_scores_quality_check": (
-        "src.assets.transition_assets",
-        "transition_scores_quality_check",
-    ),
-    "transition_evidence_quality_check": (
-        "src.assets.transition_assets",
-        "transition_evidence_quality_check",
-    ),
-    "transition_detections_quality_check": (
-        "src.assets.transition_assets",
-        "transition_detections_quality_check",
-    ),
-    "transition_analytics_quality_check": (
-        "src.assets.transition_assets",
-        "transition_analytics_quality_check",
-    ),
-    # transition neo4j loading assets
-    "loaded_transitions": (
-        "src.assets.transition_assets",
-        "loaded_transitions",
-    ),
-    "transition_node_count_check": (
-        "src.assets.transition_assets",
-        "transition_node_count_check",
-    ),
-    "loaded_transition_relationships": (
-        "src.assets.transition_assets",
-        "loaded_transition_relationships",
-    ),
-    "transition_relationships_check": (
-        "src.assets.transition_assets",
-        "transition_relationships_check",
-    ),
-    "loaded_transition_profiles": (
-        "src.assets.transition_assets",
-        "loaded_transition_profiles",
-    ),
-}
-
-
-def __getattr__(name: str) -> Any:
-    """
-    Lazily import and return the requested attribute.
-
-    This hook is invoked when an attribute is not found in module globals.
-    It imports the underlying module and fetches the attribute, caching it
-    in the module globals for future accesses.
-    """
-    if name in _lazy_mapping:
-        module_path, attr_name = _lazy_mapping[name]
-        module = import_module(module_path)
-        try:
-            value = getattr(module, attr_name)
-        except AttributeError as exc:
-            raise AttributeError(f"Module '{module_path}' does not define '{attr_name}'") from exc
-        globals()[name] = value
-        return value
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__() -> list[str]:
-    """Expose a helpful completion list."""
-    return sorted(list(__all__) + list(globals().keys()))

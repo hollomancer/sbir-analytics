@@ -23,7 +23,7 @@ from dagster import AssetSelection, define_asset_job
 
 # Import CET production assets
 try:
-    from ..cet_assets import (
+    from ..cet import (
         cet_taxonomy,
         enriched_cet_award_classifications,
         transformed_cet_company_profiles,
@@ -39,7 +39,7 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
 
 # Import CET Neo4j loading/enrichment assets (consolidated)
 try:
-    from ..cet_assets import (
+    from ..cet import (
         neo4j_award_cet_enrichment,
         neo4j_award_cet_relationships,
         neo4j_cetarea_nodes,

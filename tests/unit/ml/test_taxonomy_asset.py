@@ -8,7 +8,7 @@ import pytest
 pytestmark = pytest.mark.fast
 import yaml
 
-import src.assets.cet_assets as cet_assets
+import src.assets.cet as cet_assets
 from src.ml.config.taxonomy_loader import TaxonomyLoader
 from src.models.cet_models import CETArea
 

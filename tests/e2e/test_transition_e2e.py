@@ -20,6 +20,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+import src.assets.transition as transition_assets
+
 
 pytestmark = pytest.mark.e2e
 
@@ -42,76 +44,39 @@ class TestDagsterPipelineMaterialization:
 
     def test_all_transition_assets_defined(self):
         """Test that all transition assets are properly defined in Dagster."""
-        from src.assets import (
-            contracts_ingestion,
-            contracts_sample,
-            transition_analytics,
-            transition_detections,
-            transition_evidence_v1,
-            transition_scores_v1,
-            vendor_resolution,
-        )
-
-        # Verify all assets are callable (decorated with @asset)
-        assert callable(contracts_ingestion)
-        assert callable(contracts_sample)
-        assert callable(vendor_resolution)
-        assert callable(transition_scores_v1)
-        assert callable(transition_evidence_v1)
-        assert callable(transition_detections)
-        assert callable(transition_analytics)
+        assert callable(transition_assets.raw_contracts)
+        assert callable(transition_assets.validated_contracts_sample)
+        assert callable(transition_assets.enriched_vendor_resolution)
+        assert callable(transition_assets.transformed_transition_scores)
+        assert callable(transition_assets.transformed_transition_evidence)
+        assert callable(transition_assets.transformed_transition_detections)
+        assert callable(transition_assets.transformed_transition_analytics)
 
     def test_asset_checks_defined(self):
         """Test that all asset checks are properly defined."""
-        from src.assets import (
-            contracts_sample_quality_check,
-            transition_analytics_quality_check,
-            transition_detections_quality_check,
-            transition_evidence_quality_check,
-            transition_scores_quality_check,
-            vendor_resolution_quality_check,
-        )
-
-        # Verify all checks are callable
-        assert callable(contracts_sample_quality_check)
-        assert callable(vendor_resolution_quality_check)
-        assert callable(transition_scores_quality_check)
-        assert callable(transition_evidence_quality_check)
-        assert callable(transition_detections_quality_check)
-        assert callable(transition_analytics_quality_check)
+        assert callable(transition_assets.contracts_sample_quality_check)
+        assert callable(transition_assets.vendor_resolution_quality_check)
+        assert callable(transition_assets.transition_scores_quality_check)
+        assert callable(transition_assets.transition_evidence_quality_check)
+        assert callable(transition_assets.transition_detections_quality_check)
+        assert callable(transition_assets.transition_analytics_quality_check)
 
     def test_neo4j_assets_defined(self):
         """Test that Neo4j transition assets are defined."""
-        from src.assets import (
-            neo4j_transition_profiles,
-            neo4j_transition_relationships,
-            neo4j_transitions,
-            transition_node_count_check,
-            transition_relationships_check,
-        )
-
-        assert callable(neo4j_transitions)
-        assert callable(transition_node_count_check)
-        assert callable(neo4j_transition_relationships)
-        assert callable(transition_relationships_check)
-        assert callable(neo4j_transition_profiles)
+        assert callable(transition_assets.loaded_transitions)
+        assert callable(transition_assets.transition_node_count_check)
+        assert callable(transition_assets.loaded_transition_relationships)
+        assert callable(transition_assets.transition_relationships_check)
+        assert callable(transition_assets.loaded_transition_profiles)
 
     def test_asset_dependencies(self):
         """Test that asset dependencies are correctly defined."""
         # This would normally be validated by Dagster's type system,
         # but we verify the assets can be imported in dependency order
-        from src.assets import (
-            contracts_ingestion,
-            transition_detections,
-            transition_scores_v1,
-            vendor_resolution,
-        )
-
-        # If these import successfully, dependency graph is likely correct
-        assert contracts_ingestion is not None
-        assert vendor_resolution is not None
-        assert transition_scores_v1 is not None
-        assert transition_detections is not None
+        assert transition_assets.raw_contracts is not None
+        assert transition_assets.enriched_vendor_resolution is not None
+        assert transition_assets.transformed_transition_scores is not None
+        assert transition_assets.transformed_transition_detections is not None
 
 
 class TestFullDatasetDetection:

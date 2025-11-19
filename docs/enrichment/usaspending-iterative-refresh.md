@@ -81,33 +81,33 @@ enrichment_refresh:
 
 ### Manual Refresh (CLI)
 
-Use the `refresh_enrichment.py` script for ad-hoc refreshes:
+Use the CLI command for ad-hoc refreshes:
 
 ```bash
 
 ## Refresh specific awards
 
-python scripts/refresh_enrichment.py refresh-usaspending --award-ids "AWARD-001,AWARD-002"
+uv run sbir-cli enrich refresh-usaspending --award-ids "AWARD-001,AWARD-002"
 
 ## Refresh all stale awards
 
-python scripts/refresh_enrichment.py refresh-usaspending --stale-only
+uv run sbir-cli enrich refresh-usaspending --stale-only
 
 ## Refresh awards from 2023
 
-python scripts/refresh_enrichment.py refresh-usaspending --cohort 2023
+uv run sbir-cli enrich refresh-usaspending --cohort 2023
 
 ## Force refresh (ignores staleness)
 
-python scripts/refresh_enrichment.py refresh-usaspending --cohort 2023 --force
+uv run sbir-cli enrich refresh-usaspending --cohort 2023 --force
 
 ## List stale awards
 
-python scripts/refresh_enrichment.py list-stale --source usaspending
+uv run sbir-cli enrich list-stale --source usaspending
 
 ## View freshness statistics
 
-python scripts/refresh_enrichment.py stats --source usaspending
+uv run sbir-cli enrich freshness-stats --source usaspending
 ```
 
 ### Backfilling Freshness Records

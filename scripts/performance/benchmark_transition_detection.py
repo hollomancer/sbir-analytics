@@ -16,7 +16,7 @@ import pandas as pd
 from loguru import logger
 
 from src.enrichers.transition_detector import TransitionDetector
-from src.utils.performance_monitor import performance_monitor
+from src.utils.monitoring import performance_monitor
 
 
 def load_company_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:

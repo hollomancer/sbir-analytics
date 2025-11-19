@@ -253,3 +253,35 @@ class DagsterClient:
         except Exception as e:
             logger.error(f"Failed to get run status for {run_id}: {e}")
             return {"status": "error", "run_id": run_id, "error": str(e)}
+
+    def list_recent_runs(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return metadata for recent Dagster runs."""
+
+        try:
+            runs = self.instance.get_runs(limit=limit)
+        except Exception as exc:  # pragma: no cover - Dagster instance failure
+            logger.error(f"Failed to list Dagster runs: {exc}")
+            return []
+
+        results: list[dict[str, Any]] = []
+        for run in runs:
+            start_time = (
+                run.run_start_time.isoformat()
+                if hasattr(run, "run_start_time") and run.run_start_time
+                else None
+            )
+            end_time = (
+                run.run_end_time.isoformat()
+                if hasattr(run, "run_end_time") and run.run_end_time
+                else None
+            )
+            results.append(
+                {
+                    "run_id": run.run_id,
+                    "status": run.status.value if hasattr(run, "status") else "unknown",
+                    "job_name": getattr(run, "pipeline_name", ""),
+                    "start_time": start_time,
+                    "end_time": end_time,
+                }
+            )
+        return results

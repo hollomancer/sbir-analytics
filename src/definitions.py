@@ -5,57 +5,21 @@ import os
 from dagster import (
     AssetSelection,
     Definitions,
+    JobDefinition,
     ScheduleDefinition,
+    SensorDefinition,
     define_asset_job,
     load_asset_checks_from_modules,
     load_assets_from_modules,
 )
 
-from . import assets
-from .assets import (
-    cet_assets,
-    fiscal_assets,
-    sbir_ingestion,
-    sbir_usaspending_enrichment,
-    transition_assets,
-    usaspending_ingestion,
-    usaspending_iterative_enrichment,
-    uspto_assets,
-)
-from .assets.jobs.cet_pipeline_job import cet_full_pipeline_job
-from .assets.jobs.fiscal_returns_job import fiscal_returns_full_job, fiscal_returns_mvp_job
-from .assets.jobs.transition_job import (
-    transition_analytics_job,
-    transition_full_job,
-    transition_mvp_job,
-)
-from .assets.jobs.usaspending_iterative_job import usaspending_iterative_enrichment_job
+from . import assets as assets_pkg
 
 
 # Load all assets and checks from modules
-all_assets = load_assets_from_modules(
-    [
-        assets,
-        fiscal_assets,
-        sbir_ingestion,
-        usaspending_ingestion,
-        sbir_usaspending_enrichment,
-        usaspending_iterative_enrichment,
-        uspto_assets,
-        cet_assets,
-        transition_assets,
-    ]
-)
-all_asset_checks = load_asset_checks_from_modules(
-    [
-        fiscal_assets,
-        sbir_ingestion,
-        usaspending_iterative_enrichment,
-        uspto_assets,
-        cet_assets,
-        transition_assets,
-    ]
-)
+asset_modules = assets_pkg.iter_asset_modules()
+all_assets = load_assets_from_modules(asset_modules)
+all_asset_checks = load_asset_checks_from_modules(asset_modules)
 
 # Define SBIR ingestion job (just the ingestion assets)
 sbir_ingestion_job = define_asset_job(
@@ -106,28 +70,47 @@ cet_drift_schedule = ScheduleDefinition(
     description="Daily CET drift detection and alerting",
 )
 
-# Load sensors directly
-from .assets.sensors import usaspending_refresh_sensor
+def _job_lookup() -> dict[str, JobDefinition]:
+    """Build a lookup table for auto-discovered jobs."""
+
+    return {job.name: job for job in assets_pkg.iter_public_jobs()}
 
 
-all_sensors = [usaspending_refresh_sensor]
+def _sensor_lookup() -> list[SensorDefinition]:
+    """Return auto-discovered sensors."""
+
+    return list(assets_pkg.iter_public_sensors())
+
+
+auto_jobs = _job_lookup()
+
+cet_full_pipeline_job = auto_jobs.get("cet_full_pipeline_job")
+transition_mvp_job = auto_jobs.get("transition_mvp_job")
+transition_full_job = auto_jobs.get("transition_full_job")
+transition_analytics_job = auto_jobs.get("transition_analytics_job")
+usaspending_iterative_enrichment_job = auto_jobs.get("usaspending_iterative_enrichment_job")
+fiscal_returns_mvp_job = auto_jobs.get("fiscal_returns_mvp_job")
+fiscal_returns_full_job = auto_jobs.get("fiscal_returns_full_job")
+
+if cet_full_pipeline_job is None:
+    raise RuntimeError("cet_full_pipeline_job not found during auto-discovery")
+
+# Load sensors automatically
+all_sensors = _sensor_lookup()
+
+# Aggregate jobs for repository registration
+job_definitions: list[JobDefinition] = [
+    sbir_ingestion_job,
+    etl_job,
+    cet_drift_job,
+]
+job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)
 
 # Create the definitions object
 defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
-    jobs=[
-        sbir_ingestion_job,
-        etl_job,
-        cet_full_pipeline_job,
-        cet_drift_job,
-        transition_mvp_job,
-        transition_full_job,
-        transition_analytics_job,
-        usaspending_iterative_enrichment_job,
-        fiscal_returns_mvp_job,
-        fiscal_returns_full_job,
-    ],
+    jobs=job_definitions,
     schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
     sensors=all_sensors,
 )

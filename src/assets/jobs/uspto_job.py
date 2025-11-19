@@ -25,13 +25,13 @@ from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
 
 # Import the USPTO asset definitions. These are expected to be defined in the
-# package `src.assets.uspto_assets` as `raw_uspto_assignments` and
+# package `src.assets.uspto` as `raw_uspto_assignments` and
 # `validated_uspto_assignments`.
 #
 # The assets module also defines an asset_check `uspto_rf_id_asset_check` which
 # will be attached to `validated_uspto_assignments` when the repository is loaded.
 try:
-    from src.assets.uspto_assets import raw_uspto_assignments, validated_uspto_assignments
+    from src.assets.uspto import raw_uspto_assignments, validated_uspto_assignments
 except Exception:  # pragma: no cover - defensive import for repository load-time
     uspto_validation_job = build_placeholder_job(
         name="uspto_validation_job",

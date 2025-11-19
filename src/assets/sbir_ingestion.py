@@ -20,7 +20,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..extractors.sbir import SbirDuckDBExtractor
-from ..utils.performance_monitor import performance_monitor
+from ..utils.monitoring import performance_monitor
 from ..validators.sbir_awards import validate_sbir_awards
 
 

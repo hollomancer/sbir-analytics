@@ -30,7 +30,7 @@ from ...config.loader import get_config
 from ...ml.paecter_client import PaECTERClient
 from ...utils.asset_column_helper import AssetColumnHelper
 from ...utils.config_accessor import ConfigAccessor
-from ...utils.performance_monitor import performance_monitor
+from ...utils.monitoring import performance_monitor
 
 
 @asset(

@@ -15,7 +15,7 @@ Behavior:
   - If a real trained model artifact exists at `artifacts/models/cet_classifier_v1.pkl`
     this script will attempt to load it (best-effort). If loading fails, a
     deterministic keyword-based fallback classifier is used for profiling.
-- Uses the performance monitoring utilities (`src.utils.performance_monitor`)
+- Uses the performance monitoring utilities (`src.utils.monitoring`)
   to capture timing/memory metrics where available.
 - Writes outputs:
   - JSON summary: --output-json (default: /tmp/cet_performance.json)
@@ -55,7 +55,7 @@ except Exception:
 
 # Performance monitor/reporting utilities (import-safe)
 try:
-    from src.utils.performance_monitor import performance_monitor  # type: ignore
+    from src.utils.monitoring import performance_monitor  # type: ignore
 except Exception:
     performance_monitor = None  # type: ignore
 

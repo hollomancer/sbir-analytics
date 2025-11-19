@@ -77,7 +77,7 @@ def _write_detection_config(base_dir: Path) -> Path:
 def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition_assets import validated_contracts_sample  # type: ignore
+    from src.assets.transition import validated_contracts_sample  # type: ignore
 
     sample_path = Path("data/processed/contracts_sample.parquet")
     sample_path.parent.mkdir(parents=True, exist_ok=True)
@@ -139,7 +139,7 @@ def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import locally so env/working dir changes apply
-    from src.assets.transition_assets import enriched_vendor_resolution
+    from src.assets.transition import enriched_vendor_resolution
 
     # Prepare a tiny contracts_sample DataFrame:
     # - C1 matches UEI exactly
@@ -218,7 +218,7 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition_assets import (
+    from src.assets.transition import (
         transformed_transition_evidence,
         transformed_transition_scores,
     )
@@ -324,7 +324,7 @@ def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_pa
     config_path = _write_detection_config(tmp_path)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__DETECTION_CONFIG", str(config_path))
 
-    from src.assets.transition_assets import transformed_transition_detections  # type: ignore
+    from src.assets.transition import transformed_transition_detections  # type: ignore
 
     pd.DataFrame(
         [
@@ -420,7 +420,7 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
     config_path = _write_detection_config(tmp_path)
     monkeypatch.setenv("SBIR_ETL__TRANSITION__DETECTION_CONFIG", str(config_path))
 
-    from src.assets.transition_assets import transformed_transition_detections  # type: ignore
+    from src.assets.transition import transformed_transition_detections  # type: ignore
 
     pd.DataFrame(
         [

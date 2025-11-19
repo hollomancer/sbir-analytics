@@ -3,7 +3,7 @@
 Transition MVP Runner (shim, no Dagster required)
 
 This script materializes the Transition MVP pipeline locally using the import-safe
-assets in src.assets.transition_assets:
+assets in src.assets.transition:
 
     1) contracts_sample
     2) vendor_resolution
@@ -145,15 +145,15 @@ def main(argv: list[str] | None = None) -> int:
 
     # Import assets (import-safe; works without Dagster installed)
     try:
-        from src.assets.transition_assets import AssetExecutionContext  # type: ignore
-        from src.assets.transition_assets import enriched_vendor_resolution as a_vendor_resolution
-        from src.assets.transition_assets import (
+        from src.assets.transition import AssetExecutionContext  # type: ignore
+        from src.assets.transition import enriched_vendor_resolution as a_vendor_resolution
+        from src.assets.transition import (
             transformed_transition_evidence as a_transition_evidence_v1,
         )
-        from src.assets.transition_assets import (
+        from src.assets.transition import (
             transformed_transition_scores as a_transition_scores_v1,
         )
-        from src.assets.transition_assets import validated_contracts_sample as a_contracts_sample
+        from src.assets.transition import validated_contracts_sample as a_contracts_sample
     except Exception as exc:
         print(f"[error] Failed to import transition assets: {exc}", file=sys.stderr)
         return 2
@@ -260,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
     if verbose:
         print("[run] Materializing transition_analytics")
     try:
-        from src.assets.transition_assets import (  # type: ignore
+        from src.assets.transition import (  # type: ignore
             transformed_transition_analytics as a_transition_analytics,
         )
 

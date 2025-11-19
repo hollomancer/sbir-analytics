@@ -31,7 +31,7 @@ sbir-etl/
 │   │   ├── sbir_usaspending_enrichment.py
 │   │   ├── usaspending_ingestion.py
 │   │   ├── usaspending_iterative_enrichment.py
-│   │   ├── uspto_assets.py       # Patent processing
+│   │   ├── uspto/                # Patent processing assets
 │   │   ├── fiscal_assets.py      # Fiscal returns analysis
 │   │   └── jobs/                 # Composite job definitions
 │   │
@@ -91,7 +91,7 @@ sbir-etl/
 │   │
 │   ├── utils/                    # Shared utilities
 │   │   ├── duckdb_client.py      # DuckDB wrapper
-│   │   ├── performance_monitor.py # Metrics & monitoring
+│   │   ├── monitoring/            # Metrics & monitoring utilities
 │   │   ├── enrichment_metrics.py
 │   │   ├── enrichment_freshness.py
 │   │   ├── text_normalization.py
@@ -1113,4 +1113,3 @@ The **sbir-etl** codebase is a comprehensive, production-grade ETL system that:
 - Neo4j loading (APPLICABLE_TO, SPECIALIZES_IN relationships)
 
 The system is designed for extensibility, allowing new classifiers, enrichment strategies, and analysis methods to be integrated through well-defined asset interfaces and configuration schemas.
-

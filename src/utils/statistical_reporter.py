@@ -43,7 +43,7 @@ from src.models.statistical_reports import (
     ReportFormat,
 )
 from src.utils.metrics import MetricsCollector
-from src.utils.performance_monitor import performance_monitor
+from src.utils.monitoring import performance_monitor
 from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 
 

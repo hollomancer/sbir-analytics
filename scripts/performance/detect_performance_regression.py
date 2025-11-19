@@ -35,7 +35,7 @@ from loguru import logger
 
 from src.config.loader import get_config
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
-from src.utils.performance_monitor import performance_monitor
+from src.utils.monitoring import performance_monitor
 from src.utils.performance_reporting import PerformanceMetrics, PerformanceReporter
 
 

@@ -25,7 +25,7 @@ from ..transformers.fiscal import (
     FiscalUncertaintyQuantifier,
 )
 from ..transformers.r_stateio_adapter import RStateIOAdapter
-from ..utils.performance_monitor import performance_monitor
+from ..utils.monitoring import performance_monitor
 
 
 @asset(

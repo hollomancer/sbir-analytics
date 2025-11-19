@@ -102,7 +102,7 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition_assets import (  # noqa: WPS433
+    from src.assets.transition import (  # noqa: WPS433
         AssetExecutionContext,
         contracts_ingestion,
     )
@@ -170,7 +170,7 @@ def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
+    from src.assets.transition import (  # noqa: WPS433 (local import for test isolation)
         AssetExecutionContext,
         contracts_ingestion,
     )
@@ -219,7 +219,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
 
     # Import assets and shim context from the transition assets module
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition_assets import (  # noqa: WPS433 (local import for test isolation)
+    from src.assets.transition import (  # noqa: WPS433 (local import for test isolation)
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -349,7 +349,7 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition_assets import (  # noqa: WPS433
+    from src.assets.transition import (  # noqa: WPS433
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -483,7 +483,7 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition_assets import (  # noqa: WPS433
+    from src.assets.transition import (  # noqa: WPS433
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_analytics,

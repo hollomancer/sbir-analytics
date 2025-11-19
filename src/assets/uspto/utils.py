@@ -544,7 +544,7 @@ def _batch_to_dataframe(batch: list[dict]):
         raise DependencyError(
             "pandas is required to convert batches to DataFrame",
             dependency_name="pandas",
-            component="assets.uspto_assets",
+            component="assets.uspto",
             operation="batch_to_dataframe",
             details={"install_command": "poetry install"},
             cause=exc,

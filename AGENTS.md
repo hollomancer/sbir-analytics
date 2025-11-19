@@ -11,7 +11,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 ## 🎉 Consolidated Architecture (2025-01-01)
 
 **Major consolidation completed** - 30-60% code duplication reduction achieved:
-- ✅ **Unified Assets**: USPTO, CET, transition assets consolidated into single files
+- ✅ **Unified Assets**: USPTO, CET, transition assets consolidated into dedicated packages
 - ✅ **Hierarchical Config**: PipelineConfig with 16+ consolidated schemas
 - ✅ **Single Docker Compose**: Profile-based configuration (dev, prod, ci-test, e2e)
 - ✅ **Unified Models**: Award model replaces separate implementations
@@ -23,7 +23,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 - **Data:** Dagster assets (consolidated), DuckDB, Pandas, Neo4j 5.x
 - **Config:** Hierarchical PipelineConfig + YAML (`config/base.yaml`)
 - **CI:** GitHub Actions (pytest, coverage, regression checks)
-- **Performance:** Consolidated monitoring (`src/utils/performance_monitor.py`)
+- **Performance:** Consolidated monitoring (`src/utils/monitoring/`)
 
 ### Current State
 
@@ -41,9 +41,9 @@ src/
   transformers/         # Business logic, normalization (includes fiscal transformers)
   loaders/              # Neo4j (idempotent MERGE, relationships)
   assets/               # Consolidated Dagster asset definitions
-    ├── uspto_assets.py # Unified USPTO assets (transformation, loading, AI)
-    ├── cet_assets.py   # Consolidated CET classification
-    ├── transition_assets.py # Unified transition detection
+    ├── uspto/          # Unified USPTO assets (transformation, loading, AI)
+    ├── cet/            # Consolidated CET classification
+    ├── transition/     # Unified transition detection
     ├── fiscal_assets.py # Fiscal returns analysis
     ├── ma_detection.py # M&A detection assets
     ├── company_categorization.py # Company categorization assets
@@ -52,7 +52,7 @@ src/
     └── sensors/        # Dagster sensors (usaspending refresh)
   cli/                  # Command-line interface (commands, display, integration)
   config/schemas.py     # Hierarchical PipelineConfig (16+ consolidated schemas)
-  utils/performance_monitor.py # Consolidated monitoring and alerts
+  utils/monitoring/      # Consolidated monitoring and alerts
   utils/quality_*.py     # Baselines, dashboards
 
 config/base.yaml        # Thresholds, paths, performance settings
@@ -83,7 +83,7 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 
 ## Common Patterns
 
-**Add monitoring:** Use `performance_monitor.py` decorators, `AlertCollector` for metrics
+**Add monitoring:** Use `src.utils.monitoring` decorators and `AlertCollector` for metrics
 **Modify CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
 **Add tests:** Place in `tests/unit|integration|e2e/`, run via `pytest -v --cov=src`
 **Update Neo4j:** Modify `src/loaders/`, use MERGE operations, document in `docs/schemas/`

@@ -26,7 +26,7 @@ from loguru import logger
 from ..config.loader import get_config
 from ..enrichers.usaspending import enrich_sbir_with_usaspending
 from ..exceptions import EnrichmentError
-from ..utils.performance_monitor import performance_monitor
+from ..utils.monitoring import performance_monitor
 
 
 @dataclass

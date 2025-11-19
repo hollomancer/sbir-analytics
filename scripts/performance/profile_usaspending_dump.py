@@ -159,7 +159,7 @@ class USAspendingDumpProfiler:
         # Local imports to keep top-level imports stable
         import json
 
-        from src.utils.performance_monitor import performance_monitor
+        from src.utils.monitoring import performance_monitor
 
         table_name = self.table_oid_map.get(table_oid, f"unknown_table_{table_oid}")
         logger.info(

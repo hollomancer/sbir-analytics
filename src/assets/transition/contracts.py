@@ -73,14 +73,14 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
             f"USAspending dump directory not found: {dump_dir}",
             file_path=str(dump_dir),
             operation="contracts_sample",
-            component="assets.transition_assets",
+            component="assets.transition",
         )
     if not vendor_filter_path.exists():
         raise FileSystemError(
             f"Vendor filter file not found: {vendor_filter_path}",
             file_path=str(vendor_filter_path),
             operation="contracts_sample",
-            component="assets.transition_assets",
+            component="assets.transition",
         )
 
     needs_extract = force_refresh or not output_path.exists()
@@ -110,7 +110,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
             f"Expected contracts output at {output_path}",
             file_path=str(output_path),
             operation="contracts_sample",
-            component="assets.transition_assets",
+            component="assets.transition",
         )
 
     df = pd.read_parquet(output_path)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -31,11 +32,17 @@ USAspendingRateLimitError = RateLimitError
 class USAspendingAPIClient:
     """Async client for USAspending.gov API v2."""
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        *,
+        http_client: httpx.AsyncClient | None = None,
+    ):
         """Initialize USAspending API client.
 
         Args:
             config: Optional configuration override. If None, loads from get_config()
+            http_client: Optional pre-configured HTTPX client (useful for tests)
         """
         if config is None:
             cfg = get_config()
@@ -54,7 +61,7 @@ class USAspendingAPIClient:
 
         # Rate limiting state
         self.request_times: list[datetime] = []
-        self._rate_limiter_lock = False
+        self._rate_limit_lock = asyncio.Lock()
 
         # State file path
         self.state_file = Path(
@@ -64,28 +71,33 @@ class USAspendingAPIClient:
         
         ensure_parent_dir(self.state_file)
 
+        self._client = http_client or httpx.AsyncClient(timeout=self.timeout)
+
         logger.info(
             f"Initialized USAspendingAPIClient: base_url={self.base_url}, "
             f"rate_limit={self.rate_limit_per_minute}/min"
         )
 
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+
+        await self._client.aclose()
+
     async def _wait_for_rate_limit(self) -> None:
         """Wait if rate limit would be exceeded."""
-        now = datetime.now()
-        # Remove requests older than 1 minute
-        self.request_times = [t for t in self.request_times if (now - t).total_seconds() < 60]
 
-        if len(self.request_times) >= self.rate_limit_per_minute:
-            # Wait until oldest request is 60 seconds old
-            oldest = min(self.request_times)
-            wait_seconds = 60 - (now - oldest).total_seconds() + 1  # Add 1s buffer
-            if wait_seconds > 0:
-                logger.debug(f"Rate limit reached, waiting {wait_seconds:.1f} seconds")
-                import asyncio
+        async with self._rate_limit_lock:
+            now = datetime.now()
+            self.request_times = [t for t in self.request_times if (now - t).total_seconds() < 60]
 
-                await asyncio.sleep(wait_seconds)
+            if len(self.request_times) >= self.rate_limit_per_minute:
+                oldest = min(self.request_times)
+                wait_seconds = 60 - (now - oldest).total_seconds() + 1
+                if wait_seconds > 0:
+                    logger.debug(f"Rate limit reached, waiting {wait_seconds:.1f} seconds")
+                    await asyncio.sleep(wait_seconds)
 
-        self.request_times.append(datetime.now())
+            self.request_times.append(datetime.now())
 
     async def _make_request(
         self,
@@ -130,35 +142,33 @@ class USAspendingAPIClient:
                 default_headers.update(headers)
 
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    if method.upper() == "GET":
-                        response = await client.get(url, params=params, headers=default_headers)
-                    elif method.upper() == "POST":
-                        response = await client.post(url, json=params, headers=default_headers)
-                    else:
-                        raise ConfigurationError(
-                            f"Unsupported HTTP method: {method}",
-                            component="enricher.usaspending",
-                            operation="_make_request",
-                            details={
-                                "method": method,
-                                "supported_methods": ["GET", "POST"],
-                                "endpoint": endpoint,
-                            },
-                        )
+                if method.upper() == "GET":
+                    response = await self._client.get(url, params=params, headers=default_headers)
+                elif method.upper() == "POST":
+                    response = await self._client.post(url, json=params, headers=default_headers)
+                else:
+                    raise ConfigurationError(
+                        f"Unsupported HTTP method: {method}",
+                        component="enricher.usaspending",
+                        operation="_make_request",
+                        details={
+                            "method": method,
+                            "supported_methods": ["GET", "POST"],
+                            "endpoint": endpoint,
+                        },
+                    )
 
-                    response.raise_for_status()
+                response.raise_for_status()
 
-                    # Handle rate limiting
-                    if response.status_code == 429:
-                        raise RateLimitError(
-                            "Rate limit exceeded",
-                            api_name="usaspending",
-                            endpoint=endpoint,
-                            details={"response_text": response.text[:200]},
-                        )
+                if response.status_code == 429:
+                    raise RateLimitError(
+                        "Rate limit exceeded",
+                        api_name="usaspending",
+                        endpoint=endpoint,
+                        details={"response_text": response.text[:200]},
+                    )
 
-                    return response.json()
+                return response.json()
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:

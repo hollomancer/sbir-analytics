@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import typer
 from rich.panel import Panel
+from rich.table import Table
 
 from ..context import CommandContext
 from ..display.progress import create_progress_tracker
@@ -120,15 +121,39 @@ def status(
                 return
 
             # Display run status
-            typer.style("Rich table would go here")  # TODO: Use Rich table
-            context.console.print(f"[cyan]Run Status for {run_id}:[/cyan]")
-            context.console.print(f"  Status: {run_status.get('status')}")
-            context.console.print(f"  Start Time: {run_status.get('start_time', 'Unknown')}")
-            context.console.print(f"  End Time: {run_status.get('end_time', 'In progress')}")
+            table = Table(title=f"Run {run_id}", show_header=True)
+            table.add_column("Status")
+            table.add_column("Start Time")
+            table.add_column("End Time")
+            table.add_row(
+                str(run_status.get("status")),
+                run_status.get("start_time", "Unknown") or "Unknown",
+                run_status.get("end_time", "In progress") or "In progress",
+            )
+            context.console.print(table)
         else:
-            # List recent runs (would need additional Dagster API call)
-            context.console.print("[yellow]Listing all runs not yet implemented[/yellow]")
-            context.console.print("[dim]Use --run-id to check a specific run[/dim]")
+            recent_runs = context.dagster_client.list_recent_runs(limit=10)
+            if not recent_runs:
+                context.console.print("[yellow]No recent runs found[/yellow]")
+                return
+
+            table = Table(title="Recent Dagster Runs", show_header=True)
+            table.add_column("Run ID", overflow="fold")
+            table.add_column("Job")
+            table.add_column("Status")
+            table.add_column("Started")
+            table.add_column("Ended")
+
+            for run in recent_runs:
+                table.add_row(
+                    run.get("run_id", ""),
+                    run.get("job_name", ""),
+                    run.get("status", ""),
+                    run.get("start_time", "Unknown") or "Unknown",
+                    run.get("end_time", "In progress") or "In progress",
+                )
+
+            context.console.print(table)
 
     except Exception as e:
         context.console.print(f"[red]Error getting run status: {e}[/red]")

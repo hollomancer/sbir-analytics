@@ -9,7 +9,7 @@ from dagster import build_asset_context
 pytest.importorskip("pandas")
 
 transformation_assets = pytest.importorskip(
-    "src.assets.uspto_assets", reason="uspto assets module missing"
+    "src.assets.uspto", reason="uspto assets module missing"
 )
 
 
