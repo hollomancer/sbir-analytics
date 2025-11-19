@@ -6,13 +6,22 @@ Usage:
 """
 
 import sys
+from importlib import metadata
 
 
 def check_rpy2():
     """Check if rpy2 is installed."""
     try:
         import rpy2
-        print(f"✓ rpy2 installed (version {rpy2.__version__})")
+
+        version = getattr(rpy2, "__version__", None)
+        if version is None:
+            try:
+                version = metadata.version("rpy2")
+            except metadata.PackageNotFoundError:
+                version = "unknown"
+
+        print(f"✓ rpy2 installed (version {version})")
         return True
     except ImportError:
         print("✗ rpy2 NOT installed")

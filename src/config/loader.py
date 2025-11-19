@@ -7,6 +7,8 @@ and backward-compat shims are applied in `get_config()` so unit tests that
 inspect raw file merging can rely on an unmodified merge output.
 """
 
+from __future__ import annotations
+
 import os
 from functools import lru_cache
 from pathlib import Path
