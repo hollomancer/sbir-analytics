@@ -14,7 +14,7 @@ nav:
       - USAspending: docs/data/usaspending.md
       - Patents: docs/data/patents.md
   - References:
-      - Neo4j Schema: docs/references/schemas/neo4j.md
+      - Neo4j Schema: docs/schemas/neo4j.md
   - Guides:
       - Containerization: docs/deployment/containerization.md
       - Quality Assurance: docs/guides/quality-assurance.md

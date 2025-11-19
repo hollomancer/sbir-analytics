@@ -45,7 +45,7 @@ For comprehensive schema documentation, including field-level details, constrain
 ## Update policy
 
 - Additions must be backward compatible; deprecations require a migration note.
-- Update `docs/references/schemas/neo4j.md` and the relevant loader(s) in the same PR.
+- Update `docs/schemas/neo4j.md` and the relevant loader(s) in the same PR.
 - Document changes in `docs/decisions/` if they are architectural.
 
 For queries/examples, see `docs/queries/` and integration tests under `tests/`.

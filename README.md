@@ -232,7 +232,7 @@ Calculates return on investment (ROI) of SBIR funding using economic input-outpu
 Tracks USPTO patents linked to SBIR awards, including patent assignments, ownership chains, and technology transfer analysis.
 
 **Schema**: [`docs/schemas/patent-neo4j-schema.md`](docs/schemas/patent-neo4j-schema.md)
-**Data Dictionary**: [`docs/data-dictionaries/uspto_patent_data_dictionary.md`](docs/data-dictionaries/uspto_patent_data_dictionary.md)
+**Data Dictionary**: [`docs/data/dictionaries/uspto-patent-data-dictionary.md`](docs/data/dictionaries/uspto-patent-data-dictionary.md)
 
 ## Documentation
 
@@ -243,7 +243,7 @@ Comprehensive documentation is organized by topic:
 - **Transition Detection**: [`docs/transition/`](docs/transition/README.md) - Technology transition detection system
 - **Machine Learning**: [`docs/ml/`](docs/ml/README.md) - CET classifier and ML integration
 - **Architecture**: [`docs/architecture/`](docs/architecture/detailed-overview.md) - System architecture and design patterns
-- **Schemas**: [`docs/schemas/`](docs/references/schemas/neo4j.md) - Neo4j graph schema documentation
+- **Schemas**: [`docs/schemas/`](docs/schemas/neo4j.md) - Neo4j graph schema documentation
 - **Data Sources**: `docs/data/` - Data dictionaries and source documentation
 - **Specifications**: `.kiro/specs/` - Kiro specification system (see `AGENTS.md` for workflow guidance)
 
@@ -335,7 +335,7 @@ WHERE p.grant_doc_num = "7123456"
 RETURN path
 ```
 
-**Full schema documentation**: [`docs/schemas/`](docs/references/schemas/neo4j.md)
+**Full schema documentation**: [`docs/schemas/`](docs/schemas/neo4j.md)
 
 ## Configuration
 
@@ -485,5 +485,3 @@ This project makes use of and is grateful for the following open-source tools an
 ## License
 
 This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Conrad Hollomon.
-
-

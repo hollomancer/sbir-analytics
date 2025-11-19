@@ -24,7 +24,7 @@ This script performs:
 
 Usage:
     python sbir-etl/scripts/analyze_data_dictionary_and_csv.py \
-        --dict docs/data-dictionaries/sbir_awards_data_dictionary.xlsx \
+        --dict docs/data/dictionaries/sbir_awards_data_dictionary.xlsx \
         --csv tests/fixtures/sbir_sample.csv \
         --out reports/sbir_data_dictionary_analysis.md
 
@@ -523,7 +523,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dict",
         "-d",
-        default="docs/data-dictionaries/sbir_awards_data_dictionary.xlsx",
+        default="docs/data/dictionaries/sbir_awards_data_dictionary.xlsx",
         help="Path to data dictionary Excel file.",
     )
     parser.add_argument(

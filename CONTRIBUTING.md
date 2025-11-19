@@ -415,7 +415,7 @@ Brief description of changes
 - Every doc includes front-matter: `Type`, `Owner`, `Last-Reviewed`, `Status`.
 - Docs live in `docs/` (see `docs/index.md`). Specs and tasks live in `.kiro/specs/`.
 - Changes to architecture, data contracts, or performance must update relevant docs/specs in the same PR.
-- Neo4j schema changes must update `docs/references/schemas/neo4j.md` and `src/loaders/` together.
+- Neo4j schema changes must update `docs/schemas/neo4j.md` and `src/loaders/` together.
 - New features requiring user documentation should include guides in `docs/guides/` (e.g., statistical reporting, containerization).
 - Configuration changes must be documented in relevant guides and configuration examples.
 
