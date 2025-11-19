@@ -28,7 +28,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1
 
 # Install build tools required to compile wheels and R
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Include cmake and other dependencies needed for arrow (to speed up R package builds)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     ca-certificates \
@@ -49,6 +52,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libtiff-dev \
     libicu-dev \
+    cmake \
+    pkg-config \
+    libbz2-dev \
+    liblzma-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app dir
@@ -58,32 +66,71 @@ WORKDIR /workspace
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency manifests early to leverage layer cache
-COPY pyproject.toml uv.lock* /workspace/
-
-# Ensure README and package sources are available for metadata when building wheels.
-# Copying the project source into the builder context ensures metadata generation succeeds in CI.
-COPY . /workspace/
+COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 
 # Export a requirements.txt for pip-based wheel building (main + dev + r groups for test tooling)
 # UV is much faster than Poetry for this step
 # Include 'r' extra to get rpy2 for R integration
-RUN uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
 
-# Build wheels for all requirements (and for this package) into /wheels
-RUN mkdir -p /wheels \
+# Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
- && python -m pip wheel --wheel-dir=/wheels -r requirements.txt \
- && python -m pip wheel --wheel-dir=/wheels .
+ && python -m pip wheel --wheel-dir=/wheels -r requirements.txt
+
+# NOW copy the rest of the code for building the package wheel
+COPY . /workspace/
+
+# Build package wheel
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip wheel --wheel-dir=/wheels .
 
 # Install R packages (stateior and useeior) for fiscal analysis
 # These packages are used via rpy2 for economic input-output modeling
 # Install to system library so they're available in runtime
-RUN R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
-    install.packages('remotes', repos='https://cloud.r-project.org/', lib='/usr/local/lib/R/site-library')" && \
+# 
+# Optimization strategies:
+# 1. Install arrow explicitly first (may get binary, or at least parallel build)
+# 2. Use parallel compilation with MAKEFLAGS and Ncpus
+# 3. Cache R library directory between builds
+# 4. Set ARROW_R_DEV=false to avoid building development version
+# 5. Install dependencies in separate steps for better caching
+RUN --mount=type=cache,target=/root/.cache/R \
+    export MAKEFLAGS="-j$(nproc)" && \
+    export ARROW_R_DEV=false && \
+    export ARROW_WITH_BZ2=ON && \
+    export ARROW_WITH_LZ4=ON && \
+    export ARROW_WITH_SNAPPY=ON && \
+    export ARROW_WITH_ZLIB=ON && \
+    export ARROW_WITH_ZSTD=ON && \
     R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
-    remotes::install_github('USEPA/stateior', dependencies=TRUE, lib='/usr/local/lib/R/site-library')" && \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing remotes package...\n'); \
+    install.packages('remotes', repos='https://cloud.r-project.org/', \
+                     lib='/usr/local/lib/R/site-library', \
+                     Ncpus = parallel::detectCores())" && \
     R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
-    remotes::install_github('USEPA/useeior', dependencies=TRUE, lib='/usr/local/lib/R/site-library')" && \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing arrow package (this may take a while if building from source)...\n'); \
+    install.packages('arrow', repos='https://cloud.r-project.org/', \
+                     lib='/usr/local/lib/R/site-library', \
+                     Ncpus = parallel::detectCores())" && \
+    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing stateior package (arrow should already be installed)...\n'); \
+    remotes::install_github('USEPA/stateior', dependencies=TRUE, \
+                            lib='/usr/local/lib/R/site-library', \
+                            Ncpus = parallel::detectCores(), \
+                            upgrade = 'never')" && \
+    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing useeior package (arrow should already be installed)...\n'); \
+    remotes::install_github('USEPA/useeior', dependencies=TRUE, \
+                            lib='/usr/local/lib/R/site-library', \
+                            Ncpus = parallel::detectCores(), \
+                            upgrade = 'never')" && \
     R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
 
 # At this point /wheels contains all binary/py wheels needed for runtime install
@@ -137,7 +184,8 @@ COPY --from=builder /usr/local/lib/R/site-library/ /usr/local/lib/R/site-library
 # should install those packages at container startup (for example via `uv sync`
 # or `pip install` in the test command). See CI docker-compose.test.yml for the
 # test-time install step.
-RUN pip install --upgrade pip setuptools wheel \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel \
  && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt
 
 # Install gosu (used to drop privileges when needed)

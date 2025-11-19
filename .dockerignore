@@ -63,6 +63,12 @@ htmlcov/
 # OpenSpec
 openspec/
 
+# Kiro specs (not needed in container)
+.kiro/
+
+# Archive (not needed in container)
+archive/
+
 # CI/CD
 .github/
 .gitlab-ci.yml
