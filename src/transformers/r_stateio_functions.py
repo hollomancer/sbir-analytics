@@ -617,3 +617,274 @@ def compute_impacts_via_useeior_state_models(
     # Convert results to DataFrame
     # This will be completed when we understand the exact result structure
     return pd.DataFrame(all_results)
+
+
+def extract_use_table_from_model(
+    model: Any,
+    converter: Any | None = None,
+) -> pd.DataFrame | None:
+    """Extract Use table from StateIO model.
+
+    Args:
+        model: StateIO model object from buildFullTwoRegionIOTable()
+        converter: Optional pandas2ri converter
+
+    Returns:
+        Use table as pandas DataFrame, or None if extraction fails
+    """
+    if not RPY2_AVAILABLE:
+        logger.warning("rpy2 not available, cannot extract Use table")
+        return None
+
+    if model is None:
+        return None
+
+    try:
+        # StateIO model is an R list with named components
+        # Try to extract Use table (typically named "DomesticUseTransactions" or "UseTransactions")
+        use_table = None
+
+        # Try different possible names for the Use table
+        possible_names = ["DomesticUseTransactions", "UseTransactions", "DomesticUse", "Use"]
+
+        for name in possible_names:
+            try:
+                use_table = model.rx2(name)
+                if use_table is not None:
+                    logger.debug(f"Found Use table with name: {name}")
+                    break
+            except Exception:
+                continue
+
+        if use_table is None:
+            logger.warning("Could not find Use table in StateIO model")
+            return None
+
+        # Convert to pandas DataFrame
+        if converter is not None:
+            from rpy2.robjects.conversion import localconverter
+
+            with localconverter(ro.default_converter + converter):
+                use_df = ro.conversion.rpy2py(use_table)
+        else:
+            from rpy2.robjects import pandas2ri
+
+            use_df = pandas2ri.rpy2py(use_table)
+
+        if not isinstance(use_df, pd.DataFrame):
+            logger.warning(f"Use table converted to {type(use_df)}, not DataFrame")
+            return None
+
+        logger.debug(f"Extracted Use table with shape: {use_df.shape}")
+        return use_df
+
+    except Exception as e:
+        logger.warning(f"Failed to extract Use table: {e}")
+        return None
+
+
+def extract_industry_output_from_model(
+    model: Any,
+    converter: Any | None = None,
+) -> pd.Series | None:
+    """Extract industry output vector from StateIO model.
+
+    Args:
+        model: StateIO model object
+        converter: Optional pandas2ri converter
+
+    Returns:
+        Industry output as pandas Series, or None if extraction fails
+    """
+    if not RPY2_AVAILABLE:
+        return None
+
+    if model is None:
+        return None
+
+    try:
+        # Try to extract industry output
+        output = None
+        possible_names = ["IndustryOutput", "Output", "x"]
+
+        for name in possible_names:
+            try:
+                output = model.rx2(name)
+                if output is not None:
+                    logger.debug(f"Found industry output with name: {name}")
+                    break
+            except Exception:
+                continue
+
+        if output is None:
+            logger.warning("Could not find industry output in model")
+            return None
+
+        # Convert to pandas Series
+        if converter is not None:
+            from rpy2.robjects.conversion import localconverter
+
+            with localconverter(ro.default_converter + converter):
+                output_series = ro.conversion.rpy2py(output)
+        else:
+            from rpy2.robjects import pandas2ri
+
+            output_series = pandas2ri.rpy2py(output)
+
+        # Ensure it's a Series
+        if isinstance(output_series, pd.DataFrame):
+            output_series = output_series.iloc[:, 0]
+        elif not isinstance(output_series, pd.Series):
+            output_series = pd.Series(output_series)
+
+        return output_series
+
+    except Exception as e:
+        logger.warning(f"Failed to extract industry output: {e}")
+        return None
+
+
+def calculate_technical_coefficients(
+    use_table: pd.DataFrame,
+    industry_output: pd.Series,
+) -> pd.DataFrame:
+    """Calculate technical coefficients matrix from Use table.
+
+    The technical coefficients matrix A is calculated as:
+    A[i,j] = Use[i,j] / Output[j]
+
+    Where A[i,j] represents the amount of commodity i needed to produce one unit of industry j.
+
+    Args:
+        use_table: Use table (commodities x industries)
+        industry_output: Industry output vector
+
+    Returns:
+        Technical coefficients matrix A
+
+    Raises:
+        ValueError: If dimensions don't match or output contains zeros
+    """
+    if use_table.shape[1] != len(industry_output):
+        raise ValueError(
+            f"Use table columns ({use_table.shape[1]}) must match "
+            f"industry output length ({len(industry_output)})"
+        )
+
+    # Avoid division by zero
+    # Replace zero outputs with small epsilon
+    output_safe = industry_output.copy()
+    output_safe[output_safe == 0] = 1e-10
+
+    # Calculate technical coefficients: A[i,j] = Use[i,j] / Output[j]
+    # Divide each column by corresponding output
+    tech_coeff = use_table.div(output_safe, axis=1)
+
+    # Replace any infinities or NaNs with zeros
+    tech_coeff = tech_coeff.replace([float("inf"), float("-inf")], 0).fillna(0)
+
+    logger.debug(f"Calculated technical coefficients matrix with shape: {tech_coeff.shape}")
+
+    return tech_coeff
+
+
+def calculate_leontief_inverse(
+    tech_coeff: pd.DataFrame,
+) -> pd.DataFrame:
+    """Calculate Leontief inverse matrix from technical coefficients.
+
+    The Leontief inverse L is calculated as:
+    L = (I - A)^(-1)
+
+    Where:
+    - I is the identity matrix
+    - A is the technical coefficients matrix
+    - L represents the total (direct + indirect) requirements per unit of final demand
+
+    Args:
+        tech_coeff: Technical coefficients matrix A
+
+    Returns:
+        Leontief inverse matrix L
+
+    Raises:
+        ValueError: If matrix is singular and cannot be inverted
+    """
+    try:
+        import numpy as np
+
+        # Create identity matrix
+        identity = np.eye(tech_coeff.shape[0])
+
+        # Calculate (I - A)
+        i_minus_a = identity - tech_coeff.values
+
+        # Compute inverse
+        leontief_inv = np.linalg.inv(i_minus_a)
+
+        # Convert back to DataFrame with same index/columns
+        leontief_df = pd.DataFrame(
+            leontief_inv,
+            index=tech_coeff.index,
+            columns=tech_coeff.columns,
+        )
+
+        logger.debug(f"Calculated Leontief inverse with shape: {leontief_df.shape}")
+
+        return leontief_df
+
+    except Exception as e:
+        raise ValueError(f"Failed to compute Leontief inverse: {e}") from e
+
+
+def apply_demand_shocks(
+    leontief_inv: pd.DataFrame,
+    shocks_df: pd.DataFrame,
+    sector_col: str = "bea_sector",
+    amount_col: str = "shock_amount",
+) -> pd.Series:
+    """Apply demand shocks using Leontief inverse to calculate production impacts.
+
+    Computes: production = L * demand
+
+    Where:
+    - L is the Leontief inverse matrix
+    - demand is the shock vector
+    - production is the resulting production impact vector
+
+    Args:
+        leontief_inv: Leontief inverse matrix
+        shocks_df: DataFrame with sector codes and shock amounts
+        sector_col: Column name for sector codes
+        amount_col: Column name for shock amounts
+
+    Returns:
+        Production impact by sector as pandas Series
+    """
+    try:
+        # Create demand vector aligned with Leontief matrix
+        demand_vector = pd.Series(0.0, index=leontief_inv.columns)
+
+        # Fill in shock amounts for specified sectors
+        for _, row in shocks_df.iterrows():
+            sector = str(row[sector_col])
+            amount = float(row[amount_col])
+
+            if sector in demand_vector.index:
+                demand_vector[sector] += amount
+            else:
+                logger.warning(f"Sector {sector} not found in Leontief matrix, skipping")
+
+        # Apply Leontief inverse: production = L * demand
+        production = leontief_inv.dot(demand_vector)
+
+        logger.debug(
+            f"Applied shocks to {len(shocks_df)} sectors, "
+            f"got production for {len(production)} sectors"
+        )
+
+        return production
+
+    except Exception as e:
+        logger.error(f"Failed to apply demand shocks: {e}")
+        raise

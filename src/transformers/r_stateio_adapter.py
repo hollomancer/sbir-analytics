@@ -25,11 +25,16 @@ from .economic_model_interface import EconomicModelInterface
 # Try to import StateIO function wrappers (may not be available if import fails)
 try:
     from .r_stateio_functions import (
+        apply_demand_shocks,
         build_state_model,
         build_useeior_state_models,
         calculate_impacts_with_useeior,
+        calculate_leontief_inverse,
+        calculate_technical_coefficients,
         calculate_value_added_ratios,
         extract_economic_components_from_impacts,
+        extract_industry_output_from_model,
+        extract_use_table_from_model,
         format_demand_vector_from_shocks,
         get_state_value_added,
     )
@@ -38,11 +43,16 @@ try:
 except ImportError:
     STATEIO_FUNCTIONS_AVAILABLE = False
     # Define stubs to avoid NameError
+    apply_demand_shocks = None  # type: ignore
     build_state_model = None  # type: ignore
     build_useeior_state_models = None  # type: ignore
     calculate_impacts_with_useeior = None  # type: ignore
+    calculate_leontief_inverse = None  # type: ignore
+    calculate_technical_coefficients = None  # type: ignore
     calculate_value_added_ratios = None  # type: ignore
     extract_economic_components_from_impacts = None  # type: ignore
+    extract_industry_output_from_model = None  # type: ignore
+    extract_use_table_from_model = None  # type: ignore
     format_demand_vector_from_shocks = None  # type: ignore
     get_state_value_added = None  # type: ignore
 
@@ -666,19 +676,99 @@ class RStateIOAdapter(EconomicModelInterface):
 
                 # Build state IO table
                 specs = {"BaseIOSchema": "2017"}
-                build_state_model(self.stateio, state, year, specs)
+                state_model = build_state_model(self.stateio, state, year, specs)
 
-                # Get value added components
-                get_state_value_added(self.stateio, state, year, specs)
+                # Extract Use table and industry output from model
+                use_table = extract_use_table_from_model(state_model, self._pandas_converter)
+                industry_output = extract_industry_output_from_model(
+                    state_model, self._pandas_converter
+                )
 
-                # TODO: Extract technical coefficients matrix and compute Leontief inverse
-                # TODO: Apply shocks to get production impacts
-                # TODO: Apply value added ratios to get economic components
+                if use_table is None or industry_output is None:
+                    logger.warning(
+                        f"Could not extract Use table or industry output for {state}, "
+                        "using placeholder"
+                    )
+                    raise ValueError("Missing Use table or industry output")
 
-                # For now, return placeholder structure
-                logger.warning(f"Direct StateIO matrix computation not yet implemented for {state}")
+                # Calculate technical coefficients matrix A
+                tech_coeff = calculate_technical_coefficients(use_table, industry_output)
 
-                # Add placeholder results
+                # Calculate Leontief inverse L = (I - A)^-1
+                leontief_inv = calculate_leontief_inverse(tech_coeff)
+
+                # Apply demand shocks to get production impacts
+                production_by_sector = apply_demand_shocks(leontief_inv, state_shocks)
+
+                # Get value added components and calculate ratios
+                va_components = get_state_value_added(self.stateio, state, year, specs)
+                va_ratios_df = calculate_value_added_ratios(
+                    va_components, converter=self._pandas_converter
+                )
+
+                # Build result rows for each sector shock
+                for _, shock_row in state_shocks.iterrows():
+                    sector = shock_row["bea_sector"]
+
+                    # Get production impact for this sector
+                    if sector in production_by_sector.index:
+                        production_impact = Decimal(str(float(production_by_sector[sector])))
+                    else:
+                        logger.warning(f"Sector {sector} not in production results, using zero")
+                        production_impact = Decimal("0")
+
+                    # Get value added ratios for this sector
+                    wage_ratio = Decimal("0.4")  # Default
+                    gos_ratio = Decimal("0.3")  # Default
+                    tax_ratio = Decimal("0.15")  # Default
+                    proprietor_ratio = Decimal("0.0")  # Default
+                    used_actual_ratios = False
+
+                    if not va_ratios_df.empty:
+                        sector_ratios = va_ratios_df[va_ratios_df["sector"] == str(sector)]
+                        if not sector_ratios.empty:
+                            wage_ratio = Decimal(str(sector_ratios["wage_ratio"].iloc[0]))
+                            gos_ratio = Decimal(str(sector_ratios["gos_ratio"].iloc[0]))
+                            tax_ratio = Decimal(str(sector_ratios["tax_ratio"].iloc[0]))
+                            proprietor_ratio = Decimal(
+                                str(sector_ratios["proprietor_income_ratio"].iloc[0])
+                            )
+                            used_actual_ratios = True
+
+                    # Calculate value added components
+                    wage_impact = production_impact * wage_ratio
+                    gos_impact = production_impact * gos_ratio
+                    tax_impact = production_impact * tax_ratio
+                    proprietor_impact = production_impact * proprietor_ratio
+
+                    quality_flags = (
+                        "stateio_direct_with_ratios"
+                        if used_actual_ratios
+                        else "stateio_direct_default_ratios"
+                    )
+
+                    all_results.append(
+                        {
+                            "state": state,
+                            "bea_sector": sector,
+                            "fiscal_year": shock_row["fiscal_year"],
+                            "wage_impact": wage_impact,
+                            "proprietor_income_impact": proprietor_impact,
+                            "gross_operating_surplus": gos_impact,
+                            "consumption_impact": production_impact * Decimal("0.2"),
+                            "tax_impact": tax_impact,
+                            "production_impact": production_impact,
+                            "model_version": model_version,
+                            "confidence": Decimal("0.80"),  # Slightly lower than USEEIOR
+                            "quality_flags": quality_flags,
+                        }
+                    )
+
+                logger.info(f"Computed impacts for {state} using direct StateIO matrix calculation")
+
+            except Exception as e:
+                logger.error(f"Failed StateIO computation for {state}: {e}")
+                # Add placeholder results for failed state
                 for _, shock_row in state_shocks.iterrows():
                     all_results.append(
                         {
@@ -693,12 +783,9 @@ class RStateIOAdapter(EconomicModelInterface):
                             "production_impact": Decimal("0"),
                             "model_version": model_version,
                             "confidence": Decimal("0.0"),
-                            "quality_flags": "stateio_direct_not_implemented",
+                            "quality_flags": f"stateio_failed:{str(e)[:50]}",
                         }
                     )
-
-            except Exception as e:
-                logger.error(f"Failed StateIO computation for {state}: {e}")
                 continue
 
         result_df = pd.DataFrame(all_results)

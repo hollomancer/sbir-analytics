@@ -276,11 +276,29 @@ Common formats:
 
 ## Python Integration
 
-The Python adapter (`RStateIOAdapter`) now includes improved value added extraction:
+The Python adapter (`RStateIOAdapter`) provides two implementation approaches:
+
+### Approach 1: USEEIOR Integration (Primary)
+
+Uses USEEIOR's `buildTwoRegionModels()` which integrates StateIO internally:
+- Builds state-specific models
+- Calculates impacts using USEEIOR's calculation engine
+- Extracts production impacts from N matrix
+- Applies StateIO GVA ratios for value added components
+
+### Approach 2: Direct StateIO Matrix Calculation (Fallback)
+
+When USEEIOR is unavailable, uses direct StateIO matrix algebra:
+1. Builds state IO table with `buildFullTwoRegionIOTable()`
+2. Extracts Use table and industry output vectors
+3. Calculates technical coefficients matrix: `A[i,j] = Use[i,j] / Output[j]`
+4. Computes Leontief inverse: `L = (I - A)^(-1)`
+5. Applies demand shocks: `production = L * demand`
+6. Applies StateIO GVA ratios for value added components
 
 ### Value Added Ratio Extraction
 
-The adapter automatically:
+Both approaches use actual StateIO data:
 1. Fetches GVA components (wages, GOS, taxes) from StateIO for each state
 2. Converts R data structures to pandas DataFrames
 3. Calculates sector-specific ratios of each component relative to total value added
@@ -288,10 +306,19 @@ The adapter automatically:
 
 ### Quality Flags
 
-Impact results include quality flags indicating data source:
-- `useeior_with_stateio_ratios`: Used actual StateIO GVA ratios (highest quality)
-- `useeior_with_default_ratios`: Used default ratios (fallback when StateIO data unavailable)
-- `placeholder_computation`: Used placeholder computation (when R packages unavailable)
+Impact results include quality flags indicating computation method:
+
+**USEEIOR Approach:**
+- `useeior_with_stateio_ratios`: USEEIOR + actual StateIO GVA ratios (highest quality)
+- `useeior_with_default_ratios`: USEEIOR + default ratios (fallback)
+
+**Direct StateIO Approach:**
+- `stateio_direct_with_ratios`: Direct matrix calculation + actual GVA ratios (high quality)
+- `stateio_direct_default_ratios`: Direct matrix calculation + default ratios (medium quality)
+
+**Fallbacks:**
+- `stateio_failed:{error}`: StateIO computation failed
+- `placeholder_computation`: R packages unavailable (lowest quality)
 
 ### Example Usage
 
@@ -311,4 +338,15 @@ shocks = pd.DataFrame({
 
 results = adapter.compute_impacts(shocks)
 # Results include sector-specific value added impacts with quality flags
+# Automatically uses USEEIOR if available, falls back to direct StateIO
 ```
+
+### Matrix Calculation Functions
+
+New helper functions for direct StateIO calculations:
+
+- `extract_use_table_from_model()`: Extract Use table from StateIO model
+- `extract_industry_output_from_model()`: Extract industry output vector
+- `calculate_technical_coefficients()`: Calculate A matrix from Use table
+- `calculate_leontief_inverse()`: Calculate L = (I-A)^-1
+- `apply_demand_shocks()`: Apply shocks using matrix multiplication

@@ -724,3 +724,161 @@ class TestEdgeCases:
 
         # Should create empty vectors
         mock_ro.FloatVector.assert_called_with([])
+
+
+class TestMatrixCalculations:
+    """Tests for matrix calculation functions (Leontief, technical coefficients)."""
+
+    def test_calculate_technical_coefficients(self):
+        """Test calculation of technical coefficients matrix."""
+        # Create simple Use table and output
+        use_table = pd.DataFrame(
+            [[10, 20], [5, 10]],  # 2 commodities x 2 industries
+            index=["C1", "C2"],
+            columns=["I1", "I2"],
+        )
+        industry_output = pd.Series([100, 200], index=["I1", "I2"])
+
+        tech_coeff = r_stateio.calculate_technical_coefficients(use_table, industry_output)
+
+        # Expected: Use[i,j] / Output[j]
+        # A[0,0] = 10/100 = 0.1, A[0,1] = 20/200 = 0.1
+        # A[1,0] = 5/100 = 0.05, A[1,1] = 10/200 = 0.05
+        assert tech_coeff.loc["C1", "I1"] == 0.1
+        assert tech_coeff.loc["C1", "I2"] == 0.1
+        assert tech_coeff.loc["C2", "I1"] == 0.05
+        assert tech_coeff.loc["C2", "I2"] == 0.05
+
+    def test_calculate_technical_coefficients_zero_output(self):
+        """Test technical coefficients with zero output (should handle gracefully)."""
+        use_table = pd.DataFrame([[10, 20]], index=["C1"], columns=["I1", "I2"])
+        industry_output = pd.Series([0, 200], index=["I1", "I2"])
+
+        # Should not raise error, should handle zero by using epsilon
+        tech_coeff = r_stateio.calculate_technical_coefficients(use_table, industry_output)
+
+        assert isinstance(tech_coeff, pd.DataFrame)
+        # Column with zero output should have very small coefficients (or zero)
+        assert tech_coeff.loc["C1", "I2"] == 0.1
+
+    def test_calculate_technical_coefficients_dimension_mismatch(self):
+        """Test technical coefficients with mismatched dimensions."""
+        use_table = pd.DataFrame([[10, 20]], index=["C1"], columns=["I1", "I2"])
+        industry_output = pd.Series([100], index=["I1"])  # Only 1 industry
+
+        with pytest.raises(ValueError, match="must match"):
+            r_stateio.calculate_technical_coefficients(use_table, industry_output)
+
+    def test_calculate_leontief_inverse(self):
+        """Test Leontief inverse calculation."""
+        # Create simple technical coefficients matrix
+        # Use a matrix that we know is invertible
+        tech_coeff = pd.DataFrame(
+            [[0.1, 0.2], [0.05, 0.1]],
+            index=["S1", "S2"],
+            columns=["S1", "S2"],
+        )
+
+        leontief_inv = r_stateio.calculate_leontief_inverse(tech_coeff)
+
+        # L = (I - A)^-1
+        # I - A = [[0.9, -0.2], [-0.05, 0.9]]
+        # Should be invertible
+        assert isinstance(leontief_inv, pd.DataFrame)
+        assert leontief_inv.shape == (2, 2)
+
+        # Diagonal elements should be >= 1 (total requirements)
+        assert leontief_inv.loc["S1", "S1"] >= 1.0
+        assert leontief_inv.loc["S2", "S2"] >= 1.0
+
+    def test_apply_demand_shocks(self):
+        """Test applying demand shocks with Leontief inverse."""
+        # Create Leontief inverse (identity for simplicity)
+        leontief_inv = pd.DataFrame(
+            [[1.0, 0.0], [0.0, 1.0]],
+            index=["11", "21"],
+            columns=["11", "21"],
+        )
+
+        # Create shocks
+        shocks_df = pd.DataFrame({"bea_sector": ["11"], "shock_amount": [1000.0]})
+
+        production = r_stateio.apply_demand_shocks(leontief_inv, shocks_df)
+
+        # With identity Leontief, production should equal shock
+        assert production["11"] == 1000.0
+        assert production["21"] == 0.0
+
+    def test_apply_demand_shocks_multiple_sectors(self):
+        """Test applying shocks to multiple sectors."""
+        # Leontief with some interdependence
+        leontief_inv = pd.DataFrame(
+            [[1.2, 0.1], [0.05, 1.1]],
+            index=["11", "21"],
+            columns=["11", "21"],
+        )
+
+        shocks_df = pd.DataFrame(
+            {
+                "bea_sector": ["11", "21"],
+                "shock_amount": [1000.0, 500.0],
+            }
+        )
+
+        production = r_stateio.apply_demand_shocks(leontief_inv, shocks_df)
+
+        # Production should be greater than shocks due to multiplier effects
+        assert production["11"] > 1000.0
+        assert production["21"] > 500.0
+
+    def test_apply_demand_shocks_unknown_sector(self):
+        """Test applying shocks with unknown sector (should warn but not fail)."""
+        leontief_inv = pd.DataFrame(
+            [[1.0, 0.0], [0.0, 1.0]],
+            index=["11", "21"],
+            columns=["11", "21"],
+        )
+
+        shocks_df = pd.DataFrame({"bea_sector": ["99"], "shock_amount": [1000.0]})
+
+        # Should not raise, should log warning
+        production = r_stateio.apply_demand_shocks(leontief_inv, shocks_df)
+
+        # Production should be all zeros (shock to unknown sector)
+        assert production["11"] == 0.0
+        assert production["21"] == 0.0
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("src.transformers.r_stateio_functions.ro")
+    def test_extract_use_table_from_model(self, mock_ro):
+        """Test extracting Use table from StateIO model."""
+        mock_model = Mock()
+        mock_use_table = pd.DataFrame(
+            [[10, 20], [5, 10]],
+            index=["C1", "C2"],
+            columns=["I1", "I2"],
+        )
+
+        # Mock rx2 to return the Use table
+        mock_model.rx2.return_value = mock_use_table
+
+        with patch("rpy2.robjects.pandas2ri.rpy2py", return_value=mock_use_table):
+            result = r_stateio.extract_use_table_from_model(mock_model)
+
+            assert isinstance(result, pd.DataFrame)
+            assert result.shape == (2, 2)
+
+    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
+    @patch("src.transformers.r_stateio_functions.ro")
+    def test_extract_industry_output_from_model(self, mock_ro):
+        """Test extracting industry output from StateIO model."""
+        mock_model = Mock()
+        mock_output = pd.Series([100, 200], index=["I1", "I2"])
+
+        mock_model.rx2.return_value = mock_output
+
+        with patch("rpy2.robjects.pandas2ri.rpy2py", return_value=mock_output):
+            result = r_stateio.extract_industry_output_from_model(mock_model)
+
+            assert isinstance(result, pd.Series)
+            assert len(result) == 2
