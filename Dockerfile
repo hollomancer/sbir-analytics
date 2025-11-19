@@ -27,7 +27,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1
 
-# Install build tools required to compile wheels
+# Install build tools required to compile wheels and R
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -36,6 +36,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     python3-dev \
+    r-base \
+    r-base-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app dir
@@ -51,15 +64,27 @@ COPY pyproject.toml uv.lock* /workspace/
 # Copying the project source into the builder context ensures metadata generation succeeds in CI.
 COPY . /workspace/
 
-# Export a requirements.txt for pip-based wheel building (main + dev groups for test tooling)
+# Export a requirements.txt for pip-based wheel building (main + dev + r groups for test tooling)
 # UV is much faster than Poetry for this step
-RUN uv pip compile pyproject.toml --extra dev --universal --python-version 3.11 -o requirements.txt
+# Include 'r' extra to get rpy2 for R integration
+RUN uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
 
 # Build wheels for all requirements (and for this package) into /wheels
 RUN mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
  && python -m pip wheel --wheel-dir=/wheels -r requirements.txt \
  && python -m pip wheel --wheel-dir=/wheels .
+
+# Install R packages (stateior and useeior) for fiscal analysis
+# These packages are used via rpy2 for economic input-output modeling
+# Install to system library so they're available in runtime
+RUN R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    install.packages('remotes', repos='https://cloud.r-project.org/', lib='/usr/local/lib/R/site-library')" && \
+    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    remotes::install_github('USEPA/stateior', dependencies=TRUE, lib='/usr/local/lib/R/site-library')" && \
+    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    remotes::install_github('USEPA/useeior', dependencies=TRUE, lib='/usr/local/lib/R/site-library')" && \
+    R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
 
 # At this point /wheels contains all binary/py wheels needed for runtime install
 # Copy wheels + requirements to a known place for runtime stage
@@ -73,14 +98,28 @@ FROM ${IMAGE_PY} AS runtime
 ENV PATH=/usr/local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    R_HOME=/usr/lib/R
 
-# Install tini and utilities required at runtime (gosu will be added via download)
+# Install tini, utilities, and R runtime required at runtime
+# R runtime (without dev tools) needed for rpy2 to work
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
     tini \
+    r-base \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1 \
+    libfreetype6 \
+    libfribidi0 \
+    libharfbuzz0b \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libtiff5 \
+    libicu72 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user/group early (uid/gid stable across runs)
@@ -94,6 +133,12 @@ WORKDIR /app
 # Copy built wheels and requirements from builder
 COPY --from=builder /wheels /wheels
 COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
+
+# Copy R packages from builder to runtime (more efficient than reinstalling)
+# R packages installed via install.packages() go to /usr/local/lib/R/site-library
+# We copy the entire directory structure to preserve all packages and dependencies
+RUN mkdir -p /usr/local/lib/R/site-library
+COPY --from=builder /usr/local/lib/R/site-library/ /usr/local/lib/R/site-library/
 
 # Install all wheels from /wheels into the runtime environment using pip
 # This avoids network fetches at runtime and ensures deterministic installs.

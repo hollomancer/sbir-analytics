@@ -200,6 +200,22 @@ Common R package errors:
 2. **Python rpy2**: `uv sync --extra r` or `pip install rpy2`
 3. **R Packages**: Install StateIO and USEEIOR in R environment
 
+### Docker Installation (Recommended)
+
+The Docker container includes R, rpy2, and the required R packages (stateior/useeior) pre-installed. No additional setup is needed when using Docker.
+
+```bash
+# Build the container (includes R integration)
+docker build -t sbir-etl:latest .
+
+# Run with Docker Compose
+docker compose --profile dev up
+```
+
+The R packages are installed during the Docker build process in the builder stage and copied to the runtime image. The `r` optional dependency is included in the requirements, so `rpy2` is automatically installed.
+
+### Local Installation (Non-Docker)
+
 ### Step-by-Step Installation
 
 #### 1. Install R
