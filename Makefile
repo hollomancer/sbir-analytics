@@ -306,7 +306,7 @@ neo4j-check: env-check ## Run the Neo4j health check
 .PHONY: transition-mvp-run
 transition-mvp-run: ## Run the Transition MVP pipeline locally (no Dagster required)
 	@$(call info,Running Transition MVP pipeline)
-	$(call run,poetry run python scripts/transition/transition_mvp_run.py)
+	$(call run,uv run sbir-cli transition mvp)
 	@$(call success,Transition MVP pipeline completed)
 
 .PHONY: transition-mvp-clean
