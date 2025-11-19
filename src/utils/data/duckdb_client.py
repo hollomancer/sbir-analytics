@@ -1,23 +1,47 @@
 """DuckDB client utilities for data processing."""
 
+from __future__ import annotations
+
 import csv
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import duckdb
 import pandas as pd
 from loguru import logger
 
 from src.config.loader import get_config
-from src.exceptions import FileSystemError
+from src.exceptions import DependencyError, FileSystemError
 from src.utils.common.logging_config import log_with_context
 from src.utils.common.path_utils import ensure_dir, resolve_path
+
+try:
+    import duckdb
+
+    _DUCKDB_IMPORT_ERROR: Exception | None = None
+except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+    duckdb = None  # type: ignore[assignment]
+    _DUCKDB_IMPORT_ERROR = exc
 
 
 if TYPE_CHECKING:
     # For type checkers we still reference pandas types
     import pandas as pd
+
+
+def _require_duckdb(operation: str | None = None) -> None:
+    """Ensure duckdb dependency is installed before executing client operations."""
+    if duckdb is not None:
+        return
+
+    raise DependencyError(
+        "DuckDB is required for this operation. Install the 'duckdb' package to enable DuckDB-backed features.",
+        dependency_name="duckdb",
+        component="utils.duckdb_client",
+        operation=operation,
+        details={"install_command": "uv pip install duckdb"},
+        cause=_DUCKDB_IMPORT_ERROR,
+    )
 
 
 class DuckDBClient:
@@ -30,6 +54,8 @@ class DuckDBClient:
             database_path: Path to database file, or None for in-memory
             read_only: Whether to open database in read-only mode
         """
+        _require_duckdb(operation="initialize_duckdb_client")
+
         self.database_path = database_path or ":memory:"
         self.read_only = read_only
         self._connection = None
@@ -40,24 +66,32 @@ class DuckDBClient:
     @staticmethod
     def escape_identifier(identifier: str) -> str:
         """Return a DuckDB-safe identifier (table/column name)."""
-        try:
-            return duckdb.escape_identifier(identifier)  # type: ignore[attr-defined]
-        except AttributeError:
-            double_quoted = identifier.replace('"', '""')
-            return f'"{double_quoted}"'
+        if duckdb is not None:
+            try:
+                return duckdb.escape_identifier(identifier)  # type: ignore[attr-defined]
+            except AttributeError:
+                pass
+
+        double_quoted = identifier.replace('"', '""')
+        return f'"{double_quoted}"'
 
     @staticmethod
     def escape_literal(value: str) -> str:
         """Return a DuckDB-safe string literal."""
-        try:
-            return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
-        except AttributeError:
-            escaped = value.replace("\\", "\\\\").replace("'", "''")
-            return "'" + escaped + "'"
+        if duckdb is not None:
+            try:
+                return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
+            except AttributeError:
+                pass
+
+        escaped = value.replace("\\", "\\\\").replace("'", "''")
+        return "'" + escaped + "'"
 
     @contextmanager
     def connection(self) -> None:
         """Context manager for database connection."""
+        _require_duckdb(operation="connect")
+
         if self.database_path == ":memory:":
             # For in-memory databases, use persistent connection
             if self._persistent_conn is None:

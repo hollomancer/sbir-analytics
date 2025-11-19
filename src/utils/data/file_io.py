@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,13 @@ def _to_jsonable(x: Any) -> Any:
             return None
     except Exception:
         pass
+    
+    if isinstance(x, Decimal):
+        # Preserve precision for basic numeric types; convert to float for JSON
+        try:
+            return float(x)
+        except Exception:
+            return str(x)
     
     # pandas Timestamps
     if hasattr(x, "isoformat"):
@@ -249,4 +257,3 @@ def read_parquet_or_ndjson(parquet_path: Path, json_path: Path | None = None) ->
     raise FileNotFoundError(
         f"Neither Parquet ({parquet_path}) nor NDJSON ({json_path}) file exists"
     )
-
