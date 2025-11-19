@@ -1,5 +1,7 @@
 """Structured logging configuration using loguru."""
 
+from __future__ import annotations
+
 import sys
 from contextvars import ContextVar
 from pathlib import Path
