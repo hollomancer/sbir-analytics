@@ -23,7 +23,8 @@ jobs:
       docs-only: ${{ steps.filter.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
         id: filter
         with:
           filters: |
@@ -243,7 +244,7 @@ jobs:
           fi
       - name: Upload scan artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload-artifacts
         with:
           name: secret-scan-output
           path: |

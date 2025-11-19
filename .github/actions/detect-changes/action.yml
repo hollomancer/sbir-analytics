@@ -1,15 +1,15 @@
 name: Detect Changes
-description: Detect which parts of the codebase changed using path filters
+description: |
+  Detect which parts of the codebase changed using path filters.
+  
+  Note: This is a convenience wrapper. For direct output access, use dorny/paths-filter@v2 directly.
+  When using this action, outputs are available via steps.<step-id>.outputs.<filter-name>
+  where <step-id> is the ID you assign to this step.
 
 inputs:
   filters:
     description: YAML string defining path filters (see dorny/paths-filter for format)
     required: true
-
-outputs:
-  changed:
-    description: JSON object with filter outputs
-    value: ${{ steps.filter.outputs }}
 
 runs:
   using: composite
