@@ -5,7 +5,10 @@ import pytest
 
 
 RUN_SLOW = os.getenv("PYTEST_ALLOW_SLOW", "0").lower() in {"1", "true", "yes"}
-pytestmark = pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run")
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run"),
+]
 
 
 # These tests exercise integration between the lightweight patent feature
@@ -19,10 +22,6 @@ from src.ml.models.patent_classifier import PatentCETClassifier
 # Feature helpers are optional in some environments; skip the integration test if not present.
 pytest.importorskip("src.ml.features.patent_features")
 from src.ml.features.patent_features import PatentFeatureVector, extract_features
-
-
-pytestmark = pytest.mark.fast
-
 
 
 def make_pipelines_factory():

@@ -62,6 +62,7 @@ Use `gh workflow run <name>` for manual triggers or inspect [Actions](https://gi
 - Baseline metrics: `reports/benchmarks/baseline.json`
 - Run local perf suite: `uv run python -m src.cli.main benchmarks run --config config/base.yaml`
 - Compare against baseline: `uv run python -m src.cli.main benchmarks compare --baseline reports/benchmarks/baseline.json`
+- Transition detection throughput: `uv run python scripts/performance/benchmark_transition_detection.py --sample-size 5000 --batch-size 250` (run inside `make docker-e2e-large` to match Dagster/Docker environments)
 - For Docker-based perf runs, use `make docker-e2e-large` and review `reports/performance/*.json`.
 
 See [docs/performance](../performance) and [docs/guides/quality-assurance.md](../guides/quality-assurance.md) for thresholds and monitoring expectations.

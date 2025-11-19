@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Benchmark script for transition detection performance testing.
-This script measures and records performance metrics for the transition
-detection pipeline, including execution time, memory usage, and throughput.
-Usage:
-    python scripts/benchmark_transition_detection.py [--sample-size 1000] [--output reports/benchmarks/transition_detection_baseline.json]
+"""Benchmark the transition detection pipeline outside of pytest.
+
+This script generates a synthetic SBIR awards + contracts dataset, runs the
+TransitionDetector end-to-end in batches, and emits throughput plus detection
+metrics. Use it inside the Dagster/Docker environment when validating large
+changes instead of running the heavy pytest-based simulations.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,168 +19,170 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from src.enrichers.transition_detector import TransitionDetector
-from src.utils.monitoring import performance_monitor
+from src.transition.detection.detector import TransitionDetector
+from src.transition.performance.monitoring import PerformanceProfiler, profile_detection_performance
 
 
-def load_company_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
-    """
-    Load company data for benchmarking.
-    Args:
-        sample_size: Maximum number of records to load (None = all)
-    Returns:
-        Tuple of (Company DataFrame, total available records)
-    """
-    # This is a placeholder for loading actual company data.
-    # In a real scenario, this would load from a database or a file.
-    logger.info("Loading company data...")
-    data = {
-        "company_id": range(10000),
-        "company_name": [f"Company {i}" for i in range(10000)],
-        "description": ["This is a test description." for _ in range(10000)],
-    }
-    full_df = pd.DataFrame(data)
-    total_records = len(full_df)
+def build_transition_dataset(sample_size: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Generate synthetic awards/contracts similar to FY2020-2024 workloads."""
+    cet_areas = ["AI", "Advanced Manufacturing", "Biotech", "Quantum", "Microelectronics"]
+    agencies = ["NSF", "DoD", "DOE", "NIH", "NASA"]
 
-    if sample_size and sample_size < total_records:
-        sample_df = full_df.head(sample_size).copy()
-        logger.info(f"Using sample of {len(sample_df)} records for benchmarking")
-        return sample_df, total_records
-    else:
-        logger.info(f"Using all {total_records} records for benchmarking")
-        return full_df, total_records
+    awards = pd.DataFrame(
+        {
+            "award_id": [f"SBIR-{2020 + (i % 5)}-{i:06d}" for i in range(sample_size)],
+            "company": [f"Company {i}" for i in range(sample_size)],
+            "UEI": [f"UEI{i:09d}" for i in range(sample_size)],
+            "Phase": ["I" if i % 2 == 0 else "II" for i in range(sample_size)],
+            "awarding_agency_name": [agencies[i % len(agencies)] for i in range(sample_size)],
+            "award_date": pd.date_range("2020-01-01", periods=sample_size, freq="12H"),
+            "completion_date": pd.date_range("2021-01-01", periods=sample_size, freq="12H"),
+            "cet_area": [cet_areas[i % len(cet_areas)] for i in range(sample_size)],
+            "award_amount": [100000 * (1 + (i % 50)) for i in range(sample_size)],
+        }
+    )
+
+    contracts = pd.DataFrame(
+        {
+            "contract_id": [f"CONTRACT-{i:06d}" for i in range(sample_size * 2)],
+            "vendor_uei": [awards.iloc[i % sample_size]["UEI"] for i in range(sample_size * 2)],
+            "action_date": pd.date_range("2021-06-01", periods=sample_size * 2, freq="6H"),
+            "description": [f"Contract {i}" for i in range(sample_size * 2)],
+            "awarding_agency_name": [agencies[i % len(agencies)] for i in range(sample_size * 2)],
+            "amount": [50000 * (1 + (i % 20)) for i in range(sample_size * 2)],
+        }
+    )
+
+    return awards, contracts
 
 
-def run_transition_detection_benchmark(company_df: pd.DataFrame) -> dict[str, Any]:
-    """
-    Run transition detection with performance monitoring.
-    Args:
-        company_df: Company data DataFrame
-    Returns:
-        Dictionary with detection results and metrics
-    """
-    logger.info(f"Running transition detection on {len(company_df)} company records")
-    performance_monitor.reset_metrics()
+def run_transition_detection_benchmark(
+    sample_size: int,
+    batch_size: int,
+    score_threshold: float,
+    extrapolation_target: int,
+) -> dict[str, Any]:
+    """Execute the TransitionDetector in batches and collect metrics."""
+    awards, contracts = build_transition_dataset(sample_size)
     detector = TransitionDetector()
+    profiler = PerformanceProfiler()
 
-    with performance_monitor.monitor_block("transition_detection_full"):
-        transitions = detector.detect(company_df)
+    logger.info("Starting benchmark: %s awards, batch size %s", len(awards), batch_size)
 
-    logger.info(f"Transition detection complete: {len(transitions)} transitions found")
+    detections: list[dict] = []
+    start_time = time.time()
 
-    perf_summary = performance_monitor.get_metrics_summary()
-    detection_perf = perf_summary.get("transition_detection_full", {})
+    for i in range(0, len(awards), batch_size):
+        batch = awards.iloc[i : i + batch_size]
+        batch_start = time.time()
 
-    results = {
-        "detection_stats": {
-            "total_companies": len(company_df),
-            "transitions_found": len(transitions),
+        for _, award in batch.iterrows():
+            try:
+                records = detector.detect_transitions_for_award(
+                    award_dict=award.to_dict(),
+                    contracts_df=contracts,
+                    score_threshold=score_threshold,
+                )
+                detections.extend(records)
+            except Exception as exc:  # pragma: no cover - benchmarking diagnostics
+                logger.warning("Detection failed for %s: %s", award["award_id"], exc)
+
+        profiler.record_timing("batch_processing_ms", (time.time() - batch_start) * 1000)
+
+    duration_seconds = time.time() - start_time
+    profiler.record_count("total_detections", len(detections))
+    profiler_summary = profiler.get_summary()
+
+    extrapolated = int(len(detections) * (extrapolation_target / max(len(awards), 1)))
+    perf_metrics = profile_detection_performance(
+        awards_count=len(awards),
+        contracts_count=len(contracts),
+        detections_count=len(detections),
+        total_time_ms=duration_seconds * 1000,
+    )
+
+    return {
+        "sample_size": len(awards),
+        "batch_size": batch_size,
+        "score_threshold": score_threshold,
+        "duration_seconds": duration_seconds,
+        "detections_found": len(detections),
+        "metrics": perf_metrics,
+        "extrapolated": {
+            "target_awards": extrapolation_target,
+            "estimated_detections": extrapolated,
         },
-        "performance_metrics": {
-            "total_duration_seconds": detection_perf.get("total_duration", 0),
-            "avg_duration_seconds": detection_perf.get("avg_duration", 0),
-            "records_per_second": (
-                len(company_df) / detection_perf.get("total_duration", 1)
-                if detection_perf.get("total_duration", 0) > 0
-                else 0
-            ),
-            "peak_memory_mb": detection_perf.get("max_peak_memory_mb", 0),
-        },
+        "profiler": profiler_summary,
     }
-    return results
 
 
-def save_benchmark(
-    benchmark_data: dict[str, Any],
-    output_path: Path | None = None,
-) -> Path:
-    """
-    Save benchmark results to JSON file.
-    """
+def save_benchmark(benchmark_data: dict[str, Any], output_path: Path | None) -> Path:
+    """Persist benchmark JSON for regression tracking."""
     if output_path is None:
-        benchmarks_dir = Path("reports/benchmarks")
-        benchmarks_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = benchmarks_dir / f"benchmark_transition_{timestamp}.json"
-
-    benchmark_data["timestamp"] = datetime.now().isoformat()
-    benchmark_data["benchmark_version"] = "1.0"
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        output_path = Path("reports/benchmarks") / f"transition_detection_{timestamp}.json"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(benchmark_data, f, indent=2, default=str)
+    benchmark_data["timestamp"] = datetime.utcnow().isoformat()
 
-    logger.info(f"Benchmark saved to {output_path}")
+    with output_path.open("w") as handle:
+        json.dump(benchmark_data, handle, indent=2, default=str)
+
+    logger.info("Benchmark written to %s", output_path)
     return output_path
 
 
-def main():
-    """Run the benchmarking script."""
-    parser = argparse.ArgumentParser(description="Benchmark the transition detection pipeline")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Benchmark transition detection throughput.")
+    parser.add_argument("--sample-size", type=int, default=5000, help="Number of awards to simulate.")
+    parser.add_argument("--batch-size", type=int, default=250, help="Batch size for detector invocations.")
+    parser.add_argument("--score-threshold", type=float, default=0.5, help="Detector score threshold.")
     parser.add_argument(
-        "--sample-size",
+        "--extrapolation-target",
         type=int,
-        default=None,
-        help="Maximum number of company records to benchmark (default: all)",
+        default=252_000,
+        help="Awards count used for extrapolating detections.",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=None,
-        help="Output path for benchmark JSON",
+        help="Optional path for benchmark JSON output.",
     )
-    parser.add_argument(
-        "--save-as-baseline",
-        action="store_true",
-        help="Save this benchmark as the new baseline",
-    )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
 
     logger.info("=" * 80)
-    logger.info("Transition Detection Pipeline Benchmark")
+    logger.info("Transition Detection Benchmark")
+    logger.info("Sample size: %s awards", args.sample_size)
+    logger.info("Batch size : %s", args.batch_size)
     logger.info("=" * 80)
 
-    try:
-        logger.info("\n1. Loading data...")
-        company_df, _ = load_company_data(args.sample_size)
+    results = run_transition_detection_benchmark(
+        sample_size=args.sample_size,
+        batch_size=args.batch_size,
+        score_threshold=args.score_threshold,
+        extrapolation_target=args.extrapolation_target,
+    )
+    save_benchmark(results, args.output)
 
-        logger.info("\n2. Running transition detection benchmark...")
-        benchmark_results = run_transition_detection_benchmark(company_df)
-
-        logger.info("\n3. Saving benchmark results...")
-        output_path = save_benchmark(benchmark_results, args.output)
-
-        if args.save_as_baseline:
-            baseline_path = Path("reports/benchmarks/transition_detection_baseline.json")
-            baseline_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(baseline_path, "w") as f:
-                json.dump(benchmark_results, f, indent=2, default=str)
-            logger.info(f"Saved as new baseline: {baseline_path}")
-
-        logger.info("\n" + "=" * 80)
-        logger.info("BENCHMARK SUMMARY")
-        logger.info("=" * 80)
-        logger.info(f"Sample size: {len(company_df)} records")
-        logger.info(
-            f"Transitions found: {benchmark_results['detection_stats']['transitions_found']}"
-        )
-        logger.info(
-            f"Duration: {benchmark_results['performance_metrics']['total_duration_seconds']:.2f}s"
-        )
-        logger.info(
-            f"Throughput: {benchmark_results['performance_metrics']['records_per_second']:.0f} records/sec"
-        )
-        logger.info(
-            f"Peak memory: {benchmark_results['performance_metrics']['peak_memory_mb']:.0f}MB"
-        )
-        logger.info(f"Output: {output_path}")
-        logger.info("=" * 80 + "\n")
-
-    except Exception as e:
-        logger.error(f"Benchmark failed: {e}", exc_info=True)
-        return 1
-    return 0
+    metrics = results["metrics"]
+    logger.info("Detections found: %s", results["detections_found"])
+    logger.info("Duration (s): %.2f", results["duration_seconds"])
+    logger.info(
+        "Throughput: %.0f detections/minute (target >= 10000)",
+        metrics.get("detections_per_minute", 0),
+    )
+    logger.info(
+        "Extrapolated detections for %s awards: %s",
+        results["extrapolated"]["target_awards"],
+        results["extrapolated"]["estimated_detections"],
+    )
 
 
-if __name__ == "__main__":
-    exit(main())
+if __name__ == "__main__":  # pragma: no cover - manual execution
+    main()
+
