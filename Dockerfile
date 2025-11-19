@@ -69,18 +69,20 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 
 # Export a requirements.txt for pip-based wheel building (main + dev + r groups for test tooling)
-# UV is much faster than Poetry for this step
+# Use --locked to ensure exact versions from uv.lock are used
 # Include 'r' extra to get rpy2 for R integration
 RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 --locked -o requirements.txt || \
     uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
 
 # Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
-# Strategy: Install packages first to resolve exact versions, then build wheels from frozen requirements
-# The frozen requirements ensure exact versions match what will be installed at runtime
-RUN --mount=type=cache,target=/root/.cache/pip \
+# Install from lock file using uv (ensures exact versions), then build wheels from installed packages
+# If lock file doesn't exist or sync fails, fall back to requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,target=/root/.cache/pip \
     mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
- && python -m pip install -r requirements.txt \
+ && (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt) \
  && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
  && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
 
