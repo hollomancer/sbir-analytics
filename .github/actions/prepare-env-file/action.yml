@@ -1,0 +1,46 @@
+name: Prepare .env File
+description: Prepare .env file from .env.example with optional secret injection
+
+inputs:
+  neo4j-user:
+    description: Neo4j username (from secrets or inputs)
+    required: false
+    default: ""
+  neo4j-password:
+    description: Neo4j password (from secrets or inputs)
+    required: false
+    default: ""
+  source-file:
+    description: Source file to copy (defaults to .env.example)
+    required: false
+    default: ".env.example"
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare .env file
+      run: |
+        set -eux
+        # Copy source file if it exists, otherwise create empty .env
+        if [ -f "${{ inputs.source-file }}" ]; then
+          cp "${{ inputs.source-file }}" .env || true
+        else
+          touch .env
+        fi
+        
+        # Inject Neo4j credentials if provided
+        if [ -n "${{ inputs.neo4j-user }}" ]; then
+          sed -i "s|NEO4J_USER=.*|NEO4J_USER=${{ inputs.neo4j-user }}|" .env || echo "NEO4J_USER=${{ inputs.neo4j-user }}" >> .env
+        fi
+        
+        if [ -n "${{ inputs.neo4j-password }}" ]; then
+          sed -i "s|NEO4J_PASSWORD=.*|NEO4J_PASSWORD=${{ inputs.neo4j-password }}|" .env || echo "NEO4J_PASSWORD=${{ inputs.neo4j-password }}" >> .env
+          # Optionally set NEO4J_AUTH
+          if [ -n "${{ inputs.neo4j-user }}" ]; then
+            sed -i "s|NEO4J_AUTH=.*|NEO4J_AUTH=${{ inputs.neo4j-user }}/${{ inputs.neo4j-password }}|" .env || echo "NEO4J_AUTH=${{ inputs.neo4j-user }}/${{ inputs.neo4j-password }}" >> .env
+          fi
+        fi
+        
+        echo ".env file prepared"
+      shell: bash
+

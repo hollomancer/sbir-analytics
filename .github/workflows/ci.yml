@@ -357,24 +357,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up QEMU (optional for multi-arch)
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: ./.github/actions/setup-docker-buildx
+        with:
+          setup-qemu: "true"
 
       - name: Prepare .env for CI
-        run: |  # pragma: allowlist secret
-          set -eux
-          cp .env.example .env
-          # Replace placeholders with repository secrets (ensure secrets exist)
-          if [ -n "${{ secrets.NEO4J_PASSWORD }}" ]; then
-            sed -i "s|NEO4J_PASSWORD=change_me|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|g" .env || true  # pragma: allowlist secret
-          fi
-          if [ -n "${{ secrets.NEO4J_USER }}" ]; then
-            sed -i "s|NEO4J_USER=neo4j|NEO4J_USER=${{ secrets.NEO4J_USER }}|g" .env || true
-          fi
-          echo ".env prepared (sensitive values taken from repo secrets)"
+        uses: ./.github/actions/prepare-env-file
+        with:
+          neo4j-user: ${{ secrets.NEO4J_USER }}
+          neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
 
       - name: Build image and load into Docker daemon
         id: build
@@ -995,24 +987,13 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: ./.github/actions/setup-docker-buildx
 
       - name: Prepare .env for dev compose
-        run: |
-          set -eux
-          if [ -f .env.example ]; then
-            cp .env.example .env
-          else
-            touch .env
-          fi
-          # Inject secrets if provided (no-op if secrets are empty)
-          if [ -n "${{ secrets.NEO4J_USER }}" ]; then
-            sed -i "s|NEO4J_USER=.*|NEO4J_USER=${{ secrets.NEO4J_USER }}|" .env || echo "NEO4J_USER=${{ secrets.NEO4J_USER }}" >> .env
-          fi
-          if [ -n "${{ secrets.NEO4J_PASSWORD }}" ]; then
-            sed -i "s|NEO4J_PASSWORD=.*|NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}|" .env || echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env
-          fi
-          echo ".env prepared"
+        uses: ./.github/actions/prepare-env-file
+        with:
+          neo4j-user: ${{ secrets.NEO4J_USER }}
+          neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
 
       - name: Build runtime image
         run: |

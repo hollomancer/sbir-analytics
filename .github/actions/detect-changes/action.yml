@@ -1,0 +1,25 @@
+name: Detect Changes
+description: Detect which parts of the codebase changed using path filters
+
+inputs:
+  filters:
+    description: YAML string defining path filters (see dorny/paths-filter for format)
+    required: true
+
+outputs:
+  changed:
+    description: JSON object with filter outputs
+    value: ${{ steps.filter.outputs }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Detect changes
+      uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: ${{ inputs.filters }}
+

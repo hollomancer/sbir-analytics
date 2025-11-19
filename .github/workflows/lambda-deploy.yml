@@ -79,15 +79,15 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: ./.github/actions/setup-aws-credentials
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: ./.github/actions/setup-docker-buildx
 
       - name: Get AWS account ID
         id: account
@@ -139,9 +139,9 @@ jobs:
       layer-version: ${{ steps.publish-layer.outputs.layer-version }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: ./.github/actions/setup-aws-credentials
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/checkout@v4
@@ -199,9 +199,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: ./.github/actions/setup-aws-credentials
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/checkout@v4
