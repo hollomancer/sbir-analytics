@@ -21,26 +21,21 @@ from src.models.enrichment import EnrichmentFreshnessRecord
 
 pytestmark = pytest.mark.fast
 
+from tests.utils.config_mocks import create_mock_pipeline_config
 
 
 @pytest.fixture
-def mock_config():
-    """Mock configuration."""
-    config = Mock()
-    config.enrichment_refresh.usaspending.model_dump.return_value = {
-        "timeout_seconds": 30,
-        "retry_attempts": 3,
-        "retry_backoff_seconds": 2.0,
-        "retry_backoff_multiplier": 2.0,
-        "rate_limit_per_minute": 120,
-        "state_file": "data/state/test_state.json",
-    }
-    config.enrichment.usaspending_api = Mock()
-    config.enrichment.usaspending_api.get = Mock(
-        side_effect=lambda key, default=None: {
+def mock_config(tmp_path):
+    """Mock configuration using consolidated utility."""
+    config = create_mock_pipeline_config()
+    # Set enrichment_refresh.usaspending state_file
+    if hasattr(config, "enrichment_refresh") and hasattr(config.enrichment_refresh, "usaspending"):
+        config.enrichment_refresh.usaspending.state_file = str(tmp_path / "test_state.json")
+    # Ensure enrichment.usaspending_api is set
+    if hasattr(config, "enrichment"):
+        config.enrichment.usaspending_api = {
             "base_url": "https://api.usaspending.gov/api/v2",
-        }.get(key, default)
-    )
+        }
     return config
 
 

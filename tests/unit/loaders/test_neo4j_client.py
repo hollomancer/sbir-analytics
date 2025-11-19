@@ -22,43 +22,8 @@ from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
 
 
 pytestmark = pytest.mark.fast
-
-
-@pytest.fixture
-def neo4j_config():
-    """Sample Neo4j configuration."""
-    return Neo4jConfig(
-        uri="bolt://localhost:7687",
-        username="neo4j",
-        password="test_password",  # pragma: allowlist secret
-        database="test_db",
-        batch_size=1000,
-    )
-
-
-@pytest.fixture
-def mock_driver():
-    """Mock Neo4j driver."""
-    driver = MagicMock()
-    driver.close = Mock()
-    return driver
-
-
-@pytest.fixture
-def mock_session():
-    """Mock Neo4j session."""
-    session = MagicMock()
-    session.close = Mock()
-    return session
-
-
-@pytest.fixture
-def mock_transaction():
-    """Mock Neo4j transaction."""
-    tx = MagicMock()
-    tx.run = Mock()
-    tx.commit = Mock()
-    return tx
+# Note: Fixtures (neo4j_config, mock_driver, mock_session, mock_transaction)
+# are now in tests/unit/loaders/conftest.py and automatically available
 
 
 class TestNeo4jConfig:

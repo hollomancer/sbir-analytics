@@ -8,6 +8,9 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 # Import directly using importlib to avoid pulling in duckdb dependency via __init__.py
 _spec = importlib.util.spec_from_file_location(
     "path_utils", Path(__file__).parent.parent.parent.parent / "src" / "utils" / "common" / "path_utils.py"

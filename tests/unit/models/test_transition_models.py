@@ -5,6 +5,9 @@ from datetime import date, datetime
 import pytest
 from pydantic import ValidationError
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.transition_models import (
     AgencySignal,
     CETSignal,

@@ -89,8 +89,13 @@ class TestFiscalParameterSweepInitialization:
     @patch("src.transformers.fiscal.sensitivity.get_config")
     def test_initialization_with_config(self, mock_get_config):
         """Test FiscalParameterSweep initialization with config."""
-        mock_config = Mock()
-        mock_config.fiscal_analysis.sensitivity_parameters = {}
+        from tests.utils.config_mocks import create_mock_pipeline_config
+
+        mock_config = create_mock_pipeline_config()
+        # Ensure fiscal_analysis.sensitivity_parameters exists
+        if hasattr(mock_config, "fiscal_analysis"):
+            if not hasattr(mock_config.fiscal_analysis, "sensitivity_parameters"):
+                mock_config.fiscal_analysis.sensitivity_parameters = {}
         mock_get_config.return_value = mock_config
 
         sweep = FiscalParameterSweep()

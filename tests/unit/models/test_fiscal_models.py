@@ -6,6 +6,9 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
+
+pytestmark = pytest.mark.fast
+
 from src.models.fiscal_models import (
     EconomicShock,
     FiscalReturnSummary,

@@ -114,3 +114,58 @@ def old_award():
         completion_date=date.today() - timedelta(days=800),  # > 2 years ago
     )
 
+
+@pytest.fixture
+def default_config():
+    """Default scoring configuration for tests (alias for backward compatibility)."""
+    return {
+        "base_score": 0.15,
+        "scoring": {
+            "agency_continuity": {
+                "enabled": True,
+                "weight": 0.25,
+                "same_agency_bonus": 0.25,
+                "cross_service_bonus": 0.125,
+                "different_dept_bonus": 0.05,
+            },
+            "timing_proximity": {
+                "enabled": True,
+                "weight": 0.20,
+                "windows": [
+                    {"range": [0, 90], "score": 1.0},
+                    {"range": [91, 180], "score": 0.7},
+                    {"range": [181, 365], "score": 0.4},
+                ],
+                "beyond_window_penalty": 0.1,
+            },
+            "competition_type": {
+                "enabled": True,
+                "weight": 0.20,
+                "sole_source_bonus": 0.20,
+                "limited_competition_bonus": 0.10,
+                "full_and_open_bonus": 0.0,
+            },
+            "patent_signal": {
+                "enabled": True,
+                "weight": 0.15,
+                "has_patent_bonus": 0.05,
+                "patent_pre_contract_bonus": 0.03,
+                "patent_topic_match_bonus": 0.02,
+                "patent_similarity_threshold": 0.7,
+            },
+            "cet_alignment": {
+                "enabled": True,
+                "weight": 0.10,
+                "same_cet_area_bonus": 0.05,
+            },
+            "text_similarity": {
+                "enabled": False,
+                "weight": 0.10,
+            },
+        },
+        "confidence_thresholds": {
+            "high": 0.85,
+            "likely": 0.65,
+        },
+    }
+

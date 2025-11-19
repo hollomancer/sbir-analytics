@@ -29,9 +29,10 @@ from src.assets.fiscal_assets import (
 
 # ==================== Fixtures ====================
 
-
 pytestmark = pytest.mark.fast
 
+from tests.utils.config_mocks import create_mock_pipeline_config
+from tests.utils.fixtures import create_sample_enriched_awards_df
 
 
 @pytest.fixture
@@ -47,41 +48,43 @@ def mock_context():
 
 @pytest.fixture
 def mock_config():
-    """Mock configuration."""
-    config = Mock()
-    config.fiscal_analysis.quality_thresholds = {
-        "naics_coverage_rate": 0.85,
-        "bea_sector_mapping_rate": 0.90,
-        "geographic_resolution_rate": 0.90,
-    }
-    config.fiscal_analysis.quality_thresholds.get = lambda key, default: {
-        "naics_coverage_rate": 0.85,
-        "bea_sector_mapping_rate": 0.90,
-        "geographic_resolution_rate": 0.90,
-    }.get(key, default)
-    config.fiscal_analysis.performance = {"chunk_size": 10000}
-    config.fiscal_analysis.performance.get = lambda key, default: {
-        "chunk_size": 10000,
-    }.get(key, default)
-
-    # Add naics_confidence_threshold attribute
-    config.fiscal_analysis.quality_thresholds.naics_confidence_threshold = 0.60
-
+    """Mock configuration using consolidated utility."""
+    config = create_mock_pipeline_config()
+    # Set fiscal_analysis settings
+    if hasattr(config, "fiscal_analysis"):
+        if not hasattr(config.fiscal_analysis, "quality_thresholds"):
+            config.fiscal_analysis.quality_thresholds = Mock()
+        config.fiscal_analysis.quality_thresholds.naics_coverage_rate = 0.85
+        config.fiscal_analysis.quality_thresholds.bea_sector_mapping_rate = 0.90
+        config.fiscal_analysis.quality_thresholds.geographic_resolution_rate = 0.90
+        config.fiscal_analysis.quality_thresholds.naics_confidence_threshold = 0.60
+        config.fiscal_analysis.quality_thresholds.get = lambda key, default: {
+            "naics_coverage_rate": 0.85,
+            "bea_sector_mapping_rate": 0.90,
+            "geographic_resolution_rate": 0.90,
+            "naics_confidence_threshold": 0.60,
+        }.get(key, default)
+        if not hasattr(config.fiscal_analysis, "performance"):
+            config.fiscal_analysis.performance = Mock()
+        config.fiscal_analysis.performance.chunk_size = 10000
+        config.fiscal_analysis.performance.get = lambda key, default: {
+            "chunk_size": 10000,
+        }.get(key, default)
     return config
 
 
 @pytest.fixture
 def sample_enriched_awards():
-    """Sample enriched SBIR awards."""
-    return pd.DataFrame(
-        {
-            "Award Number": ["AWD001", "AWD002", "AWD003"],
-            "Company": ["TechCo", "BioCo", "AeroCo"],
-            "Amount": [100000, 150000, 200000],
-            "State": ["CA", "MA", "TX"],
-            "fiscal_year": [2021, 2022, 2023],
-        }
-    )
+    """Sample enriched SBIR awards using consolidated utility."""
+    df = create_sample_enriched_awards_df(num_awards=3)
+    # Rename columns to match expected format
+    df = df.rename(columns={
+        "award_id": "Award Number",
+        "company_name": "Company",
+        "award_amount": "Amount",
+        "company_state": "State",
+    })
+    return df
 
 
 @pytest.fixture

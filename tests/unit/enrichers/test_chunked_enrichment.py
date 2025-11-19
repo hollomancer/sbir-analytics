@@ -18,50 +18,9 @@ from src.exceptions import EnrichmentError
 
 # ==================== Fixtures ====================
 
-
 pytestmark = pytest.mark.fast
-
-
-
-@pytest.fixture
-def mock_config():
-    """Mock configuration."""
-    config = Mock()
-    config.enrichment.performance.chunk_size = 100
-    config.enrichment.performance.memory_threshold_mb = 512
-    config.enrichment.performance.timeout_seconds = 300
-    config.enrichment.performance.high_confidence_threshold = 0.95
-    config.enrichment.performance.low_confidence_threshold = 0.85
-    config.enrichment.performance.enable_memory_monitoring = True
-    config.enrichment.performance.enable_fuzzy_matching = True
-    return config
-
-
-@pytest.fixture
-def sample_sbir_df():
-    """Sample SBIR DataFrame."""
-    return pd.DataFrame(
-        {
-            "Award Number": ["AWD001", "AWD002", "AWD003", "AWD004", "AWD005"],
-            "Company": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co", "AeroSpace Ltd"],
-            "UEI": ["UEI001", "UEI002", None, "UEI004", "UEI005"],
-            "Duns": ["123456789", "987654321", "111222333", None, "555666777"],
-            "Amount": [100000, 150000, 200000, 250000, 300000],
-        }
-    )
-
-
-@pytest.fixture
-def sample_recipient_df():
-    """Sample recipient DataFrame."""
-    return pd.DataFrame(
-        {
-            "recipient_name": ["Acme Corp", "TechStart Inc", "DataPro LLC", "BioMed Co"],
-            "recipient_uei": ["UEI001", "UEI002", "UEI003", "UEI004"],
-            "recipient_duns": ["123456789", "987654321", "111222333", "444555666"],
-            "total_amount": [5000000, 3000000, 2000000, 1000000],
-        }
-    )
+# Note: Fixtures (mock_enrichment_config, sample_sbir_df, sample_recipient_df)
+# are now in tests/unit/enrichers/conftest.py and automatically available
 
 
 @pytest.fixture

@@ -3,6 +3,9 @@
 import pandas as pd
 import pytest
 
+
+pytestmark = pytest.mark.fast
+
 from src.utils.data.chunking import (
     ChunkIterator,
     batch_process,
