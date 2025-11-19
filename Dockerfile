@@ -75,10 +75,14 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
 
 # Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
+# Strategy: Install packages first to resolve exact versions, then build wheels from frozen requirements
+# The frozen requirements ensure exact versions match what will be installed at runtime
 RUN --mount=type=cache,target=/root/.cache/pip \
     mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
- && python -m pip wheel --wheel-dir=/wheels -r requirements.txt
+ && python -m pip install -r requirements.txt \
+ && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
+ && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
 
 # NOW copy the rest of the code for building the package wheel
 COPY . /workspace/
