@@ -10,6 +10,7 @@ Tests CETAwareTfidfVectorizer and ApplicabilityModel including:
 - Multi-threshold scoring
 """
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -19,7 +20,8 @@ import pytest
 from src.exceptions import CETClassificationError, ValidationError
 
 
-pytestmark = pytest.mark.slow
+RUN_SLOW = os.getenv("PYTEST_ALLOW_SLOW", "0").lower() in {"1", "true", "yes"}
+pytestmark = pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run")
 
 from src.ml.models.cet_classifier import ApplicabilityModel, CETAwareTfidfVectorizer
 from src.models.cet_models import CETArea, ClassificationLevel

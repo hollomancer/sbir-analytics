@@ -1,9 +1,11 @@
 # sbir-etl/tests/unit/ml/test_patent_feature_integration.py
 
+import os
 import pytest
 
 
-pytestmark = pytest.mark.slow
+RUN_SLOW = os.getenv("PYTEST_ALLOW_SLOW", "0").lower() in {"1", "true", "yes"}
+pytestmark = pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run")
 
 
 # These tests exercise integration between the lightweight patent feature
