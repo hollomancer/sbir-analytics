@@ -68,6 +68,50 @@ logger.add(
 logger.debug("Added repository root to sys.path: {}", _repo_root_str)
 
 
+# Pytest Configuration
+# ===================
+
+
+def pytest_configure(config):
+    """Register custom pytest markers."""
+    config.addinivalue_line(
+        "markers",
+        "fast: Fast unit tests that should complete in < 1 second",
+    )
+    config.addinivalue_line(
+        "markers",
+        "slow: Slow tests that may take > 1 second to complete",
+    )
+    config.addinivalue_line(
+        "markers",
+        "integration: Integration tests that require external services",
+    )
+    config.addinivalue_line(
+        "markers",
+        "e2e: End-to-end tests that test full pipeline",
+    )
+    config.addinivalue_line(
+        "markers",
+        "real_data: Tests that require real data files (may be large)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "transition: Tests related to transition detection",
+    )
+    config.addinivalue_line(
+        "markers",
+        "fiscal: Tests related to fiscal analysis",
+    )
+    config.addinivalue_line(
+        "markers",
+        "cet: Tests related to CET classification",
+    )
+    config.addinivalue_line(
+        "markers",
+        "neo4j: Tests that require Neo4j database",
+    )
+
+
 @pytest.fixture(scope="session")
 def repo_root() -> Path:
     """

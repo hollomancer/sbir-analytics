@@ -23,80 +23,9 @@ from src.transition.detection.detector import TransitionDetector
 
 
 pytestmark = pytest.mark.fast
-
-
-
-@pytest.fixture
-def default_config():
-    """Default detector configuration for tests."""
-    return {
-        "timing_window": {
-            "min_days_after_completion": 0,
-            "max_days_after_completion": 730,  # 24 months
-        },
-        "vendor_matching": {
-            "require_match": True,
-            "fuzzy_threshold": 0.85,
-        },
-        "scoring": {
-            "base_score": 0.15,
-            "agency_continuity": {"enabled": True, "weight": 0.25},
-            "timing_proximity": {"enabled": True, "weight": 0.20},
-        },
-        "confidence_thresholds": {
-            "high": 0.85,
-            "likely": 0.65,
-        },
-    }
-
-
-@pytest.fixture
-def mock_vendor_resolver():
-    """Mock VendorResolver for testing."""
-    resolver = Mock()
-    resolver.resolve_by_uei = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_cage = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_duns = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_name = Mock(return_value=Mock(record=None, score=0.0))
-    return resolver
-
-
-@pytest.fixture
-def mock_scorer():
-    """Mock TransitionScorer for testing."""
-    scorer = Mock()
-    signals = TransitionSignals(
-        agency_signal=Mock(agency_score=0.0625),
-        timing_signal=Mock(timing_score=0.20),
-        competition_signal=Mock(competition_score=0.02),
-        patent_signal=None,
-        cet_signal=None,
-    )
-    scorer.score_and_classify = Mock(return_value=(signals, 0.75, ConfidenceLevel.LIKELY))
-    return scorer
-
-
-@pytest.fixture
-def mock_evidence_generator():
-    """Mock EvidenceGenerator for testing."""
-    generator = Mock()
-    bundle = EvidenceBundle(evidence_items=[], generated_at=datetime.utcnow())
-    generator.generate_bundle = Mock(return_value=bundle)
-    return generator
-
-
-@pytest.fixture
-def sample_award():
-    """Sample SBIR award for testing."""
-    return {
-        "award_id": "AWD001",
-        "vendor_id": "VENDOR001",
-        "vendor_uei": "ABC123DEF456",  # pragma: allowlist secret
-        "vendor_name": "Acme Corp",
-        "agency": "DOD",
-        "completion_date": date(2023, 6, 1),
-        "award_amount": 1000000,
-    }
+# Note: Fixtures are now imported from tests/unit/transition/conftest.py
+# (default_transition_config, mock_vendor_resolver, mock_scorer,
+#  mock_evidence_generator, sample_award)
 
 
 @pytest.fixture

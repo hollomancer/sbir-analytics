@@ -15,36 +15,30 @@ from src.enrichers.usaspending.client import USAspendingAPIClient
 from src.exceptions import APIError as USAspendingAPIError
 from src.exceptions import RateLimitError as USAspendingRateLimitError
 from src.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
+from tests.utils.config_mocks import create_mock_pipeline_config, create_mock_usaspending_config
 
 
 @pytest.fixture
 def mock_config():
     """Mock configuration for USAspending API client."""
-    return {
-        "base_url": "https://api.usaspending.gov/api/v2",
-        "timeout_seconds": 30,
-        "retry_attempts": 3,
-        "retry_backoff_seconds": 2,
-        "rate_limit_per_minute": 120,
-    }
+    return create_mock_usaspending_config()
 
 
 @pytest.fixture
 def api_client(mock_config, tmp_path):
     """Create USAspending API client for testing."""
     with patch("src.enrichers.usaspending.client.get_config") as mock_get_config:
-        mock_cfg = MagicMock()
-        mock_cfg.enrichment_refresh.usaspending.model_dump.return_value = {
-            "timeout_seconds": 30,
-            "retry_attempts": 3,
-            "retry_backoff_seconds": 2.0,
-            "retry_backoff_multiplier": 2.0,
-            "rate_limit_per_minute": 120,
-            "state_file": str(tmp_path / "state.json"),
-        }
-        mock_cfg.enrichment.usaspending_api = {
-            "base_url": "https://api.usaspending.gov/api/v2",
-        }
+        # Use consolidated config mock utility
+        mock_cfg = create_mock_pipeline_config()
+        # Set enrichment_refresh.usaspending state_file
+        if hasattr(mock_cfg, "enrichment_refresh"):
+            if hasattr(mock_cfg.enrichment_refresh, "usaspending"):
+                mock_cfg.enrichment_refresh.usaspending.state_file = str(tmp_path / "state.json")
+        # Ensure enrichment.usaspending_api is set
+        if hasattr(mock_cfg, "enrichment"):
+            mock_cfg.enrichment.usaspending_api = {
+                "base_url": "https://api.usaspending.gov/api/v2",
+            }
         mock_get_config.return_value = mock_cfg
 
         client = USAspendingAPIClient()

@@ -227,3 +227,169 @@ def create_sample_enriched_awards_df(num_awards: int = 10) -> pd.DataFrame:
         )
     return pd.DataFrame(records)
 
+
+def create_sample_contracts_df(num_contracts: int = 10) -> pd.DataFrame:
+    """Create sample federal contracts DataFrame.
+
+    Args:
+        num_contracts: Number of contracts to generate
+
+    Returns:
+        DataFrame with contract data
+    """
+    records = []
+    agencies = ["DOD", "NSF", "NIH", "DOE", "NASA"]
+    companies = ["Acme Corp", "Tech Solutions Inc", "Innovation Labs", "Research Systems"]
+
+    for i in range(num_contracts):
+        records.append(
+            {
+                "contract_id": f"CONTRACT-{i:04d}",
+                "piid": f"PIID-{i:04d}",
+                "recipient_name": companies[i % len(companies)],
+                "recipient_uei": f"UEI{i:012d}",
+                "recipient_duns": f"{i:09d}",
+                "awarding_agency_name": agencies[i % len(agencies)],
+                "federal_action_obligation": 100000.0 + (i * 50000),
+                "action_date": date(2023, (i % 12) + 1, 15),
+                "period_of_performance_start_date": date(2023, (i % 12) + 1, 15),
+                "period_of_performance_current_end_date": date(2024, (i % 12) + 1, 15),
+            }
+        )
+    return pd.DataFrame(records)
+
+
+def create_sample_patents_df(num_patents: int = 10) -> pd.DataFrame:
+    """Create sample patent data DataFrame.
+
+    Args:
+        num_patents: Number of patents to generate
+
+    Returns:
+        DataFrame with patent data
+    """
+    records = []
+    titles = [
+        "Machine Learning Algorithm",
+        "Quantum Computing System",
+        "Biotech Drug Discovery",
+        "Autonomous Vehicle Navigation",
+        "Advanced Materials Processing",
+    ]
+
+    for i in range(num_patents):
+        records.append(
+            {
+                "patent_id": f"US{i:07d}",
+                "patent_number": f"{i:07d}",
+                "title": titles[i % len(titles)],
+                "abstract": f"Abstract for patent {i} describing innovative technology",
+                "grant_date": date(2020 + (i % 5), (i % 12) + 1, 15),
+                "application_date": date(2019 + (i % 5), (i % 12) + 1, 15),
+                "assignee": f"Company {i}",
+            }
+        )
+    return pd.DataFrame(records)
+
+
+def create_sample_cet_classifications_df(
+    num_classifications: int = 10, cet_ids: list[str] | None = None
+) -> pd.DataFrame:
+    """Create sample CET classification DataFrame.
+
+    Args:
+        num_classifications: Number of classifications to generate
+        cet_ids: List of CET IDs to use (defaults to common ones)
+
+    Returns:
+        DataFrame with CET classification data
+    """
+    if cet_ids is None:
+        cet_ids = [
+            "artificial_intelligence",
+            "quantum_information_science",
+            "autonomous_systems",
+            "biotechnologies",
+            "advanced_manufacturing",
+        ]
+
+    records = []
+    for i in range(num_classifications):
+        records.append(
+            {
+                "entity_id": f"award_{i:03d}",
+                "entity_type": "award",
+                "cet_id": cet_ids[i % len(cet_ids)],
+                "score": 50.0 + (i * 5),
+                "classification": ["high", "medium", "low"][i % 3],
+                "primary": i % 2 == 0,
+                "taxonomy_version": "NSTC-2025Q1",
+                "classified_at": datetime(2024, 1, 15 + i),
+            }
+        )
+    return pd.DataFrame(records)
+
+
+def create_sample_transition_detector_config() -> dict[str, Any]:
+    """Create sample transition detector configuration.
+
+    Returns:
+        Dictionary with transition detector config
+    """
+    return {
+        "timing_window": {
+            "min_days_after_completion": 0,
+            "max_days_after_completion": 730,  # 24 months
+        },
+        "vendor_matching": {
+            "require_match": True,
+            "fuzzy_threshold": 0.85,
+        },
+        "scoring": {
+            "base_score": 0.15,
+            "agency_continuity": {"enabled": True, "weight": 0.25},
+            "timing_proximity": {"enabled": True, "weight": 0.20},
+        },
+        "confidence_thresholds": {
+            "high": 0.85,
+            "likely": 0.65,
+        },
+    }
+
+
+def create_sample_award_dict(
+    award_id: str | None = None,
+    company_name: str = "Test Company Inc",
+    agency: str = "DOD",
+    completion_date: date | None = None,
+    award_amount: float = 1000000.0,
+) -> dict[str, Any]:
+    """Create sample award dictionary for transition detection tests.
+
+    Args:
+        award_id: Award ID (auto-generated if None)
+        company_name: Company name
+        agency: Awarding agency
+        completion_date: Completion date (defaults to 6 months ago)
+        award_amount: Award amount
+
+    Returns:
+        Dictionary with award data
+    """
+    if award_id is None:
+        award_id = f"AWD{hash(company_name) % 10000:04d}"
+    if completion_date is None:
+        from datetime import timedelta
+
+        completion_date = date.today() - timedelta(days=180)
+
+    return {
+        "award_id": award_id,
+        "vendor_id": f"VENDOR{hash(company_name) % 10000:04d}",
+        "vendor_uei": f"UEI{hash(company_name) % 1000000000000:012d}",
+        "vendor_name": company_name,
+        "agency": agency,
+        "completion_date": completion_date,
+        "award_amount": award_amount,
+    }
+
