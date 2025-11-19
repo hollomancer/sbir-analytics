@@ -144,22 +144,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          cache: 'pip'
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-packages-${{ runner.os }}-precommit-detect-secrets
-          restore-keys: |
-            pip-packages-${{ runner.os }}-
+          install-dev-deps: "false"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
       - name: Install pre-commit and detect-secrets
         run: |
-          python -m pip install --upgrade pip
-          pip install --cache-dir ~/.cache/pip pre-commit detect-secrets
+          uv pip install pre-commit detect-secrets
       - name: Run pre-commit hooks (detect-secrets + other configured hooks)
         id: precommit
         run: |  # pragma: allowlist secret

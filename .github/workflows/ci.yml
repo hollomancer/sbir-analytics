@@ -18,6 +18,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Shared configuration values
+  PYTHON_VERSION: "3.11"
+  NEO4J_IMAGE: "neo4j:5"
+  NEO4J_USERNAME: "neo4j"
+  NEO4J_PASSWORD: "password"
+  DEFAULT_TIMEOUT: 30
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -113,7 +121,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: [${{ env.PYTHON_VERSION }}]
 
     steps:
       - uses: actions/checkout@v4
@@ -366,7 +374,7 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
           cache-pytest: "false"
@@ -558,7 +566,7 @@ jobs:
             jq '.' /tmp/regression.json
           fi
 
-  cet-pipeline:
+  cet-tests:
     needs: test
     # Run on PR only if CET files changed, skip on push to main/develop (use cet-dev-e2e instead)
     if: |
@@ -568,10 +576,14 @@ jobs:
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
+    
+    strategy:
+      matrix:
+        test-type: [pipeline, smoke]
+    
     services:
       neo4j:
-        image: neo4j:5
+        image: ${{ env.NEO4J_IMAGE }}
         ports:
           - 7687:7687
           - 7474:7474
@@ -582,34 +594,36 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
-
+    
     env:
-      # Neo4j connection for CET assets
+      # Neo4j connection for CET tests
       NEO4J_URI: bolt://localhost:7687
-      NEO4J_USERNAME: neo4j
-      NEO4J_PASSWORD: password  # pragma: allowlist secret
-
+      NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}  # pragma: allowlist secret
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+      
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "false"
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-
-      - name: Prepare tiny fixtures and CET configs
+      
+      - name: Prepare CET configs and test data
         run: |
           set -eux
-          # Minimal CET taxonomy/config to satisfy assets
-          mkdir -p config/cet
-          cat > config/cet/taxonomy.yaml << 'YAML'
+          mkdir -p config/cet data/processed
+          
+          # Generate taxonomy (pipeline needs 2 areas, smoke needs 1)
+          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
+            cat > config/cet/taxonomy.yaml << 'YAML'
           version: "TEST-2025Q1"
           last_updated: "2025-01-01"
           cet_areas:
@@ -624,117 +638,8 @@ jobs:
               keywords: ["quantum", "qubit", "entanglement"]
               parent_cet_id: null
           YAML
-
-          cat > config/cet/classification.yaml << 'YAML'
-          model_version: vtest
-          created_date: "2025-01-01"
-          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
-          batch: {size: 256}
-          evidence: {max_statements: 2, excerpt_max_words: 40}
-          YAML
-
-          # Minimal enriched awards so the award classifier has input rows
-          mkdir -p data/processed
-          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
-          {"award_id":"award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
-          {"award_id":"award_002","title":"Quantum sensor","abstract":"Research on qubit coherence and entanglement for sensors.","keywords":["quantum","qubit"]}
-          NDJSON
-
-      - name: Setup Neo4j environment
-        uses: ./.github/actions/setup-neo4j-service
-        with:
-          username: neo4j
-          password: password
-          auth-mode: password
-          uri: bolt://localhost:7687
-
-      - name: Wait for Neo4j service health
-        uses: ./.github/actions/wait-for-neo4j
-        with:
-          method: tcp
-          port: 7687
-          timeout: "120"
-
-      - name: Execute CET full pipeline job
-        env:
-          # Allow assets to write outputs to default directories
-          SBIR_ETL__CET__NEO4J_OUTPUT_DIR: data/loaded/neo4j
-        run: |
-          set -eux
-          # Synchronous job execution against definitions.py
-          uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
-
-      - name: List produced artifacts
-        if: always()
-        run: |
-          set -eux
-          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
-
-      - name: Upload CET artifacts
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: cet-pipeline-artifacts
-          retention-days: "14"
-          path: |
-            data/processed/cet_*.parquet
-            data/processed/cet_*.json
-            data/processed/cet_*.*      # include any future fallback extensions
-            data/processed/*.checks.json
-            data/loaded/neo4j/*.checks.json
-          if-no-files-found: warn
-
-  neo4j-cet-smoke:
-    needs: test
-    # Run on PR only if CET files changed, skip on push to main/develop
-    if: |
-      always() &&
-      needs.test.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.cet == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    services:
-      neo4j:
-        image: neo4j:5
-        ports:
-          - 7687:7687
-          - 7474:7474
-        env:
-          NEO4J_AUTH: neo4j/password
-        options: >-
-          --health-cmd="bash -lc 'echo \"RETURN 1\" | cypher-shell -a bolt://localhost:7687 -u neo4j -p password || exit 1'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=12
-
-    env:
-      # Neo4j connection for smoke script
-      NEO4J_URI: "bolt://localhost:7687"
-      NEO4J_USERNAME: "neo4j"
-      NEO4J_PASSWORD: "password"  # pragma: allowlist secret
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "false"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-
-      - name: Prepare minimal CET configs and tiny input
-        run: |
-          set -eux
-          mkdir -p config/cet data/processed
-
-          cat > config/cet/taxonomy.yaml << 'YAML'
+          else
+            cat > config/cet/taxonomy.yaml << 'YAML'
           version: "TEST-2025Q1"
           last_updated: "2025-01-01"
           cet_areas:
@@ -744,8 +649,19 @@ jobs:
               keywords: ["machine learning", "neural network"]
               parent_cet_id: null
           YAML
-
-          cat > config/cet/classification.yaml << 'YAML'
+          fi
+          
+          # Generate classification config
+          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
+            cat > config/cet/classification.yaml << 'YAML'
+          model_version: vtest
+          created_date: "2025-01-01"
+          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
+          batch: {size: 256}
+          evidence: {max_statements: 2, excerpt_max_words: 40}
+          YAML
+          else
+            cat > config/cet/classification.yaml << 'YAML'
           model_version: "vtest"
           created_date: "2025-01-01"
           confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
@@ -759,136 +675,76 @@ jobs:
           feature_selection: {enabled: false}
           calibration: {method: "sigmoid", cv: 2}
           YAML
-
-          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          fi
+          
+          # Generate test data
+          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
+            cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          {"award_id":"award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
+          {"award_id":"award_002","title":"Quantum sensor","abstract":"Research on qubit coherence and entanglement for sensors.","keywords":["quantum","qubit"]}
+          NDJSON
+          else
+            cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
           {"award_id":"smoke_award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
           NDJSON
-
+          fi
+      
       - name: Setup Neo4j environment
         uses: ./.github/actions/setup-neo4j-service
         with:
-          username: neo4j
-          password: password
+          username: ${{ env.NEO4J_USERNAME }}
+          password: ${{ env.NEO4J_PASSWORD }}
           auth-mode: password
           uri: bolt://localhost:7687
-
-      - name: Wait for Neo4j service readiness
+      
+      - name: Wait for Neo4j service
         uses: ./.github/actions/wait-for-neo4j
         with:
           method: tcp
           port: 7687
           timeout: "120"
-
-      - name: CET smoke script (constraints, nodes, enrichments, relationships, assertions)
+      
+      - name: Run CET pipeline test
+        if: matrix.test-type == 'pipeline'
+        env:
+          SBIR_ETL__CET__NEO4J_OUTPUT_DIR: data/loaded/neo4j
+        run: |
+          set -eux
+          uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
+      
+      - name: Run CET smoke test
+        if: matrix.test-type == 'smoke'
         env:
           NEO4J_URI: ${{ env.NEO4J_URI }}
           NEO4J_USERNAME: ${{ env.NEO4J_USERNAME }}
           NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}  # pragma: allowlist secret
-        run: |  # pragma: allowlist secret
+        run: |
           set -eux
-          uv run python - << 'PY'
-          import os
-          from src.loaders.neo4j_client import Neo4jClient, Neo4jConfig
-          from src.loaders.cet_loader import CETLoader, CETLoaderConfig
-
-          uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-          user = os.environ.get("NEO4J_USERNAME", "neo4j")
-          pwd = os.environ.get("NEO4J_PASSWORD", "password")
-
-          client = Neo4jClient(Neo4jConfig(uri=uri, username=user, password=pwd))
-          loader = CETLoader(client, CETLoaderConfig(batch_size=50))
-
-          # Ensure constraints and indexes
-          loader.create_constraints()
-          loader.create_indexes()
-
-          # Upsert CETArea node
-          areas = [{
-              "cet_id": "artificial_intelligence",
-              "name": "Artificial Intelligence",
-              "taxonomy_version": "TEST-2025Q1",
-              "keywords": ["machine learning", "neural network"],
-          }]
-          m_areas = loader.load_cet_areas(areas)
-          assert (m_areas.errors or 0) == 0, f"Errors loading CET areas: {m_areas.errors}"
-
-          # Upsert Award enrichment (creates Award node if absent)
-          enrich_award = [{
-              "award_id": "smoke_award_001",
-              "cet_primary_id": "artificial_intelligence",
-              "cet_primary_score": 92.5,
-              "cet_supporting_ids": [],
-              "cet_taxonomy_version": "TEST-2025Q1",
-              "cet_model_version": "vtest",
-          }]
-          m_award = loader.upsert_award_cet_enrichment(enrich_award)
-          assert (m_award.errors or 0) == 0, f"Errors upserting award enrichment: {m_award.errors}"
-
-          # Create Award -> CETArea relationship
-          rel_rows = [{
-              "award_id": "smoke_award_001",
-              "primary_cet": "artificial_intelligence",
-              "primary_score": 92.5,
-              "classified_at": "2025-01-01T00:00:00Z",
-              "taxonomy_version": "TEST-2025Q1",
-          }]
-          m_rel = loader.create_award_cet_relationships(rel_rows)
-          assert (m_rel.errors or 0) == 0, f"Errors creating Award->CET relationships: {m_rel.errors}"
-
-          # Upsert Company enrichment and create Company -> CET relationship
-          enrich_company = [{
-              "uei": "UEI-SMOKE",
-              "cet_dominant_id": "artificial_intelligence",
-              "cet_dominant_score": 88.0,
-              "cet_specialization_score": 0.9,
-              "cet_areas": ["artificial_intelligence"],
-              "cet_taxonomy_version": "TEST-2025Q1",
-          }]
-          m_company = loader.upsert_company_cet_enrichment(enrich_company, key_property="uei")
-          assert (m_company.errors or 0) == 0, f"Errors upserting company enrichment: {m_company.errors}"
-
-          comp_rel_rows = [{
-              "uei": "UEI-SMOKE",
-              "cet_dominant_id": "artificial_intelligence",
-              "cet_dominant_score": 88.0,
-              "cet_specialization_score": 0.9,
-              "cet_taxonomy_version": "TEST-2025Q1",
-          }]
-          m_comp_rel = loader.create_company_cet_relationships(
-              comp_rel_rows, rel_type="SPECIALIZES_IN", key_property="uei"
-          )
-          assert (m_comp_rel.errors or 0) == 0, f"Errors creating Company->CET relationships: {m_comp_rel.errors}"
-
-          # Assertions via cypher
-          with client.session() as session:
-              # Award enrichment presence
-              rec = session.run(
-                  "MATCH (a:Award {award_id:$aid}) RETURN a.cet_primary_id AS pid, a.cet_taxonomy_version AS v",
-                  aid="smoke_award_001",
-              ).single()
-              assert rec and rec["pid"] == "artificial_intelligence", "Award enrichment missing or incorrect"
-
-              # Award -> CET relationship exists
-              rel_count = session.run(
-                  "MATCH (:Award {award_id:$aid})-[:APPLICABLE_TO]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
-                  aid="smoke_award_001", cid="artificial_intelligence"
-              ).single()["c"]
-              assert rel_count == 1, f"Expected 1 APPLICABLE_TO, found {rel_count}"
-
-              # Company -> CET relationship exists
-              comp_rel_count = session.run(
-                  "MATCH (:Company {uei:$uei})-[:SPECIALIZES_IN]->(:CETArea {cet_id:$cid}) RETURN count(*) AS c",
-                  uei="UEI-SMOKE", cid="artificial_intelligence"
-              ).single()["c"]
-              assert comp_rel_count == 1, f"Expected 1 SPECIALIZES_IN, found {comp_rel_count}"
-
-          print("CET smoke completed successfully.")
-          client.close()
-          PY
-
+          uv run python scripts/ci/cet_smoke_test.py
+      
+      - name: List produced artifacts
+        if: always()
+        run: |
+          set -eux
+          find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
+      
+      - name: Upload CET artifacts
+        if: always()
+        uses: ./.github/actions/upload-artifacts
+        with:
+          name: cet-${{ matrix.test-type }}-artifacts
+          retention-days: "14"
+          path: |
+            data/processed/cet_*.parquet
+            data/processed/cet_*.json
+            data/processed/cet_*.*
+            data/processed/*.checks.json
+            data/loaded/neo4j/*.checks.json
+          if-no-files-found: warn
+      
       - name: Success note
-        if: ${{ success() }}
-        run: echo "Neo4j CET smoke workflow succeeded"
+        if: success()
+        run: echo "CET ${{ matrix.test-type }} test completed successfully"
 
   cet-dev-e2e:
     name: CET Dev E2E (dev compose)
@@ -1033,7 +889,7 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
           cache-pytest: "false"

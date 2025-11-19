@@ -234,7 +234,10 @@ jobs:
           cache: 'uv'
 
       - name: Install formatters
-        run: python -m pip install --disable-pip-version-check -q black isort
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv pip install black isort
 
       - name: Autofix (black + isort)
         run: |
