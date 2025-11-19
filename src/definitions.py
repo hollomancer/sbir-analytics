@@ -21,6 +21,33 @@ asset_modules = assets_pkg.iter_asset_modules()
 all_assets = load_assets_from_modules(asset_modules)
 all_asset_checks = load_asset_checks_from_modules(asset_modules)
 
+
+def _discover_jobs() -> dict[str, JobDefinition]:
+    """Discover job definitions exposed under src.assets.jobs."""
+
+    return {job.name: job for job in assets_pkg.iter_public_jobs()}
+
+
+def _discover_sensors() -> list[SensorDefinition]:
+    """Discover sensors exposed under src.assets.sensors."""
+
+    return list(assets_pkg.iter_public_sensors())
+
+
+auto_jobs = _discover_jobs()
+
+
+def _require_job(name: str) -> JobDefinition:
+    """Retrieve a named job or raise if it is missing."""
+
+    job = auto_jobs.get(name)
+    if job is None:
+        raise RuntimeError(f"Required Dagster job '{name}' not found during discovery")
+    return job
+
+
+cet_full_pipeline_job = _require_job("cet_full_pipeline_job")
+
 # Define SBIR ingestion job (just the ingestion assets)
 sbir_ingestion_job = define_asset_job(
     name="sbir_ingestion_job",
@@ -70,33 +97,8 @@ cet_drift_schedule = ScheduleDefinition(
     description="Daily CET drift detection and alerting",
 )
 
-def _job_lookup() -> dict[str, JobDefinition]:
-    """Build a lookup table for auto-discovered jobs."""
-
-    return {job.name: job for job in assets_pkg.iter_public_jobs()}
-
-
-def _sensor_lookup() -> list[SensorDefinition]:
-    """Return auto-discovered sensors."""
-
-    return list(assets_pkg.iter_public_sensors())
-
-
-auto_jobs = _job_lookup()
-
-cet_full_pipeline_job = auto_jobs.get("cet_full_pipeline_job")
-transition_mvp_job = auto_jobs.get("transition_mvp_job")
-transition_full_job = auto_jobs.get("transition_full_job")
-transition_analytics_job = auto_jobs.get("transition_analytics_job")
-usaspending_iterative_enrichment_job = auto_jobs.get("usaspending_iterative_enrichment_job")
-fiscal_returns_mvp_job = auto_jobs.get("fiscal_returns_mvp_job")
-fiscal_returns_full_job = auto_jobs.get("fiscal_returns_full_job")
-
-if cet_full_pipeline_job is None:
-    raise RuntimeError("cet_full_pipeline_job not found during auto-discovery")
-
 # Load sensors automatically
-all_sensors = _sensor_lookup()
+all_sensors = _discover_sensors()
 
 # Aggregate jobs for repository registration
 job_definitions: list[JobDefinition] = [

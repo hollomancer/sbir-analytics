@@ -8,7 +8,7 @@ from typing import Iterable
 import typer
 from rich.table import Table
 
-from src.utils.enrichment_freshness import FreshnessRecord, FreshnessStore
+from src.utils.enrichment_freshness import EnrichmentFreshnessRecord, FreshnessStore
 
 from ..context import CommandContext
 from ..display.progress import create_progress_tracker
@@ -158,7 +158,7 @@ def stats(
         raise typer.Exit(code=1)
 
 
-def _format_records(records: Iterable[FreshnessRecord]) -> Table:
+def _format_records(records: Iterable[EnrichmentFreshnessRecord]) -> Table:
     """Render a table summarizing freshness records."""
 
     table = Table(title="Enrichment Freshness", show_header=True)
@@ -209,10 +209,11 @@ def freshness_stats(
 ) -> None:
     """Show enrichment freshness statistics driven by the freshness store."""
 
+    context: CommandContext = ctx.obj
     store = FreshnessStore()
     df = store.load_all()
     if df.empty:
-        typer.echo("No freshness records found")
+        context.console.print("[yellow]No freshness records found[/yellow]")
         return
 
     if "source" in df.columns:
@@ -222,7 +223,7 @@ def freshness_stats(
     success = (
         len(df[df["status"] == "success"]) if "status" in df.columns else 0
     )
-    stale_records = store.get_stale_records(source, sla_days=90)
+    stale_records = store.get_stale_records(source, 90)
 
     table = Table(title="Freshness Summary", show_header=True)
     table.add_column("Metric", style="cyan")
@@ -232,7 +233,7 @@ def freshness_stats(
     table.add_row("Failures", str(total - success))
     table.add_row("Stale (>90 days)", str(len(stale_records)))
 
-    ctx.obj.console.print(table)
+    context.console.print(table)
 
 
 @app.command("refresh-usaspending")

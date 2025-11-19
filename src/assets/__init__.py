@@ -1,11 +1,4 @@
-"""Asset discovery utilities for SBIR ETL.
-
-This package previously exposed a large lazy-import registry for all Dagster assets.
-That approach required manual updates whenever a new asset module was added or renamed.
-The helpers below provide automatic discovery for assets, asset checks, jobs, and sensors
-so callers (primarily the Dagster repository definitions) can keep themselves in sync
-with the actual package layout.
-"""
+"""Helpers for discovering SBIR ETL asset modules and Dagster registrations."""
 
 from __future__ import annotations
 
@@ -14,17 +7,17 @@ import logging
 import pkgutil
 from functools import lru_cache
 from types import ModuleType
-from typing import Iterable, Iterator, Sequence
+from typing import Iterator, Sequence
 
 LOG = logging.getLogger(__name__)
 
 
-def _iter_package_modules(
+def _iter_modules(
     package: ModuleType,
     *,
     skip_prefixes: Sequence[str] = (),
 ) -> Iterator[str]:
-    """Yield fully-qualified module names contained within a package."""
+    """Yield fully qualified module names for a package tree."""
 
     prefix = package.__name__ + "."
     for module_info in pkgutil.walk_packages(package.__path__, prefix=prefix):
@@ -34,31 +27,27 @@ def _iter_package_modules(
 
 
 def _safe_import(module_name: str) -> ModuleType | None:
-    """Import a module and swallow errors with a log entry.
+    """Import a module, logging and skipping failures."""
 
-    Dagster repository loading should be resilient even if a subset of modules fails to import.
-    """
     try:
         return importlib.import_module(module_name)
-    except Exception as exc:  # pragma: no cover - defensive logging
-        LOG.warning("Failed to import module %s: %s", module_name, exc)
+    except Exception as exc:  # pragma: no cover - defensive
+        LOG.warning("Failed to import %s: %s", module_name, exc)
         return None
 
 
 @lru_cache(maxsize=1)
 def _asset_module_names() -> tuple[str, ...]:
-    """Cached tuple of module names that contain Dagster assets."""
-
     package = importlib.import_module(__name__)
     skip = (
         f"{__name__}.jobs",
         f"{__name__}.sensors",
     )
-    return tuple(_iter_package_modules(package, skip_prefixes=skip))
+    return tuple(_iter_modules(package, skip_prefixes=skip))
 
 
 def iter_asset_modules() -> list[ModuleType]:
-    """Return all asset modules discovered under src.assets (excluding jobs/sensors)."""
+    """Return all asset modules (excluding jobs/sensors)."""
 
     modules: list[ModuleType] = []
     for module_name in _asset_module_names():
@@ -70,15 +59,11 @@ def iter_asset_modules() -> list[ModuleType]:
 
 @lru_cache(maxsize=1)
 def _job_module_names() -> tuple[str, ...]:
-    """Return fully-qualified module names for job definitions."""
-
     package = importlib.import_module(f"{__name__}.jobs")
-    return tuple(_iter_package_modules(package))
+    return tuple(_iter_modules(package))
 
 
 def iter_job_modules() -> list[ModuleType]:
-    """Import and return modules that define Dagster jobs."""
-
     modules: list[ModuleType] = []
     for module_name in _job_module_names():
         module = _safe_import(module_name)
@@ -89,18 +74,14 @@ def iter_job_modules() -> list[ModuleType]:
 
 @lru_cache(maxsize=1)
 def _sensor_module_names() -> tuple[str, ...]:
-    """Return module names for Dagster sensors."""
-
     try:
         package = importlib.import_module(f"{__name__}.sensors")
     except ModuleNotFoundError:
         return ()
-    return tuple(_iter_package_modules(package))
+    return tuple(_iter_modules(package))
 
 
 def iter_sensor_modules() -> list[ModuleType]:
-    """Import and return modules that define Dagster sensors."""
-
     modules: list[ModuleType] = []
     for module_name in _sensor_module_names():
         module = _safe_import(module_name)
@@ -110,9 +91,7 @@ def iter_sensor_modules() -> list[ModuleType]:
 
 
 def iter_public_jobs() -> list["JobDefinition"]:
-    """Return Dagster JobDefinitions discovered in job modules."""
-
-    from dagster import JobDefinition  # Imported lazily to keep module import-safe
+    from dagster import JobDefinition  # Imported lazily
 
     jobs: list[JobDefinition] = []
     for module in iter_job_modules():
@@ -123,8 +102,6 @@ def iter_public_jobs() -> list["JobDefinition"]:
 
 
 def iter_public_sensors() -> list["SensorDefinition"]:
-    """Return Dagster SensorDefinitions discovered in sensor modules."""
-
     from dagster import SensorDefinition  # Imported lazily
 
     sensors: list[SensorDefinition] = []
