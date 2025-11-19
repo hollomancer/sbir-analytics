@@ -888,3 +888,160 @@ def apply_demand_shocks(
     except Exception as e:
         logger.error(f"Failed to apply demand shocks: {e}")
         raise
+
+
+def get_state_employment_data(
+    stateio_pkg: Any,
+    state: str,
+    year: int,
+    specs: dict[str, Any] | None = None,
+) -> pd.DataFrame | None:
+    """Get state employment data by sector from StateIO.
+
+    Args:
+        stateio_pkg: StateIO R package object
+        state: Two-letter state code
+        year: Year for the data
+        specs: Model specifications
+
+    Returns:
+        DataFrame with employment by sector, or None if unavailable
+    """
+    if not RPY2_AVAILABLE:
+        logger.warning("rpy2 not available, cannot get employment data")
+        return None
+
+    if specs is None:
+        specs = {"BaseIOSchema": "2017"}
+
+    r_specs = ro.ListVector(specs)
+
+    try:
+        # Try to get employment data
+        # StateIO may have getStateEmployment or similar function
+        employment = call_r_function(
+            stateio_pkg,
+            "getStateEmployment",
+            state=state,
+            year=year,
+            specs=r_specs,
+        )
+
+        # Convert to DataFrame
+        employment_df = convert_r_gva_to_dataframe(employment)
+
+        if employment_df is not None:
+            logger.debug(f"Retrieved employment data for {state}: {employment_df.shape}")
+            return employment_df
+
+    except RFunctionError as e:
+        logger.debug(f"Could not get employment data for {state}: {e}")
+
+    return None
+
+
+def calculate_employment_coefficients(
+    employment_data: pd.DataFrame | None,
+    industry_output: pd.Series,
+) -> pd.DataFrame:
+    """Calculate employment coefficients (jobs per dollar of output).
+
+    Args:
+        employment_data: Employment by sector (from getStateEmployment)
+        industry_output: Industry output by sector
+
+    Returns:
+        DataFrame with columns:
+        - sector: BEA sector code
+        - employment: Employment count
+        - employment_coefficient: Jobs per million dollars of output
+    """
+    if employment_data is None or employment_data.empty:
+        logger.debug("No employment data available, returning empty DataFrame")
+        return pd.DataFrame()
+
+    try:
+        coefficients = []
+
+        # Assume employment_data has sectors in index or column
+        if hasattr(employment_data, "index"):
+            sectors = employment_data.index
+        elif "sector" in employment_data.columns:
+            sectors = employment_data["sector"]
+        else:
+            logger.warning("Cannot identify sectors in employment data")
+            return pd.DataFrame()
+
+        for sector in sectors:
+            try:
+                # Extract employment count
+                emp_val = _extract_sector_value(employment_data, sector)
+
+                # Get corresponding output
+                if sector in industry_output.index:
+                    output_val = float(industry_output[sector])
+
+                    # Calculate coefficient: jobs per million dollars
+                    if output_val > 0:
+                        coeff = (emp_val / output_val) * 1_000_000
+
+                        coefficients.append(
+                            {
+                                "sector": str(sector),
+                                "employment": emp_val,
+                                "employment_coefficient": coeff,
+                            }
+                        )
+            except Exception as e:
+                logger.debug(f"Could not calculate employment coefficient for {sector}: {e}")
+                continue
+
+        return pd.DataFrame(coefficients)
+
+    except Exception as e:
+        logger.warning(f"Failed to calculate employment coefficients: {e}")
+        return pd.DataFrame()
+
+
+def calculate_employment_from_production(
+    production_by_sector: pd.Series,
+    employment_coefficients: pd.DataFrame,
+) -> pd.Series:
+    """Calculate jobs created from production impacts.
+
+    Args:
+        production_by_sector: Production impact by sector (in dollars)
+        employment_coefficients: Employment coefficients by sector
+
+    Returns:
+        Jobs created by sector
+    """
+    if employment_coefficients.empty:
+        logger.debug("No employment coefficients, using default multiplier")
+        # Fallback: rough estimate of 10 jobs per $1M output
+        return production_by_sector / 100_000
+
+    try:
+        jobs_by_sector = pd.Series(0.0, index=production_by_sector.index)
+
+        for sector in production_by_sector.index:
+            production_val = production_by_sector[sector]
+
+            # Look up employment coefficient
+            sector_coeff = employment_coefficients[employment_coefficients["sector"] == str(sector)]
+
+            if not sector_coeff.empty:
+                coeff = sector_coeff["employment_coefficient"].iloc[0]
+                # Jobs = (production in dollars / 1,000,000) * jobs_per_million
+                jobs = (production_val / 1_000_000) * coeff
+                jobs_by_sector[sector] = jobs
+            else:
+                # Fallback to default multiplier
+                jobs_by_sector[sector] = production_val / 100_000
+
+        return jobs_by_sector
+
+    except Exception as e:
+        logger.error(f"Failed to calculate employment: {e}")
+        # Return fallback estimate
+        return production_by_sector / 100_000
