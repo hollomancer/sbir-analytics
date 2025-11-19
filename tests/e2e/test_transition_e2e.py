@@ -23,7 +23,7 @@ import pytest
 import src.assets.transition as transition_assets
 
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
 
 class TestDagsterPipelineMaterialization:
