@@ -105,36 +105,52 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # 5. Install dependencies in separate steps for better caching
 RUN --mount=type=cache,target=/root/.cache/R \
     export MAKEFLAGS="-j$(nproc)" && \
-    export ARROW_R_DEV=false && \
+    export R_SITE_LIB='/usr/local/lib/R/site-library' && \
+    export ARROW_R_DEV=FALSE && \
+    export ARROW_DEPENDENCY_SOURCE=BUNDLED && \
+    export ARROW_USE_PKG_CONFIG=false && \
     export ARROW_WITH_BZ2=ON && \
     export ARROW_WITH_LZ4=ON && \
     export ARROW_WITH_SNAPPY=ON && \
     export ARROW_WITH_ZLIB=ON && \
     export ARROW_WITH_ZSTD=ON && \
-    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
     options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
     cat('Installing remotes package...\n'); \
     install.packages('remotes', repos='https://cloud.r-project.org/', \
-                     lib='/usr/local/lib/R/site-library', \
+                     lib='${R_SITE_LIB}', \
                      Ncpus = parallel::detectCores())" && \
-    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
     options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing arrow package (this may take a while if building from source)...\n'); \
+    cat('Installing arrow package from source with bundled C++ libs...\n'); \
     install.packages('arrow', repos='https://cloud.r-project.org/', \
-                     lib='/usr/local/lib/R/site-library', \
-                     Ncpus = parallel::detectCores())" && \
-    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+                     lib='${R_SITE_LIB}', \
+                     type='source', \
+                     Ncpus = parallel::detectCores()); \
+    arrow_ok <- tryCatch({ \
+        suppressPackageStartupMessages(library(arrow)); \
+        TRUE \
+    }, error = function(err) { \
+        message('arrow failed to load after installation: ', conditionMessage(err)); \
+        FALSE \
+    }); \
+    if (!arrow_ok) { \
+        quit(status = 1); \
+    } else { \
+        detach('package:arrow', unload = TRUE); \
+    }" && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
     options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
     cat('Installing stateior package (arrow should already be installed)...\n'); \
     remotes::install_github('USEPA/stateior', dependencies=TRUE, \
-                            lib='/usr/local/lib/R/site-library', \
+                            lib='${R_SITE_LIB}', \
                             Ncpus = parallel::detectCores(), \
                             upgrade = 'never')" && \
-    R -e ".libPaths(c('/usr/local/lib/R/site-library', '/usr/lib/R/site-library')); \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
     options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
     cat('Installing useeior package (arrow should already be installed)...\n'); \
     remotes::install_github('USEPA/useeior', dependencies=TRUE, \
-                            lib='/usr/local/lib/R/site-library', \
+                            lib='${R_SITE_LIB}', \
                             Ncpus = parallel::detectCores(), \
                             upgrade = 'never')" && \
     R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
