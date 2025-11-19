@@ -26,7 +26,7 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
     *   [Error Handling](#error-handling)
     *   [S3 Integration](#s3-integration)
     *   [Secrets Manager Integration](#secrets-manager-integration)
-    *   [Dagster Integration](#dagster-integration)
+    *   [Dagster Integration](#dagster-integration) (Deprecated - see [Lambda to Dagster Migration](lambda-to-dagster-migration.md))
     *   [Performance Optimization](#performance-optimization)
     *   [Deployment Checklist](#deployment-checklist)
 7.  [Step Functions State Machine](#7-step-functions-state-machine)

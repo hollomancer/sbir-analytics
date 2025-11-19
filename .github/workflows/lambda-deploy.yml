@@ -18,9 +18,9 @@ on:
         default: false
         type: boolean
       skip_container_build:
-        description: 'Skip container image builds'
+        description: 'Skip container image builds (deprecated - containers removed)'
         required: false
-        default: false
+        default: true
         type: boolean
       skip_layer_build:
         description: 'Skip Lambda layer build'
@@ -99,31 +99,12 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push ingestion-checks container
+      # Container builds removed - ingestion-checks and load-neo4j migrated to Dagster Cloud
+      # See: src/assets/jobs/sbir_weekly_refresh_job.py
+      - name: Note container migration
         run: |
-          ECR_URI="${{ steps.account.outputs.ECR_URI }}"
-          # Build context is project root, Dockerfile is in container directory
-          docker build \
-            -f lambda/containers/ingestion-checks/Dockerfile \
-            -t "${ECR_URI}:ingestion-checks" \
-            -t "${ECR_URI}:ingestion-checks-latest" \
-            .
-          docker push "${ECR_URI}:ingestion-checks"
-          docker push "${ECR_URI}:ingestion-checks-latest"
-          echo "Built and pushed: ${ECR_URI}:ingestion-checks"
-
-      - name: Build and push load-neo4j container
-        run: |
-          ECR_URI="${{ steps.account.outputs.ECR_URI }}"
-          # Build context is project root, Dockerfile is in container directory
-          docker build \
-            -f lambda/containers/load-neo4j/Dockerfile \
-            -t "${ECR_URI}:load-neo4j" \
-            -t "${ECR_URI}:load-neo4j-latest" \
-            .
-          docker push "${ECR_URI}:load-neo4j"
-          docker push "${ECR_URI}:load-neo4j-latest"
-          echo "Built and pushed: ${ECR_URI}:load-neo4j"
+          echo "Container-based Lambda functions (ingestion-checks, load-neo4j) have been migrated to Dagster Cloud."
+          echo "Use trigger-dagster-refresh Lambda function to trigger sbir_weekly_refresh_job instead."
 
   build-layer:
     runs-on: ubuntu-latest

@@ -18,10 +18,17 @@ Each function is in its own directory:
 - **reset-neo4j**: Resets Neo4j database
 - **smoke-checks**: Runs Neo4j smoke checks
 
-### Container-based Functions (Dagster-dependent)
+### Container-based Functions (Migrated to Dagster Cloud)
 
-- **ingestion-checks**: Runs SBIR ingestion validation using Dagster assets
-- **load-neo4j**: Loads validated awards into Neo4j using Dagster assets
+**DEPRECATED**: The following functions have been migrated to Dagster Cloud:
+- ~~**ingestion-checks**~~ → Now part of `sbir_weekly_refresh_job` in Dagster Cloud
+- ~~**load-neo4j**~~ → Now part of `sbir_weekly_refresh_job` in Dagster Cloud
+
+**Replacement**: Use the `trigger-dagster-refresh` Lambda function to trigger the `sbir_weekly_refresh_job` in Dagster Cloud.
+
+### New Functions
+
+- **trigger-dagster-refresh**: Triggers Dagster Cloud jobs via API (replaces container-based functions)
 
 ## Building
 

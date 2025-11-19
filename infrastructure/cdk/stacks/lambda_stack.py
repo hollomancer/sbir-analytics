@@ -29,22 +29,7 @@ class LambdaStack(Stack):
 
         project_root = Path(__file__).parent.parent.parent.parent
 
-        # ECR repository for container images
-        # Import existing repository if it exists, otherwise create new
-        import_existing_ecr = self.node.try_get_context("import_existing_ecr") == "true"
-        if import_existing_ecr:
-            ecr_repo = ecr.Repository.from_repository_name(
-                self,
-                "LambdaContainerRepo",
-                repository_name="sbir-etl-lambda",
-            )
-        else:
-            ecr_repo = ecr.Repository(
-                self,
-                "LambdaContainerRepo",
-                repository_name="sbir-etl-lambda",
-                image_scan_on_push=True,
-            )
+        # ECR repository removed - container-based Lambda functions migrated to Dagster Cloud
 
         # Lambda functions using Layers (lightweight)
         layer_functions = [
@@ -54,6 +39,7 @@ class LambdaStack(Stack):
             "enrichment-checks",
             "reset-neo4j",
             "smoke-checks",
+            "trigger-dagster-refresh",  # Simple Lambda to trigger Dagster Cloud jobs
             # USPTO download functions
             "download-uspto-patentsview",
             "download-uspto-assignments",
@@ -101,37 +87,10 @@ class LambdaStack(Stack):
             )
             self.functions[func_name] = func
 
-        # Lambda functions using Container images (Dagster-dependent)
-        # Only create if container images are available (built via GitHub Actions)
-        create_container_functions = (
-            self.node.try_get_context("create_container_functions") != "false"
-        )
-        container_functions = [
-            "ingestion-checks",
-            "load-neo4j",
-        ]
-
-        if create_container_functions:
-            for func_name in container_functions:
-                # Container-based Lambda functions using DockerImageFunction
-                # DockerImageFunction accepts EcrImageCode directly
-                func = lambda_.DockerImageFunction(
-                    self,
-                    f"{func_name.replace('-', '_').title()}Function",
-                    function_name=f"sbir-etl-{func_name}",
-                    code=lambda_.DockerImageCode.from_ecr(
-                        repository=ecr_repo,
-                        tag_or_digest=f"{func_name}:latest",
-                    ),
-                    role=lambda_role,
-                    timeout=Duration.minutes(15),
-                    memory_size=2048,  # More memory for Dagster
-                    environment={
-                        "S3_BUCKET": s3_bucket.bucket_name,
-                        "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
-                    },
-                )
-                self.functions[func_name] = func
+        # Container-based Lambda functions (ingestion-checks, load-neo4j) have been removed.
+        # These functions have been migrated to Dagster Cloud as the sbir_weekly_refresh_job.
+        # See: src/assets/jobs/sbir_weekly_refresh_job.py
+        # The weekly refresh workflow should trigger Dagster Cloud via API instead of Lambda.
 
         # Output function ARNs
         for func_name, func in self.functions.items():
