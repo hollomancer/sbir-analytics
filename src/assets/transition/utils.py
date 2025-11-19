@@ -108,7 +108,7 @@ except Exception:  # pragma: no cover
 
 
 # Import centralized file I/O utilities
-from src.utils.file_io import save_dataframe_parquet, write_json
+from src.utils.data.file_io import save_dataframe_parquet, write_json
 
 
 def now_utc_iso() -> str:

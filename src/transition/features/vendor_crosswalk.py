@@ -448,14 +448,14 @@ class VendorCrosswalk:
         rows = self.to_list_of_dicts()
         df = pd.json_normalize(rows)
         path = Path(path)
-        from src.utils.file_io import save_dataframe_parquet
+        from src.utils.data.file_io import save_dataframe_parquet
         
         save_dataframe_parquet(df, path, index=False)
         logger.info("VendorCrosswalk saved to parquet: %s", path)
 
     def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
-        from src.utils.path_utils import ensure_parent_dir
+        from src.utils.common.path_utils import ensure_parent_dir
         
         ensure_parent_dir(path)
         with open(path, "w", encoding="utf-8") as fh:

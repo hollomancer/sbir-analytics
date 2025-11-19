@@ -169,7 +169,7 @@ def iter_rows_from_path(
 
 
 # Use centralized path utilities
-from src.utils.path_utils import normalize_path_list as _ensure_path_list
+from src.utils.common.path_utils import normalize_path_list as _ensure_path_list
 
 
 def validate_rf_id_uniqueness_from_iterator(
@@ -797,7 +797,7 @@ class USPTODataQualityValidator:
 
     def __init__(self, config: USPTOValidationConfig | None = None) -> None:
         self.config = config or USPTOValidationConfig()
-        from src.utils.path_utils import ensure_dir
+        from src.utils.common.path_utils import ensure_dir
         
         ensure_dir(self.config.fail_output_dir)
         ensure_dir(self.config.report_output_dir)

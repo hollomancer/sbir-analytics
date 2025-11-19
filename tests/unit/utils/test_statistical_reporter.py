@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
@@ -64,6 +64,17 @@ def sample_data_hygiene():
         duplicate_counts=3,
         outlier_counts=2,
         coverage_rates={"field1": 0.99, "field2": 0.995},
+        clean_records=950,
+        dirty_records=50,
+        clean_percentage=95.0,
+        quality_score_mean=0.95,
+        quality_score_median=0.96,
+        quality_score_std=0.05,
+        quality_score_min=0.80,
+        quality_score_max=1.0,
+        validation_pass_rate=0.98,
+        validation_errors=20,
+        validation_warnings=10,
     )
 
 
@@ -75,6 +86,9 @@ def sample_changes_summary():
         records_modified=100,
         records_deleted=10,
         fields_changed=["field1", "field2"],
+        total_records=160,
+        records_unchanged=0,
+        modification_rate=0.625,
     )
 
 
@@ -96,7 +110,22 @@ def sample_module_report():
             duplicate_counts=0,
             outlier_counts=0,
             coverage_rates={},
+            clean_records=1000,
+            dirty_records=0,
+            clean_percentage=100.0,
+            quality_score_mean=1.0,
+            quality_score_median=1.0,
+            quality_score_std=0.0,
+            quality_score_min=1.0,
+            quality_score_max=1.0,
+            validation_pass_rate=1.0,
+            validation_errors=0,
+            validation_warnings=0,
         ),
+        timestamp=datetime(2023, 1, 1, 10, 5, 0),
+        total_records=1000,
+        duration_seconds=300.0,
+        throughput_records_per_second=3.17,
     )
 
 
@@ -108,6 +137,12 @@ def sample_statistical_report():
         generated_at=datetime(2023, 1, 1, 10, 0, 0),
         modules=[],
         summary_insights=[],
+        report_id="report_123",
+        timestamp="2023-01-01T10:00:00",
+        report_type="statistical",
+        total_records_processed=1000,
+        total_duration_seconds=600.0,
+        overall_success_rate=0.95,
     )
 
 
@@ -120,11 +155,20 @@ def sample_pipeline_metrics():
         end_time=datetime(2023, 1, 1, 10, 10, 0),
         total_duration_seconds=600.0,
         modules={},
-        performance=PerformanceMetrics(
+        performance_metrics=PerformanceMetrics(
             total_duration_seconds=600.0,
             peak_memory_mb=512.0,
             avg_cpu_percent=45.0,
+            start_time=datetime(2023, 1, 1, 10, 0, 0),
+            end_time=datetime(2023, 1, 1, 10, 10, 0),
+            duration=600.0,
+            records_per_second=100.0,
+            average_memory_mb=256.0,
         ),
+        timestamp=datetime(2023, 1, 1, 10, 0, 0),
+        duration=timedelta(seconds=600),
+        total_records_processed=1000,
+        overall_success_rate=0.95,
     )
 
 
@@ -352,6 +396,10 @@ class TestReportAggregation:
                 records_processed=500,
                 records_failed=10,
                 success_rate=0.98,
+                timestamp=datetime(2023, 1, 1, 10, 5, 0),
+                total_records=510,
+                duration_seconds=300.0,
+                throughput_records_per_second=1.7,
             ),
         ]
 
@@ -450,7 +498,7 @@ class TestPipelineMetrics:
 
         run_context = {
             "run_id": "run_123",
-            "modules": ["sbir", "patent"],
+            "modules": {"sbir": {"stage": "extraction"}, "patent": {"stage": "extraction"}},
             "start_time": datetime(2023, 1, 1, 10, 0, 0),
             "end_time": datetime(2023, 1, 1, 10, 10, 0),
         }
@@ -477,7 +525,7 @@ class TestReportCollection:
 
         run_context = {
             "run_id": "run_123",
-            "modules": ["sbir"],
+            "modules": {"sbir": {"stage": "extraction"}},
             "start_time": datetime(2023, 1, 1, 10, 0, 0),
             "end_time": datetime(2023, 1, 1, 10, 10, 0),
         }
@@ -500,7 +548,7 @@ class TestReportCollection:
 
         run_context = {
             "run_id": "run_123",
-            "modules": [],
+            "modules": {},
         }
 
         collection = reporter.generate_reports(run_context)
@@ -660,6 +708,12 @@ class TestEdgeCases:
             generated_at=datetime.now(),
             modules=[],
             summary_insights=[],
+            report_id="report_123",
+            timestamp="2023-01-01T10:00:00",
+            report_type="statistical",
+            total_records_processed=0,
+            total_duration_seconds=0.0,
+            overall_success_rate=0.0,
         )
 
         json_path = reporter.generate_json_report(report)
@@ -676,6 +730,12 @@ class TestEdgeCases:
             generated_at=datetime.now(),
             modules=[],
             summary_insights=[],
+            report_id="report_123",
+            timestamp="2023-01-01T10:00:00",
+            report_type="statistical",
+            total_records_processed=0,
+            total_duration_seconds=0.0,
+            overall_success_rate=0.0,
         )
 
         content, md_path = reporter.generate_markdown_summary(report)
@@ -702,6 +762,12 @@ class TestEdgeCases:
             generated_at=datetime.now(),
             modules=[],
             summary_insights=[],
+            report_id="report_123",
+            timestamp="2023-01-01T10:00:00",
+            report_type="statistical",
+            total_records_processed=0,
+            total_duration_seconds=0.0,
+            overall_success_rate=0.0,
         )
 
         # Should handle any write errors gracefully

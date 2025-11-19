@@ -150,7 +150,7 @@ except Exception:  # pragma: no cover - fallback stubs when dagster is not insta
 
 
 # Import centralized file I/O utilities
-from src.utils.file_io import save_dataframe_parquet
+from src.utils.data.file_io import save_dataframe_parquet
 
 # Re-export for backward compatibility
 __all__ = ["save_dataframe_parquet"]

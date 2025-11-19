@@ -80,7 +80,7 @@ class ChunkProgress:
         if not self.checkpoint_dir:
             return None
 
-        from src.utils.path_utils import ensure_dir
+        from src.utils.common.path_utils import ensure_dir
         
         ensure_dir(self.checkpoint_dir)
         checkpoint_path = self.checkpoint_dir / f"checkpoint_{self.chunks_processed:04d}.json"

@@ -32,7 +32,7 @@ class FreshnessStore:
         if parquet_path is None:
             parquet_path = Path("data/derived/enrichment_freshness.parquet")
         self.parquet_path = Path(parquet_path)
-        from src.utils.path_utils import ensure_parent_dir
+        from src.utils.common.path_utils import ensure_parent_dir
         
         ensure_parent_dir(self.parquet_path)
 
@@ -143,7 +143,7 @@ class FreshnessStore:
             df: DataFrame with all freshness records
         """
         try:
-            from src.utils.file_io import save_dataframe_parquet
+            from src.utils.data.file_io import save_dataframe_parquet
             
             save_dataframe_parquet(df, self.parquet_path, index=False, engine="pyarrow")
             logger.debug(f"Saved {len(df)} freshness records to {self.parquet_path}")

@@ -60,7 +60,7 @@ class USAspendingAPIClient:
         self.state_file = Path(
             self.config.get("state_file", "data/state/enrichment_refresh_state.json")
         )
-        from src.utils.path_utils import ensure_parent_dir
+        from src.utils.common.path_utils import ensure_parent_dir
         
         ensure_parent_dir(self.state_file)
 
@@ -525,7 +525,7 @@ class USAspendingAPIClient:
             state: State dictionary to save
         """
         try:
-            from src.utils.path_utils import ensure_parent_dir
+            from src.utils.common.path_utils import ensure_parent_dir
         
             ensure_parent_dir(self.state_file)
             with open(self.state_file, "w") as f:

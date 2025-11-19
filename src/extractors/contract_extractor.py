@@ -509,7 +509,7 @@ class ContractExtractor:
         if all_contracts:
             logger.info(f"Writing {len(all_contracts):,} contracts to {output_file}")
             df = pd.DataFrame(all_contracts)
-            from src.utils.file_io import save_dataframe_parquet
+            from src.utils.data.file_io import save_dataframe_parquet
             
             save_dataframe_parquet(df, output_file, index=False, compression="snappy")
             logger.success(f"Contracts saved to {output_file}")

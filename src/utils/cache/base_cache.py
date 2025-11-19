@@ -40,7 +40,7 @@ class BaseDataFrameCache(ABC):
         self.ttl_hours = ttl_hours
 
         if self.enabled:
-            from src.utils.path_utils import ensure_dir
+            from src.utils.common.path_utils import ensure_dir
 
             ensure_dir(self.cache_dir)
             logger.debug(
@@ -224,7 +224,7 @@ class BaseDataFrameCache(ABC):
             metadata_path = self._get_metadata_path(cache_key)
 
             # Save DataFrame using centralized utility
-            from src.utils.file_io import save_dataframe_parquet
+            from src.utils.data.file_io import save_dataframe_parquet
 
             save_dataframe_parquet(df, cache_path, index=False)
 
