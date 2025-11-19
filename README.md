@@ -15,7 +15,7 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 
 **Deployment Guides**:
 - **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites and env vars
-- **[AWS Infrastructure](docs/deployment/aws-infrastructure.md)** - Lambda + S3 + Step Functions setup
+- **[AWS Infrastructure](docs/deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions setup
 - **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
 
 ### Local Development Setup
@@ -91,7 +91,7 @@ The weekly SBIR awards refresh workflow runs on AWS Step Functions with Lambda f
 - **S3**: Stores data and artifacts
 - **Secrets Manager**: Stores Neo4j and GitHub credentials
 
-**Deployment Guide**: [`docs/deployment/aws-infrastructure.md`](docs/deployment/aws-infrastructure.md)
+**Deployment Guide**: [`docs/deployment/aws-serverless-deployment-guide.md`](docs/deployment/aws-serverless-deployment-guide.md)
 
 **Quick Deploy**:
 ```bash
@@ -163,7 +163,7 @@ See [`docs/deployment/dagster-cloud-overview.md`](docs/deployment/dagster-cloud-
      --module-name src.definitions
    ```
 
-See [`docs/deployment/dagster-cloud-serverless-cli.md`](docs/deployment/dagster-cloud-serverless-cli.md) for complete CLI deployment guide.
+See [`docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment`](docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment) for complete CLI deployment guide.
 
 **Note**: Docker Compose remains available as a failover option for local development and emergency scenarios.
 
@@ -486,16 +486,4 @@ This project makes use of and is grateful for the following open-source tools an
 
 This project is licensed under the [MIT License](LICENSE). Copyright (c) 2025 Conrad Hollomon.
 
-## Acknowledgments
 
-This project makes use of and is grateful for the following open-source tools and research:
-
-### Economic Modeling
-
-- **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
-- **[USEEIOR](https://github.com/USEPA/useeior)** - Environmentally-extended input-output model builder by USEPA
-
-### Classifier Research & Tools
-
-- **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation in classifier routing by Albus Yizhuo Li
-- **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute for Innovation and Competition

@@ -33,14 +33,19 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 
 ### Getting Started
 - Getting started: [`README.md`](../README.md)
-- Quick start (local dev): [`QUICK_START.md`](../QUICK_START.md)
-- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.overview.md)
+- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
 - **[Production deployment](deployment/dagster-cloud-deployment-guide.md)** - Dagster Cloud (Primary)
 - **[AWS Infrastructure](deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions
 - [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
+
+### Development Guides
+- [Exception Handling](development/exception-handling.md)
+- [Logging Standards](development/logging-standards.md)
+- [Optimization Summary](development/optimization-cleanup-summary.md)
+- [Kiro Workflow](development/kiro-workflow-guide.md)
 
 ### Reference
 - Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)

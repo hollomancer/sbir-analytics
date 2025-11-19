@@ -133,4 +133,4 @@ A companion shell helper (`scripts/docker/validate_consolidated_compose.sh`) lin
 - `neo4j-smoke.yml` – Spins up Neo4j via Compose and runs smoke checks
 - `performance-regression-check.yml` – Uses Compose images for benchmark comparisons
 
-For deeper operational runbooks, see `docs/neo4j/server.md` and `docs/performance/index.md`.
+For deeper operational runbooks, see `docs/deployment/neo4j-runbook.md` and `docs/performance/index.md`.

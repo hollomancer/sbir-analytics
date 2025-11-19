@@ -90,7 +90,7 @@ The SBIR ETL project supports multiple deployment strategies optimized for diffe
 -   **[Testing Documentation](../testing/)** - Testing guides and setup
 -   **[Architecture Documentation](../architecture/)** - System architecture
 -   **[Configuration Documentation](../../config/)** - Configuration files and settings
--   **[Quick Start Guide](../../QUICK_START.md)** - Getting started with the project
+-   **[Quick Start Guide](../../README.md#quick-start)** - Getting started with the project
 
 ## Troubleshooting
 

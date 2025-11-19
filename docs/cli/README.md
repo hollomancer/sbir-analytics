@@ -406,5 +406,5 @@ uv run pytest tests/integration/cli/ -v
 
 - Main project README: `README.md`
 - Configuration reference: `config/base.yaml`
-- Dagster documentation: `QUICK_START.md`
+- Quick Start Guide: `README.md#quick-start`
 - CLI Testing Guide: `docs/cli/TESTING.md`

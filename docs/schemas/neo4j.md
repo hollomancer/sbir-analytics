@@ -19,13 +19,13 @@ This is the canonical reference for the graph schema used by the SBIR ETL loader
 
 For comprehensive schema documentation, including field-level details, constraints, and examples:
 
-- **[Organization Schema](../../schemas/organization-schema.md)** - Company and organization entities
-- **[Individual Schema](../../schemas/individual-schema.md)** - Researcher and individual entities
-- **[Financial Transaction Schema](../../schemas/financial-transaction-schema.md)** - Award and transaction entities
-- **[Patent Assignment Schema](../../schemas/patent-assignment-schema.md)** - Patent assignment relationships
-- **[Patent Neo4j Schema](../../schemas/patent-neo4j-schema.md)** - Patent entities and fields
-- **[Patent Field Mapping](../../schemas/patent-field-mapping.md)** - USPTO to Neo4j field mapping
-- **[Transition Graph Schema](../../schemas/transition-graph-schema.md)** - Technology transition detection schema
+- **[Organization Schema](organization-schema.md)** - Company and organization entities
+- **[Individual Schema](individual-schema.md)** - Researcher and individual entities
+- **[Financial Transaction Schema](financial-transaction-schema.md)** - Award and transaction entities
+- **[Patent Assignment Schema](patent-assignment-schema.md)** - Patent assignment relationships
+- **[Patent Neo4j Schema](patent-neo4j-schema.md)** - Patent entities and fields
+- **[Patent Field Mapping](patent-field-mapping.md)** - USPTO to Neo4j field mapping
+- **[Transition Graph Schema](transition-graph-schema.md)** - Technology transition detection schema
 
 ## Entities and Relationships
 
