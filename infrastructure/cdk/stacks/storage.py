@@ -44,6 +44,22 @@ class StorageStack(Stack):
                         expiration=Duration.days(90),
                         enabled=True,
                     ),
+                    s3.LifecycleRule(
+                        id="usaspending-database-dumps",
+                        prefix="raw/usaspending/database/",
+                        enabled=True,
+                        transitions=[
+                            s3.Transition(
+                                storage_class=s3.StorageClass.INTELLIGENT_TIERING,
+                                transition_after=Duration.days(7),
+                            ),
+                            s3.Transition(
+                                storage_class=s3.StorageClass.GLACIER_FLEXIBLE_RETRIEVAL,
+                                transition_after=Duration.days(90),
+                            ),
+                        ],
+                        expiration=Duration.days(365),  # Keep for 1 year
+                    ),
                 ],
                 removal_policy=RemovalPolicy.RETAIN,  # Don't delete data on stack deletion
         )
