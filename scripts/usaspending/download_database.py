@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
 import boto3
+import requests
 
 # Import file checking and discovery logic from check_new_file.py
 from scripts.usaspending.check_new_file import (
@@ -122,9 +123,11 @@ def download_and_upload(
     # Download and upload using multipart
     CHUNK_SIZE = 100 * 1024 * 1024  # 100 MB
 
-    req = Request(source_url)
-    req.add_header("User-Agent", "SBIR-Analytics-EC2/1.0")
-    req.add_header("Accept", "*/*")
+    # Use requests for better streaming and error handling
+    headers = {
+        "User-Agent": "SBIR-Analytics-EC2/1.0",
+        "Accept": "*/*",
+    }
 
     multipart_upload = s3_client.create_multipart_upload(
         Bucket=s3_bucket,
@@ -145,19 +148,19 @@ def download_and_upload(
         total_size = 0
         hasher = hashlib.sha256()
 
-        with urlopen(req, timeout=600) as response:
-            if response.getcode() != 200:
-                raise Exception(f"HTTP {response.getcode()} from {source_url}")
+        # Use requests for streaming download with better error handling
+        with requests.get(source_url, stream=True, headers=headers, timeout=(30, 600)) as response:
+            response.raise_for_status()  # Raise HTTPError for bad responses
 
-            while True:
-                chunk = response.read(CHUNK_SIZE)
+            # Stream download in chunks
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
                 if not chunk:
-                    break
+                    continue  # Skip empty chunks but continue
 
                 hasher.update(chunk)
                 total_size += len(chunk)
 
-                print(f"Uploading part {part_number} ({len(chunk)} bytes)")
+                print(f"Uploading part {part_number} ({len(chunk):,} bytes)")
                 part_response = s3_client.upload_part(
                     Bucket=s3_bucket,
                     Key=s3_key,
@@ -175,8 +178,9 @@ def download_and_upload(
 
                 part_number += 1
 
-                if total_size > 10 * 1024 * 1024 * 1024:  # 10 GB
-                    print(f"WARNING: Large file download in progress ({total_size / 1024 / 1024 / 1024:.2f} GB)")
+                # Progress indicator for large files
+                if total_size % (1024 * 1024 * 1024) < CHUNK_SIZE:  # Every ~1GB
+                    print(f"Progress: {total_size / 1024 / 1024 / 1024:.2f} GB downloaded")
 
         file_hash = hasher.hexdigest()
         print(
