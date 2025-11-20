@@ -15,7 +15,7 @@
 # - Neo4j credentials are read from environment variables to avoid storing secrets in git.
 
 pipeline:
-  name: "sbir-etl"
+  name: "sbir-analytics"
   version: "1.0.0"
   environment: "production"
 
@@ -33,7 +33,7 @@ paths:
 logging:
   level: "INFO"        # INFO for prod; use DEBUG temporarily for incident investigation
   format: "json"       # "json" recommended for prod ingestion into log aggregators
-  file_path: "logs/sbir-etl.log"
+  file_path: "logs/sbir-analytics.log"
   max_file_size_mb: 200
   backup_count: 10
   include_stage: true
