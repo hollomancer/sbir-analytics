@@ -65,6 +65,26 @@ class Award(BaseModel):
     company_state: str | None = Field(None, description="Company state from SAM.gov", alias="state")
     company_zip: str | None = Field(None, description="Company ZIP code from SAM.gov", alias="zip")
 
+    # Congressional district (enriched data)
+    congressional_district: str | None = Field(
+        None,
+        description="Congressional district code (e.g., 'CA-12', 'NY-14')"
+    )
+    district_number: str | None = Field(
+        None,
+        description="District number only (e.g., '12', '14', 'AL' for at-large)"
+    )
+    congressional_district_confidence: float | None = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for district assignment (0.0-1.0)"
+    )
+    congressional_district_method: str | None = Field(
+        None,
+        description="Method used to resolve district (e.g., 'zip_crosswalk', 'census_api')"
+    )
+
     # Contact / personnel (with aliases for SBIR.gov format)
     contact_name: str | None = Field(None, description="Primary contact name")
     contact_title: str | None = Field(None, description="Contact title/position (SBIR.gov format)")

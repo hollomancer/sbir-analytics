@@ -336,3 +336,60 @@ class SBIRFiscalImpactCalculator:
         )
 
         return summary
+
+    def calculate_district_impacts(
+        self,
+        awards_df: pd.DataFrame,
+        congressional_district_resolver: Any = None,
+    ) -> pd.DataFrame:
+        """Calculate fiscal impacts allocated to congressional districts.
+
+        This is a two-step process:
+        1. Calculate state-level impacts using StateIO economic models
+        2. Allocate those impacts to districts proportionally
+
+        Args:
+            awards_df: DataFrame with SBIR awards (must have address fields)
+            congressional_district_resolver: Optional pre-configured resolver
+
+        Returns:
+            DataFrame with district-level allocated impacts
+        """
+        from ..enrichers.congressional_district_resolver import CongressionalDistrictResolver
+        from .fiscal.district_allocator import allocate_state_impacts_to_districts
+
+        logger.info("Calculating congressional district impacts...")
+
+        # Step 1: Resolve congressional districts
+        if congressional_district_resolver is None:
+            congressional_district_resolver = CongressionalDistrictResolver(method="auto")
+
+        awards_with_districts = congressional_district_resolver.enrich_awards_with_districts(
+            awards_df
+        )
+
+        # Step 2: Calculate state-level impacts (using StateIO)
+        state_impacts = self.calculate_impacts_from_sbir_awards(awards_df)
+
+        # Step 3: Allocate state impacts to districts
+        district_impacts = allocate_state_impacts_to_districts(
+            state_impacts_df=state_impacts,
+            awards_with_districts_df=awards_with_districts,
+        )
+
+        return district_impacts
+
+    def calculate_summary_by_district(
+        self, district_impacts: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate summary statistics by congressional district.
+
+        Args:
+            district_impacts: District-level impacts from calculate_district_impacts
+
+        Returns:
+            DataFrame with district-level summaries
+        """
+        from .fiscal.district_allocator import summarize_by_district
+
+        return summarize_by_district(district_impacts)
