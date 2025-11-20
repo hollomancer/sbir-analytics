@@ -44,6 +44,8 @@ class LambdaStack(Stack):
             "download-uspto-patentsview",
             "download-uspto-assignments",
             "download-uspto-ai-patents",
+            # USAspending database download
+            "download-usaspending-database",
         ]
 
         # Create Lambda layer for Python dependencies
@@ -66,8 +68,13 @@ class LambdaStack(Stack):
 
             # AWS currently caps Lambda timeout at 15 minutes, so USPTO download
             # functions cannot request the 30 minutes noted in the spec.
+            # USAspending database downloads are large and may timeout - use test DB or Fargate for full DB
             timeout_minutes = 15
-            memory_size = 512 if not func_name.startswith("download-uspto") else 1024
+            memory_size = 512
+            if func_name.startswith("download-uspto"):
+                memory_size = 1024
+            elif func_name == "download-usaspending-database":
+                memory_size = 2048  # Large files need more memory for multipart upload
 
             func = lambda_.Function(
                 self,
