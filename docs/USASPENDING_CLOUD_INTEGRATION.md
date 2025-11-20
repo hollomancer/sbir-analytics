@@ -66,29 +66,36 @@ This integration enables:
 ```
 
 **Database Types:**
-- `test`: Smaller subset database (~50-100 GB) for development/testing
-- `full`: Complete database dump (~1.5+ TB uncompressed)
+- `test`: Smaller subset database (~50-100 GB) for development/testing (availability unverified)
+- `full`: Complete database dump (~1.5+ TB uncompressed) - ✅ Verified working
 
 **Invocation:**
 ```bash
-# Download test database (recommended for initial testing)
-aws lambda invoke \
-  --function-name sbir-analytics-download-usaspending-database \
-  --payload '{"database_type": "test"}' \
-  response.json
-
-# Download full database (requires significant time and storage)
+# Download full database (verified working as of Nov 2025)
 aws lambda invoke \
   --function-name sbir-analytics-download-usaspending-database \
   --payload '{"database_type": "full", "date": "20251106"}' \
+  --cli-binary-format raw-in-base64-out \
+  response.json
+
+# Check response
+cat response.json | jq
+
+# Alternative: provide explicit URL if needed
+aws lambda invoke \
+  --function-name sbir-analytics-download-usaspending-database \
+  --payload '{"source_url": "https://files.usaspending.gov/database_download/usaspending-db_20251106.zip"}' \
+  --cli-binary-format raw-in-base64-out \
   response.json
 ```
 
 **Notes:**
+- ✅ No authentication required - direct downloads work
 - Lambda has a 15-minute timeout limit
-- For very large files (>500 GB), consider using AWS Batch or Fargate instead
+- For very large files (>500 GB), may exceed timeout - monitor first run
 - Uses multipart upload to stream data directly from source to S3
 - Computes SHA256 hash for integrity verification
+- Verified working URL: https://files.usaspending.gov/database_download/usaspending-db_20251106.zip
 
 ### 2. DuckDB Extractor: Enhanced for S3
 

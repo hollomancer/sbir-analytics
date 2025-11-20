@@ -37,8 +37,7 @@ def sample_shocks():
 def mock_r_packages():
     """Mock R packages for testing."""
     mock_stateio = MagicMock()
-    mock_useeio = MagicMock()
-    return mock_stateio, mock_useeio
+    return mock_stateio
 
 
 @pytest.fixture

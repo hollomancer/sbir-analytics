@@ -1,6 +1,6 @@
 ## SBIR Fiscal Impact Pipeline Guide
 
-Complete guide to calculating tax revenue and job creation impacts from SBIR awards using USEEIOR and StateIO economic models.
+Complete guide to calculating tax revenue and job creation impacts from SBIR awards using StateIO economic models.
 
 ## Overview
 
@@ -15,7 +15,7 @@ SBIR Awards (with NAICS codes)
     ↓
 Aggregate by State/Sector/Year
     ↓
-[USEEIOR/StateIO Economic Models]
+[StateIO Economic Models]
     ↓
 Economic Impacts (tax, wages, production)
     ↓
@@ -108,9 +108,7 @@ sector_summary = calculator.calculate_summary_by_sector(impacts)
 
 Indicates computation method and data quality:
 
-- **useeior_with_stateio_ratios**: Highest quality (USEEIOR + actual StateIO ratios)
-- **useeior_with_default_ratios**: High quality (USEEIOR + default ratios)
-- **stateio_direct_with_ratios**: High quality (Direct StateIO + actual ratios)
+- **stateio_direct_with_ratios**: Highest quality (Direct StateIO + actual ratios)
 - **stateio_direct_default_ratios**: Medium quality (Direct StateIO + defaults)
 - **stateio_failed**: Computation failure (contains error details)
 - **placeholder_computation**: R packages unavailable (lowest quality)
@@ -315,7 +313,6 @@ Error: StateIO R package not loaded
 ```bash
 # Install R packages
 R -e "remotes::install_github('USEPA/stateior')"
-R -e "remotes::install_github('USEPA/useeior')"
 
 # Install Python rpy2
 uv sync --extra r
@@ -350,6 +347,4 @@ Average Confidence Score: 0.40
 - **BEA I-O Accounts**: https://www.bea.gov/industry/input-output-accounts-data
 - **NAICS Codes**: https://www.census.gov/naics/
 - **StateIO Package**: https://github.com/USEPA/stateior
-- **USEEIOR Package**: https://github.com/USEPA/useeior
 - **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`
-- **USEEIOR API Reference**: `docs/fiscal/useeior-api-reference.md`

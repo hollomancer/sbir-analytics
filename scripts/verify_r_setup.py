@@ -88,38 +88,6 @@ def check_stateio_functions():
         return False
 
 
-def check_useeior_functions():
-    """Check if USEEIOR functions are accessible."""
-    try:
-        from rpy2.robjects.packages import importr
-        import rpy2.robjects as ro
-
-        useeior = importr("useeior")
-
-        # Try to call a function to verify it works
-        ro.r('library(useeior)')
-
-        # Check if key functions exist
-        functions_to_check = [
-            "buildTwoRegionModels",
-            "calculateEEIOModel",
-            "buildModel",
-        ]
-
-        for func in functions_to_check:
-            if hasattr(useeior, func):
-                print(f"  ✓ Function '{func}' available")
-            else:
-                print(f"  ✗ Function '{func}' NOT found")
-                return False
-
-        return True
-
-    except Exception as e:
-        print(f"✗ Failed to verify USEEIOR functions: {e}")
-        return False
-
-
 def main():
     """Run all verification checks."""
     print("=" * 60)
@@ -155,16 +123,6 @@ def main():
             all_passed = False
     print()
 
-    # Check USEEIOR
-    print("4. Checking USEEIOR R package...")
-    if not check_r_package("useeior"):
-        all_passed = False
-    else:
-        print("   Checking USEEIOR functions...")
-        if not check_useeior_functions():
-            all_passed = False
-    print()
-
     # Summary
     print("=" * 60)
     if all_passed:
@@ -181,7 +139,6 @@ def main():
         print("  3. Install R packages:")
         print("     R -e \"install.packages('remotes')\"")
         print("     R -e \"remotes::install_github('USEPA/stateior')\"")
-        print("     R -e \"remotes::install_github('USEPA/useeior')\"")
     print("=" * 60)
 
     return 0 if all_passed else 1

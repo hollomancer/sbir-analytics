@@ -728,7 +728,7 @@ Each transition is flagged with:
 | **Configuration** | Pydantic 2.x | Type-safe YAML loading with validation |
 | **ML Classification** | scikit-learn | TF-IDF + Logistic Regression for CET |
 | **Fuzzy Matching** | RapidFuzz 3.x | Company name matching (vendor resolution) |
-| **Economic Modeling** | StateIO/USEEIOR (R) | Input-output impact modeling via rpy2 |
+| **Economic Modeling** | StateIO (R) | Input-output impact modeling via rpy2 |
 | **Logging** | Loguru | Structured logging |
 | **CLI** | Typer + Rich | Interactive dashboard commands |
 | **Testing** | Pytest + Pytest-Cov | Unit/integration/E2E tests |
@@ -946,7 +946,7 @@ ORDER BY c.cet_specialization_score DESC
 ```
 enriched_sbir_awards (with NAICS)
     ↓
-    └─→ StateIO/USEEIOR (R models via rpy2)
+    └─→ StateIO (R models via rpy2)
         ↓
         └─→ Input-output multipliers
             ↓

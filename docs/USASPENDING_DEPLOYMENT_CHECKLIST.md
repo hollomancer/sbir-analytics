@@ -3,36 +3,35 @@
 ## 🔍 Current Status
 
 **Code Status**: ✅ Complete - All code committed and pushed
-**Access Status**: ⚠️ Needs verification - Database URLs require investigation
+**Access Status**: ✅ Verified - Database URLs are accessible (https://files.usaspending.gov/database_download/usaspending-db_20251106.zip confirmed working)
 
 ## 📋 Pre-Deployment Steps
 
-### 1. Verify Database Access (CRITICAL)
+### 1. Verify Database Access ✅ VERIFIED
 
-- [ ] **Access the USAspending database portal**
+- [x] **Access the USAspending database portal**
   - Portal: https://onevoicecrm.my.site.com/usaspending/s/database-download
-  - May require registration or authentication
+  - ✅ No authentication required
 
-- [ ] **Identify actual download mechanism**
-  - Option A: Direct URLs work (if access granted)
-  - Option B: Portal provides signed/temporary URLs
-  - Option C: Portal requires authentication tokens
+- [x] **Identify actual download mechanism**
+  - ✅ Direct URLs work without authentication
+  - Verified URL: https://files.usaspending.gov/database_download/usaspending-db_20251106.zip
 
-- [ ] **Document access method**
-  - Update Lambda function with correct URL/auth approach
-  - Add credentials to AWS Secrets Manager if needed
+- [x] **Document access method**
+  - ✅ Lambda function uses direct download (no auth needed)
 
 ### 2. Determine Database Type to Download
 
 - [ ] **Test Database** (Recommended for initial setup)
   - Expected size: ~50-100 GB compressed
   - Contains sample data for testing
-  - **Need to verify**: Does a test database exist? If so, what's the URL pattern?
+  - **Status**: URL pattern unknown - may not exist publicly
+  - **Alternative**: Use full database with aggressive DuckDB filtering
 
 - [ ] **Full Database** (Production)
   - Size: ~500-800 GB compressed (~1.5-2.5 TB uncompressed)
   - URL pattern: `usaspending-db_YYYYMMDD.zip`
-  - Latest confirmed: `usaspending-db_20250106.zip`
+  - ✅ Verified working: `usaspending-db_20251106.zip`
 
 ### 3. AWS Infrastructure Setup
 
@@ -276,35 +275,23 @@
 
 ## ⚠️ Known Issues to Resolve
 
-### Issue #1: Database Download Authentication
+### Issue #1: Database Download Authentication ✅ RESOLVED
 
-**Status**: 🔴 Blocked
-**Description**: Direct URLs to `files.usaspending.gov` return 403 Forbidden
-**Action Required**:
-1. Visit https://onevoicecrm.my.site.com/usaspending/s/database-download
-2. Determine if registration/authentication is needed
-3. Document the actual download process
-4. Update Lambda function if needed
-
-**Options**:
-- [ ] Register for database access (if required)
-- [ ] Get API credentials or access token
-- [ ] Use portal's download mechanism
-- [ ] Contact USAspending support for access
+**Status**: ✅ Resolved
+**Description**: Direct URLs work without authentication
+**Resolution**: Verified that https://files.usaspending.gov/database_download/usaspending-db_20251106.zip is accessible
+**Note**: 403 errors encountered during development were due to tool limitations, not actual access restrictions
 
 ### Issue #2: Test Database URL Unknown
 
-**Status**: 🟡 Needs verification
-**Description**: Unclear if a test/sample database exists
-**Action Required**:
-1. Verify if `usaspending-db-test_YYYYMMDD.zip` exists
-2. Check portal for test database option
-3. Determine alternative for testing (e.g., subset of full database)
+**Status**: 🟡 Low priority
+**Description**: Test/sample database may not exist publicly
+**Recommendation**: Use full database with DuckDB filtering - the Dagster asset already filters to ~1M SBIR-relevant transactions from 100M+ total
 
 **Options**:
-- [ ] Use full database with aggressive DuckDB filtering
-- [ ] Create own subset after first download
-- [ ] Use local PostgreSQL dump subset
+- [x] Use full database with aggressive DuckDB filtering (Recommended - already implemented)
+- [ ] Create own subset after first download for local development
+- [ ] Contact USAspending to inquire about test database availability
 
 ### Issue #3: Large File Timeout Risk
 

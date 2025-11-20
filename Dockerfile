@@ -93,9 +93,9 @@ COPY . /workspace/
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip wheel --wheel-dir=/wheels .
 
-# Install R packages (stateior and useeior) for fiscal analysis
-# These packages are used via rpy2 for economic input-output modeling
-# Install to system library so they're available in runtime
+# Install R packages (stateior) for fiscal analysis
+# This package is used via rpy2 for economic input-output modeling
+# Install to system library so it's available in runtime
 # 
 # Optimization strategies:
 # 1. Install arrow explicitly first (may get binary, or at least parallel build)
@@ -143,13 +143,6 @@ RUN --mount=type=cache,target=/root/.cache/R \
     options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
     cat('Installing stateior package (arrow should already be installed)...\n'); \
     remotes::install_github('USEPA/stateior', dependencies=TRUE, \
-                            lib='${R_SITE_LIB}', \
-                            Ncpus = parallel::detectCores(), \
-                            upgrade = 'never')" && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing useeior package (arrow should already be installed)...\n'); \
-    remotes::install_github('USEPA/useeior', dependencies=TRUE, \
                             lib='${R_SITE_LIB}', \
                             Ncpus = parallel::detectCores(), \
                             upgrade = 'never')" && \
