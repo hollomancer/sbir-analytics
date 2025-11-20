@@ -15,7 +15,7 @@ MAKEFLAGS += --warn-undefined-variables
 # Configuration (overridable)
 # -----------------------------------------------------------------------------
 
-IMAGE_NAME        ?= sbir-etl:latest
+IMAGE_NAME        ?= sbir-analytics:latest
 DOCKER_REGISTRY   ?=
 DOCKER_TAG        ?= latest
 BUILD_CONTEXT     ?= .

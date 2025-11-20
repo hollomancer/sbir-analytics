@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 #
-# Multi-stage Dockerfile for sbir-etl
+# Multi-stage Dockerfile for sbir-analytics
 # - builder: prepares wheels (UV -> requirements.txt, builds wheels)
 # - runtime: small runtime image with only wheels + application code
 #
@@ -12,7 +12,7 @@
 # - non-root runtime user `sbir`
 #
 # Usage:
-#   docker build -t sbir-etl:latest .
+#   docker build -t sbir-analytics:latest .
 #   make docker-build (provided Makefile uses this Dockerfile)
 #
 ARG PYTHON_VERSION=3.11

@@ -1,5 +1,5 @@
 [project]
-name = "sbir-etl"
+name = "sbir-analytics"
 version = "0.1.0"
 description = "SBIR ETL Pipeline for Neo4j"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
@@ -155,7 +155,7 @@ markers = [
     "e2e: end-to-end tests",
     "real_data: tests that use real SBIR data from data/raw/sbir/ instead of fixtures"
 ]
-testpaths = ["tests", "sbir-etl/tests"]
+testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -169,7 +169,7 @@ python_module = "src.definitions"
 root_module = "src"
 defs_module = "src.definitions"
 code_location_target_module = "src.definitions"
-code_location_name = "sbir-etl-production"
+code_location_name = "sbir-analytics-production"
 
 [build-system]
 requires = ["hatchling"]

@@ -6,7 +6,7 @@
 # Documentation: docs/deployment/dagster-cloud-serverless-cli.md
 
 locations:
-  - location_name: sbir-etl-production
+  - location_name: sbir-analytics-production
     code_source:
       python_module: src.definitions
     build:

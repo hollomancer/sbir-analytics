@@ -31,7 +31,7 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 
 ```bash
 git clone <repository-url>
-cd sbir-etl
+cd sbir-analytics
 uv sync
 ```
 
@@ -159,7 +159,7 @@ See [`docs/deployment/dagster-cloud-overview.md`](docs/deployment/dagster-cloud-
    ```bash
    dagster-cloud serverless deploy-python-executable \
      --deployment prod \
-     --location-name sbir-etl-production \
+     --location-name sbir-analytics-production \
      --module-name src.definitions
    ```
 
@@ -252,7 +252,7 @@ For a complete documentation map, see [`docs/index.md`](docs/index.md).
 ## Project Structure
 
 ```
-sbir-etl/
+sbir-analytics/
 ├── src/
 │   ├── assets/                  # Dagster assets (pipeline stages)
 │   ├── extractors/              # Data extraction from sources
