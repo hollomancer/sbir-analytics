@@ -89,7 +89,7 @@ def main():
     calculator = SBIRFiscalImpactCalculator()
     print("  ✓ Calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ R economic models ready (USEEIOR/StateIO)")
+    print("  ✓ R economic models ready (StateIO)")
     print()
 
     # Step 3: Calculate impacts
@@ -190,7 +190,7 @@ def main():
     except Exception as e:
         print(f"  ✗ Error calculating impacts: {e}")
         print()
-        print("Note: This example requires R and StateIO/USEEIOR packages installed.")
+        print("Note: This example requires R and StateIO packages installed.")
         print("Run in Docker environment or install dependencies:")
         print("  - Install R: https://www.r-project.org/")
         print("  - Install rpy2: uv sync --extra r")

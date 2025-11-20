@@ -33,7 +33,6 @@ def check_installation(
     results = {
         "rpy2_available": False,
         "stateio_available": False,
-        "useeio_available": False,
         "r_version": None,
         "errors": [],
     }
@@ -62,15 +61,6 @@ def check_installation(
         except Exception as e:
             results["errors"].append(f"StateIO package not available: {e}")
             logger.warning(f"✗ StateIO package not available: {e}")
-
-        # Check USEEIOR package
-        try:
-            importr("useeior")
-            results["useeio_available"] = True
-            logger.info("✓ USEEIOR R package is installed")
-        except Exception as e:
-            results["errors"].append(f"USEEIOR package not available: {e}")
-            logger.warning(f"✗ USEEIOR package not available: {e}")
 
     except ImportError:
         results["errors"].append("rpy2 is not installed")

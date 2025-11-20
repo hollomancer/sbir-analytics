@@ -2,7 +2,7 @@
 
 This module provides mapping between NAICS industry codes and BEA Input-Output sector codes.
 NAICS codes are 6-digit industry classification codes used by census/federal data.
-BEA codes are used in input-output (I-O) economic models like USEEIOR and StateIO.
+BEA codes are used in input-output (I-O) economic models like StateIO.
 """
 
 from __future__ import annotations

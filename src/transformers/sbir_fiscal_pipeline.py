@@ -1,10 +1,10 @@
 """SBIR Fiscal Impact Pipeline.
 
 Complete pipeline to calculate tax and job impacts from SBIR awards using
-USEEIOR and StateIO economic models.
+StateIO economic models.
 
 Pipeline flow:
-    SBIR Awards (with NAICS) → Map to BEA Sectors → Aggregate → USEEIOR/StateIO
+    SBIR Awards (with NAICS) → Map to BEA Sectors → Aggregate → StateIO
     → Tax & Wage Impacts → Employment Calculation → Final Results
 """
 
@@ -101,8 +101,8 @@ class SBIRFiscalImpactCalculator:
             f"{shocks['bea_sector'].nunique()} sectors"
         )
 
-        # Step 3: Compute economic impacts using USEEIOR/StateIO
-        logger.info("Computing economic impacts using USEEIOR/StateIO...")
+        # Step 3: Compute economic impacts using StateIO
+        logger.info("Computing economic impacts using StateIO...")
         impacts = self.r_adapter.compute_impacts(shocks)
 
         # Step 4: Add employment impacts if requested

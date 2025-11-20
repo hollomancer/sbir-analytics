@@ -25,7 +25,7 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 - **Python**: 3.11 or 3.12
 - **uv**: For dependency management ([install uv](https://github.com/astral-sh/uv))
 - **Neo4j Aura**: Neo4j cloud instance (Free tier available) - [Setup Guide](docs/data/neo4j-aura-setup.md)
-- **R** (optional): For fiscal returns analysis with StateIO/USEEIOR models
+- **R** (optional): For fiscal returns analysis with StateIO models
 
 #### 1. Clone and Install
 
@@ -222,7 +222,7 @@ dagster job execute -f src/definitions.py -j cet_full_pipeline_job
 
 #### Fiscal Returns Analysis
 
-Calculates return on investment (ROI) of SBIR funding using economic input-output modeling (StateIO/USEEIOR). Estimates federal tax receipts generated from economic impacts.
+Calculates return on investment (ROI) of SBIR funding using economic input-output modeling (StateIO). Estimates federal tax receipts generated from economic impacts.
 
 **Configuration**: `config/fiscal/`
 **Documentation**: `docs/fiscal/`
@@ -472,13 +472,7 @@ except requests.RequestException as e:
 
 This project makes use of and is grateful for the following open-source tools and research:
 
-### Economic Modeling
-
 - **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
-- **[USEEIOR](https://github.com/USEPA/useeior)** - Environmentally-extended input-output model builder by USEPA
-
-### Classifier Research & Tools
-
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation in classifier routing by Albus Yizhuo Li
 - **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute for Innovation and Competition
 

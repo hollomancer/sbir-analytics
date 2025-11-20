@@ -1,5 +1,5 @@
 """
-R StateIO adapter using rpy2 for EPA's USEEIO/StateIO R packages.
+R StateIO adapter using rpy2 for EPA's StateIO R package.
 
 This module implements the EconomicModelInterface using rpy2 to call EPA's
 StateIO R package for state-level input-output economic modeling.
@@ -27,15 +27,11 @@ try:
     from .r_stateio_functions import (
         apply_demand_shocks,
         build_state_model,
-        build_useeior_state_models,
-        calculate_impacts_with_useeior,
         calculate_leontief_inverse,
         calculate_technical_coefficients,
         calculate_value_added_ratios,
-        extract_economic_components_from_impacts,
         extract_industry_output_from_model,
         extract_use_table_from_model,
-        format_demand_vector_from_shocks,
         get_state_value_added,
     )
 
@@ -45,15 +41,11 @@ except ImportError:
     # Define stubs to avoid NameError
     apply_demand_shocks = None  # type: ignore
     build_state_model = None  # type: ignore
-    build_useeior_state_models = None  # type: ignore
-    calculate_impacts_with_useeior = None  # type: ignore
     calculate_leontief_inverse = None  # type: ignore
     calculate_technical_coefficients = None  # type: ignore
     calculate_value_added_ratios = None  # type: ignore
-    extract_economic_components_from_impacts = None  # type: ignore
     extract_industry_output_from_model = None  # type: ignore
     extract_use_table_from_model = None  # type: ignore
-    format_demand_vector_from_shocks = None  # type: ignore
     get_state_value_added = None  # type: ignore
 
 # Conditional rpy2 import
@@ -84,7 +76,7 @@ class RCacheEntry:
 
 
 class RStateIOAdapter(EconomicModelInterface):
-    """R adapter for EPA StateIO/USEEIO packages via rpy2.
+    """R adapter for EPA StateIO package via rpy2.
 
     This adapter calls EPA's StateIO R package through rpy2 to compute
     economic multiplier effects from SBIR spending shocks.
@@ -97,7 +89,6 @@ class RStateIOAdapter(EconomicModelInterface):
         - R runtime installed on system
         - Python rpy2 package: poetry install --extras r
         - StateIO R package: remotes::install_github("USEPA/stateio")
-        - USEEIOR R package (optional): remotes::install_github("USEPA/useeior")
 
     Usage:
         >>> from src.transformers.r_stateio_adapter import RStateIOAdapter
@@ -178,8 +169,8 @@ class RStateIOAdapter(EconomicModelInterface):
                         pandas2ri.converter if hasattr(pandas2ri, "converter") else None
                     )
 
-            # Load StateIO and USEEIO packages
-            # Note: These must be installed in R first
+            # Load StateIO package
+            # Note: This must be installed in R first
             try:
                 self.stateio = importr("stateior")
                 logger.info("Loaded StateIO R package")
@@ -189,13 +180,6 @@ class RStateIOAdapter(EconomicModelInterface):
                     "Install StateIO in R with: remotes::install_github('USEPA/stateio')"
                 )
                 self.stateio = None
-
-            try:
-                self.useeio = importr("useeior")
-                logger.info("Loaded USEEIO R package")
-            except Exception as e:
-                logger.warning(f"Failed to load USEEIO package: {e}")
-                self.useeio = None
 
         except Exception as e:
             logger.error(f"Failed to initialize R interface: {e}")
@@ -396,18 +380,8 @@ class RStateIOAdapter(EconomicModelInterface):
 
         model_ver = model_version or self.model_version
 
-        # Use discovered USEEIOR/StateIO integration pattern
+        # Use direct StateIO approach
         try:
-            # Strategy 1: Use USEEIOR buildTwoRegionModels + calculateEEIOModel
-            # This is the recommended approach as it integrates StateIO internally
-            if self.useeio is not None and STATEIO_FUNCTIONS_AVAILABLE:
-                try:
-                    return self._compute_impacts_via_useeior(shocks_df, model_ver)
-                except Exception as e:
-                    logger.warning(f"USEEIOR integration failed: {e}")
-                    logger.debug("Falling back to direct StateIO approach")
-
-            # Strategy 2: Direct StateIO approach (if USEEIOR unavailable)
             if self.stateio is not None and STATEIO_FUNCTIONS_AVAILABLE:
                 try:
                     return self._compute_impacts_via_stateio(shocks_df, model_ver)
@@ -430,246 +404,10 @@ class RStateIOAdapter(EconomicModelInterface):
 
         return self._compute_placeholder_impacts(shocks_df, model_ver)
 
-    def _compute_impacts_via_useeior(
-        self, shocks_df: pd.DataFrame, model_version: str
-    ) -> pd.DataFrame:
-        """Compute impacts using USEEIOR's buildTwoRegionModels and calculateEEIOModel.
-
-        This is the recommended approach as it integrates StateIO internally.
-
-        Args:
-            shocks_df: Shocks DataFrame
-            model_version: Model version string
-
-        Returns:
-            DataFrame with impact components
-        """
-        if not STATEIO_FUNCTIONS_AVAILABLE:
-            raise ImportError("r_stateio_functions module not available")
-
-        from rpy2.robjects.conversion import localconverter
-
-        if self.useeio is None:
-            raise DependencyError(
-                "USEEIOR package not loaded",
-                dependency_name="useeior",
-                component="transformer.r_stateio_adapter",
-                operation="calculate_impacts_useeior",
-                details={"install_command": "remotes::install_github('USEPA/useeior')"},
-            )
-
-        # Get year from shocks (assume all same year)
-        year = int(shocks_df["fiscal_year"].iloc[0])
-
-        # Determine model name from version or use default
-        # Available models: "USEEIO2012", "USEEIOv2.0.1-411", "USEEIOv2.3-GHG", etc.
-        modelname = "USEEIO2012"  # Default - could be configured
-
-        # Group shocks by state
-        states = shocks_df["state"].unique().tolist()
-        all_results: list[dict[str, Any]] = []
-        successful_states: list[str] = []
-        failed_states: list[str] = []
-
-        logger.debug(
-            "Building USEEIOR two-region models for %s using %s (year=%s)",
-            states,
-            modelname,
-            year,
-        )
-
-        try:
-            # Build the full set of state models once. This is expensive,
-            # so we avoid rebuilding inside the per-state loop.
-            state_models = build_useeior_state_models(self.useeio, modelname, year=year)
-        except Exception as exc:
-            raise RuntimeError(
-                f"Failed to build USEEIOR state models with {modelname}: {exc}"
-            ) from exc
-
-        for state in states:
-            state_shocks = shocks_df[shocks_df["state"] == state].copy()
-
-            try:
-                logger.debug(f"Using USEEIOR model for state: {state}")
-
-                # Get state-specific model from the list
-                try:
-                    state_model = state_models.rx2(state)
-                except Exception as exc:
-                    raise RuntimeError(f"State {state} not present in USEEIOR models: {exc}") from exc
-
-                # Format shocks as demand vector
-                demand = format_demand_vector_from_shocks(self.useeio, state_model, state_shocks)
-
-                # Calculate impacts
-                impacts = calculate_impacts_with_useeior(
-                    self.useeio,
-                    state_model,
-                    demand,
-                    perspective="DIRECT",
-                    location=state,
-                )
-
-                # Extract production impacts from N matrix
-                # N contains commodity outputs per sector
-                try:
-                    n_matrix = impacts.rx2("N")
-                    # Convert N to pandas for easier manipulation
-                    if self._pandas_converter is not None:
-                        with localconverter(ro.default_converter + self._pandas_converter):
-                            n_df = ro.conversion.rpy2py(n_matrix)
-                    else:
-                        import rpy2.robjects.pandas2ri as pandas2ri
-
-                        n_df = pandas2ri.rpy2py(n_matrix)
-
-                    # Sum across commodities to get production per sector
-                    if isinstance(n_df, pd.DataFrame):
-                        production_by_sector = n_df.sum(axis=1)
-                    else:
-                        # Handle other matrix types
-                        production_by_sector = pd.Series(
-                            n_df.flatten() if hasattr(n_df, "flatten") else n_df
-                        )
-
-                except Exception as e:
-                    logger.warning(f"Could not extract N matrix for {state}: {e}")
-                    production_by_sector = None
-
-                # Get value added components from StateIO and calculate ratios
-                va_ratios_df = pd.DataFrame()
-                if self.stateio is not None:
-                    try:
-                        va_components = get_state_value_added(self.stateio, state, year)
-                        # Convert to ratios DataFrame
-                        va_ratios_df = calculate_value_added_ratios(
-                            va_components, converter=self._pandas_converter
-                        )
-                        if not va_ratios_df.empty:
-                            logger.debug(
-                                f"Calculated value added ratios for {len(va_ratios_df)} sectors in {state}"
-                            )
-                    except Exception as e:
-                        logger.debug(f"Could not get value added ratios for {state}: {e}")
-
-                # Build result row for each sector shock
-                for _, shock_row in state_shocks.iterrows():
-                    sector = shock_row["bea_sector"]
-                    shock_amt = float(shock_row["shock_amount"])
-
-                    # Get production impact for this sector
-                    if production_by_sector is not None and sector in production_by_sector.index:
-                        production_impact = Decimal(str(float(production_by_sector[sector])))
-                    else:
-                        # Fallback: estimate from shock amount with multiplier
-                        production_impact = Decimal(str(shock_amt)) * Decimal("2.0")
-
-                    # Get value added ratios for this specific sector
-                    # Try to use actual ratios from StateIO data
-                    wage_ratio = Decimal("0.4")  # Default
-                    gos_ratio = Decimal("0.3")  # Default
-                    tax_ratio = Decimal("0.15")  # Default
-                    proprietor_ratio = Decimal("0.0")  # Default
-                    used_actual_ratios = False
-
-                    if not va_ratios_df.empty:
-                        # Look up sector-specific ratios
-                        sector_ratios = va_ratios_df[va_ratios_df["sector"] == str(sector)]
-                        if not sector_ratios.empty:
-                            wage_ratio = Decimal(str(sector_ratios["wage_ratio"].iloc[0]))
-                            gos_ratio = Decimal(str(sector_ratios["gos_ratio"].iloc[0]))
-                            tax_ratio = Decimal(str(sector_ratios["tax_ratio"].iloc[0]))
-                            proprietor_ratio = Decimal(
-                                str(sector_ratios["proprietor_income_ratio"].iloc[0])
-                            )
-                            used_actual_ratios = True
-                            logger.debug(
-                                f"Using StateIO ratios for {state}/{sector}: "
-                                f"wage={wage_ratio:.3f}, gos={gos_ratio:.3f}, tax={tax_ratio:.3f}"
-                            )
-                        else:
-                            logger.debug(
-                                f"No StateIO ratios for sector {sector}, using defaults"
-                            )
-
-                    # Calculate value added components using ratios
-                    wage_impact = production_impact * wage_ratio
-                    gos_impact = production_impact * gos_ratio
-                    tax_impact = production_impact * tax_ratio
-                    proprietor_impact = production_impact * proprietor_ratio
-
-                    # Determine quality flags based on whether we used actual or default ratios
-                    quality_flags = (
-                        "useeior_with_stateio_ratios"
-                        if used_actual_ratios
-                        else "useeior_with_default_ratios"
-                    )
-
-                    all_results.append(
-                        {
-                            "state": state,
-                            "bea_sector": sector,
-                            "fiscal_year": shock_row["fiscal_year"],
-                            "wage_impact": wage_impact,
-                            "proprietor_income_impact": proprietor_impact,
-                            "gross_operating_surplus": gos_impact,
-                            "consumption_impact": production_impact * Decimal("0.2"),
-                            "tax_impact": tax_impact,
-                            "production_impact": production_impact,
-                            "model_version": model_version,
-                            "confidence": Decimal("0.85"),
-                            "quality_flags": quality_flags,
-                        }
-                    )
-
-                logger.info(f"Computed impacts for {state} using USEEIOR")
-                successful_states.append(state)
-
-            except Exception as e:
-                failed_states.append(state)
-                logger.error(f"Failed to compute impacts for {state}: {e}")
-                # Add placeholder row for failed state so caller is aware of the gap
-                for _, shock_row in state_shocks.iterrows():
-                    all_results.append(
-                        {
-                            "state": state,
-                            "bea_sector": shock_row["bea_sector"],
-                            "fiscal_year": shock_row["fiscal_year"],
-                            "wage_impact": Decimal("0"),
-                            "proprietor_income_impact": Decimal("0"),
-                            "gross_operating_surplus": Decimal("0"),
-                            "consumption_impact": Decimal("0"),
-                            "tax_impact": Decimal("0"),
-                            "production_impact": Decimal("0"),
-                            "model_version": model_version,
-                            "confidence": Decimal("0.0"),
-                            "quality_flags": f"computation_failed:{str(e)[:50]}",
-                        }
-                    )
-                continue
-
-        if not successful_states:
-            # Propagate failure so the caller can fall back to the pure StateIO path.
-            raise RuntimeError(
-                "USEEIOR integration failed for all states; "
-                f"falling back to StateIO. Failed states: {failed_states}"
-            )
-
-        # Convert to DataFrame
-        result_df = pd.DataFrame(all_results)
-
-        # Ensure proper types
-        result_df = self._ensure_impact_columns(result_df, shocks_df, model_version)
-
-        return result_df
-
     def _compute_impacts_via_stateio(
         self, shocks_df: pd.DataFrame, model_version: str
     ) -> pd.DataFrame:
         """Compute impacts using direct StateIO functions.
-
-        Fallback approach if USEEIOR is not available.
 
         Args:
             shocks_df: Shocks DataFrame
@@ -785,7 +523,7 @@ class RStateIOAdapter(EconomicModelInterface):
                             "tax_impact": tax_impact,
                             "production_impact": production_impact,
                             "model_version": model_version,
-                            "confidence": Decimal("0.80"),  # Slightly lower than USEEIOR
+                            "confidence": Decimal("0.85"),
                             "quality_flags": quality_flags,
                         }
                     )
@@ -820,7 +558,7 @@ class RStateIOAdapter(EconomicModelInterface):
     def _validate_bea_sectors(self, shocks_df: pd.DataFrame) -> None:
         """Validate BEA sector codes format.
 
-        StateIO/USEEIOR expect BEA sector codes in specific formats:
+        StateIO expects BEA sector codes in specific formats:
         - Summary level: "11", "21", "22", etc. (2-digit codes)
         - Detail level: "111CA", "111US", etc. (with location suffix for two-region models)
         - Standard format: 2-digit numeric codes for Summary level
@@ -863,7 +601,7 @@ class RStateIOAdapter(EconomicModelInterface):
             # They may accept formats we don't recognize
 
     def _normalize_bea_sector(self, sector: str, state: str | None = None) -> str:
-        """Normalize BEA sector code to format expected by StateIO/USEEIOR.
+        """Normalize BEA sector code to format expected by StateIO.
 
         Args:
             sector: BEA sector code (may include leading zeros or location suffixes)

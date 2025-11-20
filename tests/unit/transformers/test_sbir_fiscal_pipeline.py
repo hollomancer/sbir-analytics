@@ -39,7 +39,7 @@ def sample_impacts():
             "production_impact": [Decimal("2000000"), Decimal("1000000")],
             "model_version": ["v2.1", "v2.1"],
             "confidence": [Decimal("0.85"), Decimal("0.85")],
-            "quality_flags": ["useeior_with_stateio_ratios", "useeior_with_stateio_ratios"],
+            "quality_flags": ["stateio_direct_with_ratios", "stateio_direct_with_ratios"],
         }
     )
 

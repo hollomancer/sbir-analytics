@@ -1,6 +1,6 @@
 # Local R Setup for Fiscal Impact Analysis
 
-This guide helps you set up R and required packages (StateIO, USEEIOR) for local development.
+This guide helps you set up R and required packages (StateIO) for local development.
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ uv sync --extra r
 ### 3. Install R Packages
 
 ```bash
-R -e "install.packages('remotes'); remotes::install_github('USEPA/stateior'); remotes::install_github('USEPA/useeior')"
+R -e "install.packages('remotes'); remotes::install_github('USEPA/stateior')"
 ```
 
 ### 4. Verify Installation
@@ -66,12 +66,8 @@ If the one-liner fails, install packages manually:
    # Install StateIO
    remotes::install_github("USEPA/stateior")
 
-   # Install USEEIOR
-   remotes::install_github("USEPA/useeior")
-
    # Verify
    library(stateior)
-   library(useeior)
 
    # Exit
    quit()
@@ -148,9 +144,6 @@ from rpy2.robjects.packages import importr
 stateio = importr("stateior")
 print("StateIO loaded successfully!")
 
-# Test USEEIOR
-useeior = importr("useeior")
-print("USEEIOR loaded successfully!")
 ```
 
 ### Automatic Verification
@@ -179,13 +172,6 @@ R Setup Verification for SBIR Fiscal Impact Analysis
   ✓ Function 'buildFullTwoRegionIOTable' available
   ✓ Function 'getStateGVA' available
   ✓ Function 'getStateEmpCompensation' available
-
-4. Checking USEEIOR R package...
-✓ R package 'useeior' installed
-   Checking USEEIOR functions...
-  ✓ Function 'buildTwoRegionModels' available
-  ✓ Function 'calculateEEIOModel' available
-  ✓ Function 'buildModel' available
 
 ============================================================
 ✓ ALL CHECKS PASSED - R setup is complete!
@@ -234,7 +220,7 @@ python examples/sbir_fiscal_impact_example.py
 
 Docker includes:
 - ✅ R pre-installed
-- ✅ StateIO and USEEIOR pre-installed
+- ✅ StateIO pre-installed
 - ✅ All system dependencies
 - ✅ rpy2 configured correctly
 
@@ -246,7 +232,6 @@ Docker includes:
 - R: 4.3.0+
 - rpy2: 3.5.0+
 - StateIO: Latest from GitHub
-- USEEIOR: Latest from GitHub
 
 **Compatibility:**
 - Python: 3.11+
@@ -274,7 +259,7 @@ R -e "remotes::install_github('USEPA/stateior')"
 
 **Cause:** R packages not available or failed to load
 
-**Check logs:** Look for warnings about StateIO/USEEIOR not loading
+**Check logs:** Look for warnings about StateIO not loading
 
 **Verify:** Run `python scripts/verify_r_setup.py`
 
@@ -309,6 +294,5 @@ If setup fails after following this guide:
 
 - **R Installation**: https://www.r-project.org/
 - **StateIO GitHub**: https://github.com/USEPA/stateior
-- **USEEIOR GitHub**: https://github.com/USEPA/useeior
 - **rpy2 Documentation**: https://rpy2.github.io/
 - **Docker Setup**: `Dockerfile` in project root
