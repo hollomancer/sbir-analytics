@@ -112,15 +112,20 @@ state_growth = (
 
 ## Missing Capability: Congressional Districts
 
-### ❌ Congressional District Analysis (Not Currently Supported)
+### ❌ Congressional District Analysis (Not Currently Supported - But Very Feasible!)
 
-Congressional district-level analysis is **NOT implemented** but could be added.
+Congressional district-level analysis is **NOT implemented** but is **very feasible to add**.
 
-**Why It's Not Supported:**
-1. SBIR award data doesn't include congressional district fields
-2. ZIP codes can span multiple congressional districts
-3. Requires geocoding addresses to lat/lon, then district lookup
-4. Congressional districts change every 10 years (redistricting)
+**Why It's Very Feasible:**
+1. ✅ SBIR award data **INCLUDES full addresses** (company_address, city, state, ZIP)
+2. ✅ GeographicResolver infrastructure already exists for state resolution
+3. ✅ Multiple free APIs available for geocoding (Census Geocoder)
+4. ✅ Proof-of-concept implementation created (`examples/congressional_district_resolution.py`)
+
+**Minor Considerations:**
+- ZIP codes can span multiple congressional districts (use full address for accuracy)
+- Congressional districts change every 10 years (track which Congress boundaries used)
+- API rate limits (Census API is free but rate-limited)
 
 **What Would Be Required:**
 
@@ -312,23 +317,44 @@ print(district_summary)
 4. ✅ Export to CSV/Excel for further analysis in BI tools
 
 ### To Add Congressional District Support
-1. **Phase 1 (Quick Win)**: ZIP-to-District approximate mapping
-   - Use HUD crosswalk file
-   - Add `congressional_district` field to Award model
-   - Simple proportional allocation of state impacts
-   - Timeline: 1-2 weeks
 
-2. **Phase 2 (Production Quality)**: Full geocoding
-   - Integrate Census Geocoder API
-   - Handle address validation and cleanup
-   - Track resolution confidence scores
-   - Timeline: 4-6 weeks
+**Good News:** A proof-of-concept implementation is available at `examples/congressional_district_resolution.py`
+
+1. **Phase 1 (Quick Win)**: ZIP-to-District approximate mapping
+   - Download HUD ZIP-to-Congressional District crosswalk file
+   - Add `congressional_district` field to Award model
+   - Extend GeographicResolver with `resolve_congressional_district()` method
+   - Simple proportional allocation of state impacts
+   - Timeline: **2-3 days** (since we already have addresses and infrastructure)
+
+2. **Phase 2 (Production Quality)**: Full geocoding with Census API
+   - Integrate Census Geocoder API (free, authoritative)
+   - Already have address validation in GeographicResolver
+   - Track resolution confidence scores (pattern already established)
+   - Add rate limiting and caching
+   - Timeline: **1-2 weeks** (infrastructure exists, just need API integration)
 
 3. **Phase 3 (Advanced)**: District-specific modeling
    - Research district-level economic data sources
    - Develop district-level multipliers (if possible)
    - Validate against known outcomes
    - Timeline: 3-6 months (research project)
+
+## Available Address Data
+
+SBIR awards include complete address information:
+
+```python
+# Fields available in Award model:
+- company_address / address1 / address2  # Street address
+- company_city                           # City
+- company_state                          # State (2-letter code)
+- company_zip                            # ZIP code (5 or 9 digit)
+```
+
+This means we have everything needed to resolve congressional districts!
+
+See `examples/congressional_district_resolution.py` for a working proof-of-concept.
 
 ## Example Queries Supported
 
@@ -356,16 +382,28 @@ impacts.pivot_table(
 )
 ```
 
-### ❌ NOT Currently Supported (Requires Congressional District Enhancement)
+### ⚠️ NOT Currently Supported (But Easy to Add - See examples/congressional_district_resolution.py)
 ```python
 # "What's the tax impact in Nancy Pelosi's district (CA-11)?"
-# → Need congressional district enrichment
+# → Add CongressionalDistrictResolver (2-3 days work)
 
 # "How many jobs created in swing district NY-19?"
-# → Need congressional district enrichment
+# → Add CongressionalDistrictResolver (2-3 days work)
 
 # "Compare impacts across all Texas congressional districts"
-# → Need congressional district enrichment
+# → Add CongressionalDistrictResolver (2-3 days work)
+
+# Proof-of-concept implementation:
+from examples.congressional_district_resolution import CongressionalDistrictResolver
+
+resolver = CongressionalDistrictResolver(method="census_api")
+enriched = resolver.enrich_awards_with_districts(awards_df)
+
+# Then aggregate by district
+district_impacts = enriched.groupby('congressional_district').agg({
+    'award_amount': 'sum',
+    'tax_impact_allocated': 'sum'
+})
 ```
 
 ## Implementation Priority
