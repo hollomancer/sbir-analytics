@@ -106,6 +106,37 @@ docker-check-install: ## Quick check for Docker CLI only
 	 fi
 
 # -----------------------------------------------------------------------------
+# Local Development (New)
+# -----------------------------------------------------------------------------
+
+.PHONY: install
+install: ## Install dependencies with uv
+	@$(call info,Installing dependencies)
+	$(call run,uv sync)
+
+.PHONY: test
+test: ## Run all tests
+	@$(call info,Running tests)
+	$(call run,uv run pytest -v --cov=src)
+
+.PHONY: lint
+lint: ## Run linting and type checking
+	@$(call info,Running linting and type checking)
+	$(call run,uv run ruff check .)
+	$(call run,uv run mypy src/)
+
+.PHONY: format
+format: ## Format code
+	@$(call info,Formatting code)
+	$(call run,uv run black .)
+	$(call run,uv run ruff check --fix .)
+
+.PHONY: dev
+dev: ## Run Dagster dev server locally
+	@$(call info,Starting Dagster dev server)
+	$(call run,uv run dagster dev -m src.definitions)
+
+# -----------------------------------------------------------------------------
 # Build + publish
 # -----------------------------------------------------------------------------
 

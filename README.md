@@ -3,22 +3,8 @@
 A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4j graph database for analysis and visualization.
 
 ## Quick Start
-### Production Deployment (Cloud-First Architecture)
 
-The SBIR ETL pipeline is designed for cloud deployment with the following architecture:
-
-- **Orchestration**: Dagster Cloud Solo Plan or AWS Step Functions
-- **Compute**: AWS Lambda functions (for scheduled workflows)
-- **Storage**: AWS S3 (primary data storage)
-- **Database**: Neo4j Aura (cloud-hosted graph database)
-- **Secrets**: AWS Secrets Manager
-
-**Deployment Guides**:
-- **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites and env vars
-- **[AWS Infrastructure](docs/deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions setup
-- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
-
-### Local Development Setup
+### Local Development Setup (Recommended)
 
 #### Prerequisites
 
@@ -32,7 +18,7 @@ The SBIR ETL pipeline is designed for cloud deployment with the following archit
 ```bash
 git clone <repository-url>
 cd sbir-analytics
-uv sync
+make install
 ```
 
 #### 2. Configure Environment
@@ -47,7 +33,7 @@ cp .env.example .env
 - **Option A (Recommended):** Use Neo4j Aura (Cloud). Set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`.
 - **Option B (Local):** Use Docker.
   ```bash
-  docker-compose --profile dev up neo4j -d
+  make neo4j-up
   # Set NEO4J_URI=bolt://localhost:7687 in .env
   ```
 
@@ -57,10 +43,8 @@ cp .env.example .env
 
 #### 3. Run the Pipeline
 
-**Important:** You must use the `-m` flag to avoid import errors.
-
 ```bash
-uv run dagster dev -m src.definitions
+make dev
 ```
 
 Open **http://localhost:3000** to view the Dagster UI.
@@ -71,16 +55,26 @@ Open **http://localhost:3000** to view the Dagster UI.
 2. Click **Materialize** on desired assets (e.g., `raw_sbir_awards`).
 3. Monitor progress in the **Runs** tab.
 
-Or via CLI:
-```bash
-uv run dagster asset materialize -m src.definitions -s raw_sbir_awards
-```
-
 #### 5. Run Tests
 
 ```bash
-uv run pytest -v --cov=src
+make test
 ```
+
+### Production Deployment (Cloud-First Architecture)
+
+The SBIR ETL pipeline is designed for cloud deployment with the following architecture:
+
+- **Orchestration**: Dagster Cloud Solo Plan or AWS Step Functions
+- **Compute**: AWS Lambda functions (for scheduled workflows)
+- **Storage**: AWS S3 (primary data storage)
+- **Database**: Neo4j Aura (cloud-hosted graph database)
+- **Secrets**: AWS Secrets Manager
+
+**Deployment Guides**:
+- **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites and env vars
+- **[AWS Infrastructure](docs/deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions setup
+- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
 
 ### AWS Infrastructure (Production)
 
