@@ -25,8 +25,18 @@ USASPENDING_DB_BASE_URL = "https://files.usaspending.gov/database_download"
 # Test database: smaller subset for development/testing
 # Note: These are complete PostgreSQL dumps, not individual tables
 # Use DuckDB postgres_scanner to query specific tables after download
+#
+# IMPORTANT: Direct downloads from files.usaspending.gov may require authentication
+# or special access. If you encounter 403 errors, you may need to:
+# 1. Access via portal: https://onevoicecrm.my.site.com/usaspending/s/database-download
+# 2. Provide a pre-signed or authenticated URL in the source_url parameter
+# 3. Register for database access if required
+#
+# Known working format (as of Nov 2025):
+#   https://files.usaspending.gov/database_download/usaspending-db_20250106.zip
 USASPENDING_DOWNLOADS = {
     "full": "{base}/usaspending-db_{date}.zip",
+    # Test database URL pattern is unverified - provide explicit source_url if needed
     "test": "{base}/usaspending-db-test_{date}.zip",
 }
 
@@ -163,13 +173,26 @@ def _download_direct(
     req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0")
     req.add_header("Accept", "*/*")
 
-    with urlopen(req, timeout=600) as response:
-        if response.getcode() != 200:
-            raise Exception(f"HTTP {response.getcode()} from {source_url}")
+    try:
+        with urlopen(req, timeout=600) as response:
+            if response.getcode() != 200:
+                raise Exception(f"HTTP {response.getcode()} from {source_url}")
 
-        data = response.read()
-        file_size = len(data)
-        print(f"Downloaded {file_size} bytes")
+            data = response.read()
+            file_size = len(data)
+            print(f"Downloaded {file_size} bytes")
+    except Exception as e:
+        error_msg = f"Failed to download from {source_url}: {str(e)}"
+        if "403" in str(e) or "Forbidden" in str(e):
+            error_msg += (
+                "\n\nAccess denied (403 Forbidden). This may indicate:\n"
+                "1. The URL requires authentication or special access\n"
+                "2. You need to access via the USAspending portal\n"
+                "3. You need to provide a pre-signed or authenticated URL\n\n"
+                "Please visit: https://onevoicecrm.my.site.com/usaspending/s/database-download\n"
+                "Or contact USAspending support: https://www.usaspending.gov/about/contact-us"
+            )
+        raise Exception(error_msg)
 
     # Compute hash
     file_hash = hashlib.sha256(data).hexdigest()
