@@ -246,7 +246,8 @@ def _download_with_multipart_upload(
 
         with urlopen(req, timeout=600) as response:
             if response.getcode() != 200:
-                raise Exception(f"HTTP {response.getcode()} from {source_url}")
+                reason = getattr(response, "reason", getattr(response, "msg", ""))
+                raise Exception(f"HTTP {response.getcode()} {reason} from {source_url}")
 
             while True:
                 # Read chunk
