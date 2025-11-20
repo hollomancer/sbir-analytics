@@ -238,6 +238,7 @@ Tracks USPTO patents linked to SBIR awards, including patent assignments, owners
 
 Comprehensive documentation is organized by topic:
 
+- **Infrastructure**: [`docs/infrastructure/`](docs/infrastructure/overview.md) - Complete infrastructure overview, local/cloud setup, and recommendations
 - **Testing**: [`docs/testing/`](docs/testing/README.md) - Testing guides, environment setup, and coverage analysis
 - **Deployment**: [`docs/deployment/`](docs/deployment/README.md) - Dagster Cloud and Docker deployment guides
 - **Transition Detection**: [`docs/transition/`](docs/transition/README.md) - Technology transition detection system
@@ -246,6 +247,10 @@ Comprehensive documentation is organized by topic:
 - **Schemas**: [`docs/schemas/`](docs/schemas/neo4j.md) - Neo4j graph schema documentation
 - **Data Sources**: `docs/data/` - Data dictionaries and source documentation
 - **Specifications**: `.kiro/specs/` - Kiro specification system (see `AGENTS.md` for workflow guidance)
+
+**Key Resources:**
+- **[Infrastructure Overview](docs/infrastructure/overview.md)** - Complete guide to local and cloud infrastructure
+- **[Infrastructure Recommendations](docs/infrastructure/recommendations.md)** - Improvements and best practices
 
 For a complete documentation map, see [`docs/index.md`](docs/index.md).
 
