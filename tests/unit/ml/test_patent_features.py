@@ -1,4 +1,4 @@
-# sbir-etl/tests/unit/ml/test_patent_features.py
+# sbir-analytics/tests/unit/ml/test_patent_features.py
 
 import pytest
 

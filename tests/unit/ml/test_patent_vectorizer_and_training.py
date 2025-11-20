@@ -1,4 +1,4 @@
-# sbir-etl/tests/unit/ml/test_patent_vectorizer_and_training.py
+# sbir-analytics/tests/unit/ml/test_patent_vectorizer_and_training.py
 # ruff: noqa: F821, F401
 """
 DEPRECATED MODULE - SKIPPED

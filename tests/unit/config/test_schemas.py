@@ -355,7 +355,7 @@ class TestLoggingConfig:
         config = LoggingConfig()
         assert config.level == "INFO"
         assert config.format == "json"
-        assert config.file_path == "logs/sbir-etl.log"
+        assert config.file_path == "logs/sbir-analytics.log"
         assert config.max_file_size_mb == 100
         assert config.backup_count == 5
         assert config.console_enabled is True
@@ -723,7 +723,7 @@ class TestPipelineConfig:
     def test_default_values(self):
         """Test PipelineConfig default values."""
         config = PipelineConfig()
-        assert config.pipeline["name"] == "sbir-etl"
+        assert config.pipeline["name"] == "sbir-analytics"
         assert config.pipeline["version"] == "0.1.0"
         assert config.pipeline["environment"] == "development"
         assert isinstance(config.paths, PathsConfig)

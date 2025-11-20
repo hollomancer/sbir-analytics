@@ -50,7 +50,7 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
     # Start with a minimal valid config
     config_dict: dict[str, Any] = {
         "pipeline": {
-            "name": "sbir-etl",
+            "name": "sbir-analytics",
             "version": "0.1.0",
             "environment": "test",
         },

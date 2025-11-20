@@ -1,4 +1,4 @@
-# sbir-etl/tests/unit/ml/test_patent_classifier.py
+# sbir-analytics/tests/unit/ml/test_patent_classifier.py
 
 
 from src.ml.models.dummy_pipeline import DummyPipeline
@@ -108,7 +108,7 @@ def test_no_pipelines_returns_empty_lists():
     assert all(isinstance(r, list) and len(r) == 0 for r in results)
 
 
-# sbir-etl/tests/unit/ml/test_patent_classifier.py
+# sbir-analytics/tests/unit/ml/test_patent_classifier.py
 
 
 import pytest

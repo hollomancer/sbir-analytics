@@ -1,4 +1,4 @@
-# sbir-etl/tests/conftest.py
+# sbir-analytics/tests/conftest.py
 #
 # Test bootstrap for pytest: ensure repository root is on sys.path so tests can import
 # the `src` package without requiring PYTHONPATH to be explicitly set by the caller.
@@ -45,7 +45,7 @@ def _find_repo_root(start: Path | None = None) -> Path:
             break
         current = current.parent
 
-    # Fallback: assume project root is one level up (sbir-etl/)
+    # Fallback: assume project root is one level up (sbir-analytics/)
     fallback = Path(__file__).resolve().parents[1]
     return fallback
 

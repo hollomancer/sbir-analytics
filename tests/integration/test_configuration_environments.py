@@ -43,7 +43,7 @@ class TestConfigurationEnvironments:
         config = get_config(environment=None, config_dir=config_dir, apply_env_overrides_flag=False)
 
         assert isinstance(config, PipelineConfig)
-        assert config.pipeline["name"] == "sbir-etl"
+        assert config.pipeline["name"] == "sbir-analytics"
         assert "environment" in config.pipeline
 
     def test_load_dev_environment(self, config_dir):

@@ -1,4 +1,4 @@
-# sbir-etl/tests/unit/test_uspto_assets.py
+# sbir-analytics/tests/unit/test_uspto_assets.py
 import copy
 
 import pytest

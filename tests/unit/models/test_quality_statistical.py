@@ -534,7 +534,7 @@ class TestPipelineMetrics:
 
         metrics = PipelineMetrics(
             run_id="RUN-123",
-            pipeline_name="sbir-etl",
+            pipeline_name="sbir-analytics",
             environment="production",
             timestamp=now,
             duration=timedelta(hours=1),
@@ -567,7 +567,7 @@ class TestPipelineMetrics:
             overall_success_rate=1.0,
             performance_metrics=perf,
         )
-        assert metrics.pipeline_name == "sbir-etl"
+        assert metrics.pipeline_name == "sbir-analytics"
         assert metrics.environment == "development"
 
 
