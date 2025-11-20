@@ -147,7 +147,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sbir-etl-infrastructure"
+name = "sbir-analytics-infrastructure"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
