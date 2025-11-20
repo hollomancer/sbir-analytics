@@ -21,7 +21,7 @@ class SecurityStack(Stack):
         self.neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
             self,
             "Neo4jAuraSecret",
-            secret_name="sbir-etl/neo4j-aura",
+            secret_name="sbir-analytics/neo4j-aura",
         )
 
         # Default to importing existing roles (they may already exist)
@@ -33,7 +33,7 @@ class SecurityStack(Stack):
             self.lambda_role = iam.Role(
                 self,
                 "LambdaExecutionRole",
-                role_name="sbir-etl-lambda-execution-role",
+                role_name="sbir-analytics-lambda-execution-role",
                 assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
                 managed_policies=[
                     iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -51,7 +51,7 @@ class SecurityStack(Stack):
                     effect=iam.Effect.ALLOW,
                     actions=["secretsmanager:GetSecretValue"],
                     resources=[
-                        f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-etl/neo4j-aura*"
+                        f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:sbir-analytics/neo4j-aura*"
                     ],
                 )
             )
@@ -60,7 +60,7 @@ class SecurityStack(Stack):
             self.step_functions_role = iam.Role(
                 self,
                 "StepFunctionsExecutionRole",
-                role_name="sbir-etl-step-functions-execution-role",
+                role_name="sbir-analytics-step-functions-execution-role",
                 assumed_by=iam.ServicePrincipal("states.amazonaws.com"),
             )
 
@@ -92,7 +92,7 @@ class SecurityStack(Stack):
             self.github_actions_role = iam.Role(
                 self,
                 "GitHubActionsRole",
-                role_name="sbir-etl-github-actions-role",
+                role_name="sbir-analytics-github-actions-role",
                 assumed_by=iam.WebIdentityPrincipal(
                     f"arn:aws:iam::{self.account}:oidc-provider/token.actions.githubusercontent.com",
                     conditions={
@@ -130,21 +130,21 @@ class SecurityStack(Stack):
             self.lambda_role = iam.Role.from_role_name(
                 self,
                 "LambdaExecutionRole",
-                role_name="sbir-etl-lambda-execution-role",
+                role_name="sbir-analytics-lambda-execution-role",
             )
 
             # Import Step Functions execution role
             self.step_functions_role = iam.Role.from_role_name(
                 self,
                 "StepFunctionsExecutionRole",
-                role_name="sbir-etl-step-functions-execution-role",
+                role_name="sbir-analytics-step-functions-execution-role",
             )
 
             # Import GitHub Actions role
             self.github_actions_role = iam.Role.from_role_name(
                 self,
                 "GitHubActionsRole",
-                role_name="sbir-etl-github-actions-role",
+                role_name="sbir-analytics-github-actions-role",
             )
 
         # Output role ARNs

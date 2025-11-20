@@ -47,7 +47,7 @@ class StepFunctionsStack(Stack):
         self.state_machine = sfn.StateMachine(
             self,
             "WeeklyRefreshStateMachine",
-            state_machine_name="sbir-etl-weekly-refresh",
+            state_machine_name="sbir-analytics-weekly-refresh",
             definition_body=sfn.DefinitionBody.from_string(json.dumps(definition)),
             role=execution_role,
             timeout=Duration.hours(2),

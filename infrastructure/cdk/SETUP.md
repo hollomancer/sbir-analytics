@@ -6,7 +6,7 @@
    ```json
    {
      "context": {
-       "github_repo": "your-username/sbir-etl"
+       "github_repo": "your-username/sbir-analytics"
      }
    }
    ```
@@ -38,7 +38,7 @@ Set these in `cdk.json` or pass via `--context`:
 
 Example:
 ```bash
-cdk deploy --all --context github_repo=your-username/sbir-etl
+cdk deploy --all --context github_repo=your-username/sbir-analytics
 ```
 
 ## Before Deploying

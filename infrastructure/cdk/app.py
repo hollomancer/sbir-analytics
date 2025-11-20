@@ -18,20 +18,20 @@ env = cdk.Environment(
 # Stack dependencies:
 # Storage -> Security -> Lambda -> Step Functions
 
-storage_stack = StorageStack(app, "sbir-etl-storage", env=env)
+storage_stack = StorageStack(app, "sbir-analytics-storage", env=env)
 security_stack = SecurityStack(
-    app, "sbir-etl-security", env=env, s3_bucket=storage_stack.bucket
+    app, "sbir-analytics-security", env=env, s3_bucket=storage_stack.bucket
 )
 lambda_stack = LambdaStack(
     app,
-    "sbir-etl-lambda",
+    "sbir-analytics-lambda",
     env=env,
     s3_bucket=storage_stack.bucket,
     lambda_role=security_stack.lambda_role,
 )
 step_functions_stack = StepFunctionsStack(
     app,
-    "sbir-etl-step-functions",
+    "sbir-analytics-step-functions",
     env=env,
     lambda_functions=lambda_stack.functions,
     execution_role=security_stack.step_functions_role,
