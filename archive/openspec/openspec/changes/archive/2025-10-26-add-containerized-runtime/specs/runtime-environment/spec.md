@@ -6,7 +6,7 @@
 The project SHALL provide a deterministic multi-stage Docker build that separates dependency resolution from the runtime image and enforces non-root execution.
 
 #### Scenario: Build deterministic runtime layer
-- **WHEN** `docker build -t sbir-etl:latest .` runs
+- **WHEN** `docker build -t sbir-analytics:latest .` runs
 - **THEN** the builder stage installs Poetry + project dependencies with `poetry install --only main --no-root`
 - **AND** the runtime stage copies only the installed site-packages, application code, and entrypoint scripts into `/app`
 - **AND** the final image includes `tini` as PID 1 and sets the default user to `sbir` (non-root)

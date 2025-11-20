@@ -2,7 +2,7 @@
 
 ## Why
 
-The sbir-etl project needs a foundational technical architecture to support robust, scalable ETL processing of SBIR data into Neo4j. Without an established architecture, the project lacks:
+The sbir-analytics project needs a foundational technical architecture to support robust, scalable ETL processing of SBIR data into Neo4j. Without an established architecture, the project lacks:
 
 - Clear patterns for data pipeline stages (extract, validate, enrich, transform, load)
 - Configuration management strategy for different environments

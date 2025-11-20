@@ -793,7 +793,7 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = None):
         log_dir.mkdir(parents=True, exist_ok=True)
 
         logger.add(
-            log_dir / "sbir-etl_{time:YYYY-MM-DD}.log",
+            log_dir / "sbir-analytics_{time:YYYY-MM-DD}.log",
             format=json_formatter,
             level=log_level,
             rotation="00:00",  # Rotate daily at midnight
@@ -934,15 +934,15 @@ except Exception as e:
 
 ## Find all errors in enrichment stage
 
-cat logs/sbir-etl_2025-10-25.log | jq 'select(.level == "ERROR" and .stage == "enrichment")'
+cat logs/sbir-analytics_2025-10-25.log | jq 'select(.level == "ERROR" and .stage == "enrichment")'
 
 ## Calculate average processing duration
 
-cat logs/sbir-etl_2025-10-25.log | jq -s 'map(select(.duration_seconds)) | map(.duration_seconds) | add / length'
+cat logs/sbir-analytics_2025-10-25.log | jq -s 'map(select(.duration_seconds)) | map(.duration_seconds) | add / length'
 
 ## Count records processed by stage
 
-cat logs/sbir-etl_2025-10-25.log | jq -s 'group_by(.stage) | map({stage: .[0].stage, total_records: map(.records_processed // 0) | add})'
+cat logs/sbir-analytics_2025-10-25.log | jq -s 'group_by(.stage) | map({stage: .[0].stage, total_records: map(.records_processed // 0) | add})'
 ```
 
 ### Benefits:

@@ -7,22 +7,22 @@ code
 - [x] 1.2 Run `poetry install --only main --no-root` in the builder, cache `.venv`, and copy the environment + source into the runtime layer.
   - Notes: Builder stage uses `poetry export` to produce `requirements.txt` and builds wheels into `/wheels`. Wheels are copied into the runtime image and installed via `pip --no-index --find-links=/wheels`.
 - [x] 1.3 Add a non-root `sbir` user, fix ownership of `/app`, and wire `tini` as the container entrypoint.
-  - Notes: Runtime stage creates `sbir` user, chowns `/app`, installs `tini` as PID 1, and sets entrypoint to `/app/sbir-etl/scripts/docker/entrypoint.sh`.
+  - Notes: Runtime stage creates `sbir` user, chowns `/app`, installs `tini` as PID 1, and sets entrypoint to `/app/sbir-analytics/scripts/docker/entrypoint.sh`.
 - [x] 1.4 Create `.dockerignore` and prune large local directories (`data/raw`, `.venv`, `htmlcov`, etc.) from build context.
   - Notes: `.dockerignore` created/updated to exclude `data/`, `.venv/`, `htmlcov/`, `tests/fixtures` (as appropriate), and other large or local-only paths.
 - [x] 1.5 Add `scripts/docker/healthcheck.sh` that exercises `python -m sbir_etl --help` and returns non-zero on failure; wire it into the Dockerfile `HEALTHCHECK`.
-  - Notes: `sbir-etl/scripts/docker/healthcheck.sh` implements `app|web|neo4j` modes and is referenced by Dockerfile `HEALTHCHECK`.
+  - Notes: `sbir-analytics/scripts/docker/healthcheck.sh` implements `app|web|neo4j` modes and is referenced by Dockerfile `HEALTHCHECK`.
 
 ## 2. Runtime Entrypoints & Utilities
 
 - [x] 2.1 Create `scripts/docker/wait-for-service.sh` that blocks until `tcp://host:port` is reachable and use it before starting Dagster services.
-  - Notes: Implemented `sbir-etl/scripts/docker/wait-for-service.sh` with TCP and HTTP probes, timeout and interval options, and verbose timestamped logging.
+  - Notes: Implemented `sbir-analytics/scripts/docker/wait-for-service.sh` with TCP and HTTP probes, timeout and interval options, and verbose timestamped logging.
 - [x] 2.2 Add `scripts/docker/dagster-webserver.sh` that sources environment, waits for Neo4j, and runs `dagster-webserver -h 0.0.0.0 -p 3000` with structured logging.
-  - Notes: Implemented `sbir-etl/scripts/docker/dagster-webserver.sh`. It supports `start` and `healthcheck` modes, waits for dependencies, and drops privileges where possible.
+  - Notes: Implemented `sbir-analytics/scripts/docker/dagster-webserver.sh`. It supports `start` and `healthcheck` modes, waits for dependencies, and drops privileges where possible.
 - [x] 2.3 Add `scripts/docker/dagster-daemon.sh` that waits for both Neo4j and the webserver health endpoints, then launches `dagster-daemon run` with graceful signal handling.
-  - Notes: Implemented `sbir-etl/scripts/docker/dagster-daemon.sh` with `start`, `etl-runner` and `healthcheck` modes and dependency gating.
+  - Notes: Implemented `sbir-analytics/scripts/docker/dagster-daemon.sh` with `start`, `etl-runner` and `healthcheck` modes and dependency gating.
 - [x] 2.4 Add `scripts/docker/etl-runner.sh` to execute ad-hoc CLI commands (e.g., `python -m sbir_etl materialize ...`) within the same image.
-  - Notes: Implemented `sbir-etl/scripts/docker/etl-runner.sh`. It waits for Neo4j (and optionally Dagster web) then executes the provided command, preferring to run as `sbir` when possible.
+  - Notes: Implemented `sbir-analytics/scripts/docker/etl-runner.sh`. It waits for Neo4j (and optionally Dagster web) then executes the provided command, preferring to run as `sbir` when possible.
 - [x] 2.5 Ensure every script uses `set -euo pipefail`, logs start/stop messages, and respects `SBIR_ETL_LOG_LEVEL`.
   - Notes: All new scripts follow POSIX-sh conventions, use `set -eu`, provide timestamped logs, and read `.env` or `/run/secrets`. They are written to be compatible with the runtime image; `SBIR_ETL_LOG_LEVEL` is observed by entrypoint wrappers (environment-driven).
 
@@ -35,7 +35,7 @@ code
 - [x] 3.3 Introduce `docker/docker-compose.dev.yml` that bind-mounts `src/`, `config/`, `data/`, `logs/`, and `metrics/`, enables the `dev` profile, and injects `watchfiles` reloader when running `dagster dev` locally.
   - Notes: Implemented `docker/docker-compose.dev.yml` which provides developer-friendly bind-mounts for `src`, `config`, `data`, `logs`, and `reports`. The compose file supports a `dev` profile and the runtime entrypoint honors an `ENABLE_WATCHFILES` environment flag to enable hot-reload behavior for local development.
 - [x] 3.4 Add `docker/docker-compose.test.yml` that runs `pytest` inside the container with an ephemeral Neo4j instance for CI.
-  - Notes: Implemented `docker/docker-compose.test.yml` which defines an ephemeral Neo4j service and an `app` test service that runs `pytest` using the built image. The compose file is intended for CI usage and references the `sbir-etl:ci-${GITHUB_SHA}` image produced by the CI build script. Verified basic behavior via the Makefile `docker-test` target.
+  - Notes: Implemented `docker/docker-compose.test.yml` which defines an ephemeral Neo4j service and an `app` test service that runs `pytest` using the built image. The compose file is intended for CI usage and references the `sbir-analytics:ci-${GITHUB_SHA}` image produced by the CI build script. Verified basic behavior via the Makefile `docker-test` target.
 - [x] 3.5 Configure `depends_on` with `condition: service_healthy` and add HTTP/Bolt health checks for each service.
   - Notes: Health checks and `depends_on` gating were added to the base and overlay compose files. Neo4j, Dagster webserver, and daemon services include lightweight healthchecks (cypher-shell for Neo4j, HTTP /server_info for Dagster) and start-up sequencing via `depends_on: condition: service_healthy`. Entrypoint wait-for semantics remain as a fallback for environments where `depends_on.condition` isn't supported.
 - [x] 3.6 Document compose targets via `Makefile` (`make docker-up`, `make docker-down`, `make docker-test`).
@@ -55,10 +55,10 @@ code
 ## 5. CI, Testing, and Publish Workflow
 
 - [x] 5.1 Add `scripts/ci/build_container.sh` that builds the image with BuildKit cache and pushes to the local registry when `PUBLISH=1`.
-  - Notes: Implemented `scripts/ci/build_container.sh`. The script builds with Docker Buildx, supports cache-from/cache-to flags, allows single-platform `--load` for local testing, and can `--push` to a registry when `PUBLISH=1`. It is intended for use in CI to produce `sbir-etl:<tag>` artifacts.
+  - Notes: Implemented `scripts/ci/build_container.sh`. The script builds with Docker Buildx, supports cache-from/cache-to flags, allows single-platform `--load` for local testing, and can `--push` to a registry when `PUBLISH=1`. It is intended for use in CI to produce `sbir-analytics:<tag>` artifacts.
 - [x] 5.2 Update `.github/workflows/ci.yml` (or create `container.yml`) to run: `docker build`, `docker compose -f docker/docker-compose.test.yml up --abort-on-container-exit`, and upload logs on failure.
   - Notes: Implemented `.github/workflows/container-ci.yml`. The workflow builds the image (loads it into the runner), brings up an ephemeral Neo4j and the `app` test service via `docker compose -f docker-compose.yml -f docker/docker-compose.test.yml up --abort-on-container-exit --build`, tears down the stack on completion, and uploads logs/artifacts on failure. The job uses Buildx and supports caching.
-- [x] 5.3 Add a smoke test step that runs `docker run sbir-etl:ci dagster --version` to validate the entrypoint.
+- [x] 5.3 Add a smoke test step that runs `docker run sbir-analytics:ci dagster --version` to validate the entrypoint.
   - Notes: Implemented smoke test in `.github/workflows/container-ci.yml` that runs `docker run ${IMAGE_NAME}:ci-${{ github.sha }} dagster --version` immediately after building the image and before running the compose-based tests.
 - [x] 5.4 Removed / archived: Image tagging and publish guidance removed from this change. Publishing and registry configuration have been consolidated into `docs/deployment/containerization.md` and the `config/docker.yaml` advisory notes; CI publishing is considered out-of-scope for this change.
 

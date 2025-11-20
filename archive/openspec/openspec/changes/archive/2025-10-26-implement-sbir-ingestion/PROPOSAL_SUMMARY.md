@@ -242,7 +242,7 @@ docs/
 
 Review the full proposal:
 ```bash
-cd /Users/conradhollomon/projects/sbir-etl
+cd /Users/conradhollomon/projects/sbir-analytics
 openspec show implement-sbir-ingestion
 ```
 

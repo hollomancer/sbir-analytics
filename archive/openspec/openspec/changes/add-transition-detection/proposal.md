@@ -156,7 +156,7 @@ From sbir-transition-classifier analysis:
 - **Award-Level Success Rate**: 69.0% (individual transitions)
 - **Company-Level Success Rate**: 7.9% (sustained commercialization)
 - **Phase II Advantage**: 8.2 percentage points higher than Phase I
-- **Patent Enhancement**: TBD - new capability for sbir-etl
+- **Patent Enhancement**: TBD - new capability for sbir-analytics
 
 ### Key Innovations Beyond sbir-transition-classifier
 

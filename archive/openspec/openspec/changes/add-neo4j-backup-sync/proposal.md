@@ -36,10 +36,10 @@ Design
 
 1) Storage organization and naming
 
-- Bucket prefix: `sbir-etl-neo4j-backups`
+- Bucket prefix: `sbir-analytics-neo4j-backups`
 - Bucket layout:
   - s3://<bucket>/environment=<env>/year=YYYY/month=MM/day=DD/<db_name>-<timestamp>.dump
-  - Example: `s3://sbir-etl-neo4j-backups/environment=prod/year=2025/month=11/day=01/neo4j-20251101T230000Z.dump`
+  - Example: `s3://sbir-analytics-neo4j-backups/environment=prod/year=2025/month=11/day=01/neo4j-20251101T230000Z.dump`
 - Metadata: store a small JSON metadata alongside or as S3 object metadata:
   - fields: sha256 checksum, db_name, dump_tool_version (scripts commit sha), rows_estimate (if available), hostname, created_by, created_at
 - Naming and metadata allow programmatic pruning and verification.
@@ -60,7 +60,7 @@ Design
 - Use OIDC-based GitHub Actions workflows to assume an IAM role with limited permissions (preferred).
 - Minimal IAM policy example (S3 + kms decrypt/encrypt if using SSE-KMS):
   - `s3:PutObject`, `s3:GetObject`, `s3:ListBucket`, `s3:DeleteObject` (if cleanup via CI allowed)
-  - Restrict prefix to `sbir-etl-neo4j-backups/*`
+  - Restrict prefix to `sbir-analytics-neo4j-backups/*`
   - If SSE-KMS used: `kms:Encrypt`, `kms:Decrypt`, `kms:GenerateDataKey`
 - Never store long-lived static credentials in the repo. Use GitHub Secrets or an OIDC-based role assumption.
 - When local operators run uploads manually, document how to configure `aws cli` credentials or mount credentials at runtime from secure locations.
@@ -122,8 +122,8 @@ Implementation details & example snippets
         "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::sbir-etl-neo4j-backups",
-        "arn:aws:s3:::sbir-etl-neo4j-backups/*"
+        "arn:aws:s3:::sbir-analytics-neo4j-backups",
+        "arn:aws:s3:::sbir-analytics-neo4j-backups/*"
       ]
     },
     {
@@ -199,7 +199,7 @@ Operational runbook summary (for operators)
 
 - How to trigger a manual upload:
   - Produce a local backup: `scripts/neo4j/backup.sh`
-  - Upload: `scripts/neo4j/upload_backup_to_s3.sh --file backups/neo4j/<file>.dump --bucket sbir-etl-neo4j-backups --prefix environment=prod`
+  - Upload: `scripts/neo4j/upload_backup_to_s3.sh --file backups/neo4j/<file>.dump --bucket sbir-analytics-neo4j-backups --prefix environment=prod`
 - How to restore from S3:
   - Download: `aws s3 cp s3://.../<file>.dump /tmp/`
   - Restore: `scripts/neo4j/restore.sh --backup-path /tmp/<file>.dump`
@@ -275,7 +275,7 @@ jobs:
       - name: Upload to S3
 
         env:
-          BUCKET: sbir-etl-neo4j-backups
+          BUCKET: sbir-analytics-neo4j-backups
           PREFIX: environment=prod
         run: |
           ./scripts/neo4j/upload_backup_to_s3.sh --file ./backups/neo4j/*.dump --bucket "${BUCKET}" --prefix "${PREFIX}"

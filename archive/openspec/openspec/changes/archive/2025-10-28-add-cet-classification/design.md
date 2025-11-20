@@ -45,7 +45,7 @@ The SBIR ETL pipeline needs to classify awards, companies, and patents against 2
 
 ### Decision 1: Embedded ML Module vs. Separate Service
 
-**Choice:** Embedded ML module within sbir-etl Dagster pipeline
+**Choice:** Embedded ML module within sbir-analytics Dagster pipeline
 
 **Rationale:**
 - Unified data lineage: All transformations tracked in single Dagster instance
@@ -423,7 +423,7 @@ RETURN
 ### Phase 1: Core Classification Module (Weeks 1-2)
 1. Port CET classifier from sbir-cet-classifier
    - Copy ApplicabilityModel, CETAwareTfidfVectorizer, evidence extraction
-   - Adapt to sbir-etl Pydantic schemas
+   - Adapt to sbir-analytics Pydantic schemas
    - Add configuration loader for taxonomy.yaml
 2. Create Dagster assets for CET classification
    - cet_taxonomy asset (load taxonomy.yaml)

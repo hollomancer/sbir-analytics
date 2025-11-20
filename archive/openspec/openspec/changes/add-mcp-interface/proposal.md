@@ -21,7 +21,7 @@ Providing an MCP server gives every developer a consistent, secure interface tha
 - **Authentication & policy layer** that loads allowed operations/users from `config/mcp.yaml`, supports API tokens, and rate limits long-running commands.
 - **Deployment wrappers** so the MCP server can run:
   - Inside the existing Docker image (new entrypoint `scripts/docker/mcp-server.sh`).
-  - As a Poetry script for local development (`poetry run sbir-etl-mcp serve`).
+  - As a Poetry script for local development (`poetry run sbir-analytics-mcp serve`).
 - **Documentation & onboarding** describing how to register the MCP endpoint with Claude Desktop / Cursor, which resources and actions are available, and how secrets are managed.
 
 ## Impact

@@ -8,7 +8,7 @@ The system SHALL expose an MCP-compliant server so AI copilots can discover SBIR
 
 #### Scenario: Start MCP server over HTTP
 
-- **WHEN** a developer runs `poetry run sbir-etl-mcp serve --host 0.0.0.0 --port 9000`
+- **WHEN** a developer runs `poetry run sbir-analytics-mcp serve --host 0.0.0.0 --port 9000`
 - **THEN** the process starts an MCP server that advertises version metadata and available tools/resources
 - **AND** responds to `GET /manifest` (or stdio manifest request) within 2 seconds with JSON describing the interface
 

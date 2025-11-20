@@ -2,7 +2,7 @@
 
 ## Context
 
-The sbir-etl project processes SBIR (Small Business Innovation Research) program data from multiple government sources into a Neo4j graph database. The pipeline must:
+The sbir-analytics project processes SBIR (Small Business Innovation Research) program data from multiple government sources into a Neo4j graph database. The pipeline must:
 
 - Handle 250k+ awards with 2.5M+ relationships
 - Ingest SBIR data from bulk CSV files (SBIR.gov)
