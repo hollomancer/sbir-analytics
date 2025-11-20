@@ -114,7 +114,7 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
 
 ### S3 Bucket
 
--   **Name**: `sbir-etl-production-data`
+-   **Name**: `sbir-analytics-production-data`
 -   **Region**: `us-east-2`
 -   **Structure**:
     *   `raw/awards/` - Downloaded CSV files (30-day retention)
@@ -123,7 +123,7 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
 
 ### Secrets Manager
 
--   **Secret Name**: `sbir-etl/neo4j-aura`
+-   **Secret Name**: `sbir-analytics/neo4j-aura`
 -   **Structure**:
     ```json
     {
@@ -136,16 +136,16 @@ This guide covers the AWS infrastructure setup for the SBIR ETL pipeline using S
 
 ### IAM Roles
 
-1.  **Lambda Execution Role** (`sbir-etl-lambda-role`)
+1.  **Lambda Execution Role** (`sbir-analytics-lambda-role`)
     *   S3 read/write permissions
     *   Secrets Manager read permissions
     *   CloudWatch Logs write permissions
 
-2.  **Step Functions Execution Role** (`sbir-etl-sf-role`)
+2.  **Step Functions Execution Role** (`sbir-analytics-sf-role`)
     *   Lambda invoke permissions
     *   CloudWatch Logs write permissions
 
-3.  **GitHub Actions OIDC Role** (`sbir-etl-github-actions`)
+3.  **GitHub Actions OIDC Role** (`sbir-analytics-github-actions`)
     *   Step Functions start execution permission
     *   CloudWatch Logs read permission
 
@@ -172,7 +172,7 @@ cdk deploy --all
 ```bash
 # Neo4j Aura credentials
 aws secretsmanager create-secret \
-  --name sbir-etl/neo4j-aura \
+  --name sbir-analytics/neo4j-aura \
   --secret-string '{
     "uri": "neo4j+s://...",
     "username": "neo4j",
@@ -190,7 +190,7 @@ aws secretsmanager create-secret \
 
 # Upload layer
 aws lambda publish-layer-version \
-  --layer-name sbir-etl-python-dependencies \
+  --layer-name sbir-analytics-python-dependencies \
   --zip-file fileb:///tmp/python-dependencies-layer.zip \
   --compatible-runtimes python3.11 \
   --region us-east-2
@@ -207,7 +207,7 @@ The Lambda functions are deployed automatically via CDK. If you need to update t
 cd scripts/lambda/download_csv
 zip -r function.zip lambda_handler.py
 aws lambda update-function-code \
-  --function-name sbir-etl-download-csv \
+  --function-name sbir-analytics-download-csv \
   --zip-file fileb://function.zip \
   --region us-east-2
 ```
@@ -237,7 +237,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
     """
     Event structure:
     {
-        "s3_bucket": "sbir-etl-production-data",
+        "s3_bucket": "sbir-analytics-production-data",
         "s3_key": "...",
         ...
     }
@@ -280,7 +280,7 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
 3.  Deploy layer:
     ```bash
     aws lambda publish-layer-version \
-      --layer-name sbir-etl-python-dependencies \
+      --layer-name sbir-analytics-python-dependencies \
       --zip-file fileb:///tmp/python-dependencies-layer.zip \
       --compatible-runtimes python3.11
     ```
@@ -450,7 +450,7 @@ result = _output_value(output)
 
 ## 7. Step Functions State Machine
 
-The Step Functions state machine (`sbir-etl-weekly-refresh`) orchestrates the entire weekly SBIR awards refresh workflow, replacing the previous GitHub Actions-based workflow.
+The Step Functions state machine (`sbir-analytics-weekly-refresh`) orchestrates the entire weekly SBIR awards refresh workflow, replacing the previous GitHub Actions-based workflow.
 
 ### State Machine Definition
 
@@ -475,7 +475,7 @@ The state machine is defined in `infrastructure/step-functions/weekly-refresh-st
 {
   "force_refresh": false,
   "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
-  "s3_bucket": "sbir-etl-production-data"
+  "s3_bucket": "sbir-analytics-production-data"
 }
 ```
 
@@ -582,14 +582,14 @@ The `ProcessPipeline` state runs validation and profiling in parallel:
   run: |
     aws stepfunctions start-execution \
       --state-machine-arn ${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }} \
-      --input '{"force_refresh": false, "s3_bucket": "sbir-etl-production-data"}'
+      --input '{"force_refresh": false, "s3_bucket": "sbir-analytics-production-data"}'
 ```
 
 #### From AWS CLI
 
 ```bash
 aws stepfunctions start-execution \
-  --state-machine-arn arn:aws:states:us-east-2:123456789012:stateMachine:sbir-etl-weekly-refresh \
+  --state-machine-arn arn:aws:states:us-east-2:123456789012:stateMachine:sbir-analytics-weekly-refresh \
   --input '{"force_refresh": false}'
 ```
 
@@ -601,7 +601,7 @@ import boto3
 sf_client = boto3.client('stepfunctions')
 
 response = sf_client.start_execution(
-    stateMachineArn='arn:aws:states:us-east-2:123456789012:stateMachine:sbir-etl-weekly-refresh',
+    stateMachineArn='arn:aws:states:us-east-2:123456789012:stateMachine:sbir-analytics-weekly-refresh',
     input='{"force_refresh": false}'
 )
 
@@ -625,7 +625,7 @@ docker run -p 8083:8083 amazon/aws-stepfunctions-local
 1.  Update JSON definition file
 2.  Deploy via CDK:
     ```bash
-    cdk deploy sbir-etl-step-functions
+    cdk deploy sbir-analytics-step-functions
     ```
 3.  Or update manually:
     ```bash
@@ -650,7 +650,7 @@ The SBIR ETL pipeline now supports:
 Set the S3 bucket name via environment variable:
 
 ```bash
-export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
+export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
 ```
 
 ### Data Migration Steps
@@ -658,12 +658,12 @@ export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
 1.  **Upload Files to S3**:
     ```bash
     # Upload SBIR CSV files
-    aws s3 sync data/raw/sbir/ s3://sbir-etl-production-data/data/raw/sbir/ \
+    aws s3 sync data/raw/sbir/ s3://sbir-analytics-production-data/data/raw/sbir/ \
       --exclude "*.gitkeep" \
       --exclude ".DS_Store"
 
     # Upload USPTO CSV files (if needed)
-    aws s3 sync data/raw/uspto/ s3://sbir-etl-production-data/data/raw/uspto/ \
+    aws s3 sync data/raw/uspto/ s3://sbir-analytics-production-data/data/raw/uspto/ \
       --exclude "*.gitkeep" \
       --exclude ".DS_Store"
     ```
@@ -671,7 +671,7 @@ export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
 2.  **Verify Upload**:
     ```bash
     # List files in S3
-    aws s3 ls s3://sbir-etl-production-data/data/raw/sbir/ --recursive
+    aws s3 ls s3://sbir-analytics-production-data/data/raw/sbir/ --recursive
     ```
 
 ### How It Works
@@ -679,7 +679,7 @@ export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
 #### Path Resolution Flow
 
 1.  **If `SBIR_ETL__S3_BUCKET` is set:**
-    *   Builds S3 URL: `s3://sbir-etl-production-data/data/raw/sbir/awards_data.csv`
+    *   Builds S3 URL: `s3://sbir-analytics-production-data/data/raw/sbir/awards_data.csv`
     *   Tries to access S3 file
     *   If S3 succeeds → downloads to temp cache and uses it
     *   If S3 fails → falls back to local `data/raw/sbir/awards_data.csv`
@@ -692,7 +692,7 @@ export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
 
 #### S3 File Caching
 
-- S3 files are downloaded to `/tmp/sbir-etl-s3-cache/` (or system temp directory)
+- S3 files are downloaded to `/tmp/sbir-analytics-s3-cache/` (or system temp directory)
 - Files are cached by MD5 hash of S3 path to avoid re-downloading
 - Cache persists across runs within the same execution environment
 
@@ -700,7 +700,7 @@ export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
 
 ```bash
 # Set environment variable
-export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
+export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
 
 # Run extraction
 uv run dagster asset materialize -m src.definitions raw_sbir_awards
@@ -733,8 +733,8 @@ AWS Lambda and Step Functions use IAM roles for S3 access. Configure:
           "Effect": "Allow",
           "Action": ["s3:GetObject", "s3:ListBucket", "s3:PutObject", "s3:DeleteObject"],
           "Resource": [
-            "arn:aws:s3:::sbir-etl-production-data",
-            "arn:aws:s3:::sbir-etl-production-data/*"
+            "arn:aws:s3:::sbir-analytics-production-data",
+            "arn:aws:s3:::sbir-analytics-production-data/*"
           ]
         }
       ]
@@ -745,8 +745,8 @@ AWS Lambda and Step Functions use IAM roles for S3 access. Configure:
 
 ### CloudWatch Logs
 
--   Lambda functions: `/aws/lambda/sbir-etl-*`
--   Step Functions: `/aws/vendedlogs/states/sbir-etl-weekly-refresh`
+-   Lambda functions: `/aws/lambda/sbir-analytics-*`
+-   Step Functions: `/aws/vendedlogs/states/sbir-analytics-weekly-refresh`
 
 ### CloudWatch Metrics
 
@@ -797,7 +797,7 @@ aws stepfunctions describe-execution \
   --region us-east-2
 
 # View Lambda logs
-aws logs tail /aws/lambda/sbir-etl-download-csv --follow --region us-east-2
+aws logs tail /aws/lambda/sbir-analytics-download-csv --follow --region us-east-2
 ```
 
 ### Lambda Timeout
@@ -833,7 +833,7 @@ If Neo4j operations fail:
 **Error:** `FileNotFoundError: Neither S3 (...) nor local (...) file exists`
 
 **Solution:**
-- Verify file exists in S3: `aws s3 ls s3://sbir-etl-production-data/data/raw/sbir/awards_data.csv`
+- Verify file exists in S3: `aws s3 ls s3://sbir-analytics-production-data/data/raw/sbir/awards_data.csv`
 - Verify local fallback path exists: `ls data/raw/sbir/awards_data.csv`
 - Check environment variable is set correctly
 

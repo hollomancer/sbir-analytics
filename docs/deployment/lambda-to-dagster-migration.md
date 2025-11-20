@@ -99,7 +99,7 @@ Store the Dagster Cloud API token in AWS Secrets Manager:
 
 ```bash
 aws secretsmanager create-secret \
-  --name sbir-etl/dagster-cloud-api-token \
+  --name sbir-analytics/dagster-cloud-api-token \
   --secret-string '{"dagster_cloud_api_token": "your-token-here"}'
 ```
 
@@ -110,7 +110,7 @@ The `trigger-dagster-refresh` function will be deployed automatically via CDK. E
 - Environment variables:
   - `DAGSTER_CLOUD_ORG` (or pass in event)
   - `DAGSTER_CLOUD_DEPLOYMENT` (defaults to "prod")
-  - `DAGSTER_CLOUD_SECRET_NAME` (defaults to "sbir-etl/dagster-cloud-api-token")
+  - `DAGSTER_CLOUD_SECRET_NAME` (defaults to "sbir-analytics/dagster-cloud-api-token")
 
 ### 4. Update Step Functions Input
 

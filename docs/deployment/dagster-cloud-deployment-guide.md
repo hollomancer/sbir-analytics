@@ -113,14 +113,14 @@ This guide documents the migration from Docker Compose-based Dagster deployment 
 1. In Dagster Cloud UI, navigate to **Settings** → **Code Locations**
 2. Click **Connect Repository**
 3. Authorize Dagster Cloud to access your GitHub account
-4. Select the `sbir-etl` repository
+4. Select the `sbir-analytics` repository
 5. Grant necessary permissions (read access to repository)
 
 ### Step 3: Create Code Location
 
 1. In Dagster Cloud UI, click **Add Code Location**
 2. Configure the code location:
-   - **Name**: `sbir-etl-production`
+   - **Name**: `sbir-analytics-production`
    - **Type**: Python module
    - **Module**: `src.definitions`
    - **Branch**: `main` (or your preferred branch)
@@ -134,7 +134,7 @@ This guide documents the migration from Docker Compose-based Dagster deployment 
 root_module = "src"
 defs_module = "src.definitions"
 code_location_target_module = "src.definitions"
-code_location_name = "sbir-etl-production"
+code_location_name = "sbir-analytics-production"
 ```
 
 Dagster Cloud will automatically detect your `pyproject.toml` and install dependencies.
@@ -303,7 +303,7 @@ Create a `dagster_cloud.yaml` file in your project root:
 
 ```yaml
 locations:
-  - location_name: sbir-etl-production
+  - location_name: sbir-analytics-production
     code_source:
       python_module: src.definitions
     build:
@@ -320,7 +320,7 @@ locations:
 
 ```yaml
 locations:
-  - location_name: sbir-etl-production
+  - location_name: sbir-analytics-production
     code_source:
       python_module: src.definitions
     build:
@@ -378,7 +378,7 @@ Should show your organization and deployment info.
 ```bash
 dagster-cloud serverless deploy-python-executable \
   --deployment prod \
-  --location-name sbir-etl-production \
+  --location-name sbir-analytics-production \
   --module-name src.definitions
 ```
 
@@ -393,7 +393,7 @@ This will:
 ```bash
 dagster-cloud serverless deploy-python-executable \
   --deployment prod \
-  --location-name sbir-etl-production \
+  --location-name sbir-analytics-production \
   --module-name src.definitions \
   --organization your-org-name
 ```
@@ -404,7 +404,7 @@ dagster-cloud serverless deploy-python-executable \
 
 ```bash
 dagster-cloud serverless set-env \
-  --location sbir-etl-production \
+  --location sbir-analytics-production \
   NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io \
   NEO4J_USER=neo4j \
   NEO4J_PASSWORD=your-password \
@@ -417,7 +417,7 @@ Create `dagster_cloud_env.yaml`:
 
 ```yaml
 locations:
-  - location_name: sbir-etl-production
+  - location_name: sbir-analytics-production
     env_vars:
       NEO4J_URI: neo4j+s://xxxxx.databases.neo4j.io
       NEO4J_USER: neo4j
@@ -449,7 +449,7 @@ dagster-cloud serverless list-locations
 #### View Deployment Logs
 
 ```bash
-dagster-cloud serverless logs --location-name sbir-etl-production
+dagster-cloud serverless logs --location-name sbir-analytics-production
 ```
 
 #### Open in Browser
@@ -510,7 +510,7 @@ Keep track of your Neo4j instances:
 #### Method 1: Update Environment Variables (Recommended)
 
 1.  **Navigate to Dagster Cloud UI**:
-    *   Go to your code location (`sbir-etl-production`)
+    *   Go to your code location (`sbir-analytics-production`)
     *   Click **Configuration** → **Environment Variables**
 
 2.  **Update Neo4j Connection Variables**:
@@ -595,7 +595,7 @@ After switching instances, verify the connection:
 ### Best Practices
 
 1.  **Document Instance Details**: Keep a secure document (password manager) with instance URIs, usernames, passwords, use cases, and last switched date/time.
-2.  **Use Naming Conventions**: Name instances clearly (e.g., `sbir-etl-free`, `sbir-etl-paid`).
+2.  **Use Naming Conventions**: Name instances clearly (e.g., `sbir-analytics-free`, `sbir-analytics-paid`).
 3.  **Verify Before Production Runs**: Always verify environment variables before scheduled production runs.
 4.  **Monitor Instance Usage**: Check Neo4j Aura console for both instances.
 5.  **Use Instance Identifier Variable**: Add `NEO4J_INSTANCE_TYPE` to help track which instance is active.
@@ -628,7 +628,7 @@ If all 5 steps pass, your basic setup is working! Continue with detailed tests b
 ### Test 1: Verify Code Location Deployment
 
 1.  **Navigate to Dagster Cloud UI**
-    *   Go to your code location (`sbir-etl-production`)
+    *   Go to your code location (`sbir-analytics-production`)
     *   Check the **Deployment** tab
 
 2.  **Verify Deployment Status**
@@ -872,24 +872,24 @@ The SBIR ETL pipeline now supports:
 Set the S3 bucket name via environment variable:
 
 ```bash
-export SBIR_ETL__S3_BUCKET=sbir-etl-production-data
+export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
 ```
 
 Or in Dagster Cloud UI:
 - Go to **Settings** → **Environment Variables**
-- Add: `SBIR_ETL__S3_BUCKET` = `sbir-etl-production-data`
+- Add: `SBIR_ETL__S3_BUCKET` = `sbir-analytics-production-data`
 
 ### Data Migration Steps
 
 1.  **Upload Files to S3**:
     ```bash
     # Upload SBIR CSV files
-    aws s3 sync data/raw/sbir/ s3://sbir-etl-production-data/data/raw/sbir/ \
+    aws s3 sync data/raw/sbir/ s3://sbir-analytics-production-data/data/raw/sbir/ \
       --exclude "*.gitkeep" \
       --exclude ".DS_Store"
 
     # Upload USPTO CSV files (if needed)
-    aws s3 sync data/raw/uspto/ s3://sbir-etl-production-data/data/raw/uspto/ \
+    aws s3 sync data/raw/uspto/ s3://sbir-analytics-production-data/data/raw/uspto/ \
       --exclude "*.gitkeep" \
       --exclude ".DS_Store"
     ```
@@ -897,7 +897,7 @@ Or in Dagster Cloud UI:
 2.  **Verify Upload**:
     ```bash
     # List files in S3
-    aws s3 ls s3://sbir-etl-production-data/data/raw/sbir/ --recursive
+    aws s3 ls s3://sbir-analytics-production-data/data/raw/sbir/ --recursive
     ```
 
 3.  **Set Environment Variable**:
@@ -905,7 +905,7 @@ Or in Dagster Cloud UI:
         1.  Go to https://sbir.dagster.cloud/prod/settings/environment-variables
         2.  Add environment variable:
             *   Key: `SBIR_ETL__S3_BUCKET`
-            *   Value: `sbir-etl-production-data`
+            *   Value: `sbir-analytics-production-data`
         3.  Save changes (will trigger code location reload)
 
 ### How It Works
@@ -913,7 +913,7 @@ Or in Dagster Cloud UI:
 #### Path Resolution Flow
 
 1.  **If `SBIR_ETL__S3_BUCKET` is set**:
-    *   Builds S3 URL: `s3://sbir-etl-production-data/data/raw/sbir/awards_data.csv`
+    *   Builds S3 URL: `s3://sbir-analytics-production-data/data/raw/sbir/awards_data.csv`
     *   Tries to access S3 file
     *   If S3 succeeds → downloads to temp cache and uses it
     *   If S3 fails → falls back to local `data/raw/sbir/awards_data.csv`
@@ -926,7 +926,7 @@ Or in Dagster Cloud UI:
 
 #### S3 File Caching
 
-- S3 files are downloaded to `/tmp/sbir-etl-s3-cache/` (or system temp directory)
+- S3 files are downloaded to `/tmp/sbir-analytics-s3-cache/` (or system temp directory)
 - Files are cached by MD5 hash of S3 path to avoid re-downloading
 - Cache persists across runs within the same execution environment
 
@@ -953,8 +953,8 @@ Dagster Cloud Serverless uses IAM roles for S3 access. Configure:
           "Effect": "Allow",
           "Action": ["s3:GetObject", "s3:ListBucket"],
           "Resource": [
-            "arn:aws:s3:::sbir-etl-production-data",
-            "arn:aws:s3:::sbir-etl-production-data/*"
+            "arn:aws:s3:::sbir-analytics-production-data",
+            "arn:aws:s3:::sbir-analytics-production-data/*"
           ]
         }
       ]
@@ -985,7 +985,7 @@ This error occurs because Dagster Cloud (Dagster+) requires a `[tool.dg.project]
 root_module = "src"
 defs_module = "src.definitions"
 code_location_target_module = "src.definitions"
-code_location_name = "sbir-etl-production"
+code_location_name = "sbir-analytics-production"
 ```
 
 This configuration has been added to the repository. If you're still seeing this error, ensure you've pulled the latest changes.
@@ -1045,10 +1045,10 @@ This configuration has been added to the repository. If you're still seeing this
 
 **Solutions**:
 1.  **Docker not running**: Ensure Docker Desktop is running (`docker ps` should work)
-2.  **Missing location name**: Use `--location-name sbir-etl-production`
+2.  **Missing location name**: Use `--location-name sbir-analytics-production`
 3.  **Missing module**: Use `--module-name src.definitions`
 4.  Verify `pyproject.toml` has `[tool.dg.project]` block
-5.  Check build logs: `dagster-cloud serverless logs --location-name sbir-etl-production`
+5.  Check build logs: `dagster-cloud serverless logs --location-name sbir-analytics-production`
 
 **Common Error**: `Cannot connect to the Docker daemon`
 - **Solution**: Start Docker Desktop and wait for it to fully initialize
@@ -1079,7 +1079,7 @@ This configuration has been added to the repository. If you're still seeing this
    ```bash
    dagster-cloud serverless deploy-python-executable \
      --deployment prod \
-     --location-name sbir-etl-production \
+     --location-name sbir-analytics-production \
      --module-name src.definitions
    ```
 
@@ -1120,7 +1120,7 @@ This configuration has been added to the repository. If you're still seeing this
     ```bash
     dagster-cloud serverless deploy-python-executable \
       --deployment prod \
-      --location-name sbir-etl-production \
+      --location-name sbir-analytics-production \
       --module-name src.definitions
     ```
 
@@ -1130,13 +1130,13 @@ If PEX uploads continue to timeout, use Docker deployment which is more reliable
 
 ```bash
 # Build Docker image locally (or use CI/CD)
-docker build -t sbir-etl:latest --platform=linux/amd64 .
+docker build -t sbir-analytics:latest --platform=linux/amd64 .
 
 # Deploy using Docker instead of PEX
 dagster-cloud serverless deploy \
   --deployment prod \
-  --location-name sbir-etl-production \
-  --package-name sbir-etl
+  --location-name sbir-analytics-production \
+  --package-name sbir-analytics
 ```
 
 **Benefits of Docker deployment**:
@@ -1211,7 +1211,7 @@ If you need to rollback to Docker Compose:
 
 - [ ] Dagster Cloud account created
 - [ ] GitHub repository connected
-- [ ] Code location created (`sbir-etl-production`)
+- [ ] Code location created (`sbir-analytics-production`)
 - [ ] Environment variables configured
 - [ ] Initial deployment successful
 - [ ] All 117 assets visible

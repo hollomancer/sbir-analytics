@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-The sbir-etl project leverages a highly reusable tech stack where **85% of dependencies and 90% of infrastructure patterns are shared** across all three major feature areas (SBIR ingestion, USPTO patent ETL, CET classification). This document identifies shared components and provides guidance on standardization opportunities.
+The sbir-analytics project leverages a highly reusable tech stack where **85% of dependencies and 90% of infrastructure patterns are shared** across all three major feature areas (SBIR ingestion, USPTO patent ETL, CET classification). This document identifies shared components and provides guidance on standardization opportunities.
 
 ---
 
@@ -215,7 +215,7 @@ export SBIR_ETL_ENV=prod
 export SBIR_ETL_NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io  # Neo4j Aura
 export SBIR_ETL_NEO4J_PASSWORD=${AWS_SECRET}  # Retrieved from AWS Secrets Manager
 export SBIR_ETL_LOG_LEVEL=INFO
-export SBIR_ETL_S3_BUCKET=sbir-etl-data-prod
+export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod
 export SBIR_ETL_USE_S3=true
 
 ## Shared infrastructure (Development - Local)
@@ -541,7 +541,7 @@ def setup_logging(log_level: str = "INFO", log_dir: Path = None):
     # File handler (JSON format)
     if log_dir:
         logger.add(
-            log_dir / "sbir-etl_{time:YYYY-MM-DD}.log",
+            log_dir / "sbir-analytics_{time:YYYY-MM-DD}.log",
             format=json_formatter,
             level=log_level,
             rotation="00:00",

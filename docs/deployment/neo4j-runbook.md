@@ -6,44 +6,44 @@ Locations referenced in this runbook:
 
 - Compose override for standalone Neo4j: `docker/neo4j.compose.override.yml`
 
-  ```sbir-etl/docker/neo4j.compose.override.yml#L1-120
+  ```sbir-analytics/docker/neo4j.compose.override.yml#L1-120
   (see file in repository for the exact content and usage notes)
   ```
 
 - Neo4j runtime config template: `config/neo4j/neo4j.conf`
 
-  ```sbir-etl/config/neo4j/neo4j.conf#L1-200
+  ```sbir-analytics/config/neo4j/neo4j.conf#L1-200
   (tunable memory, connectors, TLS placeholders, and paths)
   ```
 
 - Helper scripts:
   - Bootstrap users: `scripts/neo4j/bootstrap_users.sh`
 
-    ```sbir-etl/scripts/neo4j/bootstrap_users.sh#L1-240
+    ```sbir-analytics/scripts/neo4j/bootstrap_users.sh#L1-240
     (idempotent user/role creation and optional admin rotation)
     ```
 
   - Migration CLI: `scripts/neo4j/migrate.py`
 
-    ```sbir-etl/scripts/neo4j/migrate.py#L1-50
+    ```sbir-analytics/scripts/neo4j/migrate.py#L1-50
     (versioned schema migrations - see docs/migrations/README.md)
     ```
 
   - Backup: `scripts/neo4j/backup.sh`
 
-    ```sbir-etl/scripts/neo4j/backup.sh#L1-220
+    ```sbir-analytics/scripts/neo4j/backup.sh#L1-220
     (exports logical dumps and prunes old backups)
     ```
 
   - Restore: `scripts/neo4j/restore.sh`
 
-    ```sbir-etl/scripts/neo4j/restore.sh#L1-300
+    ```sbir-analytics/scripts/neo4j/restore.sh#L1-300
     (safe restore using container volumes or local tools)
     ```
 
 - Makefile neo4j helpers: top-level `Makefile` targets include `neo4j-up`, `neo4j-down`, `neo4j-reset`, `neo4j-backup`, `neo4j-restore`, `neo4j-check`.
 
-  ```sbir-etl/Makefile#L140-220
+  ```sbir-analytics/Makefile#L140-220
   (neo4j targets and usage)
   ```
 
@@ -57,7 +57,7 @@ Quick start — local development
 
 1. Copy `.env.example` → `.env` and set Neo4j credentials:
 
-```sbir-etl/.env.example#L1-20
+```sbir-analytics/.env.example#L1-20
 cp .env.example .env
 
 ## Edit .env: set NEO4J_USER, NEO4J_PASSWORD, and other values as needed.
@@ -66,7 +66,7 @@ cp .env.example .env
 
 2. Start a standalone Neo4j (dev) using the override compose:
 
-```sbir-etl/docker/neo4j.compose.override.yml#L1-40
+```sbir-analytics/docker/neo4j.compose.override.yml#L1-40
 
 ## Using Makefile wrapper:
 
@@ -79,7 +79,7 @@ docker compose --env-file .env -f docker-compose.yml -f docker/neo4j.compose.ove
 
 3. Verify health:
 
-```sbir-etl/Makefile#L160-180
+```sbir-analytics/Makefile#L160-180
 
 ## Lightweight check via Makefile:
 
@@ -105,7 +105,7 @@ neo4j.conf
 
 - A template runtime config lives at `config/neo4j/neo4j.conf`. This file contains the most common tunables:
 
-```sbir-etl/config/neo4j/neo4j.conf#L1-40
+```sbir-analytics/config/neo4j/neo4j.conf#L1-40
 
 ## Example snippet from the template:
 
@@ -120,7 +120,7 @@ dbms.security.auth_enabled=true
 
 - You can mount a curated `neo4j.conf` into the container with the override compose file:
 
-```sbir-etl/docker/neo4j.compose.override.yml#L18-30
+```sbir-analytics/docker/neo4j.compose.override.yml#L18-30
 
 ## mounts:
 
@@ -131,7 +131,7 @@ User and role bootstrap
 
 - Use the provided bootstrap script to create an ingest role/user and a read-only user:
 
-```sbir-etl/scripts/neo4j/bootstrap_users.sh#L1-30
+```sbir-analytics/scripts/neo4j/bootstrap_users.sh#L1-30
 
 ## Example:
 
@@ -168,7 +168,7 @@ Backup & restore
 
 - Backups: `scripts/neo4j/backup.sh` creates a logical dump using `neo4j-admin dump` inside the running container (preferred) or via a local `neo4j-admin`. It also supports pruning old backups.
 
-```sbir-etl/scripts/neo4j/backup.sh#L1-40
+```sbir-analytics/scripts/neo4j/backup.sh#L1-40
 
 ## Default:
 
@@ -181,7 +181,7 @@ BACKUP_DIR=backups/neo4j DB_NAME=neo4j KEEP_LAST=14 ./scripts/neo4j/backup.sh
 
 - Restores: `scripts/neo4j/restore.sh` handles restoring a dump into the Neo4j data volume. It attempts a safe container-based restore and will restart containers appropriately.
 
-```sbir-etl/scripts/neo4j/restore.sh#L1-40
+```sbir-analytics/scripts/neo4j/restore.sh#L1-40
 
 ## Example:
 
@@ -206,7 +206,7 @@ Health checks & CI
 
 - The compose override sets a healthcheck that uses `cypher-shell`:
 
-```sbir-etl/docker/neo4j.compose.override.yml#L34-40
+```sbir-analytics/docker/neo4j.compose.override.yml#L34-40
 healthcheck:
   test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"]
   interval: 10s

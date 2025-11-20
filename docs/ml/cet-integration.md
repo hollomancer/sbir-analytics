@@ -2,7 +2,7 @@
 
 ## Quick Navigation
 
-This document provides a focused guide for integrating or reviewing the CET classification system within the sbir-etl pipeline.
+This document provides a focused guide for integrating or reviewing the CET classification system within the sbir-analytics pipeline.
 
 ---
 

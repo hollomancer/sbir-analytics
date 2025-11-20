@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The **sbir-etl** is a robust, cloud-native ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
+The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) pipeline for processing Small Business Innovation Research (SBIR) program data into a Neo4j graph database. It orchestrates multi-source data ingestion, complex transformations, and sophisticated analysis workflows through Dagster asset definitions.
 
 **Key Characteristics:**
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
@@ -21,7 +21,7 @@ The **sbir-etl** is a robust, cloud-native ETL (Extract, Transform, Load) pipeli
 ### 1.1 Core Directory Structure
 
 ```
-sbir-etl/
+sbir-analytics/
 ├── src/                          # Main application code
 │   ├── assets/                   # Dagster asset definitions (pipeline nodes)
 │   │   ├── cet/                  # CET classification pipeline
@@ -1096,7 +1096,7 @@ class CETClassifier(Protocol):
 
 ## Summary
 
-The **sbir-etl** codebase is a comprehensive, production-grade ETL system that:
+The **sbir-analytics** codebase is a comprehensive, production-grade ETL system that:
 
 1. **Ingests** multi-source government data (SBIR awards, USAspending, USPTO patents)
 2. **Validates & Enriches** with external APIs and ML classification

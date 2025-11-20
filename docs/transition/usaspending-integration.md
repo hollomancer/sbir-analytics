@@ -4,8 +4,8 @@
 
 This document captures the initial integration of USAspending data for the SBIR Transition Detection pipeline. The goal of Task 5.2 was to unlock procurement and grant activity for SBIR vendors so downstream components (vendor resolution, scoring, evidence, analytics) have reliable transaction context. The current implementation streams the `transaction_normalized` PostgreSQL dump (13.1 GB `.dat.gz`) directly from removable storage, applying vendor filters and basic contract/grant discrimination to produce a compact working dataset in Parquet format.
 
-- **Source**: `/Volumes/X10 Pro/projects/sbir-etl-data/pruned_data_store_api_dump/5530.dat.gz`
-- **Output**: `/Volumes/X10 Pro/projects/sbir-etl-data/contracts_test_sample.parquet` (test run)
+- **Source**: `/Volumes/X10 Pro/projects/sbir-analytics-data/pruned_data_store_api_dump/5530.dat.gz`
+- **Output**: `/Volumes/X10 Pro/projects/sbir-analytics-data/contracts_test_sample.parquet` (test run)
 - **Records extracted**: 45,577 (subset run with SBIR vendor filters)
 - **Purpose**: Provide both procurement contracts (potential Phase III indicators) and SBIR/STTR grant/assistance records for enrichment and analytics.
 
@@ -72,7 +72,7 @@ This document captures the initial integration of USAspending data for the SBIR 
   ```text
   uv run python scripts/extract_federal_contracts.py --subset \
 
-      --output /Volumes/X10\ Pro/projects/sbir-etl-data/contracts_test_sample.parquet
+      --output /Volumes/X10\ Pro/projects/sbir-analytics-data/contracts_test_sample.parquet
   ```
 
   Adjust `--full` and `--output` paths as needed. Ensure removable storage remains mounted (`/Volumes/X10 Pro`).

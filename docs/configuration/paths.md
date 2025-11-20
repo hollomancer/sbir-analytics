@@ -31,9 +31,9 @@ The pipeline supports AWS S3 paths for cloud-first deployments:
 ```yaml
 paths:
   # S3 paths (production)
-  data_root: "s3://sbir-etl-data-prod"
-  raw_data: "s3://sbir-etl-data-prod/raw"
-  usaspending_dump_file: "s3://sbir-etl-data-prod/usaspending/dump.zip"
+  data_root: "s3://sbir-analytics-data-prod"
+  raw_data: "s3://sbir-analytics-data-prod/raw"
+  usaspending_dump_file: "s3://sbir-analytics-data-prod/usaspending/dump.zip"
 
   # Local paths (development)
   # data_root: "data"
@@ -47,7 +47,7 @@ Enable S3 storage via environment variables:
 ```bash
 # Production (S3)
 export SBIR_ETL_USE_S3=true
-export SBIR_ETL_S3_BUCKET=sbir-etl-data-prod
+export SBIR_ETL_S3_BUCKET=sbir-analytics-data-prod
 export AWS_REGION=us-east-1
 
 # Development (local filesystem)
@@ -68,8 +68,8 @@ config = get_config()
 dump_file = config.paths.resolve_path("usaspending_dump_file")
 
 # Examples:
-# S3:    s3://sbir-etl-data-prod/usaspending/dump.zip
-# Local: /home/user/sbir-etl/data/usaspending/dump.zip
+# S3:    s3://sbir-analytics-data-prod/usaspending/dump.zip
+# Local: /home/user/sbir-analytics/data/usaspending/dump.zip
 ```
 
 ### S3 Access Patterns
@@ -107,7 +107,7 @@ duckdb.sql("""
 
 # Query S3 CSV directly
 df = duckdb.sql("""
-    SELECT * FROM read_csv_auto('s3://sbir-etl-data-prod/raw/sbir_awards.csv')
+    SELECT * FROM read_csv_auto('s3://sbir-analytics-data-prod/raw/sbir_awards.csv')
     WHERE award_amount > 100000
 """).df()
 ```
@@ -160,7 +160,7 @@ The path resolver automatically:
 ### Default Directory Structure
 
 ```
-/home/user/sbir-etl/
+/home/user/sbir-analytics/
 ├── data/
 │   ├── raw/
 │   │   ├── sbir/
@@ -201,7 +201,7 @@ export SBIR_ETL__PATHS__TRANSITION_CONTRACTS_OUTPUT=/mnt/output/contracts.parque
 
 ```bash
 # Use local project paths (default behavior - no overrides needed)
-cd /home/user/sbir-etl
+cd /home/user/sbir-analytics
 uv run dagster dev
 ```
 
@@ -239,7 +239,7 @@ config = get_config()
 
 # Resolve a path
 dump_file = config.paths.resolve_path("usaspending_dump_file")
-print(dump_file)  # /home/user/sbir-etl/data/usaspending/usaspending-db_20251006.zip
+print(dump_file)  # /home/user/sbir-analytics/data/usaspending/usaspending-db_20251006.zip
 
 # Optionally create parent directories
 output_path = config.paths.resolve_path(
@@ -325,7 +325,7 @@ Mount volumes for data directories in `docker-compose.yml`:
 ```yaml
 services:
   dagster:
-    image: sbir-etl:latest
+    image: sbir-analytics:latest
     volumes:
       # Mount data directory
       - /mnt/data:/app/data

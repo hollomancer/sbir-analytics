@@ -13,7 +13,7 @@ This guide provides comprehensive instructions for testing PaECTER (Patent Embed
 
 2. **S3 Bucket Configuration**: Set the S3 bucket name
    ```bash
-   export SBIR_ETL__S3_BUCKET="sbir-etl-production-data"
+   export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
    ```
 
 3. **HuggingFace Token** (for API mode):
@@ -36,7 +36,7 @@ The easiest way to test PaECTER with both SBIR and USPTO data from S3 is using t
 ```bash
 # Set required environment variables
 export HF_TOKEN="your_token_here"
-export SBIR_ETL__S3_BUCKET="sbir-etl-production-data"
+export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
 
 # Run the combined test
 python scripts/test_paecter_combined_s3.py
@@ -59,8 +59,8 @@ python scripts/test_paecter_combined_s3.py \
 
 # Use specific S3 paths
 python scripts/test_paecter_combined_s3.py \
-    --sbir-s3 s3://sbir-etl-production-data/raw/sbir/award_data.csv \
-    --uspto-s3 s3://sbir-etl-production-data/raw/uspto/patentsview/2025-11-18/patent.zip
+    --sbir-s3 s3://sbir-analytics-production-data/raw/sbir/award_data.csv \
+    --uspto-s3 s3://sbir-analytics-production-data/raw/uspto/patentsview/2025-11-18/patent.zip
 
 # Custom output directory and similarity threshold
 python scripts/test_paecter_combined_s3.py \
@@ -136,7 +136,7 @@ print(similarities.nlargest(10, "similarity_score"))
 ```bash
 # Use the existing test script with S3
 python scripts/test_paecter_real_data.py \
-    --s3 s3://sbir-etl-production-data/raw/sbir/award_data.csv \
+    --s3 s3://sbir-analytics-production-data/raw/sbir/award_data.csv \
     --limit 100
 ```
 
@@ -146,7 +146,7 @@ The combined script supports USPTO-only testing by providing only `--uspto-s3`:
 
 ```bash
 python scripts/test_paecter_combined_s3.py \
-    --uspto-s3 s3://sbir-etl-production-data/raw/uspto/patentsview/2025-11-18/patent.zip \
+    --uspto-s3 s3://sbir-analytics-production-data/raw/uspto/patentsview/2025-11-18/patent.zip \
     --limit-uspto 50
 ```
 
@@ -196,7 +196,7 @@ export SBIR_ETL__ML__PAECTER__USE_LOCAL=true
 
 **Solution**: Verify AWS credentials are configured:
 ```bash
-aws s3 ls s3://sbir-etl-production-data/
+aws s3 ls s3://sbir-analytics-production-data/
 ```
 
 ### HuggingFace API Issues
@@ -227,8 +227,8 @@ ml:
 1. Verify S3 paths are correct
 2. Check that Lambda functions have downloaded data:
    ```bash
-   aws s3 ls s3://sbir-etl-production-data/raw/uspto/patentsview/
-   aws s3 ls s3://sbir-etl-production-data/raw/sbir/
+   aws s3 ls s3://sbir-analytics-production-data/raw/uspto/patentsview/
+   aws s3 ls s3://sbir-analytics-production-data/raw/sbir/
    ```
 
 ### Memory Issues

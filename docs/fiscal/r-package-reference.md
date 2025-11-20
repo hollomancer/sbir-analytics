@@ -211,7 +211,7 @@ The Docker container includes R, rpy2, and the required R packages (stateior/use
 
 ```bash
 # Build the container (includes R integration)
-docker build -t sbir-etl:latest .
+docker build -t sbir-analytics:latest .
 
 # Run with Docker Compose
 docker compose --profile dev up

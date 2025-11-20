@@ -5,7 +5,7 @@
 ```bash
 # 1. Set environment variables
 export HF_TOKEN="your_huggingface_token"  # Get from https://huggingface.co/settings/tokens
-export SBIR_ETL__S3_BUCKET="sbir-etl-production-data"
+export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
 
 # 2. Run combined test script
 python scripts/test_paecter_combined_s3.py --limit-sbir 10 --limit-uspto 10

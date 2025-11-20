@@ -223,10 +223,10 @@ If local setup is problematic, use Docker instead:
 
 ```bash
 # Build Docker image (R packages pre-installed)
-docker build -t sbir-etl:latest .
+docker build -t sbir-analytics:latest .
 
 # Run inside container
-docker run -it sbir-etl:latest bash
+docker run -it sbir-analytics:latest bash
 
 # Inside container, run example
 python examples/sbir_fiscal_impact_example.py

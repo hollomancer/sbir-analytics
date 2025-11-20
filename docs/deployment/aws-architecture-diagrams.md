@@ -27,7 +27,7 @@ graph TB
         end
         
         subgraph "Storage"
-            S3[S3 Bucket<br/>sbir-etl-production-data]
+            S3[S3 Bucket<br/>sbir-analytics-production-data]
             SM[Secrets Manager<br/>neo4j-aura credentials]
         end
         
@@ -196,7 +196,7 @@ graph TB
     end
     
     subgraph "Storage & Secrets"
-        S3[S3 Bucket<br/>sbir-etl-production-data]
+        S3[S3 Bucket<br/>sbir-analytics-production-data]
         SM[Secrets Manager<br/>neo4j-aura]
     end
     
@@ -253,7 +253,7 @@ graph TB
     end
     
     subgraph "Packaging Option B: Container Images"
-        ECR[ECR Repository<br/>sbir-etl-lambda]
+        ECR[ECR Repository<br/>sbir-analytics-lambda]
         CONTAINER[Docker Image<br/>Python 3.11<br/>+ Dependencies<br/>+ Dagster]
         FUNC2[Function Code<br/>ingestion-checks<br/>load-neo4j]
         CONTAINER -->|Contains| FUNC2

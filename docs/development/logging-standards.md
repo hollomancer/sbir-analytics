@@ -499,7 +499,7 @@ if __name__ == "__main__":
 logging:
   level: "INFO"
   format: "json"  # or "pretty" for development
-  file_path: "logs/sbir-etl.log"
+  file_path: "logs/sbir-analytics.log"
   max_file_size_mb: 100
   backup_count: 5
   include_stage: true

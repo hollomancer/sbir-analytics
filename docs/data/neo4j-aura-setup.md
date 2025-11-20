@@ -22,7 +22,7 @@ The weekly SBIR awards refresh workflow can optionally load validated data into 
 1. Visit [https://console.neo4j.io](https://console.neo4j.io)
 2. Sign up for a free account (no credit card required)
 3. Click "New Instance" → Select "AuraDB Free"
-4. Choose a name (e.g., "sbir-etl-weekly")
+4. Choose a name (e.g., "sbir-analytics-weekly")
 5. **Important:** Download and save your credentials immediately (you'll only see them once)
 
 ### 2. Get Your Connection Details

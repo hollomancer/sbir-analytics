@@ -324,7 +324,7 @@ python scripts/neo4j/generate_usage_report.py
 
 1.  **Create Neo4j Aura Free Instance**:
     *   Go to [Neo4j Aura Free](https://neo4j.com/cloud/aura-free/)
-    *   Create a new Aura Free instance (e.g., `sbir-etl-ci`)
+    *   Create a new Aura Free instance (e.g., `sbir-analytics-ci`)
     *   Save credentials (Connection URI, Username `neo4j`, Password)
 
 2.  **Add GitHub Secrets**:
@@ -593,6 +593,6 @@ secrets.NEO4J_AURA_TEST_URI not found
 -   **Neo4j Aura Documentation:** https://neo4j.com/docs/aura/
 -   **Neo4j Aura Console:** https://console.neo4j.io/
 -   **Neo4j Cypher Manual:** https://neo4j.com/docs/cypher-manual/current/
--   **SBIR ETL Issues:** https://github.com/your-org/sbir-etl/issues
+-   **SBIR ETL Issues:** https://github.com/your-org/sbir-analytics/issues
 -   **Configuration schema:** [src/config/schemas.py](../src/config/schemas.py)
 -   **Environment examples:** [.env.example](../.env.example), [.env.test.aura](../.env.test.aura)

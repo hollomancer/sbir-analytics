@@ -348,7 +348,7 @@ Use this checklist when validating the system:
 uv sync
 
 # Verify PYTHONPATH
-export PYTHONPATH=/home/user/sbir-etl
+export PYTHONPATH=/home/user/sbir-analytics
 ```
 
 ### USAspending Connection Issues

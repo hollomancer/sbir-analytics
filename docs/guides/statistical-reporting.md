@@ -64,7 +64,7 @@ module_report = reporter.generate_module_report(
 
 run_context = {
     "run_id": "run_20251030_143022",
-    "pipeline_name": "sbir-etl",
+    "pipeline_name": "sbir-analytics",
     "environment": "development",
     "modules": {
         "sbir_enrichment": {
