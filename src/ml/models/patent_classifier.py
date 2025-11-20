@@ -1,4 +1,4 @@
-# sbir-etl/src/ml/models/patent_classifier.py
+# sbir-analytics/src/ml/models/patent_classifier.py
 """
 PatentCETClassifier
 

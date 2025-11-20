@@ -1,4 +1,4 @@
-# sbir-etl/src/enrichers/company_enricher.py
+# sbir-analytics/src/enrichers/company_enricher.py
 """
 Company enricher using fuzzy matching (rapidfuzz) with identifier-first strategy.
 

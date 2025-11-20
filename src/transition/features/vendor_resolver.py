@@ -1,4 +1,4 @@
-# sbir-etl/src/transition/features/vendor_resolver.py
+# sbir-analytics/src/transition/features/vendor_resolver.py
 """
 Vendor resolution utilities for transition detection.
 

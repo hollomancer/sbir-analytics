@@ -1,4 +1,4 @@
-# sbir-etl/src/transition/__init__.py
+# sbir-analytics/src/transition/__init__.py
 """
 Transition detection package.
 

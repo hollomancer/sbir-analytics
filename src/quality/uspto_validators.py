@@ -1,4 +1,4 @@
-# sbir-etl/src/quality/uspto_validators.py
+# sbir-analytics/src/quality/uspto_validators.py
 """
 USPTO data quality validators.
 

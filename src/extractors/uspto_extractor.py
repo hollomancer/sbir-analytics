@@ -1,4 +1,4 @@
-# sbir-etl/src/extractors/uspto_extractor.py
+# sbir-analytics/src/extractors/uspto_extractor.py
 """
 USPTOExtractor - chunked and streaming extractor for USPTO datasets.
 

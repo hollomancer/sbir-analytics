@@ -1,4 +1,4 @@
-# sbir-etl/src/assets/jobs/uspto_job.py
+# sbir-analytics/src/assets/jobs/uspto_job.py
 """
 Dagster job that composes the USPTO assets into a single materialization job.
 

@@ -194,7 +194,7 @@ def get_config(
         logging_cfg.setdefault("file_enabled", logging_cfg.get("file_enabled", True))
         logging_cfg.setdefault("level", logging_cfg.get("level", "INFO"))
         logging_cfg.setdefault("format", logging_cfg.get("format", "json"))
-        logging_cfg.setdefault("file_path", logging_cfg.get("file_path", "logs/sbir-etl.log"))
+        logging_cfg.setdefault("file_path", logging_cfg.get("file_path", "logs/sbir-analytics.log"))
         logging_cfg.setdefault("max_file_size_mb", logging_cfg.get("max_file_size_mb", 100))
         logging_cfg.setdefault("backup_count", logging_cfg.get("backup_count", 5))
         logging_cfg.setdefault("include_stage", logging_cfg.get("include_stage", True))

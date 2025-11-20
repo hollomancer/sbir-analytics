@@ -136,7 +136,7 @@ class USAspendingAPIClient:
             url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
             default_headers = {
                 "Accept": "application/json",
-                "User-Agent": "SBIR-ETL/0.1.0",
+                "User-Agent": "SBIR-Analytics/0.1.0",
             }
             if headers:
                 default_headers.update(headers)

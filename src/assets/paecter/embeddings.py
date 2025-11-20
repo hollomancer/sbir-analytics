@@ -201,7 +201,7 @@ def paecter_embeddings_patents(
         context.log.info(f"Loading from S3: {s3_url}")
         
         # Download and extract
-        temp_dir = Path(tempfile.gettempdir()) / "sbir-etl-paecter"
+        temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter"
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_zip = temp_dir / "patentsview.zip"
         

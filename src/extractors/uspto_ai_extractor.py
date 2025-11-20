@@ -1,4 +1,4 @@
-# sbir-etl/src/extractors/uspto_ai_extractor.py
+# sbir-analytics/src/extractors/uspto_ai_extractor.py
 """
 USPTOAIExtractor - streaming, chunked extractor for the USPTO AI predictions dataset.
 

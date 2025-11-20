@@ -1,4 +1,4 @@
-# sbir-etl/src/assets/jobs/uspto_ai_job.py
+# sbir-analytics/src/assets/jobs/uspto_ai_job.py
 """
 Dagster job that composes USPTO AI extraction assets into a single run.
 

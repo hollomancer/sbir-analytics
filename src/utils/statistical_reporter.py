@@ -740,7 +740,7 @@ class StatisticalReporter:
         # Create pipeline metrics
         pipeline_metrics = PipelineMetrics(
             run_id=run_id,
-            pipeline_name=run_context.get("pipeline_name", "sbir-etl"),
+            pipeline_name=run_context.get("pipeline_name", "sbir-analytics"),
             environment=run_context.get("environment", "development"),
             timestamp=start_time,
             duration=duration,

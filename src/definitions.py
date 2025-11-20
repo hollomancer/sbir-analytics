@@ -57,7 +57,7 @@ sbir_ingestion_job = define_asset_job(
 
 # Define a job that materializes all assets
 etl_job = define_asset_job(
-    name="sbir_etl_job",
+    name="sbir_analytics_job",
     selection=AssetSelection.all(),
     description="Complete SBIR ETL pipeline execution",
 )
@@ -68,7 +68,7 @@ daily_schedule = ScheduleDefinition(
     cron_schedule=os.getenv(
         "SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB", "0 2 * * *"
     ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB
-    name="daily_sbir_etl",
+    name="daily_sbir_analytics",
     description="Daily SBIR ETL pipeline execution",
 )
 
