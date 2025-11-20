@@ -15,7 +15,7 @@ class LoggingConfig(BaseModel):
 
     level: str = "INFO"
     format: str = "json"
-    file_path: str = "logs/sbir-etl.log"
+    file_path: str = "logs/sbir-analytics.log"
     max_file_size_mb: int = 100
     backup_count: int = 5
     include_stage: bool = True

@@ -5,7 +5,7 @@ This module provides a vectorizer that combines multiple text sources
 (abstract, keywords, title) with configurable weights to improve
 classification accuracy, especially for short or vague abstracts.
 
-Based on the sbir-cet-classifier multi-source approach, adapted for sbir-etl.
+Based on the sbir-cet-classifier multi-source approach, adapted for sbir-analytics.
 """
 
 from typing import Any

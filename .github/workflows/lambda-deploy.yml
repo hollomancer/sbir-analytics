@@ -33,8 +33,8 @@ concurrency:
 
 env:
   AWS_REGION: us-east-2
-  ECR_REPO: sbir-etl-lambda
-  LAMBDA_LAYER_NAME: sbir-etl-python-dependencies
+  ECR_REPO: sbir-analytics-lambda
+  LAMBDA_LAYER_NAME: sbir-analytics-python-dependencies
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -181,7 +181,7 @@ jobs:
         run: |
           # Deploy storage stack - defaults to importing existing bucket
           # Use --context create_new_bucket=true if you need to create a new bucket
-          cdk deploy sbir-etl-storage \
+          cdk deploy sbir-analytics-storage \
             --require-approval never \
             --context region="${{ env.AWS_REGION }}" \
             --context account="${{ steps.account.outputs.account_id }}" || true
@@ -192,7 +192,7 @@ jobs:
         run: |
           # Security stack defaults to importing existing resources (roles and secrets)
           # Use --context create_new_resources=true if you need to create new resources
-          cdk deploy sbir-etl-security \
+          cdk deploy sbir-analytics-security \
             --require-approval never \
             --context region="${{ env.AWS_REGION }}" \
             --context account="${{ steps.account.outputs.account_id }}" || true
@@ -201,10 +201,10 @@ jobs:
       - name: Deploy Lambda stack
         working-directory: infrastructure/cdk
         env:
-          LAMBDA_LAYER_ARN: ${{ needs.build-layer.outputs.layer-arn || 'arn:aws:lambda:us-east-2:658445659195:layer:sbir-etl-python-dependencies:1' }}
+          LAMBDA_LAYER_ARN: ${{ needs.build-layer.outputs.layer-arn || 'arn:aws:lambda:us-east-2:658445659195:layer:sbir-analytics-python-dependencies:1' }}
         run: |
           # Use the new layer ARN if available, otherwise use the one from cdk.json
-          cdk deploy sbir-etl-lambda \
+          cdk deploy sbir-analytics-lambda \
             --require-approval never \
             --context lambda_layer_arn="${LAMBDA_LAYER_ARN}" \
             --context region="${{ env.AWS_REGION }}" \
@@ -220,7 +220,7 @@ jobs:
             echo "**Lambda Layer:** ${{ needs.build-layer.outputs.layer-arn }}"
           fi
           echo ""
-          echo "**CDK Stack:** sbir-etl-lambda deployed"
+          echo "**CDK Stack:** sbir-analytics-lambda deployed"
           echo ""
           echo "View Lambda functions in AWS Console:"
           echo "https://console.aws.amazon.com/lambda/home?region=${{ env.AWS_REGION }}#/functions"

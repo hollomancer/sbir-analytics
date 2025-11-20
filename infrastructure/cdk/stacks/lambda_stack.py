@@ -72,7 +72,7 @@ class LambdaStack(Stack):
             func = lambda_.Function(
                 self,
                 f"{func_name.replace('-', '_').title()}Function",
-                function_name=f"sbir-etl-{func_name}",
+                function_name=f"sbir-analytics-{func_name}",
                 runtime=lambda_.Runtime.PYTHON_3_11,
                 handler="lambda_handler.lambda_handler",
                 code=lambda_.Code.from_asset(lambda_code_path),
@@ -82,7 +82,7 @@ class LambdaStack(Stack):
                 layers=[python_layer] if python_layer else [],
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
-                    "NEO4J_SECRET_NAME": "sbir-etl/neo4j-aura",
+                    "NEO4J_SECRET_NAME": "sbir-analytics/neo4j-aura",
                 },
             )
             self.functions[func_name] = func

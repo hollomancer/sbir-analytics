@@ -1,6 +1,6 @@
 # PaECTER Testing Guide
 
-This guide explains how to test the PaECTER (Patent Embeddings using Citation-informed TransformERs) integration with your SBIR-ETL data.
+This guide explains how to test the PaECTER (Patent Embeddings using Citation-informed TransformERs) integration with your SBIR-Analytics data.
 
 ## Overview
 

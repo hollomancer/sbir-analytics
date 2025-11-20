@@ -83,7 +83,7 @@ def resolve_data_path(
 
 def _download_s3_to_temp(s3_path: S3Path) -> Path:
     """Download S3 file to temporary location for local access."""
-    temp_dir = Path(tempfile.gettempdir()) / "sbir-etl-s3-cache"
+    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-s3-cache"
     temp_dir.mkdir(parents=True, exist_ok=True)
     
     # Use full S3 path as filename hash to avoid collisions

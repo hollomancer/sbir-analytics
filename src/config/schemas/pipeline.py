@@ -27,7 +27,7 @@ class PipelineConfig(BaseModel):
 
     pipeline: dict[str, Any] = Field(
         default_factory=lambda: {
-            "name": "sbir-etl",
+            "name": "sbir-analytics",
             "version": "0.1.0",
             "environment": "development",
         }

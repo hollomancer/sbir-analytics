@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# sbir-etl/scripts/ci/build_container.sh
+# sbir-analytics/scripts/ci/build_container.sh
 #
 # CI-friendly container build script using Docker Buildx.
 #
@@ -12,18 +12,18 @@
 #
 # Usage:
 #  - Local build (loads image into local Docker):
-#      ./sbir-etl/scripts/ci/build_container.sh
+#      ./sbir-analytics/scripts/ci/build_container.sh
 #
 #  - CI build + push (example using GH Actions secrets):
-#      REGISTRY=ghcr.io/my-org IMAGE_NAME=sbir-etl IMAGE_TAG=ci-${GITHUB_SHA} PUBLISH=1 \
-#        ./sbir-etl/scripts/ci/build_container.sh
+#      REGISTRY=ghcr.io/my-org IMAGE_NAME=sbir-analytics IMAGE_TAG=ci-${GITHUB_SHA} PUBLISH=1 \
+#        ./sbir-analytics/scripts/ci/build_container.sh
 #
 #  - Enable build cache via BuildKit cache (when CI supports it):
 #      BUILDX_CACHE_FROM="type=gha" BUILDX_CACHE_TO="type=gha,mode=max" \
-#        ./sbir-etl/scripts/ci/build_container.sh
+#        ./sbir-analytics/scripts/ci/build_container.sh
 #
 # Environment variables (defaults shown):
-#  IMAGE_NAME        -> sbir-etl
+#  IMAGE_NAME        -> sbir-analytics
 #  IMAGE_TAG         -> ci-${GITHUB_SHA:-local-<timestamp>}
 #  REGISTRY          -> (empty) // if set, image is pushed to ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
 #  DOCKERFILE        -> Dockerfile
@@ -50,7 +50,7 @@ REPO_ROOT_DIR="$(cd "$(dirname "$0")"/../.. >/dev/null 2>&1 || true; pwd -P)"
 CONTEXT="${CONTEXT:-${REPO_ROOT_DIR}}"
 DOCKERFILE="${DOCKERFILE:-${CONTEXT}/Dockerfile}"
 
-IMAGE_NAME="${IMAGE_NAME:-sbir-etl}"
+IMAGE_NAME="${IMAGE_NAME:-sbir-analytics}"
 # Default tag uses GITHUB_SHA if present, otherwise timestamp-local
 if [ -n "${IMAGE_TAG:-}" ]; then
   IMAGE_TAG="${IMAGE_TAG}"

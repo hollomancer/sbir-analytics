@@ -3,7 +3,7 @@
 # Environment-specific overrides go in dev.yaml, prod.yaml, etc.
 
 pipeline:
-  name: "sbir-etl"
+  name: "sbir-analytics"
   version: "0.1.0"
   environment: "development" # overridden by environment
 
@@ -387,7 +387,7 @@ logging:
   # Logging configuration
   level: "INFO"
   format: "json" # "json" or "pretty"
-  file_path: "logs/sbir-etl.log"
+  file_path: "logs/sbir-analytics.log"
   max_file_size_mb: 100
   backup_count: 5
 

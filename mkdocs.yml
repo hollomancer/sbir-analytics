@@ -1,6 +1,6 @@
 site_name: SBIR ETL Docs
 site_description: Documentation for the SBIR ETL pipeline (Dagster, DuckDB, Neo4j)
-repo_url: https://github.com/your-org/sbir-etl
+repo_url: https://github.com/hollomancer/sbir-analytics
 nav:
   - Home: docs/index.md
   - Getting Started: README.md
@@ -42,4 +42,4 @@ plugins:
 extra:
   social:
     - icon: material/github
-      link: https://github.com/your-org/sbir-etl
+      link: https://github.com/hollomancer/sbir-analytics

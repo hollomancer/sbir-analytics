@@ -124,7 +124,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_WEBSERVER_CONTAINER_NAME:-sbir-dagster-web}
     profiles:
       - ci
@@ -161,7 +161,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
     container_name: ${DAGSTER_DAEMON_CONTAINER_NAME:-sbir-dagster-daemon}
     profiles:
       - ci
@@ -194,8 +194,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: ${IMAGE_NAME:-sbir-etl}:${IMAGE_TAG:-local}
-    container_name: ${ETL_RUNNER_CONTAINER_NAME:-sbir-etl-runner}
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
+    container_name: ${ETL_RUNNER_CONTAINER_NAME:-sbir-analytics-runner}
     profiles:
       - ci
       - dev
@@ -226,7 +226,7 @@ services:
   # CI Test App Service
   # =============================================================================
   app:
-    image: sbir-etl:ci-${GITHUB_SHA:-latest}
+    image: sbir-analytics:ci-${GITHUB_SHA:-latest}
     container_name: sbir-app-test
     profiles:
       - ci

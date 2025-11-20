@@ -117,7 +117,7 @@ class PipelineMetrics(BaseModel):
 
     # Pipeline identification
     run_id: str = Field(..., description="Unique pipeline run identifier")
-    pipeline_name: str = Field(default="sbir-etl", description="Name of the pipeline")
+    pipeline_name: str = Field(default="sbir-analytics", description="Name of the pipeline")
     environment: str = Field(default="development", description="Execution environment")
 
     # Timing information

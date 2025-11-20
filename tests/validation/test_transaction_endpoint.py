@@ -50,7 +50,7 @@ def test_transaction_endpoint(uei: str) -> None:
             data=json.dumps(payload).encode('utf-8'),
             headers={
                 'Content-Type': 'application/json',
-                'User-Agent': 'SBIR-ETL/1.0'
+                'User-Agent': 'SBIR-Analytics/1.0'
             },
             method='POST'
         )

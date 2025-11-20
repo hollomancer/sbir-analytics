@@ -3,7 +3,7 @@
 # It overrides base.yaml with settings optimized for Aura Free's 100K node limit
 
 pipeline:
-  name: "sbir-etl"
+  name: "sbir-analytics"
   version: "0.1.0"
   environment: "test-aura"
 

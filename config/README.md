@@ -22,7 +22,7 @@ Runtime overrides using environment variables with the pattern `SBIR_ETL__SECTIO
 
 ```yaml
 pipeline:
-  name: "sbir-etl"
+  name: "sbir-analytics"
   version: "0.1.0"
   environment: "development"
 
@@ -116,7 +116,7 @@ The project supports running inside Docker Compose for local development, CI, an
   - `make docker-test` — run containerized tests using the CI test overlay
   - `make docker-down` — tear down running compose stacks
 - Use `config/docker.yaml` for non-sensitive defaults and CI hints; do not include credentials in this file.
-- Entrypoint scripts (`sbir-etl/scripts/docker/entrypoint.sh`) will attempt to load `.env` and `/run/secrets/*` and will wait for dependencies (Neo4j, Dagster web) before starting services — the entrypoint provides a robust fallback even when `depends_on.condition` is not supported by the environment.
+- Entrypoint scripts (`sbir-analytics/scripts/docker/entrypoint.sh`) will attempt to load `.env` and `/run/secrets/*` and will wait for dependencies (Neo4j, Dagster web) before starting services — the entrypoint provides a robust fallback even when `depends_on.condition` is not supported by the environment.
 
 Recommended workflow (local)
 

@@ -1315,12 +1315,12 @@ tenacity>=8.2.0          # Retry logic
 
 ##### Integration with SBIR ETL
 
-### Proposed Integration Points for sbir-etl
+### Proposed Integration Points for sbir-analytics
 
 1. **Data Ingestion**
-   - Consume from sbir-etl's enriched awards dataset
+   - Consume from sbir-analytics's enriched awards dataset
    - Apply same schema validation (Award model)
-   - Leverage sbir-etl's agency normalization
+   - Leverage sbir-analytics's agency normalization
 
 2. **Classification Module**
    - Import ApplicabilityModel
@@ -1507,7 +1507,7 @@ tenacity>=8.2.0          # Retry logic
    - Plan configuration sharing strategy
 
 3. **Phase 3: Implementation** (2-3 weeks)
-   - Adapt classifier to sbir-etl data pipeline
+   - Adapt classifier to sbir-analytics data pipeline
    - Write integration tests
    - Document integration patterns
 
@@ -1577,7 +1577,7 @@ Status: COMPLETE
 
 ANALYSIS DELIVERABLE
 ====================
-Location: /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_ANALYSIS.md
+Location: /Users/conradhollomon/projects/sbir-analytics/CET_CLASSIFIER_ANALYSIS.md
 Size: 30KB
 Format: Comprehensive markdown document
 
@@ -1636,7 +1636,7 @@ The analysis provides a complete guide covering 13 major sections:
 
 10. INTEGRATION POINTS & DEPENDENCIES
     - External dependencies (pandas, scikit-learn, spacy, fastapi)
-    - Proposed integration approach with sbir-etl
+    - Proposed integration approach with sbir-analytics
     - Data sharing strategies
 
 11. KEY LEARNINGS & BEST PRACTICES
@@ -1691,7 +1691,7 @@ Integration Ready:
 - Testable design patterns
 - Flexible configuration system
 
-RECOMMENDATIONS FOR SBIR-ETL
+RECOMMENDATIONS FOR SBIR-ANALYTICS
 =============================
 
 Immediate Actions:
@@ -1708,7 +1708,7 @@ Integration Approach:
 1. Decide on module architecture (standalone vs embedded)
 2. Define interface contracts (input/output schemas)
 3. Plan configuration sharing strategy
-4. Adapt classifier to sbir-etl data pipeline
+4. Adapt classifier to sbir-analytics data pipeline
 5. Write integration tests
 
 Timeline Estimate:
@@ -1763,7 +1763,7 @@ FILES PROVIDED
 ===============
 
 Primary Deliverable:
-✓ /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_ANALYSIS.md (30KB)
+✓ /Users/conradhollomon/projects/sbir-analytics/CET_CLASSIFIER_ANALYSIS.md (30KB)
 
   - Comprehensive guide to SBIR CET Classifier project
   - 13 major sections + appendix
@@ -1771,7 +1771,7 @@ Primary Deliverable:
   - Integration recommendations
 
 This Analysis File:
-✓ /Users/conradhollomon/projects/sbir-etl/CET_CLASSIFIER_EXPLORATION_SUMMARY.txt
+✓ /Users/conradhollomon/projects/sbir-analytics/CET_CLASSIFIER_EXPLORATION_SUMMARY.txt
 
 ANALYSIS METHODOLOGY
 ====================
@@ -1812,7 +1812,7 @@ ANALYSIS METHODOLOGY
 NEXT STEPS
 ==========
 
-For SBIR-ETL Team:
+For SBIR-Analytics Team:
 
 1. Read CET_CLASSIFIER_ANALYSIS.md thoroughly
 2. Identify specific integration points needed

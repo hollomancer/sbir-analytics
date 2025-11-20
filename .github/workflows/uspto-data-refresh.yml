@@ -85,7 +85,7 @@ jobs:
           # Default: downloads "patent" table from PatentsView S3
           SOURCE_URL="${{ github.event.inputs.patentsview_url }}"
           
-          FUNCTION_NAME="sbir-etl-download-uspto-patentsview"
+          FUNCTION_NAME="sbir-analytics-download-uspto-patentsview"
           if [ -n "$SOURCE_URL" ]; then
             PAYLOAD=$(jq -n \
               --arg s3_bucket "${{ env.S3_BUCKET }}" \
@@ -137,7 +137,7 @@ jobs:
           # For scheduled runs, defaults are used (no override needed)
           SOURCE_URL="${{ github.event.inputs.assignments_url }}"
           
-          FUNCTION_NAME="sbir-etl-download-uspto-assignments"
+          FUNCTION_NAME="sbir-analytics-download-uspto-assignments"
           FORMAT="${{ github.event.inputs.format || 'csv' }}"
           
           if [ -n "$SOURCE_URL" ]; then
@@ -191,7 +191,7 @@ jobs:
           # For scheduled runs, defaults are used (no override needed)
           SOURCE_URL="${{ github.event.inputs.ai_patents_url }}"
           
-          FUNCTION_NAME="sbir-etl-download-uspto-ai-patents"
+          FUNCTION_NAME="sbir-analytics-download-uspto-ai-patents"
           if [ -n "$SOURCE_URL" ]; then
             PAYLOAD=$(jq -n \
               --arg s3_bucket "${{ env.S3_BUCKET }}" \

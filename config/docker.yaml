@@ -1,6 +1,6 @@
-# sbir-etl/config/docker.yaml
+# sbir-analytics/config/docker.yaml
 #
-# Default containerized environment configuration for sbir-etl.
+# Default containerized environment configuration for sbir-analytics.
 #
 # Purpose:
 #  - Provide a single source of defaults for container/dev/test profiles.
@@ -25,7 +25,7 @@ environment:
   service_startup_timeout: 120  # seconds to wait for dependency service health in entrypoints
 
 image:
-  name: "sbir-etl"           # base image name (no registry)
+  name: "sbir-analytics"           # base image name (no registry)
   tag_template: "ci-{sha}"   # template used by CI tooling; replace {sha} with commit SHA locally
   runtime_target: "runtime"  # Dockerfile multi-stage target to use for runtime images
 

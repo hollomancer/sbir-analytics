@@ -321,7 +321,7 @@ jobs:
         run: |
           set -eux
           # Build the runtime target so we can run schema scripts inside a container attached to the compose network.
-          docker build --target runtime -t sbir-etl:smoke .
+          docker build --target runtime -t sbir-analytics:smoke .
 
       - name: Start Neo4j (compose, dev profile)
         run: |
@@ -380,7 +380,7 @@ jobs:
 
           if [ "${MODE}" = "dry-run" ]; then
             echo "Running apply_schema in dry-run mode"
-            docker run --rm --network "${NETWORK_NAME}" -e NEO4J_URI="bolt://neo4j:7687" sbir-etl:smoke \
+            docker run --rm --network "${NETWORK_NAME}" -e NEO4J_URI="bolt://neo4j:7687" sbir-analytics:smoke \
               python scripts/neo4j/apply_schema.py --dry-run
           else
             echo "Running apply_schema in live mode (will connect to Neo4j)"
@@ -388,7 +388,7 @@ jobs:
               -e NEO4J_URI="bolt://neo4j:7687" \
               -e NEO4J_USER="${{ secrets.NEO4J_USER }}" \
               -e NEO4J_PASSWORD="${{ secrets.NEO4J_PASSWORD }}" \
-              sbir-etl:smoke python scripts/neo4j/apply_schema.py
+              sbir-analytics:smoke python scripts/neo4j/apply_schema.py
           fi
 
       - name: Smoke test - run a simple cypher query (sanity)

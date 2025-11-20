@@ -123,7 +123,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             try:
                 print(f"Attempting download from: {url}")
                 req = Request(url)
-                req.add_header("User-Agent", "SBIR-ETL-Lambda/1.0 (https://github.com/sbir-etl)")
+                req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0 (https://github.com/sbir-analytics)")
                 req.add_header("Accept", "*/*")
                 req.add_header("Accept-Encoding", "gzip, deflate")
 

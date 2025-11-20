@@ -27,7 +27,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
    ```bash
    git clone <repository-url>
-   cd sbir-etl
+   cd sbir-analytics
    ```
 
 2. **Install dependencies with uv:**
@@ -422,7 +422,7 @@ Brief description of changes
 ## Project Structure
 
 ```text
-sbir-etl/
+sbir-analytics/
 ├── src/                    # Source code
 │   ├── assets/            # Dagster asset definitions (pipeline orchestration)
 │   ├── config/            # Configuration management and schemas

@@ -182,7 +182,7 @@ def load_uspto_from_s3(
         s3_url = f"s3://{bucket}/raw/uspto/patentsview/2025-11-18/patent.zip"
     
     # Download to temp location
-    temp_dir = Path(tempfile.gettempdir()) / "sbir-etl-paecter-test"
+    temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter-test"
     temp_dir.mkdir(parents=True, exist_ok=True)
     local_zip = temp_dir / "patentsview.zip"
     

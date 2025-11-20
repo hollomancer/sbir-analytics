@@ -124,7 +124,7 @@ class JsonReportProcessor(BaseReportProcessor):
 
         # Add metadata
         data["_metadata"] = {
-            "generated_by": "sbir-etl statistical reporter",
+            "generated_by": "sbir-analytics statistical reporter",
             "version": "1.0",
             "format": "pipeline_metrics_json",
             "schema_version": "1.0",

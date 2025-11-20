@@ -16,7 +16,7 @@ try:
     response = httpx.get(
         f"{base_url}/awards/{award_id}/",
         timeout=30,
-        headers={"User-Agent": "SBIR-ETL/1.0"}
+        headers={"User-Agent": "SBIR-Analytics/1.0"}
     )
     response.raise_for_status()
     award_data = response.json()

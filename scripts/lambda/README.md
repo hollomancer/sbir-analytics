@@ -75,14 +75,14 @@ If you need to deploy manually:
 # 1. Build and publish Lambda layer (if dependencies changed)
 ./scripts/lambda/build_layer.sh
 aws lambda publish-layer-version \
-  --layer-name sbir-etl-python-dependencies \
+  --layer-name sbir-analytics-python-dependencies \
   --zip-file fileb:///tmp/python-dependencies-layer.zip \
   --compatible-runtimes python3.11
 
 # 2. Deploy via CDK
 cd infrastructure/cdk
 uv sync
-cdk deploy sbir-etl-lambda
+cdk deploy sbir-analytics-lambda
 ```
 
 **Note**: Container-based functions have been migrated to Dagster Cloud. No container builds are needed.
@@ -98,7 +98,7 @@ zip -r function.zip lambda_handler.py
 
 # Update function code
 aws lambda update-function-code \
-  --function-name sbir-etl-download-csv \
+  --function-name sbir-analytics-download-csv \
   --zip-file fileb://function.zip \
   --region us-east-2
 ```
