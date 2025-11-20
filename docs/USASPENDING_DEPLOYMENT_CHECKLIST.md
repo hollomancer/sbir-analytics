@@ -93,7 +93,7 @@
   {
     "s3_bucket": "sbir-etl-production-data",
     "database_type": "test",
-    "source_url": "https://files.usaspending.gov/database_download/usaspending-db-test_YYYYMMDD.zip",
+    "source_url": "https://files.usaspending.gov/database_download/usaspending-db-subset_YYYYMMDD.zip",
     "force_refresh": true
   }
   ```

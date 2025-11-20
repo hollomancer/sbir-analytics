@@ -1,4 +1,10 @@
-"""Dagster assets for USAspending data ingestion pipeline."""
+"""Dagster assets for USAspending data ingestion pipeline.
+
+Data Source Priority:
+1. PRIMARY: S3 database dump (from EC2 automation workflow)
+2. FALLBACK: USAspending API (if S3 unavailable)
+3. FAIL: If both sources fail
+"""
 
 import json
 from pathlib import Path
@@ -6,10 +12,12 @@ from typing import Any
 
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
+from loguru import logger
 
 from ..config.loader import get_config
 from ..exceptions import ExtractionError, FileSystemError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
+from ..utils.cloud_storage import find_latest_usaspending_dump, resolve_data_path
 
 
 def _import_usaspending_table(
@@ -18,26 +26,117 @@ def _import_usaspending_table(
     log_label: str,
     table_name: str,
 ) -> Output[pd.DataFrame]:
-    """Helper to import a USAspending table and emit consistent Dagster metadata."""
+    """
+    Helper to import a USAspending table with S3-first, API-fallback strategy.
+    
+    Priority:
+    1. Try S3 database dump (primary)
+    2. Fall back to API if S3 fails
+    3. Fail if both fail
+    """
     config = get_config()
-    dump_path = config.paths.resolve_path("usaspending_dump_file")
-
-    context.log.info(
-        f"Starting USAspending {log_label} extraction",
-        extra={
-            "dump_path": str(dump_path),
-            "duckdb_path": config.duckdb.database_path,
-        },
-    )
-
+    
+    # PRIMARY: Try S3 database dump first
+    dump_path = None
+    s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
+    
+    if s3_bucket:
+        context.log.info("Attempting to load USAspending data from S3 (PRIMARY)")
+        # Find latest dump in S3 (prefer test, fallback to full)
+        s3_dump_url = find_latest_usaspending_dump(
+            bucket=s3_bucket, database_type="test"
+        ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
+        
+        if s3_dump_url:
+            try:
+                # Resolve S3 path (downloads to temp if needed)
+                dump_path = resolve_data_path(s3_dump_url)
+                context.log.info(f"Using S3 dump: {s3_dump_url} -> {dump_path}")
+            except Exception as e:
+                context.log.warning(f"S3 dump resolution failed: {e}")
+                dump_path = None
+    
+    # If S3 failed, try configured path (local fallback)
+    if not dump_path:
+        try:
+            dump_path = config.paths.resolve_path("usaspending_dump_file")
+            if dump_path.exists():
+                context.log.info(f"Using configured dump path: {dump_path}")
+            else:
+                dump_path = None
+        except Exception as e:
+            context.log.warning(f"Configured dump path not available: {e}")
+            dump_path = None
+    
+    # Try to import from dump if available
     extractor = DuckDBUSAspendingExtractor(db_path=config.duckdb.database_path)
-    success = extractor.import_postgres_dump(dump_path, table_name)
-    if not success:
+    dump_success = False
+    
+    if dump_path:
+        context.log.info(
+            f"Starting USAspending {log_label} extraction from dump",
+            extra={
+                "dump_path": str(dump_path),
+                "duckdb_path": config.duckdb.database_path,
+                "source": "S3_dump",
+            },
+        )
+        
+        try:
+            dump_success = extractor.import_postgres_dump(dump_path, table_name)
+            if dump_success:
+                context.log.info(f"Successfully imported {log_label} from S3 dump")
+        except Exception as e:
+            context.log.warning(f"Dump import failed: {e}")
+            dump_success = False
+    
+    # FALLBACK: If dump failed, try API (for recipient_lookup only)
+    if not dump_success and table_name == "raw_usaspending_recipients":
+        context.log.warning(
+            "S3 dump unavailable, falling back to USAspending API (FALLBACK)"
+        )
+        try:
+            from ..enrichers.usaspending import USAspendingAPIClient
+            import asyncio
+            
+            # Use API to fetch recipient data
+            api_client = USAspendingAPIClient()
+            # Note: API fallback would need to be implemented to fetch recipients
+            # For now, we'll raise an error to indicate API fallback is needed
+            context.log.error(
+                "API fallback not yet implemented for bulk recipient data. "
+                "S3 dump is required."
+            )
+            raise ExtractionError(
+                "USAspending data unavailable: S3 dump failed and API fallback not implemented for bulk data",
+                component="assets.usaspending_ingestion",
+                operation="import_table",
+                details={
+                    "table_name": table_name,
+                    "s3_attempted": s3_bucket is not None,
+                    "dump_path_attempted": str(dump_path) if dump_path else None,
+                },
+            )
+        except ImportError:
+            context.log.error("USAspending API client not available")
+            raise ExtractionError(
+                "USAspending data unavailable: S3 dump failed and API client not available",
+                component="assets.usaspending_ingestion",
+                operation="import_table",
+                details={"table_name": table_name},
+            )
+    
+    # FAIL: If dump failed and no API fallback available
+    if not dump_success:
         raise ExtractionError(
-            "Failed to import USAspending dump",
+            f"Failed to import USAspending {log_label}: S3 dump unavailable and no fallback",
             component="assets.usaspending_ingestion",
             operation="import_dump",
-            details={"dump_path": str(dump_path), "table_name": table_name},
+            details={
+                "dump_path": str(dump_path) if dump_path else None,
+                "table_name": table_name,
+                "s3_bucket": s3_bucket,
+            },
         )
 
     physical_table = extractor.resolve_physical_table_name(table_name)

@@ -14,15 +14,21 @@ This integration enables:
 
 ## Architecture
 
+**Data Source Priority:**
+1. **PRIMARY**: S3 database dump (from EC2 automation)
+2. **FALLBACK**: USAspending API (limited - only for individual award lookups)
+3. **FAIL**: If S3 unavailable and API cannot provide required data
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Monthly Workflow                          │
 └─────────────────────────────────────────────────────────────────┘
 
-1. Lambda: download-usaspending-database
+1. EC2 Automation: download-usaspending-database (GitHub Actions)
    └─> Downloads monthly dump from files.usaspending.gov
    └─> Uploads to S3 with multipart upload
    └─> Computes SHA256 hash for change detection
+   └─> Stores in: s3://bucket/raw/usaspending/database/YYYY-MM-DD/
 
 2. S3: sbir-etl-production-data/raw/usaspending/database/
    └─> Stores dump with lifecycle policies:
@@ -49,62 +55,69 @@ This integration enables:
 
 ## Components
 
-### 1. Lambda Function: `download-usaspending-database`
+### 1. EC2 Automation: `download-usaspending-database`
 
-**Location:** `scripts/lambda/download_usaspending_database/lambda_handler.py`
+**Location:** `.github/workflows/usaspending-database-download.yml`
 
-**Purpose:** Downloads USAspending PostgreSQL dumps and uploads to S3
+**Purpose:** Downloads USAspending PostgreSQL dumps and uploads to S3 using EC2
 
 **Configuration:**
-```json
-{
-  "s3_bucket": "sbir-etl-production-data",
-  "database_type": "test",  // or "full"
-  "date": "20251106",        // YYYYMMDD format, optional
-  "use_multipart": true      // Use multipart upload for large files
-}
-```
+- Scheduled: Monthly on the 6th at 2 AM UTC
+- Manual trigger: Available via GitHub Actions UI
+- Database types: `full` or `test`
+- Automatic file detection: Checks for new files before downloading
 
 **Database Types:**
-- `test`: Smaller subset database (~50-100 GB) for development/testing (availability unverified)
-- `full`: Complete database dump (~1.5+ TB uncompressed) - ✅ Verified working
+- `test`: Smaller subset database (~50-100 GB) for development/testing
+- `full`: Complete database dump (~217 GB compressed, ~1.5+ TB uncompressed)
 
 **Invocation:**
 ```bash
-# Download full database (verified working as of Nov 2025)
-aws lambda invoke \
-  --function-name sbir-analytics-download-usaspending-database \
-  --payload '{"database_type": "full", "date": "20251106"}' \
-  --cli-binary-format raw-in-base64-out \
-  response.json
+# Via GitHub Actions UI:
+# Actions → USAspending Database Download → Run workflow
+# Select database_type: "full" or "test"
 
-# Check response
-cat response.json | jq
-
-# Alternative: provide explicit URL if needed
-aws lambda invoke \
-  --function-name sbir-analytics-download-usaspending-database \
-  --payload '{"source_url": "https://files.usaspending.gov/database_download/usaspending-db_20251106.zip"}' \
-  --cli-binary-format raw-in-base64-out \
-  response.json
+# Or via GitHub CLI:
+gh workflow run usaspending-database-download.yml \
+  -f database_type=full \
+  -f date=20251106
 ```
 
 **Notes:**
 - ✅ No authentication required - direct downloads work
-- Lambda has a 15-minute timeout limit
-- For very large files (>500 GB), may exceed timeout - monitor first run
+- EC2 handles large files (no 15-minute timeout)
 - Uses multipart upload to stream data directly from source to S3
 - Computes SHA256 hash for integrity verification
-- Verified working URL: https://files.usaspending.gov/database_download/usaspending-db_20251106.zip
+- Automatically finds latest file in S3 for ingestion
+- See: `docs/deployment/usaspending-ec2-automation.md` for setup
 
-### 2. DuckDB Extractor: Enhanced for S3
+**Migration Note:** Lambda function removed - use EC2 automation instead
+
+### 2. Data Source Priority
+
+**PRIMARY: S3 Database Dump**
+- All assets prioritize S3 database dumps
+- Automatically finds latest dump file
+- Format: `s3://bucket/raw/usaspending/database/YYYY-MM-DD/usaspending-db_YYYYMMDD.zip`
+
+**FALLBACK: USAspending API**
+- Only used if S3 dump unavailable
+- Limited functionality (individual award lookups only)
+- Not suitable for bulk transaction queries
+
+**FAIL: If Both Unavailable**
+- Assets will fail with clear error messages
+- S3 dump is required for production workloads
+
+### 3. DuckDB Extractor: Enhanced for S3
 
 **Location:** `src/extractors/usaspending.py`
 
 **Enhancements:**
 - Supports S3 URLs (e.g., `s3://bucket/path/to/dump.zip`)
 - Automatic download and caching using `cloudpathlib`
-- Seamless fallback to local paths
+- **S3-first strategy**: Always tries S3 before local paths
+- Automatically finds latest dump file in S3
 
 **Usage:**
 ```python
@@ -166,11 +179,11 @@ Matches USAspending recipients to SBIR companies.
 s3://sbir-etl-production-data/
   └─ raw/usaspending/database/
       ├─ 2025-11-01/
-      │   └─ usaspending-db-test_20251101.zip
+      │   └─ usaspending-db-subset_20251101.zip
       ├─ 2025-12-01/
-      │   └─ usaspending-db-test_20251201.zip
+      │   └─ usaspending-db-subset_20251201.zip
       └─ latest/  (symlink or latest copy)
-          └─ usaspending-db-test.zip
+          └─ usaspending-db-subset.zip
 ```
 
 **Lifecycle Policy:**
@@ -197,7 +210,7 @@ paths:
   usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
 
   # S3 path (takes precedence if S3 is configured)
-  usaspending_dump_s3_path: "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-test.zip"
+  usaspending_dump_s3_path: "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-subset.zip"
 
 s3:
   bucket: "sbir-etl-production-data"
@@ -281,7 +294,7 @@ from sbir_analytics.extractors.usaspending import DuckDBUSAspendingExtractor
 
 extractor = DuckDBUSAspendingExtractor()
 extractor.import_postgres_dump(
-    "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-test.zip",
+    "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-subset.zip",
     "transaction_normalized"
 )
 

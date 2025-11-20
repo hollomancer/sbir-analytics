@@ -23,7 +23,7 @@ paths:
   usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
   # S3 path for USAspending database dumps (overrides local path if S3 is configured)
   # Format: s3://bucket-name/raw/usaspending/database/YYYY-MM-DD/filename.zip
-  usaspending_dump_s3_path: "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-test.zip"
+  usaspending_dump_s3_path: "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-subset.zip"
 
   # Transition detection outputs
   transition_contracts_output: "data/transition/contracts_ingestion.parquet"

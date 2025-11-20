@@ -126,3 +126,69 @@ def build_s3_path(relative_path: str, bucket: str | None = None) -> str:
     relative_path = relative_path.lstrip("/")
     return f"s3://{bucket}/{relative_path}"
 
+
+def find_latest_usaspending_dump(
+    bucket: str | None = None,
+    database_type: str = "full",
+    prefix: str = "raw/usaspending/database/",
+) -> str | None:
+    """
+    Find the latest USAspending database dump file in S3.
+    
+    Searches for files matching the pattern:
+    - Full: raw/usaspending/database/YYYY-MM-DD/usaspending-db_YYYYMMDD.zip
+    - Test: raw/usaspending/database/YYYY-MM-DD/usaspending-db-subset_YYYYMMDD.zip
+    
+    Args:
+        bucket: S3 bucket name (defaults to env var)
+        database_type: "full" or "test"
+        prefix: S3 prefix to search under
+        
+    Returns:
+        S3 URL of the latest file, or None if not found
+    """
+    import boto3
+    
+    bucket = bucket or get_s3_bucket_from_env()
+    if not bucket:
+        logger.warning("S3 bucket not configured, cannot find latest dump")
+        return None
+    
+    s3_client = boto3.client("s3")
+    
+    # Determine file pattern
+    if database_type == "full":
+        pattern = "usaspending-db_"
+    elif database_type == "test":
+        pattern = "usaspending-db-subset_"
+    else:
+        logger.warning(f"Unknown database_type: {database_type}")
+        return None
+    
+    try:
+        # List all files in the database directory
+        paginator = s3_client.get_paginator("list_objects_v2")
+        latest_file = None
+        latest_date = None
+        
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                # Check if this matches the database type pattern
+                if pattern in key and key.endswith(".zip"):
+                    if latest_date is None or obj["LastModified"] > latest_date:
+                        latest_file = key
+                        latest_date = obj["LastModified"]
+        
+        if latest_file:
+            s3_url = f"s3://{bucket}/{latest_file}"
+            logger.info(f"Found latest USAspending {database_type} dump: {s3_url} (modified: {latest_date})")
+            return s3_url
+        
+        logger.warning(f"No USAspending {database_type} dump found in s3://{bucket}/{prefix}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error finding latest USAspending dump: {e}")
+        return None
+

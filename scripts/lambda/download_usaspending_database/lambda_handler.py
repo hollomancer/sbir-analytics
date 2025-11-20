@@ -31,7 +31,7 @@ USASPENDING_DB_BASE_URL = "https://files.usaspending.gov/database_download"
 # Test/sample database availability is unknown - if needed, provide explicit source_url
 USASPENDING_DOWNLOADS = {
     "full": "{base}/usaspending-db_{date}.zip",
-    "test": "{base}/usaspending-db-test_{date}.zip",  # URL pattern unverified
+    "test": "{base}/usaspending-db-subset_{date}.zip",
 }
 
 
