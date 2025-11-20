@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/neo4j/apply_schema.py
+sbir-analytics/scripts/neo4j/apply_schema.py
 
 Minimal scaffold to apply Neo4j schema artifacts (indexes/constraints) in an idempotent
 way for the SBIR ETL project.
@@ -14,7 +14,7 @@ This script is intentionally conservative:
      NEO4J_PASSWORD
 
 Usage:
-    python sbir-etl/scripts/neo4j/apply_schema.py [--dry-run] [--yes]
+    python sbir-analytics/scripts/neo4j/apply_schema.py [--dry-run] [--yes]
 
 Notes:
  - This is a scaffold and may need adjustments for specific Neo4j server versions and

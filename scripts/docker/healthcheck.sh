@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/docker/healthcheck.sh
+# sbir-analytics/scripts/docker/healthcheck.sh
 #
 # Lightweight healthcheck helper for Docker HEALTHCHECK usage.
 #
@@ -14,9 +14,9 @@
 #   2 = usage / invalid args
 #
 # Usage examples (Dockerfile HEALTHCHECK):
-#   HEALTHCHECK CMD /app/sbir-etl/scripts/docker/healthcheck.sh --mode app
-#   HEALTHCHECK CMD /app/sbir-etl/scripts/docker/healthcheck.sh --mode web --host 127.0.0.1 --port 3000 --path /server_info
-#   HEALTHCHECK CMD /app/sbir-etl/scripts/docker/healthcheck.sh --mode neo4j --host neo4j --port 7687 --user neo4j --password "${NEO4J_PASSWORD}"
+#   HEALTHCHECK CMD /app/sbir-analytics/scripts/docker/healthcheck.sh --mode app
+#   HEALTHCHECK CMD /app/sbir-analytics/scripts/docker/healthcheck.sh --mode web --host 127.0.0.1 --port 3000 --path /server_info
+#   HEALTHCHECK CMD /app/sbir-analytics/scripts/docker/healthcheck.sh --mode neo4j --host neo4j --port 7687 --user neo4j --password "${NEO4J_PASSWORD}"
 #
 # Notes:
 # - The script is POSIX sh compatible.

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/docker/entrypoint.sh
+# sbir-analytics/scripts/docker/entrypoint.sh
 #
 # Container entrypoint for SBIR ETL images.
 #
@@ -25,7 +25,7 @@
 #
 # Notes:
 # - This script is intentionally POSIX-sh compatible for maximum portability.
-# - It uses sbir-etl/scripts/docker/wait-for-service.sh if present to perform health checks.
+# - It uses sbir-analytics/scripts/docker/wait-for-service.sh if present to perform health checks.
 # - The script will exec the final command so the process receives container signals.
 set -eu
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/uspto/analyze_uspto_structure.py
+sbir-analytics/scripts/uspto/analyze_uspto_structure.py
 
 Initial USPTO data structure analysis script.
 
@@ -23,7 +23,7 @@ Notes / Requirements
 
 Usage
 -----
-$ python sbir-etl/scripts/uspto/analyze_uspto_structure.py \
+$ python sbir-analytics/scripts/uspto/analyze_uspto_structure.py \
     --input-dir data/raw/uspto \
     --sample-size 5000 \
     --out-dir reports/uspto-structure

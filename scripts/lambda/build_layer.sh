@@ -32,7 +32,7 @@ echo "Layer built: /tmp/python-dependencies-layer.zip"
 echo ""
 echo "To upload to AWS:"
 echo "aws lambda publish-layer-version \\"
-echo "  --layer-name sbir-etl-python-dependencies \\"
+echo "  --layer-name sbir-analytics-python-dependencies \\"
 echo "  --zip-file fileb:///tmp/python-dependencies-layer.zip \\"
 echo "  --compatible-runtimes python${PYTHON_VERSION}"
 

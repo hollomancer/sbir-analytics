@@ -136,12 +136,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
-        "neo4j_secret_name": "sbir-etl/neo4j-aura"
+        "neo4j_secret_name": "sbir-analytics/neo4j-aura"
     }
     """
     try:
         s3_bucket = event.get("s3_bucket") or os.environ.get("S3_BUCKET")
-        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-etl/neo4j-aura")
+        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura")
 
         # Get credentials
         creds = get_neo4j_credentials(secret_name)

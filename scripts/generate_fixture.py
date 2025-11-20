@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/generate_fixture.py
+sbir-analytics/scripts/generate_fixture.py
 
 Generate a well-formed CSV fixture for SBIR ETL tests. The generated CSV will:
 - Contain exactly 42 columns (header + rows)
@@ -10,8 +10,8 @@ Generate a well-formed CSV fixture for SBIR ETL tests. The generated CSV will:
 - Write to `tests/fixtures/sbir_sample.csv` by default (creates directories as needed).
 
 Usage:
-    python sbir-etl/scripts/generate_fixture.py
-    python sbir-etl/scripts/generate_fixture.py --output path/to/file.csv
+    python sbir-analytics/scripts/generate_fixture.py
+    python sbir-analytics/scripts/generate_fixture.py --output path/to/file.csv
 """
 
 from __future__ import annotations

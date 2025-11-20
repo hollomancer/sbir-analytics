@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/docker/etl-runner.sh
+# sbir-analytics/scripts/docker/etl-runner.sh
 #
 # ETL Runner wrapper for SBIR ETL container image.
 #
@@ -82,7 +82,7 @@ wait_for_neo4j() {
   HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
   PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
   TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/sbir-etl/scripts/docker/wait-for-service.sh"
+  WAIT_SCRIPT="/app/sbir-analytics/scripts/docker/wait-for-service.sh"
 
   if [ -x "$WAIT_SCRIPT" ]; then
     log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
@@ -134,7 +134,7 @@ wait_for_dagster_web() {
   WEB_PORT="${DAGSTER_PORT:-3000}"
   PATH="${DAGSTER_HEALTH_PATH:-/server_info}"
   TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/sbir-etl/scripts/docker/wait-for-service.sh"
+  WAIT_SCRIPT="/app/sbir-analytics/scripts/docker/wait-for-service.sh"
 
   if [ -x "$WAIT_SCRIPT" ]; then
     log "Waiting for Dagster webserver at ${WEB_HOST}:${WEB_PORT}${PATH} (timeout=${TIMEOUT}s)..."

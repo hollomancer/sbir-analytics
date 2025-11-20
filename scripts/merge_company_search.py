@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/merge_company_search.py
+sbir-analytics/scripts/merge_company_search.py
 
 Merge multiple SBIR.gov "company_search" CSV files into a single canonical
 companies_merged.csv file.
@@ -25,7 +25,7 @@ Strategy
 
 Usage
 -----
-python sbir-etl/scripts/merge_company_search.py \
+python sbir-analytics/scripts/merge_company_search.py \
     --input-dir data/raw/sbir \
     --pattern "company_search_*.csv" \
     --output data/raw/sbir/companies_merged.csv \

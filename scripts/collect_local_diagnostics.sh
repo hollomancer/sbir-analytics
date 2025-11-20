@@ -6,8 +6,8 @@
 # and write them into a timestamped directory under ./reports/diagnostics-local/<timestamp>/
 #
 # Usage:
-#   chmod +x sbir-etl/scripts/collect_local_diagnostics.sh
-#   ./sbir-etl/scripts/collect_local_diagnostics.sh [optional-output-dir]
+#   chmod +x sbir-analytics/scripts/collect_local_diagnostics.sh
+#   ./sbir-analytics/scripts/collect_local_diagnostics.sh [optional-output-dir]
 #
 # Notes:
 # - Designed to run on macOS or Linux. It will detect available utilities and skip those that aren't present.

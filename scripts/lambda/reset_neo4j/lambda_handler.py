@@ -29,12 +29,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     Event structure:
     {
-        "neo4j_secret_name": "sbir-etl/neo4j-aura",  # Optional, uses env var if not provided
+        "neo4j_secret_name": "sbir-analytics/neo4j-aura",  # Optional, uses env var if not provided
         "dry_run": false
     }
     """
     try:
-        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-etl/neo4j-aura")
+        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura")
         dry_run = event.get("dry_run", False)
 
         # Get credentials

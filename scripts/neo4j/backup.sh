@@ -1,15 +1,15 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/neo4j/backup.sh
+# sbir-analytics/scripts/neo4j/backup.sh
 #
 # Create a logical dump of the Neo4j database and store it under a host backups directory.
 # Supports running against a running Docker container (preferred) or against a local neo4j-admin binary.
 #
 # Usage:
 #   # Default: backup 'neo4j' database into backups/neo4j/<timestamp>.dump and keep last 7 files
-#   ./sbir-etl/scripts/neo4j/backup.sh
+#   ./sbir-analytics/scripts/neo4j/backup.sh
 #
 #   # Custom directory, database name, and retention (keep last N)
-#   BACKUP_DIR=backups/neo4j DB_NAME=neo4j KEEP_LAST=14 ./sbir-etl/scripts/neo4j/backup.sh
+#   BACKUP_DIR=backups/neo4j DB_NAME=neo4j KEEP_LAST=14 ./sbir-analytics/scripts/neo4j/backup.sh
 #
 # Environment / options:
 #   BACKUP_DIR        Host directory where backups are stored (default: backups/neo4j)

@@ -72,7 +72,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Download data
         print(f"Downloading USPTO Patent Assignment data ({file_format}) from {source_url}")
         req = Request(source_url)
-        req.add_header("User-Agent", "SBIR-ETL-Lambda/1.0")
+        req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0")
         
         with urlopen(req, timeout=600) as response:  # Longer timeout for large files
             data = response.read()

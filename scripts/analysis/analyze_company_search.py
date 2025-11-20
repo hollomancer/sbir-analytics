@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/analyze_company_search.py
+sbir-analytics/scripts/analyze_company_search.py
 
 Analyze a SBIR.gov "company_search" CSV and estimate enrichment value vs an awards CSV.
 
@@ -15,7 +15,7 @@ This script:
 - Writes a Markdown report and a JSON diagnostics file with details.
 
 Usage:
-    python sbir-etl/scripts/analyze_company_search.py \
+    python sbir-analytics/scripts/analyze_company_search.py \
         --company data/raw/sbir/company_search_1761473980.csv \
         --awards tests/fixtures/sbir_sample.csv \
         --out reports/company_search_analysis.md \

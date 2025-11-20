@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/openspec/fetch_provider_docs.py
+sbir-analytics/scripts/openspec/fetch_provider_docs.py
 
 Fetch provider documentation pages listed in an openspec providers.json file,
 attempt to discover authoritative rate-limit and auth information, and annotate
@@ -12,9 +12,9 @@ heuristics on headers and text content to find mentions of rate limits,
 auth model hints, and delta/cursor support.
 
 Usage:
-    python sbir-etl/scripts/openspec/fetch_provider_docs.py \
-        --providers-file sbir-etl/openspec/changes/add-iterative-api-enrichment/providers.json \
-        --output-file sbir-etl/openspec/changes/add-iterative-api-enrichment/providers.json
+    python sbir-analytics/scripts/openspec/fetch_provider_docs.py \
+        --providers-file sbir-analytics/openspec/changes/add-iterative-api-enrichment/providers.json \
+        --output-file sbir-analytics/openspec/changes/add-iterative-api-enrichment/providers.json
 
 Notes:
 - This script does NOT authenticate to any provider; it only fetches public docs.
@@ -43,7 +43,7 @@ from urllib.request import Request, urlopen
 
 
 # Reasonable defaults
-USER_AGENT = "sbir-etl-docs-fetcher/1.0 (+https://github.com/your-org/sbir-etl)"
+USER_AGENT = "sbir-analytics-docs-fetcher/1.0 (+https://github.com/your-org/sbir-analytics)"
 DEFAULT_TIMEOUT = 15  # seconds
 RATE_LIMIT_HEADER_CANDIDATES = [
     "x-ratelimit-limit",
@@ -280,7 +280,7 @@ def parse_args():
     parser.add_argument(
         "--providers-file",
         "-i",
-        default="sbir-etl/openspec/changes/add-iterative-api-enrichment/providers.json",
+        default="sbir-analytics/openspec/changes/add-iterative-api-enrichment/providers.json",
         help="Path to providers.json to read and update",
     )
     parser.add_argument(

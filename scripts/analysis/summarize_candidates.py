@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/summarize_candidates.py
+sbir-analytics/scripts/summarize_candidates.py
 
 Summarize the enrichment candidate-review CSV produced by the enrichment pass.
 
@@ -21,7 +21,7 @@ This script:
 - Writes a Markdown summary and a JSON diagnostics file.
 
 Usage:
-    python sbir-etl/scripts/summarize_candidates.py \
+    python sbir-analytics/scripts/summarize_candidates.py \
         --candidates reports/enrichment_candidate_review.csv \
         --companies data/raw/sbir/companies_merged.csv \
         --out-md reports/candidate_summary.md \

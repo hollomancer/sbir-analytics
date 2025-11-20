@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/neo4j/restore.sh
+# sbir-analytics/scripts/neo4j/restore.sh
 #
 # Restore a Neo4j logical dump into the repository's Neo4j data volume.
 #

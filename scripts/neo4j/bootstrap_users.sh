@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# sbir-etl/scripts/neo4j/bootstrap_users.sh
+# sbir-analytics/scripts/neo4j/bootstrap_users.sh
 #
 # Bootstrap Neo4j users and roles for SBIR ETL.
 #

@@ -8,7 +8,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Configuration
 AWS_REGION="${AWS_REGION:-us-east-1}"
-ECR_REPO_NAME="sbir-etl/weekly-refresh"
+ECR_REPO_NAME="sbir-analytics/weekly-refresh"
 LAMBDA_FUNCTION_NAME="sbir-weekly-refresh"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 

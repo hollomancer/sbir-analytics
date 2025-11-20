@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-sbir-etl/scripts/run_full_enrichment.py
+sbir-analytics/scripts/run_full_enrichment.py
 
 Run a full enrichment pass: join awards_data.csv against companies_merged.csv
 to enrich award records with company-level attributes.
@@ -19,7 +19,7 @@ Behavior:
   - summary JSON: reports/enrichment_summary.json
 
 Usage:
-    python sbir-etl/scripts/run_full_enrichment.py \
+    python sbir-analytics/scripts/run_full_enrichment.py \
         --companies data/raw/sbir/companies_merged.csv \
         --awards data/raw/sbir/awards_data.csv \
         --out-enriched data/processed/enriched_awards.csv \

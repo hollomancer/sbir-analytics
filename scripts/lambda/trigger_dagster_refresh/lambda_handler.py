@@ -26,7 +26,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "dagster_cloud_org": "your-org",
         "dagster_cloud_deployment": "prod",
         "job_name": "sbir_weekly_refresh_job",
-        "dagster_cloud_secret_name": "sbir-etl/dagster-cloud-api-token"  # Optional
+        "dagster_cloud_secret_name": "sbir-analytics/dagster-cloud-api-token"  # Optional
     }
     """
     try:
@@ -34,7 +34,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         org = event.get("dagster_cloud_org") or os.environ.get("DAGSTER_CLOUD_ORG")
         deployment = event.get("dagster_cloud_deployment") or os.environ.get("DAGSTER_CLOUD_DEPLOYMENT", "prod")
         job_name = event.get("job_name", "sbir_weekly_refresh_job")
-        secret_name = event.get("dagster_cloud_secret_name") or os.environ.get("DAGSTER_CLOUD_SECRET_NAME", "sbir-etl/dagster-cloud-api-token")
+        secret_name = event.get("dagster_cloud_secret_name") or os.environ.get("DAGSTER_CLOUD_SECRET_NAME", "sbir-analytics/dagster-cloud-api-token")
         
         if not org:
             raise ValueError("dagster_cloud_org required in event or DAGSTER_CLOUD_ORG environment variable")

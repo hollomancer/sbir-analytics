@@ -3,7 +3,7 @@
 CI runner for the USPTO Dagster job.
 
 This script imports the `uspto_validation_job` defined in:
-  `sbir-etl/src/assets/jobs/uspto_job.py`
+  `sbir-analytics/src/assets/jobs/uspto_job.py`
 
 and executes it in-process. It's intended to be run inside the CI test container
 after test/dev dependencies (like Dagster and pandas/pyarrow/pyreadstat) have
