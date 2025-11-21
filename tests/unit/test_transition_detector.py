@@ -118,17 +118,25 @@ def detector(sample_config, vendor_resolver):
 
 @pytest.fixture
 def sample_award() -> dict:
-    """Sample SBIR award for testing."""
-    return {
-        "award_id": "AWARD-123",
-        "agency": "DOD",
-        "department": "Air Force",
-        "completion_date": date(2024, 1, 15),
-        "vendor_id": "VENDOR-001",
-        "vendor_uei": "UEI123",
-        "vendor_cage": "CAGE001",
-        "vendor_name": "Acme Corporation",
-    }
+    """Sample SBIR award for testing.
+
+    Note: Uses shared utility function and adds department and vendor_cage
+    for compatibility with tests that need these fields.
+    """
+    # Use shared utility function to create base award structure
+    from tests.utils.fixtures import create_sample_award_dict
+
+    # Start with shared award structure
+    award = create_sample_award_dict(
+        award_id="AWARD-123",
+        company_name="Acme Corporation",
+        agency="DOD",
+        completion_date=date(2024, 1, 15),
+    )
+    # Add fields needed by this test suite
+    award["department"] = "Air Force"
+    award["vendor_cage"] = "CAGE001"
+    return award
 
 
 @pytest.fixture
