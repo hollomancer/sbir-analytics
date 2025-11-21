@@ -486,13 +486,13 @@ class GeographicResolver:
 
                 if result:
                     # Store resolution results
-                    enriched_df.at[idx, "fiscal_state_code"] = result.state_code
-                    enriched_df.at[idx, "fiscal_state_name"] = result.state_name
-                    enriched_df.at[idx, "fiscal_geo_confidence"] = result.confidence
-                    enriched_df.at[idx, "fiscal_geo_source"] = result.source
-                    enriched_df.at[idx, "fiscal_geo_method"] = result.method
-                    enriched_df.at[idx, "fiscal_geo_timestamp"] = result.timestamp
-                    enriched_df.at[idx, "fiscal_geo_metadata"] = str(result.metadata)
+                    enriched_df.at[idx, "fiscal_state_code"] = result.state_code  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_state_name"] = result.state_name  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_geo_confidence"] = result.confidence  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_geo_source"] = result.source  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_geo_method"] = result.method  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_geo_timestamp"] = result.timestamp  # type: ignore[index]
+                    enriched_df.at[idx, "fiscal_geo_metadata"] = str(result.metadata)  # type: ignore[index]
 
                     # Track statistics
                     source_counts[result.source] = source_counts.get(result.source, 0) + 1

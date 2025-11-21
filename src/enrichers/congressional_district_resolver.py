@@ -89,7 +89,6 @@ class CongressionalDistrictResolver:
                 cd_code = str(row.get("CD118", row.get("CD", ""))).zfill(4)
 
                 if len(cd_code) == 4:
-                    state_fips = cd_code[:2]
                     district_num = cd_code[2:]
 
                     # Convert state FIPS to state code (would need FIPS lookup)
@@ -254,7 +253,7 @@ class CongressionalDistrictResolver:
 
             # Extract congressional district from OCD division ID
             divisions = data.get("divisions", {})
-            for division_id, division_data in divisions.items():
+            for division_id, _division_data in divisions.items():
                 if "cd:" in division_id:
                     # Example: ocd-division/country:us/state:ca/cd:12
                     parts = division_id.split("/")
@@ -398,10 +397,10 @@ class CongressionalDistrictResolver:
             )
 
             if result and result.congressional_district:
-                enriched.at[idx, "congressional_district"] = result.congressional_district
-                enriched.at[idx, "district_number"] = result.district_number
-                enriched.at[idx, "congressional_district_confidence"] = result.confidence
-                enriched.at[idx, "congressional_district_method"] = result.method
+                enriched.at[idx, "congressional_district"] = result.congressional_district  # type: ignore[index]
+                enriched.at[idx, "district_number"] = result.district_number  # type: ignore[index]
+                enriched.at[idx, "congressional_district_confidence"] = result.confidence  # type: ignore[index]
+                enriched.at[idx, "congressional_district_method"] = result.method  # type: ignore[index]
 
                 resolved_count += 1
                 method_counts[result.method] = method_counts.get(result.method, 0) + 1

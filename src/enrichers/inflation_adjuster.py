@@ -506,17 +506,17 @@ class InflationAdjuster:
                 result = self.adjust_single_award(row, target_year)
 
                 # Store adjustment results
-                enriched_df.at[idx, "fiscal_original_amount"] = float(result.original_amount)
-                enriched_df.at[idx, "fiscal_adjusted_amount"] = float(result.adjusted_amount)
-                enriched_df.at[idx, "fiscal_inflation_factor"] = result.inflation_factor
-                enriched_df.at[idx, "fiscal_award_year"] = result.award_year
-                enriched_df.at[idx, "fiscal_inflation_confidence"] = result.confidence
-                enriched_df.at[idx, "fiscal_inflation_method"] = result.method
-                enriched_df.at[idx, "fiscal_inflation_quality_flags"] = json.dumps(
+                enriched_df.at[idx, "fiscal_original_amount"] = float(result.original_amount)  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_adjusted_amount"] = float(result.adjusted_amount)  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_inflation_factor"] = result.inflation_factor  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_award_year"] = result.award_year  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_inflation_confidence"] = result.confidence  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_inflation_method"] = result.method  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_inflation_quality_flags"] = json.dumps(  # type: ignore[index]
                     result.quality_flags
                 )
-                enriched_df.at[idx, "fiscal_inflation_timestamp"] = result.timestamp
-                enriched_df.at[idx, "fiscal_inflation_metadata"] = json.dumps(
+                enriched_df.at[idx, "fiscal_inflation_timestamp"] = result.timestamp  # type: ignore[index]
+                enriched_df.at[idx, "fiscal_inflation_metadata"] = json.dumps(  # type: ignore[index]
                     result.metadata, default=str
                 )
 
@@ -619,9 +619,9 @@ class InflationAdjuster:
             "average_confidence": float(confidences.mean()) if not confidences.empty else 0.0,
             "total_original_amount": total_original,
             "total_adjusted_amount": total_adjusted,
-            "overall_inflation_factor": total_adjusted / total_original
-            if total_original > 0
-            else 1.0,
+            "overall_inflation_factor": (
+                total_adjusted / total_original if total_original > 0 else 1.0
+            ),
             "base_year": self.base_year,
             "inflation_source": self.inflation_source,
         }

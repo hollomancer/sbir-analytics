@@ -50,7 +50,7 @@ except Exception as e:  # pragma: no cover - defensive runtime behavior
     ) from e
 
 try:
-    from ..utils.enhanced_matching import phonetic_match, jaro_winkler_similarity
+    from ..utils.enhanced_matching import jaro_winkler_similarity, phonetic_match
 except ImportError:  # pragma: no cover
     phonetic_match = None  # type: ignore
     jaro_winkler_similarity = None  # type: ignore
@@ -124,9 +124,17 @@ def _build_company_indexes(
         custom_abbrev = enhanced_config.get("custom_abbreviations")
 
     # Normalized name and block key
-    norm_series = df[company_name_col].fillna("").astype(str).map(
-        lambda n: normalize_name(
-            n, remove_suffixes=False, apply_abbreviations=apply_abbrev, abbreviations=custom_abbrev
+    norm_series = (
+        df[company_name_col]
+        .fillna("")
+        .astype(str)
+        .map(
+            lambda n: normalize_name(
+                n,
+                remove_suffixes=False,
+                apply_abbreviations=apply_abbrev,
+                abbreviations=custom_abbrev,
+            )
         )
     )
     block_series = norm_series.map(lambda n: build_block_key(n, prefix_len))
@@ -316,21 +324,29 @@ def enrich_awards_with_companies(
 
     # Add normalized name helpers (used for blocking / matching later)
     if "_norm_name" not in companies.columns:
-        companies["_norm_name"] = companies["company"].astype(str).map(
-            lambda n: normalize_name(
-                n,
-                remove_suffixes=False,
-                apply_abbreviations=apply_abbrev,
-                abbreviations=custom_abbrev,
+        companies["_norm_name"] = (
+            companies["company"]
+            .astype(str)
+            .map(
+                lambda n: normalize_name(
+                    n,
+                    remove_suffixes=False,
+                    apply_abbreviations=apply_abbrev,
+                    abbreviations=custom_abbrev,
+                )
             )
         )
     if "_norm_name" not in awards.columns:
-        awards["_norm_name"] = awards["company"].astype(str).map(
-            lambda n: normalize_name(
-                n,
-                remove_suffixes=False,
-                apply_abbreviations=apply_abbrev,
-                abbreviations=custom_abbrev,
+        awards["_norm_name"] = (
+            awards["company"]
+            .astype(str)
+            .map(
+                lambda n: normalize_name(
+                    n,
+                    remove_suffixes=False,
+                    apply_abbreviations=apply_abbrev,
+                    abbreviations=custom_abbrev,
+                )
             )
         )
 
@@ -353,9 +369,16 @@ def enrich_awards_with_companies(
     phonetic_by_code = idx.get("phonetic_by_code", {})
 
     # Prepare award normalization
-    awards["_norm_name"] = awards[award_company_col].astype(str).map(
-        lambda n: normalize_name(
-            n, remove_suffixes=False, apply_abbreviations=apply_abbrev, abbreviations=custom_abbrev
+    awards["_norm_name"] = (
+        awards[award_company_col]
+        .astype(str)
+        .map(
+            lambda n: normalize_name(
+                n,
+                remove_suffixes=False,
+                apply_abbreviations=apply_abbrev,
+                abbreviations=custom_abbrev,
+            )
         )
     )
     awards["_block"] = awards["_norm_name"].map(lambda n: build_block_key(n, prefix_len))
@@ -370,28 +393,34 @@ def enrich_awards_with_companies(
     # Precompute global choices mapping (index -> normalized name) for fallback
     global_choices: dict[int, str] = comp_norm.to_dict()
 
-    # For each award row, try exact matches first, then fuzzy candidates
-    for ai, arow in awards.iterrows():
-        # Exact UEI match
-        award_uei = str(arow.get(uei_col) or "").strip().upper()
-        if award_uei:
-            comp_idx = comp_by_uei.get(award_uei)
-            if comp_idx is not None:
-                awards.at[ai, "_matched_company_idx"] = comp_idx
-                awards.at[ai, "_match_score"] = 100
-                awards.at[ai, "_match_method"] = "uei-exact"
-                continue
+    # Vectorized exact matches (fast, no mypy errors)
+    # UEI exact matches
+    if uei_col in awards.columns:
+        uei_series = awards[uei_col].fillna("").astype(str).str.strip().str.upper()
+        uei_mask = uei_series.isin(comp_by_uei.keys())
+        if uei_mask.any():
+            awards.loc[uei_mask, "_matched_company_idx"] = uei_series[uei_mask].map(comp_by_uei)
+            awards.loc[uei_mask, "_match_score"] = 100
+            awards.loc[uei_mask, "_match_method"] = "uei-exact"
 
-        # Exact DUNS match
-        award_duns = "".join(ch for ch in str(arow.get(duns_col) or "") if ch.isdigit())
-        if award_duns:
-            comp_idx = comp_by_duns.get(award_duns)
-            if comp_idx is not None:
-                awards.at[ai, "_matched_company_idx"] = comp_idx
-                awards.at[ai, "_match_score"] = 100
-                awards.at[ai, "_match_method"] = "duns-exact"
-                continue
+    # DUNS exact matches
+    if duns_col in awards.columns:
+        duns_series = (
+            awards[duns_col]
+            .fillna("")
+            .astype(str)
+            .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
+        )
+        duns_mask = duns_series.isin(comp_by_duns.keys())
+        if duns_mask.any():
+            awards.loc[duns_mask, "_matched_company_idx"] = duns_series[duns_mask].map(comp_by_duns)
+            awards.loc[duns_mask, "_match_score"] = 100
+            awards.loc[duns_mask, "_match_method"] = "duns-exact"
 
+    # Complex matching (phonetic, fuzzy) - use iterrows with type ignore
+    # Only process rows that don't have exact matches
+    unmatched_mask = awards["_matched_company_idx"].isna()
+    for ai, arow in awards[unmatched_mask].iterrows():
         # Phonetic matching (if enabled)
         if enhanced_config.get("enable_phonetic_matching", False) and phonetic_by_code:
             from ..utils.enhanced_matching import get_phonetic_code
@@ -408,9 +437,9 @@ def enrich_awards_with_companies(
                     # Use a boosted score for phonetic matches
                     phonetic_boost = enhanced_config.get("phonetic_boost", 5)
                     score = min(95 + phonetic_boost, 100)  # Cap at 100
-                    awards.at[ai, "_matched_company_idx"] = comp_idx
-                    awards.at[ai, "_match_score"] = score
-                    awards.at[ai, "_match_method"] = "phonetic-match"
+                    awards.at[ai, "_matched_company_idx"] = comp_idx  # type: ignore[index]
+                    awards.at[ai, "_match_score"] = score  # type: ignore[index]
+                    awards.at[ai, "_match_method"] = "phonetic-match"  # type: ignore[index]
                     continue
 
         # Candidate generation via blocking
@@ -445,9 +474,9 @@ def enrich_awards_with_companies(
             "jaro_winkler_use_as_primary", False
         ):
             # Use Jaro-Winkler as primary scorer
-            prefix_weight = enhanced_config.get("jaro_winkler_prefix_weight", 0.1)
+            prefix_weight_val = enhanced_config.get("jaro_winkler_prefix_weight", 0.1)
 
-            def jw_scorer(s1: str, s2: str, **kwargs: Any) -> float:
+            def jw_scorer(s1: str, s2: str, prefix_weight: float = prefix_weight_val, **kwargs: Any) -> float:
                 return JaroWinkler.similarity(s1, s2, prefix_weight=prefix_weight) * 100.0
 
             active_scorer = jw_scorer
@@ -505,7 +534,7 @@ def enrich_awards_with_companies(
 
         # Store candidates if requested
         if return_candidates:
-            awards.at[ai, "_match_candidates"] = json.dumps(
+            awards.at[ai, "_match_candidates"] = json.dumps(  # type: ignore[index]
                 [{"idx": r[0], "score": r[1], "name": choices[r[0]]} for r in simple_results],
                 ensure_ascii=False,
             )
@@ -516,15 +545,15 @@ def enrich_awards_with_companies(
         best_idx, best_score = simple_results[0]
 
         if best_score >= high_threshold:
-            awards.at[ai, "_matched_company_idx"] = best_idx
-            awards.at[ai, "_match_score"] = best_score
-            awards.at[ai, "_match_method"] = "fuzzy-auto"
+            awards.at[ai, "_matched_company_idx"] = best_idx  # type: ignore[index]
+            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
+            awards.at[ai, "_match_method"] = "fuzzy-auto"  # type: ignore[index]
         elif best_score >= low_threshold:
-            awards.at[ai, "_match_score"] = best_score
-            awards.at[ai, "_match_method"] = "fuzzy-candidate"
+            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
+            awards.at[ai, "_match_method"] = "fuzzy-candidate"  # type: ignore[index]
         else:
-            awards.at[ai, "_match_score"] = best_score
-            awards.at[ai, "_match_method"] = "fuzzy-low"
+            awards.at[ai, "_match_score"] = best_score  # type: ignore[index]
+            awards.at[ai, "_match_method"] = "fuzzy-low"  # type: ignore[index]
 
     # Merge matched company columns into awards (flattened) using company_ prefix
     # comp_df has index equal to original companies index (via reset_index in _build_company_indexes)

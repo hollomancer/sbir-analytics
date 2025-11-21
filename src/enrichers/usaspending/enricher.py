@@ -110,25 +110,38 @@ def enrich_sbir_with_usaspending(
     if return_candidates:
         sbir["_usaspending_match_candidates"] = pd.NA
 
-    # Match each SBIR award
-    for idx, row in sbir.iterrows():
-        # Try UEI exact match
-        uei = str(row.get(sbir_uei_col, "")).strip().upper()
-        if uei and uei in recipient_by_uei:
-            sbir.at[idx, "_usaspending_recipient_idx"] = recipient_by_uei[uei]
-            sbir.at[idx, "_usaspending_match_score"] = 100
-            sbir.at[idx, "_usaspending_match_method"] = "uei-exact"
-            continue
+    # Vectorized exact matches (fast, no mypy errors)
+    # UEI exact matches
+    if sbir_uei_col in sbir.columns:
+        uei_series = sbir[sbir_uei_col].fillna("").astype(str).str.strip().str.upper()
+        uei_mask = uei_series.isin(recipient_by_uei.keys())
+        if uei_mask.any():
+            sbir.loc[uei_mask, "_usaspending_recipient_idx"] = uei_series[uei_mask].map(
+                recipient_by_uei
+            )
+            sbir.loc[uei_mask, "_usaspending_match_score"] = 100
+            sbir.loc[uei_mask, "_usaspending_match_method"] = "uei-exact"
 
-        # Try DUNS exact match
-        duns = "".join(ch for ch in str(row.get(sbir_duns_col, "")) if ch.isdigit())
-        if duns and duns in recipient_by_duns:
-            sbir.at[idx, "_usaspending_recipient_idx"] = recipient_by_duns[duns]
-            sbir.at[idx, "_usaspending_match_score"] = 100
-            sbir.at[idx, "_usaspending_match_method"] = "duns-exact"
-            continue
+    # DUNS exact matches
+    if sbir_duns_col in sbir.columns:
+        duns_series = (
+            sbir[sbir_duns_col]
+            .fillna("")
+            .astype(str)
+            .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
+        )
+        duns_mask = duns_series.isin(recipient_by_duns.keys())
+        if duns_mask.any():
+            sbir.loc[duns_mask, "_usaspending_recipient_idx"] = duns_series[duns_mask].map(
+                recipient_by_duns
+            )
+            sbir.loc[duns_mask, "_usaspending_match_score"] = 100
+            sbir.loc[duns_mask, "_usaspending_match_method"] = "duns-exact"
 
-        # Fuzzy name matching
+    # Fuzzy name matching (complex logic, use iterrows with type ignore)
+    # Only process rows that don't have exact matches
+    unmatched_mask = sbir["_usaspending_recipient_idx"].isna()
+    for idx, row in sbir[unmatched_mask].iterrows():
         if fuzz and process:
             norm_name = row.get("_norm_name", "")
             if norm_name:
@@ -151,20 +164,20 @@ def enrich_sbir_with_usaspending(
                         )
 
                 if return_candidates:
-                    sbir.at[idx, "_usaspending_match_candidates"] = json.dumps(candidates)
+                    sbir.at[idx, "_usaspending_match_candidates"] = json.dumps(candidates)  # type: ignore[index]
 
                 if candidates:
                     best = candidates[0]
                     if best["score"] >= high_threshold:
-                        sbir.at[idx, "_usaspending_recipient_idx"] = best["idx"]
-                        sbir.at[idx, "_usaspending_match_score"] = best["score"]
-                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-auto"
+                        sbir.at[idx, "_usaspending_recipient_idx"] = best["idx"]  # type: ignore[index]
+                        sbir.at[idx, "_usaspending_match_score"] = best["score"]  # type: ignore[index]
+                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-auto"  # type: ignore[index]
                     elif best["score"] >= low_threshold:
-                        sbir.at[idx, "_usaspending_match_score"] = best["score"]
-                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-candidate"
+                        sbir.at[idx, "_usaspending_match_score"] = best["score"]  # type: ignore[index]
+                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-candidate"  # type: ignore[index]
                     else:
-                        sbir.at[idx, "_usaspending_match_score"] = best["score"]
-                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-low"
+                        sbir.at[idx, "_usaspending_match_score"] = best["score"]  # type: ignore[index]
+                        sbir.at[idx, "_usaspending_match_method"] = "name-fuzzy-low"  # type: ignore[index]
 
     # Merge recipient data
     recipients_prefixed = recipients.add_prefix("usaspending_recipient_")
