@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.config.schemas import PathsConfig

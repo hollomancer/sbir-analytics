@@ -95,6 +95,7 @@ class FinancialTransaction(BaseModel):
     def validate_transaction_date_not_future(cls, v: date) -> date:
         """Validate that transaction_date is not unreasonably far in the future."""
         from datetime import date as date_cls
+
         from loguru import logger
 
         today = date_cls.today()

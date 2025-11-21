@@ -2,9 +2,9 @@
 """Standalone test for transaction endpoint - no dependencies required."""
 
 import json
-import urllib.request
 import urllib.error
-from typing import Any
+import urllib.request
+
 
 def test_transaction_endpoint(uei: str) -> None:
     """Test the spending_by_transaction endpoint with a UEI."""
@@ -68,7 +68,7 @@ def test_transaction_endpoint(uei: str) -> None:
         results = data.get("results", [])
         page_metadata = data.get("page_metadata", {})
 
-        print(f"Response summary:")
+        print("Response summary:")
         print(f"  - Total results in response: {len(results)}")
         print(f"  - Has more pages: {page_metadata.get('hasNext', False)}")
         print()

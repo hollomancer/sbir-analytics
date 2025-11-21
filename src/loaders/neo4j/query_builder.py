@@ -18,13 +18,13 @@ class Neo4jQueryBuilder:
         return_counts: bool = True,
     ) -> str:
         """Build a batch MERGE query using UNWIND.
-        
+
         Args:
             label: Node label (e.g., "Company", "Award")
             key_property: Property name for matching (e.g., "uei", "award_id")
             include_hash_check: If True, only update nodes when hash changes
             return_counts: If True, return created_count and updated_count
-            
+
         Returns:
             Cypher query string using UNWIND $batch pattern
         """
@@ -60,7 +60,7 @@ class Neo4jQueryBuilder:
                 query += "RETURN count(n) as updated_count"
             else:
                 query += "RETURN count(n) as total_count"
-        
+
         return query.strip()
 
     @staticmethod
@@ -70,12 +70,12 @@ class Neo4jQueryBuilder:
         return_count: bool = True,
     ) -> str:
         """Build a batch MATCH + SET query (only updates existing nodes).
-        
+
         Args:
             label: Node label
             key_property: Property name for matching
             return_count: If True, return updated_count
-            
+
         Returns:
             Cypher query string
         """
@@ -88,7 +88,7 @@ class Neo4jQueryBuilder:
             query += "RETURN count(n) as updated_count"
         else:
             query += "RETURN count(n) as total_count"
-        
+
         return query.strip()
 
     @staticmethod
@@ -101,7 +101,7 @@ class Neo4jQueryBuilder:
         rel_properties: dict[str, Any] | None = None,
     ) -> str:
         """Build a relationship MERGE query.
-        
+
         Args:
             source_label: Source node label
             source_key: Source node key property name
@@ -109,7 +109,7 @@ class Neo4jQueryBuilder:
             target_label: Target node label
             target_key: Target node key property name
             rel_properties: Optional relationship properties to set
-            
+
         Returns:
             Cypher query string
         """
@@ -119,7 +119,7 @@ class Neo4jQueryBuilder:
             set_clause = f"SET {props_str}"
         else:
             set_clause = ""
-        
+
         query = f"""
         UNWIND $batch AS rel
         MATCH (source:{source_label} {{{source_key}: rel.source_key}})
@@ -128,7 +128,7 @@ class Neo4jQueryBuilder:
         {set_clause}
         RETURN count(r) as relationship_count
         """
-        
+
         return query.strip()
 
     @staticmethod
@@ -137,11 +137,11 @@ class Neo4jQueryBuilder:
         return_count: bool = True,
     ) -> str:
         """Build a batch CREATE query (creates new nodes, no merge).
-        
+
         Args:
             label: Node label
             return_count: If True, return created_count
-            
+
         Returns:
             Cypher query string
         """
@@ -154,7 +154,7 @@ class Neo4jQueryBuilder:
             query += "RETURN count(n) as created_count"
         else:
             query += "RETURN count(n) as total_count"
-        
+
         return query.strip()
 
     @staticmethod
@@ -164,12 +164,12 @@ class Neo4jQueryBuilder:
         return_operation: bool = False,
     ) -> str:
         """Build a single-node MERGE query (not batched).
-        
+
         Args:
             label: Node label
             key_property: Property name for matching
             return_operation: If True, return 'created' or 'updated'
-            
+
         Returns:
             Cypher query string
         """
@@ -182,6 +182,6 @@ class Neo4jQueryBuilder:
             query += "RETURN n, CASE WHEN n.__created_flag IS NOT NULL THEN 'created' ELSE 'updated' END AS operation"
         else:
             query += "RETURN n"
-        
+
         return query.strip()
 

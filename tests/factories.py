@@ -4,7 +4,7 @@ This module provides factory functions for creating Award, RawAward, and other
 test data objects with sensible defaults, reducing boilerplate in tests.
 """
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from src.models.award import Award, RawAward
@@ -137,7 +137,7 @@ class CETClassificationFactory:
             "classification": ClassificationLevel.HIGH,
             "primary": True,
             "evidence": [],
-            "classified_at": datetime.now(timezone.utc).isoformat(),
+            "classified_at": datetime.now(UTC).isoformat(),
             "taxonomy_version": "NSTC-2025Q1",
         }
         defaults.update(kwargs)
@@ -166,7 +166,7 @@ class CETAssessmentFactory:
             "entity_type": "award",
             "primary_cet": CETClassificationFactory.create(primary=True),
             "supporting_cets": [],
-            "classified_at": datetime.now(timezone.utc),
+            "classified_at": datetime.now(UTC),
             "taxonomy_version": "NSTC-2025Q1",
             "model_version": "v1.0.0",
         }

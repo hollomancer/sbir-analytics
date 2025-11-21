@@ -12,12 +12,11 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset_check
 from loguru import logger
 
 from src.exceptions import DependencyError

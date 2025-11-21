@@ -19,8 +19,6 @@ from itertools import product
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
-
 from src.extractors.uspto_extractor import USPTOExtractor
 
 from .utils import (

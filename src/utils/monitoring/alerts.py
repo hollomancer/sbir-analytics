@@ -108,7 +108,7 @@ class AlertThresholds:
     MEMORY_PRESSURE_CRITICAL_PERCENT = 95.0  # 95% of available memory
 
     @classmethod
-    def from_config(cls, config: Any) -> "AlertThresholds":
+    def from_config(cls, config: Any) -> AlertThresholds:
         """Create AlertThresholds from configuration.
 
         Args:
@@ -411,7 +411,7 @@ class AlertCollector:
 
         Args:
             output_path: Path to save alerts to
-        
+
         Returns:
             Path to saved file
         """

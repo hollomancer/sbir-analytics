@@ -11,7 +11,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -51,7 +51,7 @@ class FiscalParameterSweep:
     various sampling methods for uncertainty quantification.
     """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize the parameter sweep engine.
 
         Args:
@@ -120,7 +120,7 @@ class FiscalParameterSweep:
         return ranges
 
     def generate_monte_carlo_scenarios(
-        self, num_scenarios: int, random_seed: Optional[int] = None
+        self, num_scenarios: int, random_seed: int | None = None
     ) -> list[ParameterScenario]:
         """Generate scenarios using Monte Carlo sampling.
 
@@ -171,7 +171,7 @@ class FiscalParameterSweep:
         return scenarios
 
     def generate_latin_hypercube_scenarios(
-        self, num_scenarios: int, random_seed: Optional[int] = None
+        self, num_scenarios: int, random_seed: int | None = None
     ) -> list[ParameterScenario]:
         """Generate scenarios using Latin Hypercube Sampling (LHS).
 
@@ -386,7 +386,7 @@ class FiscalUncertaintyQuantifier:
     sensitivity indices from parameter sweep scenario results.
     """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize the uncertainty quantifier.
 
         Args:
@@ -398,7 +398,7 @@ class FiscalUncertaintyQuantifier:
     def compute_percentile_confidence_intervals(
         self,
         estimates: pd.Series,
-        confidence_levels: Optional[list[float]] = None,
+        confidence_levels: list[float] | None = None,
     ) -> dict[float, tuple[Decimal, Decimal]]:
         """Compute percentile-based confidence intervals.
 
@@ -442,9 +442,9 @@ class FiscalUncertaintyQuantifier:
     def compute_bootstrap_confidence_intervals(
         self,
         estimates: pd.Series,
-        confidence_levels: Optional[list[float]] = None,
+        confidence_levels: list[float] | None = None,
         num_samples: int = 1000,
-        random_seed: Optional[int] = None,
+        random_seed: int | None = None,
     ) -> dict[float, tuple[Decimal, Decimal]]:
         """Compute bootstrap confidence intervals.
 
@@ -558,7 +558,7 @@ class FiscalUncertaintyQuantifier:
         self,
         scenario_results_df: pd.DataFrame,
         target_column: str = "total_tax_receipt",
-        confidence_levels: Optional[list[float]] = None,
+        confidence_levels: list[float] | None = None,
     ) -> UncertaintyResult:
         """Quantify uncertainty from scenario results.
 

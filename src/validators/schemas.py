@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -46,9 +46,9 @@ class ValueRangeCheck(BaseModel):
     """Configuration for value range validation."""
 
     field: str
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
-    allowed_values: Optional[list[Any]] = None
+    min_value: float | None = None
+    max_value: float | None = None
+    allowed_values: list[Any] | None = None
 
     @field_validator("allowed_values")
     @classmethod

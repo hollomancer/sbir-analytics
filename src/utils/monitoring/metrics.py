@@ -26,7 +26,7 @@ class PerformanceMetrics:
     timestamp: str | None = None
 
     @classmethod
-    def from_benchmark(cls, benchmark_data: dict[str, Any]) -> "PerformanceMetrics":
+    def from_benchmark(cls, benchmark_data: dict[str, Any]) -> PerformanceMetrics:
         """Create PerformanceMetrics from benchmark JSON data.
 
         Args:
@@ -52,7 +52,7 @@ class PerformanceMetrics:
         )
 
     @classmethod
-    def from_asset_metadata(cls, metadata: dict[str, Any]) -> "PerformanceMetrics":
+    def from_asset_metadata(cls, metadata: dict[str, Any]) -> PerformanceMetrics:
         """Create PerformanceMetrics from Dagster asset metadata.
 
         Args:

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Optional, Union
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -35,7 +35,7 @@ class ShockAggregationStats:
     awards_per_shock_avg: float
 
 
-def calculate_fiscal_year(award_date: Optional[Union[date, datetime, str]]) -> Optional[int]:
+def calculate_fiscal_year(award_date: date | datetime | str | None) -> int | None:
     """Calculate government fiscal year from award date.
 
     Government fiscal years run from October 1 to September 30.
@@ -86,7 +86,7 @@ class FiscalShockAggregator:
     individual awards to aggregated shocks for audit purposes.
     """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize the fiscal shock aggregator.
 
         Args:
@@ -95,7 +95,7 @@ class FiscalShockAggregator:
         self.config = config or get_config().fiscal_analysis
         self.base_year = getattr(self.config, "base_year", 2023)
 
-    def extract_fiscal_year(self, award_row: pd.Series) -> Optional[int]:
+    def extract_fiscal_year(self, award_row: pd.Series) -> int | None:
         """Extract fiscal year from award row.
 
         Tries multiple sources in order:
@@ -145,7 +145,7 @@ class FiscalShockAggregator:
 
         return None
 
-    def extract_state_code(self, award_row: pd.Series) -> Optional[str]:
+    def extract_state_code(self, award_row: pd.Series) -> str | None:
         """Extract state code from award row.
 
         Tries multiple sources in order:
@@ -182,7 +182,7 @@ class FiscalShockAggregator:
 
         return None
 
-    def extract_shock_amount(self, award_row: pd.Series) -> Optional[Decimal]:
+    def extract_shock_amount(self, award_row: pd.Series) -> Decimal | None:
         """Extract inflation-adjusted award amount.
 
         Prefers inflation-adjusted amount, falls back to original amount.
@@ -216,7 +216,7 @@ class FiscalShockAggregator:
     def aggregate_shocks(
         self,
         awards_df: pd.DataFrame,
-        chunk_size: Optional[int] = None,
+        chunk_size: int | None = None,
     ) -> list[EconomicShock]:
         """Aggregate awards into economic shocks.
 
@@ -359,7 +359,7 @@ class FiscalShockAggregator:
         return shocks
 
     def aggregate_shocks_to_dataframe(
-        self, awards_df: pd.DataFrame, chunk_size: Optional[int] = None
+        self, awards_df: pd.DataFrame, chunk_size: int | None = None
     ) -> pd.DataFrame:
         """Aggregate shocks and return as DataFrame.
 

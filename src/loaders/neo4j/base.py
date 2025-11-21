@@ -383,7 +383,7 @@ class BaseNeo4jLoader(ABC):
 
                 # Use query builder for consistent query construction
                 from ..query_builder import Neo4jQueryBuilder
-                
+
                 query = Neo4jQueryBuilder.build_batch_match_update_query(
                     label=label,
                     key_property=key_property,

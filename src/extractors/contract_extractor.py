@@ -13,7 +13,6 @@ We filter specifically for contract transactions (type code 'contract').
 import gzip
 import json
 from collections.abc import Iterator
-from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -297,7 +296,7 @@ class ContractExtractor:
 
             # Parse dates using centralized utility with 8-digit format support
             from src.utils.date_utils import parse_date
-            
+
             action_date = parse_date(get_col(2), allow_8digit=True, strict=False)
             start_date = parse_date(get_col(71), allow_8digit=True, strict=False)  # period_of_performance_start_date
             end_date = parse_date(get_col(70), allow_8digit=True, strict=False)  # period_of_performance_current_end_date
@@ -510,7 +509,7 @@ class ContractExtractor:
             logger.info(f"Writing {len(all_contracts):,} contracts to {output_file}")
             df = pd.DataFrame(all_contracts)
             from src.utils.data.file_io import save_dataframe_parquet
-            
+
             save_dataframe_parquet(df, output_file, index=False, compression="snappy")
             logger.success(f"Contracts saved to {output_file}")
         else:

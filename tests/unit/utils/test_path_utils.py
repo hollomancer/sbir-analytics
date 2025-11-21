@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -206,7 +205,7 @@ class TestEnsurePathExists:
     def test_handles_string_path(self, tmp_path: Path) -> None:
         """Test that string paths are accepted."""
         file_path = tmp_path / "subdir" / "file.txt"
-        result = ensure_path_exists(str(file_path), create_parent=True, create_file=True)
+        ensure_path_exists(str(file_path), create_parent=True, create_file=True)
         assert file_path.exists()
 
 

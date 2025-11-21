@@ -105,7 +105,7 @@ class APICache(BaseDataFrameCache):
                 continue
 
             try:
-                with open(metadata_path, "r") as f:
+                with open(metadata_path) as f:
                     metadata = json.load(f)
             except Exception:
                 # Corrupted metadata
@@ -160,11 +160,11 @@ class APICache(BaseDataFrameCache):
 
             cache_key = cache_file.stem
             metadata_path = self._get_metadata_path(cache_key)
-            
+
             is_expired = False
             if metadata_path.exists():
                 try:
-                    with open(metadata_path, "r") as f:
+                    with open(metadata_path) as f:
                         metadata = json.load(f)
                     if self._is_expired(metadata):
                         is_expired = True
@@ -173,7 +173,7 @@ class APICache(BaseDataFrameCache):
             else:
                 # No metadata = effectively expired/invalid
                 is_expired = True
-            
+
             if is_expired:
                 expired_entries += 1
 

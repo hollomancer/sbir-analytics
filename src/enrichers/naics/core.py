@@ -58,7 +58,7 @@ class NAICSEnricher:
     def load_usaspending_index(self, force: bool = False) -> None:
         cache = Path(self.config.cache_path)
         from src.utils.common.path_utils import ensure_parent_dir
-        
+
         ensure_parent_dir(cache)
         if cache.exists() and not force:
             logger.info("Loading persisted NAICS index from %s", cache)
@@ -173,7 +173,7 @@ class NAICSEnricher:
         # ensure deterministic ordering
         df = df.sort_values(["key_type", "key"]).reset_index(drop=True)
         from src.utils.data.file_io import save_dataframe_parquet
-        
+
         save_dataframe_parquet(df, cache, index=False)
         logger.info("Persisted NAICS index to %s (rows=%d)", cache, len(df))
 

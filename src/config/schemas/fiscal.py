@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from .common import FloatRangeValidatorMixin, PercentageMappingMixin
+from .common import PercentageMappingMixin
 
 
 class TaxParameterConfig(BaseModel):

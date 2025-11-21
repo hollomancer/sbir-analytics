@@ -49,6 +49,7 @@ from typing import Any
 import numpy as np
 from loguru import logger
 
+
 try:
     from huggingface_hub import InferenceClient as HFInferenceClient
     from huggingface_hub.utils import HfHubHTTPError
@@ -178,7 +179,6 @@ class HuggingFaceInferenceClient:
             )
 
             retry_count = 0
-            last_error = None
 
             while retry_count <= (max_retries if retry_on_error else 0):
                 try:
@@ -196,7 +196,6 @@ class HuggingFaceInferenceClient:
                     break  # Success, exit retry loop
 
                 except HfHubHTTPError as e:
-                    last_error = e
                     retry_count += 1
 
                     if retry_count <= max_retries and retry_on_error:

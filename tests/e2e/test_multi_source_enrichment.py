@@ -10,15 +10,11 @@ This test uses sample fixtures by default but can use real data if marked with
 @pytest.mark.real_data or USE_REAL_SBIR_DATA=1 environment variable.
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
-from src.extractors.sam_gov import SAMGovExtractor
-from src.extractors.sbir import SbirDuckDBExtractor
 
 
 pytestmark = pytest.mark.e2e

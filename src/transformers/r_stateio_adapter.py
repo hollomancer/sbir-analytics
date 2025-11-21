@@ -140,7 +140,7 @@ class RStateIOAdapter(EconomicModelInterface):
         self.cache_dir = Path(cache_dir)
         if self.cache_enabled:
             from src.utils.common.path_utils import ensure_dir
-            
+
             ensure_dir(self.cache_dir)
 
         self._cache: dict[str, pd.DataFrame] = {}
@@ -263,7 +263,7 @@ class RStateIOAdapter(EconomicModelInterface):
         cache_file = self.cache_dir / f"{cache_key}.parquet"
         try:
             from src.utils.data.file_io import save_dataframe_parquet
-            
+
             save_dataframe_parquet(result_df, cache_file, index=False)
             logger.debug(f"Cached results to {cache_file}")
         except Exception as e:

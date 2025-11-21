@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any, TypeVar
 
+
 # psutil is optional; when available we record memory usage
 try:
     import psutil

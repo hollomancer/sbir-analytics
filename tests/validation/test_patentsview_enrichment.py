@@ -122,7 +122,7 @@ def process_company(
             )
 
             # Filter to only reassigned patents
-            reassigned_df = reassignments_df[reassignments_df["reassigned"] == True]
+            reassigned_df = reassignments_df[reassignments_df["reassigned"]]
             reassigned_count = len(reassigned_df)
 
             if reassigned_count > 0:

@@ -14,6 +14,7 @@ The test size is configurable via environment variable:
 """
 
 import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -23,8 +24,6 @@ import pytest
 pytest.importorskip("sklearn", reason="scikit-learn required for integration training")
 pytest.importorskip("pandas", reason="pandas required for integration training")
 
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
 
 from src.ml.models.cet_classifier import ApplicabilityModel  # type: ignore
 from src.models.cet_models import CETArea  # type: ignore

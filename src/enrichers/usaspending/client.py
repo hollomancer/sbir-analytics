@@ -7,9 +7,9 @@ Supports rate limiting, retry logic, delta detection, and state management.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
-import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -68,7 +68,7 @@ class USAspendingAPIClient:
             self.config.get("state_file", "data/state/enrichment_refresh_state.json")
         )
         from src.utils.common.path_utils import ensure_parent_dir
-        
+
         ensure_parent_dir(self.state_file)
 
         self._client = http_client or httpx.AsyncClient(timeout=self.timeout)
@@ -536,7 +536,7 @@ class USAspendingAPIClient:
         """
         try:
             from src.utils.common.path_utils import ensure_parent_dir
-        
+
             ensure_parent_dir(self.state_file)
             with open(self.state_file, "w") as f:
                 json.dump(state, f, indent=2, default=str)

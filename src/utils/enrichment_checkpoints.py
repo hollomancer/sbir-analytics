@@ -74,7 +74,7 @@ class CheckpointStore:
             parquet_path = Path("data/state/enrichment_checkpoints.parquet")
         self.parquet_path = Path(parquet_path)
         from src.utils.common.path_utils import ensure_parent_dir
-        
+
         ensure_parent_dir(self.parquet_path)
 
     def save_checkpoint(self, checkpoint: EnrichmentCheckpoint) -> None:
@@ -180,7 +180,7 @@ class CheckpointStore:
         """
         try:
             from src.utils.data.file_io import save_dataframe_parquet
-            
+
             save_dataframe_parquet(df, self.parquet_path, index=False, engine="pyarrow")
         except Exception as e:
             logger.error(f"Failed to save checkpoints: {e}")

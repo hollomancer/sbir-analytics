@@ -271,7 +271,7 @@ def generate_quality_report(
     lines.append(f"Average Confidence: {resolution_validation['avg_confidence']:.1%}")
 
     stats = resolution_validation["stats"]
-    lines.append(f"\nResolution Statistics:")
+    lines.append("\nResolution Statistics:")
     lines.append(f"  Total Awards: {stats['total_awards']:,}")
     lines.append(f"  Resolved: {stats['resolved_awards']:,}")
     lines.append(f"  Unresolved: {stats['unresolved_awards']:,}")
@@ -279,7 +279,7 @@ def generate_quality_report(
     lines.append(f"  States with Resolution: {stats['states_with_resolution']}/{stats['total_states']}")
 
     if stats["resolution_methods"]:
-        lines.append(f"\nResolution Methods Used:")
+        lines.append("\nResolution Methods Used:")
         for method, count in stats["resolution_methods"].items():
             pct = count / stats["resolved_awards"] * 100 if stats["resolved_awards"] > 0 else 0
             lines.append(f"  {method}: {count:,} ({pct:.1f}%)")
@@ -295,7 +295,7 @@ def generate_quality_report(
     alloc_stats = allocation_validation["stats"]
     if alloc_stats:
         lines.append(f"Average Confidence: {alloc_stats['avg_allocation_confidence']:.1%}")
-        lines.append(f"\nAllocation Statistics:")
+        lines.append("\nAllocation Statistics:")
         lines.append(f"  Total Allocations: {alloc_stats['total_allocations']:,}")
         lines.append(f"  Unique Districts: {alloc_stats['unique_districts']}")
         lines.append(f"  Total Awards Allocated: ${alloc_stats['total_awards_allocated']:,.2f}")

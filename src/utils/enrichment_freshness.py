@@ -33,7 +33,7 @@ class FreshnessStore:
             parquet_path = Path("data/derived/enrichment_freshness.parquet")
         self.parquet_path = Path(parquet_path)
         from src.utils.common.path_utils import ensure_parent_dir
-        
+
         ensure_parent_dir(self.parquet_path)
 
     def load_all(self) -> pd.DataFrame:
@@ -144,7 +144,7 @@ class FreshnessStore:
         """
         try:
             from src.utils.data.file_io import save_dataframe_parquet
-            
+
             save_dataframe_parquet(df, self.parquet_path, index=False, engine="pyarrow")
             logger.debug(f"Saved {len(df)} freshness records to {self.parquet_path}")
         except Exception as e:

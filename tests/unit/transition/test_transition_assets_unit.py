@@ -218,10 +218,7 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
 
-    from src.assets.transition import (
-        transformed_transition_evidence,
-        transformed_transition_scores,
-    )
+    from src.assets.transition import transformed_transition_evidence, transformed_transition_scores
 
     # Reuse consistent fixtures (contracts + awards + vendor_resolution outputs)
     contracts_df = pd.DataFrame(

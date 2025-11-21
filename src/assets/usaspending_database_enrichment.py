@@ -4,7 +4,6 @@ This module processes USAspending PostgreSQL database dumps stored in S3
 to extract and enrich SBIR award data with transaction-level details.
 """
 
-from typing import Any
 
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
@@ -13,7 +12,7 @@ from loguru import logger
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..utils.cloud_storage import build_s3_path, find_latest_usaspending_dump
+from ..utils.cloud_storage import find_latest_usaspending_dump
 
 
 @asset(
@@ -45,7 +44,7 @@ def sbir_relevant_usaspending_transactions(
 
     # PRIMARY: Get dump file path from S3 (required)
     s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
-    
+
     if not s3_bucket:
         raise ExtractionError(
             "S3 bucket not configured. USAspending database dump from S3 is required.",
@@ -53,14 +52,14 @@ def sbir_relevant_usaspending_transactions(
             operation="resolve_dump_path",
             details={"config_s3": hasattr(config, "s3")},
         )
-    
+
     # Find the latest dump file in S3
     # Format: raw/usaspending/database/YYYY-MM-DD/usaspending-db_YYYYMMDD.zip
     # Prefer test database for faster processing, fallback to full
     dump_path = find_latest_usaspending_dump(
         bucket=s3_bucket, database_type="test"
     ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
-    
+
     if not dump_path:
         # FALLBACK: Try API if S3 dump not available
         context.log.warning(
@@ -80,7 +79,7 @@ def sbir_relevant_usaspending_transactions(
                 "database_types_checked": ["test", "full"],
             },
         )
-    
+
     context.log.info(f"Using latest S3 dump (PRIMARY): {dump_path}")
 
     context.log.info(
@@ -254,19 +253,19 @@ def sbir_company_usaspending_recipients(
 
     # PRIMARY: Get dump file path from S3 (required)
     s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
-    
+
     if not s3_bucket:
         raise ExtractionError(
             "S3 bucket not configured. USAspending database dump from S3 is required.",
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
         )
-    
+
     # Find the latest dump file in S3
     dump_path = find_latest_usaspending_dump(
         bucket=s3_bucket, database_type="test"
     ) or find_latest_usaspending_dump(bucket=s3_bucket, database_type="full")
-    
+
     if not dump_path:
         raise ExtractionError(
             "USAspending database dump not found in S3. "
@@ -275,7 +274,7 @@ def sbir_company_usaspending_recipients(
             operation="resolve_dump_path",
             details={"s3_bucket": s3_bucket},
         )
-    
+
     context.log.info(f"Using latest S3 dump (PRIMARY): {dump_path}")
 
     context.log.info("Extracting recipients for SBIR companies")

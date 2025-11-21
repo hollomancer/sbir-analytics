@@ -13,11 +13,8 @@ from .core import (
     time_function,
 )
 from .metrics import MetricComparison, PerformanceMetrics
-from .reporting import (
-    PerformanceReporter,
-    analyze_performance_trend,
-    load_historical_metrics,
-)
+from .reporting import PerformanceReporter, analyze_performance_trend, load_historical_metrics
+
 
 __all__ = [
     "PerformanceMonitor",

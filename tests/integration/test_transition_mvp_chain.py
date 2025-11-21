@@ -102,10 +102,7 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition import (  # noqa: WPS433
-        AssetExecutionContext,
-        contracts_ingestion,
-    )
+    from src.assets.transition import AssetExecutionContext, contracts_ingestion  # noqa: WPS433
 
     ctx = AssetExecutionContext()
     result_df, metadata = _unwrap_output(contracts_ingestion(ctx))

@@ -7,10 +7,10 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from tests.utils.fixtures import create_sample_cet_area
 from src.ml.models.patent_classifier import PatentCETClassifier
 from src.ml.models.trainer import CETModelTrainer
 from src.models.cet_models import CETArea, TrainingDataset, TrainingExample
+from tests.utils.fixtures import create_sample_cet_area
 
 
 pytestmark = pytest.mark.fast

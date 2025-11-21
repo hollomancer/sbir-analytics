@@ -1,6 +1,6 @@
 """Pydantic models for SBIR award data."""
 
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -437,6 +437,7 @@ class Award(BaseModel):
         rather than rejecting the record.
         """
         from datetime import date as date_cls
+
         from loguru import logger
 
         today = date_cls.today()
@@ -481,6 +482,7 @@ class Award(BaseModel):
         if v is None:
             return v
         from datetime import date as date_cls
+
         from loguru import logger
 
         today = date_cls.today()
@@ -732,7 +734,7 @@ class RawAward(BaseModel):
         # Parse dates using centralized utility
         from src.utils.common.date_utils import parse_date
 
-        
+
         date_fields = [
             "award_date",
             "proposal_award_date",

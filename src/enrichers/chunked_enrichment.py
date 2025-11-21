@@ -81,7 +81,7 @@ class ChunkProgress:
             return None
 
         from src.utils.common.path_utils import ensure_dir
-        
+
         ensure_dir(self.checkpoint_dir)
         checkpoint_path = self.checkpoint_dir / f"checkpoint_{self.chunks_processed:04d}.json"
 
@@ -166,7 +166,7 @@ class ChunkedEnricher:
             DataFrame chunks of size chunk_size
         """
         from src.utils.chunking import chunk_dataframe
-        
+
         yield from chunk_dataframe(self.sbir_df, self.chunk_size)
 
     def enrich_chunk(

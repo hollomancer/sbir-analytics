@@ -345,7 +345,7 @@ class PatentLoader(BaseNeo4jLoader):
                     "ASSIGNEE": "PATENT_ASSIGNEE",
                     "ASSIGNOR": "PATENT_ASSIGNOR",
                 }.get(entity_type, "PATENT_ASSIGNEE")
-                
+
                 individual_props = {
                     "individual_id": ind_id,
                     "individual_type": ind_type,

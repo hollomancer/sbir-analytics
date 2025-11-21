@@ -1,14 +1,11 @@
-from datetime import date
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 
 pytestmark = pytest.mark.fast
 
 from src.extractors.sbir import SbirDuckDBExtractor
-from src.models.award import RawAward
 
 
 FIXTURE_CSV = Path("tests/fixtures/sbir_sample.csv")

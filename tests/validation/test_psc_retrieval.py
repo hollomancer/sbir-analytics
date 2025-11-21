@@ -9,14 +9,16 @@ Run this to verify PSC codes are being successfully retrieved.
 """
 
 import sys
-import asyncio
 from pathlib import Path
+
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.enrichers.company_categorization import retrieve_company_contracts_api
 from loguru import logger
+
+from src.enrichers.company_categorization import retrieve_company_contracts_api
+
 
 # Configure logger for testing
 logger.remove()
@@ -95,7 +97,7 @@ def test_psc_retrieval():
                 amount = row["award_amount"]
                 desc = (row["description"] or "N/A")[:60]
                 print(f"  Award: {award_id}")
-                print(f"    PSC: (missing)")
+                print("    PSC: (missing)")
                 print(f"    Amount: ${amount:,.0f}")
                 print(f"    Description: {desc}")
                 print()

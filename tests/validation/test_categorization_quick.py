@@ -5,9 +5,10 @@ Run this to verify the basic classification logic works correctly.
 """
 
 from src.transformers.company_categorization import (
-    classify_contract,
     aggregate_company_classification,
+    classify_contract,
 )
+
 
 print("=" * 80)
 print("Company Categorization - Quick Test")

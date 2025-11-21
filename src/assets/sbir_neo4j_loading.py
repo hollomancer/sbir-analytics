@@ -3,20 +3,27 @@
 import json
 import re
 import time
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetExecutionContext, Output, asset, asset_check
+from dagster import (
+    AssetCheckResult,
+    AssetCheckSeverity,
+    AssetExecutionContext,
+    Output,
+    asset,
+    asset_check,
+)
 from loguru import logger
-
-from datetime import date
 
 from ..config.loader import get_config
 from ..loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
 from ..loaders.neo4j.organizations import OrganizationLoader
 from ..models.award import Award
 from ..utils.company_canonicalizer import canonicalize_companies_from_awards
+
 
 # State name to code mapping
 STATE_NAME_TO_CODE = {
@@ -333,14 +340,14 @@ def neo4j_sbir_awards(
         config = get_config()
         dedup_config = config.organization_deduplication
         context.log.info("Pre-processing: Canonicalizing companies...")
-        
+
         canonical_map = canonicalize_companies_from_awards(
             validated_sbir_awards,
             high_threshold=dedup_config.get("high_threshold", 90),
             low_threshold=dedup_config.get("low_threshold", 75),
             enhanced_config=dedup_config.get("enhanced_matching"),
         )
-        
+
         context.log.info(f"Canonicalized {len(canonical_map)} companies")
 
         # Convert DataFrame rows to Award models, then to Neo4j node properties
@@ -462,7 +469,7 @@ def neo4j_sbir_awards(
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
                 # Use canonical mapping from pre-loading deduplication
                 normalized_company_name = normalize_company_name(award.company_name) if award.company_name else ""
-                
+
                 # Build original key
                 if award.company_uei:
                     original_key = award.company_uei
@@ -472,11 +479,11 @@ def neo4j_sbir_awards(
                     original_key = f"NAME:{normalized_company_name}"
                 else:
                     original_key = None
-                
+
                 # Map to canonical using pre-loading deduplication result
                 company_id = None
                 company_id_type = None
-                
+
                 if original_key and original_key in canonical_map:
                     canonical_key = canonical_map[original_key]
                     if canonical_key.startswith("UEI:"):
@@ -509,7 +516,7 @@ def neo4j_sbir_awards(
                 if company_id:
                     # Generate organization_id from company_id
                     organization_id = f"org_company_{company_id}"
-                    
+
                     if company_id not in company_nodes_map:
                         company_props = {
                             "organization_id": organization_id,
@@ -798,13 +805,13 @@ def neo4j_sbir_awards(
         sub_agency_orgs_map = {}
         award_agency_rels = []
         agency_subsidiary_pairs = []
-        
+
         for award in award_objects:
             if award.agency and award.agency_name:
                 agency_code = award.agency
                 agency_name = award.agency_name
                 parent_organization_id = f"org_agency_{agency_code}"
-                
+
                 # Create parent agency node if not exists
                 if parent_organization_id not in agency_orgs_map:
                     agency_props = {
@@ -817,14 +824,14 @@ def neo4j_sbir_awards(
                         "agency_name": agency_name,
                     }
                     agency_orgs_map[parent_organization_id] = agency_props
-                
+
                 # Handle sub-agency if present
                 target_organization_id = parent_organization_id
                 if award.branch and award.sub_agency:
                     sub_agency_code = award.sub_agency
                     sub_agency_name = award.sub_agency_name or award.branch
                     sub_organization_id = f"org_agency_{agency_code}_{sub_agency_code}"
-                    
+
                     # Create sub-agency node if not exists
                     if sub_organization_id not in sub_agency_orgs_map:
                         sub_agency_props = {
@@ -839,7 +846,7 @@ def neo4j_sbir_awards(
                             "sub_agency_name": sub_agency_name,
                         }
                         sub_agency_orgs_map[sub_organization_id] = sub_agency_props
-                    
+
                     # Track SUBSIDIARY_OF relationship (sub-agency -> parent agency)
                     agency_subsidiary_pairs.append((
                         "organization_id",
@@ -848,7 +855,7 @@ def neo4j_sbir_awards(
                         parent_organization_id,
                     ))
                     target_organization_id = sub_organization_id
-                
+
                 # Create FUNDED_BY relationship (to parent agency or sub-agency)
                 award_agency_rels.append(
                     (
@@ -862,7 +869,7 @@ def neo4j_sbir_awards(
                         None,
                     )
                 )
-        
+
         # Load Agency Organization nodes (parent agencies)
         if agency_orgs_map:
             agency_nodes_list = list(agency_orgs_map.values())
@@ -871,7 +878,7 @@ def neo4j_sbir_awards(
             )
             metrics = agency_metrics
             context.log.info(f"Loaded {len(agency_nodes_list)} Organization nodes (parent agencies)")
-        
+
         # Load Sub-Agency Organization nodes
         if sub_agency_orgs_map:
             sub_agency_nodes_list = list(sub_agency_orgs_map.values())
@@ -880,13 +887,13 @@ def neo4j_sbir_awards(
             )
             metrics = sub_agency_metrics
             context.log.info(f"Loaded {len(sub_agency_nodes_list)} Organization nodes (sub-agencies)")
-        
+
         # Create FUNDED_BY relationships
         if award_agency_rels:
             rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)
             metrics = rel_metrics
             context.log.info(f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)")
-        
+
         # Create SUBSIDIARY_OF relationships (sub-agency -> parent agency)
         if agency_subsidiary_pairs:
             org_loader = OrganizationLoader(client)

@@ -24,6 +24,7 @@ from typing import Any, Literal
 import numpy as np
 from loguru import logger
 
+
 try:
     from huggingface_hub import InferenceClient
 except ImportError:
@@ -57,6 +58,7 @@ class EmbeddingResult:
 
 
 from src.ml.config import PaECTERClientConfig
+
 
 class PaECTERClient:
     """Client for interacting with the PaECTER embedding model."""
@@ -158,7 +160,7 @@ class PaECTERClient:
             cached_embeddings = []
             texts_to_process = []
             indices_to_process = []
-            
+
             for i, text in enumerate(texts):
                 if text in self.cache:
                     cached_embeddings.append((i, self.cache[text]))
@@ -194,15 +196,15 @@ class PaECTERClient:
                 )
 
             if self.config.enable_cache:
-                for text, embedding in zip(texts_to_process, new_embeddings):
+                for text, embedding in zip(texts_to_process, new_embeddings, strict=False):
                     self.cache[text] = embedding
 
                 # Combine cached and new embeddings
                 embeddings = np.zeros((len(texts), self.embedding_dim))
                 for i, embedding in cached_embeddings:
                     embeddings[i] = embedding
-                
-                for i, embedding in zip(indices_to_process, new_embeddings):
+
+                for i, embedding in zip(indices_to_process, new_embeddings, strict=False):
                     embeddings[i] = embedding
             else:
                 embeddings = new_embeddings

@@ -4,19 +4,16 @@ Calculates tax revenue and job creation impacts from SBIR awards using
 StateIO economic models.
 """
 
-from typing import Any
 
 import pandas as pd
 from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
-    MetadataValue,
     Output,
     asset,
     asset_check,
 )
-from loguru import logger
 
 from ..config.loader import get_config
 from ..transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator

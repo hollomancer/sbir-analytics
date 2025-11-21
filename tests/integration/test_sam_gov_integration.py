@@ -7,7 +7,6 @@ Tests the complete SAM.gov data pipeline:
 - API client fallback (if needed)
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

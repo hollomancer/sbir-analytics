@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 
 from .base import BaseNeo4jLoader
-from .client import LoadMetrics, Neo4jClient
+from .client import Neo4jClient
 
 
 class TransitionLoader(BaseNeo4jLoader):

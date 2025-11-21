@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.enrichment_metrics import EnrichmentFreshnessMetrics

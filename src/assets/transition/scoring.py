@@ -77,7 +77,7 @@ def transformed_transition_scores(
     def _parse_date_any(v: Any):
         """Parse date using centralized utility, returning datetime."""
         from src.utils.date_utils import parse_date
-        
+
         result = parse_date(v, return_datetime=True, strict=False)
         return result if isinstance(result, datetime) else None
 

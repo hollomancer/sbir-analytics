@@ -19,6 +19,7 @@ from loguru import logger
 from .naics_bea_mapper import NAICSBEAMapper
 from .r_stateio_adapter import RStateIOAdapter
 
+
 if TYPE_CHECKING:
     from ..config import Config
 

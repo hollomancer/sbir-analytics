@@ -14,7 +14,6 @@ Key Functions:
     - aggregate_company_classification: Aggregate contract classifications to company level
 """
 
-from typing import Union
 
 from loguru import logger
 
@@ -128,7 +127,7 @@ def classify_contract(contract: dict) -> ContractClassification:
                     award_amount=award_amount,
                     sbir_phase=sbir_phase,
                 )
-        
+
         # Fixed Price + product keywords → Product
         product_match = _check_product_keywords(description)
         if product_match:
@@ -144,7 +143,7 @@ def classify_contract(contract: dict) -> ContractClassification:
                 award_amount=award_amount,
                 sbir_phase=sbir_phase,
             )
-        
+
         # Fixed Price without clear product indicators → default to Product (but lower confidence)
         # This reflects that Fixed Price contracts are typically product-based
         return ContractClassification(
@@ -451,7 +450,7 @@ def _check_product_keywords(description: str) -> bool:
 
 
 def aggregate_company_classification(
-    contracts: list[Union[dict, ContractClassification]],
+    contracts: list[dict | ContractClassification],
     company_uei: str | None = None,
     company_name: str = "",
 ) -> CompanyClassification:
@@ -556,24 +555,24 @@ def aggregate_company_classification(
     # Need to track original contract dicts for agency info since ContractClassification doesn't store it
     agency_dollars: dict[str, float] = {}
     original_contract_dicts = [c for c in contracts if isinstance(c, dict)]
-    
+
     for c in original_contract_dicts:
         # Try multiple possible field names for agency
         awarding_agency = (
-            c.get("awarding_agency") 
+            c.get("awarding_agency")
             or c.get("Awarding Agency")
-            or c.get("agency") 
+            or c.get("agency")
             or c.get("Agency")
             or None
         )
         award_amount = c.get("award_amount") or c.get("award_amount") or 0.0
-        
+
         if awarding_agency and awarding_agency != "Unknown" and awarding_agency:
             agency_dollars[awarding_agency] = agency_dollars.get(awarding_agency, 0.0) + award_amount
         elif not awarding_agency and len(original_contract_dicts) > 0:
             # Debug: log if we're missing agency info
             logger.debug(f"Contract {c.get('award_id', 'unknown')} missing agency info. Available keys: {list(c.keys())[:10]}")
-    
+
     # Convert to percentages
     agency_breakdown: dict[str, float] = {}
     if total_dollars > 0:

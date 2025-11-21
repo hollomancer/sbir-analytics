@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.error_handling import (

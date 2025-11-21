@@ -26,12 +26,7 @@ from typing import Any
 import httpx
 import pandas as pd
 from loguru import logger
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from src.config.loader import get_config
 from src.exceptions import APIError, ConfigurationError
@@ -40,14 +35,14 @@ from src.utils.cache.api_cache import APICache
 
 class RateLimiter:
     """Thread-safe rate limiter for PatentsView API calls.
-    
+
     Tracks request timestamps and enforces rate limits by waiting when necessary.
     Thread-safe for use in parallel processing scenarios.
     """
 
     def __init__(self, rate_limit_per_minute: int = 60):
         """Initialize rate limiter.
-        
+
         Args:
             rate_limit_per_minute: Maximum requests allowed per minute
         """
@@ -57,7 +52,7 @@ class RateLimiter:
 
     def wait_if_needed(self) -> None:
         """Wait if rate limit would be exceeded.
-        
+
         Removes requests older than 1 minute and waits if we're at the limit.
         Thread-safe for concurrent access.
         """
@@ -95,7 +90,7 @@ class RateLimiter:
 
 class PatentsViewClient:
     """Client for interacting with PatentsView API (PatentSearch API).
-    
+
     Provides methods to query patents by assignee, find assignee IDs,
     and track patent assignment history.
     """
@@ -108,7 +103,7 @@ class PatentsViewClient:
         timeout_seconds: int | None = None,
     ):
         """Initialize PatentsView client.
-        
+
         Args:
             api_key: PatentsView API key (if None, reads from config/env)
             base_url: Base URL for API (if None, reads from config)
@@ -125,7 +120,7 @@ class PatentsViewClient:
             if not api_key:
                 raise ConfigurationError(
                     f"PatentsView API key not found. Set {api_key_env_var} environment variable.",
-                    config_key=f"enrichment.patentsview_api.api_key_env_var",
+                    config_key="enrichment.patentsview_api.api_key_env_var",
                 )
 
         self.api_key = api_key
@@ -171,16 +166,16 @@ class PatentsViewClient:
         max_retries: int = 3,
     ) -> dict[str, Any]:
         """Make an API request with rate limiting and retry logic.
-        
+
         Args:
             endpoint: API endpoint path (e.g., "/v1/patent")
             method: HTTP method (default: POST)
             json_data: JSON payload for POST requests
             max_retries: Maximum retry attempts
-            
+
         Returns:
             JSON response as dictionary
-            
+
         Raises:
             APIError: If request fails after retries
         """
@@ -243,13 +238,13 @@ class PatentsViewClient:
         max_patents: int = 1000,
     ) -> list[dict[str, Any]]:
         """Query patents assigned to a company.
-        
+
         Args:
             company_name: Company name to search for
             uei: Optional UEI identifier (not used by PatentsView, but kept for consistency)
             duns: Optional DUNS identifier (not used by PatentsView, but kept for consistency)
             max_patents: Maximum number of patents to retrieve (default: 1000)
-            
+
         Returns:
             List of patent records with patent_number, patent_title, patent_date, etc.
         """
@@ -321,10 +316,10 @@ class PatentsViewClient:
 
     def query_assignee_by_name(self, company_name: str) -> list[dict[str, Any]]:
         """Query assignee IDs by company name (fuzzy matching).
-        
+
         Args:
             company_name: Company name to search for
-            
+
         Returns:
             List of assignee records with assignee_id, assignee_organization, etc.
         """
@@ -346,14 +341,14 @@ class PatentsViewClient:
 
     def query_patent_assignments(self, patent_number: str) -> list[dict[str, Any]]:
         """Query assignment history for a specific patent.
-        
+
         Note: PatentsView API may not have direct assignment history endpoint.
         This method queries the patent and extracts assignee information.
         For full assignment history, may need to use USPTO bulk data.
-        
+
         Args:
             patent_number: Patent number to query
-            
+
         Returns:
             List of assignment records (may be limited by API capabilities)
         """
@@ -412,13 +407,13 @@ def retrieve_company_patents(
     client: PatentsViewClient | None = None,
 ) -> pd.DataFrame:
     """Retrieve patents for a company from PatentsView API.
-    
+
     Args:
         company_name: Company name to search for
         uei: Optional UEI identifier
         duns: Optional DUNS identifier
         client: Optional PatentsViewClient instance (creates new if None)
-        
+
     Returns:
         DataFrame with patent details: patent_number, patent_title, patent_date, etc.
     """
@@ -464,12 +459,12 @@ def check_patent_reassignments(
     client: PatentsViewClient | None = None,
 ) -> pd.DataFrame:
     """Check if patents were reassigned to different companies.
-    
+
     Args:
         patent_numbers: List of patent numbers to check
         original_company_name: Original company name (to compare against)
         client: Optional PatentsViewClient instance (creates new if None)
-        
+
     Returns:
         DataFrame with reassignment details: patent_number, original_assignee,
         current_assignee, reassigned (boolean)

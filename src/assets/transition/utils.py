@@ -9,10 +9,8 @@ This module provides:
 
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -23,6 +21,7 @@ from loguru import logger
 from src.config.loader import get_config  # noqa: F401
 from src.extractors.contract_extractor import ContractExtractor  # noqa: F401
 from src.transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
+
 
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
@@ -38,12 +37,12 @@ try:
     from dagster import (
         AssetCheckResult,
         AssetCheckSeverity,
-        AssetExecutionContext as _RealAssetExecutionContext,
         MetadataValue,
         Output,
         asset,
         asset_check,
     )
+    from dagster import AssetExecutionContext as _RealAssetExecutionContext
 
     # Wrap the real AssetExecutionContext to accept no args for testing
     class AssetExecutionContext:
@@ -108,8 +107,6 @@ except Exception:  # pragma: no cover
 
 
 # Import centralized file I/O utilities
-from src.utils.data.file_io import save_dataframe_parquet, write_json
-from src.utils.common.path_utils import ensure_parent_dir as _ensure_parent_dir
 
 
 def now_utc_iso() -> str:
@@ -166,7 +163,7 @@ TRANSITION_LOAD_SUCCESS_THRESHOLD = _env_float(
 
 def _get_neo4j_driver() -> Any:
     """Create and return a Neo4j driver, or None if unavailable.
-    
+
     DEPRECATED: Use _get_neo4j_client() instead. This function is kept for
     backward compatibility with TransitionProfileLoader.
     """

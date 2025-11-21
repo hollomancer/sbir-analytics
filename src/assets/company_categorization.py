@@ -16,15 +16,11 @@ from dagster import (
     asset,
     asset_check,
 )
-from loguru import logger
 
 from ..config.loader import get_config
 from ..enrichers.company_categorization import retrieve_company_contracts
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..transformers.company_categorization import (
-    aggregate_company_classification,
-    classify_contract,
-)
+from ..transformers.company_categorization import aggregate_company_classification
 
 
 @asset(

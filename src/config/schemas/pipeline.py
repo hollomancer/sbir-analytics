@@ -19,7 +19,13 @@ from .data_pipeline import (
 from .enrichment import EnrichmentConfig, EnrichmentRefreshConfig
 from .fiscal import FiscalAnalysisConfig
 from .reporting import StatisticalReportingConfig
-from .runtime import CLIConfig, CompanyCategorizationConfig, LoggingConfig, MetricsConfig, PathsConfig
+from .runtime import (
+    CLIConfig,
+    CompanyCategorizationConfig,
+    LoggingConfig,
+    MetricsConfig,
+    PathsConfig,
+)
 
 
 class PipelineConfig(BaseModel):

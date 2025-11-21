@@ -500,7 +500,7 @@ class StatisticalReporter:
                 # Handle executive summary separately as it doesn't have a processor yet
                 file_path = self._generate_executive_artifact(pipeline_metrics, collection)
                 file_size = file_path.stat().st_size if file_path.exists() else 0
-                
+
                 return ReportArtifact(
                     format=format,
                     file_path=file_path,

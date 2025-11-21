@@ -98,7 +98,7 @@ class USAspendingCache(BaseDataFrameCache):
                 if not metadata_path.exists():
                     continue
                 try:
-                    with open(metadata_path, "r") as f:
+                    with open(metadata_path) as f:
                         metadata = json.load(f)
                     if not self._is_expired(metadata):
                         continue
@@ -142,7 +142,7 @@ class USAspendingCache(BaseDataFrameCache):
             metadata_path = self._get_metadata_path(cache_key)
             if metadata_path.exists():
                 try:
-                    with open(metadata_path, "r") as f:
+                    with open(metadata_path) as f:
                         metadata = json.load(f)
                     if self._is_expired(metadata):
                         expired_entries += 1

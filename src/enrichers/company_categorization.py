@@ -186,7 +186,7 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
         upper = variation.upper().strip()
         if upper != variation and len(upper) >= 5:  # Only add if different from original
             uppercase_variations.append(upper)
-    
+
     # Add uppercase variations after the original variations but before the base name
     variations = variations[:3] + uppercase_variations + variations[3:]
 
@@ -204,7 +204,7 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
             existing = seen[normalized_check]
             if variation.isupper() and not existing.isupper():
                 seen[normalized_check] = variation
-    
+
     # Convert back to list, preserving original order for first occurrence of each
     unique_variations = []
     seen_order = set()
@@ -281,7 +281,7 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
                     "name": matched_name,
                     "duns": matched_duns,
                 }
-            
+
             # If match has valid name but no UEI/DUNS, keep it as a candidate but continue searching
             # We'll use the first match with a valid name if no better match is found
             if _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
@@ -296,14 +296,14 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
                 )
                 # Continue to try more variations to find one with UEI/DUNS
                 continue
-            
+
             # If match has empty name and no UEI/DUNS, it's not useful - continue searching
             if not _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
                 logger.debug(
                     f"Found match with empty name and no UEI/DUNS for variation '{search_name}', continuing search..."
                 )
                 continue
-            
+
             # If we have a valid name match (even without UEI/DUNS), return it
             # This will be used for direct name search
             if idx == 1:
@@ -583,7 +583,7 @@ def retrieve_company_contracts_api(
                 duns = matched_duns
                 valid_duns = True
                 fuzzy_matched = True
-            
+
             # If autocomplete matched but didn't return UEI/DUNS, use the matched name for search
             # The matched name is what USAspending recognizes and is more likely to work
             if not (valid_uei or valid_duns) and matched_name and _is_valid_identifier(matched_name):
@@ -763,7 +763,7 @@ def retrieve_company_contracts_api(
                 break
 
             page += 1
-            
+
             # Safety check: if we've retrieved a very large number of transactions, log warning
             if len(all_transactions) > 100000:
                 logger.warning(
@@ -771,7 +771,7 @@ def retrieve_company_contracts_api(
                     f"stopping pagination at page {page} to prevent excessive data retrieval"
                 )
                 break
-        
+
         if page > max_pages:
             logger.warning(
                 f"Reached maximum page limit ({max_pages}) for company {uei or company_name or 'Unknown'}, "
@@ -789,7 +789,7 @@ def retrieve_company_contracts_api(
             name_filters = {
                 "award_type_codes": ["A", "B", "C", "D"],
             }
-            
+
             # Generate name variations for better matching
             # API requires array format - include multiple variations for better matching
             name_variations = _normalize_company_name_for_search(company_name) if company_name else []
@@ -802,10 +802,10 @@ def retrieve_company_contracts_api(
                         break
             if not name_search_terms and company_name:
                 name_search_terms = [company_name]
-            
+
             name_filters["recipient_search_text"] = name_search_terms
             logger.debug(f"Trying name search with variations: {name_search_terms}")
-            
+
             # Try pagination with name search
             name_page = 1
             name_max_pages = 1000  # Safety limit
@@ -831,7 +831,7 @@ def retrieve_company_contracts_api(
 
                     if not name_results:
                         break
-                    
+
                     # Process name-based results
                     for transaction in name_results:
                         psc_raw = transaction.get("PSC")
@@ -841,7 +841,7 @@ def retrieve_company_contracts_api(
                             psc_value = psc_raw
                         else:
                             psc_value = None
-                        
+
                         processed_transaction = {
                             "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
                             "psc": psc_value,
@@ -856,10 +856,10 @@ def retrieve_company_contracts_api(
                             "awarding_agency": transaction.get("Awarding Agency"),
                             "awarding_sub_agency": transaction.get("Awarding Sub Agency"),
                         }
-                        
+
                         if not processed_transaction["award_id"]:
                             processed_transaction["award_id"] = f"UNKNOWN_{len(name_transactions)}"
-                        
+
                         if (
                             (not psc_value or (isinstance(psc_value, str) and not psc_value.strip()))
                             and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT
@@ -868,16 +868,16 @@ def retrieve_company_contracts_api(
                             if fallback_details and fallback_details.get("psc"):
                                 processed_transaction["psc"] = fallback_details["psc"]
                                 psc_detail_lookups += 1
-                        
+
                         name_transactions.append(processed_transaction)
-                    
+
                     # Check for more pages
                     page_metadata = name_data.get("page_metadata", {})
                     has_next = page_metadata.get("hasNext", False)
                     if not has_next:
                         break
                     name_page += 1
-                    
+
                     # Safety check: prevent excessive data retrieval
                     if len(name_transactions) > 100000:
                         logger.warning(
@@ -885,13 +885,13 @@ def retrieve_company_contracts_api(
                             f"stopping pagination at page {name_page}"
                         )
                         break
-                
+
                 if name_page > name_max_pages:
                     logger.warning(
                         f"Reached maximum page limit ({name_max_pages}) for name search of {company_name}, "
                         f"stopping pagination. Retrieved {len(name_transactions)} transactions so far."
                     )
-                
+
                 if name_transactions:
                     logger.info(
                         f"Found {len(name_transactions)} transactions using company name search. "
@@ -1320,7 +1320,7 @@ def retrieve_sbir_awards_api(
                 break
 
             page += 1
-            
+
             # Safety check: prevent excessive data retrieval
             if len(all_transactions) > 100000:
                 logger.warning(
@@ -1328,7 +1328,7 @@ def retrieve_sbir_awards_api(
                     f"stopping pagination at page {page}"
                 )
                 break
-        
+
         if page > max_pages:
             logger.warning(
                 f"Reached maximum page limit ({max_pages}) for SBIR awards for company {uei or company_name or 'Unknown'}, "
@@ -1344,10 +1344,10 @@ def retrieve_sbir_awards_api(
         df = df.drop_duplicates(subset=["award_id"])
 
         logger.debug(f"Retrieved {len(df)} SBIR/STTR awards via API")
-        
+
         # Cache the result (SBIR awards only)
         cache.set(df, uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
-        
+
         return df
 
     except Exception as e:

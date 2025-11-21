@@ -2,12 +2,14 @@
 Unit tests for the PaECTERClient.
 """
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pytest
+
 from src.ml.config import PaECTERClientConfig
-from src.ml.paecter_client import PaECTERClient, EmbeddingResult
+from src.ml.paecter_client import PaECTERClient
+
 
 @pytest.fixture
 def paecter_config():
@@ -28,28 +30,28 @@ def paecter_client(mock_inference_client, paecter_config):
 
 def test_generate_embeddings_caching(paecter_client):
     texts = ["text1", "text2", "text1"]
-    
+
     # Mock the API response
     mock_embeddings = np.random.rand(2, paecter_client.embedding_dim)
     paecter_client.client.feature_extraction.return_value = mock_embeddings
 
     # First call
     result1 = paecter_client.generate_embeddings(texts)
-    
+
     assert result1.input_count == 3
     assert paecter_client.client.feature_extraction.call_count == 1
-    
+
     # Check that "text1" is in the cache
     assert "text1" in paecter_client.cache
     assert "text2" in paecter_client.cache
-    
+
     # Second call
     result2 = paecter_client.generate_embeddings(texts)
-    
+
     # The mock should not be called again
     assert paecter_client.client.feature_extraction.call_count == 1
     assert result2.input_count == 3
-    
+
     # Check that the results are the same
     np.testing.assert_array_equal(result1.embeddings, result2.embeddings)
 

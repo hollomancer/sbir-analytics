@@ -13,13 +13,13 @@ Key components:
 Based on the NSTC Critical and Emerging Technologies taxonomy (21 categories).
 """
 
-import joblib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
+import joblib
 import numpy as np
+import pandas as pd
 from loguru import logger
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -400,7 +400,7 @@ class ApplicabilityModel:
             )
 
         scores_array = self._get_scores([text], agency=agency, branch=branch)
-        scores = dict(zip(self.pipelines.keys(), scores_array[0]))
+        scores = dict(zip(self.pipelines.keys(), scores_array[0], strict=False))
 
         # Get thresholds
         thresholds = self.config.get("confidence_thresholds", {})
@@ -489,7 +489,7 @@ class ApplicabilityModel:
             # Convert to classifications
             cet_ids = list(self.pipelines.keys())
             for i in range(batch_scores_array.shape[0]):
-                scores = dict(zip(cet_ids, batch_scores_array[i, :]))
+                scores = dict(zip(cet_ids, batch_scores_array[i, :], strict=False))
                 classifications = self._scores_to_classifications(scores)
                 all_classifications.append(classifications)
 
@@ -524,12 +524,12 @@ class ApplicabilityModel:
                 scores[:, i] = probas * 100
             except Exception as e:
                 logger.warning(f"Classification failed for {cet_id} for the batch: {e}")
-        
+
         for i in range(n_samples):
             text_str = " ".join(texts[i].values()) if isinstance(texts[i], dict) else str(texts[i])
-            
-            score_dict = dict(zip(cet_ids, scores[i,:]))
-            
+
+            score_dict = dict(zip(cet_ids, scores[i,:], strict=False))
+
             adjusted_scores = self.rule_engine.apply_all_rules(score_dict, text_str, agency, branch)
 
             for j, cet_id in enumerate(cet_ids):

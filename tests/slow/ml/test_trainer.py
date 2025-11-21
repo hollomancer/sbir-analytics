@@ -26,7 +26,7 @@ pytestmark = [
 ]
 
 from src.ml.models.trainer import CETModelTrainer
-from src.models.cet_models import CETArea, TrainingDataset, TrainingExample
+from src.models.cet_models import TrainingDataset, TrainingExample
 
 
 @pytest.fixture

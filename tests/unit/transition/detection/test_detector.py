@@ -6,7 +6,7 @@ vendor matching, scoring, evidence generation, and metrics tracking
 for the complete transition detection pipeline.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from unittest.mock import Mock
 from uuid import UUID
 
@@ -14,7 +14,6 @@ import pytest
 
 from src.models.transition_models import (
     ConfidenceLevel,
-    EvidenceBundle,
     FederalContract,
     Transition,
     TransitionSignals,

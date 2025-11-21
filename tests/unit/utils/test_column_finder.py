@@ -3,6 +3,7 @@
 import pandas as pd
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.column_finder import ColumnFinder

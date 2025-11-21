@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
+
 try:
     import pytest
 except ImportError:
@@ -267,18 +268,17 @@ if pytest is not None:
 
 def create_mock_transition_scorer_config() -> Any:
     """Create a mock TransitionScorer configuration object.
-    
+
     Returns an object with the structure expected by TransitionScorer tests:
     - base_score: float
     - confidence_thresholds: dict with 'high' and 'likely' keys
     - scoring: object with signal configs (agency_continuity, timing_proximity, etc.)
-    
+
     Returns:
         Mock configuration object with required attributes
     """
     from dataclasses import dataclass, field
-    from typing import Any
-    
+
     @dataclass
     class ScoringConfig:
         """Mock scoring configuration."""
@@ -334,7 +334,7 @@ def create_mock_transition_scorer_config() -> Any:
                 "weight": 0.0,
             }
         ))
-    
+
     @dataclass
     class TransitionScorerConfig:
         """Mock TransitionScorer configuration."""
@@ -344,6 +344,6 @@ def create_mock_transition_scorer_config() -> Any:
             "likely": 0.65,
         })
         scoring: ScoringConfig = field(default_factory=ScoringConfig)
-    
+
     return TransitionScorerConfig()
 

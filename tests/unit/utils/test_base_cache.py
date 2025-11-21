@@ -1,11 +1,11 @@
 """Unit tests for base cache utilities."""
 
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
+
 
 pytestmark = pytest.mark.fast
 
@@ -126,7 +126,7 @@ class TestBaseDataFrameCache:
         cache.set(df, uei="TEST123")
 
         mock_save.assert_called_once()
-        assert cache.cache_dir / "*.meta.json" in [p for p in cache.cache_dir.glob("*.meta.json")]
+        assert cache.cache_dir / "*.meta.json" in list(cache.cache_dir.glob("*.meta.json"))
 
     def test_get_default_cache_type(self, cache):
         """Test default cache type."""

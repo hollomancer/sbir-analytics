@@ -8,7 +8,6 @@ Refactored to inherit from BaseNeo4jLoader for consistency.
 """
 
 from datetime import datetime
-from typing import Any
 
 import pandas as pd
 from loguru import logger

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.async_tools import run_sync

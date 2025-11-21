@@ -15,17 +15,14 @@ and fiscal return calculations:
 This test uses sample data and demonstrates the complete fiscal analysis pipeline.
 """
 
-from datetime import datetime
 from decimal import Decimal
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
 from src.transformers.fiscal.roi import FiscalROICalculator
-from src.transformers.fiscal.shocks import FiscalShockAggregator, calculate_fiscal_year
+from src.transformers.fiscal.shocks import calculate_fiscal_year
 from src.transformers.fiscal.taxes import FiscalTaxEstimator
 from src.transformers.naics_to_bea import NAICSToBEAMapper
 
@@ -567,7 +564,7 @@ class TestFiscalStateIOPipelineE2E:
         assert roi_summary.benefit_cost_ratio > 0
         assert roi_summary.discount_rate == 0.03
 
-        print(f"\nROI Summary:")
+        print("\nROI Summary:")
         print(f"  Total Investment: ${roi_summary.total_investment:,.2f}")
         print(f"  Total Tax Receipts: ${roi_summary.total_tax_receipts:,.2f}")
         print(f"  ROI Ratio: {roi_summary.roi_ratio:.2%}")

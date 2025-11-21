@@ -62,16 +62,16 @@ from src.transformers.company_categorization import (
 
 def _extract_year_from_date(date_str: str | None) -> int | None:
     """Extract year from date string in various formats.
-    
+
     Args:
         date_str: Date string (ISO format, YYYY-MM-DD, or YYYYMMDD)
-        
+
     Returns:
         Year as integer, or None if date cannot be parsed
     """
     if not date_str:
         return None
-    
+
     try:
         # Try ISO format first (YYYY-MM-DD)
         if isinstance(date_str, str) and "-" in date_str:
@@ -87,16 +87,16 @@ def _extract_year_from_date(date_str: str | None) -> int | None:
                     return year
     except (ValueError, AttributeError):
         pass
-    
+
     return None
 
 
 def _is_rd_psc(psc: str | None) -> bool:
     """Check if PSC code indicates R&D (starts with A or B).
-    
+
     Args:
         psc: Product Service Code
-        
+
     Returns:
         True if PSC indicates R&D, False otherwise
     """
@@ -112,11 +112,11 @@ def _check_final_two_years_commercializations(
     contract_dicts: list[dict], classified_contracts: list[dict]
 ) -> tuple[bool, bool]:
     """Check final two years for successful commercializations.
-    
+
     Args:
         contract_dicts: Original contract dictionaries with date and amount info
         classified_contracts: Classified contracts with Product/Service classification
-        
+
     Returns:
         Tuple of (successful_commercialization, product_commercialization):
         - successful_commercialization: True if final two years have (product OR service) > R&D
@@ -124,33 +124,33 @@ def _check_final_two_years_commercializations(
     """
     if not contract_dicts or not classified_contracts:
         return False, False
-    
+
     # Create a mapping from award_id to classification and PSC for quick lookup
     classification_map = {c.get("award_id"): c.get("classification") for c in classified_contracts}
     psc_map = {c.get("award_id"): c.get("psc") for c in classified_contracts}
-    
+
     # Group contracts by year, tracking Product, Service (non-R&D), and R&D separately
     year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0, "rd": 0.0})
-    
+
     for contract in contract_dicts:
         award_id = contract.get("award_id")
         classification = classification_map.get(award_id)
         psc = psc_map.get(award_id) or contract.get("psc")
         amount = contract.get("award_amount") or 0.0
-        
+
         if not classification or amount <= 0:
             continue
-        
+
         # Extract year from action_date
         action_date = contract.get("action_date")
         year = _extract_year_from_date(action_date)
-        
+
         if not year:
             continue
-        
+
         # Check if this is an R&D contract (PSC starts with A or B)
         is_rd = _is_rd_psc(psc)
-        
+
         if classification == "Product":
             year_revenue[year]["product"] += amount
         elif is_rd:
@@ -159,36 +159,36 @@ def _check_final_two_years_commercializations(
         elif classification == "Service":
             # Non-R&D service contracts
             year_revenue[year]["service"] += amount
-    
+
     if not year_revenue:
         return False, False
-    
+
     # Get the two most recent years
     sorted_years = sorted(year_revenue.keys())
     if len(sorted_years) < 2:
         return False, False
-    
+
     final_two_years = sorted_years[-2:]
-    
+
     # Check if both final two years meet the criteria
     successful_commercialization = True
     product_commercialization = True
-    
+
     for year in final_two_years:
         revenue = year_revenue[year]
         product_total = revenue.get("product", 0.0)
         service_total = revenue.get("service", 0.0)
         rd_total = revenue.get("rd", 0.0)
-        
+
         # Successful commercialization: non-R&D (product OR service) > R&D
         non_rd_total = product_total + service_total
         if non_rd_total <= rd_total:
             successful_commercialization = False
-        
+
         # Product commercialization: product > R&D
         if product_total <= rd_total:
             product_commercialization = False
-    
+
     return successful_commercialization, product_commercialization
 
 
@@ -196,59 +196,59 @@ def _analyze_consecutive_product_years(
     contract_dicts: list[dict], classified_contracts: list[dict]
 ) -> list[int] | None:
     """Analyze year-by-year revenue to identify consecutive years where product > service.
-    
+
     Args:
         contract_dicts: Original contract dictionaries with date and amount info
         classified_contracts: Classified contracts with Product/Service classification
-        
+
     Returns:
         List of consecutive years where product revenue exceeded service revenue,
         or None if no consecutive years found
     """
     if not contract_dicts or not classified_contracts:
         return None
-    
+
     # Create a mapping from award_id to classification for quick lookup
     classification_map = {c.get("award_id"): c.get("classification") for c in classified_contracts}
-    
+
     # Group contracts by year
     year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0})
-    
+
     for contract in contract_dicts:
         award_id = contract.get("award_id")
         classification = classification_map.get(award_id)
         amount = contract.get("award_amount") or 0.0
-        
+
         if not classification or amount <= 0:
             continue
-        
+
         # Extract year from action_date
         action_date = contract.get("action_date")
         year = _extract_year_from_date(action_date)
-        
+
         if year and classification in ("Product", "Service"):
             year_revenue[year][classification.lower()] += amount
-    
+
     if not year_revenue:
         return None
-    
+
     # Identify years where product > service
     product_dominant_years = []
     for year in sorted(year_revenue.keys()):
         revenue = year_revenue[year]
         product_total = revenue.get("product", 0.0)
         service_total = revenue.get("service", 0.0)
-        
+
         if product_total > service_total and product_total > 0:
             product_dominant_years.append(year)
-    
+
     # Find consecutive years
     if len(product_dominant_years) < 2:
         return None
-    
+
     consecutive_years = []
     current_sequence = [product_dominant_years[0]]
-    
+
     for i in range(1, len(product_dominant_years)):
         if product_dominant_years[i] == product_dominant_years[i-1] + 1:
             current_sequence.append(product_dominant_years[i])
@@ -256,11 +256,11 @@ def _analyze_consecutive_product_years(
             if len(current_sequence) >= 2:
                 consecutive_years.extend(current_sequence)
             current_sequence = [product_dominant_years[i]]
-    
+
     # Check final sequence
     if len(current_sequence) >= 2:
         consecutive_years.extend(current_sequence)
-    
+
     return sorted(set(consecutive_years)) if consecutive_years else None
 
 
@@ -302,17 +302,17 @@ def print_contract_justifications(
 
         # Show justification based on method
         if method == "psc_numeric":
-            logger.info(f"      → Numeric PSC code indicates tangible product")
+            logger.info("      → Numeric PSC code indicates tangible product")
         elif method == "psc_alphabetic":
-            logger.info(f"      → Alphabetic PSC code indicates service")
+            logger.info("      → Alphabetic PSC code indicates service")
         elif method == "contract_type_override":
             logger.info(f"      → Contract type {contract_type} overrides PSC classification")
         elif method == "sbir_phase_adjustment":
             logger.info(f"      → SBIR Phase {sbir_phase} adjusted classification")
         elif method == "description_inference":
-            logger.info(f"      → Product keywords detected in description")
+            logger.info("      → Product keywords detected in description")
         elif method == "default_no_psc":
-            logger.info(f"      → Default classification (no PSC or insufficient data)")
+            logger.info("      → Default classification (no PSC or insufficient data)")
 
     # Count by classification
     product_contracts = [c for c in classified_contracts if c.get("classification") == "Product"]
@@ -431,7 +431,7 @@ def categorize_companies(
         logger.info(f"Processing all {len(companies)} companies")
 
     results = []
-    
+
     # Helper function to process a single company
     def process_company(idx_and_company: tuple[int, tuple]) -> dict[str, Any] | None:
         """Process a single company and return result dict."""
@@ -454,7 +454,7 @@ def categorize_companies(
             # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
             # Default to DuckDB, fallback to API if DuckDB unavailable
             contracts_df = pd.DataFrame()
-            
+
             # Try DuckDB first (default behavior) unless API-only mode
             if not use_api:
                 if extractor is None:
@@ -472,7 +472,7 @@ def categorize_companies(
 
             # Retrieve SBIR/STTR awards separately for reporting (NOT used in categorization)
             sbir_df = pd.DataFrame()
-            
+
             # Try DuckDB first for SBIR awards unless API-only mode
             if not use_api:
                 if extractor is None:
@@ -535,13 +535,13 @@ def categorize_companies(
             classified_contracts = []
             cost_based_count = 0
             service_based_count = 0
-            
+
             for _, contract in contracts_df.iterrows():
                 contract_dict = contract.to_dict()
                 contract_dicts.append(contract_dict)  # Keep original for agency info
                 classified = classify_contract(contract_dict)
                 classified_contracts.append(classified.model_dump())
-                
+
                 # Track cost-based and service-based contracts
                 contract_type = contract_dict.get("contract_type", "")
                 pricing = contract_dict.get("pricing", "")
@@ -560,7 +560,7 @@ def categorize_companies(
 
             # Analyze year-by-year revenue to identify consecutive product-dominant years
             consecutive_product_years = _analyze_consecutive_product_years(contract_dicts, classified_contracts)
-            
+
             # Check if final two years show commercializations (non-R&D > R&D, and product > R&D)
             successful_commercialization, product_commercialization = _check_final_two_years_commercializations(contract_dicts, classified_contracts)
 
@@ -568,7 +568,7 @@ def categorize_companies(
             company_result = aggregate_company_classification(
                 contract_dicts, company_uei=uei, company_name=name
             )
-            
+
             # Override classification to Product-leaning if final two years show product > R&D
             if product_commercialization and company_result.classification != "Product-leaning":
                 # Create a new CompanyClassification with Product-leaning classification
@@ -589,17 +589,17 @@ def categorize_companies(
                     override_reason="successful_commercialization_product_gt_rd",
                     contracts=company_result.contracts,
                 )
-            
+
             # Calculate R&D revenue (contracts with PSC codes starting with A or B)
             rd_dollars = 0.0
             for contract in contract_dicts:
                 psc = contract.get("psc")
                 if _is_rd_psc(psc):
                     rd_dollars += contract.get("award_amount", 0.0) or 0.0
-            
+
             total_dollars = company_result.total_dollars
             rd_pct = (rd_dollars / total_dollars * 100) if total_dollars > 0 else 0.0
-            
+
             logger.info(
                 f"  Dollar breakdown: Product: {company_result.product_pct:.1f}%, "
                 f"Service: {company_result.service_pct:.1f}%, R&D: {rd_pct:.1f}%"
@@ -623,9 +623,9 @@ def categorize_companies(
 
             # Log successful commercializations
             if successful_commercialization:
-                logger.info(f"  🎯 SUCCESSFUL COMMERCIALIZATION: Final two years show non-R&D revenue > R&D revenue")
+                logger.info("  🎯 SUCCESSFUL COMMERCIALIZATION: Final two years show non-R&D revenue > R&D revenue")
             if product_commercialization:
-                logger.info(f"  🎯 PRODUCT COMMERCIALIZATION: Final two years show product revenue > R&D revenue (classified as Product-leaning)")
+                logger.info("  🎯 PRODUCT COMMERCIALIZATION: Final two years show product revenue > R&D revenue (classified as Product-leaning)")
 
             # Print detailed justifications if requested (after aggregation so we have agency breakdown)
             if detailed:
@@ -662,7 +662,7 @@ def categorize_companies(
                     justification_parts.append(f"{company_result.psc_family_count} PSC families")
                 if company_result.award_count > 50:
                     justification_parts.append(f"{company_result.award_count} contracts")
-            
+
             justification = ", ".join(justification_parts) if justification_parts else "See metrics"
 
             # Return result dict
@@ -824,7 +824,7 @@ def print_summary(results: pd.DataFrame) -> None:
     logger.info("\n" + "=" * 80)
     logger.info("FINAL LISTS")
     logger.info("=" * 80)
-    
+
     # Product companies (Product-leaning classification)
     product_companies = results[results["classification"] == "Product-leaning"].copy()
     if len(product_companies) > 0:
@@ -839,10 +839,10 @@ def print_summary(results: pd.DataFrame) -> None:
                 f"${row['total_dollars']:,.0f} total ({row['award_count']} contracts)"
             )
         logger.info(f"\n  Total: {len(product_companies)} companies")
-    
+
     # Commercialized companies (successful commercializations)
     if "successful_commercialization" in results.columns:
-        commercialized_companies = results[results["successful_commercialization"] == True].copy()
+        commercialized_companies = results[results["successful_commercialization"]].copy()
         if len(commercialized_companies) > 0:
             commercialized_companies = commercialized_companies.sort_values("total_dollars", ascending=False)
             logger.info(f"\n🎯 Commercialized Companies ({len(commercialized_companies)} total):")
@@ -882,21 +882,21 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "justification",
         "confidence",
     ]
-    
+
     # Add consecutive_product_years if available
     if "consecutive_product_years" in results.columns:
         export_columns.append("consecutive_product_years")
-    
+
     # Create export DataFrame with only requested columns (handle missing columns)
     available_columns = [col for col in export_columns if col in results.columns]
     export_df = results[available_columns].copy()
-    
+
     # Format consecutive_product_years as string for CSV
     if "consecutive_product_years" in export_df.columns:
         export_df["consecutive_product_years"] = export_df["consecutive_product_years"].apply(
             lambda x: ", ".join(map(str, x)) if isinstance(x, list) else (str(x) if x is not None else "")
         )
-    
+
     # Rename columns to match user's requested format
     rename_map = {
         "company_name": "Company Name",
@@ -914,13 +914,13 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
         "justification": "Justification",
         "confidence": "Confidence",
     }
-    
+
     # Add rename for consecutive_product_years if present
     if "consecutive_product_years" in export_df.columns:
         rename_map["consecutive_product_years"] = "Consecutive Product-Dominant Years"
-    
+
     export_df = export_df.rename(columns=rename_map)
-    
+
     export_df.to_csv(output_path, index=False)
     logger.info(f"\nResults exported to: {output_path}")
     logger.info(f"Exported {len(export_df)} companies with {len(export_df.columns)} columns")
@@ -978,17 +978,17 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         f.write(f"- **Companies with SBIR in USAspending**: {companies_with_sbir}/{len(results)}\n")
         f.write(f"- **Average SBIR % of Total Revenue**: {avg_sbir_pct:.1f}%\n\n")
         f.write("---\n\n")
-        
+
         # Companies with successful commercializations (non-R&D > R&D)
         if "successful_commercialization" in results.columns:
-            successful_commercializations = results[results["successful_commercialization"] == True]
+            successful_commercializations = results[results["successful_commercialization"]]
             if len(successful_commercializations) > 0:
                 f.write("## 🎯 Companies with Successful Commercializations\n\n")
                 f.write("Companies whose **final two years** of USAspending data show non-R&D revenue (Product OR Service) > R&D revenue. ")
                 f.write("These companies have successfully commercialized their technology.\n\n")
                 f.write("| Company | Classification | Product % | Service % | Contracts | Total $ | Product Commercialization |\n")
                 f.write("|---------|---------------|-----------|-----------|-----------|--------|-------------------------|\n")
-                
+
                 for _, row in successful_commercializations.iterrows():
                     company = row["company_name"][:40]
                     classification = row["classification"]
@@ -997,22 +997,22 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
                     product_commercialization = "🎯 Yes" if row.get("product_commercialization", False) else "No"
-                    
+
                     f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_commercialization} |\n")
-                
+
                 f.write(f"\n**Total**: {len(successful_commercializations)} companies\n\n")
                 f.write("---\n\n")
-        
+
         # Companies with product commercializations (product > R&D, classified as Product)
         if "product_commercialization" in results.columns:
-            product_commercializations = results[results["product_commercialization"] == True]
+            product_commercializations = results[results["product_commercialization"]]
             if len(product_commercializations) > 0:
                 f.write("## 🎯 Companies with Product Commercializations\n\n")
                 f.write("Companies whose **final two years** of USAspending data show Product revenue > R&D revenue. ")
                 f.write("These companies are classified as **Product-leaning** regardless of their overall portfolio mix.\n\n")
                 f.write("| Company | Classification | Product % | Service % | Contracts | Total $ |\n")
                 f.write("|---------|---------------|-----------|-----------|-----------|--------|\n")
-                
+
                 for _, row in product_commercializations.iterrows():
                     company = row["company_name"][:40]
                     classification = row["classification"]
@@ -1020,12 +1020,12 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     service_pct = row["service_pct"]
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
-                    
+
                     f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
-                
+
                 f.write(f"\n**Total**: {len(product_commercializations)} companies\n\n")
                 f.write("---\n\n")
-        
+
         # Companies with consecutive product-dominant years
         if "consecutive_product_years" in results.columns:
             consecutive_product_companies = results[results["consecutive_product_years"].notna()]
@@ -1034,7 +1034,7 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                 f.write("Companies that received more product revenue than service revenue for **2+ consecutive years**.\n\n")
                 f.write("| Company | Years | Product % | Service % | Contracts | Total $ |\n")
                 f.write("|---------|------|-----------|-----------|-----------|--------|\n")
-                
+
                 for _, row in consecutive_product_companies.iterrows():
                     company = row["company_name"][:40]
                     years = row["consecutive_product_years"]
@@ -1046,9 +1046,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     service_pct = row["service_pct"]
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
-                    
+
                     f.write(f"| {company} | {years_str} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
-                
+
                 f.write(f"\n**Total**: {len(consecutive_product_companies)} companies\n\n")
                 f.write("---\n\n")
 

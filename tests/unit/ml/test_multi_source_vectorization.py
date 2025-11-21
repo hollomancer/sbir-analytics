@@ -10,7 +10,6 @@ Tests:
 
 import numpy as np
 import pytest
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.ml.models.multi_source_vectorizer import (
     MultiSourceCETVectorizer,

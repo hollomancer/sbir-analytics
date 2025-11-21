@@ -1,12 +1,13 @@
 """Configuration loaders for CET taxonomy and hyperparameters."""
 
-from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
-
 # Import PaECTERClientConfig from parent ml.config.py module
 # Use a relative import that avoids the config package
 import importlib.util
 import sys
 from pathlib import Path
+
+from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
+
 
 _parent_dir = Path(__file__).parent.parent
 _config_py = _parent_dir / "config.py"

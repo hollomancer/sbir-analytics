@@ -1,9 +1,9 @@
 """Tests for NAICS to BEA mapper."""
 
-from pathlib import Path
-from unittest.mock import patch
 import csv
 import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest

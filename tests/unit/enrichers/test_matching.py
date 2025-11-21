@@ -2,12 +2,12 @@
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.enrichers.matching import (
     ENHANCED_ABBREVIATIONS,
     MatchingConfig,
-    ResearcherMatcher,
     apply_enhanced_abbreviations,
     get_phonetic_code,
     jaro_winkler_similarity,

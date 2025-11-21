@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,8 +40,8 @@ class PerformanceMetrics(BaseModel):
     average_memory_mb: float = Field(..., description="Average memory usage in MB")
 
     # Resource utilization
-    cpu_usage_percent: Optional[float] = Field(None, description="Average CPU usage percentage")
-    disk_io_mb: Optional[float] = Field(None, description="Total disk I/O in MB")
+    cpu_usage_percent: float | None = Field(None, description="Average CPU usage percentage")
+    disk_io_mb: float | None = Field(None, description="Total disk I/O in MB")
 
     # Error and retry metrics
     total_retries: int = Field(
@@ -83,26 +83,26 @@ class ModuleMetrics(BaseModel):
     quality_metrics: dict[str, float] = Field(
         default_factory=dict, description="Module-specific quality scores"
     )
-    data_hygiene: Optional[DataHygieneMetrics] = Field(
+    data_hygiene: DataHygieneMetrics | None = Field(
         None, description="Data hygiene metrics if applicable"
     )
-    changes_summary: Optional[ChangesSummary] = Field(
+    changes_summary: ChangesSummary | None = Field(
         None, description="Summary of changes made if applicable"
     )
 
     # Enrichment-specific metrics (optional)
-    enrichment_coverage: Optional[float] = Field(
+    enrichment_coverage: float | None = Field(
         None, ge=0.0, le=1.0, description="Percentage of records successfully enriched"
     )
-    match_rates: Optional[dict[str, float]] = Field(
+    match_rates: dict[str, float] | None = Field(
         None, description="Match rates by enrichment source"
     )
 
     # Memory and performance
-    peak_memory_mb: Optional[float] = Field(
+    peak_memory_mb: float | None = Field(
         None, description="Peak memory usage during module execution"
     )
-    average_cpu_percent: Optional[float] = Field(None, description="Average CPU usage percentage")
+    average_cpu_percent: float | None = Field(None, description="Average CPU usage percentage")
 
     # Module-specific metrics
     module_specific_metrics: dict[str, Any] = Field(
@@ -151,12 +151,12 @@ class PipelineMetrics(BaseModel):
     )
 
     # Technology transition metrics (if applicable)
-    transition_metrics: Optional[dict[str, Any]] = Field(
+    transition_metrics: dict[str, Any] | None = Field(
         None, description="Technology transition analysis metrics"
     )
 
     # Ecosystem insights (if applicable)
-    ecosystem_metrics: Optional[dict[str, Any]] = Field(
+    ecosystem_metrics: dict[str, Any] | None = Field(
         None, description="SBIR ecosystem analysis metrics"
     )
 
@@ -225,12 +225,12 @@ class ReportCollection(BaseModel):
 
     # Output configuration
     output_directory: Path = Field(..., description="Base directory for report outputs")
-    retention_policy_days: Optional[int] = Field(
+    retention_policy_days: int | None = Field(
         None, description="Number of days to retain reports (None = indefinite)"
     )
 
     # CI/CD integration metadata
-    ci_context: Optional[dict[str, Any]] = Field(
+    ci_context: dict[str, Any] | None = Field(
         None, description="CI/CD context information if applicable"
     )
     pr_comment_generated: bool = Field(
@@ -240,7 +240,7 @@ class ReportCollection(BaseModel):
         default=False, description="Whether artifacts were uploaded to CI system"
     )
 
-    def get_artifact_by_format(self, format: ReportFormat) -> Optional[ReportArtifact]:
+    def get_artifact_by_format(self, format: ReportFormat) -> ReportArtifact | None:
         """Get artifact by format type.
 
         Args:

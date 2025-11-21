@@ -17,11 +17,11 @@ def test_usaspending_enrichment_job_smoke(tmp_path, monkeypatch):
 
     # Run in temporary working directory to avoid polluting repo
     monkeypatch.chdir(tmp_path)
-    
+
     # Resolve job assets and materialize them
     selection = usaspending_iterative_enrichment_job.selection
     resolved_assets = selection.resolve(defs.assets)
-    
+
     result = materialize(
         resolved_assets,
         raise_on_error=True,

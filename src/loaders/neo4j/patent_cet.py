@@ -60,8 +60,6 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from loguru import logger
-
 from .base import BaseNeo4jLoader
 from .client import Neo4jClient
 

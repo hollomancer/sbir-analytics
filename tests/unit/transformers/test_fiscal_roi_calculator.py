@@ -10,6 +10,7 @@ pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal.roi import FiscalROICalculator
 
+
 # sample_tax_estimates_df fixture is now in tests/unit/transformers/conftest.py
 
 

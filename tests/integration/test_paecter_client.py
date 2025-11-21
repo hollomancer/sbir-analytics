@@ -18,6 +18,7 @@ import pytest
 
 from src.ml.paecter_client import EmbeddingResult, PaECTERClient
 
+
 # Sample SBIR award data
 SAMPLE_AWARDS = [
     {
@@ -309,7 +310,7 @@ class TestPaECTERClient:
             top_scores = similarities[i][top_indices]
 
             print(f"\nAward {i}: {award['award_title']}")
-            for rank, (idx, score) in enumerate(zip(top_indices, top_scores), 1):
+            for rank, (idx, score) in enumerate(zip(top_indices, top_scores, strict=False), 1):
                 print(
                     f"  {rank}. Patent {idx}: {SAMPLE_PATENTS[idx]['title']} "
                     f"(similarity: {score:.3f})"

@@ -1,9 +1,8 @@
 """Integration tests for multi-key MERGE functionality."""
 
 import pytest
-from neo4j import GraphDatabase
 
-from src.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
+from src.loaders.neo4j import Neo4jClient, Neo4jConfig
 
 
 @pytest.fixture

@@ -1,9 +1,9 @@
 """Unit tests for logging configuration utilities."""
 
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 
 pytestmark = pytest.mark.fast
 

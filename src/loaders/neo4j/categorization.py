@@ -206,7 +206,7 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
 
             # Build Cypher query for batch update using query builder
             from ..query_builder import Neo4jQueryBuilder
-            
+
             if self.config.update_existing_only:
                 # Only update existing Company nodes (safer)
                 query = Neo4jQueryBuilder.build_batch_match_update_query(

@@ -16,7 +16,7 @@ def test_build_batch_merge_query_simple():
         include_hash_check=False,
         return_counts=True,
     )
-    
+
     assert "UNWIND $batch AS node" in query
     assert "MERGE (n:Company {uei: node.uei})" in query
     assert "SET n += node" in query
@@ -31,7 +31,7 @@ def test_build_batch_merge_query_with_hash():
         include_hash_check=True,
         return_counts=True,
     )
-    
+
     assert "UNWIND $batch AS node" in query
     assert "MERGE (n:Award {award_id: node.award_id})" in query
     assert "__hash" in query
@@ -46,7 +46,7 @@ def test_build_batch_match_update_query():
         key_property="uei",
         return_count=True,
     )
-    
+
     assert "UNWIND $batch AS item" in query
     assert "MATCH (n:Company {uei: item.key})" in query
     assert "SET n += item.props" in query
@@ -62,7 +62,7 @@ def test_build_relationship_merge_query():
         target_label="Company",
         target_key="uei",
     )
-    
+
     assert "UNWIND $batch AS rel" in query
     assert "MATCH (source:Award {award_id: rel.source_key})" in query
     assert "MATCH (target:Company {uei: rel.target_key})" in query
@@ -79,7 +79,7 @@ def test_build_relationship_merge_query_with_properties():
         target_key="transition_id",
         rel_properties={"score": "rel.score", "confidence": "rel.confidence"},
     )
-    
+
     assert "SET r.score = rel.score" in query
     assert "SET r.confidence = rel.confidence" in query
 
@@ -90,7 +90,7 @@ def test_build_batch_create_query():
         label="Patent",
         return_count=True,
     )
-    
+
     assert "UNWIND $batch AS node" in query
     assert "CREATE (n:Patent)" in query
     assert "SET n = node" in query
@@ -104,7 +104,7 @@ def test_build_single_merge_query():
         key_property="uei",
         return_operation=True,
     )
-    
+
     assert "MERGE (n:Company {uei: $key_value})" in query
     assert "ON CREATE SET n += $properties" in query
     assert "ON MATCH SET n += $properties" in query

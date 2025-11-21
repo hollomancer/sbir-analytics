@@ -8,6 +8,7 @@ Tests:
 """
 
 import pytest
+
 from src.ml.models.cet_classifier import ApplicabilityModel
 from src.models.cet_models import CETArea
 
@@ -32,7 +33,6 @@ class TestNegativeKeywordFiltering:
         model = ApplicabilityModel(cet_areas, config, "NSTC-2025Q1")
 
         # Test penalty application
-        text_positive = "quantum computing algorithms"
         text_negative = "quantum mechanics research"
 
         score_positive = 80.0

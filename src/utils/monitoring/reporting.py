@@ -9,6 +9,7 @@ from loguru import logger
 
 from .metrics import MetricComparison, PerformanceMetrics
 
+
 try:
     from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 except Exception:
@@ -298,14 +299,11 @@ class PerformanceReporter:
 
         # Build status badge
         status = "PASS"
-        status_color = "green"
         if regressions:
             if regressions.get("failures"):
                 status = "FAILURE"
-                status_color = "red"
             elif regressions.get("warnings"):
                 status = "WARNING"
-                status_color = "orange"
 
         # Build metric cards
         metric_cards = [
@@ -365,23 +363,23 @@ class PerformanceReporter:
             <h1>{title}</h1>
             <div class="status-badge status-{status.lower()}">{status}</div>
         </div>
-        
+
         {alerts_html}
-        
+
         {metric_grid}
-        
+
         <div class="section">
             <h2>Performance Details</h2>
             {perf_table}
         </div>
-        
+
         <div class="section">
             <h2>Enrichment Statistics</h2>
             {enrich_table}
         </div>
-        
+
         {regression_section}
-        
+
         <div class="footer">
             Generated at {datetime.now().isoformat()}
         </div>
@@ -393,9 +391,9 @@ class PerformanceReporter:
         """Generate HTML for regression analysis section."""
         if HTMLReportBuilder is None:
             return ""
-            
+
         analysis = regressions.get("analysis", {})
-        
+
         # Create comparison table
         table_data = [
             {"Metric": "Time Delta", "Value": f"{analysis.get('time_delta_percent', 0):+.1f}%"},
@@ -403,10 +401,10 @@ class PerformanceReporter:
         ]
         if "match_rate_delta_percent" in analysis:
             table_data.append({
-                "Metric": "Match Rate Delta", 
+                "Metric": "Match Rate Delta",
                 "Value": f"{analysis.get('match_rate_delta_percent', 0):+.1f}pp"
             })
-            
+
         return HTMLReportBuilder.create_table(table_data, ["Metric", "Value"], "Regression Analysis")
 
     def save_markdown_report(
@@ -525,17 +523,17 @@ def analyze_performance_trend(metrics_list: list[PerformanceMetrics]) -> dict[st
         return {}
 
     # Extract time series
-    durations = [m.total_duration_seconds for m in metrics_list]
-    memory_usage = [m.peak_memory_mb for m in metrics_list]
-    
+    [m.total_duration_seconds for m in metrics_list]
+    [m.peak_memory_mb for m in metrics_list]
+
     # Simple trend analysis (compare first vs last)
     if len(metrics_list) >= 2:
         first = metrics_list[0]
         last = metrics_list[-1]
-        
+
         time_delta = (last.total_duration_seconds - first.total_duration_seconds) / first.total_duration_seconds * 100 if first.total_duration_seconds > 0 else 0
         memory_delta = (last.peak_memory_mb - first.peak_memory_mb) / first.peak_memory_mb * 100 if first.peak_memory_mb > 0 else 0
-        
+
         trend = {
             "time_delta_percent": time_delta,
             "memory_delta_percent": memory_delta,
@@ -543,5 +541,5 @@ def analyze_performance_trend(metrics_list: list[PerformanceMetrics]) -> dict[st
         }
     else:
         trend = {"status": "insufficient_data"}
-        
+
     return trend

@@ -4,14 +4,10 @@ from datetime import datetime
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
-from src.utils.monitoring.alerts import (
-    Alert,
-    AlertCollector,
-    AlertSeverity,
-    AlertThresholds,
-)
+from src.utils.monitoring.alerts import Alert, AlertCollector, AlertSeverity
 
 
 class TestAlert:

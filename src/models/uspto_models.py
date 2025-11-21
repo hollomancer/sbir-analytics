@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 
 """
 Pydantic models for USPTO patent data used by the SBIR ETL transition pipeline.
@@ -24,11 +22,10 @@ Validators:
 """
 
 import re
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
-
 
 # ---- Utilities ----
 # Use centralized date parsing utility

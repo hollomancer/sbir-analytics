@@ -48,6 +48,9 @@ from .cet import CETLoader, CETLoaderConfig
 # Client module
 from .client import LoadMetrics, Neo4jClient, Neo4jConfig
 
+# Organizations module
+from .organizations import OrganizationLoader
+
 # Patent CET module (patent classifications)
 from .patent_cet import Neo4jPatentCETLoader
 
@@ -59,9 +62,6 @@ from .profiles import TransitionProfileLoader
 
 # Transitions module
 from .transitions import TransitionLoader
-
-# Organizations module
-from .organizations import OrganizationLoader
 
 
 __all__ = [

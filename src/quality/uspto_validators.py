@@ -530,7 +530,7 @@ def validate_date_fields(
         def parse_date(val: Any) -> datetime | None:
             """Parse date using centralized utility, returning datetime."""
             from src.utils.date_utils import parse_date as parse_date_util
-            
+
             result = parse_date_util(val, return_datetime=True, strict=False)
             return result if isinstance(result, datetime) else None
 
@@ -798,7 +798,7 @@ class USPTODataQualityValidator:
     def __init__(self, config: USPTOValidationConfig | None = None) -> None:
         self.config = config or USPTOValidationConfig()
         from src.utils.common.path_utils import ensure_dir
-        
+
         ensure_dir(self.config.fail_output_dir)
         ensure_dir(self.config.report_output_dir)
         self._failure_samples: list[dict[str, Any]] = []

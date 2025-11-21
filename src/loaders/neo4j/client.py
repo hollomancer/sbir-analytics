@@ -291,7 +291,7 @@ class Neo4jClient:
                 try:
                     # Use query builder for consistent query construction
                     from .query_builder import Neo4jQueryBuilder
-                    
+
                     query = Neo4jQueryBuilder.build_batch_merge_query(
                         label=label,
                         key_property=key_property,
@@ -481,12 +481,12 @@ class Neo4jClient:
                         SET existing += merge.props,
                             existing.__updated_at = datetime()
                         """
-                        
+
                         if track_merge_history:
                             merge_props_query += """
                             WITH existing, merge
                             WHERE merge.merge_history IS NOT NULL
-                            WITH existing, 
+                            WITH existing,
                                  coalesce(existing.__merged_from, []) as current_merged_from,
                                  coalesce(existing.__merge_history, []) as current_history
                             SET existing.__merged_from = current_merged_from + [merge.new_id],
@@ -542,9 +542,9 @@ class Neo4jClient:
 
                     # Phase 3: Create remaining nodes normally
                     if nodes_to_create:
-                        query = f"""
+                        query = """
                         UNWIND $batch AS node
-                        MERGE (n:Organization {{organization_id: node.organization_id}})
+                        MERGE (n:Organization {organization_id: node.organization_id})
                         ON CREATE SET n = node, n.__new = true
                         ON MATCH SET n.__new = false
                         WITH n, node

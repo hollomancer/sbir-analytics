@@ -7,8 +7,6 @@ BEA codes are used in input-output (I-O) economic models like StateIO.
 
 from __future__ import annotations
 
-from typing import Dict
-
 from loguru import logger
 
 
@@ -25,7 +23,7 @@ class NAICSBEAMapper:
     # Simplified NAICS 2-digit to BEA Summary mapping
     # Based on BEA's I-O sector definitions
     # Source: https://www.bea.gov/industry/input-output-accounts-data
-    NAICS_2DIGIT_TO_BEA_SUMMARY: Dict[str, str] = {
+    NAICS_2DIGIT_TO_BEA_SUMMARY: dict[str, str] = {
         "11": "11",  # Agriculture, forestry, fishing, and hunting
         "21": "21",  # Mining, quarrying, and oil and gas extraction
         "22": "22",  # Utilities

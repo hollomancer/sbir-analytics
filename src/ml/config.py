@@ -4,6 +4,7 @@ Pydantic models for ML configuration.
 
 from pydantic import BaseModel, Field
 
+
 class PaECTERClientConfig(BaseModel):
     """
     Configuration for the PaECTERClient.

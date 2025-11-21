@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
 from src.utils.config_accessor import ConfigAccessor

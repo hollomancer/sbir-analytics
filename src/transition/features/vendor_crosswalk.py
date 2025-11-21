@@ -96,12 +96,12 @@ def _fuzzy_score(a: str, b: str) -> float:
 def _iso_date(val: str | date | datetime | None) -> str | None:
     """Format date as ISO string using centralized utility."""
     from src.utils.date_utils import format_date_iso, parse_date
-    
+
     # Try to format directly first
     result = format_date_iso(val)
     if result is not None:
         return result
-    
+
     # If formatting failed, try parsing first
     parsed = parse_date(val, strict=False)
     return format_date_iso(parsed) if parsed else str(val) if val else None
@@ -449,14 +449,14 @@ class VendorCrosswalk:
         df = pd.json_normalize(rows)
         path = Path(path)
         from src.utils.data.file_io import save_dataframe_parquet
-        
+
         save_dataframe_parquet(df, path, index=False)
         logger.info("VendorCrosswalk saved to parquet: %s", path)
 
     def save_jsonl(self, path: str | Path) -> None:
         path = Path(path)
         from src.utils.common.path_utils import ensure_parent_dir
-        
+
         ensure_parent_dir(path)
         with open(path, "w", encoding="utf-8") as fh:
             for rec in self.to_list_of_dicts():

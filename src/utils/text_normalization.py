@@ -13,7 +13,6 @@ Key Features:
 from __future__ import annotations
 
 import re
-from typing import Any
 
 
 def normalize_name(

@@ -4,6 +4,7 @@ Rule engine for applying heuristic adjustments to CET classification scores.
 
 from loguru import logger
 
+
 class RuleEngine:
     """
     A rule engine for applying heuristic adjustments to CET classification scores.
@@ -37,7 +38,7 @@ class RuleEngine:
                 if neg_kw.lower() in text_lower:
                     penalty_multiplier *= 0.7  # 30% reduction per negative keyword
                     logger.debug(f"Negative keyword '{neg_kw}' found for {cet_id}, applying penalty")
-            
+
             scores[cet_id] = max(0.0, min(100.0, score * penalty_multiplier))
         return scores
 

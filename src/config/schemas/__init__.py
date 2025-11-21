@@ -22,6 +22,7 @@ from .runtime import (
     PathsConfig,
 )
 
+
 __all__ = [
     "CLIConfig",
     "CompanyCategorizationConfig",

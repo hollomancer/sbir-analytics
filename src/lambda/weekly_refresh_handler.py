@@ -14,6 +14,7 @@ import boto3
 from botocore.exceptions import ClientError
 from loguru import logger
 
+
 # Configure loguru for Lambda
 logger.remove()
 logger.add(
@@ -30,7 +31,7 @@ secrets_client = boto3.client("secretsmanager")
 def lambda_handler(event: dict, context) -> dict:
     """
     Lambda handler for weekly award data refresh.
-    
+
     Expected event structure (from GitHub Actions):
     {
         "force_refresh": bool,
@@ -38,7 +39,7 @@ def lambda_handler(event: dict, context) -> dict:
         "s3_bucket": str,
         "neo4j_secret_name": str | None
     }
-    
+
     Returns:
         dict with statusCode and body (JSON string)
     """
@@ -49,7 +50,7 @@ def lambda_handler(event: dict, context) -> dict:
         if "body" in event:
             # API Gateway format - parse JSON body
             payload = json.loads(event["body"])
-        
+
         force_refresh = payload.get("force_refresh", False)
         source_url = payload.get("source_url") or os.getenv(
             "DEFAULT_SOURCE_URL",
@@ -57,10 +58,10 @@ def lambda_handler(event: dict, context) -> dict:
         )
         s3_bucket = payload.get("s3_bucket") or os.getenv("S3_BUCKET")
         neo4j_secret_name = payload.get("neo4j_secret_name") or os.getenv("NEO4J_SECRET_NAME")
-        
+
         if not s3_bucket:
             raise ValueError("S3_BUCKET must be provided in event or environment")
-        
+
         logger.info(
             "Starting weekly refresh",
             extra={
@@ -69,23 +70,23 @@ def lambda_handler(event: dict, context) -> dict:
                 "s3_bucket": s3_bucket,
             },
         )
-        
+
         # Create temporary directory for processing
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             csv_path = tmp_path / "award_data.csv"
             metadata_dir = tmp_path / "reports" / "awards_data_refresh"
             metadata_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Step 1: Download CSV from sbir.gov
             logger.info(f"Downloading CSV from {source_url}")
             download_csv(source_url, csv_path)
-            
+
             # Step 2: Check for dataset changes (compare hash with S3)
             csv_hash = calculate_file_hash(csv_path)
             previous_hash = get_previous_csv_hash(s3_bucket)
             has_changes = csv_hash != previous_hash
-            
+
             logger.info(
                 "Change detection",
                 extra={
@@ -94,11 +95,11 @@ def lambda_handler(event: dict, context) -> dict:
                     "has_changes": has_changes,
                 },
             )
-            
+
             # Step 3: Process if changed or force_refresh
             if has_changes or force_refresh:
                 logger.info("Processing dataset changes")
-                
+
                 # Run validation and checks
                 run_validation_scripts(
                     csv_path=csv_path,
@@ -106,7 +107,7 @@ def lambda_handler(event: dict, context) -> dict:
                     source_url=source_url,
                     s3_bucket=s3_bucket,
                 )
-                
+
                 # Optionally load to Neo4j
                 if neo4j_secret_name:
                     neo4j_credentials = get_neo4j_credentials(neo4j_secret_name)
@@ -115,7 +116,7 @@ def lambda_handler(event: dict, context) -> dict:
                         metadata_dir=metadata_dir,
                         credentials=neo4j_credentials,
                     )
-                
+
                 # Upload CSV and metadata to S3
                 upload_to_s3(
                     csv_path=csv_path,
@@ -123,7 +124,7 @@ def lambda_handler(event: dict, context) -> dict:
                     s3_bucket=s3_bucket,
                     csv_hash=csv_hash,
                 )
-                
+
                 return {
                     "statusCode": 200,
                     "body": json.dumps({
@@ -144,7 +145,7 @@ def lambda_handler(event: dict, context) -> dict:
                         "has_changes": False,
                     }),
                 }
-                
+
     except Exception as e:
         logger.error(f"Lambda execution failed: {e}", exc_info=True)
         return {
@@ -159,7 +160,7 @@ def lambda_handler(event: dict, context) -> dict:
 def download_csv(url: str, output_path: Path) -> None:
     """Download CSV file from URL."""
     import urllib.request
-    
+
     urllib.request.urlretrieve(url, output_path)
     logger.info(f"Downloaded CSV: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
 
@@ -203,18 +204,18 @@ def run_validation_scripts(
     ]
     schema_path = next((p for p in schema_paths if p.exists()), None)
     if not schema_path:
-        raise FileNotFoundError(f"Schema file not found: sbir_awards_columns.json")
-    
+        raise FileNotFoundError("Schema file not found: sbir_awards_columns.json")
+
     company_schema_paths = [
         Path("/var/task/docs/data/sbir_company_columns.json"),
         Path("/var/task/src/docs/data/sbir_company_columns.json"),
     ]
     company_schema_path = next((p for p in company_schema_paths if p.exists()), None)
     if not company_schema_path:
-        raise FileNotFoundError(f"Company schema file not found: sbir_company_columns.json")
+        raise FileNotFoundError("Company schema file not found: sbir_company_columns.json")
     company_dir = metadata_dir.parent.parent / "data" / "raw" / "sbir"
     company_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Get previous metadata from S3 if available
     previous_metadata_path = None
     try:
@@ -226,7 +227,7 @@ def run_validation_scripts(
         previous_metadata_path = metadata_dir / "previous_metadata.json"
     except ClientError:
         logger.info("No previous metadata found")
-    
+
     # Run validation script
     logger.info("Running validation script")
     run_script(
@@ -240,7 +241,7 @@ def run_validation_scripts(
             "--source-url", source_url,
         ],
     )
-    
+
     # Run profiling script
     logger.info("Running profiling script")
     run_script(
@@ -253,7 +254,7 @@ def run_validation_scripts(
             "--output-md", str(metadata_dir / "inputs_profile.md"),
         ],
     )
-    
+
     # Run ingestion checks
     logger.info("Running ingestion checks")
     run_script(
@@ -268,7 +269,7 @@ def run_validation_scripts(
             "--summary-md", str(metadata_dir / "ingestion_summary.md"),
         ],
     )
-    
+
     # Run enrichment checks
     logger.info("Running enrichment checks")
     run_script(
@@ -290,33 +291,33 @@ def run_script(script_path: str, args: list[str]) -> None:
         Path(os.getenv("LAMBDA_TASK_ROOT", "/var/task")) / script_path,
         Path(script_path),  # Absolute path
     ]
-    
+
     full_script_path = None
     for path in possible_paths:
         if path.exists():
             full_script_path = path
             break
-    
+
     if not full_script_path:
         raise FileNotFoundError(f"Script not found: {script_path} (tried: {possible_paths})")
-    
+
     # Use python3 explicitly
     cmd = ["python3", str(full_script_path)] + [arg for arg in args if arg]  # Filter empty strings
     logger.debug(f"Running: {' '.join(cmd)}")
-    
+
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         cwd=os.getenv("LAMBDA_TASK_ROOT", "/var/task"),
     )
-    
+
     if result.returncode != 0:
         logger.error(f"Script failed: {script_path}")
         logger.error(f"stdout: {result.stdout}")
         logger.error(f"stderr: {result.stderr}")
         raise RuntimeError(f"Script {script_path} failed with return code {result.returncode}")
-    
+
     logger.info(f"Script completed: {script_path}")
 
 
@@ -343,7 +344,7 @@ def load_to_neo4j(
 ) -> None:
     """Load data to Neo4j (optional step)."""
     logger.info("Loading data to Neo4j")
-    
+
     # Set environment variables for Neo4j scripts
     env = os.environ.copy()
     env.update({
@@ -352,11 +353,11 @@ def load_to_neo4j(
         "NEO4J_PASSWORD": credentials["password"],
         "NEO4J_DATABASE": credentials["database"],
     })
-    
+
     # Reset Neo4j database
     logger.info("Resetting Neo4j database")
     run_script_with_env("scripts/data/reset_neo4j_sbir.py", [], env)
-    
+
     # Load SBIR awards
     validated_csv_path = metadata_dir / "validated_awards.csv"
     if validated_csv_path.exists():
@@ -370,7 +371,7 @@ def load_to_neo4j(
             ],
             env,
         )
-        
+
         # Run smoke checks
         logger.info("Running Neo4j smoke checks")
         run_script_with_env(
@@ -391,17 +392,17 @@ def run_script_with_env(script_path: str, args: list[str], env: dict) -> None:
         Path(os.getenv("LAMBDA_TASK_ROOT", "/var/task")) / script_path,
         Path(script_path),
     ]
-    
+
     full_script_path = None
     for path in possible_paths:
         if path.exists():
             full_script_path = path
             break
-    
+
     if not full_script_path:
         logger.warning(f"Script not found: {script_path}, skipping")
         return
-    
+
     cmd = ["python3", str(full_script_path)] + [arg for arg in args if arg]
     result = subprocess.run(
         cmd,
@@ -410,7 +411,7 @@ def run_script_with_env(script_path: str, args: list[str], env: dict) -> None:
         env=env,
         cwd=os.getenv("LAMBDA_TASK_ROOT", "/var/task"),
     )
-    
+
     if result.returncode != 0:
         logger.error(f"Script failed: {script_path}")
         logger.error(f"stdout: {result.stdout}")
@@ -427,7 +428,7 @@ def upload_to_s3(
 ) -> None:
     """Upload CSV and metadata to S3."""
     logger.info(f"Uploading to S3 bucket: {s3_bucket}")
-    
+
     # Upload CSV with hash in metadata
     s3_client.upload_file(
         str(csv_path),
@@ -442,7 +443,7 @@ def upload_to_s3(
         },
     )
     logger.info("Uploaded CSV to S3")
-    
+
     # Upload versioned CSV (with date)
     date_str = datetime.utcnow().strftime("%Y-%m-%d")
     s3_client.upload_file(
@@ -458,7 +459,7 @@ def upload_to_s3(
         },
     )
     logger.info(f"Uploaded versioned CSV: award_data_{date_str}.csv")
-    
+
     # Upload all metadata files
     for metadata_file in metadata_dir.rglob("*"):
         if metadata_file.is_file():

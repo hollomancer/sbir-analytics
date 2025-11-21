@@ -28,7 +28,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import train_test_split, ParameterGrid
+from sklearn.model_selection import ParameterGrid, train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from src.ml.models.cet_classifier import ApplicabilityModel
@@ -208,7 +208,6 @@ class CETModelTrainer:
         Returns:
             Dictionary of best hyperparameters
         """
-        from sklearn.model_selection import GridSearchCV
 
         # Since ApplicabilityModel is not a standard scikit-learn estimator,
         # we cannot use GridSearchCV directly.
@@ -220,7 +219,7 @@ class CETModelTrainer:
 
         for params in param_grid:
             logger.info(f"Trying parameters: {params}")
-            
+
             # Create a new model instance with the current parameters
             temp_model = ApplicabilityModel(
                 cet_areas=self.cet_areas,
@@ -234,9 +233,9 @@ class CETModelTrainer:
             X_train_part, X_val, y_train_part, y_val = train_test_split(
                 X_train, y_train, test_size=self.val_size, random_state=self.random_state
             )
-            
+
             temp_model.train(X_train_part, y_train_part)
-            
+
             y_pred = []
             for text in X_val:
                 classifications = temp_model.classify(text, return_all_scores=True)
@@ -246,9 +245,9 @@ class CETModelTrainer:
                         idx = list(self.mlb.classes_).index(cls.cet_id)
                         pred_vector[idx] = 1.0 if cls.score >= 40 else 0.0
                 y_pred.append(pred_vector)
-            
+
             y_pred = np.array(y_pred)
-            
+
             score = f1_score(y_val, y_pred, average="macro", zero_division=0)
             logger.info(f"Validation F1 score: {score:.4f}")
 

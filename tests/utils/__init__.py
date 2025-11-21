@@ -37,6 +37,7 @@ from .fixtures import (
     create_sample_transitions_df,
 )
 
+
 __all__ = [
     # Exception helpers
     "assert_exception_structure",

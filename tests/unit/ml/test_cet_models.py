@@ -4,25 +4,18 @@ Unit tests for CET Pydantic models.
 Tests validation logic, constraints, and business rules for CET data models.
 """
 
-from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
 
-from src.models.cet_models import (
-    CETArea,
-    CETAssessment,
-    CETClassification,
-    ClassificationLevel,
-    CompanyCETProfile,
-    EvidenceStatement,
-)
+from src.models.cet_models import CETArea, ClassificationLevel
 from tests.factories import (
     CETAssessmentFactory,
     CETClassificationFactory,
     CompanyCETProfileFactory,
     EvidenceStatementFactory,
 )
+
 
 pytestmark = pytest.mark.fast
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import date
 from types import SimpleNamespace
-from typing import Any, Optional, Union
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -80,7 +80,7 @@ EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 PHONE_REGEX = re.compile(r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$")
 
 
-def validate_required_field(value: Any, field_name: str, row_index: int) -> Optional[QualityIssue]:
+def validate_required_field(value: Any, field_name: str, row_index: int) -> QualityIssue | None:
     """
     Validate a required field is not null/empty.
 
@@ -102,7 +102,7 @@ def validate_required_field(value: Any, field_name: str, row_index: int) -> Opti
     return None  # type: ignore[unreachable]
 
 
-def validate_phase(phase: str, row_index: int) -> Optional[QualityIssue]:
+def validate_phase(phase: str, row_index: int) -> QualityIssue | None:
     """Validate Phase is one of the allowed values."""
     if pd.isna(phase):
         return QualityIssue(  # type: ignore[unreachable]
@@ -122,7 +122,7 @@ def validate_phase(phase: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_program(program: str, row_index: int) -> Optional[QualityIssue]:
+def validate_program(program: str, row_index: int) -> QualityIssue | None:
     """Validate Program is SBIR or STTR."""
     if pd.isna(program):
         return QualityIssue(  # type: ignore[unreachable]
@@ -142,7 +142,7 @@ def validate_program(program: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_award_year(year: int, row_index: int) -> Optional[QualityIssue]:
+def validate_award_year(year: int, row_index: int) -> QualityIssue | None:
     """Validate Award Year is within reasonable range."""
     if pd.isna(year):
         return QualityIssue(  # type: ignore[unreachable]
@@ -162,7 +162,7 @@ def validate_award_year(year: int, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_award_amount(amount: Union[float, str], row_index: int) -> Optional[QualityIssue]:
+def validate_award_amount(amount: float | str, row_index: int) -> QualityIssue | None:
     """Validate Award Amount is positive and within reasonable range.
 
     Accept string inputs (e.g., \"1,000,000.00\") by coercing to float. If coercion
@@ -221,7 +221,7 @@ def validate_award_amount(amount: Union[float, str], row_index: int) -> Optional
     return None
 
 
-def validate_uei_format(uei: str, row_index: int) -> Optional[QualityIssue]:
+def validate_uei_format(uei: str, row_index: int) -> QualityIssue | None:
     """Validate UEI format (12 alphanumeric characters)."""
     if pd.isna(uei) or uei == "":
         return None  # UEI is optional
@@ -245,7 +245,7 @@ def validate_uei_format(uei: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_duns_format(duns: str, row_index: int) -> Optional[QualityIssue]:
+def validate_duns_format(duns: str, row_index: int) -> QualityIssue | None:
     """Validate DUNS format (9 digits)."""
     if pd.isna(duns) or duns == "":
         return None  # DUNS is optional
@@ -261,7 +261,7 @@ def validate_duns_format(duns: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_email_format(email: str, field_name: str, row_index: int) -> Optional[QualityIssue]:
+def validate_email_format(email: str, field_name: str, row_index: int) -> QualityIssue | None:
     """Validate email format."""
     if pd.isna(email) or email == "":
         return None  # Email is optional
@@ -277,7 +277,7 @@ def validate_email_format(email: str, field_name: str, row_index: int) -> Option
     return None
 
 
-def validate_state_code(state: str, row_index: int) -> Optional[QualityIssue]:
+def validate_state_code(state: str, row_index: int) -> QualityIssue | None:
     """Validate state is a valid 2-letter US state code."""
     if pd.isna(state) or state == "":
         return None  # State is optional
@@ -301,7 +301,7 @@ def validate_state_code(state: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_zip_code(zip_code: str, row_index: int) -> Optional[QualityIssue]:
+def validate_zip_code(zip_code: str, row_index: int) -> QualityIssue | None:
     """Validate ZIP code format (5 or 9 digits with optional hyphen)."""
     if pd.isna(zip_code) or zip_code == "":
         return None  # ZIP is optional
@@ -331,7 +331,7 @@ def validate_zip_code(zip_code: str, row_index: int) -> Optional[QualityIssue]:
     return None
 
 
-def validate_phone_format(phone: str, field_name: str, row_index: int) -> Optional[QualityIssue]:
+def validate_phone_format(phone: str, field_name: str, row_index: int) -> QualityIssue | None:
     """Validate phone number format."""
     if pd.isna(phone) or phone == "":
         return None  # Phone is optional
@@ -348,8 +348,8 @@ def validate_phone_format(phone: str, field_name: str, row_index: int) -> Option
 
 
 def validate_award_year_date_consistency(
-    award_year: int, proposal_date: Optional[date], row_index: int
-) -> Optional[QualityIssue]:
+    award_year: int, proposal_date: date | None, row_index: int
+) -> QualityIssue | None:
     """Validate that Award Year matches Proposal Award Date year."""
     if pd.isna(award_year) or pd.isna(proposal_date):
         return None
@@ -367,7 +367,7 @@ def validate_award_year_date_consistency(
 
 def validate_phase_program_consistency(
     phase: str, program: str, row_index: int
-) -> Optional[QualityIssue]:
+) -> QualityIssue | None:
     """Validate that Phase is consistent with Program."""
     if pd.isna(phase) or pd.isna(program):
         return None  # type: ignore[unreachable]
@@ -389,8 +389,8 @@ def validate_phase_program_consistency(
 
 
 def validate_date_consistency(
-    award_date: Optional[date], end_date: Optional[date], row_index: int
-) -> Optional[QualityIssue]:
+    award_date: date | None, end_date: date | None, row_index: int
+) -> QualityIssue | None:
     """Validate that contract end date is after award date."""
     if award_date is None or end_date is None:
         return None  # Can't validate if either is missing

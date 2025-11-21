@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -10,6 +9,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from src.transformers.fiscal.sensitivity import FiscalUncertaintyQuantifier, UncertaintyResult
+
 
 # sample_scenario_results_df fixture is now in tests/unit/transformers/conftest.py
 

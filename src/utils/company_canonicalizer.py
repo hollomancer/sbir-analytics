@@ -88,7 +88,7 @@ def canonicalize_companies_from_awards(
     canonical_map = {}
     canonical_groups = defaultdict(list)
 
-    for idx, row in enriched.iterrows():
+    for _idx, row in enriched.iterrows():
         original_key = row["_original_key"]
         matched_idx = row.get("_matched_company_idx")
         match_score = row.get("_match_score", 0)

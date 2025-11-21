@@ -13,6 +13,7 @@ Usage:
 
 from dagster import AssetSelection, build_assets_job
 
+
 try:
     from src.assets.paecter.embeddings import (
         paecter_award_patent_similarity,
