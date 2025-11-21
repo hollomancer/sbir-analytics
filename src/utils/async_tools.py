@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable
-from typing import Any
+from collections.abc import Coroutine
+from typing import Any, cast
 
 
-def run_sync(coro: Awaitable[Any]) -> Any:
+def run_sync(coro: Coroutine[Any, Any, Any]) -> Any:
     """Run an async coroutine from synchronous code safely.
 
     Handles the common case where another event loop is already running
     (e.g., inside IPython) by creating a temporary loop.
     """
     try:
-        return asyncio.run(coro)
+        return asyncio.run(cast(Coroutine[Any, Any, Any], coro))
     except RuntimeError as exc:
         if "asyncio.run()" in str(exc):
             loop = asyncio.new_event_loop()

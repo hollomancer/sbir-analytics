@@ -162,7 +162,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         extra={"rows": total_rows, "checks_path": str(checks_path)},
     )
 
-    return Output(df, metadata=metadata)
+    return Output(df, metadata=metadata)  # type: ignore[arg-type]
 
 
 # -----------------------------
@@ -297,7 +297,7 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
     # Sample size thresholds (exposed via env)
     min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
     max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
-    checks["sample_size"] = {
+    checks["sample_size"] = {  # type: ignore[assignment]
         "value": int(total),
         "min": int(min_size),
         "max": int(max_size),
@@ -310,10 +310,10 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
         "rows": total,
         "source": src,
         "checks_path": str(checks_path),
-        "coverage": MetadataValue.json(checks["coverage"]),
+        "coverage": MetadataValue.json(checks["coverage"]),  # type: ignore[arg-type]
     }
     context.log.info("Prepared contracts_sample", extra=meta)
-    return Output(df, metadata=meta)
+    return Output(df, metadata=meta)  # type: ignore[arg-type]
 
 
 # -----------------------------

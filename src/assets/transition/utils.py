@@ -107,6 +107,27 @@ except Exception:  # pragma: no cover
 
 
 # Import centralized file I/O utilities
+from src.utils.common.path_utils import ensure_parent_dir as _ensure_parent_dir
+from src.utils.data.file_io import save_dataframe_parquet, write_json
+
+# Re-export for use by transition assets
+__all__ = [
+    "Output",
+    "MetadataValue",
+    "asset",
+    "asset_check",
+    "AssetExecutionContext",
+    "AssetCheckResult",
+    "AssetCheckSeverity",
+    "now_utc_iso",
+    "_norm_name",
+    "_env_float",
+    "_env_int",
+    "_env_bool",
+    "_ensure_parent_dir",
+    "save_dataframe_parquet",
+    "write_json",
+]
 
 
 def now_utc_iso() -> str:

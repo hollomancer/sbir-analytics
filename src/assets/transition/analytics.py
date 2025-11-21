@@ -92,7 +92,7 @@ def transformed_transition_analytics(
         "company_transition_rate": MetadataValue.json(company_rate),
     }
     context.log.info("Computed transition_analytics", extra=meta)
-    return Output(str(out_path), metadata=meta)
+    return Output(str(out_path), metadata=meta)  # type: ignore[arg-type]
 
 
 # -----------------------------

@@ -30,7 +30,7 @@ class Individual(BaseModel):
     city: str | None = Field(None, description="City")
     state: str | None = Field(None, description="State or province code")
     postcode: str | None = Field(None, description="Postal/ZIP code")
-    country: str | None = Field(None, description="Country code", default="US")
+    country: str | None = Field(default="US", description="Country code")
 
     # Entity classification
     individual_type: Literal["RESEARCHER", "PATENT_ASSIGNEE", "PATENT_ASSIGNOR"] = Field(

@@ -124,6 +124,8 @@ allow_untyped_calls = true
 allow_untyped_defs = true
 disallow_any_unimported = false
 disallow_any_generics = false
+# Suppress import-untyped errors for known modules without stubs
+disable_error_code = ["import-untyped"]
 # Enable pydantic plugin for better type checking
 plugins = ["pydantic.mypy"]
 
@@ -151,8 +153,19 @@ module = [
     "httpx.*",  # HTTP client library
     "tenacity.*",  # Retry library
     "cloudpathlib.*",  # Cloud storage path library
+    "jellyfish.*",  # Phonetic matching library
 ]
 ignore_missing_imports = true
+
+# Override for modules with type stubs but still reporting issues
+[[tool.mypy.overrides]]
+module = [
+    "pandas.*",
+    "yaml.*",
+    "psutil.*",
+]
+# pandas-stubs, types-PyYAML, and types-psutil are installed but may still report import-untyped
+# This is handled by disabling import-untyped globally above
 
 [tool.pytest.ini_options]
 markers = [

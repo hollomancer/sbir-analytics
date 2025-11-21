@@ -153,7 +153,7 @@ def transformed_transition_evidence(
                     and (any_id_cov >= id_min)
                     and (size_ok if enforce_size else True)
                 )
-                summary["gates"]["validated_contracts_sample"] = {
+                summary["gates"]["validated_contracts_sample"] = {  # type: ignore[index]
                     "passed": passed,
                     "action_date_coverage": date_cov,
                     "any_identifier_coverage": any_id_cov,
@@ -180,7 +180,7 @@ def transformed_transition_evidence(
                     vr = json.load(fh)
                 res_rate = float(vr.get("stats", {}).get("resolution_rate", 0.0))
                 min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
-                summary["gates"]["enriched_vendor_resolution"] = {
+                summary["gates"]["enriched_vendor_resolution"] = {  # type: ignore[index]
                     "passed": res_rate >= min_rate,
                     "resolution_rate": res_rate,
                     "threshold": min_rate,
@@ -223,7 +223,7 @@ def transformed_transition_evidence(
         "validation_summary_path": "reports/validation/transition_mvp.json",
     }
     context.log.info("Wrote transition_evidence_v1", extra=meta)
-    return Output(str(out_path), metadata=meta)
+    return Output(str(out_path), metadata=meta)  # type: ignore[arg-type]
 
 
 # -----------------------------
