@@ -13,18 +13,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from dagster import (
-    AssetCheckExecutionContext,
-    AssetCheckResult,
-    AssetCheckSeverity,
-    AssetExecutionContext,
-    AssetIn,
-    MetadataValue,
-    Output,
-    asset,
-    asset_check,
-)
-from loguru import logger
+from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue, Output, asset, asset_check
 
 from ...config.loader import get_config
 from ...ml.paecter_client import PaECTERClient
@@ -40,7 +29,7 @@ from ...utils.monitoring import performance_monitor
     io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_awards(
-    context: AssetExecutionContext,
+    context,
     validated_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
@@ -53,7 +42,7 @@ def paecter_embeddings_awards(
         DataFrame with award_id, embedding, and metadata
     """
     config = get_config()
-    
+
     context.log.info(
         "Starting PaECTER embedding generation for SBIR awards",
         extra={"award_count": len(validated_sbir_awards)},
@@ -80,9 +69,15 @@ def paecter_embeddings_awards(
     # Prepare texts
     texts = []
     for _, row in validated_sbir_awards.iterrows():
-        solicitation = str(row[solicitation_col]) if solicitation_col and pd.notna(row.get(solicitation_col)) else None
+        solicitation = (
+            str(row[solicitation_col])
+            if solicitation_col and pd.notna(row.get(solicitation_col))
+            else None
+        )
         title = str(row[title_col]) if title_col and pd.notna(row.get(title_col)) else None
-        abstract = str(row[abstract_col]) if abstract_col and pd.notna(row.get(abstract_col)) else None
+        abstract = (
+            str(row[abstract_col]) if abstract_col and pd.notna(row.get(abstract_col)) else None
+        )
 
         # Clean NaN strings
         for val in [solicitation, title, abstract]:
@@ -106,13 +101,15 @@ def paecter_embeddings_awards(
         )
 
     # Create output DataFrame
-    embeddings_df = pd.DataFrame({
-        "award_id": award_ids,
-        "embedding": [e.tolist() for e in result.embeddings],
-        "model_version": result.model_version,
-        "inference_mode": result.inference_mode,
-        "dimension": result.dimension,
-    })
+    embeddings_df = pd.DataFrame(
+        {
+            "award_id": award_ids,
+            "embedding": [e.tolist() for e in result.embeddings],
+            "model_version": result.model_version,
+            "inference_mode": result.inference_mode,
+            "dimension": result.dimension,
+        }
+    )
 
     context.log.info(
         "PaECTER embeddings generated",
@@ -143,7 +140,7 @@ def paecter_embeddings_awards(
     io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_patents(
-    context: AssetExecutionContext,
+    context,
     transformed_patents: dict[str, Any],
 ) -> Output[pd.DataFrame]:
     """
@@ -160,12 +157,11 @@ def paecter_embeddings_patents(
     import json
     import tempfile
     import zipfile
-    from pathlib import Path
-    
+
     import boto3
-    
+
     config = get_config()
-    
+
     context.log.info("Starting PaECTER embedding generation for USPTO patents")
 
     # Initialize PaECTER client
@@ -189,41 +185,41 @@ def paecter_embeddings_patents(
     # If no JSONL data, try loading from S3 PatentsView data
     if patents_df is None or len(patents_df) == 0:
         context.log.info("No transformed patents found, loading from S3 PatentsView")
-        from ...utils.cloud_storage import get_s3_bucket_from_env
         from ...extractors.uspto_extractor import USPTOExtractor
-        
+        from ...utils.cloud_storage import get_s3_bucket_from_env
+
         bucket = get_s3_bucket_from_env()
         if not bucket:
             raise ValueError("S3 bucket not configured. Set SBIR_ETL__S3_BUCKET env var.")
-        
+
         # Default to latest PatentsView patent data
         s3_url = f"s3://{bucket}/raw/uspto/patentsview/2025-11-18/patent.zip"
         context.log.info(f"Loading from S3: {s3_url}")
-        
+
         # Download and extract
         temp_dir = Path(tempfile.gettempdir()) / "sbir-analytics-paecter"
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_zip = temp_dir / "patentsview.zip"
-        
+
         s3 = boto3.client("s3")
         parts = s3_url.replace("s3://", "").split("/", 1)
         s3_bucket = parts[0]
         s3_key = parts[1] if len(parts) > 1 else ""
         s3.download_file(s3_bucket, s3_key, str(local_zip))
-        
+
         # Extract if ZIP
         extract_dir = temp_dir / "extracted"
         extract_dir.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(local_zip, "r") as zip_ref:
             zip_ref.extractall(extract_dir)
-        
+
         # Use USPTO extractor to load data
         extractor = USPTOExtractor(input_dir=extract_dir)
         files = extractor.discover_files()
-        
+
         if not files:
             raise FileNotFoundError(f"No USPTO files found in {extract_dir}")
-        
+
         # Load data
         all_rows = []
         for file_path in files:
@@ -234,7 +230,7 @@ def paecter_embeddings_patents(
                     break
             if len(all_rows) >= 1000:
                 break
-        
+
         patents_df = pd.DataFrame(all_rows)
         context.log.info(f"Loaded {len(patents_df)} patents from S3")
 
@@ -258,7 +254,9 @@ def paecter_embeddings_patents(
     texts = []
     for _, row in patents_df.iterrows():
         title = str(row[title_col]) if title_col and pd.notna(row.get(title_col)) else None
-        abstract = str(row[abstract_col]) if abstract_col and pd.notna(row.get(abstract_col)) else None
+        abstract = (
+            str(row[abstract_col]) if abstract_col and pd.notna(row.get(abstract_col)) else None
+        )
 
         # Clean NaN strings
         if title and title.lower() == "nan":
@@ -282,13 +280,15 @@ def paecter_embeddings_patents(
         )
 
     # Create output DataFrame
-    embeddings_df = pd.DataFrame({
-        "patent_id": patent_ids,
-        "embedding": [e.tolist() for e in result.embeddings],
-        "model_version": result.model_version,
-        "inference_mode": result.inference_mode,
-        "dimension": result.dimension,
-    })
+    embeddings_df = pd.DataFrame(
+        {
+            "patent_id": patent_ids,
+            "embedding": [e.tolist() for e in result.embeddings],
+            "model_version": result.model_version,
+            "inference_mode": result.inference_mode,
+            "dimension": result.dimension,
+        }
+    )
 
     context.log.info(
         "PaECTER embeddings generated",
@@ -319,7 +319,7 @@ def paecter_embeddings_patents(
     io_manager_key="parquet_io_manager",
 )
 def paecter_award_patent_similarity(
-    context: AssetExecutionContext,
+    context,
     paecter_embeddings_awards: pd.DataFrame,
     paecter_embeddings_patents: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
@@ -334,7 +334,7 @@ def paecter_award_patent_similarity(
         DataFrame with award_id, patent_id, and similarity_score
     """
     config = get_config()
-    
+
     context.log.info(
         "Computing award-patent similarities",
         extra={
@@ -364,13 +364,15 @@ def paecter_award_patent_similarity(
         top_indices = np.argsort(similarities[i])[::-1][:10]  # Top 10
         top_scores = similarities[i][top_indices]
 
-        for idx, score in zip(top_indices, top_scores):
+        for idx, score in zip(top_indices, top_scores, strict=True):
             if score >= threshold:
-                matches.append({
-                    "award_id": award_id,
-                    "patent_id": paecter_embeddings_patents.iloc[idx]["patent_id"],
-                    "similarity_score": float(score),
-                })
+                matches.append(
+                    {
+                        "award_id": award_id,
+                        "patent_id": paecter_embeddings_patents.iloc[idx]["patent_id"],
+                        "similarity_score": float(score),
+                    }
+                )
 
     matches_df = pd.DataFrame(matches)
 
@@ -404,7 +406,7 @@ def paecter_award_patent_similarity(
     description="Check that PaECTER embeddings coverage meets threshold",
 )
 def paecter_awards_coverage_check(
-    context: AssetCheckExecutionContext,
+    context,
     paecter_embeddings_awards: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that award embedding coverage meets quality threshold."""
@@ -412,18 +414,20 @@ def paecter_awards_coverage_check(
 
     config = get_config()
     threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_awards", 0.95)
-    
+
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
     expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
-    
+
     for embedding in paecter_embeddings_awards["embedding"]:
         if embedding and len(embedding) == expected_dim:
             valid_count += 1
-    
-    coverage = valid_count / len(paecter_embeddings_awards) if len(paecter_embeddings_awards) > 0 else 0.0
+
+    coverage = (
+        valid_count / len(paecter_embeddings_awards) if len(paecter_embeddings_awards) > 0 else 0.0
+    )
     passed = coverage >= threshold
-    
+
     return AssetCheckResult(
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.INFO,
@@ -442,7 +446,7 @@ def paecter_awards_coverage_check(
     description="Check that PaECTER embeddings coverage meets threshold",
 )
 def paecter_patents_coverage_check(
-    context: AssetCheckExecutionContext,
+    context,
     paecter_embeddings_patents: pd.DataFrame,
 ) -> AssetCheckResult:
     """Check that patent embedding coverage meets quality threshold."""
@@ -450,18 +454,22 @@ def paecter_patents_coverage_check(
 
     config = get_config()
     threshold = ConfigAccessor.get_nested(config, "ml.paecter.coverage_threshold_patents", 0.98)
-    
+
     # Count valid embeddings (non-null, correct dimension)
     valid_count = 0
     expected_dim = 1024  # PaECTER embeddings are 1024-dimensional
-    
+
     for embedding in paecter_embeddings_patents["embedding"]:
         if embedding and len(embedding) == expected_dim:
             valid_count += 1
-    
-    coverage = valid_count / len(paecter_embeddings_patents) if len(paecter_embeddings_patents) > 0 else 0.0
+
+    coverage = (
+        valid_count / len(paecter_embeddings_patents)
+        if len(paecter_embeddings_patents) > 0
+        else 0.0
+    )
     passed = coverage >= threshold
-    
+
     return AssetCheckResult(
         passed=passed,
         severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.INFO,
@@ -473,4 +481,3 @@ def paecter_patents_coverage_check(
             "total_patents": MetadataValue.int(len(paecter_embeddings_patents)),
         },
     )
-

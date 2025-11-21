@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,7 +39,7 @@ class SbirDuckDBConfig(BaseModel):
         default="data/raw/sbir/awards_data.csv",
         description="Path to SBIR CSV file (local fallback path)",
     )
-    csv_path_s3: Optional[str] = Field(
+    csv_path_s3: str | None = Field(
         default=None,
         description="S3 URL for SBIR CSV (auto-built from csv_path if bucket configured)",
     )
@@ -52,6 +52,23 @@ class SbirDuckDBConfig(BaseModel):
     table_name: str = Field(default="sbir_awards", description="DuckDB table name")
     batch_size: int = Field(default=10000, description="Batch size for chunked processing")
     encoding: str = Field(default="utf-8", description="CSV file encoding")
+
+
+class SamGovConfig(BaseModel):
+    """SAM.gov parquet extraction configuration."""
+
+    parquet_path: str = Field(
+        default="data/raw/sam_gov/sam_entity_records.parquet",
+        description="Path to SAM.gov parquet file (local fallback path)",
+    )
+    parquet_path_s3: str | None = Field(
+        default=None,
+        description="S3 URL for SAM.gov parquet (auto-built from parquet_path if bucket configured)",
+    )
+    use_s3_first: bool = Field(
+        default=True, description="If True, try S3 first, fallback to local parquet_path"
+    )
+    batch_size: int = Field(default=10000, description="Batch size for chunked processing")
 
 
 class DataQualityConfig(PercentageMappingMixin, BaseModel):
@@ -136,6 +153,9 @@ class ExtractionConfig(BaseModel):
             "import_chunk_size": 50000,
         }
     )
+    sam_gov: SamGovConfig = Field(
+        default_factory=SamGovConfig, description="SAM.gov extraction configuration"
+    )
 
 
 class ValidationConfig(FloatRangeValidatorMixin, BaseModel):
@@ -196,6 +216,7 @@ __all__ = [
     "DuckDBConfig",
     "ExtractionConfig",
     "Neo4jConfig",
+    "SamGovConfig",
     "SbirDuckDBConfig",
     "SbirValidationConfig",
     "TransformationConfig",

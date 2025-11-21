@@ -232,6 +232,13 @@ extraction:
     # DuckDB will import the PostgreSQL dump file
     import_chunk_size: 50000
 
+  sam_gov:
+    # SAM.gov parquet file configuration
+    parquet_path: "data/raw/sam_gov/sam_entity_records.parquet"  # Local fallback path
+    parquet_path_s3: null  # Auto-built from parquet_path if SBIR_ETL__S3_BUCKET is set
+    use_s3_first: true  # Try S3 first, fallback to local parquet_path
+    batch_size: 10000 # Chunk size for processing
+
   uspto:
     # USPTO Patent Assignment Data configuration
     csv_path: "data/raw/uspto/patent_assignments.csv"
@@ -264,7 +271,7 @@ extraction:
         tables: ["patent", "assignee", "inventor"]  # Which tables to download
         s3_prefix: "raw/uspto/patentsview"
         # source_url: Optional - Lambda has defaults for common tables, override if needed
-      
+
       # Patent Assignment Dataset (patent transfers and assignments)
       # Default URLs are built into the Lambda function (2023 CSV/DTA releases)
       # Default CSV: https://www.uspto.gov/sites/default/files/documents/assignment_data_2023.csv
@@ -277,7 +284,7 @@ extraction:
         schedule: "monthly"  # USPTO updates monthly
         s3_prefix: "raw/uspto/assignments"
         # source_url: Optional - Lambda has defaults for csv and dta formats, override if needed
-      
+
       # Artificial Intelligence Patent Dataset
       # Default URL is built into the Lambda function (2023 CSV release)
       # Default: https://www.uspto.gov/sites/default/files/documents/ai_model_predictions_2023.csv.zip
@@ -325,14 +332,14 @@ organization_deduplication:
   # Pre-loading fuzzy matching thresholds
   high_threshold: 90  # Auto-merge matches >= 90%
   low_threshold: 75   # Flag for review matches >= 75%
-  
+
   # Multi-key MERGE settings
   merge_on_uei: true   # Merge nodes with same UEI
   merge_on_duns: true  # Merge nodes with same DUNS
-  
+
   # Merge history tracking
   track_merge_history: true  # Enable merge history tracking for reversibility
-  
+
   # Enhanced matching (passed to company_enricher)
   enhanced_matching:
     enable_phonetic_matching: true
@@ -651,7 +658,7 @@ ml:
     # Provider selection: "huggingface" (default, uses API) or "local" (requires sentence-transformers)
     provider: "huggingface"
     use_local: false  # Set to true to use local model instead of API
-    
+
     # API configuration (for HuggingFace Inference API)
     api:
       token_env: "HF_TOKEN"  # Environment variable for HuggingFace API token
@@ -660,23 +667,23 @@ ml:
       timeout_seconds: 60
       max_retries: 5
       retry_backoff_seconds: 2.0
-    
+
     # Local model configuration (when use_local=true)
     local:
       model_name: "mpi-inno-comp/paecter"  # HuggingFace model identifier
       device: "auto"  # "auto", "cpu", or "cuda"
       batch_size: 32
-    
+
     # Text processing
     text:
       max_length: 512  # Maximum token length (truncation)
       award_fields: ["solicitation_title", "abstract", "award_title"]
       patent_fields: ["title", "abstract"]
-    
+
     # Similarity computation
     similarity_threshold: 0.80  # Minimum similarity score to include in results
     top_k: 10  # Number of top matches to return per award
-    
+
     # Validation thresholds
     coverage_threshold_awards: 0.95  # 95% of awards must have valid embeddings
     coverage_threshold_patents: 0.98  # 98% of patents must have valid embeddings
