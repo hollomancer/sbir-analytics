@@ -68,8 +68,12 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      - name: Verify Ruff installation
-        run: uv run python -m ruff --version
+      - name: Ensure Ruff is installed
+        run: |
+          # Explicitly install ruff to ensure it's available
+          # This is needed because cached venvs might not have it
+          uv pip install ruff
+          uv run python -m ruff --version
       - name: Run Ruff lint
         run: uv run python -m ruff check src tests
       - name: Run Ruff format check
