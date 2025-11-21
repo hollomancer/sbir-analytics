@@ -106,6 +106,8 @@ jobs:
           python-version: "3.11"
 
       - name: Run setup script
+        env:
+          RPY2_CFFI_MODE: ABI  # Build rpy2 in ABI mode without requiring R
         run: |
           chmod +x scripts/setup_dev.sh
           ./scripts/setup_dev.sh
