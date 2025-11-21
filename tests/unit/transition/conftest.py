@@ -1,171 +1,30 @@
 """Shared fixtures for transition detection tests."""
 
-from datetime import date, datetime, timedelta
-from unittest.mock import Mock
-
-import pytest
-
-from src.models.transition_models import (
-    ConfidenceLevel,
-    EvidenceBundle,
-    TransitionSignals,
+# Import shared fixtures
+from tests.conftest_shared import (
+    default_config,
+    default_transition_config,
+    mock_evidence_generator,
+    mock_scorer,
+    mock_vendor_resolver,
+    old_award,
+    recent_award,
+    sample_award,
+    sample_contract,
+    sample_contracts_df,
 )
-from tests.utils.fixtures import (
-    create_sample_award_dict,
-    create_sample_transition_detector_config,
-)
 
 
-@pytest.fixture
-def default_transition_config():
-    """Default transition detector configuration for tests."""
-    return create_sample_transition_detector_config()
-
-
-@pytest.fixture
-def mock_vendor_resolver():
-    """Mock VendorResolver for testing."""
-    resolver = Mock()
-    resolver.resolve_by_uei = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_cage = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_duns = Mock(return_value=Mock(record=None, score=0.0))
-    resolver.resolve_by_name = Mock(return_value=Mock(record=None, score=0.0))
-    return resolver
-
-
-@pytest.fixture
-def mock_scorer():
-    """Mock TransitionScorer for testing."""
-    scorer = Mock()
-    signals = TransitionSignals(
-        agency_signal=Mock(agency_score=0.0625),
-        timing_signal=Mock(timing_score=0.20),
-        competition_signal=Mock(competition_score=0.02),
-        patent_signal=None,
-        cet_signal=None,
-    )
-    scorer.score_and_classify = Mock(return_value=(signals, 0.75, ConfidenceLevel.LIKELY))
-    return scorer
-
-
-@pytest.fixture
-def mock_evidence_generator():
-    """Mock EvidenceGenerator for testing."""
-    generator = Mock()
-    bundle = EvidenceBundle(evidence_items=[], generated_at=datetime.utcnow())
-    generator.generate_bundle = Mock(return_value=bundle)
-    return generator
-
-
-@pytest.fixture
-def sample_award():
-    """Sample SBIR award for testing."""
-    return create_sample_award_dict(
-        award_id="AWD001",
-        company_name="Acme Corp",
-        agency="DOD",
-        completion_date=date(2023, 6, 1),
-        award_amount=1000000,
-    )
-
-
-@pytest.fixture
-def sample_contract():
-    """Sample federal contract for testing."""
-    return {
-        "contract_id": "CONTRACT-001",
-        "piid": "PIID-001",
-        "recipient_name": "Acme Corp",
-        "recipient_uei": "ABC123DEF456",  # pragma: allowlist secret
-        "awarding_agency_name": "DOD",
-        "federal_action_obligation": 500000.0,
-        "action_date": date(2023, 8, 1),  # 2 months after award completion
-        "period_of_performance_start_date": date(2023, 8, 1),
-        "period_of_performance_current_end_date": date(2024, 8, 1),
-    }
-
-
-@pytest.fixture
-def sample_contracts_df(sample_contract):
-    """Sample contracts DataFrame for testing."""
-    import pandas as pd
-
-    return pd.DataFrame([sample_contract])
-
-
-@pytest.fixture
-def recent_award():
-    """Award that completed recently (within detection window)."""
-    return create_sample_award_dict(
-        award_id="AWD-RECENT",
-        company_name="Recent Corp",
-        agency="NSF",
-        completion_date=date.today() - timedelta(days=90),  # 3 months ago
-    )
-
-
-@pytest.fixture
-def old_award():
-    """Award that completed outside detection window."""
-    return create_sample_award_dict(
-        award_id="AWD-OLD",
-        company_name="Old Corp",
-        agency="NIH",
-        completion_date=date.today() - timedelta(days=800),  # > 2 years ago
-    )
-
-
-@pytest.fixture
-def default_config():
-    """Default scoring configuration for tests (alias for backward compatibility)."""
-    return {
-        "base_score": 0.15,
-        "scoring": {
-            "agency_continuity": {
-                "enabled": True,
-                "weight": 0.25,
-                "same_agency_bonus": 0.25,
-                "cross_service_bonus": 0.125,
-                "different_dept_bonus": 0.05,
-            },
-            "timing_proximity": {
-                "enabled": True,
-                "weight": 0.20,
-                "windows": [
-                    {"range": [0, 90], "score": 1.0},
-                    {"range": [91, 180], "score": 0.7},
-                    {"range": [181, 365], "score": 0.4},
-                ],
-                "beyond_window_penalty": 0.1,
-            },
-            "competition_type": {
-                "enabled": True,
-                "weight": 0.20,
-                "sole_source_bonus": 0.20,
-                "limited_competition_bonus": 0.10,
-                "full_and_open_bonus": 0.0,
-            },
-            "patent_signal": {
-                "enabled": True,
-                "weight": 0.15,
-                "has_patent_bonus": 0.05,
-                "patent_pre_contract_bonus": 0.03,
-                "patent_topic_match_bonus": 0.02,
-                "patent_similarity_threshold": 0.7,
-            },
-            "cet_alignment": {
-                "enabled": True,
-                "weight": 0.10,
-                "same_cet_area_bonus": 0.05,
-            },
-            "text_similarity": {
-                "enabled": False,
-                "weight": 0.10,
-            },
-        },
-        "confidence_thresholds": {
-            "high": 0.85,
-            "likely": 0.65,
-        },
-    }
-
+# Re-export for pytest discovery
+__all__ = [
+    "default_transition_config",
+    "mock_vendor_resolver",
+    "mock_scorer",
+    "mock_evidence_generator",
+    "sample_award",
+    "sample_contract",
+    "sample_contracts_df",
+    "recent_award",
+    "old_award",
+    "default_config",
+]
