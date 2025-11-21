@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 import boto3
 import requests
 from requests.adapters import HTTPAdapter
+from urllib3.exceptions import ProtocolError, ReadTimeoutError
 from urllib3.util.retry import Retry
 
 # Import file checking and discovery logic from check_new_file.py
@@ -177,14 +178,16 @@ def download_and_upload(
             try:
                 # Use session with retry adapter for streaming download
                 # The urllib3 Retry adapter will handle connection errors automatically
-                # Timeout: (connect timeout, read timeout per chunk)
-                # Read timeout is per chunk read, not total file size
-                # 60s connect, 1800s (30min) per chunk read for very slow connections
+                # Timeout: (connect timeout, read timeout)
+                # For streaming large files, we use a very large read timeout (24 hours)
+                # since the server may be slow but we're reading in chunks.
+                # Connect timeout remains at 60s to fail fast on connection issues.
+                # Note: urllib3 retry will still handle transient connection issues
                 with session.get(
                     source_url,
                     stream=True,
                     headers=headers,
-                    timeout=(60, 1800),  # (connect, read per chunk)
+                    timeout=(60, 86400),  # (connect 60s, read 24 hours) - very long for streaming
                 ) as response:
                     response.raise_for_status()  # Raise HTTPError for bad responses
 
@@ -251,9 +254,12 @@ def download_and_upload(
                 requests.exceptions.ChunkedEncodingError,
                 requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout,
-                requests.exceptions.ProtocolError,
+                requests.exceptions.RequestException,
+                ProtocolError,
+                ReadTimeoutError,
                 ConnectionResetError,
                 BrokenPipeError,
+                TimeoutError,
             ) as e:
                 # These errors can occur during streaming, especially for large files
                 if download_attempt < max_download_retries - 1:
