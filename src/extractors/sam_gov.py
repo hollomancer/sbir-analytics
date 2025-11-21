@@ -59,6 +59,7 @@ class SAMGovExtractor:
                     logger.info(f"Found SAM.gov parquet in S3: {s3_url}")
 
         # Resolve path (handles S3 download if needed)
+        resolved_path: Path | None = None
         if s3_url:
             try:
                 resolved_path = resolve_data_path(

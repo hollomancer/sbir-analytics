@@ -7,6 +7,7 @@ Data Source Priority:
 """
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
@@ -137,7 +138,7 @@ def _import_sam_gov_entities(
     )
 
     # Create metadata
-    metadata = {
+    metadata: dict[str, Any] = {
         "row_count": len(df),
         "num_columns": len(df.columns),
         "columns": MetadataValue.json(list(df.columns[:20])),  # First 20 columns

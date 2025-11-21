@@ -1,5 +1,6 @@
 """SBIR data extraction using DuckDB."""
 
+import csv
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -183,7 +184,7 @@ class SbirDuckDBExtractor:
                             delimiter=delimiter,
                             header=0 if header else None,
                             encoding=encoding,
-                            quoting=pd.QUOTE_MINIMAL,
+                            quoting=csv.QUOTE_MINIMAL,
                             escapechar="\\",
                             low_memory=False,
                         )
@@ -466,7 +467,7 @@ class SbirDuckDBExtractor:
         table_identifier = self._table_identifier
         query = f"""
         SELECT
-            {', '.join(null_counts)}
+            {", ".join(null_counts)}
         FROM {table_identifier}
         """  # nosec B608
 

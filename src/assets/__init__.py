@@ -5,9 +5,14 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
+from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from types import ModuleType
-from typing import Iterator, Sequence
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dagster import JobDefinition, SensorDefinition
 
 LOG = logging.getLogger(__name__)
 
@@ -90,7 +95,7 @@ def iter_sensor_modules() -> list[ModuleType]:
     return modules
 
 
-def iter_public_jobs() -> list["JobDefinition"]:
+def iter_public_jobs() -> list[JobDefinition]:
     from dagster import JobDefinition  # Imported lazily
 
     jobs: list[JobDefinition] = []
@@ -101,7 +106,7 @@ def iter_public_jobs() -> list["JobDefinition"]:
     return jobs
 
 
-def iter_public_sensors() -> list["SensorDefinition"]:
+def iter_public_sensors() -> list[SensorDefinition]:
     from dagster import SensorDefinition  # Imported lazily
 
     sensors: list[SensorDefinition] = []

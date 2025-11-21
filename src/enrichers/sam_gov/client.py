@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from loguru import logger
@@ -46,14 +46,16 @@ class SAMGovAPIClient:
         else:
             self.api_config = config
 
-        self.base_url = self.api_config.get("base_url", "https://api.sam.gov/entity-information/v3")
-        self.timeout = self.api_config.get("timeout_seconds", 30)
-        self.retry_attempts = self.api_config.get("retry_attempts", 3)
-        self.retry_backoff = self.api_config.get("retry_backoff_seconds", 1.0)
-        self.rate_limit_per_minute = self.api_config.get("rate_limit_per_minute", 60)
+        self.base_url = str(
+            self.api_config.get("base_url", "https://api.sam.gov/entity-information/v3")
+        )
+        self.timeout = cast(int, self.api_config.get("timeout_seconds", 30))
+        self.retry_attempts = cast(int, self.api_config.get("retry_attempts", 3))
+        self.retry_backoff = cast(float, self.api_config.get("retry_backoff_seconds", 1.0))
+        self.rate_limit_per_minute = cast(int, self.api_config.get("rate_limit_per_minute", 60))
 
         # Get API key from environment
-        api_key_env_var = self.api_config.get("api_key_env_var", "SAM_GOV_API_KEY")
+        api_key_env_var = str(self.api_config.get("api_key_env_var", "SAM_GOV_API_KEY"))
         self.api_key = os.getenv(api_key_env_var)
         if not self.api_key:
             logger.warning(
@@ -125,7 +127,8 @@ class SAMGovAPIClient:
         async def _do_request() -> dict[str, Any]:
             await self._wait_for_rate_limit()
 
-            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+            base_url_str = str(self.base_url)
+            url = f"{base_url_str.rstrip('/')}/{endpoint.lstrip('/')}"
             default_headers = {
                 "Accept": "application/json",
                 "User-Agent": "SBIR-Analytics/0.1.0",

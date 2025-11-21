@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from loguru import logger
 
 from src.config.loader import get_config
 from src.exceptions import DependencyError, FileSystemError
 from src.utils.common.logging_config import log_with_context
-from src.utils.common.path_utils import ensure_dir, resolve_path
+
 
 try:
     import duckdb
@@ -26,6 +26,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
 
 if TYPE_CHECKING:
     # For type checkers we still reference pandas types
+
     import pandas as pd
 
 
@@ -58,9 +59,9 @@ class DuckDBClient:
 
         self.database_path = database_path or ":memory:"
         self.read_only = read_only
-        self._connection = None
+        self._connection: Any = None
         # For in-memory databases, maintain a persistent connection
-        self._persistent_conn = None if self.database_path != ":memory:" else None
+        self._persistent_conn: Any = None
         self._identifier_cache: dict[str, str] = {}
 
     @staticmethod
@@ -88,7 +89,7 @@ class DuckDBClient:
         return "'" + escaped + "'"
 
     @contextmanager
-    def connection(self) -> None:
+    def connection(self) -> Iterator[Any]:
         """Context manager for database connection."""
         _require_duckdb(operation="connect")
 
@@ -103,7 +104,7 @@ class DuckDBClient:
             yield self._persistent_conn
         else:
             # For file-based databases, use temporary connections
-            conn = None
+            conn: Any = None
             try:
                 conn = duckdb.connect(self.database_path, read_only=self.read_only)
                 # Configure connection
@@ -146,7 +147,7 @@ class DuckDBClient:
 
     def execute_query_df(
         self, query: str, parameters: dict[str, Any] | None = None
-    ) -> "pd.DataFrame":
+    ) -> pd.DataFrame:
         """Execute a query and return results as pandas DataFrame.
 
         Args:
@@ -268,7 +269,7 @@ class DuckDBClient:
                 logger.error(f"Failed to import PostgreSQL dump: {e}")
                 return False
 
-    def create_table_from_df(self, df: "pd.DataFrame", table_name: str) -> bool:
+    def create_table_from_df(self, df: pd.DataFrame, table_name: str) -> bool:
         """Create table from pandas DataFrame.
 
         Args:
@@ -349,7 +350,7 @@ class DuckDBClient:
         except Exception:
             return False
 
-    def fetch_df_chunks(self, query: str, batch_size: int = 10000) -> None:
+    def fetch_df_chunks(self, query: str, batch_size: int = 10000) -> Iterator[pd.DataFrame]:
         """
         Generator that yields pandas DataFrames for a SQL query in chunked pages.
 

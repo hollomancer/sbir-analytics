@@ -6,8 +6,6 @@ building on the base ColumnFinder utility.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pandas as pd
 
 from .column_finder import ColumnFinder
@@ -75,9 +73,7 @@ class AssetColumnHelper:
         return ColumnFinder.find_id_column(df, "patent")
 
     @staticmethod
-    def find_text_columns(
-        df: pd.DataFrame, entity_type: str = "award"
-    ) -> dict[str, str | None]:
+    def find_text_columns(df: pd.DataFrame, entity_type: str = "award") -> dict[str, str | None]:
         """Find common text columns (title, abstract, solicitation).
 
         Args:
@@ -105,8 +101,8 @@ class AssetColumnHelper:
             result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
 
             # Special handling: title should not match "solicitation"
-            if result.get("title"):
-                title_col = result["title"]
+            title_col = result.get("title")
+            if title_col:
                 if "solicitation" in title_col.lower():
                     # Try to find a better title column
                     title_patterns = ["award", "title"]
@@ -120,7 +116,8 @@ class AssetColumnHelper:
                             ):
                                 result["title"] = col
                                 break
-                        if result.get("title") and "solicitation" not in result["title"].lower():
+                        title_col_check = result.get("title")
+                        if title_col_check and "solicitation" not in title_col_check.lower():
                             break
 
             return result
@@ -139,4 +136,3 @@ class AssetColumnHelper:
                 "abstract": ["abstract"],
             }
             return ColumnFinder.find_columns_by_patterns(df, pattern_map)
-
