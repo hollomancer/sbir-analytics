@@ -746,6 +746,6 @@ CREATE CONSTRAINT entity_name_required
 
 - USPTO Patent Assignment Data: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
 - Neo4j Documentation: https://neo4j.com/docs/
-- [Neo4j Schema Reference](../references/schemas/neo4j.md) - Canonical schema reference
+- [Neo4j Schema Reference](neo4j.md) - Canonical schema reference
 - [Patent Field Mapping](patent-field-mapping.md) - USPTO to Neo4j field mapping
 - [Patent Assignment Schema](patent-assignment-schema.md) - Assignment relationship details

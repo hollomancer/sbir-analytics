@@ -107,7 +107,7 @@ make docker-up-dev
 make docker-verify  # Verify everything is working
 ```
 
-**Full Guide:** [Docker Quick Start](docs/development/docker-quickstart.md)
+**Full Guide:** [Docker Quick Start](docker-quickstart.md)
 ```
 
 ### 2. Add Verification Target to Makefile

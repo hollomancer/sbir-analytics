@@ -18,8 +18,8 @@ Status: <active|draft|deprecated|archived>
 
 ## Related Documentation
 
-- [Related Doc 1](path/to/doc1.md)
-- [Related Doc 2](path/to/doc2.md)
+- [Documentation Index](index.md)
+- [Architecture Overview](architecture/detailed-overview.md)
 
 ## See Also
 

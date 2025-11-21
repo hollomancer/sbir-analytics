@@ -354,7 +354,7 @@ MemoryError: Unable to allocate array
 ## References
 
 - [SAM.gov Entity Information API](https://open.gsa.gov/api/entity-api/)
-- [USAspending Integration Pattern](../docs/USASPENDING_INTEGRATION.md)
+- [USAspending Cloud Integration](USASPENDING_CLOUD_INTEGRATION.md)
 - [Cloud Storage Utilities](../src/utils/cloud_storage.py)
 - [Configuration Schema](../src/config/schemas/data_pipeline.py)
 

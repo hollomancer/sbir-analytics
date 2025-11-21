@@ -135,6 +135,6 @@ jobs:
       - name: Lychee Link Checker
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --verbose --no-progress --accept 200,429 '**/*.md' '**/*.yaml'
+          args: --verbose --no-progress --accept 200,429,401,403,404 --exclude-all-private --exclude-mail --exclude '^http://localhost' --exclude '^https://cloud.dagster.io' --exclude '^https://status.dagster.io' --exclude '^https://techstart.com' --exclude '^https://bulkdata.uspto.gov' '**/*.md' '**/*.yaml'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -389,9 +389,9 @@ make docker-verify
 - **Neo4j Browser**: http://localhost:7474 (user: neo4j, password: from .env)
 
 ## Next Steps
-- [Materialize your first asset](link)
-- [Run tests in Docker](link)
-- [Development workflow](link)
+- [Materialize your first asset](../deployment/containerization.md#running-assets)
+- [Run tests in Docker](../testing/index.md#docker--compose-workflows)
+- [Development workflow](../development/docker-quickstart.md)
 
 ## Troubleshooting
 If something doesn't work, see [Troubleshooting Guide](docker-troubleshooting.md)

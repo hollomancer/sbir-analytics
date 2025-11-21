@@ -115,7 +115,7 @@ export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
 
 **Quick Reference**:
 - 📋 [MVP Guide](mvp.md) - Minimal viable product
-- 📋 [Configuration Reference](../../config/transition/README.md) - YAML configuration guide
+- 📋 [Configuration Guide](../../config/README.md) - YAML configuration guide
 
 ## Neo4j Queries
 
@@ -180,7 +180,7 @@ uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% covera
 ### Configuration
 - `config/transition/detection.yaml` - Scoring weights, thresholds
 - `config/transition/presets.yaml` - Preset configurations
-- `config/transition/README.md` - Configuration guide
+- `config/README.md` - Configuration guide
 
 ### Data
 - `data/processed/transitions.parquet` - Detected transitions

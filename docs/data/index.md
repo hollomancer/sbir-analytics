@@ -164,8 +164,8 @@ Graph database schemas and entity relationships:
 
 For geographic analysis and funding impact assessment:
 
-- [Congressional District Quickstart](CONGRESSIONAL_DISTRICT_QUICKSTART.md)
-- [Fiscal Impact Granularity](FISCAL_IMPACT_GRANULARITY.md)
+- [Congressional District Quickstart](../CONGRESSIONAL_DISTRICT_QUICKSTART.md)
+- [Fiscal Impact Granularity](../FISCAL_IMPACT_GRANULARITY.md)
 
 ## Related Resources
 

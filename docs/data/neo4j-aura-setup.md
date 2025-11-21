@@ -2,7 +2,7 @@
 
 The weekly SBIR awards refresh workflow can optionally load validated data into a Neo4j Aura cloud instance for testing and analysis.
 
-> **Note**: For general testing setup with Aura Free, see [Neo4j Aura Free Testing Setup](../neo4j-aura-testing.md).
+> **Note**: For general testing setup with Aura Free, see [Neo4j Testing Environments Guide](../testing/neo4j-testing-environments-guide.md).
 
 ## Why Neo4j Aura?
 

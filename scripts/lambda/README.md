@@ -46,7 +46,7 @@ See [Lambda to Dagster Migration](../../docs/deployment/lambda-to-dagster-migrat
 
 ## Testing
 
-See [`docs/deployment/aws-lambda-setup.md`](../../docs/deployment/aws-lambda-setup.md) for testing guidelines.
+See [`docs/deployment/aws-serverless-deployment-guide.md`](../../docs/deployment/aws-serverless-deployment-guide.md) for deployment and testing guidelines.
 
 ## Deployment
 
