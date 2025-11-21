@@ -18,11 +18,11 @@ Status: <active|draft|deprecated|archived>
 
 ## Related Documentation
 
-- [Documentation Index](../index.md)
+- [Documentation Index](index.md)
 - [Architecture Overview](architecture/detailed-overview.md)
 
 ## See Also
 
 - [Main README](../../README.md)
-- [Documentation Index](../index.md)
+- [Documentation Index](index.md)
 

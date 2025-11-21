@@ -153,5 +153,5 @@ Entrypoint scripts (`scripts/docker/entrypoint.sh`) will:
 ## Additional Resources
 
 - [Containerization Guide](containerization.md) - Full containerization documentation
-- [Configuration Management](../../../config/README.md) - Configuration system overview
+- [Configuration Management](../../config/README.md) - Configuration system overview
 - [Docker Compose File](../../docker-compose.yml) - Main compose configuration
