@@ -63,10 +63,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-environment
+        with:
+          python-version: "3.11"
+          neo4j-image: "neo4j:5"
+          neo4j-username: "neo4j"
+          neo4j-password: "password"  # pragma: allowlist secret
+          default-timeout: "45"
+
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
           cache-pytest: "false"
@@ -76,9 +85,9 @@ jobs:
         if: matrix.needs_neo4j == true
         run: |
           docker run -d --name nightly-neo4j \
-            -e NEO4J_AUTH=neo4j/password \
+            -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
             -p 7687:7687 -p 7474:7474 \
-            neo4j:5
+            ${{ env.NEO4J_IMAGE }}
           echo "Waiting for Neo4j..."
           until curl -s -f -o /dev/null http://localhost:7474; do
             echo "Neo4j not ready, sleeping..."
@@ -89,10 +98,6 @@ jobs:
       - name: Run ${{ matrix.suite }} tests
         id: run-tests
         continue-on-error: true
-        env:
-          NEO4J_URI: bolt://localhost:7687
-          NEO4J_USERNAME: neo4j
-          NEO4J_PASSWORD: password
         run: |
           set -o pipefail
           echo "Executing suite: ${{ matrix.suite }}"

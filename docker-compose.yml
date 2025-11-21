@@ -44,7 +44,7 @@ x-ci-environment: &ci-environment
 x-healthcheck-neo4j: &healthcheck-neo4j
   test:
     - "CMD-SHELL"
-    - "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1 || exit 1"
+    - "/app/scripts/docker/healthcheck/neo4j.sh"
   interval: 10s
   timeout: 5s
   retries: 12
@@ -53,14 +53,16 @@ x-healthcheck-neo4j: &healthcheck-neo4j
 x-healthcheck-dagster: &healthcheck-dagster
   test:
     - "CMD-SHELL"
-    - "curl -fsS --max-time 3 http://localhost:${HEALTHCHECK_PORT:-3000}${HEALTHCHECK_PATH:-/server_info} || exit 1"
+    - "/app/scripts/docker/healthcheck/dagster.sh"
   interval: 10s
   timeout: 3s
   retries: 5
   start_period: 5s
 
 x-healthcheck-daemon: &healthcheck-daemon
-  test: ["CMD-SHELL", "ps aux | grep -q 'dagster-daemon' || exit 1"]
+  test:
+    - "CMD-SHELL"
+    - "/app/scripts/docker/healthcheck/daemon.sh"
   interval: 20s
   timeout: 5s
   retries: 3

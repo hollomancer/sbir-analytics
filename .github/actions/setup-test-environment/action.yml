@@ -1,0 +1,84 @@
+name: Setup Test Environment
+description: |
+  Consolidated setup for test environments including Neo4j service configuration,
+  environment variables, and common test settings.
+
+  This action standardizes environment setup across workflows to reduce duplication
+  and ensure consistency.
+
+inputs:
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.11"
+  neo4j-image:
+    description: Neo4j Docker image version
+    required: false
+    default: "neo4j:5"
+  neo4j-username:
+    description: Neo4j username
+    required: false
+    default: "neo4j"
+  neo4j-password:
+    description: Neo4j password
+    required: false
+    default: "password"
+  neo4j-uri:
+    description: Neo4j connection URI
+    required: false
+    default: "bolt://localhost:7687"
+  default-timeout:
+    description: Default job timeout in minutes
+    required: false
+    default: "30"
+  performance-sample-size:
+    description: Sample size for performance tests
+    required: false
+    default: "500"
+  aws-region:
+    description: Default AWS region
+    required: false
+    default: "us-east-2"
+  neo4j-health-retries:
+    description: Number of health check retries for Neo4j
+    required: false
+    default: "12"
+
+outputs:
+  neo4j-uri:
+    description: Neo4j connection URI
+    value: ${{ inputs.neo4j-uri }}
+  neo4j-username:
+    description: Neo4j username
+    value: ${{ inputs.neo4j-username }}
+  neo4j-password:
+    description: Neo4j password
+    value: ${{ inputs.neo4j-password }}
+  neo4j-image:
+    description: Neo4j Docker image
+    value: ${{ inputs.neo4j-image }}
+  neo4j-health-retries:
+    description: Neo4j health check retries
+    value: ${{ inputs.neo4j-health-retries }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set environment variables
+      run: |
+        echo "PYTHON_VERSION=${{ inputs.python-version }}" >> $GITHUB_ENV
+        echo "NEO4J_IMAGE=${{ inputs.neo4j-image }}" >> $GITHUB_ENV
+        echo "NEO4J_USERNAME=${{ inputs.neo4j-username }}" >> $GITHUB_ENV
+        echo "NEO4J_PASSWORD=${{ inputs.neo4j-password }}" >> $GITHUB_ENV
+        echo "NEO4J_URI=${{ inputs.neo4j-uri }}" >> $GITHUB_ENV
+        echo "DEFAULT_TIMEOUT=${{ inputs.default-timeout }}" >> $GITHUB_ENV
+        echo "PERFORMANCE_SAMPLE_SIZE=${{ inputs.performance-sample-size }}" >> $GITHUB_ENV
+        echo "AWS_REGION=${{ inputs.aws-region }}" >> $GITHUB_ENV
+        echo "NEO4J_HEALTH_RETRIES=${{ inputs.neo4j-health-retries }}" >> $GITHUB_ENV
+        echo "NEO4J_IMAGE=${{ inputs.neo4j-image }}" >> $GITHUB_ENV
+
+        # Also set in app-specific format
+        echo "SBIR_ETL__NEO4J__URI=${{ inputs.neo4j-uri }}" >> $GITHUB_ENV
+        echo "SBIR_ETL__NEO4J__USERNAME=${{ inputs.neo4j-username }}" >> $GITHUB_ENV
+        echo "SBIR_ETL__NEO4J__PASSWORD=${{ inputs.neo4j-password }}" >> $GITHUB_ENV
+      shell: bash

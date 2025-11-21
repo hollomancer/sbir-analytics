@@ -402,8 +402,81 @@ transition-mvp-clean: ## Clean up Transition MVP artifacts
 ## docker-check / docker-check-install: Docker diagnostics
 ## docker-e2e-* targets: Convenience wrappers around docker-e2e
 
+.PHONY: logs-all
+logs-all: ## Show logs from all running containers
+	@$(call info,Showing logs from all containers)
+	$(call run,$(COMPOSE) logs -f)
+
+.PHONY: ps
+ps: ## Show running containers
+	@$(call info,Listing running containers)
+	$(call run,$(COMPOSE) ps)
+
+.PHONY: clean-all
+clean-all: ## Clean all artifacts, containers, and volumes
+	@$(call info,Cleaning all Docker artifacts)
+	@set -euo pipefail; \
+	 $(call run,$(COMPOSE) down --remove-orphans --volumes); \
+	 $(call run,docker system prune -f --volumes || true); \
+	 $(call success,All artifacts cleaned)
+
+.PHONY: shell
+shell: env-check ## Drop into a shell in the app container
+	@$(call info,Opening shell in app container)
+	$(call run,$(COMPOSE) --profile dev run --rm app sh)
+
+.PHONY: db-shell
+db-shell: env-check ## Drop into Neo4j cypher-shell
+	@$(call info,Opening Neo4j cypher-shell)
+	@set -euo pipefail; \
+	 $(COMPOSE) --profile dev exec neo4j \
+	   cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password}
+
+.PHONY: validate-config
+validate-config: ## Validate docker-compose.yml and .env files
+	@$(call info,Validating docker-compose.yml)
+	@set -euo pipefail; \
+	 if ! $(COMPOSE) config >/dev/null 2>&1; then \
+	   $(call error,docker-compose.yml validation failed); \
+	   $(COMPOSE) config; \
+	   exit 1; \
+	 fi; \
+	 $(call success,docker-compose.yml is valid); \
+	 if [ -f .env ]; then \
+	   $(call info,Checking .env file); \
+	   if grep -q "^[^#].*=" .env; then \
+	     $(call success,.env file contains configuration); \
+	   else \
+	     $(call warn,.env file exists but appears empty); \
+	   fi; \
+	 else \
+	   $(call warn,.env file not found - copy from .env.example); \
+	 fi
+
+.PHONY: validate
+validate: lint test ## Run linting, type checking, and tests
+	@$(call success,All validation checks passed)
+
+.PHONY: ci-local
+ci-local: ## Run CI checks locally (mimics GitHub Actions)
+	@$(call info,Running CI checks locally)
+	@set -euo pipefail; \
+	 $(MAKE) validate; \
+	 $(call info,Running secret scan); \
+	 if command -v python3 >/dev/null 2>&1; then \
+	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
+	   if [ "$${exit_code:-0}" != "0" ]; then \
+	     $(call error,Secret scan failed); \
+	     exit $$exit_code; \
+	   fi; \
+	 else \
+	   $(call warn,Python3 not found, skipping secret scan); \
+	 fi; \
+	 $(call success,CI checks completed)
+
 .PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-tools docker-down docker-rebuild docker-test \
 	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
 	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
 	docker-exec env-check docker-check docker-check-install docker-check-prerequisites docker-verify neo4j-up \
-	neo4j-down neo4j-reset neo4j-check transition-mvp-run transition-mvp-clean
+	neo4j-down neo4j-reset neo4j-check transition-mvp-run transition-mvp-clean \
+	logs-all ps clean-all shell db-shell validate-config validate ci-local

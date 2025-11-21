@@ -101,93 +101,13 @@ jobs:
       - name: Install pre-commit and detect-secrets
         run: |
           uv pip install pre-commit detect-secrets
-      - name: Run pre-commit hooks (detect-secrets + other configured hooks)
-        id: precommit
-        run: |  # pragma: allowlist secret
-          set -eux
-          if [ -f .pre-commit-config.yaml ]; then
-            pre-commit run --all-files || exit_code=$? && true
-            # Exit code 3 from detect-secrets means baseline was updated (line numbers changed)
-            # This is expected and not a security issue. Verify no new secrets were introduced.
-            if [ "${exit_code:-0}" = "3" ]; then
-              echo "detect-secrets updated baseline (likely due to line number changes from other hooks)."
-              echo "Verifying no new secrets were introduced..."
-              # Check if baseline file was modified
-              if git diff --quiet .secrets.baseline; then
-                echo "Baseline was not modified, this is unexpected."
-                exit 3
-              fi
-              # Verify no new secrets: scan with baseline should pass if only line numbers changed
-              detect-secrets scan --baseline .secrets.baseline --all-files > /dev/null 2>&1 && scan_result=0 || scan_result=$?
-              if [ "$scan_result" = "1" ]; then
-                echo "ERROR: New secrets detected that are not in baseline!"
-                detect-secrets scan --baseline .secrets.baseline --all-files
-                exit 1
-              else
-                echo "Baseline updated successfully - no new secrets detected (only line number updates)."
-                echo "The updated baseline should be committed to keep line numbers current."
-              fi
-            elif [ "${exit_code:-0}" != "0" ]; then
-              echo "pre-commit checks failed (possible secrets detected). See output above for details."
-              exit "${exit_code}"
-            fi
-          else
-            echo ".pre-commit-config.yaml not found; running detect-secrets scan directly as fallback."
-            detect-secrets scan --all-files --quiet --json > /tmp/detect-secrets.json || exit_code=$? && true
-            if [ -s /tmp/detect-secrets.json ]; then
-              echo "detect-secrets found findings (no baseline configured). Failing CI to surface potential secrets."
-              cat /tmp/detect-secrets.json
-              exit 2
-            fi
-          fi
-      - name: Fallback grep scan for common patterns
-        run: |  # pragma: allowlist secret
-          set -eux
-          PATTERNS=(
-            "NEO4J_PASSWORD"
-            "NEO4J_AUTH"
-            "NEO4J_ADMIN_PASSWORD"
-            "AWS_ACCESS_KEY_ID"
-            "AWS_SECRET_ACCESS_KEY"
-            "AKIA[0-9A-Z]{16}"
-            "PRIVATE_KEY"
-          )
-          FOUND=0
-          # Exclude directories: docs, archive, .kiro, scripts, caches
-          # Exclude files: *.md, .env.example*, *.py (which reference env var names legitimately)
-          EXCLUDE_ARGS="--exclude-dir=.git --exclude-dir=.venv --exclude-dir=docs --exclude-dir=archive --exclude-dir=.kiro --exclude-dir=node_modules --exclude-dir=.mypy_cache --exclude-dir=.pytest_cache --exclude-dir=.ruff_cache --exclude-dir=scripts --exclude-dir=config"
-          EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=*.png --exclude=*.jpg --exclude=*.md --exclude=.env.example* --exclude=*.py --exclude=*.sh --exclude=*.yml --exclude=*.yaml --exclude=Makefile --exclude=*.conf --exclude=*.json"
-
-          for p in "${PATTERNS[@]}"; do
-            echo "Checking pattern: $p"
-            if echo "$p" | grep -q "AKIA"; then
-              # Use -P for Perl regex (AKIA pattern)
-              # Filter out lines with pragma allowlist secret
-              if grep -RInP "$p" $EXCLUDE_ARGS . 2>/dev/null | grep -v "pragma: allowlist secret" | grep -v "^$" || true; then
-                # Only set FOUND if there are actual matches
-                if [ -n "$(grep -RInP "$p" $EXCLUDE_ARGS . 2>/dev/null | grep -v 'pragma: allowlist secret' || true)" ]; then
-                  FOUND=1
-                  break  # Early exit on first match
-                fi
-              fi
-            else
-              # Regular grep for simple string patterns
-              if grep -RIn "$p" $EXCLUDE_ARGS . 2>/dev/null | grep -v "pragma: allowlist secret" | grep -v "^$" || true; then
-                if [ -n "$(grep -RIn "$p" $EXCLUDE_ARGS . 2>/dev/null | grep -v 'pragma: allowlist secret' || true)" ]; then
-                  FOUND=1
-                  break  # Early exit on first match
-                fi
-              fi
-            fi
-          done
-          if [ "$FOUND" -ne 0 ]; then
-            echo "One or more high-risk secret patterns were detected in the repository."
-            echo "These appear to be actual secret values, not just environment variable names."
-            echo "Please review the scan output above and ensure no secrets are committed."
-            exit 3
-          else
-            echo "No hardcoded secrets detected (environment variable references and allowlisted patterns excluded)."
-          fi
+      - name: Run secret scan
+        id: secret-scan
+        run: |
+          python3 scripts/ci/scan_secrets.py \
+            --baseline .secrets.baseline \
+            || exit_code=$?
+          exit ${exit_code:-0}
       - name: Upload scan artifacts on failure
         if: failure()
         uses: ./.github/actions/upload-artifacts

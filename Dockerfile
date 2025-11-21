@@ -96,7 +96,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Install R packages (stateior) for fiscal analysis
 # This package is used via rpy2 for economic input-output modeling
 # Install to system library so it's available in runtime
-# 
+#
 # Optimization strategies:
 # 1. Install arrow explicitly first (may get binary, or at least parallel build)
 # 2. Use parallel compilation with MAKEFLAGS and Ncpus
@@ -225,8 +225,9 @@ COPY . /app
 # Ensure directories expected for bind mounts/volumes exist even when .dockerignore skips them
 RUN mkdir -p /app/logs /app/data /app/reports /app/config /app/metrics
 
-# Ensure entrypoint scripts are executable (use actual runtime path and make all scripts executable)
-RUN chmod -R +x /app/scripts/docker || true
+# Ensure entrypoint scripts and healthcheck scripts are executable
+RUN chmod -R +x /app/scripts/docker || true && \
+    chmod +x /app/scripts/docker/healthcheck/*.sh || true
 
 # Make sure /app owned by sbir user
 RUN chown -R sbir:sbir /app

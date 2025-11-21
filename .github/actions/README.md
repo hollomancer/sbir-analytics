@@ -74,7 +74,7 @@ Sets up Neo4j environment variables for service containers.
   uses: ./.github/actions/setup-neo4j-service
   with:
     username: "neo4j"               # Optional, default: "neo4j"
-    password: "password"            # Optional, default: "password"
+    password: "password"            # Optional, default: "password"  # pragma: allowlist secret
     auth-mode: "password"           # Optional, default: "password"
     uri: "bolt://localhost:7687"    # Optional, default: "bolt://localhost:7687"
 ```
@@ -129,6 +129,38 @@ Prepares `.env` file from `.env.example` with optional secret injection.
 - Copies from `.env.example` or creates empty file
 - Injects Neo4j credentials if provided
 - Sets `NEO4J_AUTH` automatically
+
+---
+
+### `setup-test-environment`
+
+Consolidated setup for test environments including Neo4j service configuration,
+environment variables, and common test settings.
+
+**Usage:**
+```yaml
+- name: Setup test environment
+  uses: ./.github/actions/setup-test-environment
+  with:
+    python-version: "3.11"          # Optional, default: "3.11"
+    neo4j-image: "neo4j:5"          # Optional, default: "neo4j:5"
+    neo4j-username: "neo4j"         # Optional, default: "neo4j"
+    neo4j-password: "password"      # Optional, default: "password"  # pragma: allowlist secret
+    default-timeout: "30"           # Optional, default: "30"
+    performance-sample-size: "500"  # Optional, default: "500"
+    aws-region: "us-east-2"         # Optional, default: "us-east-2"
+    neo4j-health-retries: "12"      # Optional, default: "12"
+```
+
+**Outputs:**
+- `neo4j-uri`: Neo4j connection URI
+- `neo4j-username`: Neo4j username
+- `neo4j-password`: Neo4j password
+
+**Features:**
+- Sets standardized environment variables for testing
+- Reduces duplication across workflows
+- Single source of truth for test configuration
 
 ---
 
@@ -230,4 +262,3 @@ See the workflow files in `.github/workflows/` for examples of how these actions
 - `ci.yml` - Uses `setup-python-uv`, `setup-docker-buildx`, `prepare-env-file`
 - `lambda-deploy.yml` - Uses `setup-aws-credentials`, `setup-docker-buildx`
 - `nightly.yml` - Uses `setup-python-uv`, `setup-neo4j-service`, `wait-for-neo4j`, `prepare-env-file`
-
