@@ -68,14 +68,16 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
+      - name: Verify Ruff installation
+        run: uv run python -m ruff --version
       - name: Run Ruff lint
-        run: uv run ruff check src tests
+        run: uv run python -m ruff check src tests
       - name: Run Ruff format check
-        run: uv run ruff format --check src tests
+        run: uv run python -m ruff format --check src tests
       - name: Run MyPy type checker
-        run: uv run mypy src
+        run: uv run python -m mypy src
       - name: Run Bandit
-        run: uv run bandit -r src -c pyproject.toml
+        run: uv run python -m bandit -r src -c pyproject.toml
 
   secret-scan:
     name: Secret Scan
