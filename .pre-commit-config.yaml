@@ -30,7 +30,9 @@ repos:
           types-psutil,
           types-PyYAML,
           types-tqdm,
-          types-requests
+          types-requests,
+          "boto3-stubs[s3]",
+          pydantic
         ]
         args: [--config-file=pyproject.toml]
 
