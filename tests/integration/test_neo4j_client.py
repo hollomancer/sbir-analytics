@@ -8,48 +8,9 @@ These tests require a running Neo4j instance.
 Run with: docker-compose up -d neo4j
 """
 
-import os
-
 import pytest
 
-from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
-
-
-# Skip these tests if Neo4j is not available
-@pytest.fixture(scope="module")
-def neo4j_config():
-    """Create Neo4j configuration for testing."""
-    return Neo4jConfig(
-        uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-        username=os.getenv("NEO4J_USERNAME", "neo4j"),
-        password=os.getenv("NEO4J_PASSWORD", "password123"),
-        database=os.getenv("NEO4J_DATABASE", "neo4j"),
-        batch_size=10,
-    )
-
-
-@pytest.fixture(scope="module")
-def neo4j_client(neo4j_config):
-    """Create Neo4j client for testing."""
-    client = Neo4jClient(neo4j_config)
-    yield client
-    client.close()
-
-
-@pytest.fixture(autouse=True)
-def cleanup_test_data(neo4j_client):
-    """Clean up test data before and after each test."""
-    # Clean before test
-    with neo4j_client.session() as session:
-        session.run("MATCH (n:TestCompany) DETACH DELETE n")
-        session.run("MATCH (n:TestAward) DETACH DELETE n")
-
-    yield
-
-    # Clean after test
-    with neo4j_client.session() as session:
-        session.run("MATCH (n:TestCompany) DETACH DELETE n")
-        session.run("MATCH (n:TestAward) DETACH DELETE n")
+from src.loaders.neo4j.client import LoadMetrics, Neo4jClient
 
 
 @pytest.mark.integration
@@ -142,15 +103,10 @@ class TestNeo4jNodeUpsert:
             assert record is not None
             assert record["c"]["name"] == "Test Company"
 
-    def test_upsert_single_node_update(self, neo4j_client):
+    def test_upsert_single_node_update(self, neo4j_client, neo4j_helper):
         """Test upserting a single node (update)."""
-        # Create initial node
-        with neo4j_client.session() as session:
-            session.run(
-                "CREATE (c:TestCompany {uei: $uei, name: $name})",
-                uei="UEI002",
-                name="Original Name",
-            )
+        # Create initial node using helper
+        neo4j_helper.create_company(uei="UEI002", name="Original Name")
 
         # Update node
         with neo4j_client.session() as session:
@@ -192,16 +148,11 @@ class TestNeo4jNodeUpsert:
             record = result.single()
             assert record["count"] == 20
 
-    def test_batch_upsert_mixed_create_update(self, neo4j_client):
+    def test_batch_upsert_mixed_create_update(self, neo4j_client, neo4j_helper):
         """Test batch upsert with both creates and updates."""
-        # Create some initial nodes
-        with neo4j_client.session() as session:
-            for i in range(1, 6):
-                session.run(
-                    "CREATE (c:TestCompany {uei: $uei, name: $name})",
-                    uei=f"UEI{i:03d}",
-                    name=f"Old Company {i}",
-                )
+        # Create some initial nodes using helper
+        for i in range(1, 6):
+            neo4j_helper.create_company(uei=f"UEI{i:03d}", name=f"Old Company {i}")
 
         # Batch upsert with overlapping and new nodes
         nodes = [{"uei": f"UEI{i:03d}", "name": f"Company {i}"} for i in range(1, 11)]
@@ -230,18 +181,11 @@ class TestNeo4jNodeUpsert:
 class TestNeo4jRelationships:
     """Test relationship creation."""
 
-    def test_create_relationship_success(self, neo4j_client):
+    def test_create_relationship_success(self, neo4j_client, neo4j_helper):
         """Test creating a relationship between two nodes."""
-        # Create source and target nodes
-        with neo4j_client.session() as session:
-            session.run(
-                "CREATE (c:TestCompany {uei: $uei})",
-                uei="UEI001",
-            )
-            session.run(
-                "CREATE (a:TestAward {award_id: $id})",
-                id="AWARD001",
-            )
+        # Create source and target nodes using helper
+        neo4j_helper.create_company(uei="UEI001")
+        neo4j_helper.create_award(award_id="AWARD001")
 
         # Create relationship
         with neo4j_client.session() as session:
@@ -275,14 +219,10 @@ class TestNeo4jRelationships:
             assert record is not None
             assert record["r"]["award_date"] == "2023-01-15"
 
-    def test_create_relationship_missing_source(self, neo4j_client):
+    def test_create_relationship_missing_source(self, neo4j_client, neo4j_helper):
         """Test creating relationship with missing source node."""
-        # Create only target node
-        with neo4j_client.session() as session:
-            session.run(
-                "CREATE (a:TestAward {award_id: $id})",
-                id="AWARD001",
-            )
+        # Create only target node using helper
+        neo4j_helper.create_award(award_id="AWARD001")
 
         # Attempt to create relationship
         with neo4j_client.session() as session:
@@ -301,19 +241,12 @@ class TestNeo4jRelationships:
                 assert result["status"] == "failed"
                 assert "not found" in result["reason"]
 
-    def test_batch_create_relationships(self, neo4j_client):
+    def test_batch_create_relationships(self, neo4j_client, neo4j_helper):
         """Test batch creating relationships."""
-        # Create nodes
-        with neo4j_client.session() as session:
-            for i in range(1, 6):
-                session.run(
-                    "CREATE (c:TestCompany {uei: $uei})",
-                    uei=f"UEI{i:03d}",
-                )
-                session.run(
-                    "CREATE (a:TestAward {award_id: $id})",
-                    id=f"AWARD{i:03d}",
-                )
+        # Create nodes using helper
+        for i in range(1, 6):
+            neo4j_helper.create_company(uei=f"UEI{i:03d}")
+            neo4j_helper.create_award(award_id=f"AWARD{i:03d}")
 
         # Create relationships
         relationships = [

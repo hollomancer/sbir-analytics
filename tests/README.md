@@ -26,13 +26,23 @@ The helper script `scripts/test_new_tests.sh` also runs the new tests inside the
 
 ## Test Utilities
 ### Factories (`tests/factories.py`)
-We use **custom factories** to generate realistic `Award` and `RawAward` model instances without pulling data from CSV files.  Example:
+We use **custom factories** to generate realistic model instances without pulling data from CSV files.
+
+**Core Models:**
 ```python
-from tests.factories import RawAwardFactory
-raw = RawAwardFactory.create(award_amount="1,000,000.00", award_date="05/15/2022")
+from tests.factories import RawAwardFactory, AwardFactory
+raw = RawAwardFactory.create(award_amount="1,000,000.00")
 award = raw.to_award()
 ```
-The factories provide sensible defaults and handle data cleaning (e.g., stripping commas, normalising dates).
+
+**ML Models:**
+```python
+from tests.factories import CETClassificationFactory, CETAssessmentFactory
+classification = CETClassificationFactory.create(score=85.0, primary=True)
+assessment = CETAssessmentFactory.create(primary_cet=classification)
+```
+
+The factories provide sensible defaults and handle data cleaning.
 
 ### Custom Assertions (`tests/assertions.py`)
 Common validation logic lives here to keep tests DRY:
@@ -40,8 +50,22 @@ Common validation logic lives here to keep tests DRY:
 - `assert_award_fields_equal(actual, expected)` – deep field‑by‑field comparison.
 - `assert_dict_subset(subset, superset)` – useful for partial JSON checks.
 
+## Integration Tests
+Integration tests (marked with `@pytest.mark.integration`) use a dedicated `conftest.py` in `tests/integration/`.
+
+### Neo4j Helper
+Use the `neo4j_helper` fixture to simplify node creation in tests:
+```python
+def test_relationship(neo4j_client, neo4j_helper):
+    # Setup using helper
+    neo4j_helper.create_company(uei="UEI001")
+    neo4j_helper.create_award(award_id="AWARD001")
+    
+    # Test logic...
+```
+
 ## Adding New Tests
-1. **Prefer factories** – Use `RawAwardFactory` / `AwardFactory` to build test data.
+1. **Prefer factories** – Use factories to build test data.
 2. **Parametrize** – Leverage `@pytest.mark.parametrize` for multiple input scenarios.
 3. **Use custom assertions** – Call helpers from `tests/assertions.py` instead of repeating `assert` statements.
 4. **Keep tests fast** – Place heavy‑weight setup (e.g., Neo4j) in `tests/integration/` and mark with `@pytest.mark.integration`.
