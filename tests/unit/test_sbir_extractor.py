@@ -15,11 +15,9 @@ FIXTURE_CSV = Path("tests/fixtures/sbir_sample.csv")
 
 
 def test_import_csv_returns_metadata_and_columns(tmp_path: Path):
-    """
-    Using the provided sample fixture CSV, import into a file-backed DuckDB
-    database and assert metadata contains columns, column counts, timestamps,
-    and the expected row count from the fixture (3 rows).
-    """
+    """Test CSV import returns valid metadata with correct structure and counts."""
+    from tests.assertions import assert_valid_extraction_metadata
+
     assert FIXTURE_CSV.exists(), f"Expected fixture CSV at {FIXTURE_CSV} to exist"
 
     db_path = tmp_path / "sbir.duckdb"
@@ -27,38 +25,13 @@ def test_import_csv_returns_metadata_and_columns(tmp_path: Path):
         csv_path=FIXTURE_CSV, duckdb_path=str(db_path), table_name="sbir_test"
     )
 
-    # Call import_csv (default is non-incremental); explicit param name used to match implementation
     metadata = extractor.import_csv(use_incremental=False)
 
-    # Basic metadata presence checks
-    assert isinstance(metadata, dict)
-    for key in (
-        "columns",
-        "column_count",
-        "extraction_start_utc",
-        "extraction_end_utc",
-        "row_count",
-    ):
-        assert key in metadata, f"Missing metadata key: {key}"
-
-    # Expect the fixture to match the project's expected SBIR column count (42)
-    assert metadata["column_count"] == 42
-
-    # Fixture contains 100 sample rows
-    assert int(metadata["row_count"]) == 100
-
-    # Columns should be a list of strings and length matches column_count
-    assert isinstance(metadata["columns"], list)
-    assert all(isinstance(c, str) for c in metadata["columns"])
-    assert len(metadata["columns"]) == metadata["column_count"]
-
-    # Timestamps should be present and non-empty strings
-    assert (
-        isinstance(metadata["extraction_start_utc"], str)
-        and len(metadata["extraction_start_utc"]) > 0
-    )
-    assert (
-        isinstance(metadata["extraction_end_utc"], str) and len(metadata["extraction_end_utc"]) > 0
+    # Use custom assertion helper - validates structure, types, and expected counts
+    assert_valid_extraction_metadata(
+        metadata,
+        expected_row_count=100,
+        expected_column_count=42,
     )
 
 
@@ -492,3 +465,135 @@ def test_end_to_end_rawaward_to_award_parsing(tmp_path: Path):
         assert award.award_amount > 0
         assert isinstance(award.award_date, date)
         assert award.program in ["SBIR", "STTR"]
+
+
+# ============================================================================
+# NEW FACTORY-BASED TESTS (refactored from test_end_to_end_rawaward_to_award_parsing)
+# TODO: After verifying these pass, remove test_end_to_end_rawaward_to_award_parsing above
+# ============================================================================
+
+
+def test_rawaward_to_award_with_iso_date_format():
+    """Test RawAward conversion with ISO date format and standard numeric values."""
+    from tests.assertions import assert_award_fields_equal, assert_valid_award
+    from tests.factories import RawAwardFactory
+
+    raw = RawAwardFactory.create(
+        award_id="C-2023-0001",
+        company_name="Acme Innovations",
+        company_address="123 Main St",
+        company_city="Anytown",
+        company_state="CA",
+        company_zip="94105",
+        award_amount="500000.00",
+        award_date="2023-06-15",
+        phase="Phase I",
+        program="SBIR",
+        company_uei="A1B2C3D4E5F6",
+        company_duns="123456789",
+        is_hubzone=False,
+        is_woman_owned=False,
+        is_socially_disadvantaged=True,
+    )
+
+    award = raw.to_award()
+
+    assert_valid_award(award, require_uei=True, require_duns=True)
+    assert_award_fields_equal(
+        award,
+        {
+            "company_name": "Acme Innovations",
+            "award_amount": 500000.0,
+            "company_uei": "A1B2C3D4E5F6",
+            "company_duns": "123456789",
+            "is_hubzone": False,
+            "is_socially_disadvantaged": True,
+            "phase": "I",  # Normalized from "Phase I"
+        },
+    )
+    assert award.award_date.year == 2023
+    assert award.award_date.month == 6
+
+
+@pytest.mark.parametrize(
+    "date_string,expected_year,expected_month,expected_day",
+    [
+        ("2023-06-15", 2023, 6, 15),  # ISO format
+        ("06/15/2023", 2023, 6, 15),  # MM/DD/YYYY
+        ("06-15-2023", 2023, 6, 15),  # MM-DD-YYYY
+    ],
+    ids=["iso_format", "us_slash_format", "us_dash_format"],
+)
+def test_rawaward_date_parsing(date_string, expected_year, expected_month, expected_day):
+    """Test that RawAward.to_award() correctly parses various date formats."""
+    from tests.factories import RawAwardFactory
+
+    raw = RawAwardFactory.create(award_date=date_string)
+    award = raw.to_award()
+
+    assert award.award_date.year == expected_year
+    assert award.award_date.month == expected_month
+    assert award.award_date.day == expected_day
+
+
+@pytest.mark.parametrize(
+    "amount_string,expected_float",
+    [
+        ("100000", 100000.0),
+        ("100000.00", 100000.0),
+        ("100,000.00", 100000.0),
+        ("1,000,000.00", 1000000.0),
+    ],
+    ids=["no_comma_no_decimal", "no_comma_decimal", "comma_decimal", "large_amount"],
+)
+def test_rawaward_amount_parsing(amount_string, expected_float):
+    """Test that RawAward.to_award() correctly parses various amount formats."""
+    from tests.factories import RawAwardFactory
+
+    raw = RawAwardFactory.create(award_amount=amount_string)
+    award = raw.to_award()
+
+    assert award.award_amount == expected_float
+
+
+@pytest.mark.parametrize(
+    "uei_input,duns_input,expected_uei,expected_duns",
+    [
+        ("A1B2C3D4E5F6", "123456789", "A1B2C3D4E5F6", "123456789"),
+        ("a1b2c3d4e5f6", "123-456-789", "A1B2C3D4E5F6", "123456789"),  # Normalization
+        ("A1B2-C3D4-E5F6", "123 456 789", "A1B2C3D4E5F6", "123456789"),  # Strip chars
+    ],
+    ids=["clean_input", "lowercase_dashes", "formatted_input"],
+)
+def test_rawaward_identifier_normalization(uei_input, duns_input, expected_uei, expected_duns):
+    """Test that UEI and DUNS are normalized (uppercase, stripped of formatting)."""
+    from tests.factories import RawAwardFactory
+
+    raw = RawAwardFactory.create(company_uei=uei_input, company_duns=duns_input)
+    award = raw.to_award()
+
+    assert award.company_uei == expected_uei
+    assert award.company_duns == expected_duns
+
+
+def test_rawaward_with_missing_optional_fields():
+    """Test that RawAward.to_award() handles missing optional fields gracefully."""
+    from tests.assertions import assert_valid_award
+    from tests.factories import RawAwardFactory
+
+    raw = RawAwardFactory.create(
+        company_address=None,
+        company_city=None,
+        contact_name=None,
+        principal_investigator=None,
+        contract_end_date=None,
+    )
+
+    award = raw.to_award()
+
+    assert_valid_award(award)
+    assert award.company_address is None
+    assert award.company_city is None
+    assert award.contact_name is None
+    assert award.principal_investigator is None
+    assert award.contract_end_date is None

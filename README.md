@@ -61,122 +61,68 @@ Open **http://localhost:3000** to view the Dagster UI.
 make test
 ```
 
-### Production Deployment (Cloud-First Architecture)
+### Production Deployment
 
-The SBIR ETL pipeline is designed for cloud deployment with the following architecture:
+The SBIR ETL pipeline supports multiple production deployment strategies optimized for different use cases:
 
+**Cloud-First Architecture:**
 - **Orchestration**: Dagster Cloud Solo Plan or AWS Step Functions
-- **Compute**: AWS Lambda functions (for scheduled workflows)
+- **Compute**: Dagster Cloud managed or AWS Lambda
 - **Storage**: AWS S3 (primary data storage)
 - **Database**: Neo4j Aura (cloud-hosted graph database)
 - **Secrets**: AWS Secrets Manager
 
-**Deployment Guides**:
-- **[Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md)** - Primary orchestration prerequisites and env vars
-- **[AWS Infrastructure](docs/deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions setup
-- **[Neo4j Aura Setup](docs/data/neo4j-aura-setup.md)** - Cloud graph database configuration
+#### Option A: Dagster Cloud (Recommended for Primary ETL)
 
-### AWS Infrastructure (Production)
+**Best for:** Full ETL pipeline orchestration, asset management, observability
 
-The weekly SBIR awards refresh workflow runs on AWS Step Functions with Lambda functions:
+**Quick Start:**
+1. Create account at [cloud.dagster.io](https://cloud.dagster.io) (30-day free trial)
+2. Connect GitHub repository
+3. Configure code location: `src.definitions` (Python 3.11)
+4. Set environment variables (see [Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md))
+5. Deploy automatically on git push
 
-- **Step Functions**: Orchestrates the workflow
-- **Lambda Functions**: Execute processing steps
+**Deployment Methods:**
+- **UI-Based**: Best for initial setup ([guide](docs/deployment/dagster-cloud-deployment-guide.md))
+- **CLI-Based**: Best for CI/CD ([guide](docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment))
+
+**Cost:** $10/month Solo Plan
+
+#### Option B: AWS Step Functions + Lambda (Recommended for Scheduled Workflows)
+
+**Best for:** Weekly SBIR data refresh, scheduled data downloads
+
+**Architecture:**
+- **Step Functions**: Orchestrates workflow
+- **Lambda Functions**: Execute processing steps (download, validate, profile)
 - **S3**: Stores data and artifacts
-- **Secrets Manager**: Stores Neo4j and GitHub credentials
+- **Secrets Manager**: Stores credentials
 
-**Deployment Guide**: [`docs/deployment/aws-serverless-deployment-guide.md`](docs/deployment/aws-serverless-deployment-guide.md)
-
-**Quick Deploy**:
+**Quick Deploy:**
 ```bash
 cd infrastructure/cdk
 pip install -r requirements.txt
 cdk deploy --all
 ```
 
-### Docker Development
+**Full Guide:** [AWS Serverless Deployment Guide](docs/deployment/aws-serverless-deployment-guide.md)
 
-For containerized development with Docker Compose (recommended for new developers):
+### Container Development (Alternative)
 
-**Quick Start:**
+For containerized development with Docker Compose:
+
 ```bash
-# 1. Check prerequisites
-make docker-check-prerequisites
-
-# 2. Configure environment
 cp .env.example .env
-# Edit .env: set NEO4J_USER, NEO4J_PASSWORD (defaults work for local dev)
-
-# 3. Build and start
+# Edit .env: set NEO4J_USER, NEO4J_PASSWORD (for local Neo4j if not using Aura)
 make docker-build
 make docker-up-dev
-
-# 4. Verify setup
-make docker-verify
+# Open http://localhost:3000 and materialize the assets
 ```
 
-**Access Services:**
-- Dagster UI: http://localhost:3000
-- Neo4j Browser: http://localhost:7474
+See [`docs/deployment/containerization.md`](docs/deployment/containerization.md) for full details.
 
-**Guides:**
-- **[Docker Quick Start](docs/development/docker-quickstart.md)** - Step-by-step setup guide
-- **[Troubleshooting](docs/development/docker-troubleshooting.md)** - Common issues and solutions
-- **[Environment Setup](docs/development/docker-env-setup.md)** - Configuration guide
-- **[Containerization Guide](docs/deployment/containerization.md)** - Advanced Docker usage
-
-### Production Deployment (Dagster Cloud)
-
-**Primary deployment method**: Dagster Cloud Solo Plan ($10/month)
-
-#### Option A: UI-Based Deployment (Recommended for Initial Setup)
-
-1. **Set up Dagster Cloud:**
-   - Create account at [cloud.dagster.io](https://cloud.dagster.io)
-   - Start 30-day free trial (no credit card required)
-   - Connect GitHub repository
-
-2. **Configure code location:**
-   - Module: `src.definitions`
-   - Branch: `main`
-   - Python version: 3.11
-
-3. **Set environment variables in Dagster Cloud UI** (see [Dagster Cloud Overview](docs/deployment/dagster-cloud-overview.md) for the canonical list).
-
-4. **Deploy and verify:**
-   - Dagster Cloud automatically deploys on git push
-   - Verify all assets, jobs, and schedules are visible
-   - Test job execution
-
-See [`docs/deployment/dagster-cloud-overview.md`](docs/deployment/dagster-cloud-overview.md) plus the [Dagster Cloud Deployment Guide](docs/deployment/dagster-cloud-deployment-guide.md) for complete instructions.
-
-#### Option B: CLI-Based Serverless Deployment (Recommended for CI/CD)
-
-**Note**: Requires Docker to be running (builds Docker image).
-
-1. **Install CLI:**
-   ```bash
-   pip install dagster-cloud
-   # or: uv pip install dagster-cloud
-   ```
-
-2. **Authenticate:**
-   ```bash
-   export DAGSTER_CLOUD_API_TOKEN="your-api-token"
-   dagster-cloud auth login
-   ```
-
-3. **Deploy:**
-   ```bash
-   dagster-cloud serverless deploy-python-executable \
-     --deployment prod \
-     --location-name sbir-analytics-production \
-     --module-name src.definitions
-   ```
-
-See [`docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment`](docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment) for complete CLI deployment guide.
-
-**Note**: Docker Compose remains available as a failover option for local development and emergency scenarios.
+**Note**: Docker Compose is recommended for local development and serves as a failover option for production.
 
 ## Overview
 

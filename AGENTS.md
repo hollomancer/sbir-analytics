@@ -8,15 +8,6 @@ This project uses **Kiro specifications** (`.kiro/specs/`) for all active develo
 
 Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
 
-## 🎉 Consolidated Architecture (2025-01-01)
-
-**Major consolidation completed** - 30-60% code duplication reduction achieved:
-- ✅ **Unified Assets**: USPTO, CET, transition assets consolidated into dedicated packages
-- ✅ **Hierarchical Config**: PipelineConfig with 16+ consolidated schemas
-- ✅ **Single Docker Compose**: Profile-based configuration (dev, prod, ci-test, e2e)
-- ✅ **Unified Models**: Award model replaces separate implementations
-- ✅ **Consolidated Utils**: Performance monitoring and utilities streamlined
-
 ### Stack
 
 - **Runtime:** Python 3.11+, uv for dependency management, Neo4j Aura (cloud) or Docker (optional)
@@ -25,12 +16,12 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 - **CI:** GitHub Actions (pytest, coverage, regression checks)
 - **Performance:** Consolidated monitoring (`src/utils/monitoring/`)
 
-### Current State
+### Architecture
 
-- Consolidated architecture with 231 Python files in `src/` (well-structured)
-- Configuration system: 33/33 tests passing, 88% coverage
-- Workflows: ci, deploy, nightly, static-analysis, lambda-deploy, uspto-data-refresh, weekly-award-data-refresh, branch_deployments
-- Archived spec: `.kiro/specs/archive/codebase-consolidation-refactor/`
+The codebase uses a consolidated architecture with well-structured modules:
+- **231 Python files** in `src/` organized by ETL stage
+- **Configuration system:** 33/33 tests passing, 88% coverage
+- **Workflows:** ci, deploy, nightly, static-analysis, lambda-deploy, uspto-data-refresh, weekly-award-data-refresh, branch_deployments
 
 ## Key Directories
 
@@ -96,5 +87,6 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 - Kiro specifications: `.kiro/specs/` (see this file for workflow guidance)
 - Agent steering documents: `.kiro/steering/` (architectural patterns and guidance - see `.kiro/steering/README.md`)
 - Container guide: `docs/deployment/containerization.md`
-- Data sources: `docs/data/index.md`, `data/raw/uspto/README.md`
+- Data sources overview: `docs/data/index.md`
+- Data dictionaries: `docs/data/dictionaries/`
 - Neo4j schemas: `docs/schemas/patent-neo4j-schema.md`

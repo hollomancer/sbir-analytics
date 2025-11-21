@@ -6,6 +6,7 @@ nav:
   - Getting Started: README.md
   - Architecture:
       - Shared Tech Stack: docs/architecture/shared-tech-stack.md
+      - Detailed Overview: docs/architecture/detailed-overview.md
       - Asset Naming Standards: docs/architecture/asset-naming-standards.md
       - Consolidation Guide: docs/architecture/consolidation-refactor-plan.md
   - Data Sources:
@@ -13,11 +14,32 @@ nav:
       - SBIR Awards: docs/data/sbir.md
       - USAspending: docs/data/usaspending.md
       - Patents: docs/data/patents.md
+      - Neo4j Aura Setup: docs/data/neo4j-aura-setup.md
+  - Deployment:
+      - Overview: docs/deployment/README.md
+      - Dagster Cloud: docs/deployment/dagster-cloud-deployment-guide.md
+      - AWS Serverless: docs/deployment/aws-serverless-deployment-guide.md
+      - Containerization: docs/deployment/containerization.md
+  - Testing:
+      - Testing Index: docs/testing/index.md
+      - E2E Testing Guide: docs/testing/e2e-testing-guide.md
+      - Neo4j Testing Environments: docs/testing/neo4j-testing-environments-guide.md
+  - Machine Learning:
+      - ML Overview: docs/ml/README.md
+      - CET Classification: docs/ml/cet-classification.md
+  - Transition Detection:
+      - Overview: docs/transition/overview.md
+      - Detection Signals: docs/transition/detection-signals.md
+  - Fiscal Analysis:
+      - SBIR Fiscal Pipeline: docs/fiscal/sbir-fiscal-pipeline-guide.md
+  - Development:
+      - Exception Handling: docs/development/exception-handling.md
+      - Logging Standards: docs/development/logging-standards.md
   - References:
       - Neo4j Schema: docs/schemas/neo4j.md
-  - Guides:
-      - Containerization: docs/deployment/containerization.md
+      - Patent Schema: docs/schemas/patent-neo4j-schema.md
       - Quality Assurance: docs/guides/quality-assurance.md
+      - Statistical Reporting: docs/guides/statistical-reporting.md
   - Decisions: docs/decisions/
   - Performance: docs/performance/index.md
 theme:
