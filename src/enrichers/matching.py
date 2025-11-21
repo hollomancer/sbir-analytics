@@ -11,7 +11,7 @@ All features can be enabled/disabled via configuration.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 try:
     import jellyfish
@@ -92,7 +92,7 @@ ENHANCED_ABBREVIATIONS = {
 }
 
 
-def get_phonetic_code(name: str, algorithm: str = "metaphone") -> Optional[str]:
+def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
     """Get phonetic encoding of a name.
 
     Args:
@@ -192,7 +192,7 @@ def jaro_winkler_similarity(
         return 0.0
 
 
-def apply_enhanced_abbreviations(name: str, abbreviations: Optional[dict[str, str]] = None) -> str:
+def apply_enhanced_abbreviations(name: str, abbreviations: dict[str, str] | None = None) -> str:
     """Apply enhanced abbreviation dictionary to normalize a name.
 
     Args:
@@ -229,7 +229,7 @@ def apply_enhanced_abbreviations(name: str, abbreviations: Optional[dict[str, st
 class MatchingConfig:
     """Configuration for enhanced matching features."""
 
-    def __init__(self, config_dict: Optional[dict[str, Any]] = None):
+    def __init__(self, config_dict: dict[str, Any] | None = None):
         """Initialize matching configuration from dictionary.
 
         Args:
@@ -275,7 +275,7 @@ class MatchingConfig:
 class ResearcherMatcher:
     """Researcher matching with ORCID-first strategy."""
 
-    def __init__(self, config_dict: Optional[dict[str, Any]] = None):
+    def __init__(self, config_dict: dict[str, Any] | None = None):
         """Initialize researcher matcher.
 
         Args:

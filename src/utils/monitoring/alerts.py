@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -45,9 +45,9 @@ class Alert:
     threshold_value: float
     actual_value: float
     metric_name: str
-    delta_percent: Optional[float] = None
-    run_id: Optional[str] = None
-    asset_name: Optional[str] = None
+    delta_percent: float | None = None
+    run_id: str | None = None
+    asset_name: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -140,9 +140,9 @@ class AlertCollector:
 
     def __init__(
         self,
-        asset_name: Optional[str] = None,
-        run_id: Optional[str] = None,
-        config: Optional[Any] = None,
+        asset_name: str | None = None,
+        run_id: str | None = None,
+        config: Any | None = None,
     ):
         """Initialize alert collector.
 
@@ -161,7 +161,7 @@ class AlertCollector:
         total_duration_seconds: float,
         total_records: int,
         metric_name: str = "enrichment_duration",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if duration per record exceeds warning threshold.
 
         Args:
@@ -205,7 +205,7 @@ class AlertCollector:
         self,
         avg_memory_delta_mb: float,
         metric_name: str = "enrichment_memory",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if memory delta exceeds warning threshold.
 
         Args:
@@ -240,7 +240,7 @@ class AlertCollector:
         self,
         match_rate: float,
         metric_name: str = "enrichment_match_rate",
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check if match rate falls below failure threshold.
 
         Args:
@@ -275,7 +275,7 @@ class AlertCollector:
         self,
         memory_percent_available: float,
         action_type: str = "check",  # "check", "warn", or "critical"
-    ) -> Optional[Alert]:
+    ) -> Alert | None:
         """Check memory pressure level.
 
         Args:
@@ -331,7 +331,7 @@ class AlertCollector:
 
         return None
 
-    def get_alerts(self, severity: Optional[AlertSeverity] = None) -> list[Alert]:
+    def get_alerts(self, severity: AlertSeverity | None = None) -> list[Alert]:
         """Get all alerts or filter by severity.
 
         Args:

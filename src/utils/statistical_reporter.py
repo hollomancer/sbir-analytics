@@ -88,7 +88,7 @@ class StatisticalReporter:
         if self.ci_context:
             logger.info(f"CI/CD context detected: {self.ci_context.get('provider', 'unknown')}")
 
-    def _detect_ci_context(self) -> Optional[dict[str, Any]]:
+    def _detect_ci_context(self) -> dict[str, Any] | None:
         """Detect CI/CD environment context.
 
         Returns:
@@ -161,8 +161,8 @@ class StatisticalReporter:
         run_id: str,
         stage: str,
         metrics_data: dict[str, Any],
-        data_hygiene: Optional[DataHygieneMetrics] = None,
-        changes_summary: Optional[ChangesSummary] = None,
+        data_hygiene: DataHygieneMetrics | None = None,
+        changes_summary: ChangesSummary | None = None,
     ) -> ModuleMetrics:
         """Generate metrics for a specific pipeline module.
 
@@ -247,7 +247,7 @@ class StatisticalReporter:
         self,
         run_id: str,
         module_reports: list[ModuleReport],
-        insights: Optional[list[InsightRecommendation]] = None,
+        insights: list[InsightRecommendation] | None = None,
     ) -> StatisticalReport:
         """Aggregate multiple module reports into a unified statistical report.
 
@@ -298,7 +298,7 @@ class StatisticalReporter:
 
     def _aggregate_data_hygiene(
         self, module_reports: list[ModuleReport]
-    ) -> Optional[DataHygieneMetrics]:
+    ) -> DataHygieneMetrics | None:
         """Aggregate data hygiene metrics from multiple modules.
 
         Args:
@@ -338,7 +338,7 @@ class StatisticalReporter:
             validation_warnings=sum(h.validation_warnings for h in hygiene_reports),
         )
 
-    def _aggregate_changes(self, module_reports: list[ModuleReport]) -> Optional[ChangesSummary]:
+    def _aggregate_changes(self, module_reports: list[ModuleReport]) -> ChangesSummary | None:
         """Aggregate changes summary from multiple modules.
 
         Args:
@@ -484,7 +484,7 @@ class StatisticalReporter:
 
     def _generate_format_artifact(
         self, pipeline_metrics: PipelineMetrics, format: ReportFormat, collection: ReportCollection
-    ) -> Optional[ReportArtifact]:
+    ) -> ReportArtifact | None:
         """Generate a single report artifact in the specified format.
 
         Args:
