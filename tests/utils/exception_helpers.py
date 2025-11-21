@@ -4,18 +4,18 @@ This module provides helper functions for testing exceptions in the SBIR ETL
 pipeline, making it easier to verify exception structure, context, and behavior.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from src.exceptions import SBIRETLError
 
 
 def assert_exception_structure(
     exc: SBIRETLError,
-    expected_message: str | None = None,
-    expected_component: str | None = None,
-    expected_operation: str | None = None,
-    expected_retryable: bool | None = None,
-    expected_status_code: int | None = None,
+    expected_message: Optional[str] = None,
+    expected_component: Optional[str] = None,
+    expected_operation: Optional[str] = None,
+    expected_retryable: Optional[bool] = None,
+    expected_status_code: Optional[int] = None,
 ) -> None:
     """Assert exception has expected structure.
 
@@ -81,9 +81,9 @@ def assert_exception_structure(
 def assert_raises_with_context(
     exception_class: type[SBIRETLError],
     callable_obj: Any,
-    expected_component: str | None = None,
-    expected_operation: str | None = None,
-    expected_details_keys: list[str] | None = None,
+    expected_component: Optional[str] = None,
+    expected_operation: Optional[str] = None,
+    expected_details_keys: Optional[list[str]] = None,
 ) -> SBIRETLError:
     """Assert callable raises exception with expected context.
 

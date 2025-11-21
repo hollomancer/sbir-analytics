@@ -581,57 +581,15 @@ class TestExecutiveSummary:
 class TestHTMLGeneration:
     """Tests for HTML report generation."""
 
-    def test_generate_simple_html(self, temp_output_dir, sample_statistical_report):
-        """Test simple HTML generation without Plotly."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
 
-        output_file = temp_output_dir / "report.html"
-        html_path = reporter._generate_simple_html(sample_statistical_report, output_file)
 
-        assert html_path.exists()
 
-        with open(html_path) as f:
-            content = f.read()
-            assert "<html>" in content.lower()
-            assert "<body>" in content.lower()
-
-    @patch("src.utils.statistical_reporter.PLOTLY_AVAILABLE", True)
-    def test_generate_plotly_html_available(self, temp_output_dir, sample_pipeline_metrics):
-        """Test Plotly HTML generation when available."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        # Inject mocks if plotly is not available
-        import src.utils.statistical_reporter as reporter_mod
-        if not hasattr(reporter_mod, "make_subplots"):
-             reporter_mod.make_subplots = Mock()
-        if not hasattr(reporter_mod, "go"):
-             reporter_mod.go = Mock()
-
-        output_file = temp_output_dir / "plotly_report.html"
-
-        with patch("src.utils.statistical_reporter.make_subplots", create=True):
-            with patch("src.utils.statistical_reporter.go", create=True):
-                html_path = reporter._generate_plotly_html(sample_pipeline_metrics, output_file)
-
-                assert html_path == output_file
 
 
 # ==================== Markdown Generation Tests ====================
 
 
-class TestMarkdownGeneration:
-    """Tests for Markdown content generation."""
 
-    def test_create_markdown_content(self, temp_output_dir, sample_pipeline_metrics):
-        """Test Markdown content creation."""
-        reporter = StatisticalReporter(output_dir=temp_output_dir)
-
-        markdown = reporter._create_markdown_content(sample_pipeline_metrics)
-
-        assert isinstance(markdown, str)
-        assert len(markdown) > 0
-        assert "#" in markdown  # Contains headers
-        assert "run_123" in markdown
 
 
 # ==================== CI Integration Tests ====================

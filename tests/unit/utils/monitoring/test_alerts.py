@@ -6,7 +6,12 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.utils.performance_alerts import Alert, AlertSeverity, AlertCollector
+from src.utils.monitoring.alerts import (
+    Alert,
+    AlertCollector,
+    AlertSeverity,
+    AlertThresholds,
+)
 
 
 class TestAlert:
