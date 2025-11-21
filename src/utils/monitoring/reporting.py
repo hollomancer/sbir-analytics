@@ -522,9 +522,9 @@ def analyze_performance_trend(metrics_list: list[PerformanceMetrics]) -> dict[st
     if not metrics_list:
         return {}
 
-    # Extract time series
-    [m.total_duration_seconds for m in metrics_list]
-    [m.peak_memory_mb for m in metrics_list]
+    # Extract time series (not currently used but kept for potential future analysis)
+    # durations = [m.total_duration_seconds for m in metrics_list]
+    # memory_usage = [m.peak_memory_mb for m in metrics_list]
 
     # Simple trend analysis (compare first vs last)
     if len(metrics_list) >= 2:

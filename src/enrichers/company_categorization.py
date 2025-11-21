@@ -40,6 +40,7 @@ from src.enrichers.usaspending import (
 from src.extractors.usaspending import DuckDBUSAspendingExtractor
 from src.utils.async_tools import run_sync
 from src.utils.cache.api_cache import APICache
+from src.utils.usaspending_cache import USAspendingCache
 
 
 _api_client: USAspendingAPIClient | None = None

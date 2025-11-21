@@ -11,7 +11,7 @@ Pipeline flow:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from loguru import logger

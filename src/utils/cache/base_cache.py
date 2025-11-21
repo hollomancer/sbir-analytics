@@ -15,7 +15,7 @@ import pandas as pd
 from loguru import logger
 
 
-class BaseDataFrameCache(ABC):
+class BaseDataFrameCache(ABC):  # noqa: B024
     """Base class for file-based DataFrame caching.
 
     Provides common functionality for caching DataFrames with TTL-based expiration.

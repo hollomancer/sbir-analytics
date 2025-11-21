@@ -95,12 +95,8 @@ def _import_usaspending_table(
             "S3 dump unavailable, falling back to USAspending API (FALLBACK)"
         )
         try:
-            import asyncio
-
-            from ..enrichers.usaspending import USAspendingAPIClient
-
-            # Use API to fetch recipient data
-            USAspendingAPIClient()
+            # Note: API fallback would need to be implemented to fetch recipients
+            # from ..enrichers.usaspending import USAspendingAPIClient
             # Note: API fallback would need to be implemented to fetch recipients
             # For now, we'll raise an error to indicate API fallback is needed
             context.log.error(

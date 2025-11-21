@@ -206,7 +206,7 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
     progressions = []
     phase_transitions = {"I": "II", "II": "III"}
 
-    for company_id, company_award_list in company_awards.items():
+    for _company_id, company_award_list in company_awards.items():
         # Sort by award date for chronological matching
         sorted_awards = sorted(
             company_award_list,

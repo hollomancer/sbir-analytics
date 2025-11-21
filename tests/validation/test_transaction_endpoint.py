@@ -129,7 +129,7 @@ def test_transaction_endpoint(uei: str) -> None:
         try:
             error_data = json.loads(error_body)
             print(json.dumps(error_data, indent=2))
-        except:
+        except Exception:
             print(error_body[:500])
     except Exception as e:
         print(f"❌ Error: {e}")

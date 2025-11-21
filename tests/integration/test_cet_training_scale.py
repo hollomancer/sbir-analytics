@@ -14,6 +14,7 @@ The test size is configurable via environment variable:
 """
 
 import os
+import random
 
 import numpy as np
 import pandas as pd

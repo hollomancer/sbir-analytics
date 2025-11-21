@@ -119,9 +119,6 @@ def loaded_transitions(
     except Exception as e:
         context.log.error(f"Failed to load transitions: {e}")
         raise
-    finally:
-        if driver:
-            driver.close()
 
 
 @asset_check(
@@ -280,9 +277,6 @@ def loaded_transition_relationships(
     except Exception as e:
         context.log.error(f"Failed to create relationships: {e}")
         raise
-    finally:
-        if driver:
-            driver.close()
 
 
 @asset_check(
@@ -470,6 +464,3 @@ def loaded_transition_profiles(
     except Exception as e:
         context.log.error(f"Failed to create transition profiles: {e}")
         raise
-    finally:
-        if driver:
-            driver.close()

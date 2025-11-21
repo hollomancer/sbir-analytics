@@ -47,7 +47,7 @@ class BaseLoaderConfig(BaseModel):
     model_config = {"frozen": False}  # Allow mutation for backward compatibility
 
 
-class BaseNeo4jLoader(ABC):
+class BaseNeo4jLoader(ABC):  # noqa: B024
     """Base class for all Neo4j loaders.
 
     Provides common functionality for:

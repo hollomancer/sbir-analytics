@@ -54,7 +54,7 @@ class OrganizationLoader(BaseNeo4jLoader):
 
         # Build relationship list in simplified format
         relationships: list[tuple[Any, Any, dict[str, Any] | None]] = []
-        for child_key, child_value, parent_key, parent_value in subsidiary_pairs:
+        for _child_key, child_value, _parent_key, parent_value in subsidiary_pairs:
             if not child_value or not parent_value:
                 logger.warning(
                     f"Skipping SUBSIDIARY_OF relationship with missing values: "
