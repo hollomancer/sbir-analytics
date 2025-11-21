@@ -78,6 +78,12 @@ jobs:
         run: uv run python -m ruff check src tests
       - name: Run Ruff format check
         run: uv run python -m ruff format --check src tests
+      - name: Ensure MyPy is installed
+        run: |
+          # Explicitly install mypy to ensure it's available
+          # This is needed because cached venvs might not have it
+          uv pip install mypy
+          uv run python -m mypy --version
       - name: Run MyPy type checker
         run: uv run python -m mypy src
       - name: Run Bandit
