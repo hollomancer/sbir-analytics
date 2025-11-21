@@ -9,5 +9,7 @@ locations:
   - location_name: sbir-analytics-production
     code_source:
       python_module: src.definitions
+      git:
+        commit: ${{ github.sha }}
     build:
       python_version: "3.11"
