@@ -116,7 +116,24 @@ def scan_with_detect_secrets(baseline_path: Path | None = None) -> tuple[int, st
         if result.returncode == 0:
             return (0, "No new secrets detected")
         elif result.returncode == 1:
-            return (1, "New secrets detected in baseline scan")
+            # New secrets detected - print verbose output
+            print("New secrets detected! Running verbose scan to show details:", file=sys.stderr)
+            verbose_result = run_command(
+                [
+                    "detect-secrets",
+                    "scan",
+                    "--baseline",
+                    str(baseline),
+                    "--all-files",
+                    "--verbose",
+                ],
+                check=False,
+            )
+            if verbose_result.stdout:
+                print(verbose_result.stdout, file=sys.stderr)
+            if verbose_result.stderr:
+                print(verbose_result.stderr, file=sys.stderr)
+            return (1, "New secrets detected in baseline scan (see verbose output above)")
         else:
             return (result.returncode, f"detect-secrets exited with code {result.returncode}")
     except FileNotFoundError:
@@ -163,9 +180,17 @@ def run_precommit_hooks() -> tuple[int, str]:
             else:
                 return (3, "Baseline was not modified, this is unexpected")
         else:
+            # Print full output for debugging
+            print("Pre-commit checks failed. Full output:", file=sys.stderr)
+            if result.stdout:
+                print("STDOUT:", file=sys.stderr)
+                print(result.stdout, file=sys.stderr)
+            if result.stderr:
+                print("STDERR:", file=sys.stderr)
+                print(result.stderr, file=sys.stderr)
             return (
                 exit_code,
-                f"Pre-commit checks failed (possible secrets detected): {result.stderr}",
+                f"Pre-commit checks failed (possible secrets detected). See output above for details.",
             )
     except FileNotFoundError:
         return (1, "pre-commit not installed")
@@ -266,6 +291,7 @@ def main() -> int:
             if precommit_exit == 1:
                 # Hard failure - new secrets found
                 print(f"ERROR: {precommit_msg}", file=sys.stderr)
+                # Also print stdout/stderr for debugging
                 return exit_code
     else:
         # Run detect-secrets directly
@@ -275,6 +301,26 @@ def main() -> int:
             exit_code = detect_exit
             if detect_exit == 1:
                 print(f"ERROR: {detect_msg}", file=sys.stderr)
+                # Run detect-secrets with verbose output to show what was found
+                print("\nRunning detect-secrets scan to show detected secrets:", file=sys.stderr)
+                try:
+                    verbose_result = run_command(
+                        [
+                            "detect-secrets",
+                            "scan",
+                            "--baseline",
+                            str(baseline_path),
+                            "--all-files",
+                            "--verbose",
+                        ],
+                        check=False,
+                    )
+                    if verbose_result.stdout:
+                        print(verbose_result.stdout, file=sys.stderr)
+                    if verbose_result.stderr:
+                        print(verbose_result.stderr, file=sys.stderr)
+                except FileNotFoundError:
+                    pass
                 return exit_code
 
     # Step 2: Fallback pattern scanning
