@@ -23,7 +23,7 @@ env:
   PYTHON_VERSION: "3.11"  # Python version for all jobs
   NEO4J_IMAGE: "neo4j:5"  # Neo4j Docker image version
   NEO4J_USERNAME: "neo4j"  # Default Neo4j username for test containers
-  NEO4J_PASSWORD: "password"  # Default Neo4j password for test containers (pragma: allowlist secret)
+  NEO4J_PASSWORD: "password"  # pragma: allowlist secret
   DEFAULT_TIMEOUT: 30  # Default job timeout in minutes
   # Performance test configuration
   PERFORMANCE_SAMPLE_SIZE: "500"  # Sample size for performance regression tests
@@ -92,6 +92,30 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
+
+  verify-setup-script:
+    name: Verify Setup Script
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run setup script
+        run: |
+          chmod +x scripts/setup_dev.sh
+          ./scripts/setup_dev.sh
+
+      - name: Verify venv activation
+        run: |
+          source .venv/bin/activate
+          python --version
+          python -c "import pydantic; print('Pydantic installed')"
+
   test:
     name: Unit Tests
     needs: [detect-changes]
@@ -123,10 +147,10 @@ jobs:
     env:
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USERNAME: neo4j
-      NEO4J_PASSWORD: password
+      NEO4J_PASSWORD: password  # pragma: allowlist secret
       SBIR_ETL__NEO4J__URI: bolt://localhost:7687
       SBIR_ETL__NEO4J__USERNAME: neo4j
-      SBIR_ETL__NEO4J__PASSWORD: password
+      SBIR_ETL__NEO4J__PASSWORD: password  # pragma: allowlist secret
       ENVIRONMENT: dev
       SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: "10000"
 
@@ -183,7 +207,7 @@ jobs:
           # Pass through environment variables for test configuration
           NEO4J_URI: ${{ env.NEO4J_URI }}
           NEO4J_USERNAME: neo4j
-          NEO4J_PASSWORD: password
+          NEO4J_PASSWORD: password  # pragma: allowlist secret
         run: |
           # Use pytest-xdist for parallelization (auto-detects CPU count)
           uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n auto
@@ -496,11 +520,11 @@ jobs:
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     strategy:
       matrix:
         test-type: [pipeline, smoke]
-    
+
     services:
       neo4j:
         image: neo4j:5
@@ -514,19 +538,19 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
-    
+
     env:
       # Neo4j connection for CET tests
       NEO4J_URI: bolt://localhost:7687
       NEO4J_USERNAME: neo4j
       NEO4J_PASSWORD: password  # pragma: allowlist secret
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
@@ -535,12 +559,12 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      
+
       - name: Prepare CET configs and test data
         run: |
           set -eux
           mkdir -p config/cet data/processed
-          
+
           # Generate taxonomy (pipeline needs 2 areas, smoke needs 1)
           if [ "${{ matrix.test-type }}" = "pipeline" ]; then
             cat > config/cet/taxonomy.yaml << 'YAML'
@@ -570,7 +594,7 @@ jobs:
               parent_cet_id: null
           YAML
           fi
-          
+
           # Generate classification config
           if [ "${{ matrix.test-type }}" = "pipeline" ]; then
             cat > config/cet/classification.yaml << 'YAML'
@@ -596,7 +620,7 @@ jobs:
           calibration: {method: "sigmoid", cv: 2}
           YAML
           fi
-          
+
           # Generate test data
           if [ "${{ matrix.test-type }}" = "pipeline" ]; then
             cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
@@ -608,22 +632,22 @@ jobs:
           {"award_id":"smoke_award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
           NDJSON
           fi
-      
+
       - name: Setup Neo4j environment
         uses: ./.github/actions/setup-neo4j-service
         with:
           username: neo4j
-          password: password
+          password: password  # pragma: allowlist secret
           auth-mode: password
           uri: bolt://localhost:7687
-      
+
       - name: Wait for Neo4j service
         uses: ./.github/actions/wait-for-neo4j
         with:
           method: tcp
           port: 7687
           timeout: "120"
-      
+
       - name: Run CET pipeline test
         if: matrix.test-type == 'pipeline'
         env:
@@ -631,7 +655,7 @@ jobs:
         run: |
           set -eux
           uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
-      
+
       - name: Run CET smoke test
         if: matrix.test-type == 'smoke'
         env:
@@ -641,13 +665,13 @@ jobs:
         run: |
           set -eux
           uv run python scripts/ci/cet_smoke_test.py
-      
+
       - name: List produced artifacts
         if: always()
         run: |
           set -eux
           find data -maxdepth 4 -type f \( -name "*.json" -o -name "*.parquet" -o -name "*.checks.json" \) -print || true
-      
+
       - name: Upload CET artifacts
         if: always()
         uses: ./.github/actions/upload-artifacts
@@ -661,7 +685,7 @@ jobs:
             data/processed/*.checks.json
             data/loaded/neo4j/*.checks.json
           if-no-files-found: warn
-      
+
       - name: Success note
         if: success()
         run: echo "CET ${{ matrix.test-type }} test completed successfully"

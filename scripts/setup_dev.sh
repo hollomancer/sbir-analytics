@@ -100,6 +100,17 @@ for dep in "${DEPS[@]}"; do
 done
 echo -e "${GREEN}✓ Core dependencies installed${NC}"
 
+# Install pre-commit hooks
+echo ""
+echo "7️⃣  Installing pre-commit hooks..."
+if command -v pre-commit &> /dev/null; then
+    pre-commit install
+    echo -e "${GREEN}✓ pre-commit hooks installed${NC}"
+else
+    echo -e "${YELLOW}⚠️  pre-commit not found in path, skipping hook installation${NC}"
+    echo "   (It should have been installed with dev dependencies)"
+fi
+
 # Print summary
 echo ""
 echo "=================================================="

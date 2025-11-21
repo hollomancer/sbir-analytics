@@ -60,7 +60,7 @@ def test_relationship(neo4j_client, neo4j_helper):
     # Setup using helper
     neo4j_helper.create_company(uei="UEI001")
     neo4j_helper.create_award(award_id="AWARD001")
-    
+
     # Test logic...
 ```
 
@@ -69,6 +69,25 @@ def test_relationship(neo4j_client, neo4j_helper):
 2. **Parametrize** – Leverage `@pytest.mark.parametrize` for multiple input scenarios.
 3. **Use custom assertions** – Call helpers from `tests/assertions.py` instead of repeating `assert` statements.
 4. **Keep tests fast** – Place heavy‑weight setup (e.g., Neo4j) in `tests/integration/` and mark with `@pytest.mark.integration`.
+
+## CI/CD and Guardrails
+We use **GitHub Actions** and **pre-commit** to enforce quality standards.
+
+### Pre-commit Hooks
+Runs automatically on commit to check formatting and static analysis.
+```bash
+# Install hooks (done automatically by setup_dev.sh)
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+### CI Workflow
+The `.github/workflows/ci.yml` pipeline runs on every PR:
+1. **Verifies Setup**: Runs `scripts/setup_dev.sh` to ensure the dev environment is reproducible.
+2. **Runs Tests**: Executes `pytest` with coverage reporting.
+3. **Checks Taxonomy**: Validates CET taxonomy configuration.
 5. **Document intent** – Add a short docstring describing the purpose of each test.
 
 ## Future Improvements
