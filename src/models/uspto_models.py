@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # ---- Utilities ----
 # Use centralized date parsing utility
-from src.utils.date_utils import parse_date as _parse_date
+from src.utils.common.date_utils import parse_date as _parse_date
 
 
 def _normalize_identifier(val: str | None) -> str | None:

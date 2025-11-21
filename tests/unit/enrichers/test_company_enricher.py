@@ -6,7 +6,8 @@ import pytest
 
 pytestmark = pytest.mark.fast
 
-from src.enrichers.company_enricher import enrich_awards_with_companies, normalize_company_name
+from src.enrichers.company_enricher import enrich_awards_with_companies
+from src.utils.text_normalization import normalize_company_name
 
 
 def test_normalize_company_name_basic():

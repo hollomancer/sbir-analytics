@@ -114,6 +114,20 @@ def classify_contract(contract: dict) -> ContractClassification:
                     award_amount=award_amount,
                     sbir_phase=sbir_phase,
                 )
+            # Fixed Price + Service PSC → Service (respect PSC classification)
+            if psc_classification == "Service":
+                return ContractClassification(
+                    award_id=award_id,
+                    classification="Service",
+                    method="fixed_price_service_psc",
+                    confidence=0.85,
+                    psc=psc,
+                    contract_type=contract_type or None,
+                    pricing=pricing or None,
+                    description=description or None,
+                    award_amount=award_amount,
+                    sbir_phase=sbir_phase,
+                )
         
         # Fixed Price + product keywords → Product
         product_match = _check_product_keywords(description)

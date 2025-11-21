@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from src.exceptions import ConfigurationError
-from src.loaders.neo4j.patent_cet import Neo4jConfig, Neo4jPatentCETLoader
+from src.loaders.neo4j.client import Neo4jConfig
+from src.loaders.neo4j.patent_cet import Neo4jPatentCETLoader
 
 
 pytestmark = pytest.mark.fast

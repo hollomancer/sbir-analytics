@@ -264,3 +264,86 @@ if pytest is not None:
         with patch("src.config.loader.get_config", return_value=mock_config):
             yield mock_config
 
+
+def create_mock_transition_scorer_config() -> Any:
+    """Create a mock TransitionScorer configuration object.
+    
+    Returns an object with the structure expected by TransitionScorer tests:
+    - base_score: float
+    - confidence_thresholds: dict with 'high' and 'likely' keys
+    - scoring: object with signal configs (agency_continuity, timing_proximity, etc.)
+    
+    Returns:
+        Mock configuration object with required attributes
+    """
+    from dataclasses import dataclass, field
+    from typing import Any
+    
+    @dataclass
+    class ScoringConfig:
+        """Mock scoring configuration."""
+        agency_continuity: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": True,
+                "weight": 0.25,
+                "same_agency_bonus": 0.25,
+                "cross_service_bonus": 0.125,
+                "different_dept_bonus": 0.05,
+            }
+        ))
+        timing_proximity: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": True,
+                "weight": 0.20,
+                "windows": [
+                    {"range": [0, 90], "score": 1.0},
+                    {"range": [91, 365], "score": 0.75},
+                    {"range": [366, 730], "score": 0.5},
+                ],
+            }
+        ))
+        competition_type: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": True,
+                "weight": 0.20,
+                "sole_source_bonus": 0.20,
+                "limited_competition_bonus": 0.10,
+                "full_and_open_bonus": 0.0,
+            }
+        ))
+        patent_signal: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": True,
+                "weight": 0.15,
+                "has_patent_bonus": 0.05,
+                "patent_pre_contract_bonus": 0.03,
+                "patent_topic_match_bonus": 0.02,
+                "patent_similarity_threshold": 0.7,
+            }
+        ))
+        cet_alignment: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": True,
+                "weight": 0.10,
+                "same_cet_area_bonus": 0.05,
+            }
+        ))
+        text_similarity: Any = field(default_factory=lambda: MagicMock(
+            model_dump=lambda: {
+                "enabled": False,
+                "weight": 0.0,
+            }
+        ))
+    
+    @dataclass
+    class TransitionScorerConfig:
+        """Mock TransitionScorer configuration."""
+        base_score: float = 0.15
+        confidence_thresholds: dict[str, float] = field(default_factory=lambda: {
+            "high": 0.85,
+            "likely": 0.65,
+        })
+        scoring: ScoringConfig = field(default_factory=ScoringConfig)
+    
+    return TransitionScorerConfig()
+
