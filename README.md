@@ -316,6 +316,7 @@ This project makes use of and is grateful for the following open-source tools an
 - **[StateIO](https://github.com/USEPA/stateior)** - State-level economic input-output modeling framework by USEPA
 - **[Bayesian Mixture-of-Experts](https://www.arxiv.org/abs/2509.23830)** - Research on calibration and uncertainty estimation in classifier routing by Albus Yizhuo Li
 - **[PaECTER](https://huggingface.co/mpi-inno-comp/paecter)** - Patent similarity model by Max Planck Institute for Innovation and Competition
+- @SquadronConsult for help getting the SAM.gov data working
 
 ## License
 

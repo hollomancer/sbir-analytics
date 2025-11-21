@@ -143,7 +143,7 @@ Together, these changes represent a significant simplification of the infrastruc
 
 ## References
 
-- [Lambda to Dagster Migration](deployment/lambda-to-dagster-migration.md)
+- [Lambda to Dagster Migration](../deployment/lambda-to-dagster-migration.md)
 - [CDK Infrastructure README](../../infrastructure/cdk/README.md)
 - [Configuration README](../../config/README.md)
 

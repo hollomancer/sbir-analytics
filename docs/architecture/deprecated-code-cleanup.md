@@ -111,7 +111,7 @@ test -d config/envs && echo "ERROR: Should be removed" || echo "OK: Removed"
 
 ## Related Documentation
 
-- [Lambda to Dagster Migration](deployment/lambda-to-dagster-migration.md)
+- [Lambda to Dagster Migration](../deployment/lambda-to-dagster-migration.md)
 - [Infrastructure Consolidation](infrastructure-consolidation.md)
 - [Lambda Functions README](../../scripts/lambda/README.md)
 

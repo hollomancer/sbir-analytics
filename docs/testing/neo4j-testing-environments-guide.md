@@ -609,5 +609,5 @@ secrets.NEO4J_AURA_TEST_URI not found
 -   **Neo4j Aura Console:** https://console.neo4j.io/
 -   **Neo4j Cypher Manual:** https://neo4j.com/docs/cypher-manual/current/
 -   **SBIR ETL Issues:** https://github.com/your-org/sbir-analytics/issues
--   **Configuration schema:** [src/config/schemas.py](../../src/config/schemas.py)
+-   **Configuration schema:** [src/config/schemas/](../../../src/config/schemas/)
 -   **Environment examples:** [.env.example](../../.env.example), [.env.test.aura](../../.env.test.aura)

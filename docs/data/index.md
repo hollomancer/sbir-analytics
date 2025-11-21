@@ -46,8 +46,8 @@ This section provides comprehensive documentation for all data sources used in t
 
 **Related Documentation:**
 - [USAspending Iterative Refresh](../enrichment/usaspending-iterative-refresh.md)
-- [USAspending Cloud Integration](USASPENDING_CLOUD_INTEGRATION.md)
-- [USAspending Deployment Checklist](USASPENDING_DEPLOYMENT_CHECKLIST.md)
+- [USAspending Cloud Integration](../USASPENDING_CLOUD_INTEGRATION.md)
+- [USAspending Deployment Checklist](../USASPENDING_DEPLOYMENT_CHECKLIST.md)
 
 ### USPTO Patent Data
 

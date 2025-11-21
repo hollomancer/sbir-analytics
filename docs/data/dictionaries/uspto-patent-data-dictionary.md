@@ -210,8 +210,8 @@ Once loaded into Neo4j, these fields support the following relationship patterns
 ## References
 
 - [USPTO Patent Assignment Data - Official Documentation](https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data)
-- [Pydantic Models](../../src/models/uspto_models.py)
-- [USPTO Extractor](../../src/extractors/uspto_extractor.py)
-- [Patent Transformer](../../src/transformers/patent_transformer.py)
-- [Patent Loader](../../src/loaders/patent_loader.py)
-- [Neo4j Schema Documentation](../../schemas/patent-neo4j-schema.md)
+- [Pydantic Models](../../../src/models/uspto_models.py)
+- [USPTO Extractor](../../../src/extractors/uspto_extractor.py)
+- [Patent Transformer](../../../src/transformers/patent_transformer.py)
+- [Patent Loader](../../../src/loaders/patent_loader.py)
+- [Neo4j Schema Documentation](../../../schemas/patent-neo4j-schema.md)

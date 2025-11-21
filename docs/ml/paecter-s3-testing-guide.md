@@ -275,4 +275,4 @@ ml:
 - [PaECTER Model Card](https://huggingface.co/mpi-inno-comp/paecter)
 - [HuggingFace Inference API Docs](https://huggingface.co/docs/api-inference)
 - [Dagster Asset Documentation](https://docs.dagster.io/concepts/assets)
-- [SBIR ETL Architecture](./architecture.md)
+- [SBIR ETL Architecture](../architecture/detailed-overview.md)
