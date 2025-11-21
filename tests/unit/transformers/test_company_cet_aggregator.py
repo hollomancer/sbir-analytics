@@ -9,7 +9,6 @@ from src.transformers.company_cet_aggregator import CompanyCETAggregator
 pytestmark = pytest.mark.fast
 
 
-
 class TestCompanyCETAggregatorInitialization:
     """Tests for CompanyCETAggregator initialization."""
 

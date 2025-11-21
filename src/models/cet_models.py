@@ -143,7 +143,7 @@ class CETClassification(BaseModel):
 
         if v != expected_level:
             raise ValueError(
-                f"Classification {v} does not match score {score} " f"(expected {expected_level})"
+                f"Classification {v} does not match score {score} (expected {expected_level})"
             )
         return v
 

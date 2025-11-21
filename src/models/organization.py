@@ -42,7 +42,9 @@ class Organization(BaseModel):
     cage: str | None = Field(None, description="CAGE code")
     duns: str | None = Field(None, description="DUNS number (9 digits)")
     business_size: str | None = Field(None, description="SMALL_BUSINESS or OTHER")
-    company_id: str | None = Field(None, description="Legacy SBIR company_id for backward compatibility")
+    company_id: str | None = Field(
+        None, description="Legacy SBIR company_id for backward compatibility"
+    )
     naics_primary: str | None = Field(None, description="Primary NAICS code")
 
     # Patent-specific (nullable)
@@ -50,31 +52,49 @@ class Organization(BaseModel):
     entity_category: str | None = Field(
         None, description="COMPANY, INDIVIDUAL, UNIVERSITY, GOVERNMENT (from patent context)"
     )
-    num_assignments_as_assignee: int | None = Field(None, description="Number of assignments as assignee")
-    num_assignments_as_assignor: int | None = Field(None, description="Number of assignments as assignor")
+    num_assignments_as_assignee: int | None = Field(
+        None, description="Number of assignments as assignee"
+    )
+    num_assignments_as_assignor: int | None = Field(
+        None, description="Number of assignments as assignor"
+    )
     num_patents_owned: int | None = Field(None, description="Number of patents owned")
     is_sbir_company: bool | None = Field(None, description="True if matches SBIR company")
 
     # Agency-specific (nullable)
     agency_code: str | None = Field(None, description="Agency code (e.g., '17' for DoD)")
-    agency_name: str | None = Field(None, description="Full agency name (e.g., 'Department of Defense')")
-    sub_agency_code: str | None = Field(None, description="Sub-agency code (e.g., '5700' for Air Force)")
+    agency_name: str | None = Field(
+        None, description="Full agency name (e.g., 'Department of Defense')"
+    )
+    sub_agency_code: str | None = Field(
+        None, description="Sub-agency code (e.g., '5700' for Air Force)"
+    )
     sub_agency_name: str | None = Field(None, description="Sub-agency name")
 
     # Transition metrics (nullable, computed from transitions)
-    transition_total_awards: int | None = Field(None, ge=0, description="Total SBIR awards for this company")
-    transition_total_transitions: int | None = Field(None, ge=0, description="Total detected transitions")
+    transition_total_awards: int | None = Field(
+        None, ge=0, description="Total SBIR awards for this company"
+    )
+    transition_total_transitions: int | None = Field(
+        None, ge=0, description="Total detected transitions"
+    )
     transition_success_rate: float | None = Field(
         None, ge=0.0, le=1.0, description="Transition success rate (transitions / awards)"
     )
     transition_avg_likelihood_score: float | None = Field(
         None, ge=0.0, le=1.0, description="Average likelihood score across transitions"
     )
-    transition_profile_updated_at: datetime | None = Field(None, description="When transition metrics were last updated")
+    transition_profile_updated_at: datetime | None = Field(
+        None, description="When transition metrics were last updated"
+    )
 
     # Metadata
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    updated_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Last update timestamp"
+    )
 
     @field_validator("duns")
     @classmethod
@@ -136,4 +156,3 @@ class OrganizationMatch(BaseModel):
         if not (0.0 <= v <= 1.0):
             raise ValueError("Confidence score must be between 0.0 and 1.0")
         return v
-

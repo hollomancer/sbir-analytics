@@ -89,13 +89,9 @@ class OrganizationLoader(BaseNeo4jLoader):
             tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
         ] = []
 
-        for i, (child_key, child_value, parent_key, parent_value) in enumerate(
-            subsidiary_pairs
-        ):
+        for i, (child_key, child_value, parent_key, parent_value) in enumerate(subsidiary_pairs):
             if i < len(relationships):  # Only include valid relationships
-                _, _, properties = relationships[
-                    i - (len(subsidiary_pairs) - len(relationships))
-                ]
+                _, _, properties = relationships[i - (len(subsidiary_pairs) - len(relationships))]
                 full_relationships.append(
                     (
                         "Organization",
@@ -121,5 +117,3 @@ class OrganizationLoader(BaseNeo4jLoader):
         )
 
         return self.metrics
-
-

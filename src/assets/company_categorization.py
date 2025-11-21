@@ -87,7 +87,9 @@ def enriched_sbir_companies_with_categorization(
 
         # Extract unique companies
         companies = validated_sbir_awards[available_columns].drop_duplicates()
-        companies = companies.dropna(subset=["company_uei"] if "company_uei" in companies.columns else [])
+        companies = companies.dropna(
+            subset=["company_uei"] if "company_uei" in companies.columns else []
+        )
 
         context.log.info(f"Identified {len(companies)} unique companies to categorize")
 
@@ -100,7 +102,9 @@ def enriched_sbir_companies_with_categorization(
         # Process each company
         for idx, (_, company) in enumerate(companies.iterrows()):
             uei = company.get("company_uei") if "company_uei" in company else None
-            name = company.get("company_name", "Unknown") if "company_name" in company else "Unknown"
+            name = (
+                company.get("company_name", "Unknown") if "company_name" in company else "Unknown"
+            )
 
             if not uei:
                 context.log.warning(f"Skipping company {idx + 1} - no UEI available")
@@ -284,9 +288,7 @@ def company_categorization_completeness_check(
     if high_confidence_pct > 50.0:
         checks_passed.append(f"High confidence rate {high_confidence_pct:.1f}% > 50% threshold")
     else:
-        checks_failed.append(
-            f"High confidence rate {high_confidence_pct:.1f}% <= 50% threshold"
-        )
+        checks_failed.append(f"High confidence rate {high_confidence_pct:.1f}% <= 50% threshold")
 
     if not missing_fields:
         checks_passed.append("All required fields present")

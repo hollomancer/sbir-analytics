@@ -68,7 +68,9 @@ class DuckDBUSAspendingExtractor:
         """Context manager exit."""
         self.close()
 
-    def import_postgres_dump(self, dump_file: Path | str, table_name: str = "usaspending_awards") -> bool:
+    def import_postgres_dump(
+        self, dump_file: Path | str, table_name: str = "usaspending_awards"
+    ) -> bool:
         """Import PostgreSQL dump file into DuckDB.
 
         Args:

@@ -117,9 +117,7 @@ class HuggingFaceInferenceClient:
         try:
             self.client = HFInferenceClient(token=self.api_token, timeout=self.timeout)
             self.available = True
-            logger.info(
-                f"HuggingFace Inference API client initialized for model: {model_name}"
-            )
+            logger.info(f"HuggingFace Inference API client initialized for model: {model_name}")
         except Exception as e:
             self.available = False
             logger.error(f"Failed to initialize HuggingFace Inference API client: {e}")
@@ -174,9 +172,7 @@ class HuggingFaceInferenceClient:
             batch = texts[i : i + batch_size]
             batch_num = i // batch_size + 1
 
-            logger.debug(
-                f"Processing batch {batch_num}/{total_batches} ({len(batch)} texts)"
-            )
+            logger.debug(f"Processing batch {batch_num}/{total_batches} ({len(batch)} texts)")
 
             retry_count = 0
 
@@ -216,7 +212,9 @@ class HuggingFaceInferenceClient:
                     raise RuntimeError(f"Embedding generation failed: {e}") from e
 
         # Concatenate all batch embeddings
-        embeddings_array = np.vstack(all_embeddings) if len(all_embeddings) > 1 else all_embeddings[0]
+        embeddings_array = (
+            np.vstack(all_embeddings) if len(all_embeddings) > 1 else all_embeddings[0]
+        )
 
         # Normalize if requested
         if normalize:
@@ -299,9 +297,7 @@ class LocalGPUClient:
             logger.info(f"Loading model {model_name} for local inference...")
             self.model = SentenceTransformer(model_name, **kwargs)
             self.device = self.model.device
-            logger.info(
-                f"Local GPU client initialized for {model_name} (device: {self.device})"
-            )
+            logger.info(f"Local GPU client initialized for {model_name} (device: {self.device})")
         except Exception as e:
             logger.error(f"Failed to load local model: {e}")
             raise RuntimeError(f"Failed to load model {model_name}: {e}") from e

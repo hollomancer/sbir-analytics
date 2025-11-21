@@ -20,9 +20,6 @@ from src.validators.schemas import (
 pytestmark = pytest.mark.fast
 
 
-
-
-
 class TestValidationResultModel:
     """Tests for ValidationResult model."""
 

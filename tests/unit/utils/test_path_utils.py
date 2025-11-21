@@ -12,7 +12,8 @@ pytestmark = pytest.mark.fast
 
 # Import directly using importlib to avoid pulling in duckdb dependency via __init__.py
 _spec = importlib.util.spec_from_file_location(
-    "path_utils", Path(__file__).parent.parent.parent.parent / "src" / "utils" / "common" / "path_utils.py"
+    "path_utils",
+    Path(__file__).parent.parent.parent.parent / "src" / "utils" / "common" / "path_utils.py",
 )
 _path_utils = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_path_utils)  # type: ignore[union-attr]
@@ -236,4 +237,3 @@ class TestSafePathJoin:
         """Test joining with empty components."""
         result = safe_path_join("data", "", "file.csv")
         assert result == Path("data") / "" / "file.csv"
-

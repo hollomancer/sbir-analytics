@@ -1,6 +1,5 @@
 """Tests for APICache."""
 
-
 import pandas as pd
 import pytest
 

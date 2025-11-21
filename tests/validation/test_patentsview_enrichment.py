@@ -117,9 +117,7 @@ def process_company(
         # Check for reassignments
         reassigned_patents = []
         if patent_numbers and client:
-            reassignments_df = check_patent_reassignments(
-                patent_numbers, company_name, client
-            )
+            reassignments_df = check_patent_reassignments(patent_numbers, company_name, client)
 
             # Filter to only reassigned patents
             reassigned_df = reassignments_df[reassignments_df["reassigned"]]
@@ -238,9 +236,7 @@ def print_summary(results: pd.DataFrame) -> None:
     total_patents = results["patent_count"].sum()
     companies_with_reassignments = (results["reassigned_patents_count"] > 0).sum()
     companies_with_reassignments_pct = (
-        (companies_with_reassignments / total_companies * 100)
-        if total_companies > 0
-        else 0
+        (companies_with_reassignments / total_companies * 100) if total_companies > 0 else 0
     )
 
     logger.info(f"\nTotal companies processed: {total_companies}")
@@ -463,4 +459,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

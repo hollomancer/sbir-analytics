@@ -414,7 +414,7 @@ class TestMetricsExport:
         test_func()
 
         output_file = tmp_path / "metrics.json"
-        monitor.export_metrics(str(output_file)) # Renamed export_to_json -> export_metrics
+        monitor.export_metrics(str(output_file))  # Renamed export_to_json -> export_metrics
 
         assert output_file.exists()
 

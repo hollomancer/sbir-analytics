@@ -392,4 +392,3 @@ def create_sample_award_dict(
         "completion_date": completion_date,
         "award_amount": award_amount,
     }
-

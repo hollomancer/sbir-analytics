@@ -23,19 +23,13 @@ class ContractClassification(BaseModel):
     award_id: str = Field(..., description="Contract/award identifier")
 
     # Classification result
-    classification: str = Field(
-        ...,
-        description="Classification result: Product or Service"
-    )
+    classification: str = Field(..., description="Classification result: Product or Service")
     method: str = Field(
         ...,
-        description="Classification method used (e.g., psc_numeric, contract_type, description_inference)"
+        description="Classification method used (e.g., psc_numeric, contract_type, description_inference)",
     )
     confidence: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="Classification confidence score (0.0-1.0)"
+        ..., ge=0.0, le=1.0, description="Classification confidence score (0.0-1.0)"
     )
 
     # Original contract data fields
@@ -94,24 +88,15 @@ class CompanyClassification(BaseModel):
     # Classification result
     classification: str = Field(
         ...,
-        description="Company classification: Product-leaning, Service-leaning, Mixed, or Uncertain"
+        description="Company classification: Product-leaning, Service-leaning, Mixed, or Uncertain",
     )
     product_pct: float = Field(
-        ...,
-        ge=0.0,
-        le=100.0,
-        description="Percentage of dollars from product contracts"
+        ..., ge=0.0, le=100.0, description="Percentage of dollars from product contracts"
     )
     service_pct: float = Field(
-        ...,
-        ge=0.0,
-        le=100.0,
-        description="Percentage of dollars from service contracts"
+        ..., ge=0.0, le=100.0, description="Percentage of dollars from service contracts"
     )
-    confidence: str = Field(
-        ...,
-        description="Confidence level: Low, Medium, or High"
-    )
+    confidence: str = Field(..., description="Confidence level: Low, Medium, or High")
 
     # Portfolio metadata
     award_count: int = Field(..., description="Total number of contracts in portfolio")
@@ -123,19 +108,18 @@ class CompanyClassification(BaseModel):
     # Agency breakdown (reporting only, does not affect classification)
     agency_breakdown: dict[str, float] = Field(
         default_factory=dict,
-        description="Percentage of revenue by awarding agency (agency name -> percentage)"
+        description="Percentage of revenue by awarding agency (agency name -> percentage)",
     )
 
     # Override information
     override_reason: str | None = Field(
         None,
-        description="Reason for override if applied (e.g., high_psc_diversity, insufficient_awards)"
+        description="Reason for override if applied (e.g., high_psc_diversity, insufficient_awards)",
     )
 
     # Contract details (for audit trail)
     contracts: list[ContractClassification] = Field(
-        default_factory=list,
-        description="Individual contract classifications"
+        default_factory=list, description="Individual contract classifications"
     )
 
     @field_validator("classification")

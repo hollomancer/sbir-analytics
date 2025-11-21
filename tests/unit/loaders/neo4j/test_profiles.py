@@ -12,7 +12,6 @@ from src.loaders.neo4j.profiles import TransitionProfileLoader
 pytestmark = pytest.mark.fast
 
 
-
 class TestTransitionProfileLoader:
     """Tests for TransitionProfileLoader class."""
 

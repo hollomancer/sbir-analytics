@@ -14,7 +14,6 @@ from src.models.transitions import CompanyTransition, TransitionType
 pytestmark = pytest.mark.fast
 
 
-
 class TestTransitionModels:
     """Tests for transitions.py models."""
 

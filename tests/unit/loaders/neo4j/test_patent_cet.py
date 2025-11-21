@@ -12,13 +12,14 @@ from src.loaders.neo4j.patent_cet import Neo4jPatentCETLoader
 pytestmark = pytest.mark.fast
 
 
-
 class TestNeo4jConfig:
     """Tests for Neo4jConfig dataclass."""
 
     def test_config_default_values(self):
         """Test Neo4jConfig with default values."""
-        config = Neo4jConfig(uri="bolt://localhost:7687", user="neo4j", password="password")  # pragma: allowlist secret
+        config = Neo4jConfig(
+            uri="bolt://localhost:7687", user="neo4j", password="password"
+        )  # pragma: allowlist secret
 
         assert config.uri == "bolt://localhost:7687"
         assert config.user == "neo4j"

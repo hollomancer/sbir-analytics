@@ -481,9 +481,9 @@ class TestExceptionInheritance:
         ]
 
         for exc_class in exception_classes:
-            assert issubclass(
-                exc_class, SBIRETLError
-            ), f"{exc_class.__name__} should inherit from SBIRETLError"
+            assert issubclass(exc_class, SBIRETLError), (
+                f"{exc_class.__name__} should inherit from SBIRETLError"
+            )
 
     def test_layer_2_inherits_from_layer_1(self):
         """Test layer 2 exceptions inherit from layer 1."""

@@ -107,4 +107,3 @@ def test_batch_process_with_error():
 
     with pytest.raises(ValueError, match="Sum too large"):
         list(batch_process(items, batch_size=3, processor=processor))
-

@@ -19,8 +19,8 @@ class TestHTMLReportBuilder:
         assert "<table>" in result
         assert "<th>name</th>" in result
         assert "<th>value</th>" in result
-        assert "<td class=\"metric-value\">A</td>" in result
-        assert "<td class=\"metric-value\">1</td>" in result
+        assert '<td class="metric-value">A</td>' in result
+        assert '<td class="metric-value">1</td>' in result
 
     def test_create_table_with_title(self):
         """Test creating a table with title."""
@@ -135,4 +135,3 @@ class TestHTMLReportBuilder:
         assert "Test Title" in result
         assert "status-pass" in result
         assert "2024-01-01" in result
-

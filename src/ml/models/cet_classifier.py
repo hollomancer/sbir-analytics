@@ -364,8 +364,7 @@ class ApplicabilityModel:
         self.training_date = datetime.now().isoformat()
 
         logger.info(
-            f"Training complete: {len(self.pipelines)}/{len(self.cet_areas)} "
-            f"classifiers trained"
+            f"Training complete: {len(self.pipelines)}/{len(self.cet_areas)} classifiers trained"
         )
 
         return metrics
@@ -481,7 +480,9 @@ class ApplicabilityModel:
         # Process in batches
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
-            logger.debug(f"Processing batch {i//batch_size + 1}/{(len(texts)-1)//batch_size + 1}")
+            logger.debug(
+                f"Processing batch {i // batch_size + 1}/{(len(texts) - 1) // batch_size + 1}"
+            )
 
             # Get scores for batch with agency/branch priors
             batch_scores_array = self._get_scores(batch, agency=agency, branch=branch)
@@ -528,7 +529,7 @@ class ApplicabilityModel:
         for i in range(n_samples):
             text_str = " ".join(texts[i].values()) if isinstance(texts[i], dict) else str(texts[i])
 
-            score_dict = dict(zip(cet_ids, scores[i,:], strict=False))
+            score_dict = dict(zip(cet_ids, scores[i, :], strict=False))
 
             adjusted_scores = self.rule_engine.apply_all_rules(score_dict, text_str, agency, branch)
 

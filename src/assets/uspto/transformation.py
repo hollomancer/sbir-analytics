@@ -367,9 +367,7 @@ def transformed_patents(context, transformed_assignments: dict[str, Any]) -> dic
     group_name="extraction",
     ins={"transformed_assignments": AssetIn("transformed_patent_assignments")},
 )
-def transformed_patent_entities(
-    context, transformed_assignments: dict[str, Any]
-) -> dict[str, Any]:
+def transformed_patent_entities(context, transformed_assignments: dict[str, Any]) -> dict[str, Any]:
     output_path, _ = _resolve_output_paths(context, "patent_entities")
     src_path = transformed_assignments.get("output_path")
     if not src_path or not Path(src_path).exists():

@@ -42,7 +42,9 @@ class Individual(BaseModel):
     )
 
     # Researcher-specific (nullable)
-    researcher_id: str | None = Field(None, description="Legacy Researcher identifier for backward compatibility")
+    researcher_id: str | None = Field(
+        None, description="Legacy Researcher identifier for backward compatibility"
+    )
     institution: str | None = Field(None, description="Academic/research institution")
     department: str | None = Field(None, description="Department within institution")
     title: str | None = Field(None, description="Professional title")
@@ -55,15 +57,21 @@ class Individual(BaseModel):
 
     # Patent-specific (nullable)
     entity_id: str | None = Field(None, description="Legacy PatentEntity identifier")
-    entity_type: str | None = Field(
-        None, description="ASSIGNEE or ASSIGNOR (from patent context)"
+    entity_type: str | None = Field(None, description="ASSIGNEE or ASSIGNOR (from patent context)")
+    num_assignments_as_assignee: int | None = Field(
+        None, description="Number of assignments as assignee"
     )
-    num_assignments_as_assignee: int | None = Field(None, description="Number of assignments as assignee")
-    num_assignments_as_assignor: int | None = Field(None, description="Number of assignments as assignor")
+    num_assignments_as_assignor: int | None = Field(
+        None, description="Number of assignments as assignor"
+    )
 
     # Metadata
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    updated_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Last update timestamp"
+    )
 
     @field_validator("email")
     @classmethod
@@ -101,4 +109,3 @@ class IndividualMatch(BaseModel):
         if not (0.0 <= v <= 1.0):
             raise ValueError("Confidence score must be between 0.0 and 1.0")
         return v
-

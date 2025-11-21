@@ -280,4 +280,3 @@ def parse_date_safe(
         return result if result is not None else default
     except Exception:
         return default
-

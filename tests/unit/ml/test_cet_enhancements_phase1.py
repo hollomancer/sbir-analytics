@@ -268,4 +268,3 @@ class TestStopWordsIntegration:
 
         # Verify stop words are passed to vectorizer
         assert vectorizer.stop_words == ["sbir", "sttr", "phase", "award"]
-

@@ -67,22 +67,16 @@ class Award(BaseModel):
 
     # Congressional district (enriched data)
     congressional_district: str | None = Field(
-        None,
-        description="Congressional district code (e.g., 'CA-12', 'NY-14')"
+        None, description="Congressional district code (e.g., 'CA-12', 'NY-14')"
     )
     district_number: str | None = Field(
-        None,
-        description="District number only (e.g., '12', '14', 'AL' for at-large)"
+        None, description="District number only (e.g., '12', '14', 'AL' for at-large)"
     )
     congressional_district_confidence: float | None = Field(
-        None,
-        ge=0.0,
-        le=1.0,
-        description="Confidence score for district assignment (0.0-1.0)"
+        None, ge=0.0, le=1.0, description="Confidence score for district assignment (0.0-1.0)"
     )
     congressional_district_method: str | None = Field(
-        None,
-        description="Method used to resolve district (e.g., 'zip_crosswalk', 'census_api')"
+        None, description="Method used to resolve district (e.g., 'zip_crosswalk', 'census_api')"
     )
 
     # Contact / personnel (with aliases for SBIR.gov format)
@@ -206,14 +200,20 @@ class Award(BaseModel):
         # Try to extract SBIR or STTR from variations
         # Handle cases like "SBIR/STTR", "SBIR-Phase I", "STTR Phase II"
         if "SBIR" in normalized:
-            logger.warning(f"Program field '{v}' contains SBIR but not exact match - normalizing to SBIR")
+            logger.warning(
+                f"Program field '{v}' contains SBIR but not exact match - normalizing to SBIR"
+            )
             return "SBIR"
         if "STTR" in normalized:
-            logger.warning(f"Program field '{v}' contains STTR but not exact match - normalizing to STTR")
+            logger.warning(
+                f"Program field '{v}' contains STTR but not exact match - normalizing to STTR"
+            )
             return "STTR"
 
         # Invalid value - return None (lenient)
-        logger.warning(f"Program field '{v}' is not SBIR or STTR - setting to None to preserve record")
+        logger.warning(
+            f"Program field '{v}' is not SBIR or STTR - setting to None to preserve record"
+        )
         return None
 
     @field_validator("phase")
@@ -270,7 +270,9 @@ class Award(BaseModel):
         from loguru import logger
 
         if v is not None and (v < 1983 or v > 2050):
-            logger.warning(f"Fiscal year {v} is out of typical range (1983-2050) - accepting anyway to preserve record")
+            logger.warning(
+                f"Fiscal year {v} is out of typical range (1983-2050) - accepting anyway to preserve record"
+            )
         return v
 
     @field_validator("award_year")
@@ -398,10 +400,14 @@ class Award(BaseModel):
                 # Try extracting just the digits (handles "approx 500")
                 digits = "".join(ch for ch in cleaned if ch.isdigit())
                 if digits:
-                    logger.warning(f"Number of employees '{v}' is not pure numeric - extracting {digits}")
+                    logger.warning(
+                        f"Number of employees '{v}' is not pure numeric - extracting {digits}"
+                    )
                     return int(digits)
                 # Can't parse - return None (lenient)
-                logger.warning(f"Number of employees '{v}' cannot be parsed - setting to None to preserve record")
+                logger.warning(
+                    f"Number of employees '{v}' cannot be parsed - setting to None to preserve record"
+                )
                 return None
 
         # Handle float values
@@ -422,7 +428,9 @@ class Award(BaseModel):
             return v
 
         # Unknown type - return None (lenient)
-        logger.warning(f"Number of employees has unexpected type {type(v)} - setting to None to preserve record")
+        logger.warning(
+            f"Number of employees has unexpected type {type(v)} - setting to None to preserve record"
+        )
         return None
 
     @field_validator("award_date")
@@ -466,9 +474,7 @@ class Award(BaseModel):
             # Proposal should be before or on the same day as award
             if v > award_date_val:
                 # Lenient: log warning but accept the date
-                logger.warning(
-                    f"Proposal date ({v}) is after award date ({award_date_val})"
-                )
+                logger.warning(f"Proposal date ({v}) is after award date ({award_date_val})")
         return v
 
     @field_validator("contract_start_date")
@@ -515,17 +521,13 @@ class Award(BaseModel):
         start = info.data.get("contract_start_date") if hasattr(info, "data") else None
         if start and isinstance(start, date) and v < start:
             # Lenient: log warning but accept the date
-            logger.warning(
-                f"Contract end date ({v}) is before start date ({start})"
-            )
+            logger.warning(f"Contract end date ({v}) is before start date ({start})")
 
         # Check against proposal_award_date if present
         proposal = info.data.get("proposal_award_date") if hasattr(info, "data") else None
         if proposal and isinstance(proposal, date) and v < proposal:
             # Lenient: log warning but accept the date
-            logger.warning(
-                f"Contract end date ({v}) is before proposal date ({proposal})"
-            )
+            logger.warning(f"Contract end date ({v}) is before proposal date ({proposal})")
 
         return v
 
@@ -733,7 +735,6 @@ class RawAward(BaseModel):
 
         # Parse dates using centralized utility
         from src.utils.common.date_utils import parse_date
-
 
         date_fields = [
             "award_date",

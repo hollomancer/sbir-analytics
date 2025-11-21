@@ -99,7 +99,7 @@ class PatentLoader(BaseNeo4jLoader):
             "CREATE INDEX organization_normalized_name_idx IF NOT EXISTS "
             "FOR (o:Organization) ON (o.normalized_name)",
             # Tier 2: High value indexes
-            "CREATE INDEX patent_appno_date_idx IF NOT EXISTS " "FOR (p:Patent) ON (p.appno_date)",
+            "CREATE INDEX patent_appno_date_idx IF NOT EXISTS FOR (p:Patent) ON (p.appno_date)",
             "CREATE INDEX patent_assignment_exec_date_idx IF NOT EXISTS "
             "FOR (a:PatentAssignment) ON (a.exec_date)",
         ]

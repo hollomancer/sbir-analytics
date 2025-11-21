@@ -276,7 +276,9 @@ def generate_quality_report(
     lines.append(f"  Resolved: {stats['resolved_awards']:,}")
     lines.append(f"  Unresolved: {stats['unresolved_awards']:,}")
     lines.append(f"  Unique Districts: {stats['unique_districts']}")
-    lines.append(f"  States with Resolution: {stats['states_with_resolution']}/{stats['total_states']}")
+    lines.append(
+        f"  States with Resolution: {stats['states_with_resolution']}/{stats['total_states']}"
+    )
 
     if stats["resolution_methods"]:
         lines.append("\nResolution Methods Used:")

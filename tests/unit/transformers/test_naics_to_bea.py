@@ -14,7 +14,6 @@ from src.transformers.naics_to_bea import NAICSToBEAMapper
 pytestmark = pytest.mark.fast
 
 
-
 class TestNAICSToBEAMapperInitialization:
     """Tests for NAICSToBEAMapper initialization."""
 

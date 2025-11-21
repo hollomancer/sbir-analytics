@@ -104,4 +104,3 @@ def sample_scenario_results_df():
             "total_tax_receipt": np.random.uniform(100000, 200000, 100),
         }
     )
-

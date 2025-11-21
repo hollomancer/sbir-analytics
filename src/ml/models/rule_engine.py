@@ -14,7 +14,9 @@ class RuleEngine:
         self.config = config
         self.cet_negative_keywords = cet_negative_keywords
 
-    def apply_all_rules(self, scores: dict[str, float], text: str, agency: str | None, branch: str | None) -> dict[str, float]:
+    def apply_all_rules(
+        self, scores: dict[str, float], text: str, agency: str | None, branch: str | None
+    ) -> dict[str, float]:
         """
         Apply all heuristic rules to the scores.
         """
@@ -23,7 +25,9 @@ class RuleEngine:
         scores = self._apply_agency_branch_priors(scores, agency, branch)
         return scores
 
-    def _apply_negative_keyword_penalty(self, scores: dict[str, float], text: str) -> dict[str, float]:
+    def _apply_negative_keyword_penalty(
+        self, scores: dict[str, float], text: str
+    ) -> dict[str, float]:
         """
         Apply penalty if negative keywords are present in text.
         """
@@ -37,12 +41,16 @@ class RuleEngine:
             for neg_kw in negative_keywords:
                 if neg_kw.lower() in text_lower:
                     penalty_multiplier *= 0.7  # 30% reduction per negative keyword
-                    logger.debug(f"Negative keyword '{neg_kw}' found for {cet_id}, applying penalty")
+                    logger.debug(
+                        f"Negative keyword '{neg_kw}' found for {cet_id}, applying penalty"
+                    )
 
             scores[cet_id] = max(0.0, min(100.0, score * penalty_multiplier))
         return scores
 
-    def _apply_agency_branch_priors(self, scores: dict[str, float], agency: str | None, branch: str | None) -> dict[str, float]:
+    def _apply_agency_branch_priors(
+        self, scores: dict[str, float], agency: str | None, branch: str | None
+    ) -> dict[str, float]:
         """
         Apply agency/branch contextual score boosts.
         """

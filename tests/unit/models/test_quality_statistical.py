@@ -36,7 +36,6 @@ from src.models.statistical_reports import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestQualitySeverity:
     """Tests for QualitySeverity enum."""
 

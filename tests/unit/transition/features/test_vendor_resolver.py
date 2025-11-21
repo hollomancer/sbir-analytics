@@ -18,7 +18,6 @@ from src.transition.features.vendor_resolver import (
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def sample_vendors():
     """Sample vendor records for testing."""

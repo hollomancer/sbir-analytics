@@ -8,7 +8,6 @@ import pytest
 pytestmark = pytest.mark.fast
 
 
-
 def _write_checks(path: Path, award, company) -> None:
     """
     Helper to write a minimal transition_analytics.checks.json payload

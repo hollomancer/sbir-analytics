@@ -175,9 +175,7 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
                 props["categorization_product_dollars"] = _as_float(raw.get("product_dollars"))
 
             if "service_dollars" in raw:
-                props["categorization_service_dollars"] = _as_float(
-                    raw.get("service_dollars")
-                )
+                props["categorization_service_dollars"] = _as_float(raw.get("service_dollars"))
 
             if "agency_breakdown" in raw:
                 agency_breakdown = raw.get("agency_breakdown")
@@ -239,7 +237,9 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
                             updated,
                         )
             except Exception as exc:
-                logger.error("Failed to update Company nodes in batch {}-{}: {}", i, i + len(batch), exc)
+                logger.error(
+                    "Failed to update Company nodes in batch {}-{}: {}", i, i + len(batch), exc
+                )
                 metrics.errors += len(batch)
 
         logger.info(

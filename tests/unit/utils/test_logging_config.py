@@ -153,4 +153,3 @@ class TestLogWithContext:
         """Test log_with_context can be used as context manager."""
         with log_with_context(stage="test", run_id="123") as logger:
             assert logger is not None
-

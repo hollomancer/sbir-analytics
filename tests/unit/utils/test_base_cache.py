@@ -131,4 +131,3 @@ class TestBaseDataFrameCache:
     def test_get_default_cache_type(self, cache):
         """Test default cache type."""
         assert cache._get_default_cache_type() == "test"
-

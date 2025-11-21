@@ -10,7 +10,6 @@ from src.assets.fiscal_prepared_sbir_awards import fiscal_prepared_sbir_awards
 pytestmark = pytest.mark.fast
 
 
-
 def test_asset_uses_fixture(tmp_path):
     # copy fixture into expected processed location
     fixture = Path("tests/fixtures/naics_index_fixture.parquet")

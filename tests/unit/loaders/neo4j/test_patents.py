@@ -11,7 +11,6 @@ from src.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig
 pytestmark = pytest.mark.fast
 
 
-
 class TestPatentLoaderConfig:
     """Tests for PatentLoaderConfig dataclass."""
 

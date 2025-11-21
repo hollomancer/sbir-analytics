@@ -70,9 +70,7 @@ class TestColumnFinder:
 
     def test_find_column_by_patterns_priority(self):
         """Test pattern matching prioritizes earlier patterns."""
-        df = pd.DataFrame(
-            {"tracking_id": [1, 2], "contract_id": [3, 4], "name": ["A", "B"]}
-        )
+        df = pd.DataFrame({"tracking_id": [1, 2], "contract_id": [3, 4], "name": ["A", "B"]})
 
         result = ColumnFinder.find_column_by_patterns(df, ["contract", "tracking"])
 
@@ -114,4 +112,3 @@ class TestColumnFinder:
         result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
         assert result["title"] == "Title"
         assert result["abstract"] is None
-

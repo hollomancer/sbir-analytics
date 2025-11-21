@@ -43,34 +43,34 @@ def assert_exception_structure(
 
     # Check message (substring match for flexibility)
     if expected_message is not None:
-        assert (
-            expected_message in exc.message
-        ), f"Expected message to contain '{expected_message}', got '{exc.message}'"
+        assert expected_message in exc.message, (
+            f"Expected message to contain '{expected_message}', got '{exc.message}'"
+        )
 
     # Check component
     if expected_component is not None:
-        assert (
-            exc.component == expected_component
-        ), f"Expected component '{expected_component}', got '{exc.component}'"
+        assert exc.component == expected_component, (
+            f"Expected component '{expected_component}', got '{exc.component}'"
+        )
 
     # Check operation
     if expected_operation is not None:
-        assert (
-            exc.operation == expected_operation
-        ), f"Expected operation '{expected_operation}', got '{exc.operation}'"
+        assert exc.operation == expected_operation, (
+            f"Expected operation '{expected_operation}', got '{exc.operation}'"
+        )
 
     # Check retryable flag
     if expected_retryable is not None:
-        assert (
-            exc.retryable == expected_retryable
-        ), f"Expected retryable={expected_retryable}, got {exc.retryable}"
+        assert exc.retryable == expected_retryable, (
+            f"Expected retryable={expected_retryable}, got {exc.retryable}"
+        )
 
     # Check status code
     if expected_status_code is not None:
         assert exc.status_code is not None, "Expected status_code to be set"
-        assert (
-            exc.status_code.value == expected_status_code
-        ), f"Expected status_code={expected_status_code}, got {exc.status_code.value}"
+        assert exc.status_code.value == expected_status_code, (
+            f"Expected status_code={expected_status_code}, got {exc.status_code.value}"
+        )
 
     # All exceptions should be serializable
     assert isinstance(exc.to_dict(), dict), "Exception should be serializable"
@@ -112,22 +112,22 @@ def assert_raises_with_context(
     except exception_class as e:
         # Verify component if specified
         if expected_component is not None:
-            assert (
-                e.component == expected_component
-            ), f"Expected component '{expected_component}', got '{e.component}'"
+            assert e.component == expected_component, (
+                f"Expected component '{expected_component}', got '{e.component}'"
+            )
 
         # Verify operation if specified
         if expected_operation is not None:
-            assert (
-                e.operation == expected_operation
-            ), f"Expected operation '{expected_operation}', got '{e.operation}'"
+            assert e.operation == expected_operation, (
+                f"Expected operation '{expected_operation}', got '{e.operation}'"
+            )
 
         # Verify details keys if specified
         if expected_details_keys is not None:
             for key in expected_details_keys:
-                assert (
-                    key in e.details
-                ), f"Expected key '{key}' in details, got keys: {list(e.details.keys())}"
+                assert key in e.details, (
+                    f"Expected key '{key}' in details, got keys: {list(e.details.keys())}"
+                )
 
         return e
     except Exception as e:
@@ -154,13 +154,13 @@ def assert_exception_details(
             })
     """
     for key, expected_value in expected_details.items():
-        assert (
-            key in exc.details
-        ), f"Expected key '{key}' in details, got keys: {list(exc.details.keys())}"
+        assert key in exc.details, (
+            f"Expected key '{key}' in details, got keys: {list(exc.details.keys())}"
+        )
         actual_value = exc.details[key]
-        assert (
-            actual_value == expected_value
-        ), f"Expected details['{key}'] = {expected_value}, got {actual_value}"
+        assert actual_value == expected_value, (
+            f"Expected details['{key}'] = {expected_value}, got {actual_value}"
+        )
 
 
 def assert_exception_serialization(exc: SBIRETLError) -> dict[str, Any]:
@@ -204,9 +204,9 @@ def assert_retryable_exception(exc: SBIRETLError) -> None:
         except APIError as e:
             assert_retryable_exception(e)
     """
-    assert (
-        exc.retryable is True
-    ), f"Expected exception to be retryable, but retryable={exc.retryable}"
+    assert exc.retryable is True, (
+        f"Expected exception to be retryable, but retryable={exc.retryable}"
+    )
 
 
 def assert_non_retryable_exception(exc: SBIRETLError) -> None:
@@ -221,9 +221,9 @@ def assert_non_retryable_exception(exc: SBIRETLError) -> None:
         except ConfigurationError as e:
             assert_non_retryable_exception(e)
     """
-    assert (
-        exc.retryable is False
-    ), f"Expected exception to be non-retryable, but retryable={exc.retryable}"
+    assert exc.retryable is False, (
+        f"Expected exception to be non-retryable, but retryable={exc.retryable}"
+    )
 
 
 def create_test_exception(

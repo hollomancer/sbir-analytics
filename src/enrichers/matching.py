@@ -159,9 +159,7 @@ def phonetic_match(name1: str, name2: str, algorithm: str = "metaphone") -> bool
     return code1 is not None and code1 == code2
 
 
-def jaro_winkler_similarity(
-    name1: str, name2: str, prefix_weight: float = 0.1
-) -> float:
+def jaro_winkler_similarity(name1: str, name2: str, prefix_weight: float = 0.1) -> float:
     """Calculate Jaro-Winkler similarity between two names.
 
     Jaro-Winkler gives extra weight to matching prefixes, making it
@@ -185,9 +183,7 @@ def jaro_winkler_similarity(
 
     try:
         # JaroWinkler.similarity returns 0.0-1.0, scale to 0-100
-        score = JaroWinkler.similarity(
-            str(name1), str(name2), prefix_weight=prefix_weight
-        )
+        score = JaroWinkler.similarity(str(name1), str(name2), prefix_weight=prefix_weight)
         return score * 100.0
     except Exception:  # pragma: no cover
         return 0.0
@@ -253,9 +249,7 @@ class MatchingConfig:
         self.jaro_winkler_prefix_weight = config_dict.get("jaro_winkler_prefix_weight", 0.1)
         self.jaro_winkler_threshold = config_dict.get("jaro_winkler_threshold", 90)
 
-        self.enable_enhanced_abbreviations = config_dict.get(
-            "enable_enhanced_abbreviations", False
-        )
+        self.enable_enhanced_abbreviations = config_dict.get("enable_enhanced_abbreviations", False)
         self.custom_abbreviations = config_dict.get("custom_abbreviations", None)
 
     def get_abbreviations(self) -> dict[str, str]:

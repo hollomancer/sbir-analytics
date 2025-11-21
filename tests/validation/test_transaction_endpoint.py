@@ -19,10 +19,7 @@ def test_transaction_endpoint(uei: str) -> None:
     url = "https://api.usaspending.gov/api/v2/search/spending_by_transaction/"
 
     payload = {
-        "filters": {
-            "award_type_codes": ["A", "B", "C", "D"],
-            "recipient_search_text": [uei]
-        },
+        "filters": {"award_type_codes": ["A", "B", "C", "D"], "recipient_search_text": [uei]},
         "fields": [
             "Award ID",
             "Recipient Name",
@@ -31,12 +28,12 @@ def test_transaction_endpoint(uei: str) -> None:
             "Action Date",
             "PSC",
             "Recipient UEI",
-            "Award Type"
+            "Award Type",
         ],
         "sort": "Transaction Amount",
         "order": "desc",
         "page": 1,
-        "limit": 5  # Just get 5 for quick test
+        "limit": 5,  # Just get 5 for quick test
     }
 
     print("Request payload:")
@@ -47,12 +44,9 @@ def test_transaction_endpoint(uei: str) -> None:
     try:
         req = urllib.request.Request(
             url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': 'SBIR-Analytics/1.0'
-            },
-            method='POST'
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "SBIR-Analytics/1.0"},
+            method="POST",
         )
 
         print(f"Sending POST request to: {url}")
@@ -117,14 +111,14 @@ def test_transaction_endpoint(uei: str) -> None:
         print("=" * 80)
 
         # Save full response for inspection
-        with open('/tmp/transaction_response.json', 'w') as f:
+        with open("/tmp/transaction_response.json", "w") as f:
             json.dump(data, f, indent=2)
         print("\n✓ Full response saved to: /tmp/transaction_response.json")
 
     except urllib.error.HTTPError as e:
         print(f"❌ HTTP Error {e.code}: {e.reason}")
         print()
-        error_body = e.read().decode('utf-8')
+        error_body = e.read().decode("utf-8")
         print("Error response:")
         try:
             error_data = json.loads(error_body)
@@ -134,6 +128,7 @@ def test_transaction_endpoint(uei: str) -> None:
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 

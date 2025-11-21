@@ -503,7 +503,7 @@ def validated_cet_drift_detection() -> Output:
                 return {}
             pmf = {}
             for i in range(len(hist)):
-                label = f"{int(bin_edges[i])}-{int(bin_edges[i+1])}"
+                label = f"{int(bin_edges[i])}-{int(bin_edges[i + 1])}"
                 pmf[label] = float(hist[i]) / total
             return pmf
         except Exception:

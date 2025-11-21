@@ -20,7 +20,6 @@ from src.utils.monitoring import (
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def sample_benchmark_data():
     """Sample benchmark data."""
@@ -606,7 +605,9 @@ class TestEdgeCases:
         # Should return empty list without error
         assert len(metrics_list) == 0
 
-    def test_generate_html_report_special_characters(self, baseline_metrics, current_metrics, sample_benchmark_data):
+    def test_generate_html_report_special_characters(
+        self, baseline_metrics, current_metrics, sample_benchmark_data
+    ):
         """Test HTML generation handles special characters."""
         reporter = PerformanceReporter()
 

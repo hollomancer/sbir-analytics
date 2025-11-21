@@ -68,14 +68,18 @@ def sample_usaspending_data() -> pd.DataFrame:
     )
 
 
-def test_exact_uei_match(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame) -> None:
+def test_exact_uei_match(
+    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
+) -> None:
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
     assert enriched["_usaspending_match_method"].iloc[0] == "uei-exact"
     assert enriched["_usaspending_match_score"].iloc[0] == 100
     assert enriched["usaspending_recipient_recipient_city"].iloc[0] == "Springfield"
 
 
-def test_exact_duns_match(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame) -> None:
+def test_exact_duns_match(
+    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
+) -> None:
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
     assert enriched["_usaspending_match_method"].iloc[1] == "duns-exact"
     assert enriched["_usaspending_match_score"].iloc[1] == 100
@@ -117,7 +121,9 @@ def test_no_match_returns_nan() -> None:
     assert pd.isna(enriched["_usaspending_match_score"].iloc[0])
 
 
-def test_return_candidates(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame) -> None:
+def test_return_candidates(
+    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
+) -> None:
     enriched = enrich_sbir_with_usaspending(
         sample_sbir_data,
         sample_usaspending_data,
@@ -130,7 +136,9 @@ def test_return_candidates(sample_sbir_data: pd.DataFrame, sample_usaspending_da
         assert {"idx", "score"} <= candidates[0].keys()
 
 
-def test_match_rate_bounds(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame) -> None:
+def test_match_rate_bounds(
+    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
+) -> None:
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
     total = len(enriched)
     matched = enriched["_usaspending_match_method"].notna().sum()

@@ -70,4 +70,3 @@ def test_pipeline_output_files(tmp_path):
     for path in (analytics_json, summary_md, checks_json):
         assert path.exists()
         assert path.stat().st_size > 0
-

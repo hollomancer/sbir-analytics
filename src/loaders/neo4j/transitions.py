@@ -124,7 +124,7 @@ class TransitionLoader(BaseNeo4jLoader):
                         logger.info(f"  Processed {total_processed:,} transitions")
 
                 except Exception as e:
-                    logger.error(f"Failed to load batch {i//batch_size}: {e}")
+                    logger.error(f"Failed to load batch {i // batch_size}: {e}")
                     self.metrics.errors += batch_size_actual
 
         logger.info(

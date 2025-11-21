@@ -130,7 +130,9 @@ def _check_final_two_years_commercializations(
     psc_map = {c.get("award_id"): c.get("psc") for c in classified_contracts}
 
     # Group contracts by year, tracking Product, Service (non-R&D), and R&D separately
-    year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0, "rd": 0.0})
+    year_revenue: dict[int, dict[str, float]] = defaultdict(
+        lambda: {"product": 0.0, "service": 0.0, "rd": 0.0}
+    )
 
     for contract in contract_dicts:
         award_id = contract.get("award_id")
@@ -212,7 +214,9 @@ def _analyze_consecutive_product_years(
     classification_map = {c.get("award_id"): c.get("classification") for c in classified_contracts}
 
     # Group contracts by year
-    year_revenue: dict[int, dict[str, float]] = defaultdict(lambda: {"product": 0.0, "service": 0.0})
+    year_revenue: dict[int, dict[str, float]] = defaultdict(
+        lambda: {"product": 0.0, "service": 0.0}
+    )
 
     for contract in contract_dicts:
         award_id = contract.get("award_id")
@@ -250,7 +254,7 @@ def _analyze_consecutive_product_years(
     current_sequence = [product_dominant_years[0]]
 
     for i in range(1, len(product_dominant_years)):
-        if product_dominant_years[i] == product_dominant_years[i-1] + 1:
+        if product_dominant_years[i] == product_dominant_years[i - 1] + 1:
             current_sequence.append(product_dominant_years[i])
         else:
             if len(current_sequence) >= 2:
@@ -265,7 +269,10 @@ def _analyze_consecutive_product_years(
 
 
 def print_contract_justifications(
-    company_name: str, classified_contracts: list[dict], detailed: bool = False, agency_breakdown: dict[str, float] | None = None
+    company_name: str,
+    classified_contracts: list[dict],
+    detailed: bool = False,
+    agency_breakdown: dict[str, float] | None = None,
 ) -> None:
     """Print detailed contract classification justifications.
 
@@ -285,7 +292,9 @@ def print_contract_justifications(
     logger.info("\n  Top 5 Contracts by Dollar Value:")
     logger.info("  " + "-" * 76)
 
-    sorted_contracts = sorted(classified_contracts, key=lambda x: x.get("award_amount", 0), reverse=True)
+    sorted_contracts = sorted(
+        classified_contracts, key=lambda x: x.get("award_amount", 0), reverse=True
+    )
 
     for idx, contract in enumerate(sorted_contracts[:5], 1):
         amount = contract.get("award_amount", 0)
@@ -353,8 +362,12 @@ def print_contract_justifications(
     total_dollars = product_dollars + service_dollars
 
     if total_dollars > 0:
-        logger.info(f"      Product: ${product_dollars:,.0f} ({product_dollars/total_dollars*100:.1f}%)")
-        logger.info(f"      Service: ${service_dollars:,.0f} ({service_dollars/total_dollars*100:.1f}%)")
+        logger.info(
+            f"      Product: ${product_dollars:,.0f} ({product_dollars / total_dollars * 100:.1f}%)"
+        )
+        logger.info(
+            f"      Service: ${service_dollars:,.0f} ({service_dollars / total_dollars * 100:.1f}%)"
+        )
 
     # Agency breakdown if provided
     if agency_breakdown:
@@ -447,9 +460,7 @@ def categorize_companies(
             if pd.isna(sbir_awards):
                 sbir_awards = 0
 
-            logger.info(
-                f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})"
-            )
+            logger.info(f"\n[{idx}/{len(companies)}] Processing: {name} (UEI: {uei})")
 
             # Retrieve USAspending contracts (non-SBIR/STTR for categorization)
             # Default to DuckDB, fallback to API if DuckDB unavailable
@@ -464,7 +475,9 @@ def categorize_companies(
                     try:
                         contracts_df = retrieve_company_contracts(extractor, uei=uei)
                     except Exception as e:
-                        logger.warning(f"DuckDB retrieval failed for {name}, falling back to API: {e}")
+                        logger.warning(
+                            f"DuckDB retrieval failed for {name}, falling back to API: {e}"
+                        )
                         contracts_df = retrieve_company_contracts_api(uei=uei, company_name=name)
             else:
                 # API-only mode (explicitly requested)
@@ -476,13 +489,17 @@ def categorize_companies(
             # Try DuckDB first for SBIR awards unless API-only mode
             if not use_api:
                 if extractor is None:
-                    logger.warning(f"DuckDB extractor unavailable for SBIR awards for {name}, falling back to API")
+                    logger.warning(
+                        f"DuckDB extractor unavailable for SBIR awards for {name}, falling back to API"
+                    )
                     sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
                 else:
                     try:
                         sbir_df = retrieve_sbir_awards(extractor, uei=uei)
                     except Exception as e:
-                        logger.warning(f"DuckDB retrieval failed for SBIR awards for {name}, falling back to API: {e}")
+                        logger.warning(
+                            f"DuckDB retrieval failed for SBIR awards for {name}, falling back to API: {e}"
+                        )
                         sbir_df = retrieve_sbir_awards_api(uei=uei, company_name=name)
             else:
                 # API-only mode (explicitly requested)
@@ -494,7 +511,9 @@ def categorize_companies(
             non_sbir_dollars = contracts_df["award_amount"].sum() if not contracts_df.empty else 0.0
             total_usaspending_dollars = sbir_dollars + non_sbir_dollars
             sbir_pct_of_total = (
-                (sbir_dollars / total_usaspending_dollars * 100) if total_usaspending_dollars > 0 else 0.0
+                (sbir_dollars / total_usaspending_dollars * 100)
+                if total_usaspending_dollars > 0
+                else 0.0
             )
 
             # Log SBIR statistics for debugging
@@ -554,15 +573,17 @@ def categorize_companies(
             product_count = sum(1 for c in classified_contracts if c["classification"] == "Product")
             service_count = sum(1 for c in classified_contracts if c["classification"] == "Service")
 
-            logger.info(
-                f"  Contract breakdown: {product_count} Product, {service_count} Service"
-            )
+            logger.info(f"  Contract breakdown: {product_count} Product, {service_count} Service")
 
             # Analyze year-by-year revenue to identify consecutive product-dominant years
-            consecutive_product_years = _analyze_consecutive_product_years(contract_dicts, classified_contracts)
+            consecutive_product_years = _analyze_consecutive_product_years(
+                contract_dicts, classified_contracts
+            )
 
             # Check if final two years show commercializations (non-R&D > R&D, and product > R&D)
-            successful_commercialization, product_commercialization = _check_final_two_years_commercializations(contract_dicts, classified_contracts)
+            successful_commercialization, product_commercialization = (
+                _check_final_two_years_commercializations(contract_dicts, classified_contracts)
+            )
 
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_result = aggregate_company_classification(
@@ -573,6 +594,7 @@ def categorize_companies(
             if product_commercialization and company_result.classification != "Product-leaning":
                 # Create a new CompanyClassification with Product-leaning classification
                 from src.models.categorization import CompanyClassification
+
                 company_result = CompanyClassification(
                     company_uei=company_result.company_uei,
                     company_name=company_result.company_name,
@@ -612,27 +634,42 @@ def categorize_companies(
             # Log agency breakdown if available
             if company_result.agency_breakdown:
                 agency_parts = []
-                for agency, pct in sorted(company_result.agency_breakdown.items(), key=lambda x: x[1], reverse=True):
+                for agency, pct in sorted(
+                    company_result.agency_breakdown.items(), key=lambda x: x[1], reverse=True
+                ):
                     agency_parts.append(f"{agency}: {pct:.1f}%")
                 logger.info(f"  Agency breakdown: {', '.join(agency_parts)}")
 
             # Log consecutive product-dominant years if found
             if consecutive_product_years:
                 years_str = ", ".join(map(str, consecutive_product_years))
-                logger.info(f"  ⚠️  Consecutive product-dominant years: {years_str} (Product > Service for 2+ consecutive years)")
+                logger.info(
+                    f"  ⚠️  Consecutive product-dominant years: {years_str} (Product > Service for 2+ consecutive years)"
+                )
 
             # Log successful commercializations
             if successful_commercialization:
-                logger.info("  🎯 SUCCESSFUL COMMERCIALIZATION: Final two years show non-R&D revenue > R&D revenue")
+                logger.info(
+                    "  🎯 SUCCESSFUL COMMERCIALIZATION: Final two years show non-R&D revenue > R&D revenue"
+                )
             if product_commercialization:
-                logger.info("  🎯 PRODUCT COMMERCIALIZATION: Final two years show product revenue > R&D revenue (classified as Product-leaning)")
+                logger.info(
+                    "  🎯 PRODUCT COMMERCIALIZATION: Final two years show product revenue > R&D revenue (classified as Product-leaning)"
+                )
 
             # Print detailed justifications if requested (after aggregation so we have agency breakdown)
             if detailed:
-                print_contract_justifications(name, classified_contracts, detailed=detailed, agency_breakdown=company_result.agency_breakdown)
+                print_contract_justifications(
+                    name,
+                    classified_contracts,
+                    detailed=detailed,
+                    agency_breakdown=company_result.agency_breakdown,
+                )
 
             # Highlight successful commercializations in result log
-            commercialization_marker = "🎯 " if (successful_commercialization or product_commercialization) else ""
+            commercialization_marker = (
+                "🎯 " if (successful_commercialization or product_commercialization) else ""
+            )
             logger.info(
                 f"  Result: {commercialization_marker}{company_result.classification} "
                 f"({company_result.product_pct:.1f}% Product, {company_result.service_pct:.1f}% Service) - "
@@ -643,20 +680,28 @@ def categorize_companies(
             justification_parts = []
             if company_result.override_reason:
                 if company_result.override_reason == "successful_commercialization_product_gt_rd":
-                    justification_parts.append("🎯 Product commercialization: Final two years show product > R&D revenue")
+                    justification_parts.append(
+                        "🎯 Product commercialization: Final two years show product > R&D revenue"
+                    )
                 elif company_result.override_reason == "high_psc_diversity":
-                    justification_parts.append(f"High PSC diversity ({company_result.psc_family_count} families)")
+                    justification_parts.append(
+                        f"High PSC diversity ({company_result.psc_family_count} families)"
+                    )
                 elif company_result.override_reason == "insufficient_awards":
                     justification_parts.append("Insufficient awards for reliable classification")
                 elif company_result.override_reason == "no_contracts_found":
                     justification_parts.append("No non-SBIR contracts found")
             else:
                 if company_result.product_pct >= 51:
-                    justification_parts.append(f"{company_result.product_pct:.0f}% product contracts")
+                    justification_parts.append(
+                        f"{company_result.product_pct:.0f}% product contracts"
+                    )
                 if company_result.service_pct >= 51:
-                    justification_parts.append(f"{company_result.service_pct:.0f}% service contracts")
+                    justification_parts.append(
+                        f"{company_result.service_pct:.0f}% service contracts"
+                    )
                 # Check for balanced portfolio (no category >= 51%)
-                if (company_result.product_pct < 51 and company_result.service_pct < 51):
+                if company_result.product_pct < 51 and company_result.service_pct < 51:
                     justification_parts.append("Balanced portfolio across categories")
                 if company_result.psc_family_count > 5:
                     justification_parts.append(f"{company_result.psc_family_count} PSC families")
@@ -688,7 +733,9 @@ def categorize_companies(
                 "cost_based_contracts": cost_based_count,
                 "service_based_contracts": service_based_count,
                 "justification": justification,
-                "consecutive_product_years": consecutive_product_years if consecutive_product_years else None,
+                "consecutive_product_years": consecutive_product_years
+                if consecutive_product_years
+                else None,
                 "successful_commercialization": successful_commercialization,
                 "product_commercialization": product_commercialization,
             }
@@ -719,7 +766,6 @@ def categorize_companies(
     return pd.DataFrame(results)
 
 
-
 def print_summary(results: pd.DataFrame) -> None:
     """Print summary statistics for categorization results.
 
@@ -736,17 +782,21 @@ def print_summary(results: pd.DataFrame) -> None:
     logger.info(f"Companies without contracts: {(results['award_count'] == 0).sum()}")
 
     # List companies with no non-SBIR/STTR contracts
-    no_contracts = results[results['award_count'] == 0]
+    no_contracts = results[results["award_count"] == 0]
     if len(no_contracts) > 0:
-        logger.info(f"\nCompanies with NO Non-SBIR/STTR USAspending Contracts ({len(no_contracts)} total):")
+        logger.info(
+            f"\nCompanies with NO Non-SBIR/STTR USAspending Contracts ({len(no_contracts)} total):"
+        )
         logger.info("-" * 80)
-        logger.info("  (These companies received SBIR awards but have no other federal contract revenue)")
+        logger.info(
+            "  (These companies received SBIR awards but have no other federal contract revenue)"
+        )
         for idx, (_, row) in enumerate(no_contracts.iterrows(), 1):
-            company_name = row['company_name']
-            uei = row['company_uei']
-            sbir_awards = row['sbir_awards']
-            sbir_award_count = row.get('sbir_award_count', 0)
-            sbir_dollars = row.get('sbir_dollars', 0)
+            company_name = row["company_name"]
+            uei = row["company_uei"]
+            sbir_awards = row["sbir_awards"]
+            sbir_award_count = row.get("sbir_award_count", 0)
+            sbir_dollars = row.get("sbir_dollars", 0)
             logger.info(
                 f"  {idx}. {company_name} (UEI: {uei}, SBIR Awards from dataset: {sbir_awards}, "
                 f"SBIR in USAspending: {sbir_award_count} awards / ${sbir_dollars:,.0f})"
@@ -777,7 +827,9 @@ def print_summary(results: pd.DataFrame) -> None:
 
     logger.info(f"  Total SBIR/STTR awards found in USAspending: {total_sbir_awards:,.0f}")
     logger.info(f"  Total SBIR/STTR dollars: ${total_sbir_dollars:,.0f}")
-    logger.info(f"  Companies with SBIR awards in USAspending: {companies_with_sbir}/{len(results)}")
+    logger.info(
+        f"  Companies with SBIR awards in USAspending: {companies_with_sbir}/{len(results)}"
+    )
     logger.info(f"  Avg SBIR % of total USAspending revenue: {avg_sbir_pct:.1f}%")
 
     # Show companies where SBIR dominates
@@ -806,7 +858,9 @@ def print_summary(results: pd.DataFrame) -> None:
     if "consecutive_product_years" in results.columns:
         consecutive_product_companies = results[results["consecutive_product_years"].notna()]
         if len(consecutive_product_companies) > 0:
-            logger.info("\nCompanies with Consecutive Product-Dominant Years (Product > Service for 2+ consecutive years):")
+            logger.info(
+                "\nCompanies with Consecutive Product-Dominant Years (Product > Service for 2+ consecutive years):"
+            )
             logger.info("  " + "-" * 76)
             for idx, (_, row) in enumerate(consecutive_product_companies.iterrows(), 1):
                 years = row["consecutive_product_years"]
@@ -844,12 +898,16 @@ def print_summary(results: pd.DataFrame) -> None:
     if "successful_commercialization" in results.columns:
         commercialized_companies = results[results["successful_commercialization"]].copy()
         if len(commercialized_companies) > 0:
-            commercialized_companies = commercialized_companies.sort_values("total_dollars", ascending=False)
+            commercialized_companies = commercialized_companies.sort_values(
+                "total_dollars", ascending=False
+            )
             logger.info(f"\n🎯 Commercialized Companies ({len(commercialized_companies)} total):")
             logger.info("  Companies with final two years showing non-R&D revenue > R&D revenue")
             logger.info("  " + "-" * 76)
             for idx, (_, row) in enumerate(commercialized_companies.iterrows(), 1):
-                product_commercialization_marker = "🎯" if row.get("product_commercialization", False) else "  "
+                product_commercialization_marker = (
+                    "🎯" if row.get("product_commercialization", False) else "  "
+                )
                 logger.info(
                     f"  {idx}. {product_commercialization_marker} {row['company_name'][:50]}: "
                     f"{row['classification']}, {row['product_pct']:.1f}% Product, {row['service_pct']:.1f}% Service, "
@@ -894,7 +952,9 @@ def export_results(results: pd.DataFrame, output_path: str) -> None:
     # Format consecutive_product_years as string for CSV
     if "consecutive_product_years" in export_df.columns:
         export_df["consecutive_product_years"] = export_df["consecutive_product_years"].apply(
-            lambda x: ", ".join(map(str, x)) if isinstance(x, list) else (str(x) if x is not None else "")
+            lambda x: ", ".join(map(str, x))
+            if isinstance(x, list)
+            else (str(x) if x is not None else "")
         )
 
     # Rename columns to match user's requested format
@@ -936,16 +996,22 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
     with open(output_path, "w") as f:
         # Header
         f.write("# Company Categorization Analysis Report\n\n")
-        f.write("This report analyzes SBIR companies based on their **non-SBIR/STTR** federal contract revenue ")
+        f.write(
+            "This report analyzes SBIR companies based on their **non-SBIR/STTR** federal contract revenue "
+        )
         f.write("to determine whether they are primarily Product or Service oriented.\n\n")
-        f.write("**Important**: SBIR/STTR awards are tracked for reference but NOT included in categorization.\n\n")
+        f.write(
+            "**Important**: SBIR/STTR awards are tracked for reference but NOT included in categorization.\n\n"
+        )
         f.write("---\n\n")
 
         # Executive Summary
         f.write("## Executive Summary\n\n")
         f.write(f"- **Total Companies Analyzed**: {len(results)}\n")
         f.write(f"- **Companies with Non-SBIR Contracts**: {(results['award_count'] > 0).sum()}\n")
-        f.write(f"- **Companies with ONLY SBIR Revenue**: {(results['award_count'] == 0).sum()}\n\n")
+        f.write(
+            f"- **Companies with ONLY SBIR Revenue**: {(results['award_count'] == 0).sum()}\n\n"
+        )
 
         # Classification breakdown
         f.write("### Classification Breakdown\n\n")
@@ -984,10 +1050,16 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
             successful_commercializations = results[results["successful_commercialization"]]
             if len(successful_commercializations) > 0:
                 f.write("## 🎯 Companies with Successful Commercializations\n\n")
-                f.write("Companies whose **final two years** of USAspending data show non-R&D revenue (Product OR Service) > R&D revenue. ")
+                f.write(
+                    "Companies whose **final two years** of USAspending data show non-R&D revenue (Product OR Service) > R&D revenue. "
+                )
                 f.write("These companies have successfully commercialized their technology.\n\n")
-                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ | Product Commercialization |\n")
-                f.write("|---------|---------------|-----------|-----------|-----------|--------|-------------------------|\n")
+                f.write(
+                    "| Company | Classification | Product % | Service % | Contracts | Total $ | Product Commercialization |\n"
+                )
+                f.write(
+                    "|---------|---------------|-----------|-----------|-----------|--------|-------------------------|\n"
+                )
 
                 for _, row in successful_commercializations.iterrows():
                     company = row["company_name"][:40]
@@ -996,9 +1068,13 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     service_pct = row["service_pct"]
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
-                    product_commercialization = "🎯 Yes" if row.get("product_commercialization", False) else "No"
+                    product_commercialization = (
+                        "🎯 Yes" if row.get("product_commercialization", False) else "No"
+                    )
 
-                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_commercialization} |\n")
+                    f.write(
+                        f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {product_commercialization} |\n"
+                    )
 
                 f.write(f"\n**Total**: {len(successful_commercializations)} companies\n\n")
                 f.write("---\n\n")
@@ -1008,10 +1084,18 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
             product_commercializations = results[results["product_commercialization"]]
             if len(product_commercializations) > 0:
                 f.write("## 🎯 Companies with Product Commercializations\n\n")
-                f.write("Companies whose **final two years** of USAspending data show Product revenue > R&D revenue. ")
-                f.write("These companies are classified as **Product-leaning** regardless of their overall portfolio mix.\n\n")
-                f.write("| Company | Classification | Product % | Service % | Contracts | Total $ |\n")
-                f.write("|---------|---------------|-----------|-----------|-----------|--------|\n")
+                f.write(
+                    "Companies whose **final two years** of USAspending data show Product revenue > R&D revenue. "
+                )
+                f.write(
+                    "These companies are classified as **Product-leaning** regardless of their overall portfolio mix.\n\n"
+                )
+                f.write(
+                    "| Company | Classification | Product % | Service % | Contracts | Total $ |\n"
+                )
+                f.write(
+                    "|---------|---------------|-----------|-----------|-----------|--------|\n"
+                )
 
                 for _, row in product_commercializations.iterrows():
                     company = row["company_name"][:40]
@@ -1021,7 +1105,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
 
-                    f.write(f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
+                    f.write(
+                        f"| 🎯 {company} | {classification} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n"
+                    )
 
                 f.write(f"\n**Total**: {len(product_commercializations)} companies\n\n")
                 f.write("---\n\n")
@@ -1031,7 +1117,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
             consecutive_product_companies = results[results["consecutive_product_years"].notna()]
             if len(consecutive_product_companies) > 0:
                 f.write("## Companies with Consecutive Product-Dominant Years\n\n")
-                f.write("Companies that received more product revenue than service revenue for **2+ consecutive years**.\n\n")
+                f.write(
+                    "Companies that received more product revenue than service revenue for **2+ consecutive years**.\n\n"
+                )
                 f.write("| Company | Years | Product % | Service % | Contracts | Total $ |\n")
                 f.write("|---------|------|-----------|-----------|-----------|--------|\n")
 
@@ -1047,7 +1135,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                     contracts = row["award_count"]
                     total_dollars = row["total_dollars"]
 
-                    f.write(f"| {company} | {years_str} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n")
+                    f.write(
+                        f"| {company} | {years_str} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} |\n"
+                    )
 
                 f.write(f"\n**Total**: {len(consecutive_product_companies)} companies\n\n")
                 f.write("---\n\n")
@@ -1064,8 +1154,12 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                 conf_companies = product_companies[product_companies["confidence"] == confidence]
                 if len(conf_companies) > 0:
                     f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
-                    f.write("| Company | Product % | Contracts | Total $ | SBIR % | Justification |\n")
-                    f.write("|---------|-----------|-----------|---------|--------|---------------|\n")
+                    f.write(
+                        "| Company | Product % | Contracts | Total $ | SBIR % | Justification |\n"
+                    )
+                    f.write(
+                        "|---------|-----------|-----------|---------|--------|---------------|\n"
+                    )
 
                     for _, row in conf_companies.iterrows():
                         company = row["company_name"][:40]
@@ -1085,7 +1179,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
 
                         just_str = ", ".join(justification) if justification else "See metrics"
 
-                        f.write(f"| {company} | {product_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                        f.write(
+                            f"| {company} | {product_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n"
+                        )
                     f.write("\n")
 
         # Service-Focused Companies
@@ -1100,8 +1196,12 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                 conf_companies = service_companies[service_companies["confidence"] == confidence]
                 if len(conf_companies) > 0:
                     f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
-                    f.write("| Company | Service % | Contracts | Total $ | SBIR % | Justification |\n")
-                    f.write("|---------|-----------|-----------|---------|--------|---------------|\n")
+                    f.write(
+                        "| Company | Service % | Contracts | Total $ | SBIR % | Justification |\n"
+                    )
+                    f.write(
+                        "|---------|-----------|-----------|---------|--------|---------------|\n"
+                    )
 
                     for _, row in conf_companies.iterrows():
                         company = row["company_name"][:40]
@@ -1121,7 +1221,9 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
 
                         just_str = ", ".join(justification) if justification else "See metrics"
 
-                        f.write(f"| {company} | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                        f.write(
+                            f"| {company} | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n"
+                        )
                     f.write("\n")
 
         # Mixed Companies
@@ -1136,8 +1238,12 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                 conf_companies = mixed_companies[mixed_companies["confidence"] == confidence]
                 if len(conf_companies) > 0:
                     f.write(f"### {confidence} Confidence ({len(conf_companies)} companies)\n\n")
-                    f.write("| Company | Product % | Service % | Contracts | Total $ | SBIR % | Justification |\n")
-                    f.write("|---------|-----------|-----------|-----------|---------|--------|---------------|\n")
+                    f.write(
+                        "| Company | Product % | Service % | Contracts | Total $ | SBIR % | Justification |\n"
+                    )
+                    f.write(
+                        "|---------|-----------|-----------|-----------|---------|--------|---------------|\n"
+                    )
 
                     for _, row in conf_companies.iterrows():
                         company = row["company_name"][:40]
@@ -1149,13 +1255,17 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
 
                         # Generate justification
                         justification = []
-                        justification.append(f"Balanced: {product_pct:.0f}% prod / {service_pct:.0f}% svc")
+                        justification.append(
+                            f"Balanced: {product_pct:.0f}% prod / {service_pct:.0f}% svc"
+                        )
                         if row["psc_family_count"] > 5:
                             justification.append(f"{row['psc_family_count']} PSC families")
 
                         just_str = ", ".join(justification) if justification else "See metrics"
 
-                        f.write(f"| {company} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n")
+                        f.write(
+                            f"| {company} | {product_pct:.1f}% | {service_pct:.1f}% | {contracts} | ${total_dollars:,.0f} | {sbir_pct:.1f}% | {just_str} |\n"
+                        )
                     f.write("\n")
 
         # Uncertain/No Contracts
@@ -1164,8 +1274,12 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
         ].copy()
         if len(uncertain_companies) > 0:
             uncertain_companies = uncertain_companies.sort_values("sbir_dollars", ascending=False)
-            f.write(f"## Companies with No Non-SBIR Contracts ({len(uncertain_companies)} total)\n\n")
-            f.write("These companies have SBIR awards but no other federal contract revenue in USAspending.\n\n")
+            f.write(
+                f"## Companies with No Non-SBIR Contracts ({len(uncertain_companies)} total)\n\n"
+            )
+            f.write(
+                "These companies have SBIR awards but no other federal contract revenue in USAspending.\n\n"
+            )
             f.write("| Company | UEI | SBIR Awards (Dataset) | SBIR in USAspending | SBIR $ |\n")
             f.write("|---------|-----|----------------------|---------------------|--------|\n")
 
@@ -1176,15 +1290,21 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
                 sbir_award_count = row.get("sbir_award_count", 0)
                 sbir_dollars = row.get("sbir_dollars", 0)
 
-                f.write(f"| {company} | {uei} | {sbir_awards_dataset} | {sbir_award_count} | ${sbir_dollars:,.0f} |\n")
+                f.write(
+                    f"| {company} | {uei} | {sbir_awards_dataset} | {sbir_award_count} | ${sbir_dollars:,.0f} |\n"
+                )
             f.write("\n")
 
         # Footer
         f.write("---\n\n")
         f.write("## Methodology\n\n")
         f.write("**Categorization Criteria:**\n\n")
-        f.write("- **Product-leaning**: ≥51% of contract dollars from product-related PSC codes (numeric PSCs)\n")
-        f.write("- **Service-leaning**: ≥51% of contract dollars from service-related PSC codes (alphabetic PSCs)\n")
+        f.write(
+            "- **Product-leaning**: ≥51% of contract dollars from product-related PSC codes (numeric PSCs)\n"
+        )
+        f.write(
+            "- **Service-leaning**: ≥51% of contract dollars from service-related PSC codes (alphabetic PSCs)\n"
+        )
         f.write("- **R&D-leaning**: ≥51% of contract dollars from R&D contracts\n")
         f.write("- **Mixed**: No category reaches 51% threshold (balanced portfolio)\n\n")
         f.write("**Confidence Levels:**\n\n")
@@ -1316,7 +1436,7 @@ def main():
         type=int,
         default=1,
         help="Number of parallel workers for API mode (default: 1 = sequential). "
-             "Recommended: 3-5 workers to maximize throughput while respecting rate limits.",
+        "Recommended: 3-5 workers to maximize throughput while respecting rate limits.",
     )
 
     args = parser.parse_args()

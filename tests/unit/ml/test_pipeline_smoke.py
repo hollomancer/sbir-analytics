@@ -107,7 +107,8 @@ def test_patent_classifier_smoke():
         use_feature_extraction=False,
     )
 
-    results = classifier.classify("Neural network model for sensor fusion", assignee="Acme LLC", top_k=1)
+    results = classifier.classify(
+        "Neural network model for sensor fusion", assignee="Acme LLC", top_k=1
+    )
     assert results
     assert results[0].cet_id in {"artificial_intelligence", "quantum_information_science"}
-

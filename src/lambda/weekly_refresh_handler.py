@@ -127,33 +127,39 @@ def lambda_handler(event: dict, context) -> dict:
 
                 return {
                     "statusCode": 200,
-                    "body": json.dumps({
-                        "status": "success",
-                        "message": "Dataset refreshed successfully",
-                        "csv_hash": csv_hash,
-                        "has_changes": True,
-                    }),
+                    "body": json.dumps(
+                        {
+                            "status": "success",
+                            "message": "Dataset refreshed successfully",
+                            "csv_hash": csv_hash,
+                            "has_changes": True,
+                        }
+                    ),
                 }
             else:
                 logger.info("No changes detected, skipping processing")
                 return {
                     "statusCode": 200,
-                    "body": json.dumps({
-                        "status": "skipped",
-                        "message": "No changes detected",
-                        "csv_hash": csv_hash,
-                        "has_changes": False,
-                    }),
+                    "body": json.dumps(
+                        {
+                            "status": "skipped",
+                            "message": "No changes detected",
+                            "csv_hash": csv_hash,
+                            "has_changes": False,
+                        }
+                    ),
                 }
 
     except Exception as e:
         logger.error(f"Lambda execution failed: {e}", exc_info=True)
         return {
             "statusCode": 500,
-            "body": json.dumps({
-                "status": "error",
-                "message": str(e),
-            }),
+            "body": json.dumps(
+                {
+                    "status": "error",
+                    "message": str(e),
+                }
+            ),
         }
 
 
@@ -233,12 +239,18 @@ def run_validation_scripts(
     run_script(
         "scripts/data/awards_refresh_validation.py",
         [
-            "--csv-path", str(csv_path),
-            "--schema-path", str(schema_path),
-            "--metadata-dir", str(metadata_dir),
-            "--summary-path", str(metadata_dir / "latest.md"),
-            "--previous-metadata", str(previous_metadata_path) if previous_metadata_path else "",
-            "--source-url", source_url,
+            "--csv-path",
+            str(csv_path),
+            "--schema-path",
+            str(schema_path),
+            "--metadata-dir",
+            str(metadata_dir),
+            "--summary-path",
+            str(metadata_dir / "latest.md"),
+            "--previous-metadata",
+            str(previous_metadata_path) if previous_metadata_path else "",
+            "--source-url",
+            source_url,
         ],
     )
 
@@ -247,11 +259,16 @@ def run_validation_scripts(
     run_script(
         "scripts/data/profile_sbir_inputs.py",
         [
-            "--award-csv", str(csv_path),
-            "--company-dir", str(company_dir),
-            "--company-schema-path", str(company_schema_path),
-            "--output-json", str(metadata_dir / "inputs_profile.json"),
-            "--output-md", str(metadata_dir / "inputs_profile.md"),
+            "--award-csv",
+            str(csv_path),
+            "--company-dir",
+            str(company_dir),
+            "--company-schema-path",
+            str(company_schema_path),
+            "--output-json",
+            str(metadata_dir / "inputs_profile.json"),
+            "--output-md",
+            str(metadata_dir / "inputs_profile.md"),
         ],
     )
 
@@ -260,13 +277,20 @@ def run_validation_scripts(
     run_script(
         "scripts/data/run_sbir_ingestion_checks.py",
         [
-            "--csv-path", str(csv_path),
-            "--duckdb-path", str(metadata_dir / "ingestion.duckdb"),
-            "--table-name", "sbir_awards_refresh",
-            "--pass-rate-threshold", "0.95",
-            "--output-dir", str(metadata_dir),
-            "--report-json", str(metadata_dir / "sbir_validation_report.json"),
-            "--summary-md", str(metadata_dir / "ingestion_summary.md"),
+            "--csv-path",
+            str(csv_path),
+            "--duckdb-path",
+            str(metadata_dir / "ingestion.duckdb"),
+            "--table-name",
+            "sbir_awards_refresh",
+            "--pass-rate-threshold",
+            "0.95",
+            "--output-dir",
+            str(metadata_dir),
+            "--report-json",
+            str(metadata_dir / "sbir_validation_report.json"),
+            "--summary-md",
+            str(metadata_dir / "ingestion_summary.md"),
         ],
     )
 
@@ -275,10 +299,14 @@ def run_validation_scripts(
     run_script(
         "scripts/data/run_sbir_enrichment_check.py",
         [
-            "--awards-csv", str(csv_path),
-            "--company-dir", str(company_dir),
-            "--output-json", str(metadata_dir / "enrichment_summary.json"),
-            "--output-md", str(metadata_dir / "enrichment_summary.md"),
+            "--awards-csv",
+            str(csv_path),
+            "--company-dir",
+            str(company_dir),
+            "--output-json",
+            str(metadata_dir / "enrichment_summary.json"),
+            "--output-md",
+            str(metadata_dir / "enrichment_summary.md"),
         ],
     )
 
@@ -347,12 +375,14 @@ def load_to_neo4j(
 
     # Set environment variables for Neo4j scripts
     env = os.environ.copy()
-    env.update({
-        "NEO4J_URI": credentials["uri"],
-        "NEO4J_USER": credentials["user"],
-        "NEO4J_PASSWORD": credentials["password"],
-        "NEO4J_DATABASE": credentials["database"],
-    })
+    env.update(
+        {
+            "NEO4J_URI": credentials["uri"],
+            "NEO4J_USER": credentials["user"],
+            "NEO4J_PASSWORD": credentials["password"],
+            "NEO4J_DATABASE": credentials["database"],
+        }
+    )
 
     # Reset Neo4j database
     logger.info("Resetting Neo4j database")
@@ -365,9 +395,12 @@ def load_to_neo4j(
         run_script_with_env(
             "scripts/data/run_neo4j_sbir_load.py",
             [
-                "--validated-csv", str(validated_csv_path),
-                "--output-dir", str(metadata_dir),
-                "--summary-md", str(metadata_dir / "neo4j_load_summary.md"),
+                "--validated-csv",
+                str(validated_csv_path),
+                "--output-dir",
+                str(metadata_dir),
+                "--summary-md",
+                str(metadata_dir / "neo4j_load_summary.md"),
             ],
             env,
         )
@@ -377,8 +410,10 @@ def load_to_neo4j(
         run_script_with_env(
             "scripts/data/run_neo4j_smoke_checks.py",
             [
-                "--output-json", str(metadata_dir / "neo4j_smoke_check.json"),
-                "--output-md", str(metadata_dir / "neo4j_smoke_check.md"),
+                "--output-json",
+                str(metadata_dir / "neo4j_smoke_check.json"),
+                "--output-md",
+                str(metadata_dir / "neo4j_smoke_check.md"),
             ],
             env,
         )
@@ -470,4 +505,3 @@ def upload_to_s3(
                 s3_key,
             )
             logger.debug(f"Uploaded metadata: {s3_key}")
-

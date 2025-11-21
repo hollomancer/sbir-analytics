@@ -114,9 +114,7 @@ class SBIRFiscalImpactCalculator:
         # Step 5: Add award totals for reference
         impacts = self._add_award_totals(impacts, shocks)
 
-        logger.info(
-            f"Completed fiscal impact calculation: {len(impacts)} impact rows generated"
-        )
+        logger.info(f"Completed fiscal impact calculation: {len(impacts)} impact rows generated")
 
         return impacts
 
@@ -380,9 +378,7 @@ class SBIRFiscalImpactCalculator:
 
         return district_impacts
 
-    def calculate_summary_by_district(
-        self, district_impacts: pd.DataFrame
-    ) -> pd.DataFrame:
+    def calculate_summary_by_district(self, district_impacts: pd.DataFrame) -> pd.DataFrame:
         """Calculate summary statistics by congressional district.
 
         Args:

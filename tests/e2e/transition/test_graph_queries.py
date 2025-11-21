@@ -79,4 +79,3 @@ def test_pathway_query_execution_structure():
     assert hasattr(result, "records_count")
     assert hasattr(result, "records")
     assert hasattr(result, "metadata")
-

@@ -118,7 +118,11 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
             current[parts[-1]] = value
         else:
             # Handle nested dicts or direct keys
-            if isinstance(value, dict) and key in config_dict and isinstance(config_dict[key], dict):
+            if (
+                isinstance(value, dict)
+                and key in config_dict
+                and isinstance(config_dict[key], dict)
+            ):
                 config_dict[key].update(value)
             else:
                 config_dict[key] = value
@@ -230,23 +234,21 @@ def create_mock_enrichment_refresh_config(
 
 
 if pytest is not None:
+
     @pytest.fixture
     def mock_pipeline_config() -> PipelineConfig:
         """Pytest fixture providing a default mock PipelineConfig."""
         return create_mock_pipeline_config()
-
 
     @pytest.fixture
     def mock_usaspending_config(tmp_path: Path) -> dict[str, Any]:
         """Pytest fixture providing mock USAspending configuration."""
         return create_mock_usaspending_config(state_file=tmp_path / "state.json")
 
-
     @pytest.fixture
     def mock_neo4j_config() -> dict[str, Any]:
         """Pytest fixture providing mock Neo4j configuration."""
         return create_mock_neo4j_config()
-
 
     @pytest.fixture
     def mock_get_config_patch(monkeypatch):
@@ -282,68 +284,83 @@ def create_mock_transition_scorer_config() -> Any:
     @dataclass
     class ScoringConfig:
         """Mock scoring configuration."""
-        agency_continuity: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": True,
-                "weight": 0.25,
-                "same_agency_bonus": 0.25,
-                "cross_service_bonus": 0.125,
-                "different_dept_bonus": 0.05,
-            }
-        ))
-        timing_proximity: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": True,
-                "weight": 0.20,
-                "windows": [
-                    {"range": [0, 90], "score": 1.0},
-                    {"range": [91, 365], "score": 0.75},
-                    {"range": [366, 730], "score": 0.5},
-                ],
-            }
-        ))
-        competition_type: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": True,
-                "weight": 0.20,
-                "sole_source_bonus": 0.20,
-                "limited_competition_bonus": 0.10,
-                "full_and_open_bonus": 0.0,
-            }
-        ))
-        patent_signal: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": True,
-                "weight": 0.15,
-                "has_patent_bonus": 0.05,
-                "patent_pre_contract_bonus": 0.03,
-                "patent_topic_match_bonus": 0.02,
-                "patent_similarity_threshold": 0.7,
-            }
-        ))
-        cet_alignment: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": True,
-                "weight": 0.10,
-                "same_cet_area_bonus": 0.05,
-            }
-        ))
-        text_similarity: Any = field(default_factory=lambda: MagicMock(
-            model_dump=lambda: {
-                "enabled": False,
-                "weight": 0.0,
-            }
-        ))
+
+        agency_continuity: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": True,
+                    "weight": 0.25,
+                    "same_agency_bonus": 0.25,
+                    "cross_service_bonus": 0.125,
+                    "different_dept_bonus": 0.05,
+                }
+            )
+        )
+        timing_proximity: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": True,
+                    "weight": 0.20,
+                    "windows": [
+                        {"range": [0, 90], "score": 1.0},
+                        {"range": [91, 365], "score": 0.75},
+                        {"range": [366, 730], "score": 0.5},
+                    ],
+                }
+            )
+        )
+        competition_type: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": True,
+                    "weight": 0.20,
+                    "sole_source_bonus": 0.20,
+                    "limited_competition_bonus": 0.10,
+                    "full_and_open_bonus": 0.0,
+                }
+            )
+        )
+        patent_signal: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": True,
+                    "weight": 0.15,
+                    "has_patent_bonus": 0.05,
+                    "patent_pre_contract_bonus": 0.03,
+                    "patent_topic_match_bonus": 0.02,
+                    "patent_similarity_threshold": 0.7,
+                }
+            )
+        )
+        cet_alignment: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": True,
+                    "weight": 0.10,
+                    "same_cet_area_bonus": 0.05,
+                }
+            )
+        )
+        text_similarity: Any = field(
+            default_factory=lambda: MagicMock(
+                model_dump=lambda: {
+                    "enabled": False,
+                    "weight": 0.0,
+                }
+            )
+        )
 
     @dataclass
     class TransitionScorerConfig:
         """Mock TransitionScorer configuration."""
+
         base_score: float = 0.15
-        confidence_thresholds: dict[str, float] = field(default_factory=lambda: {
-            "high": 0.85,
-            "likely": 0.65,
-        })
+        confidence_thresholds: dict[str, float] = field(
+            default_factory=lambda: {
+                "high": 0.85,
+                "likely": 0.65,
+            }
+        )
         scoring: ScoringConfig = field(default_factory=ScoringConfig)
 
     return TransitionScorerConfig()
-

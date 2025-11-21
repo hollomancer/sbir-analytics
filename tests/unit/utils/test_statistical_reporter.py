@@ -28,7 +28,6 @@ from src.utils.statistical_reporter import StatisticalReporter
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def temp_output_dir(tmp_path):
     """Temporary output directory for reports."""
@@ -582,14 +581,7 @@ class TestHTMLGeneration:
     """Tests for HTML report generation."""
 
 
-
-
-
-
 # ==================== Markdown Generation Tests ====================
-
-
-
 
 
 # ==================== CI Integration Tests ====================

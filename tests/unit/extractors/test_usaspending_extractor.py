@@ -14,7 +14,6 @@ from src.extractors.usaspending import DuckDBUSAspendingExtractor, extract_usasp
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def temp_db_path(tmp_path):
     """Temporary database path."""

@@ -556,8 +556,7 @@ def loaded_patent_relationships(
         )
 
         context.log.info(
-            f"Phase 1 Step 3 & 4 completed in {duration:.2f}s: "
-            f"{total_rels} relationships created"
+            f"Phase 1 Step 3 & 4 completed in {duration:.2f}s: {total_rels} relationships created"
         )
 
         client.close()

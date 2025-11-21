@@ -19,7 +19,6 @@ from src.transformers.fiscal.sensitivity import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestParameterRange:
     """Tests for ParameterRange dataclass."""
 

@@ -163,4 +163,3 @@ class TestAssetColumnHelper:
         result = AssetColumnHelper.find_text_columns(df, entity_type="generic")
         assert result["title"] == "Title"
         assert result["abstract"] == "Abstract"
-

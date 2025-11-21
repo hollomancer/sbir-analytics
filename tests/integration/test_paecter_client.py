@@ -211,9 +211,7 @@ class TestPaECTERClient:
         result1 = paecter_client.generate_embeddings(texts1)
         result2 = paecter_client.generate_embeddings(texts2)
 
-        similarities = paecter_client.compute_similarity(
-            result1.embeddings, result2.embeddings
-        )
+        similarities = paecter_client.compute_similarity(result1.embeddings, result2.embeddings)
 
         # Check shape
         assert similarities.shape == (2, 2)
@@ -299,8 +297,7 @@ class TestPaECTERClient:
         # Check diagonal similarities are reasonably high
         for i in range(min(len(SAMPLE_AWARDS), len(SAMPLE_PATENTS))):
             assert similarities[i, i] > 0.5, (
-                f"Expected high similarity for matching pair {i}, "
-                f"got {similarities[i, i]:.3f}"
+                f"Expected high similarity for matching pair {i}, got {similarities[i, i]:.3f}"
             )
 
         # Find top-k similar patents for each award

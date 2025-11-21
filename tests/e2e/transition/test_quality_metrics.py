@@ -87,4 +87,3 @@ def test_performance_tracker_smoke():
     assert metrics["items_processed"] == 5000
     assert metrics["duration_ms"] >= 0
     assert metrics["throughput_per_second"] >= 0
-

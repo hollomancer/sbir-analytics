@@ -197,4 +197,3 @@ class TestMatchingConfig:
 
         assert "test" in abbrev
         assert abbrev["test"] == "tst"
-

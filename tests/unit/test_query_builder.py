@@ -109,4 +109,3 @@ def test_build_single_merge_query():
     assert "ON CREATE SET n += $properties" in query
     assert "ON MATCH SET n += $properties" in query
     assert "operation" in query
-

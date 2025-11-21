@@ -12,4 +12,3 @@ __all__ = [
     "paecter_embeddings_patents",
     "paecter_award_patent_similarity",
 ]
-

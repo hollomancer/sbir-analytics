@@ -15,7 +15,6 @@ from src.assets.asset_naming_standards import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestPipelineStage:
     """Tests for PipelineStage enum."""
 
@@ -327,9 +326,9 @@ class TestAssetRenamingMap:
             has_valid_prefix = any(new_name.startswith(prefix) for prefix in valid_prefixes)
             is_unchanged = old_name == new_name
 
-            assert (
-                has_valid_prefix or is_unchanged
-            ), f"Asset {old_name} -> {new_name} missing valid prefix"
+            assert has_valid_prefix or is_unchanged, (
+                f"Asset {old_name} -> {new_name} missing valid prefix"
+            )
 
 
 class TestGroupRenamingMap:
@@ -368,9 +367,9 @@ class TestGroupRenamingMap:
         valid_groups = {"extraction", "validation", "enrichment", "transformation", "loading"}
 
         for old_group, new_group in GROUP_RENAMING_MAP.items():
-            assert (
-                new_group in valid_groups
-            ), f"Group {old_group} -> {new_group} is not a valid pipeline group"
+            assert new_group in valid_groups, (
+                f"Group {old_group} -> {new_group} is not a valid pipeline group"
+            )
 
 
 class TestNamingStandardsIntegration:

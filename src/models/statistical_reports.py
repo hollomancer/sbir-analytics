@@ -324,5 +324,7 @@ class ExecutiveSummary(BaseModel):
     )
 
     model_config = ConfigDict(validate_assignment=True)
+
+
 ModuleMetrics.model_rebuild()
 PipelineMetrics.model_rebuild()

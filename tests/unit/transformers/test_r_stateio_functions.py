@@ -14,7 +14,6 @@ from src.utils.r_helpers import RFunctionError
 pytestmark = pytest.mark.fast
 
 
-
 class TestBuildStateModel:
     """Tests for build_state_model function."""
 
@@ -135,8 +134,6 @@ class TestGetStateValueAdded:
 
         # Verify custom specs were passed
         mock_ro.ListVector.assert_called_with(custom_specs)
-
-
 
 
 class TestValueAddedRatioCalculation:

@@ -179,9 +179,7 @@ print("\n10. Testing company aggregation - Uncertain (<2 awards)")
 contracts_few = [
     {"award_id": "C1", "classification": "Product", "award_amount": 100000, "psc": "1234"},
 ]
-company_result4 = aggregate_company_classification(
-    contracts_few, "TEST000UEI000", "Test Company 4"
-)
+company_result4 = aggregate_company_classification(contracts_few, "TEST000UEI000", "Test Company 4")
 print(f"   Award Count: {company_result4.award_count}")
 print(f"   Classification: {company_result4.classification}")
 print(f"   Confidence: {company_result4.confidence}")

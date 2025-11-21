@@ -289,7 +289,9 @@ class PatentsViewClient:
                     break
 
                 all_patents.extend(patents)
-                logger.debug(f"Retrieved {len(patents)} patents (page {page}, total: {len(all_patents)})")
+                logger.debug(
+                    f"Retrieved {len(patents)} patents (page {page}, total: {len(all_patents)})"
+                )
 
                 # Check if there are more pages
                 total_found = response.get("total_found", 0)
@@ -506,4 +508,3 @@ def check_patent_reassignments(
     finally:
         if should_close:
             client.close()
-

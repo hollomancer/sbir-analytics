@@ -37,7 +37,6 @@ from src.validators.sbir_awards import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestConstants:
     """Tests for module constants."""
 

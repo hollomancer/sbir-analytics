@@ -100,8 +100,8 @@ class APICache(BaseDataFrameCache):
             if not metadata_path.exists():
                 # Orphaned cache file or no metadata, safe to delete if we are not strict
                 if not expired_only:
-                     cache_file.unlink(missing_ok=True)
-                     cleared_count += 1
+                    cache_file.unlink(missing_ok=True)
+                    cleared_count += 1
                 continue
 
             try:

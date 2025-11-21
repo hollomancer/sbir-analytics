@@ -139,4 +139,3 @@ def test_read_parquet_or_ndjson_not_found(temp_dir):
 
     with pytest.raises(FileNotFoundError):
         read_parquet_or_ndjson(parquet_path)
-

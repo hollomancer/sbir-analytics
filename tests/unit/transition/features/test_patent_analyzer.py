@@ -17,7 +17,6 @@ from src.transition.features.patent_analyzer import PatentSignalExtractor
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def extractor():
     """Default PatentSignalExtractor for testing."""

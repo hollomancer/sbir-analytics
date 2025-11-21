@@ -17,9 +17,6 @@ from src.models.enrichment import (
 pytestmark = pytest.mark.fast
 
 
-
-
-
 class TestEnrichmentStatus:
     """Test EnrichmentStatus enum."""
 

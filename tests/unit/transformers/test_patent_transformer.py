@@ -11,7 +11,6 @@ from src.transformers.patent_transformer import PatentAssignmentTransformer, Pat
 pytestmark = pytest.mark.fast
 
 
-
 class TestPatentTransformOptions:
     """Tests for PatentTransformOptions dataclass."""
 

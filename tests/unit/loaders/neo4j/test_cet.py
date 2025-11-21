@@ -11,7 +11,6 @@ from src.loaders.neo4j.client import Neo4jClient
 pytestmark = pytest.mark.fast
 
 
-
 class TestCETLoaderConfig:
     """Tests for CETLoaderConfig dataclass."""
 

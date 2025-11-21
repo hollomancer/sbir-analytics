@@ -10,7 +10,6 @@ This test uses sample fixtures by default but can use real data if marked with
 @pytest.mark.real_data or USE_REAL_SBIR_DATA=1 environment variable.
 """
 
-
 import pandas as pd
 import pytest
 

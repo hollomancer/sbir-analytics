@@ -5,7 +5,6 @@ import pytest
 pytestmark = pytest.mark.fast
 
 
-
 def _unwrap_output(result):
     """
     Helper to unwrap Dagster Output or bare values.

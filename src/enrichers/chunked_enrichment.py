@@ -108,7 +108,7 @@ class ChunkProgress:
             f"Progress: {self.percent_complete:.1f}% "
             f"({self.records_processed}/{self.total_records} records, "
             f"{self.chunks_processed}/{self.total_chunks} chunks, "
-            f"~{self.estimated_remaining_seconds/60:.0f} min remaining)"
+            f"~{self.estimated_remaining_seconds / 60:.0f} min remaining)"
         )
 
 

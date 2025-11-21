@@ -152,7 +152,9 @@ def sbir_award_data_csv_path(repo_root: Path) -> Path:
         pytest.skip(f"Real SBIR award data not found at {path}. Run 'git lfs pull' to fetch.")
     # Check if it's an LFS pointer file (< 200 bytes typically)
     if path.stat().st_size < 200:
-        pytest.skip(f"SBIR award data at {path} appears to be a Git LFS pointer. Run 'git lfs pull' to fetch the actual file.")
+        pytest.skip(
+            f"SBIR award data at {path} appears to be a Git LFS pointer. Run 'git lfs pull' to fetch the actual file."
+        )
     return path
 
 

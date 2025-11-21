@@ -168,7 +168,7 @@ class ContractAnalytics:
             self.stats["query_time_ms"] = duration_ms
 
             logger.info(
-                f"✓ Filtered to {filtered_count} contracts ({100*filtered_count/self.stats['total_contracts']:.1f}%) in {duration_ms:.1f}ms"
+                f"✓ Filtered to {filtered_count} contracts ({100 * filtered_count / self.stats['total_contracts']:.1f}%) in {duration_ms:.1f}ms"
             )
             return filtered_count
 

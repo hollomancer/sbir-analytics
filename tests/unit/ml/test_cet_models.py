@@ -4,7 +4,6 @@ Unit tests for CET Pydantic models.
 Tests validation logic, constraints, and business rules for CET data models.
 """
 
-
 import pytest
 from pydantic import ValidationError
 
@@ -153,9 +152,7 @@ class TestCETClassification:
 
     def test_too_many_evidence_statements(self) -> None:
         """Test that more than 3 evidence statements are rejected."""
-        evidence = [
-            EvidenceStatementFactory.create(excerpt=f"Evidence {i}") for i in range(5)
-        ]
+        evidence = [EvidenceStatementFactory.create(excerpt=f"Evidence {i}") for i in range(5)]
 
         with pytest.raises(ValidationError, match="Maximum 3 evidence"):
             CETClassificationFactory.create(evidence=evidence)
@@ -187,8 +184,7 @@ class TestCETAssessment:
     def test_too_many_supporting_cets(self) -> None:
         """Test that more than 3 supporting CETs are rejected."""
         supporting = [
-            CETClassificationFactory.create(primary=False, cet_id=f"cet_{i}")
-            for i in range(5)
+            CETClassificationFactory.create(primary=False, cet_id=f"cet_{i}") for i in range(5)
         ]
 
         with pytest.raises(ValidationError, match="Maximum 3 supporting"):

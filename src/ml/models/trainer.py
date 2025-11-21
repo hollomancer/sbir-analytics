@@ -190,8 +190,7 @@ class CETModelTrainer:
         }
 
         logger.info(
-            f"Training complete in {duration:.2f}s - "
-            f"Test F1: {test_metrics.get('f1_macro', 0):.3f}"
+            f"Training complete in {duration:.2f}s - Test F1: {test_metrics.get('f1_macro', 0):.3f}"
         )
 
         return model
@@ -277,8 +276,6 @@ class CETModelTrainer:
         if "c_value" in params:
             model.c_value = params["c_value"]
             logger.info(f"Set C to {params['c_value']}")
-
-
 
     def _evaluate(
         self, model: ApplicabilityModel, X_test: list[str], y_test: np.ndarray

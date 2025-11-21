@@ -198,4 +198,3 @@ def test_multi_key_merge_history_tracking(neo4j_client):
         record = result.single()
         if record and record["merged_from"]:
             assert "org_test_2" in record["merged_from"]
-

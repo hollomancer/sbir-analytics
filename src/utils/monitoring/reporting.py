@@ -160,7 +160,9 @@ class PerformanceReporter:
 
         return "\n".join(lines)
 
-    def format_comparison_markdown(self, comparison: MetricComparison, title: str = "Performance Comparison Report") -> str:
+    def format_comparison_markdown(
+        self, comparison: MetricComparison, title: str = "Performance Comparison Report"
+    ) -> str:
         """Format comparison as Markdown report.
 
         Args:
@@ -313,15 +315,11 @@ class PerformanceReporter:
             HTMLReportBuilder.create_metric_card(
                 "Throughput", f"{metrics.records_per_second:.0f} rec/s"
             ),
-            HTMLReportBuilder.create_metric_card(
-                "Peak Memory", f"{metrics.peak_memory_mb:.0f} MB"
-            ),
+            HTMLReportBuilder.create_metric_card("Peak Memory", f"{metrics.peak_memory_mb:.0f} MB"),
         ]
         if metrics.match_rate is not None:
             metric_cards.append(
-                HTMLReportBuilder.create_metric_card(
-                    "Match Rate", f"{metrics.match_rate:.1%}"
-                )
+                HTMLReportBuilder.create_metric_card("Match Rate", f"{metrics.match_rate:.1%}")
             )
         metric_grid = HTMLReportBuilder.create_metric_grid(metric_cards)
 
@@ -340,7 +338,9 @@ class PerformanceReporter:
             {"Metric": "Peak Memory", "Value": f"{metrics.peak_memory_mb:.0f} MB"},
             {"Metric": "Avg Memory Delta", "Value": f"{metrics.avg_memory_delta_mb:.0f} MB"},
         ]
-        perf_table = HTMLReportBuilder.create_table(perf_table_data, ["Metric", "Value"], "Performance Metrics")
+        perf_table = HTMLReportBuilder.create_table(
+            perf_table_data, ["Metric", "Value"], "Performance Metrics"
+        )
 
         # Build enrichment statistics table
         enrich_table_data = [
@@ -350,12 +350,16 @@ class PerformanceReporter:
             {"Statistic": "Exact Matches", "Value": stats.get("exact_matches", 0)},
             {"Statistic": "Fuzzy Matches", "Value": stats.get("fuzzy_matches", 0)},
         ]
-        enrich_table = HTMLReportBuilder.create_table(enrich_table_data, ["Statistic", "Value"], "Enrichment Statistics")
+        enrich_table = HTMLReportBuilder.create_table(
+            enrich_table_data, ["Statistic", "Value"], "Enrichment Statistics"
+        )
 
         # Build regression section if present
         regression_section = ""
         if regressions:
-            regression_section = f"<h2>Regression Analysis</h2>{self._html_regression_section(regressions)}"
+            regression_section = (
+                f"<h2>Regression Analysis</h2>{self._html_regression_section(regressions)}"
+            )
 
         # Combine content
         content = f"""
@@ -400,12 +404,16 @@ class PerformanceReporter:
             {"Metric": "Memory Delta", "Value": f"{analysis.get('memory_delta_percent', 0):+.1f}%"},
         ]
         if "match_rate_delta_percent" in analysis:
-            table_data.append({
-                "Metric": "Match Rate Delta",
-                "Value": f"{analysis.get('match_rate_delta_percent', 0):+.1f}pp"
-            })
+            table_data.append(
+                {
+                    "Metric": "Match Rate Delta",
+                    "Value": f"{analysis.get('match_rate_delta_percent', 0):+.1f}pp",
+                }
+            )
 
-        return HTMLReportBuilder.create_table(table_data, ["Metric", "Value"], "Regression Analysis")
+        return HTMLReportBuilder.create_table(
+            table_data, ["Metric", "Value"], "Regression Analysis"
+        )
 
     def save_markdown_report(
         self,
@@ -462,15 +470,27 @@ class PerformanceReporter:
                     "memory_delta_percent": comparison.memory_delta_percent,
                     "match_rate_delta_percent": comparison.match_rate_delta_percent,
                 },
-                "failures": [msg for msg in comparison.regression_messages if comparison.regression_severity == "FAILURE"],
-                "warnings": [msg for msg in comparison.regression_messages if comparison.regression_severity == "WARNING"],
+                "failures": [
+                    msg
+                    for msg in comparison.regression_messages
+                    if comparison.regression_severity == "FAILURE"
+                ],
+                "warnings": [
+                    msg
+                    for msg in comparison.regression_messages
+                    if comparison.regression_severity == "WARNING"
+                ],
             },
         }
 
         if comparison.current_metrics.match_rate is not None:
             benchmark_data["enrichment_stats"]["match_rate"] = comparison.current_metrics.match_rate
-            benchmark_data["enrichment_stats"]["matched_awards"] = comparison.current_metrics.matched_records or 0
-            benchmark_data["enrichment_stats"]["total_awards"] = comparison.current_metrics.total_records or 0
+            benchmark_data["enrichment_stats"]["matched_awards"] = (
+                comparison.current_metrics.matched_records or 0
+            )
+            benchmark_data["enrichment_stats"]["total_awards"] = (
+                comparison.current_metrics.total_records or 0
+            )
 
         html = self.generate_html_report(benchmark_data, comparison, title)
         path.write_text(html)
@@ -531,13 +551,23 @@ def analyze_performance_trend(metrics_list: list[PerformanceMetrics]) -> dict[st
         first = metrics_list[0]
         last = metrics_list[-1]
 
-        time_delta = (last.total_duration_seconds - first.total_duration_seconds) / first.total_duration_seconds * 100 if first.total_duration_seconds > 0 else 0
-        memory_delta = (last.peak_memory_mb - first.peak_memory_mb) / first.peak_memory_mb * 100 if first.peak_memory_mb > 0 else 0
+        time_delta = (
+            (last.total_duration_seconds - first.total_duration_seconds)
+            / first.total_duration_seconds
+            * 100
+            if first.total_duration_seconds > 0
+            else 0
+        )
+        memory_delta = (
+            (last.peak_memory_mb - first.peak_memory_mb) / first.peak_memory_mb * 100
+            if first.peak_memory_mb > 0
+            else 0
+        )
 
         trend = {
             "time_delta_percent": time_delta,
             "memory_delta_percent": memory_delta,
-            "trend_direction": "degrading" if time_delta > 10 or memory_delta > 10 else "stable"
+            "trend_direction": "degrading" if time_delta > 10 or memory_delta > 10 else "stable",
         }
     else:
         trend = {"status": "insufficient_data"}

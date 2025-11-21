@@ -98,7 +98,7 @@ class TestCheckpointStore:
             EnrichmentCheckpoint(
                 partition_id=f"partition_{i:03d}",
                 source="usaspending",
-                last_processed_award_id=f"AWARD-{i*10:03d}",
+                last_processed_award_id=f"AWARD-{i * 10:03d}",
                 last_success_timestamp=datetime.now(),
                 records_processed=i * 10,
                 records_failed=0,

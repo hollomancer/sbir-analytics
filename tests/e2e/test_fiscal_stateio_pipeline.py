@@ -287,9 +287,9 @@ class TestFiscalStateIOPipelineE2E:
         assert bea_mapped >= 0.90, "BEA sector mapping should be ≥90%"
 
         # Verify all mapped to sector 54 (Professional Services)
-        assert all(
-            code == "54" for code in enriched["bea_sector_code"].dropna()
-        ), "All sample NAICS codes should map to BEA sector 54"
+        assert all(code == "54" for code in enriched["bea_sector_code"].dropna()), (
+            "All sample NAICS codes should map to BEA sector 54"
+        )
 
         return enriched
 
@@ -307,9 +307,9 @@ class TestFiscalStateIOPipelineE2E:
 
         for date_str, expected_fy in test_dates.items():
             calculated_fy = calculate_fiscal_year(date_str)
-            assert (
-                calculated_fy == expected_fy
-            ), f"Date {date_str} should be FY {expected_fy}, got {calculated_fy}"
+            assert calculated_fy == expected_fy, (
+                f"Date {date_str} should be FY {expected_fy}, got {calculated_fy}"
+            )
 
         # Test on DataFrame
         df = sample_sbir_awards_fiscal.copy()
@@ -489,9 +489,9 @@ class TestFiscalStateIOPipelineE2E:
         # Verify tax receipts are reasonable (should be < total investment)
         total_investment = enriched["Award Amount"].sum()
         total_taxes = float(tax_df["total_tax_receipt"].sum())
-        assert (
-            total_taxes < total_investment
-        ), "Tax receipts should be less than total investment (without multiplier effects)"
+        assert total_taxes < total_investment, (
+            "Tax receipts should be less than total investment (without multiplier effects)"
+        )
 
         return tax_df
 
@@ -556,9 +556,9 @@ class TestFiscalStateIOPipelineE2E:
 
         # With 30% return rate, ROI should be around 0.30 (30%)
         expected_roi = 0.30
-        assert (
-            0.15 <= roi_summary.roi_ratio <= 0.45
-        ), f"ROI should be around {expected_roi}, got {roi_summary.roi_ratio}"
+        assert 0.15 <= roi_summary.roi_ratio <= 0.45, (
+            f"ROI should be around {expected_roi}, got {roi_summary.roi_ratio}"
+        )
 
         # Verify other metrics
         assert roi_summary.benefit_cost_ratio > 0
@@ -606,7 +606,9 @@ class TestFiscalStateIOPipelineE2E:
         sam_data.rename(columns={"sam_unique_entity_id": "UEI"}, inplace=True)
         enriched = enriched.merge(sam_data, on="UEI", how="left")
         naics_coverage = enriched["sam_primary_naics"].notna().sum() / len(enriched)
-        print(f"  ✓ NAICS coverage: {enriched['sam_primary_naics'].notna().sum()}/{len(enriched)} ({naics_coverage:.1%})")
+        print(
+            f"  ✓ NAICS coverage: {enriched['sam_primary_naics'].notna().sum()}/{len(enriched)} ({naics_coverage:.1%})"
+        )
 
         # Step 3: Map NAICS to BEA
         print("\n[Step 3] Mapping NAICS codes to BEA sectors...")
@@ -615,7 +617,9 @@ class TestFiscalStateIOPipelineE2E:
             lambda x: mapper.map_code(x) if pd.notna(x) else None
         )
         bea_coverage = enriched["bea_sector_code"].notna().sum() / len(enriched)
-        print(f"  ✓ BEA mapping coverage: {enriched['bea_sector_code'].notna().sum()}/{len(enriched)} ({bea_coverage:.1%})")
+        print(
+            f"  ✓ BEA mapping coverage: {enriched['bea_sector_code'].notna().sum()}/{len(enriched)} ({bea_coverage:.1%})"
+        )
 
         # Step 4: Calculate fiscal years
         print("\n[Step 4] Calculating fiscal years...")
@@ -635,7 +639,13 @@ class TestFiscalStateIOPipelineE2E:
             .agg({"Award Amount": ["sum", "count"]})
             .reset_index()
         )
-        shock_aggregates.columns = ["state", "bea_sector", "fiscal_year", "shock_amount", "num_awards"]
+        shock_aggregates.columns = [
+            "state",
+            "bea_sector",
+            "fiscal_year",
+            "shock_amount",
+            "num_awards",
+        ]
         print(f"  ✓ Created {len(shock_aggregates)} economic shocks")
         print(f"  ✓ States: {shock_aggregates['state'].unique()}")
         print(f"  ✓ Total shock amount: ${shock_aggregates['shock_amount'].sum():,.2f}")
@@ -707,9 +717,7 @@ class TestFiscalDataQualityThresholds:
         # fiscal_analysis.quality_thresholds.naics_coverage_rate: 0.85
         assert naics_coverage >= 0.85, f"NAICS coverage {naics_coverage:.1%} below 85% threshold"
 
-    def test_state_coverage_threshold(
-        self, sample_sbir_awards_fiscal, sample_usaspending_fiscal
-    ):
+    def test_state_coverage_threshold(self, sample_sbir_awards_fiscal, sample_usaspending_fiscal):
         """Test that state coverage meets 90% threshold."""
         enriched = enrich_sbir_with_usaspending(
             sample_sbir_awards_fiscal,

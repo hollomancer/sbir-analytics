@@ -298,8 +298,12 @@ class ContractExtractor:
             from src.utils.date_utils import parse_date
 
             action_date = parse_date(get_col(2), allow_8digit=True, strict=False)
-            start_date = parse_date(get_col(71), allow_8digit=True, strict=False)  # period_of_performance_start_date
-            end_date = parse_date(get_col(70), allow_8digit=True, strict=False)  # period_of_performance_current_end_date
+            start_date = parse_date(
+                get_col(71), allow_8digit=True, strict=False
+            )  # period_of_performance_start_date
+            end_date = parse_date(
+                get_col(70), allow_8digit=True, strict=False
+            )  # period_of_performance_current_end_date
 
             # Fallback to action_date if start_date missing
             if not start_date:

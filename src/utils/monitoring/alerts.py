@@ -69,7 +69,7 @@ class Alert:
     def to_markdown(self) -> str:
         """Format alert as Markdown."""
         return f"""
-### {self.severity.value}: {self.alert_type.replace('_', ' ').title()}
+### {self.severity.value}: {self.alert_type.replace("_", " ").title()}
 
 **Message:** {self.message}
 

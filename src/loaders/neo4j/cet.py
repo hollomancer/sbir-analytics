@@ -221,7 +221,9 @@ class CETLoader(BaseNeo4jLoader):
             logger.info("No Organization CET enrichments to upsert")
             return metrics
 
-        logger.info("Upserting {} Organization CET enrichment nodes (key={})", len(nodes), key_property)
+        logger.info(
+            "Upserting {} Organization CET enrichment nodes (key={})", len(nodes), key_property
+        )
         self.client.config.batch_size = self.config.batch_size
         metrics = self.client.batch_upsert_nodes(
             label="Organization", key_property=key_property, nodes=nodes, metrics=metrics
@@ -487,7 +489,16 @@ class CETLoader(BaseNeo4jLoader):
             props = {k: v for k, v in props.items() if v is not None}
 
             relationships.append(
-                ("Organization", key_property, key_val, "CETArea", "cet_id", cet_id, rel_type, props)
+                (
+                    "Organization",
+                    key_property,
+                    key_val,
+                    "CETArea",
+                    "cet_id",
+                    cet_id,
+                    rel_type,
+                    props,
+                )
             )
 
         if not relationships:

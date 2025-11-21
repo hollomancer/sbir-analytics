@@ -87,9 +87,9 @@ def test_ingest_dta_to_duckdb(tmp_path: Path):
         except Exception as e:
             pytest.fail(f"Failed to query DuckDB table '{table_name}': {e}")
 
-        assert len(df_out) == result.get(
-            "ingested", len(df_out)
-        ), "Row count mismatch between summary and table"
+        assert len(df_out) == result.get("ingested", len(df_out)), (
+            "Row count mismatch between summary and table"
+        )
 
         # Verify presence of expected grant ids and a sample score value
         grants = {str(x) for x in df_out["grant_doc_num"].tolist()}
@@ -97,9 +97,9 @@ def test_ingest_dta_to_duckdb(tmp_path: Path):
 
         # Check one of the numeric fields exists and is in expected range
         scores = df_out["predict93_score"].astype(float).tolist()
-        assert any(
-            s >= 0.9 for s in scores
-        ), "Expected at least one high predict93_score in ingested data"
+        assert any(s >= 0.9 for s in scores), (
+            "Expected at least one high predict93_score in ingested data"
+        )
     finally:
         try:
             con.close()

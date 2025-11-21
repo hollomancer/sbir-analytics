@@ -33,9 +33,7 @@ def chunk_dataframe(
         yield chunk
 
 
-def chunk_iterable(
-    items: Iterable[Any], chunk_size: int
-) -> Generator[list[Any], None, None]:
+def chunk_iterable(items: Iterable[Any], chunk_size: int) -> Generator[list[Any], None, None]:
     """Chunk an iterable into lists of fixed size.
 
     Args:
@@ -57,9 +55,7 @@ def chunk_iterable(
         yield chunk
 
 
-def chunk_generator(
-    items: Iterable[Any], chunk_size: int
-) -> Generator[list[Any], None, None]:
+def chunk_generator(items: Iterable[Any], chunk_size: int) -> Generator[list[Any], None, None]:
     """Alias for chunk_iterable for backward compatibility."""
     return chunk_iterable(items, chunk_size)
 
@@ -141,4 +137,3 @@ def batch_process(
         except Exception as e:
             logger.error(f"Error processing batch: {e}")
             raise
-

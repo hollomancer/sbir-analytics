@@ -270,7 +270,7 @@ def _enrich_chunked(
                 f"Enrichment progress: {progress.percent_complete:.1f}% "
                 f"({progress.records_processed}/{progress.total_records} records, "
                 f"{progress.chunks_processed}/{progress.total_chunks} chunks, "
-                f"~{progress.estimated_remaining_seconds/60:.0f} min remaining)",
+                f"~{progress.estimated_remaining_seconds / 60:.0f} min remaining)",
                 extra={
                     "percent_complete": round(progress.percent_complete, 2),
                     "records_processed": progress.records_processed,

@@ -14,7 +14,6 @@ Key Functions:
     - aggregate_company_classification: Aggregate contract classifications to company level
 """
 
-
 from loguru import logger
 
 from src.models.categorization import CompanyClassification, ContractClassification
@@ -334,7 +333,9 @@ def _is_service_contract_type(contract_type: str, pricing: str) -> bool:
     Returns:
         True if contract type indicates service work
     """
-    return is_cost_based_contract(contract_type, pricing) or is_service_based_contract(contract_type, pricing)
+    return is_cost_based_contract(contract_type, pricing) or is_service_based_contract(
+        contract_type, pricing
+    )
 
 
 def _classify_by_psc(psc: str) -> tuple[str, str, float]:
@@ -485,7 +486,9 @@ def aggregate_company_classification(
     """
     # Handle edge case: insufficient data
     if len(contracts) < 2:
-        logger.warning(f"Company {company_uei or company_name or 'Unknown'} has fewer than 2 contracts, classifying as Uncertain")
+        logger.warning(
+            f"Company {company_uei or company_name or 'Unknown'} has fewer than 2 contracts, classifying as Uncertain"
+        )
         return CompanyClassification(
             company_uei=company_uei,
             company_name=company_name or "Unknown",
@@ -533,14 +536,10 @@ def aggregate_company_classification(
     # Calculate dollar-weighted percentages for Product and Service
     total_dollars = sum(c.award_amount or 0.0 for c in classified_contracts)
     product_dollars = sum(
-        c.award_amount or 0.0
-        for c in classified_contracts
-        if c.classification == "Product"
+        c.award_amount or 0.0 for c in classified_contracts if c.classification == "Product"
     )
     service_dollars = sum(
-        c.award_amount or 0.0
-        for c in classified_contracts
-        if c.classification == "Service"
+        c.award_amount or 0.0 for c in classified_contracts if c.classification == "Service"
     )
 
     # Calculate percentages
@@ -568,10 +567,14 @@ def aggregate_company_classification(
         award_amount = c.get("award_amount") or c.get("award_amount") or 0.0
 
         if awarding_agency and awarding_agency != "Unknown" and awarding_agency:
-            agency_dollars[awarding_agency] = agency_dollars.get(awarding_agency, 0.0) + award_amount
+            agency_dollars[awarding_agency] = (
+                agency_dollars.get(awarding_agency, 0.0) + award_amount
+            )
         elif not awarding_agency and len(original_contract_dicts) > 0:
             # Debug: log if we're missing agency info
-            logger.debug(f"Contract {c.get('award_id', 'unknown')} missing agency info. Available keys: {list(c.keys())[:10]}")
+            logger.debug(
+                f"Contract {c.get('award_id', 'unknown')} missing agency info. Available keys: {list(c.keys())[:10]}"
+            )
 
     # Convert to percentages
     agency_breakdown: dict[str, float] = {}

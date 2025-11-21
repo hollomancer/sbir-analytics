@@ -251,12 +251,10 @@ class TransitionProfileLoader(BaseNeo4jLoader):
                         logger.info(f"  Processed {i + batch_size_actual:,} profiles")
 
                 except Exception as e:
-                    logger.error(f"Failed to load batch {i//self.batch_size}: {e}")
+                    logger.error(f"Failed to load batch {i // self.batch_size}: {e}")
                     metrics.errors += batch_size_actual
 
-        logger.info(
-            f"✓ Loaded {metrics.nodes_created.get('TransitionProfile', 0):,} profile nodes"
-        )
+        logger.info(f"✓ Loaded {metrics.nodes_created.get('TransitionProfile', 0):,} profile nodes")
 
         return metrics
 

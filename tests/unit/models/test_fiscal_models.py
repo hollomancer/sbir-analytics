@@ -22,7 +22,6 @@ from src.models.fiscal_models import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestEconomicShockModel:
     """Tests for the EconomicShock model."""
 

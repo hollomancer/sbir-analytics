@@ -4,7 +4,6 @@ Calculates tax revenue and job creation impacts from SBIR awards using
 StateIO economic models.
 """
 
-
 import pandas as pd
 from dagster import (
     AssetCheckResult,
@@ -270,7 +269,9 @@ def check_fiscal_impacts_quality(
     avg_confidence = float(sbir_fiscal_impacts["confidence"].mean())
 
     # Check for any failed computations
-    failed = sbir_fiscal_impacts[sbir_fiscal_impacts["quality_flags"].str.contains("failed", na=False)]
+    failed = sbir_fiscal_impacts[
+        sbir_fiscal_impacts["quality_flags"].str.contains("failed", na=False)
+    ]
     failed_pct = len(failed) / len(sbir_fiscal_impacts) * 100
 
     # Determine pass/fail

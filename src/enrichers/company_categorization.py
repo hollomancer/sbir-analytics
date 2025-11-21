@@ -105,30 +105,30 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
 
     # Common abbreviation expansions
     abbreviations = {
-        r'\bIntl\.?\b': 'International',
-        r'\bInt\'l\.?\b': 'International',
-        r'\bInc\.?\b': 'Incorporated',
-        r'\bCo\.?\b': 'Company',
-        r'\bCorp\.?\b': 'Corporation',
-        r'\bLtd\.?\b': 'Limited',
-        r'\bLLC\.?\b': 'Limited Liability Company',
-        r'\bLLP\.?\b': 'Limited Liability Partnership',
-        r'\bL\.?L\.?C\.?\b': 'Limited Liability Company',
-        r'\bL\.?P\.?\b': 'Limited Partnership',
-        r'\bTech\.?\b': 'Technology',
-        r'\bMfg\.?\b': 'Manufacturing',
-        r'\bSys\.?\b': 'Systems',
-        r'\bSvcs\.?\b': 'Services',
-        r'\bMgmt\.?\b': 'Management',
-        r'\bDev\.?\b': 'Development',
+        r"\bIntl\.?\b": "International",
+        r"\bInt\'l\.?\b": "International",
+        r"\bInc\.?\b": "Incorporated",
+        r"\bCo\.?\b": "Company",
+        r"\bCorp\.?\b": "Corporation",
+        r"\bLtd\.?\b": "Limited",
+        r"\bLLC\.?\b": "Limited Liability Company",
+        r"\bLLP\.?\b": "Limited Liability Partnership",
+        r"\bL\.?L\.?C\.?\b": "Limited Liability Company",
+        r"\bL\.?P\.?\b": "Limited Partnership",
+        r"\bTech\.?\b": "Technology",
+        r"\bMfg\.?\b": "Manufacturing",
+        r"\bSys\.?\b": "Systems",
+        r"\bSvcs\.?\b": "Services",
+        r"\bMgmt\.?\b": "Management",
+        r"\bDev\.?\b": "Development",
     }
 
     # Punctuation that often differs between sources
     punctuation_variants = {
-        '/': ['AND', ' ', ''],  # "/" can be "AND", space, or removed
-        '&': ['AND', 'and'],
-        ',': ['', ' '],
-        '-': [' ', ''],
+        "/": ["AND", " ", ""],  # "/" can be "AND", space, or removed
+        "&": ["AND", "and"],
+        ",": ["", " "],
+        "-": [" ", ""],
     }
 
     variations = []
@@ -148,25 +148,25 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
     for punct, replacements in punctuation_variants.items():
         if punct in normalized:
             # Try the first replacement (usually most semantic)
-            replacement = f" {replacements[0]} " if replacements else ' '
+            replacement = f" {replacements[0]} " if replacements else " "
             normalized = normalized.replace(punct, replacement)
 
     # Clean up multiple spaces
-    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    normalized = re.sub(r"\s+", " ", normalized).strip()
     if normalized not in variations:
         variations.append(normalized)
 
     # Variation 4: Remove common legal suffixes entirely for broader matching
     # This helps match "ABC Inc" with "ABC Incorporated" or just "ABC"
     suffixes_to_remove = [
-        r',?\s*(Inc\.?|Incorporated|LLC|L\.L\.C\.?|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$',
-        r',?\s*\([^)]+\)$',  # Remove parenthetical expressions at end (e.g., "(ATL)")
+        r",?\s*(Inc\.?|Incorporated|LLC|L\.L\.C\.?|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?)$",
+        r",?\s*\([^)]+\)$",  # Remove parenthetical expressions at end (e.g., "(ATL)")
     ]
 
     base_name = normalized
     for suffix_pattern in suffixes_to_remove:
-        base_name = re.sub(suffix_pattern, '', base_name, flags=re.IGNORECASE)
-    base_name = base_name.strip().rstrip(',').strip()
+        base_name = re.sub(suffix_pattern, "", base_name, flags=re.IGNORECASE)
+    base_name = base_name.strip().rstrip(",").strip()
 
     if base_name and base_name not in variations and len(base_name) >= 10:
         variations.append(base_name)
@@ -176,7 +176,7 @@ def _normalize_company_name_for_search(company_name: str) -> list[str]:
     words = base_name.split()
     significant_words = [w for w in words if len(w) > 2]  # Skip very short words
     if len(significant_words) >= 3:
-        core_name = ' '.join(significant_words[:5])
+        core_name = " ".join(significant_words[:5])
         if core_name not in variations and len(core_name) >= 10:
             variations.append(core_name)
 
@@ -240,7 +240,9 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
         logger.debug(f"Could not generate name variations for: {company_name}")
         return None
 
-    logger.debug(f"Generated {len(name_variations)} name variations for '{company_name}': {name_variations}")
+    logger.debug(
+        f"Generated {len(name_variations)} name variations for '{company_name}': {name_variations}"
+    )
 
     # Track the best candidate match (in case we don't find one with UEI/DUNS)
     best_candidate = None
@@ -285,7 +287,11 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
 
             # If match has valid name but no UEI/DUNS, keep it as a candidate but continue searching
             # We'll use the first match with a valid name if no better match is found
-            if _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
+            if (
+                _is_valid_identifier(matched_name)
+                and not _is_valid_identifier(matched_uei)
+                and not _is_valid_identifier(matched_duns)
+            ):
                 if best_candidate is None:
                     best_candidate = {
                         "uei": matched_uei,
@@ -299,7 +305,11 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
                 continue
 
             # If match has empty name and no UEI/DUNS, it's not useful - continue searching
-            if not _is_valid_identifier(matched_name) and not _is_valid_identifier(matched_uei) and not _is_valid_identifier(matched_duns):
+            if (
+                not _is_valid_identifier(matched_name)
+                and not _is_valid_identifier(matched_uei)
+                and not _is_valid_identifier(matched_duns)
+            ):
                 logger.debug(
                     f"Found match with empty name and no UEI/DUNS for variation '{search_name}', continuing search..."
                 )
@@ -341,7 +351,9 @@ def _fuzzy_match_recipient(company_name: str) -> dict[str, Any] | None:
         return best_candidate
 
     # No matches found with any variation
-    logger.debug(f"No autocomplete matches found for '{company_name}' after trying {len(name_variations)} variations")
+    logger.debug(
+        f"No autocomplete matches found for '{company_name}' after trying {len(name_variations)} variations"
+    )
     return None
 
 
@@ -440,7 +452,9 @@ def retrieve_company_contracts(
 
     try:
         conn = extractor.connect()
-        logger.debug(f"Querying USAspending for company contracts (UEI={uei}, DUNS={duns}, CAGE={cage})")
+        logger.debug(
+            f"Querying USAspending for company contracts (UEI={uei}, DUNS={duns}, CAGE={cage})"
+        )
 
         result = conn.execute(query).fetchdf()
 
@@ -472,16 +486,14 @@ def retrieve_company_contracts(
         result = result.drop_duplicates(subset=["award_id"])
 
         logger.info(
-            f"Retrieved {len(result)} contracts for company "
-            f"(UEI={uei}, DUNS={duns}, CAGE={cage})"
+            f"Retrieved {len(result)} contracts for company (UEI={uei}, DUNS={duns}, CAGE={cage})"
         )
 
         return result
 
     except Exception as e:
         logger.error(
-            f"Failed to query USAspending for company "
-            f"(UEI={uei}, DUNS={duns}, CAGE={cage}): {e}"
+            f"Failed to query USAspending for company (UEI={uei}, DUNS={duns}, CAGE={cage}): {e}"
         )
         # Return empty DataFrame on error rather than raising
         return pd.DataFrame()
@@ -538,7 +550,9 @@ def retrieve_company_contracts_api(
 
     # Check if we have at least one valid identifier
     if not any([valid_uei, valid_duns, valid_name]):
-        logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
+        logger.warning(
+            "No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame"
+        )
         return pd.DataFrame()
 
     # Initialize cache
@@ -560,7 +574,9 @@ def retrieve_company_contracts_api(
     # Check cache first (non-SBIR contracts)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="contracts")
     if cached_result is not None:
-        logger.debug(f"Returning cached result for company (UEI={uei}, DUNS={duns}, name={company_name})")
+        logger.debug(
+            f"Returning cached result for company (UEI={uei}, DUNS={duns}, name={company_name})"
+        )
         return cached_result
 
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
@@ -587,20 +603,32 @@ def retrieve_company_contracts_api(
 
             # If autocomplete matched but didn't return UEI/DUNS, use the matched name for search
             # The matched name is what USAspending recognizes and is more likely to work
-            if not (valid_uei or valid_duns) and matched_name and _is_valid_identifier(matched_name):
-                logger.info(f"Autocomplete matched name '{matched_name}' but no UEI/DUNS found, using matched name for search")
+            if (
+                not (valid_uei or valid_duns)
+                and matched_name
+                and _is_valid_identifier(matched_name)
+            ):
+                logger.info(
+                    f"Autocomplete matched name '{matched_name}' but no UEI/DUNS found, using matched name for search"
+                )
                 company_name = matched_name
                 fuzzy_matched = True
 
     # Determine search strategy
     if valid_uei or valid_duns:
         if fuzzy_matched:
-            logger.info(f"Using fuzzy-matched identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+            logger.info(
+                f"Using fuzzy-matched identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})"
+            )
         else:
-            logger.info(f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+            logger.info(
+                f"Retrieving contracts from USAspending API using identifiers (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})"
+            )
     else:
         if fuzzy_matched and matched_name:
-            logger.info(f"Falling back to direct name search using autocomplete-matched name: {company_name}")
+            logger.info(
+                f"Falling back to direct name search using autocomplete-matched name: {company_name}"
+            )
         else:
             logger.info(f"Falling back to direct name search for: {company_name}")
 
@@ -621,7 +649,9 @@ def retrieve_company_contracts_api(
     # Include company name if available (helps when UEI/DUNS don't match correctly)
     if valid_name:
         # Use matched name from autocomplete if available, otherwise use original
-        name_to_search = matched_name if (matched_name and _is_valid_identifier(matched_name)) else company_name
+        name_to_search = (
+            matched_name if (matched_name and _is_valid_identifier(matched_name)) else company_name
+        )
         recipient_search_terms.append(name_to_search)
         logger.debug(f"Adding company name to recipient_search_text: {name_to_search}")
 
@@ -631,17 +661,17 @@ def retrieve_company_contracts_api(
     # Fields to retrieve from transaction endpoint
     # Using the exact field names from the API documentation
     fields = [
-        "Award ID",              # Award identifier
-        "Recipient Name",        # Company name
-        "Transaction Amount",    # Amount for this transaction
+        "Award ID",  # Award identifier
+        "Recipient Name",  # Company name
+        "Transaction Amount",  # Amount for this transaction
         "Transaction Description",  # Description
-        "Action Date",           # Transaction date
-        "PSC",                   # Product/Service Code (the key field we need!)
-        "Recipient UEI",         # Recipient UEI
-        "Award Type",            # Contract type
-        "Awarding Agency",       # Awarding agency name
-        "Awarding Sub Agency",   # Awarding sub-agency name
-        "internal_id",           # Internal award identifier
+        "Action Date",  # Transaction date
+        "PSC",  # Product/Service Code (the key field we need!)
+        "Recipient UEI",  # Recipient UEI
+        "Award Type",  # Contract type
+        "Awarding Agency",  # Awarding agency name
+        "Awarding Sub Agency",  # Awarding sub-agency name
+        "internal_id",  # Internal award identifier
     ]
 
     all_transactions: list[dict[str, Any]] = []
@@ -691,7 +721,9 @@ def retrieve_company_contracts_api(
                 # Check if agency fields are present
                 awarding_agency = results[0].get("Awarding Agency")
                 awarding_sub_agency = results[0].get("Awarding Sub Agency")
-                logger.debug(f"First transaction Awarding Agency: {awarding_agency}, Awarding Sub Agency: {awarding_sub_agency}")
+                logger.debug(
+                    f"First transaction Awarding Agency: {awarding_agency}, Awarding Sub Agency: {awarding_sub_agency}"
+                )
 
             # Process each transaction
             for transaction in results:
@@ -703,7 +735,9 @@ def retrieve_company_contracts_api(
                     # If PSC is a dict, try to extract the code from common keys
                     psc_value = psc_raw.get("code") or psc_raw.get("psc_code") or psc_raw.get("psc")
                     if page == 1 and psc_raw:
-                        logger.debug(f"PSC is a dict with keys: {list(psc_raw.keys())}, extracted: {psc_value}")
+                        logger.debug(
+                            f"PSC is a dict with keys: {list(psc_raw.keys())}, extracted: {psc_value}"
+                        )
                 elif isinstance(psc_raw, str):
                     psc_value = psc_raw
                 else:
@@ -742,9 +776,8 @@ def retrieve_company_contracts_api(
                     )
 
                 if (
-                    (not psc_value or (isinstance(psc_value, str) and not psc_value.strip()))
-                    and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT
-                ):
+                    not psc_value or (isinstance(psc_value, str) and not psc_value.strip())
+                ) and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT:
                     fallback_details = _fetch_award_details(processed_transaction["award_id"])
                     if fallback_details and fallback_details.get("psc"):
                         processed_transaction["psc"] = fallback_details["psc"]
@@ -757,7 +790,9 @@ def retrieve_company_contracts_api(
             has_next = page_metadata.get("hasNext", False)
             total = page_metadata.get("total", 0)
 
-            logger.debug(f"Retrieved {len(results)} transactions (page {page}), total available: {total}")
+            logger.debug(
+                f"Retrieved {len(results)} transactions (page {page}), total available: {total}"
+            )
 
             if not has_next:
                 logger.debug("No more pages available")
@@ -779,7 +814,9 @@ def retrieve_company_contracts_api(
                 f"stopping pagination. Retrieved {len(all_transactions)} transactions so far."
             )
 
-        logger.info(f"Retrieved {len(all_transactions)} transactions from spending_by_transaction endpoint")
+        logger.info(
+            f"Retrieved {len(all_transactions)} transactions from spending_by_transaction endpoint"
+        )
 
         # If no results with UEI/DUNS and we have a company name, try name-based search as fallback
         if not all_transactions and (valid_uei or valid_duns) and valid_name:
@@ -793,7 +830,9 @@ def retrieve_company_contracts_api(
 
             # Generate name variations for better matching
             # API requires array format - include multiple variations for better matching
-            name_variations = _normalize_company_name_for_search(company_name) if company_name else []
+            name_variations = (
+                _normalize_company_name_for_search(company_name) if company_name else []
+            )
             # Use up to 3 most specific variations
             name_search_terms: list[str] = []
             for variation in name_variations[:3]:
@@ -837,14 +876,17 @@ def retrieve_company_contracts_api(
                     for transaction in name_results:
                         psc_raw = transaction.get("PSC")
                         if isinstance(psc_raw, dict):
-                            psc_value = psc_raw.get("code") or psc_raw.get("psc_code") or psc_raw.get("psc")
+                            psc_value = (
+                                psc_raw.get("code") or psc_raw.get("psc_code") or psc_raw.get("psc")
+                            )
                         elif isinstance(psc_raw, str):
                             psc_value = psc_raw
                         else:
                             psc_value = None
 
                         processed_transaction = {
-                            "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
+                            "award_id": transaction.get("Award ID")
+                            or transaction.get("internal_id"),
                             "psc": psc_value,
                             "contract_type": transaction.get("Award Type"),
                             "pricing": transaction.get("Award Type"),
@@ -862,10 +904,11 @@ def retrieve_company_contracts_api(
                             processed_transaction["award_id"] = f"UNKNOWN_{len(name_transactions)}"
 
                         if (
-                            (not psc_value or (isinstance(psc_value, str) and not psc_value.strip()))
-                            and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT
-                        ):
-                            fallback_details = _fetch_award_details(processed_transaction["award_id"])
+                            not psc_value or (isinstance(psc_value, str) and not psc_value.strip())
+                        ) and psc_detail_lookups < PSC_DETAIL_LOOKUP_LIMIT:
+                            fallback_details = _fetch_award_details(
+                                processed_transaction["award_id"]
+                            )
                             if fallback_details and fallback_details.get("psc"):
                                 processed_transaction["psc"] = fallback_details["psc"]
                                 psc_detail_lookups += 1
@@ -908,7 +951,9 @@ def retrieve_company_contracts_api(
                 logger.debug(f"Name-based fallback search failed: {e}")
 
         if not all_transactions:
-            logger.warning(f"No transactions found for company (UEI={uei}, DUNS={duns}, name={company_name})")
+            logger.warning(
+                f"No transactions found for company (UEI={uei}, DUNS={duns}, name={company_name})"
+            )
             return pd.DataFrame()
 
         # Convert to DataFrame
@@ -919,13 +964,17 @@ def retrieve_company_contracts_api(
         if initial_count > 0:
             df = df[
                 df["description"].isna()
-                | ~df["description"].str.upper().str.contains(
+                | ~df["description"]
+                .str.upper()
+                .str.contains(
                     "SBIR|STTR|SMALL BUSINESS INNOVATION|SMALL BUSINESS TECH", regex=True, na=False
                 )
             ]
             sbir_filtered = initial_count - len(df)
             if sbir_filtered > 0:
-                logger.info(f"Filtered out {sbir_filtered} SBIR/STTR contracts ({sbir_filtered/initial_count*100:.1f}%)")
+                logger.info(
+                    f"Filtered out {sbir_filtered} SBIR/STTR contracts ({sbir_filtered / initial_count * 100:.1f}%)"
+                )
 
         if df.empty:
             logger.warning(f"No non-SBIR/STTR contracts found for company (UEI={uei}, DUNS={duns})")
@@ -957,6 +1006,7 @@ def retrieve_company_contracts_api(
 
     except Exception as e:
         import traceback
+
         logger.error(f"Failed to retrieve contracts from USAspending API: {e}")
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
         return pd.DataFrame()
@@ -1000,7 +1050,9 @@ def _fetch_award_details(award_id: str) -> dict[str, Any] | None:
                 )
 
         if psc:
-            logger.debug(f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint")
+            logger.debug(
+                f"Retrieved PSC '{psc}' for award {award_id} from individual award endpoint"
+            )
             return {"psc": psc}
 
         return None
@@ -1134,12 +1186,16 @@ def retrieve_sbir_awards(
 
     try:
         conn = extractor.connect()
-        logger.debug(f"Querying USAspending for SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})")
+        logger.debug(
+            f"Querying USAspending for SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})"
+        )
 
         result = conn.execute(query).fetchdf()
 
         if result.empty:
-            logger.debug(f"No SBIR/STTR awards found in USAspending (UEI={uei}, DUNS={duns}, CAGE={cage})")
+            logger.debug(
+                f"No SBIR/STTR awards found in USAspending (UEI={uei}, DUNS={duns}, CAGE={cage})"
+            )
             return pd.DataFrame()
 
         # Drop any rows with invalid award_id
@@ -1151,7 +1207,9 @@ def retrieve_sbir_awards(
         # Drop duplicates based on award_id
         result = result.drop_duplicates(subset=["award_id"])
 
-        logger.debug(f"Retrieved {len(result)} SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})")
+        logger.debug(
+            f"Retrieved {len(result)} SBIR/STTR awards (UEI={uei}, DUNS={duns}, CAGE={cage})"
+        )
 
         return result
 
@@ -1191,7 +1249,9 @@ def retrieve_sbir_awards_api(
     valid_name = _is_valid_identifier(company_name)
 
     if not any([valid_uei, valid_duns, valid_name]):
-        logger.warning("No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame")
+        logger.warning(
+            "No valid company identifiers provided (UEI, DUNS, or name), returning empty DataFrame"
+        )
         return pd.DataFrame()
 
     # Initialize cache
@@ -1212,7 +1272,9 @@ def retrieve_sbir_awards_api(
     # Check cache first (SBIR awards only)
     cached_result = cache.get(uei=uei, duns=duns, company_name=company_name, cache_type="sbir")
     if cached_result is not None:
-        logger.debug(f"Returning cached SBIR awards result for company (UEI={uei}, DUNS={duns}, name={company_name})")
+        logger.debug(
+            f"Returning cached SBIR awards result for company (UEI={uei}, DUNS={duns}, name={company_name})"
+        )
         return cached_result
 
     # Try autocomplete fuzzy matching if we don't have valid identifiers but have a name
@@ -1236,9 +1298,13 @@ def retrieve_sbir_awards_api(
 
     if valid_uei or valid_duns:
         if fuzzy_matched:
-            logger.debug(f"Using fuzzy-matched identifiers for SBIR (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+            logger.debug(
+                f"Using fuzzy-matched identifiers for SBIR (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})"
+            )
         else:
-            logger.debug(f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})")
+            logger.debug(
+                f"Retrieving SBIR/STTR awards from USAspending API (UEI={uei if valid_uei else 'N/A'}, DUNS={duns if valid_duns else 'N/A'})"
+            )
     else:
         logger.debug(f"Retrieving SBIR/STTR awards from USAspending API using name: {company_name}")
 
@@ -1284,7 +1350,9 @@ def retrieve_sbir_awards_api(
                     )
                 )
             except USAspendingRateLimitError as e:
-                logger.error(f"Rate limit exceeded for SBIR awards page {page}, stopping pagination: {e}")
+                logger.error(
+                    f"Rate limit exceeded for SBIR awards page {page}, stopping pagination: {e}"
+                )
                 if page == 1:
                     return pd.DataFrame()
                 break
@@ -1303,11 +1371,17 @@ def retrieve_sbir_awards_api(
                 # Only include SBIR/STTR transactions
                 if description and any(
                     keyword in description.upper()
-                    for keyword in ["SBIR", "STTR", "SMALL BUSINESS INNOVATION", "SMALL BUSINESS TECH"]
+                    for keyword in [
+                        "SBIR",
+                        "STTR",
+                        "SMALL BUSINESS INNOVATION",
+                        "SMALL BUSINESS TECH",
+                    ]
                 ):
                     all_transactions.append(
                         {
-                            "award_id": transaction.get("Award ID") or transaction.get("internal_id"),
+                            "award_id": transaction.get("Award ID")
+                            or transaction.get("internal_id"),
                             "description": description,
                             "award_amount": transaction.get("Transaction Amount", 0),
                             "action_date": transaction.get("Action Date"),
@@ -1409,9 +1483,7 @@ def batch_retrieve_company_contracts(
                 logger.warning("Company has no identifiers, skipping")
                 continue
 
-            contracts = retrieve_company_contracts(
-                extractor, uei=uei, duns=duns, cage=cage
-            )
+            contracts = retrieve_company_contracts(extractor, uei=uei, duns=duns, cage=cage)
             results[key] = contracts
 
     logger.info(f"Retrieved contracts for {len(results)} companies")

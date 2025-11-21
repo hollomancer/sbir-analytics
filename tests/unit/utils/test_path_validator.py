@@ -186,4 +186,3 @@ class TestValidatePathsOnStartup:
         result = validate_paths_on_startup(create_missing_dirs=False)
 
         assert result is False
-

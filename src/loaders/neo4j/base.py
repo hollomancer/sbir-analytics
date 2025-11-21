@@ -122,8 +122,7 @@ class BaseNeo4jLoader(ABC):  # noqa: B024
 
         if log_progress:
             logger.info(
-                f"{self.loader_name}: Loading {len(nodes)} {label} nodes "
-                f"(key: {key_property})"
+                f"{self.loader_name}: Loading {len(nodes)} {label} nodes (key: {key_property})"
             )
 
         start_time = datetime.utcnow()
@@ -377,9 +376,7 @@ class BaseNeo4jLoader(ABC):  # noqa: B024
                 batch = enrichments[i : i + batch_size]
 
                 # Convert to format suitable for UNWIND
-                batch_data = [
-                    {"key": key_value, "props": props} for key_value, props in batch
-                ]
+                batch_data = [{"key": key_value, "props": props} for key_value, props in batch]
 
                 # Use query builder for consistent query construction
                 from ..query_builder import Neo4jQueryBuilder

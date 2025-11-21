@@ -8,7 +8,6 @@ from src.transformers.naics_to_bea import NAICSToBEAMapper
 pytestmark = pytest.mark.fast
 
 
-
 def test_map_exact_6digit():
     m = NAICSToBEAMapper()
     assert m.map_code("334510") == "4300"

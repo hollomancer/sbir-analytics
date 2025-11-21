@@ -159,4 +159,3 @@ def safe_path_join(*parts: str | Path) -> Path:
     """
     normalized_parts = [Path(part) for part in parts]
     return Path(*normalized_parts)
-

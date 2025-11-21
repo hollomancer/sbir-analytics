@@ -184,4 +184,3 @@ class Neo4jQueryBuilder:
             query += "RETURN n"
 
         return query.strip()
-

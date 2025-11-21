@@ -23,7 +23,6 @@ from src.transition.detection.evidence import EvidenceGenerator
 pytestmark = pytest.mark.fast
 
 
-
 class TestEvidenceGeneratorInitialization:
     """Tests for EvidenceGenerator initialization."""
 

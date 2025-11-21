@@ -50,4 +50,3 @@ def test_cet_summary_contains_highlights(cet_effectiveness_dataset):
     assert "cet_area_transition_rates" in summary
     assert "avg_time_to_transition_by_cet_area" in summary
     assert "patent_backed_rates_by_cet_area" in summary
-

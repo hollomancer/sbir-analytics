@@ -24,18 +24,20 @@ def sample_parquet_file(tmp_path):
     parquet_file = tmp_path / "sam_entity_records.parquet"
 
     # Create a minimal SAM.gov dataset
-    df = pd.DataFrame({
-        "unique_entity_id": ["ABC123456789", "DEF987654321", "GHI111222333"],
-        "cage_code": ["1ABC5", "2DEF6", "3GHI7"],
-        "legal_business_name": ["Test Company LLC", "Another Corp", "Third Industries"],
-        "dba_name": ["Test Co", "Another", "Third"],
-        "physical_address_line_1": ["123 Main St", "456 Oak Ave", "789 Pine Rd"],
-        "physical_address_city": ["Washington", "Boston", "Austin"],
-        "physical_address_state_or_province": ["DC", "MA", "TX"],
-        "physical_address_zip_postal_code": ["20001", "02101", "73301"],
-        "primary_naics": ["541512", "541330", "541715"],
-        "naics_code_string": ["541512", "541330,541519", "541715"],
-    })
+    df = pd.DataFrame(
+        {
+            "unique_entity_id": ["ABC123456789", "DEF987654321", "GHI111222333"],
+            "cage_code": ["1ABC5", "2DEF6", "3GHI7"],
+            "legal_business_name": ["Test Company LLC", "Another Corp", "Third Industries"],
+            "dba_name": ["Test Co", "Another", "Third"],
+            "physical_address_line_1": ["123 Main St", "456 Oak Ave", "789 Pine Rd"],
+            "physical_address_city": ["Washington", "Boston", "Austin"],
+            "physical_address_state_or_province": ["DC", "MA", "TX"],
+            "physical_address_zip_postal_code": ["20001", "02101", "73301"],
+            "primary_naics": ["541512", "541330", "541715"],
+            "naics_code_string": ["541512", "541330,541519", "541715"],
+        }
+    )
     df.to_parquet(parquet_file)
     return parquet_file
 
@@ -104,7 +106,9 @@ class TestParquetLoading:
         extractor_with_mock_config.config.s3 = {"bucket": "test-bucket"}
 
         # Mock S3 file found and resolved
-        mock_find_latest.return_value = "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
+        mock_find_latest.return_value = (
+            "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
+        )
         mock_resolve_path.return_value = sample_parquet_file
 
         df = extractor_with_mock_config.load_parquet(use_s3_first=True)

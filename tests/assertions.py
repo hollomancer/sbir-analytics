@@ -50,9 +50,7 @@ def assert_valid_extraction_metadata(
     )
 
     # Validate all columns are strings
-    assert all(isinstance(c, str) for c in metadata["columns"]), (
-        "All columns should be strings"
-    )
+    assert all(isinstance(c, str) for c in metadata["columns"]), "All columns should be strings"
 
     # Validate timestamps are non-empty
     assert (
@@ -61,8 +59,7 @@ def assert_valid_extraction_metadata(
     ), "extraction_start_utc should be non-empty string"
 
     assert (
-        isinstance(metadata["extraction_end_utc"], str)
-        and len(metadata["extraction_end_utc"]) > 0
+        isinstance(metadata["extraction_end_utc"], str) and len(metadata["extraction_end_utc"]) > 0
     ), "extraction_end_utc should be non-empty string"
 
     # Optional validations
@@ -178,9 +175,7 @@ def assert_valid_neo4j_load_metrics(metrics: Any, min_nodes: int = 0) -> None:
     # Validate types
     assert isinstance(metrics.nodes_created, dict), "nodes_created should be dict"
     assert isinstance(metrics.nodes_updated, dict), "nodes_updated should be dict"
-    assert isinstance(metrics.relationships_created, dict), (
-        "relationships_created should be dict"
-    )
+    assert isinstance(metrics.relationships_created, dict), "relationships_created should be dict"
     assert isinstance(metrics.errors, int), "errors should be int"
 
     # Validate counts are non-negative
@@ -223,26 +218,18 @@ def assert_valid_cet_classification(
     assert hasattr(classification, "classification"), "Missing classification"
 
     # Validate score range
-    assert 0 <= classification.score <= 100, (
-        f"Score must be 0-100, got {classification.score}"
-    )
+    assert 0 <= classification.score <= 100, f"Score must be 0-100, got {classification.score}"
 
     # Validate classification level matches score
     score = classification.score
     level = classification.classification
 
     if score >= 70:
-        assert level == ClassificationLevel.HIGH, (
-            f"Score {score} should be HIGH, got {level}"
-        )
+        assert level == ClassificationLevel.HIGH, f"Score {score} should be HIGH, got {level}"
     elif score >= 40:
-        assert level == ClassificationLevel.MEDIUM, (
-            f"Score {score} should be MEDIUM, got {level}"
-        )
+        assert level == ClassificationLevel.MEDIUM, f"Score {score} should be MEDIUM, got {level}"
     else:
-        assert level == ClassificationLevel.LOW, (
-            f"Score {score} should be LOW, got {level}"
-        )
+        assert level == ClassificationLevel.LOW, f"Score {score} should be LOW, got {level}"
 
     # Validate evidence
     if hasattr(classification, "evidence"):

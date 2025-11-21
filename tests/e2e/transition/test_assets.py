@@ -61,4 +61,3 @@ def test_asset_import_dependencies_ordered():
     assert transition_assets.enriched_vendor_resolution is not None
     assert transition_assets.transformed_transition_scores is not None
     assert transition_assets.transformed_transition_detections is not None
-

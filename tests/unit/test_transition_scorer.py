@@ -31,7 +31,9 @@ def default_config() -> dict:
             "competition_type": config_obj.scoring.competition_type.model_dump(),
             "patent_signal": config_obj.scoring.patent_signal.model_dump(),
             "cet_alignment": config_obj.scoring.cet_alignment.model_dump(),
-            "text_similarity": config_obj.scoring.text_similarity.model_dump() if hasattr(config_obj.scoring, "text_similarity") else {"enabled": False, "weight": 0.0},
+            "text_similarity": config_obj.scoring.text_similarity.model_dump()
+            if hasattr(config_obj.scoring, "text_similarity")
+            else {"enabled": False, "weight": 0.0},
         },
     }
 

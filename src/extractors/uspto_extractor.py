@@ -264,12 +264,18 @@ class USPTOExtractor:
     # ----------------------------
     # File format-specific readers
     # ----------------------------
-    def _stream_csv(self, path: Path, chunk_size: int, delimiter: str = ",") -> Generator[dict, None, None]:
+    def _stream_csv(
+        self, path: Path, chunk_size: int, delimiter: str = ","
+    ) -> Generator[dict, None, None]:
         if pd is None:
             raise RuntimeError("pandas is required to read CSV files for USPTO extraction")
-        logger.debug("Streaming CSV %s with chunk_size=%d, delimiter=%r", path, chunk_size, delimiter)
+        logger.debug(
+            "Streaming CSV %s with chunk_size=%d, delimiter=%r", path, chunk_size, delimiter
+        )
         try:
-            for chunk in pd.read_csv(path, chunksize=chunk_size, low_memory=True, delimiter=delimiter):
+            for chunk in pd.read_csv(
+                path, chunksize=chunk_size, low_memory=True, delimiter=delimiter
+            ):
                 yield from chunk.to_dict(orient="records")
         except Exception:
             logger.exception("CSV streaming failed for %s", path)

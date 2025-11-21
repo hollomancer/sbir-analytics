@@ -106,4 +106,3 @@ def test_canonicalize_companies_no_identifiers():
 
     # Should create separate canonical IDs for different names
     assert len(canonical_map) == 2
-

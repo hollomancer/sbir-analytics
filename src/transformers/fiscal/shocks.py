@@ -243,7 +243,7 @@ class FiscalShockAggregator:
                 chunk = awards_df.iloc[i : i + chunk_size]
                 chunk_shocks = self._aggregate_chunk(chunk)
                 all_shocks.extend(chunk_shocks)
-                logger.info(f"Processed chunk {i//chunk_size + 1}: {len(chunk_shocks)} shocks")
+                logger.info(f"Processed chunk {i // chunk_size + 1}: {len(chunk_shocks)} shocks")
             return all_shocks
         else:
             return self._aggregate_chunk(awards_df)

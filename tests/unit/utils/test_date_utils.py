@@ -202,4 +202,3 @@ class TestParseDateSafe:
         result = parse_date_safe("2023-01-15 14:30:00", return_datetime=True)
         assert isinstance(result, datetime)
         assert result.year == 2023
-

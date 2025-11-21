@@ -348,4 +348,3 @@ class TestMultiSourceVectorizerIntegration:
         # Both should have features, but distribution different
         assert X_abstract.nnz > 0
         assert X_keywords.nnz > 0
-

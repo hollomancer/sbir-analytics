@@ -187,9 +187,7 @@ class HTMLReportBuilder:
         return "\n".join(html_parts)
 
     @staticmethod
-    def create_metric_card(
-        label: str, value: str, delta: str | None = None
-    ) -> str:
+    def create_metric_card(label: str, value: str, delta: str | None = None) -> str:
         """Generate metric card HTML.
 
         Args:
@@ -346,4 +344,3 @@ class HTMLReportBuilder:
     {status_badge}
 </div>
 {timestamp_html}"""
-

@@ -22,7 +22,6 @@ from src.models.contract_models import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestContractEnums:
     """Tests for contract enumeration types."""
 

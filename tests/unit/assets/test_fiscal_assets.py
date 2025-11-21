@@ -78,12 +78,14 @@ def sample_enriched_awards():
     """Sample enriched SBIR awards using consolidated utility."""
     df = create_sample_enriched_awards_df(num_awards=3)
     # Rename columns to match expected format
-    df = df.rename(columns={
-        "award_id": "Award Number",
-        "company_name": "Company",
-        "award_amount": "Amount",
-        "company_state": "State",
-    })
+    df = df.rename(
+        columns={
+            "award_id": "Award Number",
+            "company_name": "Company",
+            "award_amount": "Amount",
+            "company_state": "State",
+        }
+    )
     return df
 
 

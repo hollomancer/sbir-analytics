@@ -476,7 +476,9 @@ def enrich_awards_with_companies(
             # Use Jaro-Winkler as primary scorer
             prefix_weight_val = enhanced_config.get("jaro_winkler_prefix_weight", 0.1)
 
-            def jw_scorer(s1: str, s2: str, prefix_weight: float = prefix_weight_val, **kwargs: Any) -> float:
+            def jw_scorer(
+                s1: str, s2: str, prefix_weight: float = prefix_weight_val, **kwargs: Any
+            ) -> float:
                 return JaroWinkler.similarity(s1, s2, prefix_weight=prefix_weight) * 100.0
 
             active_scorer = jw_scorer

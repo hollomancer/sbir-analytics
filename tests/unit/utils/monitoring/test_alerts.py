@@ -177,4 +177,3 @@ class TestAlertCollector:
         assert alert is not None
         assert alert.severity == AlertSeverity.FAILURE
         assert "match_rate" in alert.alert_type.lower()
-

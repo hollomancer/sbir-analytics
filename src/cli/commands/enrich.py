@@ -220,9 +220,7 @@ def freshness_stats(
         df = df[df["source"] == source]
 
     total = len(df)
-    success = (
-        len(df[df["status"] == "success"]) if "status" in df.columns else 0
-    )
+    success = len(df[df["status"] == "success"]) if "status" in df.columns else 0
     stale_records = store.get_stale_records(source, 90)
 
     table = Table(title="Freshness Summary", show_header=True)
@@ -291,7 +289,9 @@ def refresh_usaspending(
     if dry_run:
         context.console.print("[green]Dry run only - no Dagster job triggered[/green]")
         if award_ids_list:
-            context.console.print(f"Would refresh {len(award_ids_list)} awards: {award_ids_list[:10]}...")
+            context.console.print(
+                f"Would refresh {len(award_ids_list)} awards: {award_ids_list[:10]}..."
+            )
         else:
             context.console.print("No awards selected for refresh.")
         return

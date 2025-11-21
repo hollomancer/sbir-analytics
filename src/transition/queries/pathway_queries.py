@@ -214,7 +214,11 @@ class TransitionPathwayQueries:
         Returns:
             PathwayResult with company transition profiles
         """
-        company_filter = "" if not company_id else f"WHERE (o.company_id = '{company_id}' OR o.organization_id = '{company_id}')"
+        company_filter = (
+            ""
+            if not company_id
+            else f"WHERE (o.company_id = '{company_id}' OR o.organization_id = '{company_id}')"
+        )
 
         query = f"""
         MATCH (o:Organization {{organization_type: "COMPANY"}})

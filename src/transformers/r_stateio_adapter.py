@@ -390,8 +390,7 @@ class RStateIOAdapter(EconomicModelInterface):
 
         except Exception as e:
             logger.warning(
-                f"Failed to call R package functions: {e}. "
-                "Falling back to placeholder computation."
+                f"Failed to call R package functions: {e}. Falling back to placeholder computation."
             )
 
         # Fallback: Use placeholder computation if R calls fail

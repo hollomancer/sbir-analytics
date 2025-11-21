@@ -22,14 +22,16 @@ pytestmark = pytest.mark.fast
 @pytest.fixture
 def sample_sam_gov_df():
     """Create a sample SAM.gov DataFrame."""
-    return pd.DataFrame({
-        "unique_entity_id": ["ABC123456789", "DEF987654321"],
-        "cage_code": ["1ABC5", "2DEF6"],
-        "legal_business_name": ["Test Company LLC", "Another Corp"],
-        "dba_name": ["Test Co", "Another"],
-        "primary_naics": ["541512", "541330"],
-        "naics_code_string": ["541512", "541330,541519"],
-    })
+    return pd.DataFrame(
+        {
+            "unique_entity_id": ["ABC123456789", "DEF987654321"],
+            "cage_code": ["1ABC5", "2DEF6"],
+            "legal_business_name": ["Test Company LLC", "Another Corp"],
+            "dba_name": ["Test Co", "Another"],
+            "primary_naics": ["541512", "541330"],
+            "naics_code_string": ["541512", "541330,541519"],
+        }
+    )
 
 
 @pytest.fixture
@@ -145,9 +147,7 @@ class TestImportSAMGovEntitiesHelper:
         mock_resolve_path.assert_called_once_with(s3_url)
 
     @patch("src.assets.sam_gov_ingestion.get_config")
-    def test_import_fails_when_no_file_available(
-        self, mock_get_config, mock_context, mock_config
-    ):
+    def test_import_fails_when_no_file_available(self, mock_get_config, mock_context, mock_config):
         """Test that import fails when parquet file is not available."""
         # Setup mocks
         mock_get_config.return_value = mock_config

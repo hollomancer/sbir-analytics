@@ -27,61 +27,104 @@ from ..utils.company_canonicalizer import canonicalize_companies_from_awards
 
 # State name to code mapping
 STATE_NAME_TO_CODE = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA",
-    "colorado": "CO", "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA",
-    "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA",
-    "kansas": "KS", "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
-    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV", "new hampshire": "NH",
-    "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC",
-    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA",
-    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
-    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
-    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
-    "puerto rico": "PR", "guam": "GU", "virgin islands": "VI", "american samoa": "AS",
+    "alabama": "AL",
+    "alaska": "AK",
+    "arizona": "AZ",
+    "arkansas": "AR",
+    "california": "CA",
+    "colorado": "CO",
+    "connecticut": "CT",
+    "delaware": "DE",
+    "florida": "FL",
+    "georgia": "GA",
+    "hawaii": "HI",
+    "idaho": "ID",
+    "illinois": "IL",
+    "indiana": "IN",
+    "iowa": "IA",
+    "kansas": "KS",
+    "kentucky": "KY",
+    "louisiana": "LA",
+    "maine": "ME",
+    "maryland": "MD",
+    "massachusetts": "MA",
+    "michigan": "MI",
+    "minnesota": "MN",
+    "mississippi": "MS",
+    "missouri": "MO",
+    "montana": "MT",
+    "nebraska": "NE",
+    "nevada": "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    "ohio": "OH",
+    "oklahoma": "OK",
+    "oregon": "OR",
+    "pennsylvania": "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    "tennessee": "TN",
+    "texas": "TX",
+    "utah": "UT",
+    "vermont": "VT",
+    "virginia": "VA",
+    "washington": "WA",
+    "west virginia": "WV",
+    "wisconsin": "WI",
+    "wyoming": "WY",
+    "district of columbia": "DC",
+    "puerto rico": "PR",
+    "guam": "GU",
+    "virgin islands": "VI",
+    "american samoa": "AS",
     "northern mariana islands": "MP",
 }
 
 # Legal suffixes to remove during company name normalization
 LEGAL_SUFFIXES = [
-    r'\bincorporated\b',
-    r'\bincorporation\b',
-    r'\bcorporation\b',
-    r'\bcompany\b',
-    r'\blimited\b',
-    r'\bliability\b',
-    r'\bpartnership\b',
-    r'\binc\.?\b',
-    r'\bcorp\.?\b',
-    r'\bco\.?\b',
-    r'\bltd\.?\b',
-    r'\bllc\.?\b',
-    r'\bllp\.?\b',
-    r'\blp\.?\b',
-    r'\bplc\.?\b',
-    r'\bp\.?c\.?\b',
-    r'\bl\.?l\.?c\.?\b',
-    r'\bl\.?l\.?p\.?\b',
-    r'\bl\.?p\.?\b',
+    r"\bincorporated\b",
+    r"\bincorporation\b",
+    r"\bcorporation\b",
+    r"\bcompany\b",
+    r"\blimited\b",
+    r"\bliability\b",
+    r"\bpartnership\b",
+    r"\binc\.?\b",
+    r"\bcorp\.?\b",
+    r"\bco\.?\b",
+    r"\bltd\.?\b",
+    r"\bllc\.?\b",
+    r"\bllp\.?\b",
+    r"\blp\.?\b",
+    r"\bplc\.?\b",
+    r"\bp\.?c\.?\b",
+    r"\bl\.?l\.?c\.?\b",
+    r"\bl\.?l\.?p\.?\b",
+    r"\bl\.?p\.?\b",
 ]
 
 # Common abbreviation standardizations
 ABBREVIATION_REPLACEMENTS = {
-    r'\btechnologies\b': 'tech',
-    r'\btechnology\b': 'tech',
-    r'\bsystems?\b': 'sys',
-    r'\bsolutions?\b': 'sol',
-    r'\bservices?\b': 'svc',
-    r'\binternational\b': 'intl',
-    r'\bamerican\b': 'amer',
-    r'\bmanufacturing\b': 'mfg',
-    r'\bindustries\b': 'ind',
-    r'\benterprises?\b': 'ent',
-    r'\bassociates?\b': 'assoc',
-    r'\blaboratories\b': 'lab',
-    r'\blaboratory\b': 'lab',
-    r'\bresearch\b': 'rsch',
-    r'\bdevelopment\b': 'dev',
+    r"\btechnologies\b": "tech",
+    r"\btechnology\b": "tech",
+    r"\bsystems?\b": "sys",
+    r"\bsolutions?\b": "sol",
+    r"\bservices?\b": "svc",
+    r"\binternational\b": "intl",
+    r"\bamerican\b": "amer",
+    r"\bmanufacturing\b": "mfg",
+    r"\bindustries\b": "ind",
+    r"\benterprises?\b": "ent",
+    r"\bassociates?\b": "assoc",
+    r"\blaboratories\b": "lab",
+    r"\blaboratory\b": "lab",
+    r"\bresearch\b": "rsch",
+    r"\bdevelopment\b": "dev",
 }
 
 
@@ -114,19 +157,19 @@ def normalize_company_name(name: str) -> str:
     normalized = name.lower().strip()
 
     # Remove punctuation except hyphens (but replace hyphens with spaces)
-    normalized = re.sub(r'[^\w\s-]', ' ', normalized)
-    normalized = normalized.replace('-', ' ')
+    normalized = re.sub(r"[^\w\s-]", " ", normalized)
+    normalized = normalized.replace("-", " ")
 
     # Remove legal suffixes
     for suffix in LEGAL_SUFFIXES:
-        normalized = re.sub(suffix, '', normalized, flags=re.IGNORECASE)
+        normalized = re.sub(suffix, "", normalized, flags=re.IGNORECASE)
 
     # Apply abbreviation standardizations
     for pattern, replacement in ABBREVIATION_REPLACEMENTS.items():
         normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
 
     # Normalize whitespace to single spaces
-    normalized = ' '.join(normalized.split())
+    normalized = " ".join(normalized.split())
 
     return normalized.strip()
 
@@ -155,7 +198,9 @@ def _get_neo4j_client() -> Neo4jClient | None:
         return None
 
 
-def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, str, str, str, str, dict[str, Any] | None]]:
+def detect_award_progressions(
+    awards: list[Award],
+) -> list[tuple[str, str, str, str, str, str, str, dict[str, Any] | None]]:
     """Detect Phase I → Phase II → Phase III award progressions.
 
     Matches awards that represent the same project progressing through SBIR/STTR phases.
@@ -209,8 +254,7 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
     for _company_id, company_award_list in company_awards.items():
         # Sort by award date for chronological matching
         sorted_awards = sorted(
-            company_award_list,
-            key=lambda a: a.award_date if a.award_date else date(1900, 1, 1)
+            company_award_list, key=lambda a: a.award_date if a.award_date else date(1900, 1, 1)
         )
 
         for i, earlier_award in enumerate(sorted_awards):
@@ -220,7 +264,7 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
             expected_next_phase = phase_transitions[earlier_award.phase]
 
             # Look for matching later awards in the next phase
-            for later_award in sorted_awards[i + 1:]:
+            for later_award in sorted_awards[i + 1 :]:
                 if later_award.phase != expected_next_phase:
                     continue
 
@@ -235,7 +279,9 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
                 if earlier_award.award_date and later_award.award_date:
                     if earlier_award.award_date >= later_award.award_date:
                         continue
-                    years_between = (later_award.award_date - earlier_award.award_date).days / 365.25
+                    years_between = (
+                        later_award.award_date - earlier_award.award_date
+                    ).days / 365.25
                 else:
                     years_between = None
 
@@ -244,15 +290,22 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
 
                 # Same topic code boosts confidence
                 same_topic = False
-                if (earlier_award.topic_code and later_award.topic_code and
-                    earlier_award.topic_code == later_award.topic_code):
+                if (
+                    earlier_award.topic_code
+                    and later_award.topic_code
+                    and earlier_award.topic_code == later_award.topic_code
+                ):
                     confidence += 0.3
                     same_topic = True
 
                 # Same PI boosts confidence
                 same_pi = False
-                if (earlier_award.principal_investigator and later_award.principal_investigator and
-                    earlier_award.principal_investigator.lower() == later_award.principal_investigator.lower()):
+                if (
+                    earlier_award.principal_investigator
+                    and later_award.principal_investigator
+                    and earlier_award.principal_investigator.lower()
+                    == later_award.principal_investigator.lower()
+                ):
                     confidence += 0.2
                     same_pi = True
 
@@ -272,16 +325,18 @@ def detect_award_progressions(awards: list[Award]) -> list[tuple[str, str, str, 
                     rel_props["years_between"] = round(years_between, 2)
 
                 # Add relationship tuple (FinancialTransaction -> FinancialTransaction)
-                progressions.append((
-                    "FinancialTransaction",
-                    "transaction_id",
-                    f"txn_award_{earlier_award.award_id}",
-                    "FinancialTransaction",
-                    "transaction_id",
-                    f"txn_award_{later_award.award_id}",
-                    "FOLLOWS",
-                    rel_props,
-                ))
+                progressions.append(
+                    (
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{earlier_award.award_id}",
+                        "FinancialTransaction",
+                        "transaction_id",
+                        f"txn_award_{later_award.award_id}",
+                        "FOLLOWS",
+                        rel_props,
+                    )
+                )
 
                 # Only match each Phase I to the first qualifying Phase II
                 # (to avoid multiple FOLLOWS from one award if there are multiple Phase IIs)
@@ -356,10 +411,18 @@ def neo4j_sbir_awards(
         company_nodes_map: dict[str, dict[str, Any]] = {}
         researcher_nodes_map: dict[str, dict[str, Any]] = {}
         institution_nodes_map: dict[str, dict[str, Any]] = {}
-        award_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
-        award_institution_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []
-        researcher_award_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # PARTICIPATED_IN
-        researcher_company_rels: list[tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]] = []  # WORKED_AT
+        award_company_rels: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []
+        award_institution_rels: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []
+        researcher_award_rels: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []  # PARTICIPATED_IN
+        researcher_company_rels: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []  # WORKED_AT
 
         # Track skip reasons
         skipped_zero_amount = 0
@@ -384,7 +447,9 @@ def neo4j_sbir_awards(
                         # Special handling for state - convert full name to 2-letter code
                         if normalized_key == "state" and isinstance(value, str):
                             state_lower = value.strip().lower()
-                            normalized_dict[normalized_key] = STATE_NAME_TO_CODE.get(state_lower, value)
+                            normalized_dict[normalized_key] = STATE_NAME_TO_CODE.get(
+                                state_lower, value
+                            )
                         # Special handling for number_employees - convert float to int
                         # (CSV has "Number Employees", not "Number Of Employees")
                         elif normalized_key == "number_employees" and isinstance(value, float):
@@ -394,7 +459,11 @@ def neo4j_sbir_awards(
                             else:
                                 normalized_dict[normalized_key] = value
                         # Special handling for zip - convert '-' placeholder to None
-                        elif normalized_key == "zip" and isinstance(value, str) and value.strip() == "-":
+                        elif (
+                            normalized_key == "zip"
+                            and isinstance(value, str)
+                            and value.strip() == "-"
+                        ):
                             normalized_dict[normalized_key] = None
                         # Special handling for DUNS - pad short DUNS with leading zeros
                         elif normalized_key == "duns" and isinstance(value, str):
@@ -406,14 +475,24 @@ def neo4j_sbir_awards(
                             else:
                                 normalized_dict[normalized_key] = value
                         # Special handling for boolean fields - convert 'U' (Unknown) to None
-                        elif normalized_key in ("hubzone_owned", "woman_owned", "socially_and_economically_disadvantaged") and value == "U":
+                        elif (
+                            normalized_key
+                            in (
+                                "hubzone_owned",
+                                "woman_owned",
+                                "socially_and_economically_disadvantaged",
+                            )
+                            and value == "U"
+                        ):
                             normalized_dict[normalized_key] = None
                         else:
                             normalized_dict[normalized_key] = value
 
                 # Skip records with zero or missing award amounts (likely cancelled/placeholder awards)
                 award_amount = normalized_dict.get("award_amount")
-                if award_amount is None or (isinstance(award_amount, (int, float)) and award_amount <= 0):
+                if award_amount is None or (
+                    isinstance(award_amount, (int, float)) and award_amount <= 0
+                ):
                     # Try to identify the award for logging
                     tracking = normalized_dict.get("agency_tracking_number", "")
                     contract = normalized_dict.get("contract", "")
@@ -421,7 +500,9 @@ def neo4j_sbir_awards(
                     award_id_hint = f"{tracking[:20] if tracking else contract[:20] if contract else company[:30]}"
 
                     if skipped_zero_amount < 10:  # Only log first 10 to avoid spam
-                        logger.debug(f"Skipping award with zero/missing amount: {award_id_hint} (amount={award_amount})")
+                        logger.debug(
+                            f"Skipping award with zero/missing amount: {award_id_hint} (amount={award_amount})"
+                        )
                     skipped_zero_amount += 1
                     metrics.errors += 1
                     continue
@@ -448,9 +529,15 @@ def neo4j_sbir_awards(
                     "fiscal_year": award.fiscal_year,
                     "principal_investigator": award.principal_investigator,
                     "research_institution": award.research_institution,
-                    "completion_date": award.contract_end_date.isoformat() if award.contract_end_date else None,
-                    "start_date": award.contract_start_date.isoformat() if award.contract_start_date else None,
-                    "end_date": award.contract_end_date.isoformat() if award.contract_end_date else None,
+                    "completion_date": award.contract_end_date.isoformat()
+                    if award.contract_end_date
+                    else None,
+                    "start_date": award.contract_start_date.isoformat()
+                    if award.contract_start_date
+                    else None,
+                    "end_date": award.contract_end_date.isoformat()
+                    if award.contract_end_date
+                    else None,
                 }
 
                 # Add optional fields if present
@@ -468,7 +555,9 @@ def neo4j_sbir_awards(
 
                 # Create Company node with fallback hierarchy: UEI > DUNS > Name
                 # Use canonical mapping from pre-loading deduplication
-                normalized_company_name = normalize_company_name(award.company_name) if award.company_name else ""
+                normalized_company_name = (
+                    normalize_company_name(award.company_name) if award.company_name else ""
+                )
 
                 # Build original key
                 if award.company_uei:
@@ -537,7 +626,9 @@ def neo4j_sbir_awards(
                         if award.company_state:
                             company_props["state"] = award.company_state
                         if award.company_zip:
-                            company_props["postcode"] = award.company_zip  # Use postcode for consistency
+                            company_props["postcode"] = (
+                                award.company_zip
+                            )  # Use postcode for consistency
                         company_nodes_map[company_id] = company_props
                     else:
                         # Company already exists - update with additional identifiers (cross-walking)
@@ -701,7 +792,10 @@ def neo4j_sbir_awards(
         # Load FinancialTransaction nodes (unified Award/Contract model)
         if award_nodes:
             transaction_metrics = client.batch_upsert_nodes(
-                label="FinancialTransaction", key_property="transaction_id", nodes=award_nodes, metrics=metrics
+                label="FinancialTransaction",
+                key_property="transaction_id",
+                nodes=award_nodes,
+                metrics=metrics,
             )
             metrics = transaction_metrics
             context.log.info(f"Loaded {len(award_nodes)} FinancialTransaction nodes (AWARD type)")
@@ -710,7 +804,10 @@ def neo4j_sbir_awards(
         if researcher_nodes_map:
             researcher_nodes_list = list(researcher_nodes_map.values())
             researcher_metrics = client.batch_upsert_nodes(
-                label="Individual", key_property="individual_id", nodes=researcher_nodes_list, metrics=metrics
+                label="Individual",
+                key_property="individual_id",
+                nodes=researcher_nodes_list,
+                metrics=metrics,
             )
             metrics = researcher_metrics
             context.log.info(f"Loaded {len(researcher_nodes_list)} Individual nodes (researchers)")
@@ -719,10 +816,15 @@ def neo4j_sbir_awards(
         if institution_nodes_map:
             institution_nodes_list = list(institution_nodes_map.values())
             institution_metrics = client.batch_upsert_nodes(
-                label="Organization", key_property="organization_id", nodes=institution_nodes_list, metrics=metrics
+                label="Organization",
+                key_property="organization_id",
+                nodes=institution_nodes_list,
+                metrics=metrics,
             )
             metrics = institution_metrics
-            context.log.info(f"Loaded {len(institution_nodes_list)} Organization nodes (research institutions)")
+            context.log.info(
+                f"Loaded {len(institution_nodes_list)} Organization nodes (research institutions)"
+            )
 
         # Create RECIPIENT_OF relationships (FinancialTransaction -> Organization)
         if award_company_rels:
@@ -731,21 +833,25 @@ def neo4j_sbir_awards(
             for rel in award_company_rels:
                 if rel[0] == "Award":
                     # Convert Award relationships to FinancialTransaction
-                    updated_rels.append((
-                        "FinancialTransaction",
-                        "transaction_id",
-                        f"txn_award_{rel[2]}",  # transaction_id from award_id
-                        rel[3],
-                        rel[4],
-                        rel[5],
-                        rel[6],
-                        rel[7],
-                    ))
+                    updated_rels.append(
+                        (
+                            "FinancialTransaction",
+                            "transaction_id",
+                            f"txn_award_{rel[2]}",  # transaction_id from award_id
+                            rel[3],
+                            rel[4],
+                            rel[5],
+                            rel[6],
+                            rel[7],
+                        )
+                    )
                 else:
                     updated_rels.append(rel)
             rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(updated_rels)} RECIPIENT_OF relationships (FinancialTransaction -> Organization)")
+            context.log.info(
+                f"Created {len(updated_rels)} RECIPIENT_OF relationships (FinancialTransaction -> Organization)"
+            )
 
         # Create CONDUCTED_AT relationships (FinancialTransaction -> Organization)
         if award_institution_rels:
@@ -753,21 +859,25 @@ def neo4j_sbir_awards(
             updated_rels = []
             for rel in award_institution_rels:
                 if rel[0] == "Award":
-                    updated_rels.append((
-                        "FinancialTransaction",
-                        "transaction_id",
-                        f"txn_award_{rel[2]}",
-                        rel[3],
-                        rel[4],
-                        rel[5],
-                        rel[6],
-                        rel[7],
-                    ))
+                    updated_rels.append(
+                        (
+                            "FinancialTransaction",
+                            "transaction_id",
+                            f"txn_award_{rel[2]}",
+                            rel[3],
+                            rel[4],
+                            rel[5],
+                            rel[6],
+                            rel[7],
+                        )
+                    )
                 else:
                     updated_rels.append(rel)
             rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(updated_rels)} CONDUCTED_AT relationships (FinancialTransaction -> Organization)")
+            context.log.info(
+                f"Created {len(updated_rels)} CONDUCTED_AT relationships (FinancialTransaction -> Organization)"
+            )
 
         # Create PARTICIPATED_IN relationships (Individual -> FinancialTransaction)
         # Unified relationship replacing RESEARCHED_BY and WORKED_ON
@@ -776,27 +886,35 @@ def neo4j_sbir_awards(
             updated_rels = []
             for rel in researcher_award_rels:
                 if rel[3] == "Award":
-                    updated_rels.append((
-                        rel[0],
-                        rel[1],
-                        rel[2],
-                        "FinancialTransaction",
-                        "transaction_id",
-                        f"txn_award_{rel[5]}",  # transaction_id from award_id
-                        rel[6],
-                        rel[7],
-                    ))
+                    updated_rels.append(
+                        (
+                            rel[0],
+                            rel[1],
+                            rel[2],
+                            "FinancialTransaction",
+                            "transaction_id",
+                            f"txn_award_{rel[5]}",  # transaction_id from award_id
+                            rel[6],
+                            rel[7],
+                        )
+                    )
                 else:
                     updated_rels.append(rel)
             rel_metrics = client.batch_create_relationships(updated_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(updated_rels)} PARTICIPATED_IN relationships (Individual -> FinancialTransaction)")
+            context.log.info(
+                f"Created {len(updated_rels)} PARTICIPATED_IN relationships (Individual -> FinancialTransaction)"
+            )
 
         # Create WORKED_AT relationships (Individual -> Organization)
         if researcher_company_rels:
-            rel_metrics = client.batch_create_relationships(researcher_company_rels, metrics=metrics)
+            rel_metrics = client.batch_create_relationships(
+                researcher_company_rels, metrics=metrics
+            )
             metrics = rel_metrics
-            context.log.info(f"Created {len(researcher_company_rels)} WORKED_AT relationships (Individual -> Organization)")
+            context.log.info(
+                f"Created {len(researcher_company_rels)} WORKED_AT relationships (Individual -> Organization)"
+            )
 
         # Create FUNDED_BY relationships (Award -> Organization {agency})
         # Extract unique agencies and create Organization nodes for them
@@ -848,12 +966,14 @@ def neo4j_sbir_awards(
                         sub_agency_orgs_map[sub_organization_id] = sub_agency_props
 
                     # Track SUBSIDIARY_OF relationship (sub-agency -> parent agency)
-                    agency_subsidiary_pairs.append((
-                        "organization_id",
-                        sub_organization_id,
-                        "organization_id",
-                        parent_organization_id,
-                    ))
+                    agency_subsidiary_pairs.append(
+                        (
+                            "organization_id",
+                            sub_organization_id,
+                            "organization_id",
+                            parent_organization_id,
+                        )
+                    )
                     target_organization_id = sub_organization_id
 
                 # Create FUNDED_BY relationship (to parent agency or sub-agency)
@@ -874,25 +994,37 @@ def neo4j_sbir_awards(
         if agency_orgs_map:
             agency_nodes_list = list(agency_orgs_map.values())
             agency_metrics = client.batch_upsert_nodes(
-                label="Organization", key_property="organization_id", nodes=agency_nodes_list, metrics=metrics
+                label="Organization",
+                key_property="organization_id",
+                nodes=agency_nodes_list,
+                metrics=metrics,
             )
             metrics = agency_metrics
-            context.log.info(f"Loaded {len(agency_nodes_list)} Organization nodes (parent agencies)")
+            context.log.info(
+                f"Loaded {len(agency_nodes_list)} Organization nodes (parent agencies)"
+            )
 
         # Load Sub-Agency Organization nodes
         if sub_agency_orgs_map:
             sub_agency_nodes_list = list(sub_agency_orgs_map.values())
             sub_agency_metrics = client.batch_upsert_nodes(
-                label="Organization", key_property="organization_id", nodes=sub_agency_nodes_list, metrics=metrics
+                label="Organization",
+                key_property="organization_id",
+                nodes=sub_agency_nodes_list,
+                metrics=metrics,
             )
             metrics = sub_agency_metrics
-            context.log.info(f"Loaded {len(sub_agency_nodes_list)} Organization nodes (sub-agencies)")
+            context.log.info(
+                f"Loaded {len(sub_agency_nodes_list)} Organization nodes (sub-agencies)"
+            )
 
         # Create FUNDED_BY relationships
         if award_agency_rels:
             rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)")
+            context.log.info(
+                f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)"
+            )
 
         # Create SUBSIDIARY_OF relationships (sub-agency -> parent agency)
         if agency_subsidiary_pairs:
@@ -903,7 +1035,9 @@ def neo4j_sbir_awards(
                 metrics=metrics,
             )
             metrics = org_metrics
-            context.log.info(f"Created {len(agency_subsidiary_pairs)} SUBSIDIARY_OF relationships (sub-agency -> parent agency)")
+            context.log.info(
+                f"Created {len(agency_subsidiary_pairs)} SUBSIDIARY_OF relationships (sub-agency -> parent agency)"
+            )
 
         # Detect and create FOLLOWS relationships (FinancialTransaction -> FinancialTransaction for phase progressions)
         context.log.info("Detecting award phase progressions...")
@@ -911,7 +1045,9 @@ def neo4j_sbir_awards(
         if follows_rels:
             rel_metrics = client.batch_create_relationships(follows_rels, metrics=metrics)
             metrics = rel_metrics
-            context.log.info(f"Created {len(follows_rels)} FOLLOWS relationships for award progressions (FinancialTransaction -> FinancialTransaction)")
+            context.log.info(
+                f"Created {len(follows_rels)} FOLLOWS relationships for award progressions (FinancialTransaction -> FinancialTransaction)"
+            )
         else:
             context.log.info("No award progressions detected")
 
@@ -926,28 +1062,50 @@ def neo4j_sbir_awards(
         logger.info("Neo4j SBIR Awards Loading Summary")
         logger.info("=" * 80)
         logger.info(f"Total rows processed: {total_rows}")
-        logger.info(f"Successfully processed: {successfully_processed} ({successfully_processed/total_rows*100:.1f}%)")
-        logger.info(f"Failed to process: {total_failed} ({total_failed/total_rows*100:.1f}%)")
+        logger.info(
+            f"Successfully processed: {successfully_processed} ({successfully_processed / total_rows * 100:.1f}%)"
+        )
+        logger.info(f"Failed to process: {total_failed} ({total_failed / total_rows * 100:.1f}%)")
         logger.info("")
         logger.info("Processing Issues:")
-        logger.info(f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount/total_rows*100:.1f}%)")
-        logger.info(f"  • Date validation errors: {date_validation_errors} ({date_validation_errors/total_rows*100:.1f}%)")
-        logger.info(f"  • Other validation errors: {validation_errors} ({validation_errors/total_rows*100:.1f}%)")
-        logger.info(f"  • Awards without any company identifier: {skipped_no_company_id} ({skipped_no_company_id/total_rows*100:.1f}%)")
+        logger.info(
+            f"  • Zero/missing award amount: {skipped_zero_amount} ({skipped_zero_amount / total_rows * 100:.1f}%)"
+        )
+        logger.info(
+            f"  • Date validation errors: {date_validation_errors} ({date_validation_errors / total_rows * 100:.1f}%)"
+        )
+        logger.info(
+            f"  • Other validation errors: {validation_errors} ({validation_errors / total_rows * 100:.1f}%)"
+        )
+        logger.info(
+            f"  • Awards without any company identifier: {skipped_no_company_id} ({skipped_no_company_id / total_rows * 100:.1f}%)"
+        )
         logger.info("")
         logger.info("Nodes Created/Updated:")
         logger.info(f"  • Awards: {len(award_nodes)} nodes")
         logger.info(f"  • Companies: {len(company_nodes_map)} unique nodes")
-        logger.info(f"    - Identified by name only: {companies_by_name_only} ({companies_by_name_only/len(company_nodes_map)*100:.1f}% of companies)")
+        logger.info(
+            f"    - Identified by name only: {companies_by_name_only} ({companies_by_name_only / len(company_nodes_map) * 100:.1f}% of companies)"
+        )
         logger.info(f"  • Researchers: {len(researcher_nodes_map)} unique nodes")
         logger.info(f"  • Research Institutions: {len(institution_nodes_map)} unique nodes")
         logger.info("")
         logger.info("Relationships Created:")
-        logger.info(f"  • RECIPIENT_OF (FinancialTransaction → Organization): {len(award_company_rels)} relationships")
-        logger.info(f"  • PARTICIPATED_IN (Individual → Award): {len(researcher_award_rels)} relationships")
-        logger.info(f"  • CONDUCTED_AT (Award → Organization): {len(award_institution_rels)} relationships")
-        logger.info(f"  • WORKED_AT (Individual → Organization): {len(researcher_company_rels)} relationships")
-        logger.info(f"  • FOLLOWS (FinancialTransaction → FinancialTransaction): {len(follows_rels)} phase progressions")
+        logger.info(
+            f"  • RECIPIENT_OF (FinancialTransaction → Organization): {len(award_company_rels)} relationships"
+        )
+        logger.info(
+            f"  • PARTICIPATED_IN (Individual → Award): {len(researcher_award_rels)} relationships"
+        )
+        logger.info(
+            f"  • CONDUCTED_AT (Award → Organization): {len(award_institution_rels)} relationships"
+        )
+        logger.info(
+            f"  • WORKED_AT (Individual → Organization): {len(researcher_company_rels)} relationships"
+        )
+        logger.info(
+            f"  • FOLLOWS (FinancialTransaction → FinancialTransaction): {len(follows_rels)} phase progressions"
+        )
         logger.info("=" * 80)
 
         duration = time.time() - start_time
@@ -1057,8 +1215,13 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description=f"✗ Too many load errors: {errors}/{total_rows} ({error_rate*100:.1f}% > {error_rate_threshold*100:.0f}% threshold)",
-            metadata={"errors": errors, "total_rows": total_rows, "error_rate": error_rate, "threshold": error_rate_threshold},
+            description=f"✗ Too many load errors: {errors}/{total_rows} ({error_rate * 100:.1f}% > {error_rate_threshold * 100:.0f}% threshold)",
+            metadata={
+                "errors": errors,
+                "total_rows": total_rows,
+                "error_rate": error_rate,
+                "threshold": error_rate_threshold,
+            },
         )
 
     if awards_loaded == 0:
@@ -1072,7 +1235,7 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     return AssetCheckResult(
         passed=True,
         severity=AssetCheckSeverity.WARN,
-        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions ({error_rate*100:.1f}% error rate)",
+        description=f"✓ Neo4j load successful: {awards_loaded} awards, {neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, {neo4j_sbir_awards.get('institutions_loaded', 0)} institutions ({error_rate * 100:.1f}% error rate)",
         metadata={
             "awards_loaded": awards_loaded,
             "companies_loaded": neo4j_sbir_awards.get("companies_loaded", 0),
@@ -1083,4 +1246,3 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
             "error_rate": error_rate,
         },
     )
-

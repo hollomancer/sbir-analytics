@@ -101,6 +101,7 @@ def retry_with_backoff(
     Returns:
         Decorated function with retry logic
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
@@ -132,6 +133,7 @@ def retry_with_backoff(
             raise last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -160,4 +162,3 @@ def safe_execute(
         context_str = f"[{context}] " if context else ""
         logger.warning(f"{context_str}Error executing {func.__name__}: {e}")
         return default
-

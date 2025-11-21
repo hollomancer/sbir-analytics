@@ -457,7 +457,11 @@ class TestDuckDBClientPagination:
 
         # Import incrementally
         success = client.import_csv_incremental(
-            csv_path=csv_path, table_name="inc_table", batch_size=chunk_size, delimiter=",", header=True
+            csv_path=csv_path,
+            table_name="inc_table",
+            batch_size=chunk_size,
+            delimiter=",",
+            header=True,
         )
 
         assert success is True
@@ -492,14 +496,19 @@ class TestDuckDBClientPagination:
         client = DuckDBClient(database_path=str(db_path))
 
         # First import - create table
-        ok = client.import_csv_incremental(csv_path=csv_path, table_name="append_table", batch_size=20)
+        ok = client.import_csv_incremental(
+            csv_path=csv_path, table_name="append_table", batch_size=20
+        )
         assert ok is True
         info1 = client.get_table_info("append_table")
         assert int(info1["row_count"]) == single_rows
 
         # Second import - append same CSV again
         ok2 = client.import_csv_incremental(
-            csv_path=csv_path, table_name="append_table", batch_size=20, create_table_if_missing=False
+            csv_path=csv_path,
+            table_name="append_table",
+            batch_size=20,
+            create_table_if_missing=False,
         )
         assert ok2 is True
         info2 = client.get_table_info("append_table")

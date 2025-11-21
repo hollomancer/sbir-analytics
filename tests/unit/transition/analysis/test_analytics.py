@@ -20,7 +20,6 @@ from src.transition.analysis.analytics import (
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def analytics():
     """Default TransitionAnalytics instance."""

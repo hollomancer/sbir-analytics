@@ -184,12 +184,16 @@ class PaECTERClient:
         else:
             texts_to_process = texts
 
-        logger.debug(f"Generating embeddings for {len(texts_to_process)} texts using {self.inference_mode} mode")
+        logger.debug(
+            f"Generating embeddings for {len(texts_to_process)} texts using {self.inference_mode} mode"
+        )
         start_time = time.time()
 
         try:
             if self.inference_mode == "api":
-                new_embeddings = self._generate_embeddings_api(texts_to_process, batch_size, normalize)
+                new_embeddings = self._generate_embeddings_api(
+                    texts_to_process, batch_size, normalize
+                )
             else:
                 new_embeddings = self._generate_embeddings_local(
                     texts_to_process, batch_size, show_progress_bar, normalize
@@ -212,7 +216,7 @@ class PaECTERClient:
             generation_time = time.time() - start_time
             logger.info(
                 f"Generated {len(texts_to_process)} embeddings in {generation_time:.2f}s "
-                f"({len(texts_to_process)/generation_time:.1f} embeddings/s if generation_time > 0 else 0) "
+                f"({len(texts_to_process) / generation_time:.1f} embeddings/s if generation_time > 0 else 0) "
                 f"[{self.inference_mode} mode]"
             )
 
@@ -254,7 +258,9 @@ class PaECTERClient:
 
             all_embeddings.append(batch_embeddings)
 
-            logger.debug(f"Processed batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+            logger.debug(
+                f"Processed batch {i // batch_size + 1}/{(len(texts) + batch_size - 1) // batch_size}"
+            )
 
         embeddings = np.vstack(all_embeddings)
 
@@ -278,9 +284,7 @@ class PaECTERClient:
         )
         return embeddings  # type: ignore
 
-    def compute_similarity(
-        self, embeddings1: np.ndarray, embeddings2: np.ndarray
-    ) -> np.ndarray:
+    def compute_similarity(self, embeddings1: np.ndarray, embeddings2: np.ndarray) -> np.ndarray:
         """Compute cosine similarity between two sets of embeddings.
 
         Args:

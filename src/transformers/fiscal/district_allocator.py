@@ -64,7 +64,7 @@ def allocate_state_impacts_to_districts(
 
     logger.info(
         f"Using {len(awards_with_districts)}/{len(awards_with_districts_df)} "
-        f"awards with resolved districts ({len(awards_with_districts)/len(awards_with_districts_df):.1%})"
+        f"awards with resolved districts ({len(awards_with_districts) / len(awards_with_districts_df):.1%})"
     )
 
     # Map NAICS to BEA if not already present
@@ -167,9 +167,7 @@ def allocate_state_impacts_to_districts(
     district_impacts["allocation_confidence"] = (
         district_impacts.get("avg_district_resolution_confidence", 0.8)
         * district_impacts.get("confidence", 0.85)
-        * (
-            0.7 + 0.3 * district_impacts["allocation_share"]
-        )  # Penalize very small allocations
+        * (0.7 + 0.3 * district_impacts["allocation_share"])  # Penalize very small allocations
     )
 
     # Select final columns
@@ -195,9 +193,7 @@ def allocate_state_impacts_to_districts(
         if col in district_impacts.columns:
             output_columns.append(col)
 
-    final_df = district_impacts[
-        [c for c in output_columns if c in district_impacts.columns]
-    ].copy()
+    final_df = district_impacts[[c for c in output_columns if c in district_impacts.columns]].copy()
 
     logger.info(f"Allocated impacts to {len(final_df)} district/sector/year combinations")
     logger.info(

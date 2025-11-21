@@ -50,7 +50,9 @@ class ConfigAccessor:
         return current if current is not None else default
 
     @staticmethod
-    def get_nested_dict(config: PipelineConfig, path: str, default: dict[str, Any] | None = None) -> dict[str, Any]:
+    def get_nested_dict(
+        config: PipelineConfig, path: str, default: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Safely access nested config dictionary.
 
         Args:
@@ -77,4 +79,3 @@ class ConfigAccessor:
         if hasattr(result, "dict"):
             return result.dict()
         return default or {}
-

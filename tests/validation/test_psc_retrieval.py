@@ -117,6 +117,7 @@ def test_psc_retrieval():
     except Exception as e:
         print(f"❌ Error during test: {e}")
         import traceback
+
         traceback.print_exc()
 
 

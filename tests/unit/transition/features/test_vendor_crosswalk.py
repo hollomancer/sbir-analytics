@@ -27,7 +27,6 @@ from src.transition.features.vendor_crosswalk import (
 pytestmark = pytest.mark.fast
 
 
-
 class TestUtilityFunctions:
     """Tests for utility functions."""
 

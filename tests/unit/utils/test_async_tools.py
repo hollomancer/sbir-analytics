@@ -62,4 +62,3 @@ class TestRunSync:
         with patch("asyncio.run", side_effect=RuntimeError("Different error")):
             with pytest.raises(RuntimeError, match="Different error"):
                 run_sync(simple_coro(1))
-

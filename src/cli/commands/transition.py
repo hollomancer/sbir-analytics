@@ -84,9 +84,7 @@ def run_transition_mvp(
 
     context: CommandContext = ctx.obj
 
-    default_contract_path = Path(
-        context.config.paths.resolve_path("transition_contracts_output")
-    )
+    default_contract_path = Path(context.config.paths.resolve_path("transition_contracts_output"))
     seed_path = contracts_path or default_contract_path
 
     if seed:
@@ -114,15 +112,11 @@ def run_transition_mvp(
                 os.environ[env_key] = previous_value
 
     if result.status != "success":
-        context.console.print(
-            f"[red]Transition MVP run failed (run_id={result.run_id})[/red]"
-        )
+        context.console.print(f"[red]Transition MVP run failed (run_id={result.run_id})[/red]")
         raise typer.Exit(code=1)
 
     if verbose:
-        context.console.print(
-            f"[green]Transition MVP completed (run_id={result.run_id})[/green]"
-        )
+        context.console.print(f"[green]Transition MVP completed (run_id={result.run_id})[/green]")
 
 
 def register_command(main_app: typer.Typer) -> None:

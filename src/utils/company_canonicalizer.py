@@ -118,4 +118,3 @@ def canonicalize_companies_from_awards(
         canonical_groups[canonical_id].append(original_key)
 
     return canonical_map
-

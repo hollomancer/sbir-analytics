@@ -235,4 +235,3 @@ class TestSafeExecute:
         result = safe_execute(test_func, 5, y=3)
 
         assert result == 8
-

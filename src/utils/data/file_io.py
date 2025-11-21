@@ -150,7 +150,14 @@ def write_json_atomic(
 
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, indent=indent, sort_keys=sort_keys, ensure_ascii=ensure_ascii, default=default)
+            json.dump(
+                data,
+                fh,
+                indent=indent,
+                sort_keys=sort_keys,
+                ensure_ascii=ensure_ascii,
+                default=default,
+            )
             fh.flush()
             os.fsync(fh.fileno())
 

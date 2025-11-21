@@ -116,6 +116,7 @@ class TestConfigAccessor:
 
     def test_get_nested_dict_legacy_dict_method(self):
         """Test get_nested_dict from object with dict() method."""
+
         class LegacyObj:
             def dict(self):
                 return {"use_local": True}
@@ -135,4 +136,3 @@ class TestConfigAccessor:
 
         result = ConfigAccessor.get_nested_dict(config, "ml.paecter", {})
         assert result == {}
-

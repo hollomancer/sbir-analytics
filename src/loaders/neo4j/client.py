@@ -266,7 +266,7 @@ class Neo4jClient:
         total_batches = (len(nodes) + batch_size - 1) // batch_size
 
         logger.info(
-            f"Upserting {len(nodes)} {label} nodes in {total_batches} batches " f"of {batch_size}"
+            f"Upserting {len(nodes)} {label} nodes in {total_batches} batches of {batch_size}"
         )
 
         with self.session() as session:
@@ -435,7 +435,9 @@ class Neo4jClient:
                         merge_list = []
                         for new_id, existing_id in nodes_to_merge.items():
                             # Find the node data
-                            node_data = next(n for n in valid_batch if n["organization_id"] == new_id)
+                            node_data = next(
+                                n for n in valid_batch if n["organization_id"] == new_id
+                            )
                             # Remove organization_id and internal fields to avoid overwriting
                             props = {
                                 k: v
@@ -534,9 +536,7 @@ class Neo4jClient:
                             RETURN count(duplicate) as deleted_count
                             """
                             try:
-                                session.run(
-                                    move_rels_query, new_id=new_id, existing_id=existing_id
-                                )
+                                session.run(move_rels_query, new_id=new_id, existing_id=existing_id)
                             except Exception as e:
                                 logger.warning(f"Failed to delete duplicate node {new_id}: {e}")
 
@@ -737,8 +737,7 @@ class Neo4jClient:
                         tx.commit()
 
                     logger.debug(
-                        f"Batch {batch_num}/{total_batches} committed "
-                        f"({len(batch)} relationships)"
+                        f"Batch {batch_num}/{total_batches} committed ({len(batch)} relationships)"
                     )
 
                 except Exception as e:
@@ -747,7 +746,7 @@ class Neo4jClient:
 
         total_created = sum(metrics.relationships_created.values())
         logger.info(
-            f"Completed relationship creation: " f"{total_created} created, {metrics.errors} errors"
+            f"Completed relationship creation: {total_created} created, {metrics.errors} errors"
         )
 
         return metrics

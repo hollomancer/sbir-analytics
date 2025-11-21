@@ -4,7 +4,6 @@ This module processes USAspending PostgreSQL database dumps stored in S3
 to extract and enrich SBIR award data with transaction-level details.
 """
 
-
 import pandas as pd
 from dagster import AssetExecutionContext, MetadataValue, Output, asset
 from loguru import logger
@@ -62,9 +61,7 @@ def sbir_relevant_usaspending_transactions(
 
     if not dump_path:
         # FALLBACK: Try API if S3 dump not available
-        context.log.warning(
-            "No S3 dump found. Attempting API fallback (limited functionality)..."
-        )
+        context.log.warning("No S3 dump found. Attempting API fallback (limited functionality)...")
         # Note: API fallback would need custom implementation for transaction queries
         # For now, fail with clear error
         raise ExtractionError(
@@ -163,8 +160,8 @@ def sbir_relevant_usaspending_transactions(
     WHERE
         -- Filter by SBIR agencies
         (
-            awarding_agency_name IN ({','.join(f"'{a}'" for a in sbir_agencies)})
-            OR funding_agency_name IN ({','.join(f"'{a}'" for a in sbir_agencies)})
+            awarding_agency_name IN ({",".join(f"'{a}'" for a in sbir_agencies)})
+            OR funding_agency_name IN ({",".join(f"'{a}'" for a in sbir_agencies)})
         )
         -- Filter by research-related NAICS codes (54171X = R&D in sciences)
         AND (
@@ -200,16 +197,22 @@ def sbir_relevant_usaspending_transactions(
         return Output(value=df, metadata={"row_count": 0})
 
     # Compute metadata
-    total_obligation = df["federal_action_obligation"].sum() if "federal_action_obligation" in df.columns else 0
+    total_obligation = (
+        df["federal_action_obligation"].sum() if "federal_action_obligation" in df.columns else 0
+    )
     unique_recipients = df["recipient_uei"].nunique() if "recipient_uei" in df.columns else 0
-    unique_agencies = df["awarding_agency_name"].nunique() if "awarding_agency_name" in df.columns else 0
+    unique_agencies = (
+        df["awarding_agency_name"].nunique() if "awarding_agency_name" in df.columns else 0
+    )
 
     metadata = {
         "row_count": len(df),
         "unique_recipients": unique_recipients,
         "unique_agencies": unique_agencies,
         "total_obligation": f"${total_obligation:,.2f}",
-        "date_range": f"{df['action_date'].min()} to {df['action_date'].max()}" if "action_date" in df.columns else "N/A",
+        "date_range": f"{df['action_date'].min()} to {df['action_date'].max()}"
+        if "action_date" in df.columns
+        else "N/A",
         "preview": MetadataValue.md(df.head(10).to_markdown()),
     }
 
@@ -313,7 +316,7 @@ def sbir_company_usaspending_recipients(
 
     # Query recipients matching SBIR companies
     if uei_values:
-        uei_list = ','.join(f"'{v}'" for v in uei_values)
+        uei_list = ",".join(f"'{v}'" for v in uei_values)
         query = f"""
         SELECT DISTINCT
             recipient_hash,
@@ -328,7 +331,7 @@ def sbir_company_usaspending_recipients(
             business_types_description
         FROM {physical_table}
         WHERE recipient_uei IN ({uei_list})
-           OR recipient_duns IN ({','.join(f"'{v}'" for v in duns_values) if duns_values else "''"})
+           OR recipient_duns IN ({",".join(f"'{v}'" for v in duns_values) if duns_values else "''"})
         LIMIT 100000
         """
 

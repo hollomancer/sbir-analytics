@@ -239,9 +239,7 @@ class PerformanceMonitor:
             if summary
             else 0.0
         )
-        avg_operation_duration = (
-            (total_duration / total_operations) if total_operations else 0.0
-        )
+        avg_operation_duration = (total_duration / total_operations) if total_operations else 0.0
 
         return {
             "total_operations": total_operations,

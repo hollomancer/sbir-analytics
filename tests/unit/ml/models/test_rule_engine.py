@@ -30,6 +30,7 @@ def rule_engine_config():
         },
     }
 
+
 @pytest.fixture
 def cet_negative_keywords():
     """
@@ -40,12 +41,14 @@ def cet_negative_keywords():
         "AI_ML": ["artificial insemination"],
     }
 
+
 @pytest.fixture
 def rule_engine(rule_engine_config, cet_negative_keywords):
     """
     Provides a RuleEngine instance.
     """
     return RuleEngine(rule_engine_config, cet_negative_keywords)
+
 
 def test_apply_negative_keyword_penalty(rule_engine):
     scores = {"quantum_computing": 80.0, "AI_ML": 70.0}
@@ -55,6 +58,7 @@ def test_apply_negative_keyword_penalty(rule_engine):
 
     assert adjusted_scores["quantum_computing"] == 80.0 * 0.7
     assert adjusted_scores["AI_ML"] == 70.0
+
 
 def test_apply_agency_branch_priors(rule_engine):
     scores = {"space_systems": 50.0, "biotechnology": 60.0, "AI_ML": 70.0}
@@ -77,6 +81,7 @@ def test_apply_agency_branch_priors(rule_engine):
     assert adjusted_scores["biotechnology"] == 75.0
     assert adjusted_scores["AI_ML"] == 75.0
 
+
 def test_apply_context_rules(rule_engine):
     scores = {"AI_ML": 60.0, "biotechnology": 70.0}
     text = "This document discusses deep learning and neural networks for crispr."
@@ -85,6 +90,7 @@ def test_apply_context_rules(rule_engine):
 
     assert adjusted_scores["AI_ML"] == 70.0
     assert adjusted_scores["biotechnology"] == 90.0
+
 
 def test_apply_all_rules(rule_engine):
     scores = {"AI_ML": 60.0, "quantum_computing": 80.0}

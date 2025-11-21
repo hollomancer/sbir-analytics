@@ -118,4 +118,3 @@ class ColumnFinder:
         for key, patterns in pattern_map.items():
             result[key] = ColumnFinder.find_column_by_patterns(df, patterns)
         return result
-

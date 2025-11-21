@@ -100,4 +100,3 @@ class TestEnrichmentFreshnessMetrics:
 
         # Should be able to parse as ISO datetime
         datetime.fromisoformat(metrics.timestamp)
-

@@ -112,7 +112,9 @@ class USAspendingCache(BaseDataFrameCache):
             cleared += 1
 
         if cleared > 0:
-            logger.info(f"Cleared {cleared} cache entries ({'expired only' if expired_only else 'all'})")
+            logger.info(
+                f"Cleared {cleared} cache entries ({'expired only' if expired_only else 'all'})"
+            )
         return cleared
 
     def get_stats(self) -> dict[str, Any]:
@@ -158,4 +160,3 @@ class USAspendingCache(BaseDataFrameCache):
             "cache_dir": str(self.cache_dir),
             "ttl_hours": self.ttl_hours,
         }
-

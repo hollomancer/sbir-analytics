@@ -350,9 +350,9 @@ class TestFiscalPipelineIntegration:
             float(v) if isinstance(v, Decimal | int | float) else 0.0
             for v in impacts_df["wage_impact"].fillna(0.0)
         )
-        assert (
-            final_wage_sum > 0.0
-        ), f"Wage impacts should be non-zero after fix, got sum={final_wage_sum}"
+        assert final_wage_sum > 0.0, (
+            f"Wage impacts should be non-zero after fix, got sum={final_wage_sum}"
+        )
 
         # Step 6: Test tax_base_components
         components_result = fiscal_assets.tax_base_components(context, impacts_df)

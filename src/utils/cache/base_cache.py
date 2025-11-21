@@ -253,4 +253,3 @@ class BaseDataFrameCache(ABC):  # noqa: B024
             Default cache type string
         """
         return "default"
-

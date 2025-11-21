@@ -70,15 +70,15 @@ def test_parse_contract_child_sets_parent_fields(extractor: ContractExtractor) -
     assert contract.parent_contract_id == parent_piid
     assert contract.parent_contract_agency == parent_agency
     assert contract.contract_award_type == "A"
-    assert (
-        contract.metadata.get("parent_relationship_type") == "child_of_idv"
-    ), "Child contracts should be labeled as such in metadata"
-    assert (
-        contract.metadata.get("parent_idv_piid") == parent_piid
-    ), "Metadata should carry parent PIID for downstream processing"
-    assert (
-        contract.metadata.get("referenced_idv_agency") == parent_agency
-    ), "Metadata should capture the referenced agency identifier"
+    assert contract.metadata.get("parent_relationship_type") == "child_of_idv", (
+        "Child contracts should be labeled as such in metadata"
+    )
+    assert contract.metadata.get("parent_idv_piid") == parent_piid, (
+        "Metadata should carry parent PIID for downstream processing"
+    )
+    assert contract.metadata.get("referenced_idv_agency") == parent_agency, (
+        "Metadata should capture the referenced agency identifier"
+    )
 
     # Stats should record the parent-child relationship
     assert extractor.stats["parent_relationships"] == 1
@@ -100,15 +100,15 @@ def test_parse_idv_parent_contract_classification(extractor: ContractExtractor) 
 
     assert contract is not None, "Expected contract to be parsed successfully"
     assert contract.parent_contract_id is None, "Parent contracts should not report a parent ID"
-    assert (
-        contract.contract_award_type == "IDV-B"
-    ), "Contract award type should be preserved on the model"
-    assert (
-        contract.metadata.get("parent_relationship_type") == "idv_parent"
-    ), "Metadata should flag this record as an IDV parent"
-    assert (
-        contract.metadata.get("parent_idv_piid") is None
-    ), "Parent records should not carry a referenced parent PIID"
+    assert contract.contract_award_type == "IDV-B", (
+        "Contract award type should be preserved on the model"
+    )
+    assert contract.metadata.get("parent_relationship_type") == "idv_parent", (
+        "Metadata should flag this record as an IDV parent"
+    )
+    assert contract.metadata.get("parent_idv_piid") is None, (
+        "Parent records should not carry a referenced parent PIID"
+    )
 
     # Stats should record the IDV parent classification without counting a child relationship
     assert extractor.stats["idv_parents"] == 1

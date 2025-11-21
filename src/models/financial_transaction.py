@@ -55,8 +55,12 @@ class FinancialTransaction(BaseModel):
     naics_description: str | None = Field(None, description="NAICS description")
 
     # Award-specific (nullable)
-    award_id: str | None = Field(None, description="Legacy Award identifier for backward compatibility")
-    phase: str | None = Field(None, description="Award phase: PHASE_I, PHASE_II, PHASE_IIB, PHASE_III")
+    award_id: str | None = Field(
+        None, description="Legacy Award identifier for backward compatibility"
+    )
+    phase: str | None = Field(
+        None, description="Award phase: PHASE_I, PHASE_II, PHASE_IIB, PHASE_III"
+    )
     program: str | None = Field(None, description="Program type: SBIR or STTR")
     principal_investigator: str | None = Field(None, description="Principal Investigator name")
     research_institution: str | None = Field(None, description="Research institution")
@@ -65,18 +69,28 @@ class FinancialTransaction(BaseModel):
     fiscal_year: int | None = Field(None, description="Fiscal year")
 
     # Contract-specific (nullable)
-    contract_id: str | None = Field(None, description="Legacy Contract identifier for backward compatibility")
+    contract_id: str | None = Field(
+        None, description="Legacy Contract identifier for backward compatibility"
+    )
     piid: str | None = Field(None, description="Procurement Instrument Identifier")
     fain: str | None = Field(None, description="Federal Award Identification Number")
-    competition_type: str | None = Field(None, description="Competition type: SOLE_SOURCE, LIMITED, FULL_AND_OPEN")
+    competition_type: str | None = Field(
+        None, description="Competition type: SOLE_SOURCE, LIMITED, FULL_AND_OPEN"
+    )
     psc_code: str | None = Field(None, description="Product/Service Code")
     place_of_performance: str | None = Field(None, description="Place of performance location")
     contract_type: str | None = Field(None, description="Contract type code")
-    parent_uei: str | None = Field(None, description="Parent organization UEI (for subsidiary relationships)")
+    parent_uei: str | None = Field(
+        None, description="Parent organization UEI (for subsidiary relationships)"
+    )
 
     # Metadata
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow, description="Last update timestamp")
+    created_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Creation timestamp"
+    )
+    updated_at: datetime | None = Field(
+        default_factory=datetime.utcnow, description="Last update timestamp"
+    )
 
     @field_validator("amount")
     @classmethod
@@ -101,7 +115,9 @@ class FinancialTransaction(BaseModel):
         today = date_cls.today()
         max_future_date = date_cls(today.year + 2, today.month, today.day)
         if v > max_future_date:
-            logger.warning(f"Transaction date ({v}) is far in future (max expected: {max_future_date})")
+            logger.warning(
+                f"Transaction date ({v}) is far in future (max expected: {max_future_date})"
+            )
         return v
 
     @field_validator("recipient_uei")
@@ -131,4 +147,3 @@ class FinancialTransaction(BaseModel):
         return cleaned.upper()
 
     model_config = ConfigDict(validate_assignment=True)
-

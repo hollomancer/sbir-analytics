@@ -31,9 +31,9 @@ def test_iter_job_modules_discovers_job_packages():
 
     modules = assets_pkg.iter_job_modules()
     assert modules, "Expected job modules to be discovered"
-    assert all(
-        isinstance(module, types.ModuleType) for module in modules
-    ), "Discovery should return module objects"
+    assert all(isinstance(module, types.ModuleType) for module in modules), (
+        "Discovery should return module objects"
+    )
 
     module_names = {module.__name__ for module in modules}
     assert "src.assets.jobs.transition_job" in module_names

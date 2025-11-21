@@ -50,7 +50,6 @@ from src.ml.train.patent_training import (  # noqa: F401
 pytestmark = pytest.mark.fast
 
 
-
 def make_feature_vectors():  # type: ignore[no-untyped-def]
     records = [
         {

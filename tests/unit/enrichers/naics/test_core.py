@@ -18,7 +18,6 @@ from src.enrichers.naics.core import NAICS_RE, RECIPIENT_UEI_RE, NAICSEnricher, 
 pytestmark = pytest.mark.fast
 
 
-
 @pytest.fixture
 def sample_config(tmp_path):
     """Sample NAICS enricher config."""
@@ -385,7 +384,7 @@ class TestIndexLoading:
         enricher.config.zip_path = str(zip_path)
         enricher.config.cache_path = str(tmp_path / "cache.parquet")
 
-        lines = [f"{100000+i} CONT {541511+i} UEITEST{i}" for i in range(10)]
+        lines = [f"{100000 + i} CONT {541511 + i} UEITEST{i}" for i in range(10)]
 
         with zipfile.ZipFile(zip_path, "w") as zf:
             for i in range(5):

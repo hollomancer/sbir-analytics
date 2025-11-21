@@ -242,5 +242,7 @@ class TestSBIRFiscalImpactCalculator:
         assert "total_jobs_created" in summary.columns
 
         # Check descriptions added
-        assert "Professional" in summary[summary["bea_sector"] == "54"]["sector_description"].iloc[0]
+        assert (
+            "Professional" in summary[summary["bea_sector"] == "54"]["sector_description"].iloc[0]
+        )
         assert "Health" in summary[summary["bea_sector"] == "62"]["sector_description"].iloc[0]

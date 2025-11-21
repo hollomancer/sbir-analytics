@@ -111,7 +111,7 @@ def test_stream_assignments_from_csv(tmp_path):
 
     # If construction failed the extractor yields a dict with '_error'
     assert not (isinstance(assignment, dict) and "_error" in assignment), (
-        "Extractor produced an error record instead of a PatentAssignment: " f"{assignment}"
+        f"Extractor produced an error record instead of a PatentAssignment: {assignment}"
     )
 
     assert isinstance(assignment, PatentAssignment), "Result must be a PatentAssignment instance"

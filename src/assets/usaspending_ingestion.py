@@ -91,17 +91,14 @@ def _import_usaspending_table(
 
     # FALLBACK: If dump failed, try API (for recipient_lookup only)
     if not dump_success and table_name == "raw_usaspending_recipients":
-        context.log.warning(
-            "S3 dump unavailable, falling back to USAspending API (FALLBACK)"
-        )
+        context.log.warning("S3 dump unavailable, falling back to USAspending API (FALLBACK)")
         try:
             # Note: API fallback would need to be implemented to fetch recipients
             # from ..enrichers.usaspending import USAspendingAPIClient
             # Note: API fallback would need to be implemented to fetch recipients
             # For now, we'll raise an error to indicate API fallback is needed
             context.log.error(
-                "API fallback not yet implemented for bulk recipient data. "
-                "S3 dump is required."
+                "API fallback not yet implemented for bulk recipient data. S3 dump is required."
             )
             raise ExtractionError(
                 "USAspending data unavailable: S3 dump failed and API fallback not implemented for bulk data",
