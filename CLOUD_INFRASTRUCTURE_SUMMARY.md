@@ -230,7 +230,8 @@ locations:
 **Base Configuration:** `/config/base.yaml`
 - Default settings (version controlled)
 - 600+ lines of comprehensive defaults
-- Environment overrides: `dev.yaml`, `prod.yaml`, `docker.yaml`, `test-aura.yaml`
+- Environment overrides: `dev.yaml`, `test.yaml`, `prod.yaml` (see `config/README.md` for details)
+- Docker configuration reference: `docs/deployment/docker-config-reference.md`
 
 **Key Configuration Sections:**
 

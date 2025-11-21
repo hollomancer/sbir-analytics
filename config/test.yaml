@@ -1,0 +1,95 @@
+# Test/CI environment configuration
+# This file is loaded when ENVIRONMENT=test
+# Optimized for CI testing with Docker Neo4j
+
+pipeline:
+  environment: "test"
+
+# Test environment inherits from base.yaml with these overrides
+# Similar to development but optimized for CI (faster, more isolated)
+
+data_quality:
+  # Relaxed thresholds for test data
+  sbir_awards:
+    pass_rate_threshold: 0.85
+    completeness_threshold: 0.80
+    uniqueness_threshold: 0.95
+
+  completeness:
+    award_id: 1.00
+    company_name: 0.85
+    award_amount: 0.80
+    award_date: 0.85
+    program: 0.90
+
+  enrichment:
+    sam_gov_success_rate: 0.70
+    usaspending_match_rate: 0.60
+
+extraction:
+  sbir:
+    chunk_size: 1000
+    # CI can override sample_limit via environment variable
+    # SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=10000
+
+  usaspending:
+    import_chunk_size: 1000
+
+  uspto:
+    batch_size: 500
+    # CI can override sample_limit via environment variable
+
+enrichment:
+  performance:
+    chunk_size: 1000
+    memory_threshold_mb: 1024
+    match_rate_threshold: 0.60
+    timeout_seconds: 120
+
+  # Disable enhanced features for faster CI runs
+  enhanced_matching:
+    enable_phonetic_matching: false
+    enable_jaro_winkler: false
+    enable_enhanced_abbreviations: false
+
+  sam_gov:
+    rate_limit_per_minute: 30
+    timeout_seconds: 30
+
+loading:
+  neo4j:
+    batch_size: 500
+    parallel_threads: 2
+    transaction_timeout_seconds: 120
+
+validation:
+  strict_schema: false
+  fail_on_first_error: false
+  sample_size_for_checks: 500
+  max_error_percentage: 0.10
+
+logging:
+  level: "INFO"  # INFO for CI (not DEBUG to reduce noise)
+  format: "json"  # JSON for CI log aggregation
+  file_path: "logs/test.log"
+
+metrics:
+  enabled: true
+  collection_interval_seconds: 30
+  persist_to_file: true
+  metrics_file_path: "logs/test-metrics.json"
+
+duckdb:
+  database_path: ":memory:"  # In-memory for CI speed
+  memory_limit_gb: 2
+  threads: 2
+  enable_query_profiler: false
+
+# Disable heavy features for faster CI
+statistical_reporting:
+  generation:
+    enabled: false
+
+company_categorization:
+  batch_size: 50
+  parallel_workers: 2

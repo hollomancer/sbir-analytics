@@ -1,6 +1,12 @@
 # sbir-analytics/config/docker.yaml
 #
-# Default containerized environment configuration for sbir-analytics.
+# ⚠️ REFERENCE FILE ONLY - NOT A RUNTIME ENVIRONMENT
+#
+# This file is a reference document for Docker service defaults. It is NOT loaded
+# as a runtime environment by the configuration loader. Use `development`, `test`,
+# or `production` environments instead.
+#
+# See docs/deployment/docker-config-reference.md for full documentation.
 #
 # Purpose:
 #  - Provide a single source of defaults for container/dev/test profiles.

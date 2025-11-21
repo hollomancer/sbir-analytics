@@ -147,7 +147,7 @@ jobs:
     env:
       # Environment variables are set by setup-test-environment action
       # Additional job-specific variables
-      ENVIRONMENT: dev
+      ENVIRONMENT: test
       SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: "10000"
 
     strategy:

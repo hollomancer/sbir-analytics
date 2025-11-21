@@ -1,3 +1,15 @@
+# ⚠️ DEPRECATED: This environment is deprecated and will be removed in a future version.
+#
+# Migration: Use `development` environment with environment variables instead:
+#   ENVIRONMENT=development
+#   NEO4J_AURA_FREE=true
+#   SBIR_ETL__NEO4J__MAX_NODES=95000
+#   SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
+#   SBIR_ETL__NEO4J__BATCH_SIZE=500
+#   SBIR_ETL__NEO4J__PARALLEL_THREADS=2
+#
+# See config/dev.yaml for details and config/README.md for migration guide.
+#
 # Test configuration for Neo4j Aura Free
 # This file is loaded when ENVIRONMENT=test-aura
 # It overrides base.yaml with settings optimized for Aura Free's 100K node limit
@@ -12,7 +24,7 @@ neo4j:
   # Connection details (override via environment variables)
   uri: "neo4j+s://localhost:7687"  # Override with your Aura URI
   username: "neo4j"
-  password: "neo4j"  # Override with your Aura password
+  password: "neo4j"  # pragma: allowlist secret # Override with your Aura password
   database: "neo4j"
 
   # Aura Free-optimized settings

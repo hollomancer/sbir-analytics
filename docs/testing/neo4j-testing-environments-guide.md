@@ -194,8 +194,13 @@ Neo4j Aura Free provides a small, cloud-hosted Neo4j instance perfect for testin
     NEO4J_USER=neo4j
     NEO4J_PASSWORD=your_aura_password_here
 
-    # Set environment to use test-aura config
-    ENVIRONMENT=test-aura
+    # Use development environment with Aura Free optimizations
+    ENVIRONMENT=development
+    NEO4J_AURA_FREE=true
+    SBIR_ETL__NEO4J__MAX_NODES=95000
+    SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
+    SBIR_ETL__NEO4J__BATCH_SIZE=500
+    SBIR_ETL__NEO4J__PARALLEL_THREADS=2
     ```
 
 3.  **Verify connection:**
@@ -207,14 +212,17 @@ Neo4j Aura Free provides a small, cloud-hosted Neo4j instance perfect for testin
 #### Step 3: Run Test Pipeline
 
 ```bash
-# Set environment
-export ENVIRONMENT=test-aura
+# Set environment and Aura Free optimizations
+export ENVIRONMENT=development
+export NEO4J_AURA_FREE=true
+export SBIR_ETL__NEO4J__MAX_NODES=95000
+export SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
 
 # Load environment variables
 source .env.test
 
-# Run a sample data load (limited to 5000 awards)
-python scripts/run_pipeline.py --sample 5000
+# Run a sample data load (limited to 1000 awards for Aura Free)
+python scripts/run_pipeline.py --sample 1000
 ```
 
 ### Configuration
@@ -228,19 +236,24 @@ The `.env.test.aura` template provides all necessary environment variables:
 | `SBIR_ETL__NEO4J__URI` | Aura connection URI | `neo4j+s://abc123.databases.neo4j.io` |
 | `NEO4J_USER` | Username (always `neo4j` for Aura Free) | `neo4j` |
 | `NEO4J_PASSWORD` | Password from Aura console | `your_secure_password` |
-| `ENVIRONMENT` | Config profile to load | `test-aura` |
-| `SBIR_ETL__EXTRACTION__SAMPLE_LIMIT` | Max awards to process | `5000` |
+| `ENVIRONMENT` | Config profile to load | `development` |
+| `NEO4J_AURA_FREE` | Enable Aura Free optimizations | `true` |
+| `SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT` | Max awards to process | `1000` (for Aura Free) |
 | `SBIR_ETL__NEO4J__MAX_NODES` | Safety limit for nodes | `95000` |
+| `SBIR_ETL__NEO4J__BATCH_SIZE` | Batch size for Neo4j operations | `500` |
+| `SBIR_ETL__NEO4J__PARALLEL_THREADS` | Parallel threads for Neo4j | `2` |
 
-### Configuration File: `config/test-aura.yaml`
+### Configuration: `config/dev.yaml` with Environment Variables
 
-The `config/test-aura.yaml` configuration file provides:
+The `development` environment with Aura Free optimizations provides:
 
 -   **Reduced batch sizes** (500 vs 1000) for gentler load on free tier
--   **Sample limits** on data extraction (5000 awards, 2000 patents)
+-   **Sample limits** on data extraction (configurable via env vars)
 -   **Smaller memory footprint** (2GB DuckDB limit vs 4GB)
 -   **Relaxed quality thresholds** for test data
 -   **Disabled heavy features** (statistical reporting, fiscal analysis)
+
+**Note**: The `test-aura` environment is deprecated. Use `development` with the environment variables above instead.
 -   **Increased logging** (DEBUG level) for troubleshooting
 
 ### Working Within Node Limits
@@ -377,7 +390,9 @@ pytest -m fast
 **Aura Free:**
 ```bash
 # Quick cloud test
-export ENVIRONMENT=test-aura
+export ENVIRONMENT=development
+export NEO4J_AURA_FREE=true
+export SBIR_ETL__NEO4J__MAX_NODES=95000
 source .env.test
 pytest -m fast
 ```

@@ -1,6 +1,13 @@
 # Development environment overrides
 # This file contains settings specific to development environment
 # These override values from base.yaml
+#
+# For Neo4j Aura Free testing, set these environment variables:
+#   NEO4J_AURA_FREE=true
+#   SBIR_ETL__NEO4J__MAX_NODES=95000
+#   SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
+#   SBIR_ETL__NEO4J__BATCH_SIZE=500
+#   SBIR_ETL__NEO4J__PARALLEL_THREADS=2
 
 pipeline:
   environment: "development"

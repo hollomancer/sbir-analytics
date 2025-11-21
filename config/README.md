@@ -8,11 +8,28 @@ This directory contains the configuration files for the SBIR ETL pipeline. The s
 
 Contains default settings that are version controlled and shared across all environments. These provide sensible defaults for production use.
 
-### 2. Environment Overrides (`dev.yaml`, `prod.yaml`)
+### 2. Environment Overrides (`dev.yaml`, `test.yaml`, `prod.yaml`)
 
-Environment-specific settings that override base configuration. These files contain settings that differ between development, staging, and production environments.
+Environment-specific settings that override base configuration. These files contain settings that differ between development, testing, and production environments.
+
+**Available Environments:**
+- `development` (`dev.yaml`) - Local development with relaxed thresholds and debugging features
+- `test` (`test.yaml`) - CI/testing environment optimized for automated testing
+- `production` (`prod.yaml`) - Production deployment with strict thresholds and performance optimizations
 
 **Note**: `config/prod.yaml` is the comprehensive production configuration file. It includes all production settings including CET extensions, Dagster schedules, and detailed operational parameters.
+
+**Neo4j Aura Free Testing**: For Aura Free testing, use `development` environment with these environment variables:
+```bash
+ENVIRONMENT=development
+NEO4J_AURA_FREE=true
+SBIR_ETL__NEO4J__MAX_NODES=95000
+SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
+SBIR_ETL__NEO4J__BATCH_SIZE=500
+SBIR_ETL__NEO4J__PARALLEL_THREADS=2
+```
+
+**Deprecated**: `test-aura.yaml` is deprecated. Use `development` with environment variables instead.
 
 ### 3. Environment Variables
 
@@ -115,7 +132,7 @@ The project supports running inside Docker Compose for local development, CI, an
   - `make docker-up-dev` — start the dev stack (bind mounts, watch/reload)
   - `make docker-test` — run containerized tests using the CI test overlay
   - `make docker-down` — tear down running compose stacks
-- Use `config/docker.yaml` for non-sensitive defaults and CI hints; do not include credentials in this file.
+- Docker-specific configuration defaults are documented in `docs/deployment/containerization.md`; `config/docker.yaml` is a reference file only (not loaded as a runtime environment).
 - Entrypoint scripts (`sbir-analytics/scripts/docker/entrypoint.sh`) will attempt to load `.env` and `/run/secrets/*` and will wait for dependencies (Neo4j, Dagster web) before starting services — the entrypoint provides a robust fallback even when `depends_on.condition` is not supported by the environment.
 
 Recommended workflow (local)
@@ -145,5 +162,28 @@ Configuration is automatically validated when loaded. Invalid configuration will
 
 1. Add the new fields to the appropriate Pydantic model in `src/config/schemas.py`
 2. Add default values to `base.yaml`
-3. Add environment-specific overrides to `dev.yaml`/`prod.yaml` as needed
+3. Add environment-specific overrides to `dev.yaml`/`test.yaml`/`prod.yaml` as needed
 4. Update this documentation
+
+## Migration from Deprecated Environments
+
+### From `test-aura` to `development`
+
+The `test-aura` environment is deprecated. Migrate to `development` with environment variables:
+
+**Old:**
+```bash
+ENVIRONMENT=test-aura
+```
+
+**New:**
+```bash
+ENVIRONMENT=development
+NEO4J_AURA_FREE=true
+SBIR_ETL__NEO4J__MAX_NODES=95000
+SBIR_ETL__EXTRACTION__SBIR__SAMPLE_LIMIT=1000
+SBIR_ETL__NEO4J__BATCH_SIZE=500
+SBIR_ETL__NEO4J__PARALLEL_THREADS=2
+```
+
+See `config/test-aura.yaml` for the full migration guide.
