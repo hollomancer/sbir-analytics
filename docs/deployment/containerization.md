@@ -15,31 +15,67 @@ This guide explains how to build, run, and validate the SBIR ETL stack with Dock
 
 ## Quick Start
 
-### Prerequisites
+### Step 1: Check Prerequisites
 
-- Docker Desktop or Docker Engine + Compose V2
-- `.env` created from `.env.example` with `NEO4J_USER` / `NEO4J_PASSWORD`
-- Optional: `COMPOSE_PROFILES` set for your preferred default profile
+```bash
+make docker-check-prerequisites
+```
 
-### Build
+This validates:
+- ✅ Docker 20.10+ installed and running
+- ✅ Docker Compose V2 available
+- ✅ Ports 3000, 7474, 7687 available
+- ✅ Sufficient disk space (5GB+)
+
+### Step 2: Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env: Set NEO4J_USER and NEO4J_PASSWORD
+# For local development, defaults (neo4j/test) work fine
+```
+
+**Minimal setup** (local development):
+- `NEO4J_USER=neo4j`
+- `NEO4J_PASSWORD=test`
+
+**Full setup** (see [Environment Setup Guide](../development/docker-env-setup.md)):
+- All variables configured for production-like testing
+
+### Step 3: Build Image
 
 ```bash
 make docker-build
 ```
 
-Creates the base images used by development, CI, and production profiles.
+**Expected time:** 10-20 minutes (first build only)
+- Builds base images used by development, CI, and production profiles
+- Includes R packages for fiscal analysis (takes 5-10 minutes)
 
-### Run (development)
+### Step 4: Start Services
 
 ```bash
 make docker-up-dev
 ```
 
+**Expected time:** 2-3 minutes
 - Spins up the `dev` profile with bind mounts for fast iteration
+- Services: Neo4j, Dagster webserver, Dagster daemon
 - Dagster UI: http://localhost:3000
 - Neo4j Browser: http://localhost:7474
 
-### Run tests in containers
+### Step 5: Verify Setup
+
+```bash
+make docker-verify
+```
+
+This checks:
+- ✅ Neo4j is accessible
+- ✅ Dagster UI is accessible
+- ✅ All services are running
+
+### Run Tests in Containers
 
 ```bash
 make docker-test
@@ -47,13 +83,22 @@ make docker-test
 
 Executes the CI test profile inside Docker (mirrors `container-ci.yml`).
 
-### Other useful targets
+### Other Useful Targets
 
 ```bash
 make docker-down        # stop containers
 make docker-logs        # tail Dagster / Neo4j logs
-make docker-clean       # remove containers and volumes
+make docker-rebuild     # rebuild and restart
+make neo4j-check        # check Neo4j health
 ```
+
+## Troubleshooting
+
+If you encounter issues, see the [Docker Troubleshooting Guide](../development/docker-troubleshooting.md) or check:
+
+- Service logs: `make docker-logs SERVICE=<name>`
+- Service status: `docker compose --profile dev ps`
+- Common issues: Port conflicts, Docker not running, insufficient disk space
 
 ## Profiles at a Glance
 

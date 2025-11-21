@@ -105,6 +105,46 @@ docker-check-install: ## Quick check for Docker CLI only
 	   exit 1; \
 	 fi
 
+.PHONY: docker-check-prerequisites
+docker-check-prerequisites: ## Check all prerequisites for Docker development setup
+	@$(call info,Checking Docker development prerequisites)
+	$(call run,./scripts/docker/check-prerequisites.sh)
+
+.PHONY: docker-verify
+docker-verify: env-check ## Verify Docker setup is working correctly
+	@$(call info,Verifying Docker setup)
+	@set -euo pipefail; \
+	 $(call info,Checking Neo4j connectivity...); \
+	 if $(COMPOSE) --profile dev exec -T neo4j \
+	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-test} 'RETURN 1' >/dev/null 2>&1; then \
+	   $(call success,Neo4j is accessible at bolt://localhost:7687); \
+	 else \
+	   $(call error,Neo4j is not accessible); \
+	   $(call warn,Check logs with: make docker-logs SERVICE=neo4j); \
+	   exit 1; \
+	 fi; \
+	 $(call info,Checking Dagster UI...); \
+	 if curl -fsS --max-time 3 http://localhost:3000/server_info >/dev/null 2>&1; then \
+	   $(call success,Dagster UI is accessible at http://localhost:3000); \
+	 else \
+	   $(call error,Dagster UI is not accessible); \
+	   $(call warn,Check logs with: make docker-logs SERVICE=dagster-webserver); \
+	   exit 1; \
+	 fi; \
+	 $(call info,Checking service status...); \
+	 if $(COMPOSE) --profile dev ps --format json 2>/dev/null | grep -q '"State":"running"'; then \
+	   $(call success,All services are running); \
+	 else \
+	   $(call warn,Some services may not be running); \
+	   $(call info,Run 'make docker-logs' to see service status); \
+	 fi; \
+	 echo ""; \
+	 $(call success,✓ Docker setup verification passed!); \
+	 echo ""; \
+	 echo "  • Dagster UI: http://localhost:3000"; \
+	 echo "  • Neo4j Browser: http://localhost:7474"; \
+	 echo "  • View logs: make docker-logs SERVICE=<name>"
+
 # -----------------------------------------------------------------------------
 # Local Development (New)
 # -----------------------------------------------------------------------------
@@ -365,5 +405,5 @@ transition-mvp-clean: ## Clean up Transition MVP artifacts
 .PHONY: docker-build docker-buildx docker-push docker-up-dev docker-up-tools docker-down docker-rebuild docker-test \
 	docker-e2e docker-e2e-clean docker-e2e-minimal docker-e2e-standard \
 	docker-e2e-large docker-e2e-edge-cases docker-e2e-debug docker-logs \
-	docker-exec env-check docker-check docker-check-install neo4j-up \
+	docker-exec env-check docker-check docker-check-install docker-check-prerequisites docker-verify neo4j-up \
 	neo4j-down neo4j-reset neo4j-check transition-mvp-run transition-mvp-clean

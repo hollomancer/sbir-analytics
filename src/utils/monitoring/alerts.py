@@ -411,7 +411,7 @@ class AlertCollector:
 
         Args:
             output_path: Path to save alerts to
-
+        
         Returns:
             Path to saved file
         """

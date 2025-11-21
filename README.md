@@ -94,19 +94,36 @@ pip install -r requirements.txt
 cdk deploy --all
 ```
 
-### Container Development (Alternative)
+### Docker Development
 
-For containerized development with Docker Compose:
+For containerized development with Docker Compose (recommended for new developers):
 
+**Quick Start:**
 ```bash
+# 1. Check prerequisites
+make docker-check-prerequisites
+
+# 2. Configure environment
 cp .env.example .env
-# Edit .env: set NEO4J_USER, NEO4J_PASSWORD (for local Neo4j if not using Aura)
+# Edit .env: set NEO4J_USER, NEO4J_PASSWORD (defaults work for local dev)
+
+# 3. Build and start
 make docker-build
 make docker-up-dev
-# Open http://localhost:3000 and materialize the assets
+
+# 4. Verify setup
+make docker-verify
 ```
 
-See [`docs/deployment/containerization.md`](docs/deployment/containerization.md) for full details.
+**Access Services:**
+- Dagster UI: http://localhost:3000
+- Neo4j Browser: http://localhost:7474
+
+**Guides:**
+- **[Docker Quick Start](docs/development/docker-quickstart.md)** - Step-by-step setup guide
+- **[Troubleshooting](docs/development/docker-troubleshooting.md)** - Common issues and solutions
+- **[Environment Setup](docs/development/docker-env-setup.md)** - Configuration guide
+- **[Containerization Guide](docs/deployment/containerization.md)** - Advanced Docker usage
 
 ### Production Deployment (Dagster Cloud)
 
@@ -247,47 +264,15 @@ For a complete documentation map, see [`docs/index.md`](docs/index.md).
 
 ```
 sbir-analytics/
-├── src/
-│   ├── assets/                  # Dagster assets (pipeline stages)
-│   ├── extractors/              # Data extraction from sources
-│   ├── transformers/            # Data transformation logic
-│   ├── enrichers/               # Data enrichment
-│   ├── loaders/                 # Neo4j loading
-│   ├── transition/              # Transition detection system
-│   ├── ml/                      # Machine learning (CET classifier)
-│   ├── models/                  # Pydantic data models
-│   ├── config/                  # Configuration schemas
-│   ├── utils/                   # Shared utilities
-│   └── definitions.py           # Dagster repository definition
-│
-├── tests/
-│   ├── unit/                    # Component-level tests
-│   ├── integration/             # Multi-component tests
-│   └── e2e/                     # End-to-end pipeline tests
-│
-├── docs/
-│   ├── testing/                 # Testing documentation and guides
-│   ├── deployment/              # Deployment guides (Dagster Cloud, Docker)
-│   ├── transition/              # Transition detection documentation
-│   ├── ml/                      # Machine learning and CET classifier
-│   ├── architecture/            # Architecture and design documentation
-│   ├── schemas/                 # Neo4j schema documentation
-│   ├── data/                    # Data dictionaries and sources
-│   └── ...                      # Additional documentation
-│
-├── config/                      # YAML configuration files
-│   ├── base.yaml               # Base configuration
-│   ├── transition/             # Transition detection config
-│   ├── cet/                    # CET classifier config
-│   └── fiscal/                 # Fiscal analysis config
-│
-├── .kiro/                       # Kiro specifications (active spec system)
-│   ├── specs/                   # Specification-driven development
-│   └── steering/                # Agent steering documents
-│
-└── archive/                     # Archived content
-    └── openspec/                # Archived OpenSpec content (historical reference)
+├── src/                    # Source code (assets, extractors, loaders, etc.)
+├── tests/                  # Unit, integration, and E2E tests
+├── docs/                   # Documentation
+├── config/                 # YAML configuration files
+├── .kiro/                  # Kiro specifications
+└── archive/                # Archived content
 ```
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for a detailed breakdown of the project structure.
 
 ## Neo4j Graph Model
 
@@ -313,23 +298,7 @@ The Neo4j graph database stores entities and relationships for comprehensive ana
 
 ### Example Queries
 
-```cypher
-// Find all awards for a company
-MATCH (o:Organization {name: "Acme Inc"})-[:RECEIVED]->(a:Award)
-RETURN a.title, a.amount, a.phase
-
-// Find high-confidence technology transitions
-MATCH (a:Award)-[:TRANSITIONED_TO]->(t:Transition)
-WHERE t.confidence = "HIGH"
-RETURN a.award_id, t.likelihood_score, t.evidence_summary
-
-// Trace patent ownership chain
-MATCH path = (p:Patent)-[:ASSIGNED_VIA*]->(pa:PatentAssignment)
-WHERE p.grant_doc_num = "7123456"
-RETURN path
-```
-
-**Full schema documentation**: [`docs/schemas/`](docs/schemas/neo4j.md)
+See [`docs/schemas/neo4j.md`](docs/schemas/neo4j.md) for example Cypher queries and full schema documentation.
 
 ## Configuration
 
@@ -359,27 +328,10 @@ export SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.88
 **Full configuration guide**: [`docs/architecture/detailed-overview.md`](docs/architecture/detailed-overview.md)
 
 ## Testing
-
 The project uses pytest with comprehensive test coverage.
 
 ```bash
-# Run all tests
-uv run pytest -v --cov=src
-
-# Run fast tests only (matches PR/commit CI)
-uv run pytest -v -m "not slow"
-
-# Run slow tests only
-uv run pytest -v -m "slow"
-
-# Run integration tests
-uv run pytest tests/integration/ -v
-
-# Run E2E tests
-uv run pytest tests/e2e/ -v
-
-# Run with coverage report
-uv run pytest --cov=src --cov-report=html
+make test
 ```
 
 **Testing guide**: [`docs/testing/README.md`](docs/testing/README.md)
@@ -399,58 +351,7 @@ GitHub Actions workflows provide comprehensive CI/CD:
 
 ## Error Handling
 
-The SBIR ETL pipeline uses a comprehensive exception hierarchy for structured error handling and debugging. All custom exceptions provide rich context including component, operation, details, and retry guidance.
-
-### Exception Hierarchy
-
-```
-SBIRETLError (base)
-├── ExtractionError              # Data extraction failures
-├── ValidationError              # Schema/quality validation
-│   └── DataQualityError         # Quality thresholds not met
-├── EnrichmentError              # Enrichment stage failures
-│   └── APIError                 # External API failures
-│       └── RateLimitError       # Rate limits exceeded
-├── TransformationError          # Transformation failures
-│   ├── TransitionDetectionError
-│   ├── FiscalAnalysisError
-│   ├── CETClassificationError
-│   └── PatentProcessingError
-├── LoadError                    # Loading stage failures
-│   └── Neo4jError               # Neo4j operations
-├── ConfigurationError           # Config issues
-├── FileSystemError              # File I/O operations
-└── DependencyError              # Missing dependencies
-    └── RFunctionError           # R function failures
-```
-
-### Usage Example
-
-```python
-from src.exceptions import ValidationError, APIError, wrap_exception
-
-# Raise with structured context
-raise ValidationError(
-    "Award amount must be positive",
-    component="validators.sbir",
-    operation="validate_award",
-    details={"award_id": "A001", "amount": -1000}
-)
-
-# Wrap external exceptions
-try:
-    response = requests.get(url)
-    response.raise_for_status()
-except requests.RequestException as e:
-    raise wrap_exception(
-        e, APIError,
-        message="Failed to fetch data",
-        component="enrichers.usaspending",
-        operation="fetch_contracts"
-    )
-```
-
-**Full exception documentation**: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+The pipeline uses a comprehensive exception hierarchy. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/development/exception-handling.md`](docs/development/exception-handling.md) for details.
 
 ## Contributing
 

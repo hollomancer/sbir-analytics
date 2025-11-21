@@ -13,11 +13,14 @@ import argparse
 import hashlib
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
 import boto3
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Import file checking and discovery logic from check_new_file.py
 from scripts.usaspending.check_new_file import (
@@ -123,6 +126,22 @@ def download_and_upload(
     # Download and upload using multipart
     CHUNK_SIZE = 100 * 1024 * 1024  # 100 MB
 
+    # Configure retry strategy for urllib3
+    # Retry on connection errors, timeouts, and 5xx errors
+    retry_strategy = Retry(
+        total=5,  # Total number of retries
+        backoff_factor=2,  # Exponential backoff: 0s, 2s, 4s, 8s, 16s
+        status_forcelist=[500, 502, 503, 504],  # Retry on these HTTP status codes
+        allowed_methods=["GET", "HEAD"],
+        raise_on_status=False,  # Let requests handle status code errors
+    )
+
+    # Create session with retry adapter
+    session = requests.Session()
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
     # Use requests for better streaming and error handling
     headers = {
         "User-Agent": "SBIR-Analytics-EC2/1.0",
@@ -148,39 +167,140 @@ def download_and_upload(
         total_size = 0
         hasher = hashlib.sha256()
 
-        # Use requests for streaming download with better error handling
-        with requests.get(source_url, stream=True, headers=headers, timeout=(30, 600)) as response:
-            response.raise_for_status()  # Raise HTTPError for bad responses
+        # Top-level retry for streaming download errors
+        # urllib3 Retry handles HTTP connection errors, but streaming errors
+        # (like broken pipes during iter_content) need explicit retry
+        max_download_retries = 3
+        download_retry_delay = 10  # Initial delay in seconds
+        
+        for download_attempt in range(max_download_retries):
+            try:
+                # Use session with retry adapter for streaming download
+                # The urllib3 Retry adapter will handle connection errors automatically
+                # Timeout: (connect timeout, read timeout per chunk)
+                # Read timeout is per chunk read, not total file size
+                # 60s connect, 1800s (30min) per chunk read for very slow connections
+                with session.get(
+                    source_url,
+                    stream=True,
+                    headers=headers,
+                    timeout=(60, 1800),  # (connect, read per chunk)
+                ) as response:
+                    response.raise_for_status()  # Raise HTTPError for bad responses
 
-            # Stream download in chunks
-            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-                if not chunk:
-                    continue  # Skip empty chunks but continue
+                    # Stream download in chunks with chunk-level retry for S3 uploads
+                    for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                        if not chunk:
+                            continue  # Skip empty chunks but continue
 
-                hasher.update(chunk)
-                total_size += len(chunk)
+                        # Hash chunk immediately (before upload retries)
+                        hasher.update(chunk)
+                        chunk_size_bytes = len(chunk)
+                        total_size += chunk_size_bytes
 
-                print(f"Uploading part {part_number} ({len(chunk):,} bytes)")
-                part_response = s3_client.upload_part(
-                    Bucket=s3_bucket,
-                    Key=s3_key,
-                    PartNumber=part_number,
-                    UploadId=upload_id,
-                    Body=chunk,
-                )
+                        # Retry chunk upload to S3 if it fails (with exponential backoff)
+                        chunk_uploaded = False
+                        max_chunk_retries = 5
+                        for chunk_attempt in range(max_chunk_retries):
+                            try:
+                                print(f"Uploading part {part_number} ({chunk_size_bytes:,} bytes)")
+                                part_response = s3_client.upload_part(
+                                    Bucket=s3_bucket,
+                                    Key=s3_key,
+                                    PartNumber=part_number,
+                                    UploadId=upload_id,
+                                    Body=chunk,
+                                )
 
-                parts.append(
-                    {
-                        "ETag": part_response["ETag"],
-                        "PartNumber": part_number,
-                    }
-                )
+                                parts.append(
+                                    {
+                                        "ETag": part_response["ETag"],
+                                        "PartNumber": part_number,
+                                    }
+                                )
 
-                part_number += 1
+                                part_number += 1
+                                chunk_uploaded = True
+                                break  # Success, move to next chunk
 
-                # Progress indicator for large files
-                if total_size % (1024 * 1024 * 1024) < CHUNK_SIZE:  # Every ~1GB
-                    print(f"Progress: {total_size / 1024 / 1024 / 1024:.2f} GB downloaded")
+                            except Exception as chunk_error:
+                                if chunk_attempt < max_chunk_retries - 1:
+                                    wait_time = 2 ** chunk_attempt  # Exponential backoff: 1s, 2s, 4s, 8s
+                                    print(
+                                        f"Warning: Failed to upload part {part_number} "
+                                        f"(attempt {chunk_attempt + 1}/{max_chunk_retries}): {chunk_error}"
+                                    )
+                                    print(f"Retrying upload in {wait_time}s...")
+                                    time.sleep(wait_time)
+                                    # Retry the upload with the same chunk data
+                                else:
+                                    print(f"Error: Failed to upload part {part_number} after {max_chunk_retries} attempts")
+                                    raise  # Re-raise if all chunk retries exhausted
+
+                        if not chunk_uploaded:
+                            raise Exception(f"Failed to upload part {part_number} after all retries")
+
+                        # Progress indicator for large files
+                        if total_size % (1024 * 1024 * 1024) < CHUNK_SIZE:  # Every ~1GB
+                            print(f"Progress: {total_size / 1024 / 1024 / 1024:.2f} GB downloaded")
+
+                # Download completed successfully - break out of retry loop
+                break
+
+            except (
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ProtocolError,
+                ConnectionResetError,
+                BrokenPipeError,
+            ) as e:
+                # These errors can occur during streaming, especially for large files
+                if download_attempt < max_download_retries - 1:
+                    wait_time = download_retry_delay * (2 ** download_attempt)  # Exponential backoff: 10s, 20s, 40s
+                    print(
+                        f"Warning: Download streaming error (attempt {download_attempt + 1}/{max_download_retries}): {e}"
+                    )
+                    if len(parts) > 0:
+                        print(
+                            f"Note: Already uploaded {len(parts)} parts ({part_number - 1} total). "
+                            f"Aborting multipart upload to allow clean retry..."
+                        )
+                        # Abort current multipart upload to allow clean retry
+                        try:
+                            s3_client.abort_multipart_upload(
+                                Bucket=s3_bucket,
+                                Key=s3_key,
+                                UploadId=upload_id,
+                            )
+                            print("Multipart upload aborted successfully")
+                        except Exception as abort_error:
+                            print(f"Warning: Failed to abort multipart upload: {abort_error}")
+                        
+                        # Create new multipart upload for retry
+                        multipart_upload = s3_client.create_multipart_upload(
+                            Bucket=s3_bucket,
+                            Key=s3_key,
+                            ContentType="application/zip",
+                            Metadata={
+                                "source_url": source_url,
+                                "downloaded_at": timestamp.isoformat(),
+                                "database_type": database_type,
+                            },
+                        )
+                        upload_id = multipart_upload["UploadId"]
+                        print(f"Initiated new multipart upload: {upload_id}")
+                    
+                    print(f"Retrying download in {wait_time}s...")
+                    time.sleep(wait_time)
+                    # Reset state for retry (download restarts from beginning)
+                    parts = []
+                    part_number = 1
+                    hasher = hashlib.sha256()
+                    total_size = 0
+                else:
+                    print(f"Error: Download failed after {max_download_retries} attempts")
+                    raise  # Re-raise if all download retries exhausted
 
         file_hash = hasher.hexdigest()
         print(

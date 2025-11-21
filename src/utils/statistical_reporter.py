@@ -30,7 +30,6 @@ from src.models.quality import (
     DataHygieneMetrics,
     InsightRecommendation,
     ModuleReport,
-    QualitySeverity,
     StatisticalReport,
 )
 from src.models.statistical_reports import (
@@ -44,17 +43,9 @@ from src.models.statistical_reports import (
 )
 from src.utils.metrics import MetricsCollector
 from src.utils.monitoring import performance_monitor
-from src.utils.reporting.formats.html_templates import HTMLReportBuilder
-
-
-try:
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-    logger.warning("Plotly not available; HTML reports will be limited")
+from src.utils.reporting.formats.html_processor import HtmlReportProcessor
+from src.utils.reporting.formats.json_processor import JsonReportProcessor
+from src.utils.reporting.formats.markdown_processor import MarkdownProcessor
 
 
 class StatisticalReporter:
@@ -82,6 +73,13 @@ class StatisticalReporter:
 
         self.config = config or {}
         self.metrics_collector = metrics_collector or MetricsCollector()
+
+        # Initialize report processors
+        self.processors = {
+            ReportFormat.JSON: JsonReportProcessor(ReportFormat.JSON),
+            ReportFormat.HTML: HtmlReportProcessor(ReportFormat.HTML),
+            ReportFormat.MARKDOWN: MarkdownProcessor(ReportFormat.MARKDOWN),
+        }
 
         # CI/CD context detection
         self.ci_context = self._detect_ci_context()
@@ -378,305 +376,6 @@ class StatisticalReporter:
             enrichment_sources=enrichment_sources,
         )
 
-    def generate_json_report(self, report: StatisticalReport) -> Path:
-        """Generate JSON report file.
-
-        Args:
-            report: StatisticalReport to export
-
-        Returns:
-            Path to generated JSON file
-        """
-        output_file = self.output_dir / f"{report.report_id}.json"
-
-        with open(output_file, "w") as f:
-            json.dump(report.model_dump(), f, indent=2, default=str)
-
-        logger.info(f"Generated JSON report: {output_file}")
-        return output_file
-
-    def generate_markdown_summary(self, report: StatisticalReport) -> tuple[str, Path]:
-        """Generate Markdown summary report (PR-friendly).
-
-        Args:
-            report: StatisticalReport to summarize
-
-        Returns:
-            Tuple of (markdown_content, file_path)
-        """
-        output_file = self.output_dir / f"{report.report_id}_summary.md"
-
-        markdown = f"""# Pipeline Statistical Report
-
-**Run ID:** `{report.run_id}`
-**Generated:** {report.timestamp}
-**Type:** {report.report_type}
-
-## Overall Statistics
-
-| Metric | Value |
-|--------|-------|
-| Total Records Processed | {report.total_records_processed:,} |
-| Overall Success Rate | {report.overall_success_rate:.1%} |
-| Total Duration | {report.total_duration_seconds:.2f}s |
-| Average Throughput | {(report.total_records_processed / report.total_duration_seconds) if report.total_duration_seconds > 0 else 0:.0f} records/sec |
-
-"""
-
-        # Add module summaries
-        if report.module_reports:
-            markdown += "## Module Reports\n\n"
-            for module in report.module_reports:
-                markdown += f"### {module.module_name.upper()}\n\n"
-                markdown += (
-                    f"- **Records:** {module.records_processed:,} / {module.total_records:,}\n"
-                )
-                markdown += f"- **Success Rate:** {module.success_rate:.1%}\n"
-                markdown += f"- **Duration:** {module.duration_seconds:.2f}s\n"
-                markdown += (
-                    f"- **Throughput:** {module.throughput_records_per_second:.0f} records/sec\n"
-                )
-                markdown += "\n"
-
-        # Add data hygiene summary
-        if report.aggregate_data_hygiene:
-            hygiene = report.aggregate_data_hygiene
-            markdown += "## Data Hygiene\n\n"
-            markdown += f"- **Clean Records:** {hygiene.clean_records:,} ({hygiene.clean_percentage:.1f}%)\n"
-            markdown += f"- **Dirty Records:** {hygiene.dirty_records:,}\n"
-            markdown += f"- **Quality Score:** {hygiene.quality_score_mean:.2f}\n"
-            markdown += f"- **Validation Pass Rate:** {hygiene.validation_pass_rate:.1%}\n"
-            markdown += "\n"
-
-        # Add insights
-        if report.insights:
-            markdown += "## Insights & Recommendations\n\n"
-            for insight in report.insights:
-                icon = (
-                    "🔴"
-                    if insight.priority == QualitySeverity.CRITICAL
-                    else "🟡"
-                    if insight.priority == QualitySeverity.HIGH
-                    else "🟢"
-                )
-                markdown += f"{icon} **{insight.title}** ({insight.priority})\n\n"
-                markdown += f"{insight.message}\n\n"
-                if insight.recommendations:
-                    markdown += "Recommended actions:\n"
-                    for rec in insight.recommendations:
-                        markdown += f"- {rec}\n"
-                    markdown += "\n"
-
-        with open(output_file, "w") as f:
-            f.write(markdown)
-
-        logger.info(f"Generated Markdown summary: {output_file}")
-        return markdown, output_file
-
-    def generate_html_report(self, report: StatisticalReport) -> Path:
-        """Generate HTML dashboard report using Plotly.
-
-        Args:
-            report: StatisticalReport to visualize
-
-        Returns:
-            Path to generated HTML file
-        """
-        output_file = self.output_dir / f"{report.report_id}.html"
-
-        if not PLOTLY_AVAILABLE:
-            logger.warning("Plotly not available, generating simple HTML")
-            return self._generate_simple_html(report, output_file)
-
-        # Create dashboard with multiple sections
-        fig = make_subplots(
-            rows=2,
-            cols=2,
-            subplot_titles=(
-                "Module Success Rates",
-                "Processing Throughput",
-                "Data Quality Distribution",
-                "Records Processed by Module",
-            ),
-            specs=[
-                [{"type": "bar"}, {"type": "bar"}],
-                [{"type": "indicator"}, {"type": "pie"}],
-            ],
-        )
-
-        # Module success rates
-        if report.module_reports:
-            modules = [m.module_name for m in report.module_reports]
-            success_rates = [m.success_rate * 100 for m in report.module_reports]
-
-            fig.add_trace(
-                go.Bar(
-                    x=modules,
-                    y=success_rates,
-                    name="Success Rate %",
-                    marker_color="green",
-                ),
-                row=1,
-                col=1,
-            )
-
-            # Throughput
-            throughputs = [m.throughput_records_per_second for m in report.module_reports]
-            fig.add_trace(
-                go.Bar(
-                    x=modules,
-                    y=throughputs,
-                    name="Records/sec",
-                    marker_color="blue",
-                ),
-                row=1,
-                col=2,
-            )
-
-            # Records processed pie chart
-            records = [m.records_processed for m in report.module_reports]
-            fig.add_trace(
-                go.Pie(
-                    labels=modules,
-                    values=records,
-                    name="Records Processed",
-                ),
-                row=2,
-                col=2,
-            )
-
-        # Quality score indicator
-        if report.aggregate_data_hygiene:
-            quality_score = report.aggregate_data_hygiene.quality_score_mean * 100
-
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=quality_score,
-                    title={"text": "Overall Quality Score"},
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "darkblue"},
-                        "steps": [
-                            {"range": [0, 50], "color": "lightgray"},
-                            {"range": [50, 80], "color": "lightyellow"},
-                            {"range": [80, 100], "color": "lightgreen"},
-                        ],
-                    },
-                ),
-                row=2,
-                col=1,
-            )
-
-        # Update layout
-        fig.update_xaxes(title_text="Module", row=1, col=1)
-        fig.update_yaxes(title_text="Success Rate %", row=1, col=1)
-        fig.update_xaxes(title_text="Module", row=1, col=2)
-        fig.update_yaxes(title_text="Throughput (records/sec)", row=1, col=2)
-
-        fig.update_layout(
-            title=f"Pipeline Statistical Report - {report.run_id}",
-            height=900,
-            showlegend=True,
-        )
-
-        fig.write_html(output_file)
-        logger.info(f"Generated HTML report: {output_file}")
-
-        return output_file
-
-    def _generate_simple_html(self, report: StatisticalReport, output_file: Path) -> Path:
-        """Generate simple HTML report when Plotly is unavailable.
-
-        Args:
-            report: StatisticalReport to export
-            output_file: Path to save HTML file
-
-        Returns:
-            Path to generated file
-        """
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Pipeline Report - {report.run_id}</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                h1, h2, h3 {{ color: #333; }}
-                table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
-                th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                th {{ background-color: #4CAF50; color: white; }}
-                .metric {{ font-size: 1.2em; font-weight: bold; color: #4CAF50; }}
-            </style>
-        </head>
-        <body>
-            <h1>Pipeline Statistical Report</h1>
-            <p><strong>Run ID:</strong> {report.run_id}</p>
-            <p><strong>Generated:</strong> {report.timestamp}</p>
-
-            <h2>Overall Statistics</h2>
-            <p class="metric">Total Records: {report.total_records_processed:,}</p>
-            <p class="metric">Success Rate: {report.overall_success_rate:.1%}</p>
-            <p class="metric">Duration: {report.total_duration_seconds:.2f}s</p>
-
-            <h2>Module Reports</h2>
-            <table>
-                <tr>
-                    <th>Module</th>
-                    <th>Records Processed</th>
-                    <th>Success Rate</th>
-                    <th>Duration (s)</th>
-                </tr>
-        """
-
-        for module in report.module_reports:
-            html += f"""
-                <tr>
-                    <td>{module.module_name}</td>
-                    <td>{module.records_processed:,} / {module.total_records:,}</td>
-                    <td>{module.success_rate:.1%}</td>
-                    <td>{module.duration_seconds:.2f}</td>
-                </tr>
-            """
-
-        html += """
-            </table>
-        </body>
-        </html>
-        """
-
-        with open(output_file, "w") as f:
-            f.write(html)
-
-        logger.info(f"Generated simple HTML report: {output_file}")
-        return output_file
-
-    def generate_all_formats(self, report: StatisticalReport) -> dict[str, Path]:
-        """Generate report in all supported formats.
-
-        Args:
-            report: StatisticalReport to export
-
-        Returns:
-            Dictionary mapping format names to file paths
-        """
-        logger.info(f"Generating report in all formats for run {report.run_id}")
-
-        paths = {
-            "json": self.generate_json_report(report),
-            "html": self.generate_html_report(report),
-        }
-
-        markdown_content, markdown_path = self.generate_markdown_summary(report)
-        paths["markdown"] = markdown_path
-
-        # Update report with generated paths
-        report.report_formats = list(paths.keys())
-        report.report_paths = {fmt: str(path) for fmt, path in paths.items()}
-
-        logger.info(f"Generated all report formats: {list(paths.keys())}")
-        return paths
-
     def _collect_pipeline_metrics(
         self, run_id: str, run_context: dict[str, Any]
     ) -> PipelineMetrics:
@@ -796,78 +495,35 @@ class StatisticalReporter:
         Returns:
             ReportArtifact if successful, None otherwise
         """
-        start_time = datetime.now()
-
         try:
-            if format == ReportFormat.JSON:
-                file_path = self._generate_json_artifact(pipeline_metrics, collection)
-            elif format == ReportFormat.HTML:
-                file_path = self._generate_html_artifact(pipeline_metrics, collection)
-            elif format == ReportFormat.MARKDOWN:
-                file_path = self._generate_markdown_artifact(pipeline_metrics, collection)
-            elif format == ReportFormat.EXECUTIVE:
+            if format == ReportFormat.EXECUTIVE:
+                # Handle executive summary separately as it doesn't have a processor yet
                 file_path = self._generate_executive_artifact(pipeline_metrics, collection)
-            else:
-                logger.warning(f"Unsupported format: {format}")  # type: ignore[unreachable]
+                file_size = file_path.stat().st_size if file_path.exists() else 0
+                
+                return ReportArtifact(
+                    format=format,
+                    file_path=file_path,
+                    file_size_bytes=file_size,
+                    generated_at=datetime.now(),
+                    generation_duration_seconds=0.0,  # Not tracked for now
+                    contains_interactive_elements=False,
+                    contains_visualizations=True,
+                )
+
+            processor = self.processors.get(format)
+            if not processor:
+                logger.warning(f"No processor found for format: {format}")
                 return None
 
-            # Calculate file size
-            file_size = file_path.stat().st_size if file_path.exists() else 0
-
-            # Calculate generation time
-            generation_time = (datetime.now() - start_time).total_seconds()
-
-            artifact = ReportArtifact(
-                format=format,
-                file_path=file_path,
-                file_size_bytes=file_size,
-                generated_at=start_time,
-                generation_duration_seconds=generation_time,
-                contains_interactive_elements=(format == ReportFormat.HTML),
-                contains_visualizations=(format in [ReportFormat.HTML, ReportFormat.EXECUTIVE]),
+            return processor.generate(
+                pipeline_metrics=pipeline_metrics,
+                output_dir=self.output_dir,
             )
-
-            logger.info(f"Generated {format.value} report: {file_path} ({file_size} bytes)")
-            return artifact
 
         except Exception as e:
             logger.error(f"Failed to generate {format.value} report: {e}")
             return None
-
-    def _generate_json_artifact(
-        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
-    ) -> Path:
-        """Generate JSON report artifact."""
-        output_file = self.output_dir / f"{collection.collection_id}.json"
-
-        with open(output_file, "w") as f:
-            json.dump(pipeline_metrics.model_dump(), f, indent=2, default=str)
-
-        return output_file
-
-    def _generate_html_artifact(
-        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
-    ) -> Path:
-        """Generate HTML report artifact."""
-        output_file = self.output_dir / f"{collection.collection_id}.html"
-
-        if PLOTLY_AVAILABLE:
-            return self._generate_plotly_html(pipeline_metrics, output_file)
-        else:
-            return self._generate_simple_html_artifact(pipeline_metrics, output_file)
-
-    def _generate_markdown_artifact(
-        self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
-    ) -> Path:
-        """Generate Markdown report artifact."""
-        output_file = self.output_dir / f"{collection.collection_id}_summary.md"
-
-        markdown_content = self._create_markdown_content(pipeline_metrics)
-
-        with open(output_file, "w") as f:
-            f.write(markdown_content)
-
-        return output_file
 
     def _generate_executive_artifact(
         self, pipeline_metrics: PipelineMetrics, collection: ReportCollection
@@ -881,45 +537,6 @@ class StatisticalReporter:
             json.dump(executive_summary.model_dump(), f, indent=2, default=str)
 
         return output_file
-
-    def _create_markdown_content(self, pipeline_metrics: PipelineMetrics) -> str:
-        """Create Markdown content for the report."""
-        content = f"""# Pipeline Statistical Report
-
-**Run ID:** `{pipeline_metrics.run_id}`
-**Generated:** {pipeline_metrics.timestamp.isoformat()}
-**Environment:** {pipeline_metrics.environment}
-
-## Overall Statistics
-
-| Metric | Value |
-|--------|-------|
-| Total Records Processed | {pipeline_metrics.total_records_processed:,} |
-| Overall Success Rate | {pipeline_metrics.overall_success_rate:.1%} |
-| Total Duration | {pipeline_metrics.duration.total_seconds():.2f}s |
-| Average Throughput | {pipeline_metrics.performance_metrics.records_per_second:.0f} records/sec |
-| Peak Memory Usage | {pipeline_metrics.performance_metrics.peak_memory_mb:.1f} MB |
-
-"""
-
-        # Add module summaries
-        if pipeline_metrics.module_metrics:
-            content += "## Module Reports\n\n"
-            for module_name, module in pipeline_metrics.module_metrics.items():
-                content += f"### {module_name.upper()}\n\n"
-                content += f"- **Records:** {module.records_processed:,} / {module.records_in:,}\n"
-                content += f"- **Success Rate:** {module.success_rate:.1%}\n"
-                content += f"- **Duration:** {module.execution_time.total_seconds():.2f}s\n"
-                content += (
-                    f"- **Throughput:** {module.throughput_records_per_second:.0f} records/sec\n"
-                )
-
-                if module.enrichment_coverage is not None:
-                    content += f"- **Enrichment Coverage:** {module.enrichment_coverage:.1%}\n"
-
-                content += "\n"
-
-        return content
 
     def _create_executive_summary(self, pipeline_metrics: PipelineMetrics) -> ExecutiveSummary:
         """Create executive summary from pipeline metrics."""
@@ -951,144 +568,6 @@ class StatisticalReporter:
                 else 0.0,
             },
         )
-
-    def _generate_plotly_html(self, pipeline_metrics: PipelineMetrics, output_file: Path) -> Path:
-        """Generate HTML report with Plotly visualizations."""
-        # Create dashboard with multiple sections
-        fig = make_subplots(
-            rows=2,
-            cols=2,
-            subplot_titles=(
-                "Module Success Rates",
-                "Processing Throughput",
-                "Memory Usage",
-                "Records Processed by Module",
-            ),
-            specs=[
-                [{"type": "bar"}, {"type": "bar"}],
-                [{"type": "scatter"}, {"type": "pie"}],
-            ],
-        )
-
-        # Module success rates
-        if pipeline_metrics.module_metrics:
-            modules = list(pipeline_metrics.module_metrics.keys())
-            success_rates = [m.success_rate * 100 for m in pipeline_metrics.module_metrics.values()]
-
-            fig.add_trace(
-                go.Bar(
-                    x=modules,
-                    y=success_rates,
-                    name="Success Rate %",
-                    marker_color="green",
-                ),
-                row=1,
-                col=1,
-            )
-
-            # Throughput
-            throughputs = [
-                m.throughput_records_per_second for m in pipeline_metrics.module_metrics.values()
-            ]
-            fig.add_trace(
-                go.Bar(
-                    x=modules,
-                    y=throughputs,
-                    name="Records/sec",
-                    marker_color="blue",
-                ),
-                row=1,
-                col=2,
-            )
-
-            # Records processed pie chart
-            records = [m.records_processed for m in pipeline_metrics.module_metrics.values()]
-            fig.add_trace(
-                go.Pie(
-                    labels=modules,
-                    values=records,
-                    name="Records Processed",
-                ),
-                row=2,
-                col=2,
-            )
-
-        # Memory usage over time (placeholder)
-        fig.add_trace(
-            go.Scatter(
-                x=[0, pipeline_metrics.duration.total_seconds()],
-                y=[0, pipeline_metrics.performance_metrics.peak_memory_mb],
-                mode="lines+markers",
-                name="Memory Usage",
-                line={"color": "red"},
-            ),
-            row=2,
-            col=1,
-        )
-
-        # Update layout
-        fig.update_layout(
-            title=f"Pipeline Statistical Report - {pipeline_metrics.run_id}",
-            height=900,
-            showlegend=True,
-        )
-
-        fig.write_html(output_file)
-        return output_file
-
-    def _generate_simple_html_artifact(
-        self, pipeline_metrics: PipelineMetrics, output_file: Path
-    ) -> Path:
-        """Generate simple HTML report when Plotly is unavailable."""
-        # Build metric cards
-        metric_cards = [
-            HTMLReportBuilder.create_metric_card(
-                "Total Records", f"{pipeline_metrics.total_records_processed:,}"
-            ),
-            HTMLReportBuilder.create_metric_card(
-                "Success Rate", f"{pipeline_metrics.overall_success_rate:.1%}"
-            ),
-            HTMLReportBuilder.create_metric_card(
-                "Duration", f"{pipeline_metrics.duration.total_seconds():.2f}s"
-            ),
-        ]
-        metric_grid = HTMLReportBuilder.create_metric_grid(metric_cards)
-
-        # Build module reports table
-        module_table_data = []
-        for module_name, module in pipeline_metrics.module_metrics.items():
-            module_table_data.append(
-                {
-                    "Module": module_name,
-                    "Records Processed": f"{module.records_processed:,} / {module.records_in:,}",
-                    "Success Rate": f"{module.success_rate:.1%}",
-                    "Duration (s)": f"{module.execution_time.total_seconds():.2f}",
-                }
-            )
-        module_table = HTMLReportBuilder.create_table(
-            module_table_data,
-            ["Module", "Records Processed", "Success Rate", "Duration (s)"],
-            "Module Reports",
-        )
-
-        # Combine content
-        content = f"""
-{metric_grid}
-{module_table}
-"""
-
-        # Generate full report
-        html = HTMLReportBuilder.create_report_layout(
-            title=f"Pipeline Statistical Report - {pipeline_metrics.run_id}",
-            content=content,
-            status="PASS",
-            timestamp=pipeline_metrics.timestamp.isoformat(),
-        )
-
-        with open(output_file, "w") as f:
-            f.write(html)
-
-        return output_file
 
     def _handle_ci_integration(self, collection: ReportCollection) -> None:
         """Handle CI/CD integration tasks.
