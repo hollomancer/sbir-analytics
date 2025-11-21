@@ -106,7 +106,7 @@ def _download_s3_to_temp(s3_path: S3Path) -> Path:
 
 def get_s3_bucket_from_env() -> str | None:
     """Get S3 bucket name from environment variable."""
-    return os.getenv("SBIR_ETL__S3_BUCKET") or os.getenv("S3_BUCKET")
+    return os.getenv("SBIR_ANALYTICS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
 
 def build_s3_path(relative_path: str, bucket: str | None = None) -> str:
@@ -122,7 +122,7 @@ def build_s3_path(relative_path: str, bucket: str | None = None) -> str:
     """
     bucket = bucket or get_s3_bucket_from_env()
     if not bucket:
-        raise ValueError("S3 bucket not configured. Set SBIR_ETL__S3_BUCKET env var.")
+        raise ValueError("S3 bucket not configured. Set SBIR_ANALYTICS_S3_BUCKET env var.")
 
     # Remove leading slash if present
     relative_path = relative_path.lstrip("/")

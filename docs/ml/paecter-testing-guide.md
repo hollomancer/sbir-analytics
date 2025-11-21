@@ -191,7 +191,7 @@ python scripts/test_paecter_real_data.py \
     --s3 s3://your-bucket-name/data/raw/sbir/awards_data.csv
 
 # Load from S3 (using bucket env var)
-export SBIR_ETL__S3_BUCKET=your-bucket-name
+export SBIR_ANALYTICS_S3_BUCKET=your-bucket-name
 python scripts/test_paecter_real_data.py
 
 # Load from S3 (using --s3-bucket flag)
@@ -511,8 +511,8 @@ low_threshold = 0.75
 
 # Filter results
 top_matches = [
-    (patent_id, score) 
-    for patent_id, score in similarities 
+    (patent_id, score)
+    for patent_id, score in similarities
     if score >= high_confidence_threshold
 ]
 ```
@@ -564,7 +564,7 @@ top_k = 5
 for award_idx, award_id in enumerate(award_ids):
     top_indices = np.argsort(similarities[award_idx])[::-1][:top_k]
     top_scores = similarities[award_idx][top_indices]
-    
+
     # Review all top-k, not just high-scoring ones
     for patent_idx, score in zip(top_indices, top_scores):
         if score >= 0.80:  # Still use a minimum threshold

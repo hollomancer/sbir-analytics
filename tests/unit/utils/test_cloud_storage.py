@@ -6,13 +6,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 pytestmark = pytest.mark.fast
 
-from src.utils.cloud_storage import (
-    build_s3_path,
-    get_s3_bucket_from_env,
-    resolve_data_path,
-)
+from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
 
 
 class TestResolveDataPath:
@@ -107,7 +104,7 @@ class TestGetS3BucketFromEnv:
 
     def test_get_s3_bucket_from_env_primary(self):
         """Test get_s3_bucket_from_env gets primary env var."""
-        with patch.dict(os.environ, {"SBIR_ETL__S3_BUCKET": "test-bucket-primary"}):
+        with patch.dict(os.environ, {"SBIR_ANALYTICS_S3_BUCKET": "test-bucket-primary"}):
             result = get_s3_bucket_from_env()
 
             assert result == "test-bucket-primary"
@@ -124,7 +121,7 @@ class TestGetS3BucketFromEnv:
         with patch.dict(
             os.environ,
             {
-                "SBIR_ETL__S3_BUCKET": "primary",
+                "SBIR_ANALYTICS_S3_BUCKET": "primary",
                 "S3_BUCKET": "fallback",
             },
         ):
@@ -167,4 +164,3 @@ class TestBuildS3Path:
         with patch("src.utils.cloud_storage.get_s3_bucket_from_env", return_value=None):
             with pytest.raises(ValueError, match="S3 bucket not configured"):
                 build_s3_path("data/raw/file.csv")
-

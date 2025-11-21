@@ -217,7 +217,7 @@ extraction:
   sbir:
     # SBIR CSV configuration
     csv_path: "data/raw/sbir/award_data.csv"  # Local fallback path
-    csv_path_s3: null  # Auto-built from csv_path if SBIR_ETL__S3_BUCKET is set
+    csv_path_s3: null  # Auto-built from csv_path if SBIR_ANALYTICS_S3_BUCKET is set
     use_s3_first: true  # Try S3 first, fallback to local csv_path
     duckdb:
       database_path: ":memory:" # Use in-memory database (or path for persistent)
@@ -235,7 +235,7 @@ extraction:
   sam_gov:
     # SAM.gov parquet file configuration
     parquet_path: "data/raw/sam_gov/sam_entity_records.parquet"  # Local fallback path
-    parquet_path_s3: null  # Auto-built from parquet_path if SBIR_ETL__S3_BUCKET is set
+    parquet_path_s3: null  # Auto-built from parquet_path if SBIR_ANALYTICS_S3_BUCKET is set
     use_s3_first: true  # Try S3 first, fallback to local parquet_path
     batch_size: 10000 # Chunk size for processing
 

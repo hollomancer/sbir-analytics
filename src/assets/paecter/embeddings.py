@@ -190,7 +190,7 @@ def paecter_embeddings_patents(
 
         bucket = get_s3_bucket_from_env()
         if not bucket:
-            raise ValueError("S3 bucket not configured. Set SBIR_ETL__S3_BUCKET env var.")
+            raise ValueError("S3 bucket not configured. Set SBIR_ANALYTICS_S3_BUCKET env var.")
 
         # Default to latest PatentsView patent data
         s3_url = f"s3://{bucket}/raw/uspto/patentsview/2025-11-18/patent.zip"

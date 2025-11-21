@@ -25,7 +25,7 @@ export S3_BUCKET="sbir-etl-production-data"  # or your test bucket
 export AWS_REGION="us-east-2"
 
 # Or use the config environment variable
-export SBIR_ETL__S3_BUCKET="sbir-etl-production-data"
+export SBIR_ANALYTICS_S3_BUCKET="sbir-etl-production-data"
 ```
 
 ## 1. Test File Detection Script
@@ -180,7 +180,7 @@ success = extractor.import_postgres_dump(
 
 if success:
     print("✅ Successfully imported recipient_lookup table")
-    
+
     # Query a sample
     df = extractor.query_awards(
         table_name="recipient_lookup",
@@ -338,7 +338,7 @@ from src.assets.usaspending_database_enrichment import sbir_relevant_usaspending
 from dagster import build_op_context
 
 # Test 1: S3 bucket configured, file exists
-os.environ["SBIR_ETL__S3_BUCKET"] = "sbir-etl-production-data"
+os.environ["SBIR_ANALYTICS_S3_BUCKET"] = "sbir-etl-production-data"
 context = build_op_context()
 try:
     result = sbir_relevant_usaspending_transactions(context)
@@ -348,7 +348,7 @@ except Exception as e:
 
 # Test 2: S3 bucket configured, file doesn't exist
 # (Delete test file first or use non-existent bucket)
-os.environ["SBIR_ETL__S3_BUCKET"] = "non-existent-bucket"
+os.environ["SBIR_ANALYTICS_S3_BUCKET"] = "non-existent-bucket"
 context = build_op_context()
 try:
     result = sbir_relevant_usaspending_transactions(context)
@@ -359,7 +359,7 @@ except Exception as e:
     print(f"⚠️ Failed with unexpected error: {e}")
 
 # Test 3: No S3 bucket configured
-del os.environ["SBIR_ETL__S3_BUCKET"]
+del os.environ["SBIR_ANALYTICS_S3_BUCKET"]
 context = build_op_context()
 try:
     result = sbir_relevant_usaspending_transactions(context)
@@ -492,4 +492,3 @@ After testing:
 2. Add `EC2_INSTANCE_ID` to GitHub secrets
 3. Schedule monthly workflow
 4. Monitor first production run
-

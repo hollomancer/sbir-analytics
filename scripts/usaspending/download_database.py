@@ -578,7 +578,7 @@ def main():
     # Get default from environment or use default
     default_bucket = (
         os.environ.get("S3_BUCKET")
-        or os.environ.get("SBIR_ETL__S3_BUCKET")
+        or os.environ.get("SBIR_ANALYTICS_S3_BUCKET")
         or "sbir-etl-production-data"
     )
 

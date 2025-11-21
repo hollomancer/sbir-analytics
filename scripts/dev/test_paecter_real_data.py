@@ -33,19 +33,21 @@ import os
 import sys
 from pathlib import Path
 
+
 # Add src to path
 repo_root = Path(__file__).parent.parent
 sys.path.insert(0, str(repo_root))
 
 import pandas as pd
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from src.config.loader import get_config
 from src.extractors.sbir import SbirDuckDBExtractor
 from src.ml.paecter_client import PaECTERClient
 from src.utils.cloud_storage import build_s3_path, get_s3_bucket_from_env
+
 
 console = Console()
 
@@ -68,11 +70,11 @@ def load_sbir_data(
         DataFrame with SBIR award data.
     """
     config = get_config()
-    
+
     # Determine data source
     csv_path_s3: str | None = None
     use_s3_first = False
-    
+
     if s3_url:
         # Direct S3 URL provided
         csv_path_s3 = s3_url
@@ -92,7 +94,7 @@ def load_sbir_data(
         # Use local path
         if csv_path is None:
             csv_path = Path(config.extraction.sbir.csv_path)
-        
+
         # Check if local file exists (but don't fail yet - let extractor handle S3 fallback)
         if not csv_path.exists():
             # Try to use S3 if bucket is configured
@@ -103,7 +105,9 @@ def load_sbir_data(
                 console.print(f"[yellow]Local file not found, trying S3:[/yellow] {csv_path_s3}")
             else:
                 console.print(f"[yellow]Loading SBIR data from:[/yellow] {csv_path}")
-                console.print("[yellow]Note:[/yellow] If file not found locally, set SBIR_ETL__S3_BUCKET to use S3")
+                console.print(
+                    "[yellow]Note:[/yellow] If file not found locally, set SBIR_ANALYTICS_S3_BUCKET to use S3"
+                )
         else:
             console.print(f"[yellow]Loading SBIR data from:[/yellow] {csv_path}")
 
@@ -126,10 +130,10 @@ def load_sbir_data(
             console.print("1. Download SBIR data to data/raw/sbir/")
             console.print("2. Use --csv flag to specify a different local path")
             console.print("3. Use --s3 flag to specify S3 URL directly")
-            console.print("4. Set SBIR_ETL__S3_BUCKET env var and use --s3-bucket flag")
+            console.print("4. Set SBIR_ANALYTICS_S3_BUCKET env var and use --s3-bucket flag")
             console.print("5. Use sample data: tests/fixtures/sbir_sample.csv")
             sys.exit(1)
-    
+
     console.print(f"✓ Imported {import_metadata['row_count']:,} records")
 
     # Extract data with optional limit
@@ -177,7 +181,13 @@ def prepare_award_texts(df: pd.DataFrame) -> tuple[list[str], pd.Series]:
 
     # Get award ID column
     award_id_col = None
-    for col in ["Contract", "contract", "Agency Tracking Number", "agency_tracking_number", "award_id"]:
+    for col in [
+        "Contract",
+        "contract",
+        "Agency Tracking Number",
+        "agency_tracking_number",
+        "award_id",
+    ]:
         if col in df.columns:
             award_id_col = col
             break
@@ -251,7 +261,7 @@ def main():
         "--s3-bucket",
         type=str,
         default=None,
-        help="S3 bucket name (overrides SBIR_ETL__S3_BUCKET env var). Used with --csv to build S3 path.",
+        help="S3 bucket name (overrides SBIR_ANALYTICS_S3_BUCKET env var). Used with --csv to build S3 path.",
     )
     parser.add_argument(
         "--output",
@@ -283,7 +293,7 @@ def main():
                 "[bold red]Warning:[/bold red] HF_TOKEN environment variable not set.\n"
                 "API calls may fail or have rate limits.\n\n"
                 "[yellow]To use API mode:[/yellow]\n"
-                "  export HF_TOKEN=\"your_token_here\"\n\n"
+                '  export HF_TOKEN="your_token_here"\n\n'
                 "[yellow]Or use local mode instead:[/yellow]\n"
                 "  python scripts/test_paecter_real_data.py --local\n"
             )
@@ -304,6 +314,7 @@ def main():
     except Exception as e:
         console.print(f"[red]✗ Error loading SBIR data: {e}[/red]")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -311,21 +322,22 @@ def main():
     console.print("[yellow]Step 2:[/yellow] Preparing award texts for embedding...")
     try:
         texts, award_ids = prepare_award_texts(df)
-        
+
         # Filter out empty texts
         valid_indices = [i for i, text in enumerate(texts) if text.strip()]
         texts = [texts[i] for i in valid_indices]
         award_ids = award_ids.iloc[valid_indices]
-        
+
         console.print(f"✓ Prepared {len(texts):,} award texts")
         console.print(f"  (filtered {len(df) - len(texts):,} empty texts)\n", style="green")
-        
+
         if len(texts) == 0:
             console.print("[red]Error:[/red] No valid texts to process")
             return 1
     except Exception as e:
         console.print(f"[red]✗ Error preparing texts: {e}[/red]")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -341,7 +353,9 @@ def main():
     except ImportError as e:
         console.print(f"[red]✗ Error: {e}[/red]\n")
         if use_local:
-            console.print("[yellow]Install local dependencies:[/yellow] pip install sentence-transformers torch")
+            console.print(
+                "[yellow]Install local dependencies:[/yellow] pip install sentence-transformers torch"
+            )
         else:
             console.print("[yellow]Install API dependencies:[/yellow] pip install huggingface-hub")
         return 1
@@ -350,7 +364,9 @@ def main():
         return 1
 
     # Step 4: Generate embeddings
-    console.print(f"[yellow]Step 4:[/yellow] Generating embeddings (batch size: {args.batch_size})...")
+    console.print(
+        f"[yellow]Step 4:[/yellow] Generating embeddings (batch size: {args.batch_size})..."
+    )
     try:
         with Progress(
             SpinnerColumn(),
@@ -361,13 +377,13 @@ def main():
             console=console,
         ) as progress:
             task = progress.add_task("Generating embeddings...", total=len(texts))
-            
+
             result = client.generate_embeddings(
                 texts,
                 batch_size=args.batch_size,
                 show_progress_bar=False,  # Use our custom progress bar
             )
-            
+
             progress.update(task, completed=len(texts))
 
         console.print(
@@ -379,6 +395,7 @@ def main():
     except Exception as e:
         console.print(f"[red]✗ Error generating embeddings: {e}[/red]")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -391,13 +408,15 @@ def main():
         # Create DataFrame with embeddings
         # Note: We can't directly store numpy arrays in Parquet easily,
         # so we'll store them as lists or use a different format
-        embeddings_df = pd.DataFrame({
-            "award_id": award_ids.values,
-            "embedding": [emb.tolist() for emb in result.embeddings],
-            "model_version": result.model_version,
-            "inference_mode": result.inference_mode,
-            "dimension": result.dimension,
-        })
+        embeddings_df = pd.DataFrame(
+            {
+                "award_id": award_ids.values,
+                "embedding": [emb.tolist() for emb in result.embeddings],
+                "model_version": result.model_version,
+                "inference_mode": result.inference_mode,
+                "dimension": result.dimension,
+            }
+        )
 
         try:
             embeddings_df.to_parquet(output_path, index=False)
@@ -418,6 +437,7 @@ def main():
     except Exception as e:
         console.print(f"[red]✗ Error saving embeddings: {e}[/red]")
         import traceback
+
         traceback.print_exc()
         return 1
 
@@ -436,7 +456,9 @@ def main():
     table.add_row("Model version", result.model_version)
     table.add_row("Inference mode", result.inference_mode)
     table.add_row("Generation time", f"{result.generation_timestamp:.2f}s")
-    table.add_row("Throughput", f"{result.input_count / result.generation_timestamp:.1f} embeddings/s")
+    table.add_row(
+        "Throughput", f"{result.input_count / result.generation_timestamp:.1f} embeddings/s"
+    )
     table.add_row("Output file", str(output_path))
 
     console.print(table)
@@ -444,20 +466,21 @@ def main():
 
     # Display sample embeddings info
     console.print("[bold blue]Sample Embedding Statistics[/bold blue]\n")
-    
+
     # Compute some basic stats on embeddings
     import numpy as np
+
     norms = np.linalg.norm(result.embeddings, axis=1)
-    
+
     stats_table = Table(show_header=True, header_style="bold magenta")
     stats_table.add_column("Statistic", style="cyan")
     stats_table.add_column("Value", justify="right")
-    
+
     stats_table.add_row("Mean embedding norm", f"{norms.mean():.4f}")
     stats_table.add_row("Std embedding norm", f"{norms.std():.4f}")
     stats_table.add_row("Min embedding norm", f"{norms.min():.4f}")
     stats_table.add_row("Max embedding norm", f"{norms.max():.4f}")
-    
+
     console.print(stats_table)
     console.print()
 
@@ -470,7 +493,9 @@ def main():
     console.print("   ```python")
     console.print("   import pandas as pd")
     console.print("   import numpy as np")
-    console.print("   df = pd.read_parquet('data/processed/paecter_embeddings_awards_sample.parquet')")
+    console.print(
+        "   df = pd.read_parquet('data/processed/paecter_embeddings_awards_sample.parquet')"
+    )
     console.print("   embeddings = np.array([np.array(e) for e in df['embedding']])")
     console.print("   ```")
     console.print("3. Test with patents: Generate patent embeddings and compute similarities")
@@ -481,4 +506,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

@@ -650,7 +650,7 @@ The SBIR ETL pipeline now supports:
 Set the S3 bucket name via environment variable:
 
 ```bash
-export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
+export SBIR_ANALYTICS_S3_BUCKET=sbir-analytics-production-data
 ```
 
 ### Data Migration Steps
@@ -678,13 +678,13 @@ export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
 
 #### Path Resolution Flow
 
-1.  **If `SBIR_ETL__S3_BUCKET` is set:**
+1.  **If `SBIR_ANALYTICS_S3_BUCKET` is set:**
     *   Builds S3 URL: `s3://sbir-analytics-production-data/data/raw/sbir/awards_data.csv`
     *   Tries to access S3 file
     *   If S3 succeeds → downloads to temp cache and uses it
     *   If S3 fails → falls back to local `data/raw/sbir/awards_data.csv`
 
-2.  **If `SBIR_ETL__S3_BUCKET` is not set:**
+2.  **If `SBIR_ANALYTICS_S3_BUCKET` is not set:**
     *   Uses local path directly (backward compatible)
 
 3.  **If `use_s3_first=False` (in `config/base.yaml`):**
@@ -700,7 +700,7 @@ export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
 
 ```bash
 # Set environment variable
-export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
+export SBIR_ANALYTICS_S3_BUCKET=sbir-analytics-production-data
 
 # Run extraction
 uv run dagster asset materialize -m src.definitions raw_sbir_awards

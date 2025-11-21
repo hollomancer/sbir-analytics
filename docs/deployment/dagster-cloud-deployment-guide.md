@@ -494,14 +494,14 @@ Keep track of your Neo4j instances:
 **Free Instance (Development/Testing)**:
 - URI: `neo4j+s://free-xxxxx.databases.neo4j.io`
 - User: `neo4j`
-- Password: `your-free-password`
+- Password: `your-free-password`  # pragma: allowlist secret
 - Database: `neo4j`
 - Use case: Testing, development, small datasets
 
 **Paid Instance (Production)**:
 - URI: `neo4j+s://paid-xxxxx.databases.neo4j.io`
 - User: `neo4j`
-- Password: `your-paid-password`
+- Password: `your-paid-password`  # pragma: allowlist secret
 - Database: `neo4j`
 - Use case: Production workloads, full datasets
 
@@ -872,12 +872,12 @@ The SBIR ETL pipeline now supports:
 Set the S3 bucket name via environment variable:
 
 ```bash
-export SBIR_ETL__S3_BUCKET=sbir-analytics-production-data
+export SBIR_ANALYTICS_S3_BUCKET=sbir-analytics-production-data
 ```
 
 Or in Dagster Cloud UI:
 - Go to **Settings** → **Environment Variables**
-- Add: `SBIR_ETL__S3_BUCKET` = `sbir-analytics-production-data`
+- Add: `SBIR_ANALYTICS_S3_BUCKET` = `sbir-analytics-production-data`
 
 ### Data Migration Steps
 
@@ -904,7 +904,7 @@ Or in Dagster Cloud UI:
     *   **Dagster Cloud**:
         1.  Go to https://sbir.dagster.cloud/prod/settings/environment-variables
         2.  Add environment variable:
-            *   Key: `SBIR_ETL__S3_BUCKET`
+            *   Key: `SBIR_ANALYTICS_S3_BUCKET`
             *   Value: `sbir-analytics-production-data`
         3.  Save changes (will trigger code location reload)
 
@@ -912,13 +912,13 @@ Or in Dagster Cloud UI:
 
 #### Path Resolution Flow
 
-1.  **If `SBIR_ETL__S3_BUCKET` is set**:
+1.  **If `SBIR_ANALYTICS_S3_BUCKET` is set**:
     *   Builds S3 URL: `s3://sbir-analytics-production-data/data/raw/sbir/awards_data.csv`
     *   Tries to access S3 file
     *   If S3 succeeds → downloads to temp cache and uses it
     *   If S3 fails → falls back to local `data/raw/sbir/awards_data.csv`
 
-2.  **If `SBIR_ETL__S3_BUCKET` is not set**:
+2.  **If `SBIR_ANALYTICS_S3_BUCKET` is not set**:
     *   Uses local path directly (backward compatible)
 
 3.  **If `use_s3_first=False` (in `config/base.yaml`)**:
@@ -932,7 +932,7 @@ Or in Dagster Cloud UI:
 
 ### Testing S3 Access
 
-1. Set `SBIR_ETL__S3_BUCKET` environment variable in Dagster Cloud UI
+1. Set `SBIR_ANALYTICS_S3_BUCKET` environment variable in Dagster Cloud UI
 2. Materialize `raw_sbir_awards` asset
 3. Check logs for:
     *   `"Using S3 file: s3://..."` (S3 success)
@@ -1060,7 +1060,7 @@ This configuration has been added to the repository. If you're still seeing this
         ```toml
         [project.optional-dependencies]
         # r = ["rpy2>=3.5.0,<4.0.0"]  # Temporarily disabled for Dagster Cloud deployment
-        dev = [...] 
+        dev = [...]
         ```
         Then restore it after deployment if needed for local development.
 

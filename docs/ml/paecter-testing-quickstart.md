@@ -5,7 +5,7 @@
 ```bash
 # 1. Set environment variables
 export HF_TOKEN="your_huggingface_token"  # Get from https://huggingface.co/settings/tokens
-export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
+export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
 
 # 2. Run combined test script
 python scripts/test_paecter_combined_s3.py --limit-sbir 10 --limit-uspto 10
@@ -76,7 +76,7 @@ uv run dagster asset materialize -m src.assets.jobs.paecter_job paecter_job
 All outputs are saved to `data/processed/paecter/`:
 
 - `paecter_embeddings_sbir.parquet` - Award embeddings
-- `paecter_embeddings_uspto.parquet` - Patent embeddings  
+- `paecter_embeddings_uspto.parquet` - Patent embeddings
 - `award_patent_similarities.parquet` - Similarity scores
 
 ## 🔧 Configuration
@@ -104,7 +104,7 @@ See [paecter-s3-testing-guide.md](./paecter-s3-testing-guide.md) for:
 ## ✅ Verification Checklist
 
 - [ ] AWS credentials configured (`aws s3 ls` works)
-- [ ] S3 bucket set (`echo $SBIR_ETL__S3_BUCKET`)
+- [ ] S3 bucket set (`echo $SBIR_ANALYTICS_S3_BUCKET`)
 - [ ] HuggingFace token set (`echo $HF_TOKEN`)
 - [ ] Data exists in S3 (check Lambda downloads)
 - [ ] Test script runs successfully
@@ -118,4 +118,3 @@ See [paecter-s3-testing-guide.md](./paecter-s3-testing-guide.md) for:
 **Memory error**: Use `--limit` flags or reduce batch size
 
 For detailed troubleshooting, see the full guide.
-

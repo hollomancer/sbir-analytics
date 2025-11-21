@@ -6,14 +6,14 @@ This guide provides comprehensive instructions for testing PaECTER (Patent Embed
 
 1. **AWS Credentials**: Configure AWS credentials with access to your S3 bucket
    ```bash
-   export AWS_ACCESS_KEY_ID="your_access_key"
-   export AWS_SECRET_ACCESS_KEY="your_secret_key"
+   export AWS_ACCESS_KEY_ID="your_access_key"  # pragma: allowlist secret
+     export AWS_SECRET_ACCESS_KEY="your_secret_key"  # pragma: allowlist secret
    export AWS_DEFAULT_REGION="us-east-2"  # or your region
    ```
 
 2. **S3 Bucket Configuration**: Set the S3 bucket name
    ```bash
-   export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
+   export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
    ```
 
 3. **HuggingFace Token** (for API mode):
@@ -36,7 +36,7 @@ The easiest way to test PaECTER with both SBIR and USPTO data from S3 is using t
 ```bash
 # Set required environment variables
 export HF_TOKEN="your_token_here"
-export SBIR_ETL__S3_BUCKET="sbir-analytics-production-data"
+export SBIR_ANALYTICS_S3_BUCKET="sbir-analytics-production-data"
 
 # Run the combined test
 python scripts/test_paecter_combined_s3.py
@@ -203,7 +203,7 @@ aws s3 ls s3://sbir-analytics-production-data/
 
 **Error**: `401 Unauthorized` or `Invalid token`
 
-**Solution**: 
+**Solution**:
 1. Verify token is set: `echo $HF_TOKEN`
 2. Get a new token from https://huggingface.co/settings/tokens
 3. Ensure token has read access
@@ -223,7 +223,7 @@ ml:
 
 **Error**: `No patent data available for embedding generation`
 
-**Solution**: 
+**Solution**:
 1. Verify S3 paths are correct
 2. Check that Lambda functions have downloaded data:
    ```bash
@@ -235,7 +235,7 @@ ml:
 
 **Error**: `MemoryError` or process killed
 
-**Solution**: 
+**Solution**:
 1. Reduce batch size
 2. Process fewer records (use `--limit-sbir` and `--limit-uspto`)
 3. Use API mode instead of local mode (local mode loads full model into memory)
@@ -276,4 +276,3 @@ ml:
 - [HuggingFace Inference API Docs](https://huggingface.co/docs/api-inference)
 - [Dagster Asset Documentation](https://docs.dagster.io/concepts/assets)
 - [SBIR ETL Architecture](./architecture.md)
-

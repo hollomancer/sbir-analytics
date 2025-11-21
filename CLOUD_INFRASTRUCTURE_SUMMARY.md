@@ -72,7 +72,7 @@ s3://sbir-etl-production-data/
 - **S3-First Strategy**: Code uses `cloudpathlib` library
   - Tries S3 first when bucket is configured
   - Falls back to local files if S3 unavailable
-  - Environment variable: `SBIR_ETL__S3_BUCKET` or `S3_BUCKET`
+  - Environment variable: `SBIR_ANALYTICS_S3_BUCKET` or `S3_BUCKET`
 
 **Implementation:** `/src/utils/cloud_storage.py`
 - `resolve_data_path()`: Resolves S3 URLs with local fallback
@@ -253,11 +253,11 @@ enrichment:
     base_url: "https://api.sam.gov/entity-information/v3"
     rate_limit_per_minute: 60
     timeout_seconds: 30
-  
+
   usaspending_api:
     base_url: "https://api.usaspending.gov/api/v2"
     timeout_seconds: 30
-  
+
   patentsview_api:
     base_url: "https://search.patentsview.org/api"
     rate_limit_per_minute: 60
@@ -265,7 +265,7 @@ enrichment:
       enabled: true
       cache_dir: "data/cache/patentsview"
       ttl_hours: 24
-  
+
   enrichment_refresh:
     usaspending:
       cadence_days: 1                              # Daily refresh
@@ -286,7 +286,7 @@ loading:
   neo4j:
     uri_env_var: "NEO4J_URI"
     user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD"
+    password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
     batch_size: 1000
     parallel_threads: 4
     transaction_timeout_seconds: 300
@@ -301,7 +301,7 @@ data_quality:
     pass_rate_threshold: 0.95
     completeness_threshold: 0.90
     uniqueness_threshold: 0.99
-  
+
   enrichment:
     sam_gov_success_rate: 0.85
     usaspending_match_rate: 0.70
@@ -507,7 +507,7 @@ AWS_ACCOUNT_ID=<account-id>
 AWS_REGION=us-east-2
 
 # S3
-SBIR_ETL__S3_BUCKET=sbir-etl-production-data
+SBIR_ANALYTICS_S3_BUCKET=sbir-etl-production-data
 S3_BUCKET=sbir-etl-production-data
 
 # Neo4j
@@ -546,4 +546,3 @@ The SBIR Analytics platform uses a **modern, scalable cloud architecture** with:
 - **Docker Compose** for local development
 
 This architecture supports **daily incremental updates**, **quality gates**, **error recovery**, and **comprehensive observability**, while remaining **cost-effective** and **maintainable**.
-
