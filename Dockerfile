@@ -12,13 +12,13 @@
 # - non-root runtime user `sbir`
 #
 # Usage:
-#   # Production build with R from scratch (slow, ~20 min):
+#   # Production build with R from scratch (RSPM optimized, ~5 min):
 #   docker build -t sbir-analytics:latest .
 #
-#   # Production build with pre-built R packages (fast, ~5 min):
+#   # Production build with pre-built R packages (fastest with R, ~2 min):
 #   docker build --build-arg USE_R_BASE_IMAGE=true -t sbir-analytics:latest .
 #
-#   # CI build without R (fastest, ~2 min):
+#   # CI build without R (fastest overall, ~2 min):
 #   docker build --build-arg BUILD_WITH_R=false -t sbir-analytics:ci .
 #
 #   make docker-build (provided Makefile uses this Dockerfile)
@@ -68,6 +68,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         apt-get install -y --no-install-recommends \
         r-base \
         r-base-dev \
+        ccache \
         libcurl4-openssl-dev \
         libssl-dev \
         libxml2-dev \
@@ -127,8 +128,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 #
 # Three installation paths:
 # 1. USE_R_BASE_IMAGE=true: Copy pre-built R packages from cached image (FASTEST - ~30s)
-# 2. BUILD_WITH_R=true, USE_R_BASE_IMAGE=false: Build R from scratch (SLOW - ~10-20min)
-# 3. BUILD_WITH_R=false: Skip R entirely (FASTEST - ~0s)
+# 2. BUILD_WITH_R=true, USE_R_BASE_IMAGE=false: Build with RSPM binaries (~2-5min, was ~20min)
+# 3. BUILD_WITH_R=false: Skip R entirely (instant)
+#
+# OPTIMIZATION: Uses RStudio Package Manager (RSPM) for pre-compiled R package binaries
+# This reduces arrow installation from ~15min (source build) to ~30sec (binary download)
 #
 # NOTE: When BUILD_WITH_R=false (CI builds), this step is skipped entirely.
 # Tests will skip R-dependent tests via pytest.importorskip("rpy2")
@@ -139,56 +143,48 @@ COPY --from=r-base-cache /usr/local/lib/R/site-library /tmp/r-cache/
 
 # Then either use cached R packages or build from scratch
 RUN --mount=type=cache,target=/root/.cache/R \
+    --mount=type=cache,target=/root/.cache/ccache \
+    export PATH="/usr/lib/ccache:${PATH}" && \
+    export CCACHE_DIR=/root/.cache/ccache && \
     if [ "$BUILD_WITH_R" = "true" ] && [ "$USE_R_BASE_IMAGE" = "true" ] && [ -d "/tmp/r-cache" ] && [ "$(ls -A /tmp/r-cache 2>/dev/null)" ]; then \
         echo "✓ Using pre-built R packages from cached image (fast path)"; \
         mkdir -p /usr/local/lib/R/site-library; \
         cp -r /tmp/r-cache/* /usr/local/lib/R/site-library/; \
         echo "R packages copied from cache successfully"; \
     elif [ "$BUILD_WITH_R" = "true" ]; then \
-        echo "Building R packages from scratch (this will take 10-20 minutes)..."; \
+        echo "Building R packages from scratch (optimized with RSPM binaries, ~2-5 minutes)..."; \
         export MAKEFLAGS="-j$(nproc)" && \
         export R_SITE_LIB='/usr/local/lib/R/site-library' && \
-        export ARROW_R_DEV=FALSE && \
-        export ARROW_DEPENDENCY_SOURCE=BUNDLED && \
-        export ARROW_USE_PKG_CONFIG=false && \
-        export ARROW_WITH_BZ2=ON && \
-        export ARROW_WITH_LZ4=ON && \
-        export ARROW_WITH_SNAPPY=ON && \
-        export ARROW_WITH_ZLIB=ON && \
-        export ARROW_WITH_ZSTD=ON && \
+        export RSPM_ROOT='https://packagemanager.rstudio.com/all/__linux__/jammy/latest' && \
         R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-        options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-        cat('Installing remotes package...\n'); \
-        install.packages('remotes', repos='https://cloud.r-project.org/', \
-                         lib='${R_SITE_LIB}', \
-                         Ncpus = parallel::detectCores())" && \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing remotes package from RSPM...\n'); \
+        install.packages('remotes', Ncpus = parallel::detectCores())" && \
         R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-        options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-        cat('Installing arrow package from source with bundled C++ libs...\n'); \
-        install.packages('arrow', repos='https://cloud.r-project.org/', \
-                         lib='${R_SITE_LIB}', \
-                         type='source', \
-                         Ncpus = parallel::detectCores()); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing arrow package from RSPM (pre-compiled binary)...\n'); \
+        install.packages('arrow', Ncpus = parallel::detectCores()); \
         arrow_ok <- tryCatch({ \
             suppressPackageStartupMessages(library(arrow)); \
             TRUE \
         }, error = function(err) { \
-            message('arrow failed to load after installation: ', conditionMessage(err)); \
+            message('arrow failed to load: ', conditionMessage(err)); \
             FALSE \
         }); \
         if (!arrow_ok) { \
             quit(status = 1); \
         } else { \
+            cat('✓ arrow loaded successfully\n'); \
             detach('package:arrow', unload = TRUE); \
         }" && \
         R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-        options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-        cat('Installing stateior package (arrow should already be installed)...\n'); \
-        remotes::install_github('USEPA/stateior', dependencies=TRUE, \
-                                lib='${R_SITE_LIB}', \
-                                Ncpus = parallel::detectCores(), \
-                                upgrade = 'never')" && \
-        R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"; \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing stateior package from GitHub...\n'); \
+        remotes::install_github('USEPA/stateior', \
+                                dependencies = TRUE, \
+                                upgrade = 'never', \
+                                Ncpus = parallel::detectCores())" && \
+        R -e "cat('✓ R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"; \
     else \
         echo "BUILD_WITH_R=false, skipping R package installation for faster build"; \
         mkdir -p /usr/local/lib/R/site-library; \

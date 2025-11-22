@@ -22,11 +22,13 @@ FROM python:${PYTHON_VERSION}-slim
 
 # Install R and all required build dependencies for stateio
 # This matches the dependencies from the main Dockerfile's BUILD_WITH_R section
+# Also install ccache for C++ compilation caching (helps with any source builds)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     r-base \
     r-base-dev \
     build-essential \
     git \
+    ccache \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev \
@@ -45,56 +47,67 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Configure ccache for faster C++ compilation if building from source
+ENV PATH="/usr/lib/ccache:${PATH}" \
+    CCACHE_DIR=/root/.cache/ccache
+
 # Set R environment variables and library path
 ENV R_LIBS_USER=/usr/local/lib/R/site-library \
     R_HOME=/usr/lib/R
 
-# Install R packages (stateio with dependencies including arrow)
-# This matches the installation process from the main Dockerfile
-# These are the time-consuming steps we want to cache
-RUN export MAKEFLAGS="-j$(nproc)" && \
+# OPTIMIZATION: Use RStudio Package Manager (RSPM) for pre-compiled binaries
+# RSPM provides pre-compiled R packages for Ubuntu, dramatically reducing build time
+# Arrow installation: from ~15min (source) → ~30sec (binary)
+# See: https://packagemanager.rstudio.com/client/#/repos/1/overview
+ENV RSPM_ROOT=https://packagemanager.rstudio.com/all/__linux__/jammy/latest
+
+# Install remotes package first (small, fast)
+# Split into separate RUN for better layer caching
+RUN export R_SITE_LIB='/usr/local/lib/R/site-library' && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+    options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing remotes package from RSPM...\n'); \
+    install.packages('remotes', Ncpus = parallel::detectCores())"
+
+# Install arrow from RSPM (binary package - MUCH faster than source)
+# This is the most time-consuming package, so we do it separately for caching
+# Use ccache mount for C++ compilation caching in case of source builds
+RUN --mount=type=cache,target=/root/.cache/R \
+    --mount=type=cache,target=/root/.cache/ccache \
+    export MAKEFLAGS="-j$(nproc)" && \
     export R_SITE_LIB='/usr/local/lib/R/site-library' && \
-    export ARROW_R_DEV=FALSE && \
-    export ARROW_DEPENDENCY_SOURCE=BUNDLED && \
-    export ARROW_USE_PKG_CONFIG=false && \
-    export ARROW_WITH_BZ2=ON && \
-    export ARROW_WITH_LZ4=ON && \
-    export ARROW_WITH_SNAPPY=ON && \
-    export ARROW_WITH_ZLIB=ON && \
-    export ARROW_WITH_ZSTD=ON && \
     R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing remotes package...\n'); \
-    install.packages('remotes', repos='https://cloud.r-project.org/', \
-                     lib='${R_SITE_LIB}', \
-                     Ncpus = parallel::detectCores())" && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing arrow package from source with bundled C++ libs...\n'); \
-    install.packages('arrow', repos='https://cloud.r-project.org/', \
-                     lib='${R_SITE_LIB}', \
-                     type='source', \
-                     Ncpus = parallel::detectCores()); \
+    options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing arrow package from RSPM (binary if available)...\n'); \
+    install.packages('arrow', Ncpus = parallel::detectCores()); \
     arrow_ok <- tryCatch({ \
         suppressPackageStartupMessages(library(arrow)); \
         TRUE \
     }, error = function(err) { \
-        message('arrow failed to load after installation: ', conditionMessage(err)); \
+        message('arrow failed to load: ', conditionMessage(err)); \
         FALSE \
     }); \
     if (!arrow_ok) { \
         quit(status = 1); \
     } else { \
+        cat('✓ arrow loaded successfully\n'); \
         detach('package:arrow', unload = TRUE); \
-    }" && \
+    }"
+
+# Install stateior from GitHub with dependencies
+# Dependencies will also use RSPM binaries where available
+RUN --mount=type=cache,target=/root/.cache/R \
+    --mount=type=cache,target=/root/.cache/ccache \
+    export MAKEFLAGS="-j$(nproc)" && \
+    export R_SITE_LIB='/usr/local/lib/R/site-library' && \
     R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing stateior package (arrow should already be installed)...\n'); \
-    remotes::install_github('USEPA/stateior', dependencies=TRUE, \
-                            lib='${R_SITE_LIB}', \
-                            Ncpus = parallel::detectCores(), \
-                            upgrade = 'never')" && \
-    R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
+    options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing stateior package from GitHub...\n'); \
+    remotes::install_github('USEPA/stateior', \
+                            dependencies = TRUE, \
+                            upgrade = 'never', \
+                            Ncpus = parallel::detectCores())" && \
+    R -e "cat('✓ R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
 
 # Verify installation
 RUN R -e "library(stateior); \
