@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ DEFAULT_NEO4J_PASSWORD = "password"  # pragma: allowlist secret
 DEFAULT_NEO4J_DATABASE = "neo4j"
 
 
+@dataclass
 class JoinedRow:
     data: dict[str, Any]
     rf_id: str | None
