@@ -85,7 +85,7 @@ pytest tests/e2e/test_multi_source_enrichment.py -m real_data -v
 ```
 
 Real data requirements:
-1. **SBIR Data**: `data/raw/sbir/award_data.csv` (~381MB, Git LFS)
+1. **SBIR Data**: `data/raw/sbir/award_data.csv` (~381MB)
 2. **USAspending Data**: Database dump in S3 or `data/usaspending/`
 3. **SAM.gov Data**: `data/raw/sam_gov/sam_entity_records.parquet` (~500MB)
 
@@ -261,12 +261,7 @@ pytest tests/e2e/test_multi_source_enrichment.py
 ls tests/fixtures/sbir_sample.csv
 ```
 
-If missing, check if Git LFS is configured:
-
-```bash
-git lfs install
-git lfs pull
-```
+If missing, ensure the data files are available in the expected locations.
 
 ### Real Data Tests Skipped
 

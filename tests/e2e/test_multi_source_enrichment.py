@@ -489,7 +489,7 @@ pytest tests/e2e/test_multi_source_enrichment.py::TestRealDataEnrichmentPipeline
 **Import Errors**: Ensure repository root is on sys.path (handled by conftest.py)
 
 **Missing Data**: Sample fixtures are included, but real data requires:
-  - `data/raw/sbir/award_data.csv` (Git LFS)
+  - `data/raw/sbir/award_data.csv`
   - `data/raw/sam_gov/sam_entity_records.parquet`
   - USAspending database dump (S3 or local)
 

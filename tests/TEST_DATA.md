@@ -21,15 +21,10 @@ Located in `tests/fixtures/`:
 
 ### Real Data
 
-Located in `data/raw/sbir/` (Git LFS):
+Located in `data/raw/sbir/`:
 - `award_data.csv` - Full SBIR award dataset (~381MB, millions of records)
 - `*-company_search_*.csv` - Agency-specific company data files
   - NSF, NASA, DOD (AF, Army/Navy, Other), HHS/NIH, NIH Other, Other agencies
-
-**Note**: Real data files are stored in Git LFS. To use them:
-```bash
-git lfs pull --include="data/raw/sbir/*.csv"
-```
 
 ## Test Fixtures
 
@@ -254,14 +249,13 @@ pytest -m "e2e and real_data"
 # Comprehensive nightly tests
 - name: Run tests with real data
   run: |
-    git lfs pull --include="data/raw/sbir/*.csv"
     USE_REAL_SBIR_DATA=1 pytest -m "integration or e2e"
 ```
 
 ## Troubleshooting
 
-### "SBIR award data appears to be a Git LFS pointer"
-**Solution:** Run `git lfs pull` to fetch the actual data files.
+### Missing data files
+**Solution:** Ensure the data files are available in `data/raw/sbir/`.
 
 ### Tests are too slow
 **Solution:**
@@ -272,7 +266,7 @@ pytest -m "e2e and real_data"
 ### Missing fixture data
 **Solution:**
 - For sample data: Ensure `tests/fixtures/sbir_sample.csv` exists
-- For real data: Run `git lfs pull` to fetch LFS files
+- For real data: Ensure data files are available in `data/raw/sbir/`
 
 ## Data Quality
 

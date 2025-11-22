@@ -141,20 +141,15 @@ def sbir_award_data_csv_path(repo_root: Path) -> Path:
     """
     Path to the real SBIR award_data.csv file (full dataset, ~381MB).
 
-    This file is stored in Git LFS at data/raw/sbir/award_data.csv.
+    This file is located at data/raw/sbir/award_data.csv.
     Tests using this fixture should be marked with @pytest.mark.slow or @pytest.mark.real_data
     as they may take longer to run.
 
-    If the file is not available (LFS not pulled), the test will be skipped.
+    If the file is not available, the test will be skipped.
     """
     path = repo_root / "data" / "raw" / "sbir" / "award_data.csv"
     if not path.exists():
-        pytest.skip(f"Real SBIR award data not found at {path}. Run 'git lfs pull' to fetch.")
-    # Check if it's an LFS pointer file (< 200 bytes typically)
-    if path.stat().st_size < 200:
-        pytest.skip(
-            f"SBIR award data at {path} appears to be a Git LFS pointer. Run 'git lfs pull' to fetch the actual file."
-        )
+        pytest.skip(f"Real SBIR award data not found at {path}")
     return path
 
 
@@ -173,7 +168,7 @@ def sbir_company_csv_paths(repo_root: Path) -> dict[str, Path]:
     - 'nih_other': NIH other company data
     - 'other': Other agencies company data
 
-    Files are stored in Git LFS. If not available, the fixture returns an empty dict.
+    Files are located in data/raw/sbir/. If not available, the fixture returns an empty dict.
     """
     data_dir = repo_root / "data" / "raw" / "sbir"
 
@@ -192,7 +187,7 @@ def sbir_company_csv_paths(repo_root: Path) -> dict[str, Path]:
     result = {}
     for key, filename in file_mapping.items():
         path = data_dir / filename
-        if path.exists() and path.stat().st_size >= 200:  # Not an LFS pointer
+        if path.exists():
             result[key] = path
 
     return result
