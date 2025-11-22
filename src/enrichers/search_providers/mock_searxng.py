@@ -84,7 +84,10 @@ class MockSearxngProvider(BaseSearchProvider):
         for i in range(1, k + 1):
             title = f"{query} — SearxNG result {i}" if include_titles else None
             snippet = f"Mocked snippet for '{query}' (source: searxng-mock). Result {i}."
-            snippet = self.normalize_snippet(snippet)
+            snippet_normalized = self.normalize_snippet(snippet)
+            if snippet_normalized is None:
+                snippet_normalized = snippet  # Fallback to original if None
+            snippet = snippet_normalized
             url = f"{base_url}/{query.replace(' ', '_')}/{i}"
             results.append(
                 ProviderResult(

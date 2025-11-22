@@ -306,6 +306,8 @@ class VendorCrosswalk:
         if not name:
             return None
         norm = _normalize_name(name)
+        if norm is None:
+            return None
         # exact match
         cids = self._name_index.get(norm)
         if cids:
@@ -490,7 +492,7 @@ class VendorCrosswalk:
                     cage=j.get("cage"),
                     duns=j.get("duns"),
                     aliases=aliases,
-                    created_at=j.get("created_at") or _iso_date(datetime.utcnow()),
+                    created_at=str(j.get("created_at") or _iso_date(datetime.utcnow())),
                     metadata=j.get("metadata", {}),
                 )
                 self.add_or_merge(rec)
@@ -536,7 +538,7 @@ class VendorCrosswalk:
                 cage=r.get("cage"),
                 duns=r.get("duns"),
                 aliases=aliases,
-                created_at=r.get("created_at") or _iso_date(datetime.utcnow()),
+                    created_at=str(r.get("created_at") or _iso_date(datetime.utcnow())),
                 metadata=r.get("metadata", {}) or {},
             )
             self.add_or_merge(rec)

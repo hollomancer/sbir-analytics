@@ -273,6 +273,8 @@ class VendorResolutionCache:
 
     def _load_cache(self) -> None:
         """Load cache from file."""
+        if not self.cache_file:
+            return
         try:
             with open(self.cache_file) as f:
                 self.cache = json.load(f)
