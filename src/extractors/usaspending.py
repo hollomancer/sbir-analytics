@@ -51,7 +51,8 @@ class DuckDBUSAspendingExtractor:
         if self.connection is None:
             self.connection = duckdb.connect(self.db_path)
             # Enable object cache for better performance
-            self.connection.execute("SET enable_object_cache=true")
+            if self.connection is not None:  # type: ignore[redundant-expr]
+                self.connection.execute("SET enable_object_cache=true")  # type: ignore[union-attr]
         assert self.connection is not None  # type: ignore[assert]
         return self.connection
 
@@ -208,7 +209,8 @@ class DuckDBUSAspendingExtractor:
                             result = subprocess.run(extract_cmd, stdout=f, stderr=subprocess.PIPE)
 
                         if result.returncode != 0:
-                            stderr_str = result.stderr.decode() if result.stderr else "Unknown error"
+                            stderr_bytes: bytes | None = result.stderr
+                            stderr_str = stderr_bytes.decode() if stderr_bytes else "Unknown error"
                             logger.error(f"Failed to extract {filename}: {stderr_str}")
                             continue
 

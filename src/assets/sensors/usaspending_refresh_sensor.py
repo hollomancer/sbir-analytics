@@ -39,11 +39,11 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
             enriched_awards_key
         )
 
-        if not enriched_awards_record or not enriched_awards_record.event_log_entry:
+        if not enriched_awards_record or not hasattr(enriched_awards_record, "dagster_event"):  # type: ignore[arg-type]
             return SkipReason("Bulk enrichment asset not yet materialized")
 
         # Check if materialization was successful
-        if enriched_awards_record.event_log_entry.asset_materialization is None:
+        if not enriched_awards_record.dagster_event or not enriched_awards_record.dagster_event.asset_materialization:  # type: ignore[attr-defined]
             return SkipReason("Bulk enrichment asset materialization not found")
 
         # Check freshness ledger to see if refresh is needed
@@ -52,15 +52,15 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
 
         # If freshness ledger exists, check staleness
         # Otherwise, this might be first run - trigger refresh to initialize
-        if freshness_record and freshness_record.event_log_entry:
+        if freshness_record and hasattr(freshness_record, "dagster_event"):  # type: ignore[arg-type]
             # Check stale awards asset
             stale_key = AssetKey("stale_usaspending_awards")
             stale_record = context.instance.get_latest_materialization_event(stale_key)  # type: ignore[attr-defined]
 
-            if stale_record and stale_record.event_log_entry:
+            if stale_record and hasattr(stale_record, "dagster_event") and stale_record.dagster_event:  # type: ignore[attr-defined]
                 # Check metadata for stale count
-                if stale_record.event_log_entry.asset_materialization:
-                    metadata = stale_record.event_log_entry.asset_materialization.metadata or {}
+                if stale_record.dagster_event.asset_materialization:  # type: ignore[attr-defined]
+                    metadata = stale_record.dagster_event.asset_materialization.metadata or {}  # type: ignore[attr-defined]
                     stale_count_val = metadata.get("stale_count")
                     # Extract value if it's a MetadataValue, otherwise use directly
                     if hasattr(stale_count_val, "value"):

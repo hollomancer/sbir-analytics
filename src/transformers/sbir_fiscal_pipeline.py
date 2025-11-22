@@ -21,7 +21,7 @@ from .r_stateio_adapter import RStateIOAdapter
 
 
 if TYPE_CHECKING:
-    from ..config import Config
+    from ..config import Config  # type: ignore[attr-defined]
 
 
 class SBIRFiscalImpactCalculator:

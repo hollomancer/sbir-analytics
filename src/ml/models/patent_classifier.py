@@ -66,7 +66,7 @@ except Exception:
     pass
 
 try:
-    from src.ml.features.vectorizers import create_feature_matrix_builder
+    from src.ml.features.vectorizers import create_feature_matrix_builder  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover - optional import
     create_feature_matrix_builder = None
 

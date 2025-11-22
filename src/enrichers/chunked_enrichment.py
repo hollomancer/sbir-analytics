@@ -145,6 +145,12 @@ class ChunkedEnricher:
         self.enable_memory_monitoring = config.enrichment.performance.enable_memory_monitoring
         self.enable_fuzzy_matching = config.enrichment.performance.enable_fuzzy_matching
 
+        # Initialize memory/stats tracking
+        self.memory_pressure_warnings: int = 0
+        self.chunk_size_reductions: int = 0
+        self.chunks_spilled: int = 0
+        self.current_chunk_size: int = self.chunk_size
+        
         # Initialize progress tracking
         self.progress = ChunkProgress(
             total_records=len(sbir_df),
@@ -293,7 +299,7 @@ class ChunkedEnricher:
             Tuple of (enriched DataFrame, summary metrics)
         """
         enriched_chunks = []
-        all_metrics = {
+        all_metrics: dict[str, Any] = {
             "total_chunks": self.progress.total_chunks,
             "chunk_size": self.chunk_size,
             "chunks": [],

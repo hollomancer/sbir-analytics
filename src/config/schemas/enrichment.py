@@ -13,6 +13,8 @@ class EnrichmentPerformanceConfig(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1, description="Operation timeout in seconds")
     high_confidence_threshold: float = Field(default=0.9, ge=0.0, le=1.0, description="High confidence threshold")
     low_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Low confidence threshold")
+    enable_memory_monitoring: bool = Field(default=True, description="Enable memory monitoring")
+    enable_fuzzy_matching: bool = Field(default=True, description="Enable fuzzy matching")
 
 
 class EnrichmentConfig(BaseModel):
