@@ -213,7 +213,7 @@ class PatentAssignmentTransformer:
         Returns (ConveyanceType, employer_assign_flag)
         """
         if text is None:
-            return ConveyanceType.ASSIGNMENT if ConveyanceType else None, None
+            return ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None, None
         txt = str(text).lower()
         # employer assignment heuristics: phrases like "by employee", "work for hire", "assigned to employer"
         employer_keywords = [
@@ -235,10 +235,10 @@ class PatentAssignmentTransformer:
                         ), employer_flag
                     except Exception:
                         # ConveyanceType may be enum of different names; fall back to generic
-                        return ConveyanceType.ASSIGNMENT if ConveyanceType else None, employer_flag
+                        return ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None, employer_flag
 
         # fallback: assignment default
-        return ConveyanceType.ASSIGNMENT if ConveyanceType else None, employer_flag
+        return ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None, employer_flag
 
     # ------------------------
     # Fuzzy matching helpers
@@ -397,7 +397,7 @@ class PatentAssignmentTransformer:
             conveyance = PatentConveyance(
                 rf_id=_get("conveyance_rf_id"),
                 conveyance_type=conveyance_type
-                or (ConveyanceType.ASSIGNMENT if ConveyanceType else None),
+                or (ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None),
                 description=conv_text,
                 employer_assign=employer_flag,
                 recorded_date=self._parse_date(_get("recorded_date")),
