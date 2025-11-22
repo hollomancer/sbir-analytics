@@ -331,7 +331,7 @@ class PatentAssignmentTransformer:
         except Exception as e:
             logger.debug("Document construction failed: %s", e)
             # proceed but keep raw doc dict
-            doc: PatentDocument | dict[str, str] = {"_error": f"document_build_failed: {e}"}  # type: ignore[assignment]
+            doc = {"_error": f"document_build_failed: {e}"}  # type: ignore[assignment, no-redef]
 
         try:
             # Try to parse a combined address if explicit street/city/state not provided
@@ -376,7 +376,7 @@ class PatentAssignmentTransformer:
             )
         except Exception as e:
             logger.debug("Assignee construction failed: %s", e)
-            assignee: PatentAssignee | dict[str, str] = {"_error": f"assignee_build_failed: {e}"}  # type: ignore[assignment]
+            assignee = {"_error": f"assignee_build_failed: {e}"}  # type: ignore[assignment, no-redef]
 
         try:
             assignor = PatentAssignor(
@@ -388,7 +388,7 @@ class PatentAssignmentTransformer:
             )
         except Exception as e:
             logger.debug("Assignor construction failed: %s", e)
-            assignor: PatentAssignor | dict[str, str] = {"_error": f"assignor_build_failed: {e}"}  # type: ignore[assignment]
+            assignor = {"_error": f"assignor_build_failed: {e}"}  # type: ignore[assignment, no-redef]
 
         # Conveyance inference
         conv_text = _get("conveyance_text", "conveyance")
@@ -405,7 +405,7 @@ class PatentAssignmentTransformer:
             )
         except Exception as e:
             logger.debug("Conveyance build failed: %s", e)
-            conveyance: PatentConveyance | dict[str, str] = {"_error": f"conveyance_build_failed: {e}"}  # type: ignore[assignment]
+            conveyance = {"_error": f"conveyance_build_failed: {e}"}  # type: ignore[assignment, no-redef]
 
         # Build main assignment
         try:

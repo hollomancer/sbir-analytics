@@ -206,12 +206,12 @@ class DuckDBUSAspendingExtractor:
                         # Extract specific file
                         extract_cmd = ["unzip", "-p", str(dump_file), filename]
                         with open(temp_file, "wb") as f:
-                            result: subprocess.CompletedProcess[bytes] = subprocess.run(
+                            extract_result: subprocess.CompletedProcess[bytes] = subprocess.run(
                                 extract_cmd, stdout=f, stderr=subprocess.PIPE
                             )
 
-                        if result.returncode != 0:
-                            stderr_bytes = result.stderr  # type: ignore[assignment]
+                        if extract_result.returncode != 0:
+                            stderr_bytes = extract_result.stderr  # type: ignore[assignment]
                             stderr_str = (
                                 stderr_bytes.decode() if stderr_bytes else "Unknown error"
                             )

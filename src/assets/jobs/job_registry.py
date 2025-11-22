@@ -29,19 +29,19 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
     """Create a Dagster job from a JobSpec."""
 
     if spec.assets:
-        selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
+        initial_selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
         return build_assets_job(
             name=spec.name,
             assets=list(spec.assets),
-            selection=selection,
+            selection=initial_selection,
             description=spec.description,
         )
 
     selection: Any | None = None
     if spec.asset_keys:
-        selection: Any = AssetSelection.keys(*spec.asset_keys)
+        selection = AssetSelection.keys(*spec.asset_keys)  # type: ignore[no-redef]
     elif spec.asset_groups:
-        selection: Any = AssetSelection.groups(*spec.asset_groups)
+        selection = AssetSelection.groups(*spec.asset_groups)  # type: ignore[no-redef]
 
     if selection is None:
         raise ValueError(
