@@ -37,7 +37,7 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
             description=spec.description,
         )
 
-    selection: Any | None = None
+    selection: Any = None
     if spec.asset_keys:
         selection = AssetSelection.keys(*spec.asset_keys)
     elif spec.asset_groups:

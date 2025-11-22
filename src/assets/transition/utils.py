@@ -54,7 +54,7 @@ try:
             else:
                 # For real usage: use the real Dagster context
                 self._real_context = _RealAssetExecutionContext(op_execution_context)
-                self.log = self._real_context.log
+                self.log: Any = self._real_context.log  # type: ignore[assignment]
                 self._is_shim = False
 
 except Exception:  # pragma: no cover

@@ -26,8 +26,8 @@ try:
     import spacy
     from spacy.language import Language
 except ImportError:
-    spacy = None
-    Language = None
+    spacy: Any | None = None
+    Language: Any | None = None
     logger.warning("spaCy not available; evidence extraction will be limited")
 
 

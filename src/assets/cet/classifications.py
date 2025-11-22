@@ -33,8 +33,8 @@ try:  # pragma: no cover - defensive import
     from src.models.quality import ModuleReport
     from src.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
 except Exception:
-    ModuleReport = None
-    CetClassificationAnalyzer = None
+    ModuleReport: Any | None = None
+    CetClassificationAnalyzer: Any | None = None
 
 
 @asset_check(
@@ -217,7 +217,7 @@ def enriched_cet_award_classifications() -> Output:
     except Exception:
         # If classification config cannot be loaded, fall back to defaults
         logger.warning("Could not load classification config; using defaults")
-        classification_config = {}
+        classification_config: dict[str, Any] = {}
 
     # Prepare EvidenceExtractor if available
     extractor = None
@@ -883,7 +883,7 @@ def enriched_cet_patent_classifications() -> Output:
     try:
         classification_config = loader.load_classification_config()
     except Exception:
-        classification_config = {}
+        classification_config: dict[str, Any] = {}
 
     batch_size = (
         classification_config.get("batch", {}).get("size", 1000)

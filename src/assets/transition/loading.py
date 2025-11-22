@@ -34,8 +34,8 @@ from .utils import (
 try:
     from ...loaders.neo4j import TransitionLoader, TransitionProfileLoader
 except Exception:
-    TransitionLoader = None
-    TransitionProfileLoader = None
+    TransitionLoader: Any | None = None
+    TransitionProfileLoader: Any | None = None
 
 
 @asset(
@@ -101,7 +101,7 @@ def loaded_transitions(
         duration = time.time() - start_time
 
         stats = loader.get_stats()
-        stats["duration_seconds"] = duration
+        stats["duration_seconds"] = int(duration)
         stats["prepared_rows"] = len(prep_df)
 
         context.log.info(f"✓ Loaded {nodes_created} transition nodes in {duration:.1f}s")
@@ -266,7 +266,7 @@ def loaded_transition_relationships(
 
         duration = time.time() - start_time
         stats = loader.get_stats()
-        stats["duration_seconds"] = duration
+        stats["duration_seconds"] = int(duration)
 
         context.log.info(
             f"✓ Created relationships in {duration:.1f}s: {stats.get('relationships_created', 0)} total"
