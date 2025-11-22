@@ -190,7 +190,7 @@ class DagsterClient:
         try:
             # Build asset selection
             if asset_keys:
-                selection = AssetSelection.keys([AssetKey.from_user_string(k) for k in asset_keys])
+                selection: Any = AssetSelection.keys([AssetKey.from_user_string(k) for k in asset_keys])
             elif asset_groups:
                 selection = AssetSelection.groups(*asset_groups)
             else:

@@ -304,7 +304,7 @@ class CETModelTrainer:
                     pred_vector[idx] = 1.0 if cls.score >= 40 else 0.0
             y_pred.append(pred_vector)
 
-        y_pred = np.array(y_pred)
+            y_pred: np.ndarray[Any, Any] = np.array(y_pred)
 
         # Calculate metrics
         metrics = {
