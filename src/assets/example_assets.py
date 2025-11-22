@@ -79,8 +79,10 @@ def validated_sbir_data(
     # Run quality checks
     quality_report = validate_sbir_awards(
         raw_sbir_data.to_dict("records"),
-        min_completeness=0.95,
-        required_columns=["award_id", "agency", "award_amount"],
+        config={
+            "completeness": {"min_completeness": 0.95},
+            "required_columns": ["award_id", "agency", "award_amount"],
+        },
     )
 
     # Log quality issues
@@ -127,7 +129,7 @@ def validated_data_quality_check(
     # Run quality validation
     quality_report = validate_sbir_awards(
         validated_sbir_data.to_dict("records"),
-        min_completeness=0.95,
+        config={"completeness": {"min_completeness": 0.95}},
     )
 
     critical_issues = [

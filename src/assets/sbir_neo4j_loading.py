@@ -1035,7 +1035,6 @@ def neo4j_sbir_awards(
             org_metrics = org_loader.create_subsidiary_relationships(
                 agency_subsidiary_pairs,
                 source="AGENCY_HIERARCHY",
-                metrics=metrics,
             )
             metrics = org_metrics
             context.log.info(

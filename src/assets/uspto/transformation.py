@@ -182,7 +182,7 @@ class USPTOAssignmentJoiner:
                 ):
                     merged = self._merge_rows(assignment, ass_row, asr_row, doc_row, conv_row)
                     merged["_source_assignment_file"] = str(path)
-                    yield JoinedRow(merged, rf_key)
+                    yield JoinedRow(data=merged, rf_id=rf_key)
 
 
 @asset(

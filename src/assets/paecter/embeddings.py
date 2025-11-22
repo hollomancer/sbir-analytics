@@ -16,6 +16,7 @@ import pandas as pd
 from dagster import AssetCheckResult, AssetCheckSeverity, MetadataValue, Output, asset, asset_check
 
 from ...config.loader import get_config
+from ...ml.config import PaECTERClientConfig
 from ...ml.paecter_client import PaECTERClient
 from ...utils.asset_column_helper import AssetColumnHelper
 from ...utils.config_accessor import ConfigAccessor
@@ -50,7 +51,7 @@ def paecter_embeddings_awards(
 
     # Initialize PaECTER client
     use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(use_local=use_local)
+    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Find award ID column using helper
     award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
@@ -166,7 +167,7 @@ def paecter_embeddings_patents(
 
     # Initialize PaECTER client
     use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(use_local=use_local)
+    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Try to load from transformed_patents JSONL file first
     patents_df = None
@@ -349,7 +350,7 @@ def paecter_award_patent_similarity(
 
     # Initialize client for similarity computation
     use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
-    client = PaECTERClient(use_local=use_local)
+    client = PaECTERClient(config=PaECTERClientConfig(use_local=use_local))
 
     # Compute similarities with performance monitoring
     with performance_monitor.monitor_block("paecter_compute_similarities"):

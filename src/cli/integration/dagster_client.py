@@ -196,13 +196,19 @@ class DagsterClient:
             else:
                 selection = AssetSelection.all()
 
-            # Materialize assets
-            resolved_assets = selection.resolve(assets=self.defs.assets) if self.defs.assets else []
-            result = materialize(
-                resolved_assets,
-                instance=self.instance,
-                **kwargs,
-            )
+            # Materialize assets - pass selection and assets separately to materialize
+            if self.defs.assets:
+                result = materialize(
+                    selection.resolve(self.defs.assets),
+                    instance=self.instance,
+                    **kwargs,
+                )
+            else:
+                result = materialize(
+                    [],
+                    instance=self.instance,
+                    **kwargs,
+                )
 
             return RunResult(
                 run_id=str(result.run_id) if hasattr(result, "run_id") else "unknown",

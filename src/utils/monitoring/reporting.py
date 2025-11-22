@@ -13,7 +13,7 @@ from .metrics import MetricComparison, PerformanceMetrics
 try:
     from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 except Exception:
-    HTMLReportBuilder = None  # type: ignore[misc, unused-ignore]
+    HTMLReportBuilder = None  # type: ignore[misc, assignment, unused-ignore]
 
 
 class PerformanceReporter:
