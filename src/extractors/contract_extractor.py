@@ -293,7 +293,7 @@ class ContractExtractor:
             # Parse competition type from extent_competed field
             extent_competed = get_col(99)  # Column 99: extent_competed
             competition_type = (
-                self._parse_competition_type(extent_competed) if extent_competed else CompetitionType.UNKNOWN
+                self._parse_competition_type(extent_competed) if extent_competed else CompetitionType.OTHER
             )
 
             # Parse dates using centralized utility with 8-digit format support

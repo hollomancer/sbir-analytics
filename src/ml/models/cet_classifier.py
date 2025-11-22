@@ -527,7 +527,8 @@ class ApplicabilityModel:
                 logger.warning(f"Classification failed for {cet_id} for the batch: {e}")
 
         for i in range(n_samples):
-            text_str = " ".join(texts[i].values()) if isinstance(texts[i], dict) else str(texts[i])
+            text_item: str | dict[str, Any] = texts[i]  # type: ignore[assignment]
+            text_str = " ".join(text_item.values()) if isinstance(text_item, dict) else str(text_item)
 
             score_dict = dict(zip(cet_ids, scores[i, :], strict=False))
 

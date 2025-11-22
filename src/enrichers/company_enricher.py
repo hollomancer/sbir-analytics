@@ -361,7 +361,7 @@ def enrich_awards_with_companies(
         prefix_len=prefix_len,
         enhanced_config=enhanced_config,
     )
-    comp_df = idx["df"]
+    comp_df: pd.DataFrame = idx["df"]  # type: ignore[assignment]
     comp_norm: pd.Series = idx["norm_name"]  # type: ignore[assignment]
     comp_blocks = idx["blocks"]
     comp_by_uei = idx["comp_by_uei"]
