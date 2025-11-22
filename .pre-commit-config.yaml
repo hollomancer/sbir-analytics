@@ -54,17 +54,26 @@ repos:
         # Also exclude infrastructure code (references secret names, not actual secrets) and debug scripts
         exclude: |
           (?x)^(
+            \.git\/|
+            \.venv\/|
+            \.venv311\/|
+            \.uv-cache\/|
+            \.mypy_cache\/|
+            \.pytest_cache\/|
+            \.ruff_cache\/|
+            htmlcov\/|
             .*\/\.git\/|
             .*\/\.venv\/|
+            .*\/\.mypy_cache\/|
+            .*\/\.pytest_cache\/|
+            .*\/\.ruff_cache\/|
             .*\/cdk\.out\/|
-            .*\/\.env$|
-            .*\/\.env\.test\.aura$|
-            .*\/reports\/.*\.(json|csv)$|
-            infrastructure\/cdk\/\.venv\/|
-            infrastructure\/cdk\/cdk\.out\/|
-            infrastructure\/cdk\/response\.json|
-            infrastructure\/cdk\/.*\.py$|
-            scripts\/debug\/.*\.py$
+            \.env$|
+            \.env\..*$|
+            data\/.*|
+            reports\/.*\.(json|csv)$|
+            infrastructure\/cdk\/|
+            scripts\/debug\/
           )
 
   # Disabled git-secrets hook: install requires manual setup on developer machines; detect-secrets + local
