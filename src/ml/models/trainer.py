@@ -235,7 +235,7 @@ class CETModelTrainer:
 
             temp_model.train(X_train_part, y_train_part)
 
-            y_pred = []
+            y_pred_list: list[np.ndarray[Any, Any]] = []
             for text in X_val:
                 classifications = temp_model.classify(text, return_all_scores=True)
                 pred_vector = np.zeros(len(self.mlb.classes_))
@@ -243,9 +243,9 @@ class CETModelTrainer:
                     if cls.cet_id in self.mlb.classes_:
                         idx = list(self.mlb.classes_).index(cls.cet_id)
                         pred_vector[idx] = 1.0 if cls.score >= 40 else 0.0
-                y_pred.append(pred_vector)
+                y_pred_list.append(pred_vector)
 
-            y_pred = np.array(y_pred)
+            y_pred: np.ndarray[Any, Any] = np.array(y_pred_list)
 
             score = f1_score(y_val, y_pred, average="macro", zero_division=0)
             logger.info(f"Validation F1 score: {score:.4f}")

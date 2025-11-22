@@ -50,7 +50,7 @@ class Neo4jClient:
         self.config = config
         self.console = console
         self.neo4j_config = config.neo4j
-        self._driver = None
+        self._driver: Any | None = None
 
     @property
     def driver(self) -> Any:

@@ -348,11 +348,13 @@ class VendorCrosswalk:
             if r:
                 return r, "duns", 1.0
         if name:
-            r = self.find_by_name(name, fuzzy_threshold=fuzzy_threshold)
-            if r:
+            name_match: tuple[CrosswalkRecord, float] | None = self.find_by_name(
+                name, fuzzy_threshold=fuzzy_threshold
+            )
+            if name_match:
                 rec: CrosswalkRecord
                 score: float
-                rec, score = r  # type: ignore[misc]
+                rec, score = name_match  # type: ignore[misc]
                 return rec, "name", score
         return None
 
@@ -409,17 +411,21 @@ class VendorCrosswalk:
             return False
         acq = self.records[acquirer_id]
         target = self.records[acquired_id]
-        acquisitions: list[dict[str, str]] = acq.metadata.setdefault("acquisitions", [])
-        if not isinstance(acquisitions, list):
-            acquisitions = []
+        acquisitions_raw = acq.metadata.setdefault("acquisitions", [])
+        acquisitions: list[dict[str, str]] = (
+            acquisitions_raw if isinstance(acquisitions_raw, list) else []
+        )
+        if not acquisitions:
             acq.metadata["acquisitions"] = acquisitions
         date_str = _iso_date(date_of_acquisition) or ""
         acquisitions.append(
             {"acquired_id": acquired_id, "date": date_str, "note": note or ""}
         )
-        acquired_by: list[dict[str, str]] = target.metadata.setdefault("acquired_by", [])
-        if not isinstance(acquired_by, list):
-            acquired_by = []
+        acquired_by_raw = target.metadata.setdefault("acquired_by", [])
+        acquired_by: list[dict[str, str]] = (
+            acquired_by_raw if isinstance(acquired_by_raw, list) else []
+        )
+        if not acquired_by:
             target.metadata["acquired_by"] = acquired_by
         date_str = _iso_date(date_of_acquisition) or ""
         acquired_by.append(

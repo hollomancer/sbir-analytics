@@ -28,7 +28,7 @@ class DuckDBUSAspendingExtractor:
             db_path: Path to DuckDB database file
         """
         self.db_path = db_path or ":memory:"
-        self.connection = None
+        self.connection: duckdb.DuckDBPyConnection | None = None
 
     @staticmethod
     def _escape_identifier(identifier: str) -> str:
@@ -192,8 +192,8 @@ class DuckDBUSAspendingExtractor:
 
                 # Create tables for each COPY file
                 for file_info in copy_files:
-                    oid = file_info["oid"]
-                    filename = file_info["filename"]
+                    oid: int = int(file_info["oid"])  # type: ignore[assignment]
+                    filename: str = str(file_info["filename"])  # type: ignore[assignment]
                     table_name_for_file = f"{table_name}_{oid}"
                     table_identifier = self._escape_identifier(table_name_for_file)
 
@@ -206,11 +206,15 @@ class DuckDBUSAspendingExtractor:
                         # Extract specific file
                         extract_cmd = ["unzip", "-p", str(dump_file), filename]
                         with open(temp_file, "wb") as f:
-                            result = subprocess.run(extract_cmd, stdout=f, stderr=subprocess.PIPE)
+                            result: subprocess.CompletedProcess[bytes] = subprocess.run(
+                                extract_cmd, stdout=f, stderr=subprocess.PIPE
+                            )
 
                         if result.returncode != 0:
                             stderr_bytes: bytes | None = result.stderr
-                            stderr_str = stderr_bytes.decode() if stderr_bytes else "Unknown error"
+                            stderr_str: str = (
+                                stderr_bytes.decode() if stderr_bytes else "Unknown error"
+                            )
                             logger.error(f"Failed to extract {filename}: {stderr_str}")
                             continue
 

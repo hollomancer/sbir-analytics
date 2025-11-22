@@ -530,14 +530,14 @@ class FiscalUncertaintyQuantifier:
 
         # Bootstrap resampling
         n = len(estimates)
-        bootstrap_means = []
+        bootstrap_means_list: list[float] = []
 
         for _ in range(num_samples):
             # Resample with replacement
             sample = np.random.choice(estimates, size=n, replace=True)
-            bootstrap_means.append(np.mean(sample))
+            bootstrap_means_list.append(float(np.mean(sample)))
 
-        bootstrap_means = np.array(bootstrap_means)
+        bootstrap_means: np.ndarray[Any, Any] = np.array(bootstrap_means_list)
 
         intervals = {}
         for level in confidence_levels:

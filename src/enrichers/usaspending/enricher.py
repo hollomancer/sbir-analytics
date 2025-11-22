@@ -19,6 +19,7 @@ Notes:
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pandas as pd
 
@@ -29,8 +30,8 @@ try:
     from rapidfuzz import fuzz, process
 except ImportError:
     # Fallback to simple string matching if rapidfuzz not available
-    fuzz = None
-    process = None
+    fuzz: Any | None = None
+    process: Any | None = None
 
 
 def enrich_sbir_with_usaspending(
