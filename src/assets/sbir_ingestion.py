@@ -207,10 +207,10 @@ def validated_sbir_awards(
     context.log.info(
         "Validation complete",
         extra={
-            "total_records": quality_report.total_records,
-            "passed_records": quality_report.passed_records,
-            "failed_records": quality_report.failed_records,
-            "pass_rate": f"{quality_report.pass_rate:.1%}",
+            "total_records": quality_report.total_records,  # type: ignore[attr-defined]
+            "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
+            "failed_records": quality_report.failed_records,  # type: ignore[attr-defined]
+            "pass_rate": f"{quality_report.pass_rate:.1%}",  # type: ignore[attr-defined]
             "total_issues": len(quality_report.issues),
             "validation_passed": quality_report.passed,
         },
@@ -219,9 +219,9 @@ def validated_sbir_awards(
     # Create metadata
     metadata = {
         "num_records": len(validated_df),
-        "pass_rate": f"{quality_report.pass_rate:.1%}",
-        "passed_records": quality_report.passed_records,
-        "failed_records": quality_report.failed_records,
+        "pass_rate": f"{quality_report.pass_rate:.1%}",  # type: ignore[attr-defined]
+        "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
+        "failed_records": quality_report.failed_records,  # type: ignore[attr-defined]
         "total_issues": len(quality_report.issues),
         "validation_status": "PASSED" if quality_report.passed else "FAILED",
         "threshold": f"{pass_rate_threshold:.1%}",
@@ -258,10 +258,10 @@ def sbir_validation_report(
 
     # Convert to dictionary
     report_dict = {
-        "total_records": quality_report.total_records,
-        "passed_records": quality_report.passed_records,
-        "failed_records": quality_report.failed_records,
-        "pass_rate": quality_report.pass_rate,
+        "total_records": quality_report.total_records,  # type: ignore[attr-defined]
+        "passed_records": quality_report.passed_records,  # type: ignore[attr-defined]
+        "failed_records": quality_report.failed_records,  # type: ignore[attr-defined]
+        "pass_rate": quality_report.pass_rate,  # type: ignore[attr-defined]
         "threshold": quality_report.threshold,
         "passed": quality_report.passed,
         "issues": [

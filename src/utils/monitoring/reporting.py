@@ -13,7 +13,7 @@ from .metrics import MetricComparison, PerformanceMetrics
 try:
     from src.utils.reporting.formats.html_templates import HTMLReportBuilder
 except Exception:
-    HTMLReportBuilder = None  # type: ignore[assignment, unused-ignore]
+    HTMLReportBuilder = None  # type: ignore[misc, unused-ignore]
 
 
 class PerformanceReporter:
@@ -484,11 +484,15 @@ class PerformanceReporter:
         }
 
         if comparison.current_metrics.match_rate is not None:
-            benchmark_data["enrichment_stats"]["match_rate"] = comparison.current_metrics.match_rate
-            benchmark_data["enrichment_stats"]["matched_awards"] = (
+            enrichment_stats = benchmark_data.get("enrichment_stats", {})
+            if not isinstance(enrichment_stats, dict):
+                enrichment_stats = {}
+                benchmark_data["enrichment_stats"] = enrichment_stats
+            enrichment_stats["match_rate"] = comparison.current_metrics.match_rate
+            enrichment_stats["matched_awards"] = (
                 comparison.current_metrics.matched_records or 0
             )
-            benchmark_data["enrichment_stats"]["total_awards"] = (
+            enrichment_stats["total_awards"] = (
                 comparison.current_metrics.total_records or 0
             )
 
