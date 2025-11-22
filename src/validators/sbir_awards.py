@@ -351,7 +351,7 @@ def validate_award_year_date_consistency(
     award_year: int, proposal_date: date | None, row_index: int
 ) -> QualityIssue | None:
     """Validate that Award Year matches Proposal Award Date year."""
-    if pd.isna(award_year) or pd.isna(proposal_date):
+    if pd.isna(award_year) or proposal_date is None:
         return None
 
     if proposal_date.year != award_year:

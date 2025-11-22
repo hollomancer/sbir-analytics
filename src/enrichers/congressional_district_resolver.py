@@ -323,13 +323,13 @@ class CongressionalDistrictResolver:
                     return result
 
             # 2. Census API (free, accurate)
-            if all([address, city, state, zip_code]):
+            if address and city and state and zip_code:
                 result = self.resolve_district_from_census_api(address, city, state, zip_code)
                 if result:
                     return result
 
             # 3. Google Civic (if API key provided)
-            if google_api_key and all([address, city, state, zip_code]):
+            if google_api_key and address and city and state and zip_code:
                 result = self.resolve_district_from_google_civic(
                     address, city, state, zip_code, google_api_key
                 )
@@ -341,11 +341,11 @@ class CongressionalDistrictResolver:
                 result = self.resolve_district_from_zip(zip_code)
 
         elif self.method == "census_api":
-            if all([address, city, state, zip_code]):
+            if address and city and state and zip_code:
                 result = self.resolve_district_from_census_api(address, city, state, zip_code)
 
         elif self.method == "google_civic":
-            if google_api_key and all([address, city, state, zip_code]):
+            if google_api_key and address and city and state and zip_code:
                 result = self.resolve_district_from_google_civic(
                     address, city, state, zip_code, google_api_key
                 )

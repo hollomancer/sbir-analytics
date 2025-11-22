@@ -106,9 +106,9 @@ def call_r_function(
         if r_error:
             details["r_error"] = r_error
         if args:
-            details["args_count"] = len(args)
+            details["args_count"] = str(len(args))
         if kwargs:
-            details["kwargs_keys"] = list(kwargs.keys())
+            details["kwargs_keys"] = ",".join(kwargs.keys())
 
         raise RFunctionError(
             f"R function {function_name} call failed: {error_msg}",

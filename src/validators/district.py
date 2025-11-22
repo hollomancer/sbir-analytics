@@ -135,8 +135,8 @@ def validate_district_allocation(
     Returns:
         Dictionary with validation results
     """
-    warnings = []
-    errors = []
+    warnings: list[str] = []
+    errors: list[str] = []
 
     # Check for required columns
     required_cols = [

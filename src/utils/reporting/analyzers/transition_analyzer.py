@@ -324,7 +324,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         if total_transitions == 0:
             return {"error": "No transitions available"}
 
-        confidence_distribution = {}
+        confidence_distribution: dict[str, int | float] = {}
 
         # Check for confidence/likelihood columns
         confidence_columns = ["confidence", "likelihood_score", "score", "confidence_level"]
@@ -507,7 +507,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
             # Signal strength factor (30% weight)
             signal_cols = ["agency_score", "competition_score", "patent_score", "cet_score"]
             signal_sum = 0
-            signal_count = 0
+            signal_count: int = 0
             for col in signal_cols:
                 if col in row.index and pd.notna(row[col]):
                     signal_sum += float(row[col])

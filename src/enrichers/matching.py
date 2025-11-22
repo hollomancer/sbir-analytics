@@ -123,8 +123,8 @@ def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
         if algorithm == "metaphone":
             return jellyfish.metaphone(name_clean)
         elif algorithm == "double_metaphone":
-            primary, _ = jellyfish.double_metaphone(name_clean)
-            return primary
+            # Use match_rating_codex as it provides a phonetic code similar to double metaphone
+            return jellyfish.match_rating_codex(name_clean)
         elif algorithm == "soundex":
             return jellyfish.soundex(name_clean)
         else:
