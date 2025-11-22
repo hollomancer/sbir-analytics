@@ -399,7 +399,7 @@ def company_categorization_confidence_check(
 
     return AssetCheckResult(
         passed=passed,
-        severity=AssetCheckSeverity.INFO if passed else AssetCheckSeverity.WARN,
+        severity=AssetCheckSeverity.WARN if passed else AssetCheckSeverity.WARN,
         description=description,
         metadata={
             "confidence_distribution": confidence_dist,
@@ -557,7 +557,7 @@ def neo4j_categorization_load_success_check(
             f"Neo4j load successful: {companies_updated}/{total_attempted} companies updated "
             f"({success_rate * 100:.1f}% success rate)"
         )
-        severity = AssetCheckSeverity.INFO
+        severity = AssetCheckSeverity.WARN
     else:
         description = (
             f"Neo4j load below threshold: {companies_updated}/{total_attempted} companies updated "
