@@ -52,6 +52,7 @@ class DuckDBUSAspendingExtractor:
             self.connection = duckdb.connect(self.db_path)
             # Enable object cache for better performance
             self.connection.execute("SET enable_object_cache=true")
+        assert self.connection is not None  # type: ignore[assert]
         return self.connection
 
     def close(self) -> None:

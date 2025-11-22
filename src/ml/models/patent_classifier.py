@@ -86,7 +86,7 @@ class PatentFeatureExtractor:
 
     def features_for_dataframe(
         self, df: Any, title_col: str = "title", assignee_col: str | None = None
-    ) -> None:
+    ) -> tuple[list[str], list[Any]]:
         """
         Given a pandas DataFrame, return a tuple (texts, feature_vectors) where:
           - texts: List[str] suitable to pass to classifier pipelines (combined normalized title + assignee hint)

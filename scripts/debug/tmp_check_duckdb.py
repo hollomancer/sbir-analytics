@@ -160,7 +160,7 @@ def main():
     try:
         # Build quote token in SQL as a single-quoted string containing a double-quote character:
         # quote = '"'
-        sql_quote_token = "'\"'"
+        sql_quote_token = "'\"'"  # nosec B105  # This is a SQL quote character, not a password
         result = sql_read_csv_auto_count(path_str, quote_sql=sql_quote_token)
         print("SQL count query executed. SQL:", result["sql"])
         print("Result:", result["count_result"])

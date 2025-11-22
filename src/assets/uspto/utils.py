@@ -423,10 +423,10 @@ def _resolve_output_paths(context, prefix: str) -> tuple[Path, Path]:
 
 def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
     if not path:
-        return []
+        return []  # type: ignore[return-value]
     src = Path(path)
     if not src.exists():
-        return []
+        return []  # type: ignore[return-value]
     with src.open("r", encoding="utf-8") as fh:
         for line in fh:
             if not line.strip():

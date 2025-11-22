@@ -21,7 +21,7 @@ class SecurityStack(Stack):
         self.neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
             self,
             "Neo4jAuraSecret",
-            secret_name="sbir-analytics/neo4j-aura",
+            secret_name="sbir-analytics/neo4j-aura",  # nosec B106  # This is a secret name/path, not a password value
         )
 
         # Default to importing existing roles (they may already exist)

@@ -23,6 +23,6 @@ Status: <active|draft|deprecated|archived>
 
 ## See Also
 
-- [Main README](../../README.md)
+- [Main README](/README.md)
 - [Documentation Index](index.md)
 

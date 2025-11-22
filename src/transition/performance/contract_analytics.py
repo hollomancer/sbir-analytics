@@ -202,7 +202,7 @@ class ContractAnalytics:
 
             where_clause = " OR ".join(conditions) if conditions else "1=0"
 
-            result = self.conn.execute(
+            rows = self.conn.execute(
                 f"""
                 SELECT contract_id, piid, vendor_uei, vendor_duns, action_date, amount
                 FROM contracts_filtered
@@ -210,6 +210,18 @@ class ContractAnalytics:
                 LIMIT 10000
                 """
             ).fetchall()
+
+            result: list[dict[str, Any]] = [
+                {
+                    "contract_id": row[0],
+                    "piid": row[1],
+                    "vendor_uei": row[2],
+                    "vendor_duns": row[3],
+                    "action_date": row[4],
+                    "amount": row[5],
+                }
+                for row in rows
+            ]
 
             duration_ms = (time.time() - start_time) * 1000
             self.stats["query_time_ms"] = duration_ms

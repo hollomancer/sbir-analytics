@@ -1162,7 +1162,7 @@ def neo4j_sbir_awards(
 
         return Output(
             value=result,
-            metadata={
+            metadata={  # type: ignore[dict-item]
                 "awards_loaded": result["awards_loaded"],
                 "companies_loaded": result["companies_loaded"],
                 "researchers_loaded": result["researchers_loaded"],

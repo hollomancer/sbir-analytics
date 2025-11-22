@@ -283,9 +283,11 @@ class PatentAssignmentTransformer:
                 best_company = company_id
 
         if best_score >= self.options.fuzzy_grant_threshold:
-            return best_company, best_score
+            if best_company is not None:
+                return best_company, best_score
         if best_score >= self.options.fuzzy_secondary_threshold:
-            return best_company, best_score
+            if best_company is not None:
+                return best_company, best_score
         return None
 
     # ------------------------
