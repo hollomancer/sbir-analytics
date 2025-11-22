@@ -74,13 +74,13 @@ jobs:
       layer-arn: ${{ steps.publish-layer.outputs.layer-arn }}
       layer-version: ${{ steps.publish-layer.outputs.layer-version }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -134,13 +134,13 @@ jobs:
       needs.build-layer.outputs.layer-arn != ''
     timeout-minutes: 20
     steps:
+      - uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
-      - uses: actions/checkout@v4
 
       - name: Set up Node.js (for CDK)
         uses: actions/setup-node@v4
