@@ -48,7 +48,7 @@ recipient_name: String (nullable)
 
 recipient_uei: String (nullable)
   # Recipient/vendor UEI
-  # Example: "ABC123DEF456"
+  # Example: "ABC123DEF456"  # pragma: allowlist secret
 
 recipient_duns: String (nullable)
   # Recipient/vendor DUNS number

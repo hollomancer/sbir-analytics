@@ -29,7 +29,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     Event structure:
     {
-        "neo4j_secret_name": "sbir-analytics/neo4j-aura",  # Optional, uses env var if not provided
+        "neo4j_secret_name": "sbir-analytics/neo4j-aura",  # pragma: allowlist secret  # Optional, uses env var if not provided
         "dry_run": false
     }
     """

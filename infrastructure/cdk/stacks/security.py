@@ -17,7 +17,7 @@ class SecurityStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Secret always exists - always import it
+        # Secret always exists - always import it  # pragma: allowlist secret
         self.neo4j_secret = secretsmanager.Secret.from_secret_name_v2(
             self,
             "Neo4jAuraSecret",

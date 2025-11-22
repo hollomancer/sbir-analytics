@@ -265,7 +265,7 @@ Override any configuration using the pattern: `SBIR_ETL__SECTION__KEY`
 # Example: Override Neo4j connection
 export SBIR_ETL__NEO4J__URI="neo4j+s://your-instance.databases.neo4j.io"
 export SBIR_ETL__NEO4J__USER="neo4j"
-export SBIR_ETL__NEO4J__PASSWORD="your-password"
+export SBIR_ETL__NEO4J__PASSWORD="your-password"  # pragma: allowlist secret
 
 # Example: Override transition detection threshold
 export SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.88

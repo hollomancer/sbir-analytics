@@ -384,7 +384,7 @@ class TestFederalContract:
             agency="DOD",
             sub_agency="Air Force",
             vendor_name="Acme Corp",
-            vendor_uei="ABC123DEF456",
+            vendor_uei="ABC123DEF456",  # pragma: allowlist secret
             start_date=date(2023, 1, 1),
             end_date=date(2024, 1, 1),
             obligation_amount=500000.0,

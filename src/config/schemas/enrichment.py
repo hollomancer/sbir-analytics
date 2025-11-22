@@ -11,7 +11,7 @@ class EnrichmentConfig(BaseModel):
     sam_gov: dict[str, object] = Field(
         default_factory=lambda: {
             "base_url": "https://api.sam.gov/entity-information/v3",
-            "api_key_env_var": "SAM_GOV_API_KEY",
+            "api_key_env_var": "SAM_GOV_API_KEY",  # pragma: allowlist secret
             "rate_limit_per_minute": 60,
             "timeout_seconds": 30,
             "retry_attempts": 3,
@@ -29,7 +29,7 @@ class EnrichmentConfig(BaseModel):
     patentsview_api: dict[str, object] = Field(
         default_factory=lambda: {
             "base_url": "https://search.patentsview.org/api",
-            "api_key_env_var": "PATENTSVIEW_API_KEY",
+            "api_key_env_var": "PATENTSVIEW_API_KEY",  # pragma: allowlist secret
             "rate_limit_per_minute": 60,
             "timeout_seconds": 30,
             "retry_attempts": 3,

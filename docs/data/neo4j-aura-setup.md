@@ -71,7 +71,7 @@ To test Neo4j Aura connection locally:
 # Set environment variables
 export NEO4J_URI="neo4j+s://xxxxx.databases.neo4j.io"
 export NEO4J_USER="neo4j"
-export NEO4J_PASSWORD="your-password"
+export NEO4J_PASSWORD="your-password"  # pragma: allowlist secret
 export NEO4J_DATABASE="neo4j"
 
 # Test reset script

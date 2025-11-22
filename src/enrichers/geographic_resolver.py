@@ -38,9 +38,16 @@ class GeographicResolver:
         """Initialize the geographic resolver.
 
         Args:
-            config: Optional configuration override
+            config: Optional configuration override (dict or FiscalAnalysisConfig)
         """
-        self.config = config or get_config().fiscal_analysis
+        from src.config.schemas.fiscal import FiscalAnalysisConfig
+        
+        config_obj = config or get_config().fiscal_analysis
+        # Handle both dict and FiscalAnalysisConfig objects
+        if isinstance(config_obj, dict):
+            self.config: FiscalAnalysisConfig = FiscalAnalysisConfig(**config_obj)
+        else:
+            self.config: FiscalAnalysisConfig = config_obj
         self.quality_thresholds = self.config.quality_thresholds
 
         # US state mappings (code -> name and name -> code)

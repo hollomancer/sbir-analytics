@@ -44,9 +44,18 @@ class InflationAdjuster:
         """Initialize the inflation adjuster.
 
         Args:
-            config: Optional configuration override
+            config: Optional configuration override (dict or FiscalAnalysisConfig)
         """
-        self.config = config or get_config().fiscal_analysis
+        from src.config.schemas.fiscal import FiscalAnalysisConfig
+        
+        config_obj = config or get_config().fiscal_analysis
+        # Handle both dict and FiscalAnalysisConfig objects
+        if isinstance(config_obj, dict):
+            # Convert dict to FiscalAnalysisConfig
+            self.config: FiscalAnalysisConfig = FiscalAnalysisConfig(**config_obj)
+        else:
+            # Already a FiscalAnalysisConfig
+            self.config: FiscalAnalysisConfig = config_obj
         self.base_year = self.config.base_year
         self.inflation_source = self.config.inflation_source
         self.quality_thresholds = self.config.quality_thresholds

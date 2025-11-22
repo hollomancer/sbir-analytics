@@ -658,7 +658,7 @@ class TestPatentAssignee:
             cage="1a2b3",
             duns="12-345-6789",
         )
-        assert assignee.uei == "ABC123DEF456"
+        assert assignee.uei == "ABC123DEF456"  # pragma: allowlist secret
         assert assignee.cage == "1A2B3"
         assert assignee.duns == "123456789"
 

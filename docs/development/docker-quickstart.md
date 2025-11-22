@@ -173,7 +173,7 @@ Open in your browser: **http://localhost:7474**
 
 **Login:**
 - Username: `neo4j` (or value from `.env`)
-- Password: `test` (or value from `.env`)
+- Password: `test` (or value from `.env`)  # pragma: allowlist secret
 
 **First query:**
 ```cypher
@@ -275,7 +275,7 @@ make docker-down
 
 **Default Credentials (local dev):**
 - Neo4j User: `neo4j`
-- Neo4j Password: `test`
+- Neo4j Password: `test`  # pragma: allowlist secret
 
 **Data Locations:**
 - Application code: `./src` (bind-mounted, live editing)

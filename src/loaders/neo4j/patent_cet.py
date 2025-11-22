@@ -34,7 +34,7 @@ from src.loaders.neo4j import Neo4jClient, Neo4jConfig, Neo4jPatentCETLoader
 config = Neo4jConfig(
     uri="bolt://localhost:7687",
     username="neo4j",
-    password="password",
+    password="password",  # pragma: allowlist secret
     database="neo4j",
 )
 client = Neo4jClient(config)

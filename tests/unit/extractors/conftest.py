@@ -46,7 +46,7 @@ def sample_contract_row_full():
     row[9] = "TEST COMPANY INC"  # recipient_name
 
     # Recipient identifiers (legacy)
-    row[10] = "ABC123456789"  # recipient_unique_id (UEI or DUNS)
+    row[10] = "ABC123456789"  # pragma: allowlist secret  # recipient_unique_id (UEI or DUNS)
 
     # Agency info
     row[11] = "9700"  # awarding_agency_code

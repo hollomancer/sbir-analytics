@@ -62,7 +62,7 @@ source_contexts: List<String>
 # SBIR-specific (nullable)
 uei: String (nullable, UNIQUE)
   # Unique Entity Identifier (SAM.gov)
-  # Example: "ABC123DEF456"
+  # Example: "ABC123DEF456"  # pragma: allowlist secret
 
 cage: String (nullable, UNIQUE)
   # CAGE code (5 characters)

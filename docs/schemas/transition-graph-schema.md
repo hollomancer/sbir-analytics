@@ -961,7 +961,7 @@ created_at: DateTime
 ```cypher
 // Award recipient
 MATCH (ft:FinancialTransaction {transaction_id: "txn_award_SBIR-2020-PHASE-II-001"})
-MATCH (o:Organization {uei: "ABC123DEF456"})
+MATCH (o:Organization {uei: "ABC123DEF456"})  # pragma: allowlist secret
 CREATE (ft)-[:RECIPIENT_OF {transaction_type: "AWARD", role: "RECIPIENT"}]->(o)
 
 // Contract recipient

@@ -59,6 +59,25 @@ class FiscalParameterSweep:
         """
         self.config = config or get_config().fiscal_analysis
         self.sensitivity_config = self.config.sensitivity_parameters
+    
+    def _get_config_value(self, key: str, default: Any = None) -> Any:
+        """Get a value from sensitivity_config, handling both dict and SensitivityConfig objects.
+        
+        Args:
+            key: Configuration key
+            default: Default value if key not found
+            
+        Returns:
+            Configuration value or default
+        """
+        from src.config.schemas.fiscal import SensitivityConfig
+        
+        if isinstance(self.sensitivity_config, SensitivityConfig):
+            return getattr(self.sensitivity_config, key, default)
+        elif isinstance(self.sensitivity_config, dict):
+            return self.sensitivity_config.get(key, default)
+        else:
+            return default
 
     def _get_parameter_ranges(self) -> dict[str, ParameterRange]:
         """Get parameter ranges from configuration.
@@ -67,12 +86,20 @@ class FiscalParameterSweep:
             Dictionary of parameter name to ParameterRange
         """
         # Handle both dict and Pydantic model
-        if hasattr(self.sensitivity_config, "uncertainty_parameters"):
+        from src.config.schemas.fiscal import SensitivityConfig
+        
+        if isinstance(self.sensitivity_config, SensitivityConfig):
             uncertainty_params = self.sensitivity_config.uncertainty_parameters
-            if hasattr(uncertainty_params, "__dict__"):
+            if hasattr(uncertainty_params, "model_dump"):
+                uncertainty_params = uncertainty_params.model_dump()
+            elif hasattr(uncertainty_params, "__dict__"):
                 uncertainty_params = uncertainty_params.__dict__
-        else:
+            else:
+                uncertainty_params = {}
+        elif isinstance(self.sensitivity_config, dict):
             uncertainty_params = self.sensitivity_config.get("uncertainty_parameters", {})
+        else:
+            uncertainty_params = {}
 
         ranges = {}
 
@@ -299,12 +326,20 @@ class FiscalParameterSweep:
             DataFrame with scenario parameters
         """
         # Handle both Pydantic model and dict
-        if hasattr(self.sensitivity_config, "parameter_sweep"):
+        from src.config.schemas.fiscal import SensitivityConfig
+        
+        if isinstance(self.sensitivity_config, SensitivityConfig):
             sweep_config = self.sensitivity_config.parameter_sweep
-            if hasattr(sweep_config, "__dict__"):
+            if hasattr(sweep_config, "model_dump"):
+                sweep_config = sweep_config.model_dump()
+            elif hasattr(sweep_config, "__dict__"):
                 sweep_config = sweep_config.__dict__
-        else:
+            else:
+                sweep_config = {}
+        elif isinstance(self.sensitivity_config, dict):
             sweep_config = self.sensitivity_config.get("parameter_sweep", {})
+        else:
+            sweep_config = {}
 
         method = (
             sweep_config.get("method", "monte_carlo")
@@ -411,12 +446,20 @@ class FiscalUncertaintyQuantifier:
         """
         if confidence_levels is None:
             # Handle both Pydantic model and dict
-            if hasattr(self.sensitivity_config, "confidence_intervals"):
+            from src.config.schemas.fiscal import SensitivityConfig
+            
+            if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
-                if hasattr(ci_config, "__dict__"):
+                if hasattr(ci_config, "model_dump"):
+                    ci_config = ci_config.model_dump()
+                elif hasattr(ci_config, "__dict__"):
                     ci_config = ci_config.__dict__
-            else:
+                else:
+                    ci_config = {}
+            elif isinstance(self.sensitivity_config, dict):
                 ci_config = self.sensitivity_config.get("confidence_intervals", {})
+            else:
+                ci_config = {}
             confidence_levels = (
                 ci_config.get("levels", [0.90, 0.95, 0.99])
                 if isinstance(ci_config, dict)
@@ -459,12 +502,20 @@ class FiscalUncertaintyQuantifier:
         """
         if confidence_levels is None:
             # Handle both Pydantic model and dict
-            if hasattr(self.sensitivity_config, "confidence_intervals"):
+            from src.config.schemas.fiscal import SensitivityConfig
+            
+            if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
-                if hasattr(ci_config, "__dict__"):
+                if hasattr(ci_config, "model_dump"):
+                    ci_config = ci_config.model_dump()
+                elif hasattr(ci_config, "__dict__"):
                     ci_config = ci_config.__dict__
-            else:
+                else:
+                    ci_config = {}
+            elif isinstance(self.sensitivity_config, dict):
                 ci_config = self.sensitivity_config.get("confidence_intervals", {})
+            else:
+                ci_config = {}
             confidence_levels = (
                 ci_config.get("levels", [0.90, 0.95, 0.99])
                 if isinstance(ci_config, dict)
@@ -601,12 +652,20 @@ class FiscalUncertaintyQuantifier:
 
         # Compute confidence intervals
         # Handle both Pydantic model and dict
-        if hasattr(self.sensitivity_config, "confidence_intervals"):
+        from src.config.schemas.fiscal import SensitivityConfig
+        
+        if isinstance(self.sensitivity_config, SensitivityConfig):
             ci_config = self.sensitivity_config.confidence_intervals
-            if hasattr(ci_config, "__dict__"):
+            if hasattr(ci_config, "model_dump"):
+                ci_config = ci_config.model_dump()
+            elif hasattr(ci_config, "__dict__"):
                 ci_config = ci_config.__dict__
-        else:
+            else:
+                ci_config = {}
+        elif isinstance(self.sensitivity_config, dict):
             ci_config = self.sensitivity_config.get("confidence_intervals", {})
+        else:
+            ci_config = {}
 
         method = (
             ci_config.get("method", "percentile")

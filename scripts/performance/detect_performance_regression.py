@@ -35,23 +35,40 @@ from loguru import logger
 
 from src.config.loader import get_config
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from src.extractors.sbir import SbirDuckDBExtractor
 from src.utils.monitoring import performance_monitor
 from src.utils.performance_reporting import PerformanceMetrics, PerformanceReporter
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
-    """Load sample SBIR data for benchmarking."""
+    """
+    Load sample SBIR data for benchmarking.
+
+    Uses SbirDuckDBExtractor which automatically handles S3-first loading
+    with local fallback, matching the production pipeline behavior.
+    """
     config = get_config()
     sbir_config = config.extraction.sbir
 
-    logger.info(f"Loading SBIR sample data from {sbir_config.csv_path}")
+    logger.info(f"Loading SBIR sample data (S3-first, local fallback)")
 
     try:
+        # Use SbirDuckDBExtractor which handles S3 automatically
         with performance_monitor.monitor_block("data_load"):
-            full_df = pd.read_csv(sbir_config.csv_path)
+            extractor = SbirDuckDBExtractor(
+                csv_path=sbir_config.csv_path,
+                duckdb_path=":memory:",
+                table_name="sbir_awards",
+                use_s3_first=sbir_config.use_s3_first,
+            )
 
-        total_records = len(full_df)
-        logger.info(f"Loaded {total_records} total SBIR records")
+            # Import CSV to DuckDB
+            import_metadata = extractor.import_csv()
+            total_records = import_metadata["row_count"]
+            logger.info(f"Loaded {total_records} total SBIR records from {extractor.csv_path}")
+
+            # Extract all data
+            full_df = extractor.extract_all()
 
         if sample_size and sample_size < total_records:
             sample_df = full_df.head(sample_size).copy()

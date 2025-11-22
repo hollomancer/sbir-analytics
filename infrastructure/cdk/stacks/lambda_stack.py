@@ -86,7 +86,7 @@ class LambdaStack(Stack):
                 layers=[python_layer] if python_layer else [],
                 environment={
                     "S3_BUCKET": s3_bucket.bucket_name,
-                    "NEO4J_SECRET_NAME": "sbir-analytics/neo4j-aura",
+                    "NEO4J_SECRET_NAME": "sbir-analytics/neo4j-aura",  # pragma: allowlist secret
                 },
             )
             self.functions[func_name] = func

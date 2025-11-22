@@ -25,8 +25,8 @@ def sample_sam_gov_parquet(tmp_path):
     """Create a sample SAM.gov parquet file with realistic data."""
     data = {
         "unique_entity_id": [
-            "ABC123456789",
-            "DEF987654321",
+            "ABC123456789",  # pragma: allowlist secret
+            "DEF987654321",  # pragma: allowlist secret
             "GHI111222333",
             "JKL444555666",
             "MNO777888999",

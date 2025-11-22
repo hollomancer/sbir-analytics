@@ -154,7 +154,7 @@ class TestCrosswalkRecord:
 
         assert record.canonical_id == "co-123"
         assert record.canonical_name == "Acme Corporation"
-        assert record.uei == "ABC123DEF456"
+        assert record.uei == "ABC123DEF456"  # pragma: allowlist secret
         assert record.cage == "1A2B3"
         assert record.duns == "123456789"
         assert len(record.aliases) == 1

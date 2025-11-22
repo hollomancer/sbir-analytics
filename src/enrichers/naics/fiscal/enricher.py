@@ -48,7 +48,14 @@ class FiscalNAICSEnricher:
             usaspending_df: Optional USAspending DataFrame for lookups
             api_client: Optional API client (for future API-based strategies)
         """
-        self.config = config or get_config().fiscal_analysis
+        from src.config.schemas.fiscal import FiscalAnalysisConfig
+        
+        config_obj = config or get_config().fiscal_analysis
+        # Handle both dict and FiscalAnalysisConfig objects
+        if isinstance(config_obj, dict):
+            self.config: FiscalAnalysisConfig = FiscalAnalysisConfig(**config_obj)
+        else:
+            self.config: FiscalAnalysisConfig = config_obj
         self.quality_thresholds = self.config.quality_thresholds
         self.usaspending_df = usaspending_df
         self.api_client = api_client

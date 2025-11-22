@@ -26,7 +26,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         "dagster_cloud_org": "your-org",
         "dagster_cloud_deployment": "prod",
         "job_name": "sbir_weekly_refresh_job",
-        "dagster_cloud_secret_name": "sbir-analytics/dagster-cloud-api-token"  # Optional
+        "dagster_cloud_secret_name": "sbir-analytics/dagster-cloud-api-token"  # pragma: allowlist secret  # Optional
     }
     """
     try:

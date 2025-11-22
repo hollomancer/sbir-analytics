@@ -34,7 +34,7 @@ def sample_contract():
         contract_id="CTR001",
         agency="DOD",
         vendor_name="Acme Corporation",
-        vendor_uei="ABC123DEF456",
+        vendor_uei="ABC123DEF456",  # pragma: allowlist secret
         vendor_cage=None,
         vendor_duns=None,
         start_date=date(2023, 9, 1),

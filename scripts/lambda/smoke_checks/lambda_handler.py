@@ -136,7 +136,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
-        "neo4j_secret_name": "sbir-analytics/neo4j-aura"
+        "neo4j_secret_name": "sbir-analytics/neo4j-aura"  # pragma: allowlist secret
     }
     """
     try:

@@ -123,7 +123,7 @@ uv run python
 >>> # Test with a real UEI (if you have USAspending data loaded)
 >>> contracts = retrieve_company_contracts(
 ...     extractor,
-...     uei="ABC123DEF456"  # Replace with real UEI
+...     uei="ABC123DEF456"  # pragma: allowlist secret  # Replace with real UEI
 ... )
 >>> print(f"Retrieved {len(contracts)} contracts")
 ```

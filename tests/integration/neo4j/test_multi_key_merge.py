@@ -11,7 +11,7 @@ def neo4j_client():
     config = Neo4jConfig(
         uri="bolt://localhost:7687",
         username="neo4j",
-        password="neo4j",
+        password="neo4j",  # pragma: allowlist secret
         database="neo4j",
         auto_migrate=False,  # Don't run migrations in tests
     )

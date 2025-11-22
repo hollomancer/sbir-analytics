@@ -87,7 +87,7 @@ class TestAwardModel:
         assert award.award_id == "FULL-456"
         assert award.program == "STTR"
         assert award.phase == "II"
-        assert award.company_uei == "ABC123DEF456"
+        assert award.company_uei == "ABC123DEF456"  # pragma: allowlist secret
         assert award.is_woman_owned is True
 
     def test_award_amount_validator_positive(self):
