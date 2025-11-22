@@ -123,9 +123,9 @@ class FiscalShockAggregator:
         award_date_cols = ["award_date", "Award_Date", "proposal_award_date", "Proposal Award Date"]
         for col in award_date_cols:
             if col in award_row.index and pd.notna(award_row[col]):
-                fy: int | None = calculate_fiscal_year(award_row[col])
-                if fy is not None:
-                    return fy
+                fy2: int | None = calculate_fiscal_year(award_row[col])
+                if fy2 is not None:
+                    return fy2
 
         # Try award_year (calendar year -> fiscal year)
         if "award_year" in award_row.index and pd.notna(award_row["award_year"]):
