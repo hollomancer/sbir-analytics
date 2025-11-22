@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import functools
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -131,7 +131,7 @@ def monitor_performance(
 
 
 @contextmanager
-def time_block(block_name: str, log_level: str = "info") -> None:
+def time_block(block_name: str, log_level: str = "info") -> Generator[Any, None, None]:
     """
     Context manager to time a block of code.
 

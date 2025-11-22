@@ -7,7 +7,7 @@ other data structures to enable memory-efficient processing.
 from __future__ import annotations
 
 from collections.abc import Generator, Iterable
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from loguru import logger
@@ -114,7 +114,7 @@ class ChunkIterator:
 def batch_process(
     items: Iterable[Any],
     batch_size: int,
-    processor: callable,
+    processor: Callable[..., Any],
     *args: Any,
     **kwargs: Any,
 ) -> Generator[Any, None, None]:

@@ -321,6 +321,6 @@ class Neo4jPatentCETLoader(BaseNeo4jLoader):
         with self.client.session() as session:
             for i in range(0, len(rows), batch_size):
                 chunk = rows[i : i + batch_size]
-                session.execute_write(lambda tx, c=chunk: tx.run(cypher, rows=c).consume())
+                session.execute_write(lambda tx, c=chunk: tx.run(cypher, rows=c).consume())  # type: ignore[misc]
                 total += len(chunk)
         return total

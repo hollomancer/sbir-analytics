@@ -64,7 +64,7 @@ def enriched_sbir_awards(
 
     if use_chunked:
         context.log.info("Using chunked enrichment processing")
-        enriched_df, enrichment_metrics, enricher = _enrich_chunked(
+        enriched_df, enrichment_metrics = _enrich_chunked(
             validated_sbir_awards,
             raw_usaspending_recipients,
             config,

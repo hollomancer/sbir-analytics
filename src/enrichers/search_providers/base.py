@@ -150,11 +150,14 @@ class BaseSearchProvider(ABC):
         max_retries = max_retries if max_retries is not None else self.max_retries
         backoff_base = backoff_base if backoff_base is not None else self.backoff_base
         retriable_exceptions = retriable_exceptions or (Exception,)
+        # Ensure retriable_exceptions is a tuple of exception types
+        if not isinstance(retriable_exceptions, tuple):
+            retriable_exceptions = (retriable_exceptions,) if retriable_exceptions else (Exception,)  # type: ignore[assignment]
 
         for attempt in range(1, max_retries + 1):
             try:
                 return func(*args, **kwargs)
-            except retriable_exceptions as exc:
+            except retriable_exceptions as exc:  # type: ignore[misc]
                 if attempt < max_retries:
                     wait = backoff_base ** (attempt - 1)
                     logger.debug(
