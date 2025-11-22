@@ -328,7 +328,7 @@ def transformed_cet_company_profiles() -> Output:
 
     logger.info("Completed cet_company_profiles asset", rows=len(df_comp), output=str(output_path))
 
-    return Output(value=str(output_path), metadata=metadata)
+    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
 
 # ============================================================================

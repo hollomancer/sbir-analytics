@@ -384,4 +384,4 @@ def cet_award_training_dataset() -> Output:
         "input_path": str(input_path),
         "taxonomy_version": dataset.taxonomy_version,
     }
-    return Output(value=str(output_path), metadata=metadata)
+    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
