@@ -393,7 +393,7 @@ def neo4j_sbir_awards(
 
         # STEP 1: Pre-loading deduplication - canonicalize companies before processing
         config = get_config()
-        dedup_config = config.organization_deduplication
+        dedup_config = config.company_deduplication
         context.log.info("Pre-processing: Canonicalizing companies...")
 
         canonical_map = canonicalize_companies_from_awards(
@@ -547,8 +547,10 @@ def neo4j_sbir_awards(
                     transaction_props["recipient_duns"] = award.company_duns
                 if award.company_cage:
                     transaction_props["recipient_cage"] = award.company_cage
-                if award.naics_primary:
-                    transaction_props["naics_code"] = award.naics_primary
+                # NAICS code might be on award if enriched, otherwise skip
+                naics_code = getattr(award, "naics_primary", None)  # type: ignore[arg-type]
+                if naics_code:
+                    transaction_props["naics_code"] = naics_code
 
                 award_nodes.append(transaction_props)
                 award_objects.append(award)  # Keep Award object for progression detection
@@ -925,9 +927,9 @@ def neo4j_sbir_awards(
         agency_subsidiary_pairs = []
 
         for award in award_objects:
-            if award.agency and award.agency_name:
-                agency_code = award.agency
-                agency_name = award.agency_name
+            agency_code = award.agency
+            agency_name = getattr(award, "agency_name", award.agency)  # type: ignore[arg-type]
+            if agency_code and agency_name:
                 parent_organization_id = f"org_agency_{agency_code}"
 
                 # Create parent agency node if not exists
@@ -945,9 +947,10 @@ def neo4j_sbir_awards(
 
                 # Handle sub-agency if present
                 target_organization_id = parent_organization_id
-                if award.branch and award.sub_agency:
-                    sub_agency_code = award.sub_agency
-                    sub_agency_name = award.sub_agency_name or award.branch
+                sub_agency_code = getattr(award, "sub_agency", None)  # type: ignore[arg-type]
+                sub_agency_name = getattr(award, "sub_agency_name", None)  # type: ignore[arg-type]
+                if award.branch and sub_agency_code:
+                    sub_agency_name = sub_agency_name or award.branch
                     sub_organization_id = f"org_agency_{agency_code}_{sub_agency_code}"
 
                     # Create sub-agency node if not exists

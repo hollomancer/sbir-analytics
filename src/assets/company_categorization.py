@@ -314,7 +314,7 @@ def company_categorization_completeness_check(
 
     return AssetCheckResult(
         passed=passed,
-        severity=AssetCheckSeverity.WARN if not passed else AssetCheckSeverity.INFO,
+        severity=AssetCheckSeverity.WARN if not passed else AssetCheckSeverity.WARN,
         description=description,
         metadata={
             "total_companies": total,
