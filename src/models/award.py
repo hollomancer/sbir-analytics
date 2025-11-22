@@ -622,7 +622,7 @@ class Award(BaseModel):
             "address1" in mapped_data or "address2" in mapped_data
         ):
             addr_parts = [mapped_data.get("address1"), mapped_data.get("address2")]
-            addr_parts = [p for p in addr_parts if p]
+            addr_parts = [str(p) for p in addr_parts if p]
             if addr_parts:
                 mapped_data["company_address"] = ", ".join(addr_parts)
 

@@ -79,6 +79,8 @@ def lambda_handler(event: dict, context) -> dict:
             metadata_dir.mkdir(parents=True, exist_ok=True)
 
             # Step 1: Download CSV from sbir.gov
+            if not source_url:
+                raise ValueError("source_url must be provided in event or environment")
             logger.info(f"Downloading CSV from {source_url}")
             download_csv(source_url, csv_path)
 

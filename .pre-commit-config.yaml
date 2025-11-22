@@ -50,7 +50,18 @@ repos:
         # Use a baseline file when teams have previously accepted secrets.
         # The baseline should be committed at .secrets.baseline when appropriate.
         args: ['--baseline', '.secrets.baseline']
-        # Consider setting additional args or filters per project needs.
+        # Exclude directories that shouldn't be scanned (build artifacts, dependencies, etc.)
+        exclude: |
+          (?x)^(
+            .*\/\.git\/|
+            .*\/\.venv\/|
+            .*\/cdk\.out\/|
+            .*\/\.env$|
+            .*\/\.env\.test\.aura$|
+            .*\/reports\/.*\.(json|csv)$|
+            infrastructure\/cdk\/\.venv\/|
+            infrastructure\/cdk\/cdk\.out\/
+          )
 
   # Disabled git-secrets hook: install requires manual setup on developer machines; detect-secrets + local
   # grep coverage is sufficient in current workflow. Re-enable when git-secrets hook exposes a pip-friendly tag.

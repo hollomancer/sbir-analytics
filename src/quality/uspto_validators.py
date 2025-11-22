@@ -1009,7 +1009,7 @@ class USPTODataQualityValidator:
                 "files": len(results),
                 "files_passing": sum(1 for success in file_successes if success),
                 "pass_rate": (
-                    float(sum(1 for success in file_successes if success))
+                    float(sum(1 for success in file_successes if success))  # type: ignore[dict-item]
                     / max(len(file_successes), 1)
                 ),
             }

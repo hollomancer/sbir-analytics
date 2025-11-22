@@ -401,7 +401,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
                 break
 
         if sector_col is None:
-            return {"error": "No sector/agency column found"}
+            return {"error": "No sector/agency column found"}  # type: ignore[dict-item]
 
         # Get successful transitions by award_id
         successful_award_ids: set[Any] = set()
@@ -506,7 +506,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
 
             # Signal strength factor (30% weight)
             signal_cols = ["agency_score", "competition_score", "patent_score", "cet_score"]
-            signal_sum = 0
+            signal_sum: float = 0.0
             signal_count: int = 0
             for col in signal_cols:
                 if col in row.index and pd.notna(row[col]):

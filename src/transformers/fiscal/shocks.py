@@ -124,7 +124,7 @@ class FiscalShockAggregator:
         for col in award_date_cols:
             if col in award_row.index and pd.notna(award_row[col]):
                 fy = calculate_fiscal_year(award_row[col])
-                if fy:
+                if fy is not None:
                     return fy
 
         # Try award_year (calendar year -> fiscal year)
@@ -436,7 +436,7 @@ class FiscalShockAggregator:
             )
 
         total_awards = sum(len(shock.award_ids) for shock in shocks)
-        total_amount = sum(shock.shock_amount for shock in shocks)
+        total_amount: Decimal = sum(shock.shock_amount for shock in shocks) or Decimal("0")
         avg_confidence = sum(shock.confidence for shock in shocks) / len(shocks) if shocks else 0.0
 
         # Coverage rates (weighted by shock amount)
