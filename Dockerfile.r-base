@@ -1,0 +1,112 @@
+# syntax=docker/dockerfile:1.4
+#
+# R Base Image with stateio pre-installed
+#
+# This image is based on python:3.11-slim (matching main Dockerfile) with R and stateio added.
+# It serves as a cached base image for production builds that require R integration.
+#
+# Building this image is slow (~10-20 minutes) due to R package compilation,
+# but it only needs to be rebuilt when R dependencies change.
+#
+# Usage:
+#   docker build -f Dockerfile.r-base -t ghcr.io/hollomancer/sbir-analytics-r-base:latest .
+#
+# Publishing (GitHub Actions):
+#   This image should be built and published to GHCR via a GitHub workflow
+#   that runs on a schedule (weekly) or when this file changes.
+#
+ARG PYTHON_VERSION=3.11
+
+# Start from the same base as the main Dockerfile for consistency
+FROM python:${PYTHON_VERSION}-slim
+
+# Install R and all required build dependencies for stateio
+# This matches the dependencies from the main Dockerfile's BUILD_WITH_R section
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    r-base \
+    r-base-dev \
+    build-essential \
+    git \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libicu-dev \
+    cmake \
+    pkg-config \
+    libbz2-dev \
+    liblzma-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set R environment variables and library path
+ENV R_LIBS_USER=/usr/local/lib/R/site-library \
+    R_HOME=/usr/lib/R
+
+# Install R packages (stateio with dependencies including arrow)
+# This matches the installation process from the main Dockerfile
+# These are the time-consuming steps we want to cache
+RUN export MAKEFLAGS="-j$(nproc)" && \
+    export R_SITE_LIB='/usr/local/lib/R/site-library' && \
+    export ARROW_R_DEV=FALSE && \
+    export ARROW_DEPENDENCY_SOURCE=BUNDLED && \
+    export ARROW_USE_PKG_CONFIG=false && \
+    export ARROW_WITH_BZ2=ON && \
+    export ARROW_WITH_LZ4=ON && \
+    export ARROW_WITH_SNAPPY=ON && \
+    export ARROW_WITH_ZLIB=ON && \
+    export ARROW_WITH_ZSTD=ON && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing remotes package...\n'); \
+    install.packages('remotes', repos='https://cloud.r-project.org/', \
+                     lib='${R_SITE_LIB}', \
+                     Ncpus = parallel::detectCores())" && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing arrow package from source with bundled C++ libs...\n'); \
+    install.packages('arrow', repos='https://cloud.r-project.org/', \
+                     lib='${R_SITE_LIB}', \
+                     type='source', \
+                     Ncpus = parallel::detectCores()); \
+    arrow_ok <- tryCatch({ \
+        suppressPackageStartupMessages(library(arrow)); \
+        TRUE \
+    }, error = function(err) { \
+        message('arrow failed to load after installation: ', conditionMessage(err)); \
+        FALSE \
+    }); \
+    if (!arrow_ok) { \
+        quit(status = 1); \
+    } else { \
+        detach('package:arrow', unload = TRUE); \
+    }" && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
+    cat('Installing stateior package (arrow should already be installed)...\n'); \
+    remotes::install_github('USEPA/stateior', dependencies=TRUE, \
+                            lib='${R_SITE_LIB}', \
+                            Ncpus = parallel::detectCores(), \
+                            upgrade = 'never')" && \
+    R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
+
+# Verify installation
+RUN R -e "library(stateior); \
+    library(arrow); \
+    cat('✓ stateior version:', as.character(packageVersion('stateior')), '\n'); \
+    cat('✓ arrow version:', as.character(packageVersion('arrow')), '\n'); \
+    cat('R packages successfully installed and verified\n')"
+
+# Create a marker file to indicate R packages are installed
+# This can be checked by the main Dockerfile
+RUN touch /usr/local/lib/R/.stateio-installed && \
+    echo "R base image with stateio built on $(date)" > /usr/local/lib/R/.stateio-installed
+
+# Set default command to R
+CMD ["R"]

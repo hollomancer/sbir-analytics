@@ -259,6 +259,8 @@ jobs:
           push: false
           load: true
           tags: sbir-analytics:ci-${{ github.sha }}
+          build-args: |
+            BUILD_WITH_R=false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
