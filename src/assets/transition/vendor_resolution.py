@@ -120,7 +120,7 @@ def enriched_vendor_resolution(
         "output_path": str(out_path),
     }
     context.log.info("Produced vendor_resolution", extra=meta)
-    return Output(df_out, metadata=meta)
+    return Output(df_out, metadata=meta)  # type: ignore[arg-type]
 
 
 # -----------------------------

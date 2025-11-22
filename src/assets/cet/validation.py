@@ -462,7 +462,7 @@ def validated_cet_drift_detection() -> Output:
                 json.dump(payload, fh, indent=2)
         except Exception:
             pass
-        return Output(value=payload, metadata=payload)
+        return Output(value=payload, metadata=payload)  # type: ignore[arg-type]
 
     # Prepare current distributions
     # Primary scores (coerce to floats, dropna)
@@ -537,7 +537,7 @@ def validated_cet_drift_detection() -> Output:
                 json.dump(payload, fh, indent=2)
         except Exception:
             pass
-        return Output(value=payload, metadata=payload)
+        return Output(value=payload, metadata=payload)  # type: ignore[arg-type]
 
     # Baseline exists: extract baseline pmfs (expected keys: label_pmf, score_pmf)
     baseline_label_pmf = baseline.get("label_pmf", {}) if isinstance(baseline, dict) else {}

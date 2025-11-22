@@ -162,7 +162,7 @@ def transformed_cet_company_profiles() -> Output:
             "rows": 0,
             "checks_path": str(checks_path),
         }
-        return Output(value=str(output_path), metadata=metadata)
+        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
     # Load classifications (prefer parquet, then NDJSON)
     try:

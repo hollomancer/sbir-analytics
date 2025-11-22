@@ -47,7 +47,7 @@ class InflationAdjuster:
             config: Optional configuration override (dict or FiscalAnalysisConfig)
         """
         from src.config.schemas.fiscal import FiscalAnalysisConfig
-        
+
         config_obj = config or get_config().fiscal_analysis
         # Handle both dict and FiscalAnalysisConfig objects
         if isinstance(config_obj, dict):

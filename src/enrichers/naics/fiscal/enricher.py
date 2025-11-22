@@ -49,7 +49,7 @@ class FiscalNAICSEnricher:
             api_client: Optional API client (for future API-based strategies)
         """
         from src.config.schemas.fiscal import FiscalAnalysisConfig
-        
+
         config_obj = config or get_config().fiscal_analysis
         # Handle both dict and FiscalAnalysisConfig objects
         if isinstance(config_obj, dict):

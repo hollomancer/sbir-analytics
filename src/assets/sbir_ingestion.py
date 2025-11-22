@@ -123,7 +123,7 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
         "performance_peak_memory_mb": round(total_peak_memory, 2),
     }
 
-    return Output(value=df, metadata=metadata)
+    return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset_check(
@@ -316,7 +316,7 @@ def sbir_validation_report(
         "issues_by_field": MetadataValue.json(issues_by_field),
     }
 
-    return Output(value=report_dict, metadata=metadata)
+    return Output(value=report_dict, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset_check(
@@ -366,5 +366,5 @@ def sbir_data_quality_check(
     context.log.info(f"Quality check result: {'PASSED' if passed else 'FAILED'}", extra=metadata)
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )

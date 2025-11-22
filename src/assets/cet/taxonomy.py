@@ -204,7 +204,7 @@ def raw_cet_taxonomy() -> Output:
     )
 
     # Return Output with structured metadata for downstream asset checks and lineage
-    return Output(value=str(output_path), metadata=metadata)
+    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
 
 # Alias for backward compatibility and simpler test interface

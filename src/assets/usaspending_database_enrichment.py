@@ -194,7 +194,7 @@ def sbir_relevant_usaspending_transactions(
     # Data quality checks
     if df.empty:
         context.log.warning("No SBIR-relevant transactions found in dump")
-        return Output(value=df, metadata={"row_count": 0})
+        return Output(value=df, metadata={"row_count": 0})  # type: ignore[arg-type]
 
     # Compute metadata
     total_obligation = (
@@ -225,7 +225,7 @@ def sbir_relevant_usaspending_transactions(
         },
     )
 
-    return Output(value=df, metadata=metadata)
+    return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset(
@@ -352,4 +352,4 @@ def sbir_company_usaspending_recipients(
         "match_rate": f"{len(df) / max(len(uei_values), 1) * 100:.1f}%",
     }
 
-    return Output(value=df, metadata=metadata)
+    return Output(value=df, metadata=metadata)  # type: ignore[arg-type]

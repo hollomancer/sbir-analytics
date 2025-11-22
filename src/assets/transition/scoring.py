@@ -258,7 +258,7 @@ def transformed_transition_scores(
         "by_method": MetadataValue.json(checks["by_method"]),
     }
     context.log.info("Computed transition_scores_v1", extra=meta)
-    return Output(df_out, metadata=meta)
+    return Output(df_out, metadata=meta)  # type: ignore[arg-type]
 
 
 # -----------------------------

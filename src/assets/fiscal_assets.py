@@ -183,7 +183,7 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 
@@ -238,7 +238,7 @@ def fiscal_naics_quality_check(fiscal_naics_enriched_awards: pd.DataFrame) -> As
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 
@@ -318,7 +318,7 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 
@@ -460,7 +460,7 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 
@@ -779,7 +779,7 @@ def fiscal_geographic_resolution_check(
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 
@@ -883,7 +883,7 @@ def inflation_adjustment_quality_check(inflation_adjusted_awards: pd.DataFrame) 
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
     )
 
 

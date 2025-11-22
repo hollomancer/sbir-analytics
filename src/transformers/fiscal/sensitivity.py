@@ -59,19 +59,19 @@ class FiscalParameterSweep:
         """
         self.config = config or get_config().fiscal_analysis
         self.sensitivity_config = self.config.sensitivity_parameters
-    
+
     def _get_config_value(self, key: str, default: Any = None) -> Any:
         """Get a value from sensitivity_config, handling both dict and SensitivityConfig objects.
-        
+
         Args:
             key: Configuration key
             default: Default value if key not found
-            
+
         Returns:
             Configuration value or default
         """
         from src.config.schemas.fiscal import SensitivityConfig
-        
+
         if isinstance(self.sensitivity_config, SensitivityConfig):
             return getattr(self.sensitivity_config, key, default)
         elif isinstance(self.sensitivity_config, dict):
@@ -87,7 +87,7 @@ class FiscalParameterSweep:
         """
         # Handle both dict and Pydantic model
         from src.config.schemas.fiscal import SensitivityConfig
-        
+
         if isinstance(self.sensitivity_config, SensitivityConfig):
             uncertainty_params = self.sensitivity_config.uncertainty_parameters
             if hasattr(uncertainty_params, "model_dump"):
@@ -327,7 +327,7 @@ class FiscalParameterSweep:
         """
         # Handle both Pydantic model and dict
         from src.config.schemas.fiscal import SensitivityConfig
-        
+
         if isinstance(self.sensitivity_config, SensitivityConfig):
             sweep_config = self.sensitivity_config.parameter_sweep
             if hasattr(sweep_config, "model_dump"):
@@ -447,7 +447,7 @@ class FiscalUncertaintyQuantifier:
         if confidence_levels is None:
             # Handle both Pydantic model and dict
             from src.config.schemas.fiscal import SensitivityConfig
-            
+
             if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
                 if hasattr(ci_config, "model_dump"):
@@ -503,7 +503,7 @@ class FiscalUncertaintyQuantifier:
         if confidence_levels is None:
             # Handle both Pydantic model and dict
             from src.config.schemas.fiscal import SensitivityConfig
-            
+
             if isinstance(self.sensitivity_config, SensitivityConfig):
                 ci_config = self.sensitivity_config.confidence_intervals
                 if hasattr(ci_config, "model_dump"):
@@ -653,7 +653,7 @@ class FiscalUncertaintyQuantifier:
         # Compute confidence intervals
         # Handle both Pydantic model and dict
         from src.config.schemas.fiscal import SensitivityConfig
-        
+
         if isinstance(self.sensitivity_config, SensitivityConfig):
             ci_config = self.sensitivity_config.confidence_intervals
             if hasattr(ci_config, "model_dump"):

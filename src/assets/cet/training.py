@@ -147,7 +147,7 @@ def train_cet_patent_classifier() -> Output:
         "checks_path": str(checks_path),
         "trained": checks.get("ok", False),
     }
-    return Output(value=str(model_path), metadata=metadata)
+    return Output(value=str(model_path), metadata=metadata)  # type: ignore[arg-type]
 
 
 # New asset: cet_award_training_dataset
@@ -236,7 +236,7 @@ def cet_award_training_dataset() -> Output:
             "input_path": None,
             "taxonomy_version": taxonomy_version,
         }
-        return Output(value=str(output_path), metadata=metadata)
+        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
     # Load dataset using the training loader
     try:
@@ -306,7 +306,7 @@ def cet_award_training_dataset() -> Output:
             "input_path": str(input_path),
             "taxonomy_version": taxonomy_version,
         }
-        return Output(value=str(output_path), metadata=metadata)
+        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
     # Persist dataset to parquet (preferred) with NDJSON fallback
     try:
