@@ -180,9 +180,9 @@ class DuckDBUSAspendingExtractor:
                     if ".dat.gz" in line:
                         parts = line.split()
                         if len(parts) >= 4:
-                            filename = parts[-1]
-                            oid = int(filename.split("/")[-1].split(".")[0])
-                            copy_files.append({"oid": oid, "filename": filename})
+                            file_name = parts[-1]
+                            file_oid = int(file_name.split("/")[-1].split(".")[0])
+                            copy_files.append({"oid": file_oid, "filename": file_name})
 
                 if not copy_files:
                     logger.warning("No .dat.gz files found in ZIP")

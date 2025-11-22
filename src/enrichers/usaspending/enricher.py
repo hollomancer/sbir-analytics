@@ -28,10 +28,12 @@ from ...utils.text_normalization import normalize_recipient_name
 
 try:
     from rapidfuzz import fuzz, process
+    _rapidfuzz_available = True
 except ImportError:
     # Fallback to simple string matching if rapidfuzz not available
-    fuzz: Any | None = None
-    process: Any | None = None
+    _rapidfuzz_available = False
+    fuzz = None  # type: ignore[assignment, no-redef]
+    process = None  # type: ignore[assignment, no-redef]
 
 
 def enrich_sbir_with_usaspending(

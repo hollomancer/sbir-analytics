@@ -149,13 +149,13 @@ class PatentFeatureExtractor:
                         self.normalized_title = normalized_title
                         self.assignee_type = assignee_type
 
-                pfv = _SimpleFV(normalized_title, assignee_hint)
-                feature_vectors.append(pfv)
+                pfv_simple = _SimpleFV(normalized_title, assignee_hint)
+                feature_vectors.append(pfv_simple)
             else:
-                pfv: PatentFeatureVector = extract_features(  # type: ignore[assignment]
+                pfv_extracted: PatentFeatureVector = extract_features(  # type: ignore[assignment]
                     rec, keywords_map=self.keywords_map, stopwords=self.stopwords
                 )
-                feature_vectors.append(pfv)  # type: ignore[arg-type]
+                feature_vectors.append(pfv_extracted)  # type: ignore[arg-type]
 
             # Build pipeline text: normalized title + assignee type (gives lightweight signal)
             parts = [pfv.normalized_title or ""]

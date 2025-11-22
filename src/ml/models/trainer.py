@@ -292,7 +292,7 @@ class CETModelTrainer:
             Dictionary of evaluation metrics
         """
         # Get predictions for all test examples
-        y_pred = []
+        y_pred_list: list[np.ndarray[Any, Any]] = []
         for text in X_test:
             classifications = model.classify(text, return_all_scores=True)
             # Convert to binary vector
@@ -302,9 +302,9 @@ class CETModelTrainer:
                     idx = list(self.mlb.classes_).index(cls.cet_id)
                     # Use threshold: score >= 40 (LOW or higher)
                     pred_vector[idx] = 1.0 if cls.score >= 40 else 0.0
-            y_pred.append(pred_vector)
+            y_pred_list.append(pred_vector)
 
-            y_pred: np.ndarray[Any, Any] = np.array(y_pred)
+        y_pred: np.ndarray[Any, Any] = np.array(y_pred_list)
 
         # Calculate metrics
         metrics = {
