@@ -121,6 +121,7 @@ class Neo4jConfig(BaseModel):
     database: str = Field(default="neo4j")
     username: str = Field(default="neo4j")
     password_env_var: str = Field(default="NEO4J_PASSWORD")
+    password: str | None = Field(default=None, description="Password (can be set from env var)")
     max_connection_lifetime: int = Field(default=3600)
     encrypted: bool = Field(default=False)
     verify_certificate: bool = Field(default=True)

@@ -56,9 +56,11 @@ class Neo4jClient:
     def driver(self) -> Any:
         """Get or create Neo4j driver."""
         if self._driver is None:
+            import os
+            password = self.neo4j_config.password or os.getenv(self.neo4j_config.password_env_var, "neo4j")
             self._driver = GraphDatabase.driver(
                 self.neo4j_config.uri,
-                auth=(self.neo4j_config.username, self.neo4j_config.password),
+                auth=(self.neo4j_config.username, password),
             )
         return self._driver
 

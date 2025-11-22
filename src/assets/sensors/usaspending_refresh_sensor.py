@@ -35,7 +35,7 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
     try:
         # Check enriched_sbir_awards asset
         enriched_awards_key = AssetKey("enriched_sbir_awards")
-        enriched_awards_record = context.instance.get_latest_materialization_record(
+        enriched_awards_record = context.instance.get_latest_materialization_event(  # type: ignore[attr-defined]
             enriched_awards_key
         )
 
@@ -48,14 +48,14 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
 
         # Check freshness ledger to see if refresh is needed
         freshness_key = AssetKey("usaspending_freshness_ledger")
-        freshness_record = context.instance.get_latest_materialization_record(freshness_key)
+        freshness_record = context.instance.get_latest_materialization_event(freshness_key)  # type: ignore[attr-defined]
 
         # If freshness ledger exists, check staleness
         # Otherwise, this might be first run - trigger refresh to initialize
         if freshness_record and freshness_record.event_log_entry:
             # Check stale awards asset
             stale_key = AssetKey("stale_usaspending_awards")
-            stale_record = context.instance.get_latest_materialization_record(stale_key)
+            stale_record = context.instance.get_latest_materialization_event(stale_key)  # type: ignore[attr-defined]
 
             if stale_record and stale_record.event_log_entry:
                 # Check metadata for stale count

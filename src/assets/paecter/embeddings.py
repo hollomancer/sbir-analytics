@@ -430,7 +430,7 @@ def paecter_awards_coverage_check(
 
     return AssetCheckResult(
         passed=passed,
-        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.INFO,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=f"Embedding coverage: {coverage:.2%} (threshold: {threshold:.2%})",
         metadata={
             "coverage": MetadataValue.float(coverage),
@@ -472,7 +472,7 @@ def paecter_patents_coverage_check(
 
     return AssetCheckResult(
         passed=passed,
-        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.INFO,
+        severity=AssetCheckSeverity.ERROR if not passed else AssetCheckSeverity.WARN,
         description=f"Embedding coverage: {coverage:.2%} (threshold: {threshold:.2%})",
         metadata={
             "coverage": MetadataValue.float(coverage),

@@ -559,10 +559,11 @@ def retrieve_company_contracts_api(
     try:
         config = get_config()
         cache_config = config.enrichment_refresh.usaspending.cache
+        ttl_hours = cache_config.ttl_hours if cache_config.ttl_hours is not None else (cache_config.ttl_seconds // 3600)
         cache = APICache(
             cache_dir=cache_config.cache_dir,
             enabled=cache_config.enabled,
-            ttl_hours=cache_config.ttl_hours,
+            ttl_hours=ttl_hours,
             default_cache_type="contracts",
         )
     except Exception as e:

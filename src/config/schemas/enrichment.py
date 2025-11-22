@@ -5,6 +5,16 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class EnrichmentPerformanceConfig(BaseModel):
+    """Performance configuration for enrichment operations."""
+
+    chunk_size: int = Field(default=1000, ge=1, description="Chunk size for batch processing")
+    memory_threshold_mb: int = Field(default=1024, ge=1, description="Memory threshold in MB")
+    timeout_seconds: int = Field(default=300, ge=1, description="Operation timeout in seconds")
+    high_confidence_threshold: float = Field(default=0.9, ge=0.0, le=1.0, description="High confidence threshold")
+    low_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Low confidence threshold")
+
+
 class EnrichmentConfig(BaseModel):
     """Configuration for data enrichment services."""
 
@@ -35,6 +45,9 @@ class EnrichmentConfig(BaseModel):
             "retry_attempts": 3,
             "retry_backoff_seconds": 2,
         }
+    )
+    performance: EnrichmentPerformanceConfig = Field(
+        default_factory=EnrichmentPerformanceConfig, description="Performance configuration"
     )
 
 
@@ -85,8 +98,15 @@ class EnrichmentSourceConfig(BaseModel):
 
         enabled: bool = Field(default=True, description="Enable caching of API responses")
         ttl_seconds: int = Field(default=86400, ge=60, description="Cache TTL seconds")
+        ttl_hours: int | None = Field(default=None, description="Cache TTL hours (derived from ttl_seconds)")
+        cache_dir: str = Field(default="data/cache/usaspending", description="Cache directory path")
         max_entries: int = Field(default=1000, ge=10, description="Max cached responses")
         backend: str = Field(default="filesystem", description="Cache backend type")
+        
+        def model_post_init(self, __context: Any) -> None:
+            """Derive ttl_hours from ttl_seconds if not set."""
+            if self.ttl_hours is None:
+                self.ttl_hours = self.ttl_seconds // 3600
 
     cache: CacheConfig = Field(
         default_factory=CacheConfig, description="API response caching configuration"
