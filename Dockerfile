@@ -23,8 +23,8 @@
 #
 #   make docker-build (provided Makefile uses this Dockerfile)
 #
-ARG PYTHON_VERSION=3.11
-ARG IMAGE_PY=python:${PYTHON_VERSION}-slim
+ARG PYTHON_VERSION=3.11.9
+ARG IMAGE_PY=python:${PYTHON_VERSION}-slim-bookworm
 # Build argument to control R installation (set to false for faster CI builds)
 ARG BUILD_WITH_R=true
 # Build argument to use pre-built R base image (faster than building R from scratch)
@@ -91,8 +91,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Create app dir
 WORKDIR /workspace
 
-# Install UV - fast Python package installer
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Install UV - fast Python package installer (pinned version for better caching)
+ARG UV_VERSION=0.5.11
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
+    mv /root/.cargo/bin/uv /usr/local/bin/uv && \
+    uv --version
 
 # Copy dependency manifests early to leverage layer cache
 COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
