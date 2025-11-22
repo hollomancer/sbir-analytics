@@ -486,7 +486,7 @@ def sbir_transactions_volume_check(
 - [USAspending Database Setup Guide](https://files.usaspending.gov/database_download/usaspending-db-setup.pdf)
 - [DuckDB PostgreSQL Scanner](https://duckdb.org/docs/extensions/postgres_scanner.html)
 - [AWS S3 Lifecycle Policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
-- [Dagster Asset Documentation](https://docs.dagster.io/concepts/assets/software-defined-assets)
+- [Dagster Asset Documentation](https://docs.dagster.io/guides/build/assets/defining-assets)
 
 ## Support
 

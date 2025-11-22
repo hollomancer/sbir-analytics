@@ -275,7 +275,7 @@ Consider setting up alerts for:
 
 ## References
 
-- USAspending API Documentation: https://api.usaspending.gov/docs
+- USAspending API Documentation: https://api.usaspending.gov/docs/
 - Dagster Documentation: https://docs.dagster.io
 - Configuration: `config/base.yaml`
 - Source Code: `src/assets/usaspending_iterative_enrichment.py`

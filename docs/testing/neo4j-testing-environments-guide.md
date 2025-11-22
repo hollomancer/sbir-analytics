@@ -174,7 +174,7 @@ Neo4j Aura Free provides a small, cloud-hosted Neo4j instance perfect for testin
 
 #### Step 1: Create Your Aura Free Instance
 
-1. Go to [Neo4j Aura Free](https://neo4j.com/cloud/aura-free/)
+1. Go to [Neo4j Aura Free](https://neo4j.com/product/auradb/)
 2. Sign up for a free account
 3. Click **Create Instance** → Select **Free** tier
 4. Save your credentials (password is shown only once!)
@@ -336,7 +336,7 @@ python scripts/neo4j/generate_usage_report.py
 #### Quick Setup (5 minutes)
 
 1.  **Create Neo4j Aura Free Instance**:
-    *   Go to [Neo4j Aura Free](https://neo4j.com/cloud/aura-free/)
+    *   Go to [Neo4j Aura Free](https://neo4j.com/product/auradb/)
     *   Create a new Aura Free instance (e.g., `sbir-analytics-ci`)
     *   Save credentials (Connection URI, Username `neo4j`, Password)
 
@@ -607,7 +607,7 @@ secrets.NEO4J_AURA_TEST_URI not found
 
 -   **Neo4j Aura Documentation:** https://neo4j.com/docs/aura/
 -   **Neo4j Aura Console:** https://console.neo4j.io/
--   **Neo4j Cypher Manual:** https://neo4j.com/docs/cypher-manual/current/
+-   **Neo4j Cypher Manual:** https://neo4j.com/docs/cypher-manual/current/introduction/
 -   **SBIR ETL Issues:** https://github.com/your-org/sbir-analytics/issues
 -   **Configuration schema:** [src/config/schemas/pipeline.py](../../src/config/schemas/pipeline.py)
 -   **Environment examples:** [.env.example](../../.env.example), [.env.test.aura](../../.env.test.aura)

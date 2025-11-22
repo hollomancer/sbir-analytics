@@ -102,7 +102,7 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition import AssetExecutionContext, contracts_ingestion  # noqa: WPS433
+    from src.assets.transition import AssetExecutionContext, contracts_ingestion
 
     ctx = AssetExecutionContext()
     result_df, metadata = _unwrap_output(contracts_ingestion(ctx))
@@ -167,13 +167,8 @@ def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition import (  # noqa: WPS433 (local import for test isolation)
-        AssetExecutionContext,
-        contracts_ingestion,
-    )
-    from src.extractors.contract_extractor import (
-        ContractExtractor,  # noqa: WPS433 (local import for test isolation)
-    )
+    from src.assets.transition import AssetExecutionContext, contracts_ingestion
+    from src.extractors.contract_extractor import ContractExtractor
 
     def _fake_extract(self, dump_dir, output_file, table_files=None):
         fresh_df.to_parquet(output_file, index=False)
@@ -216,7 +211,7 @@ def test_transition_mvp_chain_shimmed(tmp_path, monkeypatch):
 
     # Import assets and shim context from the transition assets module
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition import (  # noqa: WPS433 (local import for test isolation)
+    from src.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -346,7 +341,7 @@ def test_transition_mvp_golden(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition import (  # noqa: WPS433
+    from src.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_evidence,
@@ -480,7 +475,7 @@ def test_transition_mvp_analytics_shimmed(tmp_path, monkeypatch):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     _install_dagster_shim(monkeypatch)
-    from src.assets.transition import (  # noqa: WPS433
+    from src.assets.transition import (
         AssetExecutionContext,
         enriched_vendor_resolution,
         transformed_transition_analytics,

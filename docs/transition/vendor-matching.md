@@ -887,4 +887,4 @@ Solution: Add acquisition record
 - **Tests**: `tests/unit/test_vendor_resolver.py`
 - **SAM.gov**: https://sam.gov/
 - **RapidFuzz**: https://maxbachmann.github.io/RapidFuzz/
-- **DUNS**: https://www.dnb.com/business-tools/duns-number.html
+- **DUNS**: https://www.dnb.com/ (DUNS numbers are legacy identifiers being phased out in favor of UEI)

@@ -146,5 +146,5 @@ If you need to rollback to the container-based approach:
 
 - Dagster job: `src/assets/jobs/sbir_weekly_refresh_job.py`
 - Lambda function: `scripts/lambda/trigger_dagster_refresh/lambda_handler.py`
-- Dagster Cloud API: https://docs.dagster.io/dagster-cloud/api
+- Dagster Cloud API: https://docs.dagster.io/deployment/dagster-plus/api
 

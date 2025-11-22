@@ -878,7 +878,7 @@ To rollback to GitHub Actions workflow:
 ## 14. References
 
 -   [AWS Lambda Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
--   [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
+-   [GitHub Actions OIDC](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)
 -   [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 -   [cloudpathlib documentation](https://cloudpathlib.drivendata.org/)
 -   [boto3 S3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html)

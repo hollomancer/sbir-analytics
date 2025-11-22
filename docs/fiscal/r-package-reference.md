@@ -288,7 +288,7 @@ ro.r('options(show.error.messages = TRUE)')  # Show error messages
 
 ## References
 
-- StateIO GitHub: https://github.com/USEPA/stateio
+- StateIO GitHub: https://github.com/USEPA/stateior
 - rpy2 Documentation: https://rpy2.github.io/
 
 ## Implementation Details
@@ -320,5 +320,5 @@ See `docs/fiscal/stateio-api-reference.md` for detailed API documentation.
 ## References
 
 - **StateIO API Reference**: `docs/fiscal/stateio-api-reference.md`
-- StateIO GitHub: https://github.com/USEPA/stateio
+- StateIO GitHub: https://github.com/USEPA/stateior
 - rpy2 Documentation: https://rpy2.github.io/

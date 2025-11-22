@@ -41,7 +41,7 @@ You're ready to run: make docker-build
 ```
 
 **If you see errors:**
-- Docker not found: Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- Docker not found: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Docker daemon not running: Start Docker Desktop
 - Ports in use: Stop services using those ports or see [Troubleshooting Guide](docker-troubleshooting.md)
 

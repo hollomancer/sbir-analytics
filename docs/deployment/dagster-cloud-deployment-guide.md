@@ -902,7 +902,7 @@ Or in Dagster Cloud UI:
 
 3.  **Set Environment Variable**:
     *   **Dagster Cloud**:
-        1.  Go to https://sbir.dagster.cloud/prod/settings/environment-variables
+        1.  Go to https://dagster.cloud/login?next=/prod/settings/environment-variables&organization_public_id=sbir
         2.  Add environment variable:
             *   Key: `SBIR_ANALYTICS_S3_BUCKET`
             *   Value: `sbir-analytics-production-data`
@@ -1202,7 +1202,7 @@ If you need to rollback to Docker Compose:
 
 ## 14. Support and Resources
 
-- **Dagster Cloud Docs**: https://docs.dagster.io/dagster-cloud
+- **Dagster Cloud Docs**: https://docs.dagster.io/deployment/dagster-plus
 - **Dagster Community**: https://dagster.io/community
 - **Status Page**: https://status.dagster.io
 - **Support**: Available via Dagster Cloud UI

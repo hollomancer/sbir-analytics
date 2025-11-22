@@ -38,7 +38,7 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
 3. **Set up Neo4j Aura (recommended):**
 
-   - Create a Neo4j Aura instance at [neo4j.com/cloud/aura](https://neo4j.com/cloud/aura)
+   - Create a Neo4j Aura instance at [neo4j.com/product/auradb/](https://neo4j.com/product/auradb/)
    - Copy your connection URI and credentials
 
 4. **Configure environment:**

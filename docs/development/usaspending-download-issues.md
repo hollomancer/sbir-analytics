@@ -92,6 +92,6 @@ For now, the script will retry up to 10 times. If it continues to fail:
 
 ## References
 
-- HTTP Range requests: https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
+- HTTP Range requests: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests
 - wget resume: `wget --continue`
 - AWS S3 multipart uploads: Already implemented in script

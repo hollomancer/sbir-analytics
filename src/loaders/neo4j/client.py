@@ -500,8 +500,8 @@ class Neo4jClient:
                         """
 
                         result = session.run(merge_props_query, merges=merge_list)
-                        record: Any = result.single()
-                        merged_count = record["merged_count"] if record else 0  # type: ignore[index]
+                        merge_record: Any = result.single()
+                        merged_count = merge_record["merged_count"] if merge_record else 0  # type: ignore[index]
 
                         metrics.nodes_updated["Organization"] = (
                             metrics.nodes_updated.get("Organization", 0) + merged_count
@@ -555,10 +555,10 @@ class Neo4jClient:
                         """
 
                         result = session.run(query, batch=nodes_to_create)
-                        record: Any = result.single()
+                        create_record: Any = result.single()
 
-                        created = record["created_count"] if record else 0  # type: ignore[index]
-                        updated = record["updated_count"] if record else 0  # type: ignore[index]
+                        created = create_record["created_count"] if create_record else 0  # type: ignore[index]
+                        updated = create_record["updated_count"] if create_record else 0  # type: ignore[index]
 
                         metrics.nodes_created["Organization"] = (
                             metrics.nodes_created.get("Organization", 0) + created

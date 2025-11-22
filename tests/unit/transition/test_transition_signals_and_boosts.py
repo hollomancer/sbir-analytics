@@ -31,10 +31,7 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__LIMIT_PER_AWARD", "50")
 
     # Import locally so env/working dir changes apply
-    from src.assets.transition import (  # noqa: WPS433
-        AssetExecutionContext,
-        transformed_transition_scores,
-    )
+    from src.assets.transition import AssetExecutionContext, transformed_transition_scores
 
     # Contracts sample: one contract intended to match A2 by fuzzy name; include fields for all boosts
     contracts_df = pd.DataFrame(

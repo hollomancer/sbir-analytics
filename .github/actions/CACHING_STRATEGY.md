@@ -163,6 +163,6 @@ Monitor cache hit rates to measure effectiveness:
 
 ## References
 
-- [GitHub Actions Caching](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
+- [GitHub Actions Caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
 - [actions/cache documentation](https://github.com/actions/cache)
 - [Docker BuildKit cache](https://docs.docker.com/build/cache/)

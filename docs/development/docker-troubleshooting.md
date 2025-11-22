@@ -40,7 +40,7 @@ make docker-logs SERVICE=<service-name>
 
 **Solutions:**
 1. **Install Docker Desktop:**
-   - macOS/Windows: https://www.docker.com/products/docker-desktop
+   - macOS/Windows: https://www.docker.com/products/docker-desktop/
    - Linux: https://docs.docker.com/engine/install/
 
 2. **Verify installation:**

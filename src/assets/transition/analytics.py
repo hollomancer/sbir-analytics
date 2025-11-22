@@ -49,7 +49,7 @@ def transformed_transition_analytics(
       - data/processed/transition_analytics.checks.json (checks)
     """
     # Lazy import to keep module import-safe
-    from src.transition.analysis.analytics import TransitionAnalytics  # noqa: WPS433
+    from src.transition.analysis.analytics import TransitionAnalytics
 
     score_threshold = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__SCORE_THRESHOLD", 0.60)
     analytics = TransitionAnalytics(score_threshold=score_threshold)

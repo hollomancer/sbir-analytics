@@ -372,7 +372,7 @@ Potential additions for future releases:
 ## References
 
 - **Phonetic Algorithms**: [Jellyfish Library Documentation](https://github.com/jamesturk/jellyfish)
-- **Jaro-Winkler**: [RapidFuzz Documentation](https://github.com/maxbachmann/RapidFuzz)
+- **Jaro-Winkler**: [RapidFuzz Documentation](https://github.com/rapidfuzz/RapidFuzz)
 - **ORCID**: [ORCID Registry](https://orcid.org/)
 
 ---

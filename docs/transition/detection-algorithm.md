@@ -476,8 +476,8 @@ SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.10
 
 ## References
 
-- **SBIR Data**: [SBIR.gov](https://sbir.gov)
-- **Federal Contracts**: [USAspending.gov](https://usaspending.gov)
-- **Patents**: [USPTO.gov](https://uspto.gov)
+- **SBIR Data**: [SBIR.gov](https://www.sbir.gov)
+- **Federal Contracts**: [USAspending.gov](https://www.usaspending.gov)
+- **Patents**: [USPTO.gov](https://www.uspto.gov)
 - **CET Classification**: [NIST Critical Emerging Technologies](https://www.nist.gov/programs/critical-emerging-technologies)
 - **Vendor Identifiers**: [SAM.gov Entity Management](https://sam.gov)

@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-from ..models.quality import QualityIssue, QualityReport, QualitySeverity
+from ..models.quality import QualityIssue, QualitySeverity
 
 
 # US State codes for validation

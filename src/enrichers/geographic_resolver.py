@@ -45,9 +45,9 @@ class GeographicResolver:
         config_obj = config or get_config().fiscal_analysis
         # Handle both dict and FiscalAnalysisConfig objects
         if isinstance(config_obj, dict):
-            self.config: FiscalAnalysisConfig = FiscalAnalysisConfig(**config_obj)
+            self.config = FiscalAnalysisConfig(**config_obj)
         else:
-            self.config: FiscalAnalysisConfig = config_obj
+            self.config = config_obj
         self.quality_thresholds = self.config.quality_thresholds
 
         # US state mappings (code -> name and name -> code)

@@ -6,7 +6,7 @@ This document provides reference information for the StateIO (`stateior`) R pack
 
 - **Package**: `stateior`
 - **Version**: Tested with v0.4.0+
-- **GitHub**: https://github.com/USEPA/stateio
+- **GitHub**: https://github.com/USEPA/stateior
 - **Purpose**: Generate US state Make and Use tables for building regionalized input-output models
 
 ## Key Functions for Fiscal Analysis
