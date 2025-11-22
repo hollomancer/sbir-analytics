@@ -294,32 +294,32 @@ from .parsing import (
 
 
 # Create concrete asset_check functions and bind them to the parsed assets using the decorator
-uspto_assignments_parsing_check = asset_check(
-    asset=parsed_uspto_assignments,
+uspto_assignments_parsing_check = asset_check(  # type: ignore[has-type]
+    asset=parsed_uspto_assignments,  # type: ignore[has-type]
     description="Verify each discovered assignment file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignments")},
 )(_make_parsing_check("raw_uspto_assignments", "parsed_uspto_assignments"))
 
-uspto_assignees_parsing_check = asset_check(
-    asset=validated_uspto_assignees,
+uspto_assignees_parsing_check = asset_check(  # type: ignore[has-type]
+    asset=validated_uspto_assignees,  # type: ignore[has-type]
     description="Verify each discovered assignee file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignees")},
 )(_make_parsing_check("raw_uspto_assignees", "validated_uspto_assignees"))
 
-uspto_assignors_parsing_check = asset_check(
-    asset=validated_uspto_assignors,
+uspto_assignors_parsing_check = asset_check(  # type: ignore[has-type]
+    asset=validated_uspto_assignors,  # type: ignore[has-type]
     description="Verify each discovered assignor file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_assignors")},
 )(_make_parsing_check("raw_uspto_assignors", "validated_uspto_assignors"))
 
-uspto_documentids_parsing_check = asset_check(
-    asset=parsed_uspto_documentids,
+uspto_documentids_parsing_check = asset_check(  # type: ignore[has-type]
+    asset=parsed_uspto_documentids,  # type: ignore[has-type]
     description="Verify each discovered documentid file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_documentids")},
 )(_make_parsing_check("raw_uspto_documentids", "parsed_uspto_documentids"))
 
-uspto_conveyances_parsing_check = asset_check(
-    asset=parsed_uspto_conveyances,
+uspto_conveyances_parsing_check = asset_check(  # type: ignore[has-type]
+    asset=parsed_uspto_conveyances,  # type: ignore[has-type]
     description="Verify each discovered conveyance file can be parsed for a small sample",
     additional_ins={"raw_files": AssetIn("raw_uspto_conveyances")},
 )(_make_parsing_check("raw_uspto_conveyances", "parsed_uspto_conveyances"))

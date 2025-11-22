@@ -100,7 +100,7 @@ def sbir_fiscal_impacts(
 
     # Initialize fiscal calculator
     try:
-        with performance_monitor("fiscal_impact_calculation"):
+        with performance_monitor.monitor_block("fiscal_impact_calculation"):
             calculator = SBIRFiscalImpactCalculator(config=config)
 
             context.log.info("Running fiscal impact calculations...")

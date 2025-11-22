@@ -196,7 +196,7 @@ def usaspending_refresh_batch(
             break
 
     # Process awards in batch
-    stats = {
+    stats: dict[str, int | list[str]] = {
         "total": len(stale_awards_batch),
         "success": 0,
         "failed": 0,
