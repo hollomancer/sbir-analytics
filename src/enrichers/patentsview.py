@@ -111,12 +111,12 @@ class PatentsViewClient:
             timeout_seconds: Request timeout (if None, reads from config)
         """
         config = get_config()
-        patentsview_config = config.enrichment.patentsview_api
+        patentsview_config: dict[str, object] = config.enrichment.patentsview_api  # type: ignore[assignment]
 
         # Get API key from parameter, env var, or config
         if api_key is None:
             api_key_env_var = patentsview_config.get("api_key_env_var", "PATENTSVIEW_API_KEY")
-            api_key = os.getenv(api_key_env_var)
+            api_key = os.getenv(str(api_key_env_var))
             if not api_key:
                 raise ConfigurationError(
                     f"PatentsView API key not found. Set {api_key_env_var} environment variable.",
@@ -137,9 +137,14 @@ class PatentsViewClient:
 
         # Initialize cache
         cache_config = patentsview_config.get("cache", {})
-        cache_enabled = cache_config.get("enabled", True)
-        cache_dir = cache_config.get("cache_dir", "data/cache/patentsview")
-        cache_ttl = cache_config.get("ttl_hours", 24)
+        if isinstance(cache_config, dict):
+            cache_enabled = cache_config.get("enabled", True)
+            cache_dir = cache_config.get("cache_dir", "data/cache/patentsview")
+            cache_ttl = cache_config.get("ttl_hours", 24)
+        else:
+            cache_enabled = True
+            cache_dir = "data/cache/patentsview"
+            cache_ttl = 24
         self.cache = APICache(
             cache_dir=cache_dir,
             enabled=cache_enabled,

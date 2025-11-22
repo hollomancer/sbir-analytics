@@ -60,7 +60,8 @@ repos:
             .*\/\.env\.test\.aura$|
             .*\/reports\/.*\.(json|csv)$|
             infrastructure\/cdk\/\.venv\/|
-            infrastructure\/cdk\/cdk\.out\/
+            infrastructure\/cdk\/cdk\.out\/|
+            infrastructure\/cdk\/response\.json
           )
 
   # Disabled git-secrets hook: install requires manual setup on developer machines; detect-secrets + local

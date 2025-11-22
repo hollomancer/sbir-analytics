@@ -249,12 +249,20 @@ def usaspending_refresh_batch(
                     stats["unchanged"] += 1
             else:
                 stats["failed"] += 1
-                stats["errors"].append(f"{award_id}: {result.get('error', 'Unknown error')}")
+                errors = stats.get("errors")
+                if not isinstance(errors, list):
+                    errors = []
+                    stats["errors"] = errors
+                errors.append(f"{award_id}: {result.get('error', 'Unknown error')}")
 
         except Exception as e:
             logger.error(f"Failed to refresh award {award_id}: {e}")
             stats["failed"] += 1
-            stats["errors"].append(f"{award_id}: {str(e)}")
+            errors = stats.get("errors")
+            if not isinstance(errors, list):
+                errors = []
+                stats["errors"] = errors
+            errors.append(f"{award_id}: {str(e)}")
 
             # Record API error
             metrics_collector.record_api_call(source, error=True)

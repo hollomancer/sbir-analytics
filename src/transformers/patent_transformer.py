@@ -472,9 +472,11 @@ class PatentAssignmentTransformer:
 
             # Flag unusual delays (>90 days between execution and recording)
             if temporal_span_days > 90:
-                if "chain_flags" not in assignment.metadata:
-                    assignment.metadata["chain_flags"] = []
-                assignment.metadata["chain_flags"].append("delayed_recording")
+                chain_flags = assignment.metadata.get("chain_flags")
+                if not isinstance(chain_flags, list):
+                    chain_flags = []
+                    assignment.metadata["chain_flags"] = chain_flags
+                chain_flags.append("delayed_recording")
 
         # Detect sequence indicators (e.g., "Part 1 of 3")
         raw_conveyance = row.get("conveyance_description", "")
@@ -516,9 +518,15 @@ class PatentAssignmentTransformer:
         # Mark employment-related assignments for special handling
         if assignment.conveyance and assignment.conveyance.employer_assign:
             if "chain_flags" not in assignment.metadata:
-                assignment.metadata["chain_flags"] = []
-            if "employer_assigned" not in assignment.metadata["chain_flags"]:
-                assignment.metadata["chain_flags"].append("employer_assigned")
+                chain_flags = []
+                assignment.metadata["chain_flags"] = chain_flags
+            else:
+                chain_flags = assignment.metadata.get("chain_flags")
+                if not isinstance(chain_flags, list):
+                    chain_flags = []
+                    assignment.metadata["chain_flags"] = chain_flags
+            if "employer_assigned" not in chain_flags:
+                chain_flags.append("employer_assigned")
 
     # Task 7.4: Enhanced address standardization (building on _parse_address)
     # -----------------------------------------------------------------------
