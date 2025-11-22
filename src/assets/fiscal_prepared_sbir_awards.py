@@ -2,7 +2,7 @@ try:
     from dagster import asset
 except Exception:
     # allow running tests where dagster isn't installed; provide a no-op decorator
-    def asset(fn=None, **kwargs):
+    def asset(fn=None, **kwargs):  # type: ignore[no-redef]
         if fn is None:
 
             def _wrap(f):
