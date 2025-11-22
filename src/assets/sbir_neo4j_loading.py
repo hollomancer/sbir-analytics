@@ -437,7 +437,7 @@ def neo4j_sbir_awards(
                 # Normalize column names: lowercase and replace spaces with underscores
                 # Also convert pandas NaN to None for proper Pydantic validation
                 row_dict = row.to_dict()
-                normalized_dict = {}
+                normalized_dict: dict[str, Any] = {}
                 for key, value in row_dict.items():
                     normalized_key = key.lower().replace(" ", "_")
                     # Convert pandas NaN/NA to None

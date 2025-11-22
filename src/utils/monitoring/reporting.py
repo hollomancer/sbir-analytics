@@ -456,7 +456,7 @@ class PerformanceReporter:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create benchmark data from comparison for HTML generation
-        benchmark_data = {
+        benchmark_data: dict[str, Any] = {
             "performance_metrics": {
                 "total_duration_seconds": comparison.current_metrics.total_duration_seconds,
                 "records_per_second": comparison.current_metrics.records_per_second,

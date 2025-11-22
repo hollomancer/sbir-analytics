@@ -350,7 +350,7 @@ class VendorCrosswalk:
         if name:
             r = self.find_by_name(name, fuzzy_threshold=fuzzy_threshold)
             if r:
-                rec, score = r
+                rec, score = r  # type: ignore[misc]
                 return rec, "name", score
         return None
 

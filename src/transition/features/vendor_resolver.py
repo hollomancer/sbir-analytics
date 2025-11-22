@@ -438,7 +438,11 @@ def build_resolver_from_iterable(
             # skip rows without a name; they are not resolvable
             continue
         rec = VendorRecord(
-            uei=uei, cage=cage, duns=duns, name=str(name), metadata=item.get("metadata", {})
+            uei=str(uei) if uei is not None else None,  # type: ignore[arg-type]
+            cage=str(cage) if cage is not None else None,  # type: ignore[arg-type]
+            duns=str(duns) if duns is not None else None,  # type: ignore[arg-type]
+            name=str(name),
+            metadata=item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}  # type: ignore[arg-type]
         )
         records.append(rec)
     return VendorResolver(records, fuzzy_threshold=fuzzy_threshold)

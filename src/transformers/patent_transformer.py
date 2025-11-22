@@ -697,7 +697,7 @@ class PatentAssignmentTransformer:
         Returns:
             Dictionary with standardized address components
         """
-        result = {}
+        result: dict[str, str | None] = {}
 
         # Standardize street
         if street:

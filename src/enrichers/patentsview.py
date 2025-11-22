@@ -133,7 +133,8 @@ class PatentsViewClient:
         self.timeout_seconds = timeout_seconds or patentsview_config.get("timeout_seconds", 30)
 
         # Initialize rate limiter
-        self.rate_limiter = RateLimiter(rate_limit_per_minute=self.rate_limit_per_minute)
+        rate_limit: int = int(self.rate_limit_per_minute) if self.rate_limit_per_minute else 60
+        self.rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)  # type: ignore[arg-type]
 
         # Initialize cache
         cache_config = patentsview_config.get("cache", {})
@@ -153,8 +154,9 @@ class PatentsViewClient:
         )
 
         # HTTP client with default headers
+        timeout_float: float = float(self.timeout_seconds) if self.timeout_seconds else 30.0
         self.client = httpx.Client(
-            timeout=self.timeout_seconds,
+            timeout=timeout_float,  # type: ignore[arg-type]
             headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},
         )
 

@@ -381,7 +381,7 @@ class PerformanceProfiler:
         Returns:
             Dictionary with timing and counter summaries
         """
-        summary = {
+        summary: dict[str, Any] = {
             "timings": {},
             "counters": self.counters.copy(),
             "detections_per_minute": 0.0,

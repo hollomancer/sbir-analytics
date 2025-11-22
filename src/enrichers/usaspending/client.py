@@ -133,7 +133,8 @@ class USAspendingAPIClient:
         async def _do_request() -> dict[str, Any]:
             await self._wait_for_rate_limit()
 
-            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+            url_str: str = str(self.base_url) if self.base_url else "https://api.usaspending.gov/api/v2"
+            url = f"{url_str.rstrip('/')}/{endpoint.lstrip('/')}"
             default_headers = {
                 "Accept": "application/json",
                 "User-Agent": "SBIR-Analytics/0.1.0",
