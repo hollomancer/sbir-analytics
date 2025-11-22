@@ -622,9 +622,9 @@ class Award(BaseModel):
             "address1" in mapped_data or "address2" in mapped_data
         ):
             addr_parts = [mapped_data.get("address1"), mapped_data.get("address2")]
-            addr_parts = [str(p) for p in addr_parts if p]
-            if addr_parts:
-                mapped_data["company_address"] = ", ".join(addr_parts)
+            addr_parts_filtered: list[str] = [str(p) for p in addr_parts if p]
+            if addr_parts_filtered:
+                mapped_data["company_address"] = ", ".join(addr_parts_filtered)
 
         # Generate award_id if not provided
         if "award_id" not in mapped_data and "award_id" not in data:
