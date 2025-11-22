@@ -103,10 +103,11 @@ def lambda_handler(event: dict, context) -> dict:
                 logger.info("Processing dataset changes")
 
                 # Run validation and checks
+                # source_url is already validated above (line 82-83)
                 run_validation_scripts(
                     csv_path=csv_path,
                     metadata_dir=metadata_dir,
-                    source_url=source_url,
+                    source_url=source_url,  # type: ignore[arg-type]
                     s3_bucket=s3_bucket,
                 )
 

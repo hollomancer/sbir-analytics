@@ -227,7 +227,7 @@ def make_mock_response(
     provider: str, query: str, snippets: Iterable[str], urls: Iterable[str] | None = None
 ) -> ProviderResponse:
     """Create a lightweight mock ProviderResponse for tests/fixtures."""
-    urls_list = list(urls) if urls is not None else [None] * len(list(snippets))
+    urls_list: list[str | None] = list(urls) if urls is not None else [None] * len(list(snippets))
     results: list[ProviderResult] = []
     for idx, (s, u) in enumerate(zip(snippets, urls_list, strict=False)):
         results.append(

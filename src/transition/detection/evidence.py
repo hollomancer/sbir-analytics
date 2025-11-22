@@ -236,7 +236,7 @@ class EvidenceGenerator:
         Returns:
             EvidenceItem documenting patent indicators
         """
-        metadata = {
+        metadata: dict[str, float | str | None] = {
             "patent_count": signal.patent_count,
             "patents_pre_contract": signal.patents_pre_contract,
             "patent_topic_similarity": signal.patent_topic_similarity,

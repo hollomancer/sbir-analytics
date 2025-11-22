@@ -367,13 +367,13 @@ class CompanyCETAggregator:
                     years = []
                 for y in years:
                     part = company_awards.loc[company_awards["award_date_parsed"].dt.year == int(y)]
-                    local_cet_totals: dict[str, float] = {}
+                    year_cet_totals: dict[str, float] = {}
                     for _, ar in part.iterrows():
                         for cet_id, sc, _ in self._extract_cet_rows_from_award(ar):
-                            local_cet_totals[cet_id] = local_cet_totals.get(cet_id, 0.0) + float(sc)
-                    total = sum(local_cet_totals.values()) or 0.0
+                            year_cet_totals[cet_id] = year_cet_totals.get(cet_id, 0.0) + float(sc)
+                    total = sum(year_cet_totals.values()) or 0.0
                     if total > 0:
-                        trend[str(int(y))] = {k: v / total for k, v in local_cet_totals.items()}
+                        trend[str(int(y))] = {k: v / total for k, v in year_cet_totals.items()}
                     else:
                         trend[str(int(y))] = {}
 
