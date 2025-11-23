@@ -224,7 +224,7 @@ def enriched_cet_award_classifications() -> Output:
     if EvidenceExtractor is not None:
         try:
         # type: ignore[arg-type]
-            extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)
+            extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)  # type: ignore[arg-type]
         except Exception:
             extractor = None
             logger.exception("Failed to initialize EvidenceExtractor; evidence extraction disabled")
