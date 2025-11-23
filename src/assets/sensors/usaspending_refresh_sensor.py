@@ -43,7 +43,7 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
             return SkipReason("Bulk enrichment asset not yet materialized")
 
         # Check if materialization was successful
-        if not enriched_awards_record.dagster_event or not enriched_awards_record.dagster_event.asset_materialization:  # type: ignore[attr-defined]
+        if not enriched_awards_record.dagster_event or not enriched_awards_record.dagster_event.asset_materialization:  # type: ignore[attr-defined, truthy-function]
             return SkipReason("Bulk enrichment asset materialization not found")
 
         # Check freshness ledger to see if refresh is needed
@@ -59,12 +59,12 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
 
             if stale_record and hasattr(stale_record, "dagster_event") and stale_record.dagster_event:  # type: ignore[attr-defined]
                 # Check metadata for stale count
-                if stale_record.dagster_event.asset_materialization:  # type: ignore[attr-defined]
+                if stale_record.dagster_event.asset_materialization:  # type: ignore[attr-defined, truthy-function]
                     metadata = stale_record.dagster_event.asset_materialization.metadata or {}  # type: ignore[attr-defined]
                     stale_count_val = metadata.get("stale_count")
                     # Extract value if it's a MetadataValue, otherwise use directly
                     if hasattr(stale_count_val, "value"):
-                        stale_count = stale_count_val.value
+                        stale_count = stale_count_val.value  # type: ignore[union-attr]
                     elif isinstance(stale_count_val, int | float):
                         stale_count = int(stale_count_val)
                     else:

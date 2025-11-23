@@ -1023,7 +1023,7 @@ def neo4j_sbir_awards(
 
         # Create FUNDED_BY relationships
         if award_agency_rels:
-            rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)
+            rel_metrics = client.batch_create_relationships(award_agency_rels, metrics=metrics)  # type: ignore[arg-type]
             metrics = rel_metrics
             context.log.info(
                 f"Created {len(award_agency_rels)} FUNDED_BY relationships (FinancialTransaction -> Organization)"

@@ -104,7 +104,7 @@ def stale_usaspending_awards(
         )
 
     # Filter enriched awards to stale ones
-    from ...utils.asset_column_helper import AssetColumnHelper
+    from ...utils.asset_column_helper import AssetColumnHelper  # type: ignore[import-not-found]
 
     award_id_col = AssetColumnHelper.find_award_id_column(enriched_sbir_awards)
     if not award_id_col:

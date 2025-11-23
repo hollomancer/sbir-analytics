@@ -242,7 +242,7 @@ class TransitionProfileLoader(BaseNeo4jLoader):
                         """,
                         profiles=[t.to_dict() for _, t in batch.iterrows()],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"]  # type: ignore[index]
                     metrics.nodes_created["TransitionProfile"] = (
                         metrics.nodes_created.get("TransitionProfile", 0) + count
                     )
@@ -304,7 +304,7 @@ class TransitionProfileLoader(BaseNeo4jLoader):
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"]
+                    count = result.single()["created"]  # type: ignore[index]
                     metrics.relationships_created["ACHIEVED"] = (
                         metrics.relationships_created.get("ACHIEVED", 0) + count
                     )
