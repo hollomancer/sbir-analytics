@@ -123,7 +123,7 @@ def train_cet_patent_classifier() -> Output:
             assignee_col="assignee" if "assignee" in df.columns else None,
             cet_label_col="cet_labels",
             use_feature_extraction=True,
-            keywords_map=get_keywords_map(),
+            keywords_map={k: list(v) for k, v in get_keywords_map().items()} if get_keywords_map() else None,  # type: ignore[arg-type]
         )
         checks = {
             "ok": True,

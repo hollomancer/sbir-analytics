@@ -65,9 +65,10 @@ class CETLoader(BaseNeo4jLoader):
     # Schema management
     # -------------------------------------------------------------------------
 
-    def create_constraints(self) -> None:
+    def create_constraints(self, constraints: list[str] | None = None) -> None:  # type: ignore[override]
         """Create uniqueness constraints for CETArea and ensure existence of key entity constraints."""
-        constraints = [
+        if constraints is None:
+            constraints = [
             # CETArea uniqueness on cet_id
             "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
             "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
@@ -79,9 +80,10 @@ class CETLoader(BaseNeo4jLoader):
         ]
         super().create_constraints(constraints)
 
-    def create_indexes(self) -> None:
+    def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
         """Create indexes for frequently queried CETArea properties."""
-        indexes = [
+        if indexes is None:
+            indexes = [
             "CREATE INDEX cetarea_name_idx IF NOT EXISTS FOR (c:CETArea) ON (c.name)",
             "CREATE INDEX cetarea_taxonomy_version_idx IF NOT EXISTS "
             "FOR (c:CETArea) ON (c.taxonomy_version)",

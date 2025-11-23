@@ -64,25 +64,27 @@ class PatentLoader(BaseNeo4jLoader):
             f"create_constraints={self.config.create_constraints}"
         )
 
-    def create_constraints(self) -> None:
+    def create_constraints(self, constraints: list[str] | None = None) -> None:  # type: ignore[override]
         """Create unique constraints for patent entity primary keys."""
-        constraints = [
-            "CREATE CONSTRAINT patent_grant_doc_num IF NOT EXISTS "
-            "FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE",
-            "CREATE CONSTRAINT patent_assignment_rf_id IF NOT EXISTS "
-            "FOR (a:PatentAssignment) REQUIRE a.rf_id IS UNIQUE",
-            # Legacy PatentEntity constraint (kept for backward compatibility)
-            "CREATE CONSTRAINT patent_entity_id IF NOT EXISTS "
-            "FOR (e:PatentEntity) REQUIRE e.entity_id IS UNIQUE",
-            # Organization constraint for unified entities
-            "CREATE CONSTRAINT organization_id IF NOT EXISTS "
-            "FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
-        ]
+        if constraints is None:
+            constraints = [
+                "CREATE CONSTRAINT patent_grant_doc_num IF NOT EXISTS "
+                "FOR (p:Patent) REQUIRE p.grant_doc_num IS UNIQUE",
+                "CREATE CONSTRAINT patent_assignment_rf_id IF NOT EXISTS "
+                "FOR (a:PatentAssignment) REQUIRE a.rf_id IS UNIQUE",
+                # Legacy PatentEntity constraint (kept for backward compatibility)
+                "CREATE CONSTRAINT patent_entity_id IF NOT EXISTS "
+                "FOR (e:PatentEntity) REQUIRE e.entity_id IS UNIQUE",
+                # Organization constraint for unified entities
+                "CREATE CONSTRAINT organization_id IF NOT EXISTS "
+                "FOR (o:Organization) REQUIRE o.organization_id IS UNIQUE",
+            ]
         super().create_constraints(constraints)
 
-    def create_indexes(self) -> None:
+    def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
         """Create indexes for frequently queried patent properties."""
-        indexes = [
+        if indexes is None:
+            indexes = [
             # Tier 1: Essential indexes
             "CREATE INDEX patent_grant_doc_num_idx IF NOT EXISTS "
             "FOR (p:Patent) ON (p.grant_doc_num)",

@@ -226,7 +226,7 @@ class PaECTERClient:
                 generation_timestamp=generation_time,
                 input_count=len(texts),
                 dimension=self.embedding_dim,
-                inference_mode=self.inference_mode,
+                inference_mode=self.inference_mode,  # type: ignore[arg-type]
             )
 
         except Exception as e:

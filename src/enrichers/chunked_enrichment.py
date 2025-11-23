@@ -206,8 +206,8 @@ class ChunkedEnricher:
                     recipient_name_col="recipient_name",
                     recipient_uei_col="recipient_uei",
                     recipient_duns_col="recipient_duns",
-                    high_threshold=self.high_threshold,
-                    low_threshold=self.low_threshold,
+                    high_threshold=int(self.high_threshold),  # type: ignore[arg-type]
+                    low_threshold=int(self.low_threshold),  # type: ignore[arg-type]
                     return_candidates=True,
                 )
 

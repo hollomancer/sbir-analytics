@@ -101,7 +101,7 @@ class CommandContext:
         if run_id is not None:
             ctx_kwargs["run_id"] = run_id
 
-        context = cls(**ctx_kwargs)
+        context = cls(**ctx_kwargs)  # type: ignore[arg-type]
 
         # Log CLI session start
         context.logger.info(

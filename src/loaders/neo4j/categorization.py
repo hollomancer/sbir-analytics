@@ -83,9 +83,10 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
     # Schema management
     # -------------------------------------------------------------------------
 
-    def create_indexes(self) -> None:
+    def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
         """Create indexes for categorization properties on Company nodes."""
-        indexes = [
+        if indexes is None:
+            indexes = [
             # Index on classification for filtering queries
             "CREATE INDEX company_classification_idx IF NOT EXISTS "
             "FOR (c:Company) ON (c.classification)",

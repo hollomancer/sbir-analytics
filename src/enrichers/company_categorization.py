@@ -1262,7 +1262,7 @@ def retrieve_sbir_awards_api(
         cache = USAspendingCache(
             cache_dir=cache_config.cache_dir,
             enabled=cache_config.enabled,
-            ttl_hours=cache_config.ttl_hours,
+            ttl_hours=cache_config.ttl_hours or 24,  # type: ignore[arg-type]
         )
     except Exception as e:
         logger.debug(f"Could not initialize cache, proceeding without caching: {e}")

@@ -244,11 +244,14 @@ def usaspending_refresh_batch(
 
             if result["success"]:
                 if result.get("delta_detected", True):
-                    stats["success"] += 1
+                    success_val = stats["success"]
+                    stats["success"] = (success_val if isinstance(success_val, int) else 0) + 1
                 else:
-                    stats["unchanged"] += 1
+                    unchanged_val = stats["unchanged"]
+                    stats["unchanged"] = (unchanged_val if isinstance(unchanged_val, int) else 0) + 1
             else:
-                stats["failed"] += 1
+                failed_val = stats["failed"]
+                stats["failed"] = (failed_val if isinstance(failed_val, int) else 0) + 1
                 errors = stats.get("errors")
                 if not isinstance(errors, list):
                     errors = []
@@ -257,7 +260,8 @@ def usaspending_refresh_batch(
 
         except Exception as e:
             logger.error(f"Failed to refresh award {award_id}: {e}")
-            stats["failed"] += 1
+            failed_val = stats["failed"]
+            stats["failed"] = (failed_val if isinstance(failed_val, int) else 0) + 1
             errors = stats.get("errors")
             if not isinstance(errors, list):
                 errors = []
