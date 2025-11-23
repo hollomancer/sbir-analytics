@@ -78,14 +78,39 @@ jobs:
           # Clean Docker if present
           sudo docker system prune -af --volumes || true
           
-          # Remove large Python caches
+          # Clean PEX cache (this is critical for PEX builds)
+          rm -rf ~/.cache/pex || true
+          rm -rf /home/runner/.cache/pex || true
+          
+          # Clean Python virtual environments and caches
           find ~/.cache -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find ~/.cache -type d -name "*.pyc" -exec rm -rf {} + 2>/dev/null || true
           find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
           find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
           find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          find . -name "*.pyo" -delete 2>/dev/null || true
+          
+          # Clean up any existing build artifacts
+          rm -rf "$GITHUB_WORKSPACE/build" || true
+          rm -rf "$GITHUB_WORKSPACE/project-repo/build" || true
+          rm -rf "$GITHUB_WORKSPACE/project-repo/dist" || true
+          rm -rf "$GITHUB_WORKSPACE/project-repo/*.egg-info" || true
+          
+          # Clean up large log files if any
+          find . -name "*.log" -size +10M -delete 2>/dev/null || true
           
           echo "Disk space after cleanup:"
           df -h
+          
+          # Show available disk space
+          AVAILABLE=$(df -BG "$GITHUB_WORKSPACE" | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available disk space: ${AVAILABLE}GB"
+          
+          # Warn if less than 2GB available
+          if [ "$AVAILABLE" -lt 2 ]; then
+            echo "::warning::Low disk space (${AVAILABLE}GB available). PEX build may fail."
+          fi
 
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
