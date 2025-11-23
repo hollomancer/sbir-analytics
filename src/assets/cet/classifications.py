@@ -33,8 +33,8 @@ try:  # pragma: no cover - defensive import
     from src.models.quality import ModuleReport
     from src.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
 except Exception:
-    ModuleReport = None  # type: ignore[assignment, no-redef]
-    CetClassificationAnalyzer = None  # type: ignore[assignment, no-redef]
+    ModuleReport = None  # type: ignore[assignment, misc, no-redef]
+    CetClassificationAnalyzer = None  # type: ignore[assignment, misc, no-redef]
 
 
 @asset_check(

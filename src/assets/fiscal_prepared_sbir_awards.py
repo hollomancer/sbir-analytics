@@ -21,8 +21,8 @@ try:
     from src.enrichers.naics import NAICSEnricher, NAICSEnricherConfig
 except ImportError:
     # Fallback for environments without enrichers installed
-    NAICSEnricher = None  # type: ignore[assignment, no-redef]
-    NAICSEnricherConfig = None  # type: ignore[assignment, no-redef]
+    NAICSEnricher = None  # type: ignore[assignment, misc, no-redef]
+    NAICSEnricherConfig = None  # type: ignore[assignment, misc, no-redef]
 
 
 @asset
