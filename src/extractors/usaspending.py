@@ -192,7 +192,7 @@ class DuckDBUSAspendingExtractor:
 
                 # Create tables for each COPY file
                 for file_info in copy_files:
-                    oid: int = int(file_info["oid"])  # type: ignore[assignment]
+                    oid: int = int(file_info["oid"])  # type: ignore[assignment, call-overload]
                     filename: str = str(file_info["filename"])  # type: ignore[assignment]
                     table_name_for_file = f"{table_name}_{oid}"
                     table_identifier = self._escape_identifier(table_name_for_file)

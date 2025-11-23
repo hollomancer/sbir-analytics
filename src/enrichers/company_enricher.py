@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover
 def _coerce_int(value: object) -> int | None:
     """Best-effort conversion to int without propagating errors."""
     try:
-        return int(value)
+        return int(value)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return None
 

@@ -133,7 +133,7 @@ class PatentsViewClient:
         self.timeout_seconds = timeout_seconds or patentsview_config.get("timeout_seconds", 30)
 
         # Initialize rate limiter
-        rate_limit: int = int(self.rate_limit_per_minute) if self.rate_limit_per_minute else 60
+        rate_limit: int = int(self.rate_limit_per_minute) if self.rate_limit_per_minute else 60  # type: ignore[call-overload]
         self.rate_limiter = RateLimiter(rate_limit_per_minute=rate_limit)  # type: ignore[arg-type]
 
         # Initialize cache

@@ -1165,11 +1165,11 @@ def neo4j_sbir_awards(
         return Output(
             value=result,
             metadata={  # type: ignore[dict-item]
-                "awards_loaded": int(result.get("awards_loaded", 0)),
-                "companies_loaded": int(result.get("companies_loaded", 0)),
-                "researchers_loaded": int(result.get("researchers_loaded", 0)),
-                "institutions_loaded": int(result.get("institutions_loaded", 0)),
-                "relationships_created": int(result.get("relationships_created", 0)),
+                "awards_loaded": int(result.get("awards_loaded", 0)),  # type: ignore[call-overload]
+                "companies_loaded": int(result.get("companies_loaded", 0)),  # type: ignore[call-overload]
+                "researchers_loaded": int(result.get("researchers_loaded", 0)),  # type: ignore[call-overload]
+                "institutions_loaded": int(result.get("institutions_loaded", 0)),  # type: ignore[call-overload]
+                "relationships_created": int(result.get("relationships_created", 0)),  # type: ignore[call-overload]
                 "errors": len(result.get("errors", [])),
                 "duration_seconds": round(duration, 2),
                 "metrics_file": str(metrics_file),
