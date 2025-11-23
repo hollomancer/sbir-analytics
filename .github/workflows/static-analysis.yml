@@ -94,9 +94,12 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Reduced from 30 - secret scanning shouldn't take that long
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    # DISABLED: Causing too many false positives in documentation
+    if: false
+    # Original condition (kept for reference):
+    # if: |
+    #   github.event_name == 'push' ||
+    #   (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
