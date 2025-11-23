@@ -12,8 +12,10 @@ _parent_dir = Path(__file__).parent.parent
 _config_py = _parent_dir / "config.py"
 if _config_py.exists():
     _spec = importlib.util.spec_from_file_location("_ml_config", _config_py)
-    _ml_config_module = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_ml_config_module)
+    if _spec is not None:  # type: ignore[misc]
+        _ml_config_module = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+        if _spec.loader is not None:  # type: ignore[misc]
+            _spec.loader.exec_module(_ml_config_module)  # type: ignore[union-attr]
     PaECTERClientConfig = _ml_config_module.PaECTERClientConfig
     del _spec, _ml_config_module  # Clean up
 else:

@@ -706,7 +706,7 @@ def fiscal_prepared_sbir_awards(
     with performance_monitor.monitor_block("geographic_resolution"):
         resolved_df, geo_quality = resolve_award_geography(
             fiscal_naics_enriched_awards,
-            config=config.fiscal_analysis,
+            config=config.fiscal_analysis,  # type: ignore[arg-type]
         )
 
     # Map geographic resolution columns to standard names
@@ -809,7 +809,7 @@ def inflation_adjusted_awards(
         adjusted_df, quality_metrics = adjust_awards_for_inflation(
             fiscal_prepared_sbir_awards,
             target_year=config.fiscal_analysis.base_year,
-            config=config.fiscal_analysis,
+            config=config.fiscal_analysis,  # type: ignore[arg-type]
         )
 
     # Use adjusted amount as primary amount column

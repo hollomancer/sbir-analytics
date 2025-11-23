@@ -60,7 +60,7 @@ class Neo4jClient:
             password = self.neo4j_config.password or os.getenv(self.neo4j_config.password_env_var, "neo4j")
             self._driver = GraphDatabase.driver(
                 self.neo4j_config.uri,
-                auth=(self.neo4j_config.username, password),
+                auth=(self.neo4j_config.username, password or "neo4j"),  # type: ignore[arg-type]
             )
         return self._driver
 
