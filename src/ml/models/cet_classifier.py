@@ -398,7 +398,7 @@ class ApplicabilityModel:
                 details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
             )
 
-        scores_array = self._get_scores([text], agency=agency, branch=branch) # type: ignore[list-item,misc]
+        scores_array = self._get_scores([text], agency=agency, branch=branch)  # type: ignore[list-item,misc]
         scores = dict(zip(self.pipelines.keys(), scores_array[0], strict=False))  # type: ignore[list-item]
 
         # Get thresholds
@@ -487,7 +487,11 @@ class ApplicabilityModel:
             # Get scores for batch with agency/branch priors
             # Extract text from batch items (could be str or dict)
             batch_strs: list[str] = [
-                item if isinstance(item, str) else item.get("abstract", "") if isinstance(item, dict) else str(item)
+                item
+                if isinstance(item, str)
+                else item.get("abstract", "")
+                if isinstance(item, dict)
+                else str(item)
                 for item in batch
             ]
             batch_scores_array = self._get_scores(batch_strs, agency=agency, branch=branch)  # type: ignore[arg-type]
@@ -533,7 +537,9 @@ class ApplicabilityModel:
 
         for i in range(n_samples):
             text_item: str | dict[str, Any] = texts[i]  # type: ignore[assignment]
-            text_str = " ".join(text_item.values()) if isinstance(text_item, dict) else str(text_item)
+            text_str = (
+                " ".join(text_item.values()) if isinstance(text_item, dict) else str(text_item)
+            )
 
             score_dict = dict(zip(cet_ids, scores[i, :], strict=False))
 

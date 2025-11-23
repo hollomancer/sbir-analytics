@@ -121,20 +121,26 @@ class AuraUsageChecker:
         """
         with self.driver.session() as session:
             # Count node properties
-            node_props = session.run(
-                """
+            node_props = (
+                session.run(
+                    """
                 MATCH (n)
                 RETURN sum(size(keys(n))) as count
                 """
-            ).single()["count"] or 0
+                ).single()["count"]
+                or 0
+            )
 
             # Count relationship properties
-            rel_props = session.run(
-                """
+            rel_props = (
+                session.run(
+                    """
                 MATCH ()-[r]->()
                 RETURN sum(size(keys(r))) as count
                 """
-            ).single()["count"] or 0
+                ).single()["count"]
+                or 0
+            )
 
             return node_props + rel_props
 
@@ -164,9 +170,9 @@ class AuraUsageChecker:
             for label_record in labels:
                 label = label_record["label"]
                 # Count nodes for this label
-                count = session.run(
-                    f"MATCH (n:`{label}`) RETURN count(n) as count"
-                ).single()["count"]
+                count = session.run(f"MATCH (n:`{label}`) RETURN count(n) as count").single()[
+                    "count"
+                ]
                 counts[label] = count
 
             return dict(sorted(counts.items(), key=lambda x: x[1], reverse=True))
@@ -225,10 +231,7 @@ class AuraUsageChecker:
                 "nodes": total_nodes <= safe_node_limit,
                 "relationships": total_relationships <= safe_rel_limit,
             },
-            "will_fit": (
-                total_nodes <= safe_node_limit
-                and total_relationships <= safe_rel_limit
-            ),
+            "will_fit": (total_nodes <= safe_node_limit and total_relationships <= safe_rel_limit),
         }
 
         return results
@@ -251,16 +254,25 @@ def print_usage_report(stats: dict[str, int], limits: dict[str, int]):
     print("Neo4j Database Resource Usage")
     print("=" * 60)
 
-    print(f"\nNodes:        {format_number(stats['nodes']):>12} / {format_number(limits['nodes']):>12} ({format_percentage(stats['nodes'], limits['nodes'])})")
-    print(f"Relationships:{format_number(stats['relationships']):>12} / {format_number(limits['relationships']):>12} ({format_percentage(stats['relationships'], limits['relationships'])})")
-    print(f"Properties:   {format_number(stats['properties']):>12} / {format_number(limits['properties']):>12} ({format_percentage(stats['properties'], limits['properties'])})")
+    print(
+        f"\nNodes:        {format_number(stats['nodes']):>12} / {format_number(limits['nodes']):>12} ({format_percentage(stats['nodes'], limits['nodes'])})"
+    )
+    print(
+        f"Relationships:{format_number(stats['relationships']):>12} / {format_number(limits['relationships']):>12} ({format_percentage(stats['relationships'], limits['relationships'])})"
+    )
+    print(
+        f"Properties:   {format_number(stats['properties']):>12} / {format_number(limits['properties']):>12} ({format_percentage(stats['properties'], limits['properties'])})"
+    )
 
     # Status indicator
-    max_pct = max(
-        stats["nodes"] / limits["nodes"],
-        stats["relationships"] / limits["relationships"],
-        stats["properties"] / limits["properties"],
-    ) * 100
+    max_pct = (
+        max(
+            stats["nodes"] / limits["nodes"],
+            stats["relationships"] / limits["relationships"],
+            stats["properties"] / limits["properties"],
+        )
+        * 100
+    )
 
     print("\n" + "-" * 60)
     if max_pct < 80:
@@ -278,17 +290,21 @@ def print_capacity_check(results: dict[str, Any]):
     print("Capacity Check")
     print("=" * 60)
 
-    print(f"\nCurrent Usage:")
+    print("\nCurrent Usage:")
     print(f"  Nodes:        {format_number(results['current']['nodes'])}")
     print(f"  Relationships:{format_number(results['current']['relationships'])}")
 
-    print(f"\nPlanned Additions:")
+    print("\nPlanned Additions:")
     print(f"  Nodes:        {format_number(results['planned']['nodes'])}")
     print(f"  Relationships:{format_number(results['planned']['relationships'])}")
 
-    print(f"\nProjected Total:")
-    print(f"  Nodes:        {format_number(results['projected']['nodes'])} / {format_number(results['safe_limits']['nodes'])} (safe limit)")
-    print(f"  Relationships:{format_number(results['projected']['relationships'])} / {format_number(results['safe_limits']['relationships'])} (safe limit)")
+    print("\nProjected Total:")
+    print(
+        f"  Nodes:        {format_number(results['projected']['nodes'])} / {format_number(results['safe_limits']['nodes'])} (safe limit)"
+    )
+    print(
+        f"  Relationships:{format_number(results['projected']['relationships'])} / {format_number(results['safe_limits']['relationships'])} (safe limit)"
+    )
 
     print("\n" + "-" * 60)
     if results["will_fit"]:
@@ -296,10 +312,12 @@ def print_capacity_check(results: dict[str, Any]):
     else:
         print("Result: ❌ Planned additions exceed safe limits")
         if not results["within_limits"]["nodes"]:
-            overflow = results['projected']['nodes'] - results['safe_limits']['nodes']
+            overflow = results["projected"]["nodes"] - results["safe_limits"]["nodes"]
             print(f"  - Node overflow: {format_number(overflow)} nodes over safe limit")
         if not results["within_limits"]["relationships"]:
-            overflow = results['projected']['relationships'] - results['safe_limits']['relationships']
+            overflow = (
+                results["projected"]["relationships"] - results["safe_limits"]["relationships"]
+            )
             print(f"  - Relationship overflow: {format_number(overflow)} over safe limit")
     print("-" * 60 + "\n")
 
@@ -325,9 +343,7 @@ def print_label_breakdown(labels: dict[str, int]):
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Check Neo4j Aura database resource usage"
-    )
+    parser = argparse.ArgumentParser(description="Check Neo4j Aura database resource usage")
     parser.add_argument(
         "--planned-nodes",
         type=int,

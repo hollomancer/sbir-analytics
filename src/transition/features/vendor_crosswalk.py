@@ -418,9 +418,7 @@ class VendorCrosswalk:
         if not acquisitions:
             acq.metadata["acquisitions"] = acquisitions
         date_str = _iso_date(date_of_acquisition) or ""
-        acquisitions.append(
-            {"acquired_id": acquired_id, "date": date_str, "note": note or ""}
-        )
+        acquisitions.append({"acquired_id": acquired_id, "date": date_str, "note": note or ""})
         acquired_by_raw = target.metadata.setdefault("acquired_by", [])
         acquired_by: list[dict[str, str]] = (
             acquired_by_raw if isinstance(acquired_by_raw, list) else []
@@ -428,9 +426,7 @@ class VendorCrosswalk:
         if not acquired_by:
             target.metadata["acquired_by"] = acquired_by
         date_str = _iso_date(date_of_acquisition) or ""
-        acquired_by.append(
-            {"acquirer_id": acquirer_id, "date": date_str, "note": note or ""}
-        )
+        acquired_by.append({"acquirer_id": acquirer_id, "date": date_str, "note": note or ""})
         # add acquired canonical name as alias on acquirer
         try:
             self.add_alias(
@@ -556,7 +552,7 @@ class VendorCrosswalk:
                 cage=r.get("cage"),
                 duns=r.get("duns"),
                 aliases=aliases,
-                    created_at=str(r.get("created_at") or _iso_date(datetime.utcnow())),
+                created_at=str(r.get("created_at") or _iso_date(datetime.utcnow())),
                 metadata=r.get("metadata", {}) or {},
             )
             self.add_or_merge(rec)

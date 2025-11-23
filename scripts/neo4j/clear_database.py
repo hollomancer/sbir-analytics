@@ -26,6 +26,7 @@ from loguru import logger
 # Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -55,9 +56,11 @@ def connect(uri: str, user: str, password: str) -> Any:
     return driver
 
 
-def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, batch_size: int = 10000) -> None:
+def clear_database(
+    driver: Any, database: str = "neo4j", dry_run: bool = False, batch_size: int = 10000
+) -> None:
     """Delete all nodes and relationships from Neo4j database in batches.
-    
+
     Args:
         driver: Neo4j driver
         database: Database name
@@ -67,40 +70,42 @@ def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, 
     if dry_run:
         logger.warning("DRY RUN: Would execute: MATCH (n) DETACH DELETE n (in batches)")
         return
-    
+
     logger.warning("=" * 60)
     logger.warning("WARNING: This will delete ALL nodes and relationships!")
     logger.warning("=" * 60)
-    
+
     import time
-    
+
     # Count nodes before deletion
     with driver.session(database=database) as session:
         count_result = session.run("MATCH (n) RETURN count(n) as total")
         count_record = count_result.single()
         total_nodes = count_record["total"] if count_record else 0
-        
+
         logger.info("Found {} nodes to delete", total_nodes)
-        
+
         if total_nodes == 0:
             logger.info("Database is already empty")
             return
-    
+
     # Delete in batches to avoid timeouts
     logger.info("Deleting all nodes and relationships in batches of {}...", batch_size)
     start_time = time.time()
     total_deleted = 0
     batch_num = 0
-    
+
     while True:
         batch_start = time.time()
         batch_num += 1
-        
+
         # Delete a batch of nodes with retry logic
-        delete_query = f"MATCH (n) WITH n LIMIT {batch_size} DETACH DELETE n RETURN count(n) as deleted"
+        delete_query = (
+            f"MATCH (n) WITH n LIMIT {batch_size} DETACH DELETE n RETURN count(n) as deleted"
+        )
         batch_deleted = 0
         max_retries = 3
-        
+
         for attempt in range(max_retries):
             session = None
             try:
@@ -116,12 +121,12 @@ def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, 
                         session.close()
                     except Exception:
                         pass
-                
+
                 error_str = str(e).lower()
                 is_defunct = "defunct" in error_str or "connection" in error_str
-                
+
                 if attempt < max_retries - 1 and is_defunct:
-                    wait_seconds = min(2 ** attempt, 5)
+                    wait_seconds = min(2**attempt, 5)
                     logger.warning(
                         "Batch {} failed (attempt {}/{}): {}. Retrying in {}s...",
                         batch_num,
@@ -134,17 +139,17 @@ def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, 
                 else:
                     logger.error("Batch {} failed after {} attempts: {}", batch_num, max_retries, e)
                     raise
-        
+
         if batch_deleted == 0:
             break
-        
+
         total_deleted += batch_deleted
         batch_duration = time.time() - batch_start
         elapsed = time.time() - start_time
         remaining = total_nodes - total_deleted
         rate = total_deleted / elapsed if elapsed > 0 else 0
         est_remaining = remaining / rate if rate > 0 else 0
-        
+
         logger.info(
             "Batch {}: Deleted {} nodes in {:.1f}s (Total: {}/{}, Rate: {:.0f} nodes/s, Est. remaining: {:.0f}s)",
             batch_num,
@@ -155,15 +160,15 @@ def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, 
             rate,
             est_remaining,
         )
-    
+
     logger.info("✓ Deleted {} nodes and all relationships", total_deleted)
-    
+
     # Verify deletion
     with driver.session(database=database) as session:
         verify_result = session.run("MATCH (n) RETURN count(n) as remaining")
         verify_record = verify_result.single()
         remaining = verify_record["remaining"] if verify_record else 0
-        
+
         if remaining == 0:
             logger.info("✓ Database cleared successfully")
         else:
@@ -172,9 +177,7 @@ def clear_database(driver: Any, database: str = "neo4j", dry_run: bool = False, 
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Clear all data from Neo4j database."
-    )
+    parser = argparse.ArgumentParser(description="Clear all data from Neo4j database.")
     parser.add_argument(
         "--yes",
         action="store_true",
@@ -252,4 +255,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

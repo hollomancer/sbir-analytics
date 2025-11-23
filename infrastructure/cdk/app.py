@@ -38,4 +38,3 @@ step_functions_stack = StepFunctionsStack(
 )
 
 app.synth()
-

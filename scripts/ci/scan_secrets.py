@@ -190,7 +190,7 @@ def run_precommit_hooks() -> tuple[int, str]:
                 print(result.stderr, file=sys.stderr)
             return (
                 exit_code,
-                f"Pre-commit checks failed (possible secrets detected). See output above for details.",
+                "Pre-commit checks failed (possible secrets detected). See output above for details.",
             )
     except FileNotFoundError:
         return (1, "pre-commit not installed")

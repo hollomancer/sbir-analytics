@@ -1,7 +1,6 @@
 """Base migration class for Neo4j schema migrations."""
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 from neo4j import Driver
 
@@ -33,4 +32,3 @@ class Migration(ABC):
     def get_id(self) -> str:
         """Get unique migration identifier."""
         return f"{self.version}_{self.description.lower().replace(' ', '_')}"
-

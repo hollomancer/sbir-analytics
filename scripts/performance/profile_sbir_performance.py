@@ -202,7 +202,7 @@ def profile_end_to_end_pipeline(config) -> dict[str, Any]:
 
         # Extract all data
         extract_start = time.time()
-        extractor.extract_all()
+        df = extractor.extract_all()
         extract_duration = time.time() - extract_start
 
         # Validate data

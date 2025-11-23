@@ -235,7 +235,10 @@ class PatentAssignmentTransformer:
                         ), employer_flag
                     except Exception:
                         # ConveyanceType may be enum of different names; fall back to generic
-                        return ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None, employer_flag
+                        return (
+                            ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None,
+                            employer_flag,
+                        )
 
         # fallback: assignment default
         return ConveyanceType.ASSIGNMENT if ConveyanceType is not None else None, employer_flag

@@ -6,9 +6,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def parse_args() -> argparse.Namespace:
@@ -159,7 +159,7 @@ def main() -> int:
         if not schema_report["matches_expected"]:
             schema_drift_detected = True
 
-    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
     report = {
         "generated_at_utc": timestamp,
@@ -196,4 +196,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

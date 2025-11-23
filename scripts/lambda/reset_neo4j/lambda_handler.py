@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from neo4j import GraphDatabase
@@ -11,7 +11,7 @@ s3_client = boto3.client("s3")
 secrets_client = boto3.client("secretsmanager")
 
 
-def get_neo4j_credentials(secret_name: str) -> Dict[str, str]:
+def get_neo4j_credentials(secret_name: str) -> dict[str, str]:
     """Get Neo4j credentials from Secrets Manager."""
     response = secrets_client.get_secret_value(SecretId=secret_name)
     secret = json.loads(response["SecretString"])
@@ -23,10 +23,10 @@ def get_neo4j_credentials(secret_name: str) -> Dict[str, str]:
     }
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Reset Neo4j database by deleting SBIR-related nodes.
-    
+
     Event structure:
     {
         "neo4j_secret_name": "sbir-analytics/neo4j-aura",  # pragma: allowlist secret  # Optional, uses env var if not provided
@@ -34,7 +34,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     }
     """
     try:
-        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura")
+        secret_name = event.get("neo4j_secret_name") or os.environ.get(
+            "NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura"
+        )
         dry_run = event.get("dry_run", False)
 
         # Get credentials
@@ -45,8 +47,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             with driver.session(database=creds["database"]) as session:
                 if dry_run:
                     # Count what would be deleted
-                    award_count = session.run("MATCH (a:Award) RETURN count(a) as count").single()["count"]
-                    company_count = session.run("MATCH (c:Company) RETURN count(c) as count").single()["count"]
+                    award_count = session.run("MATCH (a:Award) RETURN count(a) as count").single()[
+                        "count"
+                    ]
+                    company_count = session.run(
+                        "MATCH (c:Company) RETURN count(c) as count"
+                    ).single()["count"]
                     rel_count = session.run(
                         "MATCH (a:Award)-[r:AWARDS]->(c:Company) RETURN count(r) as count"
                     ).single()["count"]
@@ -118,4 +124,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

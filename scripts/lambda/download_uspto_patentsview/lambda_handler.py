@@ -2,8 +2,8 @@
 
 import hashlib
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 from urllib.request import Request, urlopen
 
 import boto3
@@ -59,10 +59,10 @@ PATENTSVIEW_TABLE_FILENAMES = {
 PATENTSVIEW_DOWNLOADS_PAGE = "https://patentsview.org/downloads/data-downloads"
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Download PatentsView data and upload to S3.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -79,7 +79,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         dataset_type = event.get("dataset_type") or event.get("table_name", "patent")
         source_url = event.get("source_url")
-        force_refresh = event.get("force_refresh", False)
 
         urls_to_try = []
         table_key = dataset_type.lower()
@@ -123,7 +122,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             try:
                 print(f"Attempting download from: {url}")
                 req = Request(url)
-                req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0 (https://github.com/sbir-analytics)")
+                req.add_header(
+                    "User-Agent", "SBIR-Analytics-Lambda/1.0 (https://github.com/sbir-analytics)"
+                )
                 req.add_header("Accept", "*/*")
                 req.add_header("Accept-Encoding", "gzip, deflate")
 
@@ -140,7 +141,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 last_error = e
                 print(f"Error downloading from {url}: {e}")
                 continue
-        
+
         if data is None:
             error_msg = f"Failed to download from all attempted URLs. Last error: {last_error}"
             if "403" in str(last_error):
@@ -155,7 +156,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         file_hash = hashlib.sha256(data).hexdigest()
 
         # Generate S3 key with date
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         date_str = timestamp.strftime("%Y-%m-%d")
         # Determine file extension from content type or URL hint
         lower_content_type = content_type.lower()
@@ -166,7 +167,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             file_ext = ".csv"
         elif "json" in lower_content_type or lower_url.endswith(".json"):
             file_ext = ".json"
-        elif "tsv" in lower_content_type or "tab" in lower_content_type or lower_url.endswith(".tsv"):
+        elif (
+            "tsv" in lower_content_type or "tab" in lower_content_type or lower_url.endswith(".tsv")
+        ):
             file_ext = ".tsv"
         else:
             file_ext = ".tsv"  # Default for PatentsView
@@ -179,7 +182,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             Bucket=s3_bucket,
             Key=s3_key,
             Body=data,
-            ContentType=content_type or ("application/zip" if file_ext == ".zip" else "text/tab-separated-values"),
+            ContentType=content_type
+            or ("application/zip" if file_ext == ".zip" else "text/tab-separated-values"),
             Metadata={
                 "sha256": file_hash,
                 "source_url": source_url,
@@ -205,6 +209,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error downloading PatentsView data: {e}")
         import traceback
+
         traceback.print_exc()
         return {
             "statusCode": 500,

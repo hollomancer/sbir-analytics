@@ -12,8 +12,6 @@ Usage:
 """
 
 import argparse
-import gzip
-import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -23,16 +21,10 @@ from loguru import logger
 
 # HUD ZIP-to-Congressional District crosswalk
 # Updated quarterly, use latest 118th Congress (2023-2025)
-HUD_CROSSWALK_URL = (
-    "https://www.huduser.gov/hudapi/public/usps?"
-    "type=5&query=All"
-)
+HUD_CROSSWALK_URL = "https://www.huduser.gov/hudapi/public/usps?type=5&query=All"
 
 # Alternative direct download (if API doesn't work)
-HUD_DIRECT_DOWNLOAD = (
-    "https://www.huduser.gov/portal/datasets/usps/"
-    "ZIP_CD_122023.xlsx"
-)
+HUD_DIRECT_DOWNLOAD = "https://www.huduser.gov/portal/datasets/usps/ZIP_CD_122023.xlsx"
 
 
 def download_hud_crosswalk(output_dir: Path, force: bool = False) -> Path:
@@ -247,8 +239,10 @@ def print_setup_instructions() -> None:
     print("Next Steps:")
     print()
     print("1. Test the ZIP crosswalk resolver:")
-    print("   python -c \"")
-    print("   from src.enrichers.congressional_district_resolver import CongressionalDistrictResolver")
+    print('   python -c "')
+    print(
+        "   from src.enrichers.congressional_district_resolver import CongressionalDistrictResolver"
+    )
     print("   resolver = CongressionalDistrictResolver(")
     print("       method='zip_crosswalk',")
     print("       crosswalk_path='data/reference/ZIP_CD_118.csv'")
@@ -276,9 +270,7 @@ def print_setup_instructions() -> None:
 
 def main():
     """Main setup function."""
-    parser = argparse.ArgumentParser(
-        description="Setup congressional district analysis data"
-    )
+    parser = argparse.ArgumentParser(description="Setup congressional district analysis data")
     parser.add_argument(
         "--skip-download",
         action="store_true",
@@ -315,7 +307,7 @@ def main():
                 return 1
 
         # Step 2: Validate crosswalk
-        stats = validate_crosswalk(crosswalk_path)
+        validate_crosswalk(crosswalk_path)
 
         # Step 3: Create example config
         create_example_config(args.output_dir)

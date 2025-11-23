@@ -175,7 +175,11 @@ def _format_records(records: Iterable[EnrichmentFreshnessRecord]) -> Table:
             record.source or "-",
             record.status.value,
             last_success,
-            str((record.attempt_count - record.success_count) if hasattr(record, "attempt_count") and hasattr(record, "success_count") else 0),
+            str(
+                (record.attempt_count - record.success_count)
+                if hasattr(record, "attempt_count") and hasattr(record, "success_count")
+                else 0
+            ),
         )
     return table
 

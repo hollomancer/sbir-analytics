@@ -69,25 +69,25 @@ class CETLoader(BaseNeo4jLoader):
         """Create uniqueness constraints for CETArea and ensure existence of key entity constraints."""
         if constraints is None:
             constraints = [
-            # CETArea uniqueness on cet_id
-            "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
-            "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
-            # Optional: ensure Award and Company constraints exist for enrichment keys
-            "CREATE CONSTRAINT award_award_id IF NOT EXISTS "
-            "FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
-            "CREATE CONSTRAINT company_id IF NOT EXISTS "
-            "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
-        ]
+                # CETArea uniqueness on cet_id
+                "CREATE CONSTRAINT cetarea_cet_id IF NOT EXISTS "
+                "FOR (c:CETArea) REQUIRE c.cet_id IS UNIQUE",
+                # Optional: ensure Award and Company constraints exist for enrichment keys
+                "CREATE CONSTRAINT award_award_id IF NOT EXISTS "
+                "FOR (a:Award) REQUIRE a.award_id IS UNIQUE",
+                "CREATE CONSTRAINT company_id IF NOT EXISTS "
+                "FOR (c:Company) REQUIRE c.company_id IS UNIQUE",
+            ]
         super().create_constraints(constraints)
 
     def create_indexes(self, indexes: list[str] | None = None) -> None:  # type: ignore[override]
         """Create indexes for frequently queried CETArea properties."""
         if indexes is None:
             indexes = [
-            "CREATE INDEX cetarea_name_idx IF NOT EXISTS FOR (c:CETArea) ON (c.name)",
-            "CREATE INDEX cetarea_taxonomy_version_idx IF NOT EXISTS "
-            "FOR (c:CETArea) ON (c.taxonomy_version)",
-        ]
+                "CREATE INDEX cetarea_name_idx IF NOT EXISTS FOR (c:CETArea) ON (c.name)",
+                "CREATE INDEX cetarea_taxonomy_version_idx IF NOT EXISTS "
+                "FOR (c:CETArea) ON (c.taxonomy_version)",
+            ]
         super().create_indexes(indexes)
 
     # -------------------------------------------------------------------------
@@ -364,7 +364,7 @@ class CETLoader(BaseNeo4jLoader):
             primary_id = _as_str(row.get("primary_cet"))
             if primary_id:
                 props = {
-            # type: ignore[arg-type]
+                    # type: ignore[arg-type]
                     "score": float(row.get("primary_score"))  # type: ignore[arg-type]
                     if row.get("primary_score") is not None
                     else None,

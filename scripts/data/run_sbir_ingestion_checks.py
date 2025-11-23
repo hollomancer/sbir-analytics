@@ -67,9 +67,7 @@ def _make_config(csv_path: Path, duckdb_path: Path, table_name: str, threshold: 
         csv_path=str(csv_path), database_path=str(duckdb_path), table_name=table_name
     )
     extraction = SimpleNamespace(sbir=sbir)
-    data_quality = SimpleNamespace(
-        sbir_awards=SimpleNamespace(pass_rate_threshold=threshold)
-    )
+    data_quality = SimpleNamespace(sbir_awards=SimpleNamespace(pass_rate_threshold=threshold))
     return SimpleNamespace(extraction=extraction, data_quality=data_quality)
 
 
@@ -86,14 +84,16 @@ def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     result = {}
     for key, value in metadata.items():
         # Dagster metadata values have a 'value' attribute containing the actual data
-        if hasattr(value, 'value'):
+        if hasattr(value, "value"):
             result[key] = value.value
         else:
             result[key] = value
     return result
 
 
-def render_markdown_summary(raw_meta: dict[str, Any], validated_meta: dict[str, Any], report: dict[str, Any]) -> str:
+def render_markdown_summary(
+    raw_meta: dict[str, Any], validated_meta: dict[str, Any], report: dict[str, Any]
+) -> str:
     lines = [
         "# SBIR ingestion validation",
         "",
@@ -128,7 +128,9 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     args.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
 
-    config = _make_config(args.csv_path, args.duckdb_path, args.table_name, args.pass_rate_threshold)
+    config = _make_config(
+        args.csv_path, args.duckdb_path, args.table_name, args.pass_rate_threshold
+    )
     # Monkeypatch get_config to use our runtime configuration.
     assets_module.get_config = lambda: config  # type: ignore[assignment]
 
@@ -149,9 +151,7 @@ def main() -> int:
     validated_metadata = _output_metadata(validated_output)
 
     report_ctx = build_asset_context()
-    report_output = assets_module.sbir_validation_report(
-        context=report_ctx, raw_sbir_awards=raw_df
-    )
+    report_output = assets_module.sbir_validation_report(context=report_ctx, raw_sbir_awards=raw_df)
     report_dict = _output_value(report_output)
     if not isinstance(report_dict, dict):
         raise TypeError("sbir_validation_report did not return a dict.")
@@ -183,9 +183,7 @@ def main() -> int:
         handle.write("\n")
 
     summary_md = render_markdown_summary(
-        _serialize_metadata(raw_metadata),
-        _serialize_metadata(validated_metadata),
-        report_dict
+        _serialize_metadata(raw_metadata), _serialize_metadata(validated_metadata), report_dict
     )
     summary_md_path.write_text(summary_md, encoding="utf-8")
 
@@ -211,4 +209,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

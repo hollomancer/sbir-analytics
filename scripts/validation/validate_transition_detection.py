@@ -165,7 +165,7 @@ def main():
         confidences = [d.confidence.value for d in all_detections]
 
         print(f"  - Score range: {min(scores):.3f} - {max(scores):.3f}")
-        print(f"  - Average score: {sum(scores)/len(scores):.3f}")
+        print(f"  - Average score: {sum(scores) / len(scores):.3f}")
         print("  - Confidence distribution:")
 
         from collections import Counter

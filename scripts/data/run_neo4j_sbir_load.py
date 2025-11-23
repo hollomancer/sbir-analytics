@@ -57,7 +57,7 @@ def _serialize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     result = {}
     for key, value in metadata.items():
         # Dagster metadata values have a 'value' attribute containing the actual data
-        if hasattr(value, 'value'):
+        if hasattr(value, "value"):
             result[key] = value.value
         else:
             result[key] = value
@@ -108,7 +108,9 @@ def main() -> int:
 
     # Materialize the Neo4j loading asset
     context = build_asset_context()
-    load_output = loading_module.neo4j_sbir_awards(context=context, validated_sbir_awards=validated_df)
+    load_output = loading_module.neo4j_sbir_awards(
+        context=context, validated_sbir_awards=validated_df
+    )
     load_result = _output_value(load_output)
     load_metadata = _output_metadata(load_output)
 
@@ -119,7 +121,9 @@ def main() -> int:
     # Write metrics JSON
     metrics_json_path = args.output_dir / "neo4j_load_metrics.json"
     with metrics_json_path.open("w", encoding="utf-8") as f:
-        json.dump({"result": load_result, "metadata": _serialize_metadata(load_metadata)}, f, indent=2)
+        json.dump(
+            {"result": load_result, "metadata": _serialize_metadata(load_metadata)}, f, indent=2
+        )
         f.write("\n")
 
     # Write markdown summary
@@ -150,4 +154,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

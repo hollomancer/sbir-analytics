@@ -115,4 +115,3 @@ class InitialSchema(Migration):
                     session.run(stmt)
                 except Exception:
                     pass
-

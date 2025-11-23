@@ -126,11 +126,7 @@ def demo_jaro_winkler_matching():
     )
 
     print("\nEnriched results:")
-    print(
-        enriched[
-            ["company", "company_company", "_match_score", "_match_method"]
-        ].to_string()
-    )
+    print(enriched[["company", "company_company", "_match_score", "_match_method"]].to_string())
     print("\n✓ Jaro-Winkler gives higher scores to names with matching 'Boeing' prefix\n")
 
 
@@ -186,11 +182,7 @@ def demo_enhanced_abbreviations():
     )
 
     print("\nEnriched results:")
-    print(
-        enriched[
-            ["company", "company_company", "_match_score", "_match_method"]
-        ].to_string()
-    )
+    print(enriched[["company", "company_company", "_match_score", "_match_method"]].to_string())
     print("\n✓ Enhanced abbreviations normalized terms for better matching\n")
 
 
@@ -266,13 +258,9 @@ def demo_researcher_matching():
 
     print("\nMatching Results:")
     for i, query in enumerate(query_researchers, 1):
-        matched, confidence, method = matcher.match_researcher(
-            query, candidate_researchers[i - 1]
-        )
+        matched, confidence, method = matcher.match_researcher(query, candidate_researchers[i - 1])
         status = "✓ MATCHED" if matched else "✗ NO MATCH"
-        print(
-            f"  {i}. {status} | Confidence: {confidence}% | Method: {method}"
-        )
+        print(f"  {i}. {status} | Confidence: {confidence}% | Method: {method}")
 
     print("\n✓ ORCID matching: Highest confidence (100%)")
     print("✓ Email matching: High confidence (95%)")
@@ -329,11 +317,7 @@ def demo_combined_features():
     )
 
     print("\nEnriched results:")
-    print(
-        enriched[
-            ["company", "company_company", "_match_score", "_match_method"]
-        ].to_string()
-    )
+    print(enriched[["company", "company_company", "_match_score", "_match_method"]].to_string())
     print("\n✓ Combined features provide robust matching across multiple error types\n")
 
 

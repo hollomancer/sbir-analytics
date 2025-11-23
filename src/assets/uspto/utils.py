@@ -274,7 +274,10 @@ def _make_parsing_check(
             "Parsing asset check result", extra={"asset": table_asset_name, **metadata}
         )
         return AssetCheckResult(
-            passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
+            passed=passed,
+            severity=severity,
+            description=description,
+            metadata=metadata,  # type: ignore[arg-type]
         )
 
     # Return the inner function but keep dagster-friendly attributes for introspection

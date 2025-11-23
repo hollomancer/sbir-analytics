@@ -420,7 +420,10 @@ def aggregate_run_metrics(
                 rr_obj.metadata.setdefault("latency_ms", rr_obj.latency_ms)
 
         rs = score_result_against_truth(
-            rr_obj, truth, fields_to_check=fields_to_check, text_weight=text_weight  # type: ignore[arg-type]
+            rr_obj,
+            truth,
+            fields_to_check=fields_to_check,
+            text_weight=text_weight,  # type: ignore[arg-type]
         )
         # attach provider & query
         rs.provider = provider_name or rs.provider

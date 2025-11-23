@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any
 
 from neo4j import GraphDatabase
 
@@ -22,7 +21,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def reset_neo4j(uri: str, username: str, password: str, database: str, dry_run: bool = False) -> int:
+def reset_neo4j(
+    uri: str, username: str, password: str, database: str, dry_run: bool = False
+) -> int:
     """Delete SBIR-related nodes and relationships from Neo4j."""
     driver = GraphDatabase.driver(uri, auth=(username, password))
 
@@ -30,12 +31,18 @@ def reset_neo4j(uri: str, username: str, password: str, database: str, dry_run: 
         with driver.session(database=database) as session:
             if dry_run:
                 # Count what would be deleted
-                award_count = session.run("MATCH (a:Award) RETURN count(a) as count").single()["count"]
-                company_count = session.run("MATCH (c:Company) RETURN count(c) as count").single()["count"]
+                award_count = session.run("MATCH (a:Award) RETURN count(a) as count").single()[
+                    "count"
+                ]
+                company_count = session.run("MATCH (c:Company) RETURN count(c) as count").single()[
+                    "count"
+                ]
                 rel_count = session.run(
                     "MATCH (a:Award)-[r:AWARDS]->(c:Company) RETURN count(r) as count"
                 ).single()["count"]
-                print(f"Would delete: {award_count} Awards, {company_count} Companies, {rel_count} AWARDS relationships")
+                print(
+                    f"Would delete: {award_count} Awards, {company_count} Companies, {rel_count} AWARDS relationships"
+                )
                 return 0
 
             # Delete AWARDS relationships first
@@ -101,4 +108,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

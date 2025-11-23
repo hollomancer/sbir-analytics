@@ -63,9 +63,9 @@ class USAspendingCoverageAssessor:
         contract_count = df["Contract"].notna().sum()
 
         logger.info("SBIR identifier coverage:")
-        logger.info(f"  UEI: {uei_count}/{total} ({uei_count/total:.1%})")
-        logger.info(f"  DUNS: {duns_count}/{total} ({duns_count/total:.1%})")
-        logger.info(f"  Contract: {contract_count}/{total} ({contract_count/total:.1%})")
+        logger.info(f"  UEI: {uei_count}/{total} ({uei_count / total:.1%})")
+        logger.info(f"  DUNS: {duns_count}/{total} ({duns_count / total:.1%})")
+        logger.info(f"  Contract: {contract_count}/{total} ({contract_count / total:.1%})")
 
         return df
 

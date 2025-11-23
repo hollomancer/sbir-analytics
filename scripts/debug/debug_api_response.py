@@ -14,9 +14,7 @@ print()
 
 try:
     response = httpx.get(
-        f"{base_url}/awards/{award_id}/",
-        timeout=30,
-        headers={"User-Agent": "SBIR-Analytics/1.0"}
+        f"{base_url}/awards/{award_id}/", timeout=30, headers={"User-Agent": "SBIR-Analytics/1.0"}
     )
     response.raise_for_status()
     award_data = response.json()
@@ -124,4 +122,5 @@ except httpx.HTTPStatusError as e:
 except Exception as e:
     print(f"❌ Error: {e}")
     import traceback
+
     traceback.print_exc()

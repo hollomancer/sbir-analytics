@@ -435,7 +435,9 @@ class TransitionDetector:
                     or award.get("vendor_name")
                 )
 
-                candidate_contracts = contract_map.get(vendor_id, []) if vendor_id is not None else []  # type: ignore[arg-type]
+                candidate_contracts = (
+                    contract_map.get(vendor_id, []) if vendor_id is not None else []
+                )  # type: ignore[arg-type]
 
                 # Detect transitions
                 detections = self.detect_for_award(

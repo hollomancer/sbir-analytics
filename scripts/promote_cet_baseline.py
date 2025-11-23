@@ -42,10 +42,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import logging
 import subprocess
 import sys
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -103,6 +102,7 @@ def validate_baseline_structure(obj: dict[str, Any]) -> bool:
 
 # Use centralized atomic write utility
 from src.utils.file_io import write_json_atomic
+
 
 def atomic_write_json(target: Path, data: dict[str, Any]) -> None:
     """Write JSON atomically to target path using a temp file + os.replace."""

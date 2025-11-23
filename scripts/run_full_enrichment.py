@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import datetime
@@ -66,11 +65,11 @@ def clean_duns(v: str | None) -> str:
 
 def normalize_name(s: str | None) -> str:
     """Normalize name using centralized utility.
-    
+
     Uses centralized text normalization utility with suffix normalization.
     """
     from src.utils.text_normalization import normalize_name as normalize_name_util
-    
+
     return normalize_name_util(s, remove_suffixes=False)
 
 

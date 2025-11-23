@@ -3,8 +3,8 @@
 import csv
 import json
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 
 import boto3
 
@@ -68,10 +68,10 @@ def list_company_csvs(bucket: str, prefix: str) -> list[str]:
     return sorted(keys)
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Profile SBIR input CSVs (awards + company search files).
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -118,7 +118,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 schema_drift_detected = True
 
         # Build report
-        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         report = {
             "generated_at_utc": timestamp,
             "award": {**award_summary, "schema": award_schema_report},
@@ -130,7 +130,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
         # Upload report to S3
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         profile_json_key = f"artifacts/{date_str}/inputs_profile.json"
         profile_md_key = f"artifacts/{date_str}/inputs_profile.md"
 
@@ -199,4 +199,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

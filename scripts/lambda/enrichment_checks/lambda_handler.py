@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 import pandas as pd
@@ -10,6 +10,7 @@ import pandas as pd
 # Import enrichment logic
 # Note: This will need to be available in the Lambda layer or container
 from src.enrichers.company_enricher import enrich_awards_with_companies
+from datetime import UTC
 
 s3_client = boto3.client("s3")
 
@@ -76,10 +77,10 @@ def summarize_enrichment(enriched: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Run SBIR enrichment coverage analysis.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -127,9 +128,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
         # Upload to S3
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         enrichment_json_key = f"artifacts/{date_str}/enrichment_summary.json"
         enrichment_md_key = f"artifacts/{date_str}/enrichment_summary.md"
 
@@ -187,4 +188,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

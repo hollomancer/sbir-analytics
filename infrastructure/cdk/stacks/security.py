@@ -12,9 +12,7 @@ from constructs import Construct
 class SecurityStack(Stack):
     """IAM roles and Secrets Manager for SBIR ETL."""
 
-    def __init__(
-        self, scope: Construct, construct_id: str, s3_bucket, **kwargs
-    ) -> None:
+    def __init__(self, scope: Construct, construct_id: str, s3_bucket, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Secret always exists - always import it  # pragma: allowlist secret
@@ -88,7 +86,7 @@ class SecurityStack(Stack):
 
             # Create new GitHub Actions OIDC role
             github_repo = self.node.try_get_context("github_repo") or "YOUR_GITHUB_REPO"
-            
+
             self.github_actions_role = iam.Role(
                 self,
                 "GitHubActionsRole",
@@ -111,7 +109,9 @@ class SecurityStack(Stack):
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
                     actions=["states:StartExecution"],
-                    resources=["*"],  # Will be restricted to specific state machine in Step Functions stack
+                    resources=[
+                        "*"
+                    ],  # Will be restricted to specific state machine in Step Functions stack
                 )
             )
 
@@ -119,7 +119,11 @@ class SecurityStack(Stack):
             self.github_actions_role.add_to_policy(
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
-                    actions=["logs:DescribeLogGroups", "logs:DescribeLogStreams", "logs:GetLogEvents"],
+                    actions=[
+                        "logs:DescribeLogGroups",
+                        "logs:DescribeLogStreams",
+                        "logs:GetLogEvents",
+                    ],
                     resources=["*"],
                 )
             )
@@ -152,4 +156,3 @@ class SecurityStack(Stack):
         CfnOutput(self, "StepFunctionsRoleArn", value=self.step_functions_role.role_arn)
         CfnOutput(self, "GitHubActionsRoleArn", value=self.github_actions_role.role_arn)
         CfnOutput(self, "Neo4jSecretArn", value=self.neo4j_secret.secret_arn)
-

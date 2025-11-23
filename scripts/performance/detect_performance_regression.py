@@ -50,7 +50,7 @@ def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]
     config = get_config()
     sbir_config = config.extraction.sbir
 
-    logger.info(f"Loading SBIR sample data (S3-first, local fallback)")
+    logger.info("Loading SBIR sample data (S3-first, local fallback)")
 
     try:
         # Use SbirDuckDBExtractor which handles S3 automatically

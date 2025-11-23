@@ -248,7 +248,9 @@ def usaspending_refresh_batch(
                     stats["success"] = (success_val if isinstance(success_val, int) else 0) + 1
                 else:
                     unchanged_val = stats["unchanged"]
-                    stats["unchanged"] = (unchanged_val if isinstance(unchanged_val, int) else 0) + 1
+                    stats["unchanged"] = (
+                        unchanged_val if isinstance(unchanged_val, int) else 0
+                    ) + 1
             else:
                 failed_val = stats["failed"]
                 stats["failed"] = (failed_val if isinstance(failed_val, int) else 0) + 1

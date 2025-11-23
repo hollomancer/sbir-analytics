@@ -134,9 +134,15 @@ def save_benchmark(benchmark_data: dict[str, Any], output_path: Path | None) -> 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark transition detection throughput.")
-    parser.add_argument("--sample-size", type=int, default=5000, help="Number of awards to simulate.")
-    parser.add_argument("--batch-size", type=int, default=250, help="Batch size for detector invocations.")
-    parser.add_argument("--score-threshold", type=float, default=0.5, help="Detector score threshold.")
+    parser.add_argument(
+        "--sample-size", type=int, default=5000, help="Number of awards to simulate."
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=250, help="Batch size for detector invocations."
+    )
+    parser.add_argument(
+        "--score-threshold", type=float, default=0.5, help="Detector score threshold."
+    )
     parser.add_argument(
         "--extrapolation-target",
         type=int,
@@ -185,4 +191,3 @@ def main():
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()
-

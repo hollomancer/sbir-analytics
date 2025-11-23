@@ -112,7 +112,7 @@ def measure_throughput(detector, awards, contracts, target_detections=10000):
             elapsed = time.time() - start_time
             rate = total_detections / (elapsed / 60) if elapsed > 0 else 0
             print(
-                f"   Processed {i+1:,} awards, {total_detections:,} detections, {rate:,.0f} det/min"
+                f"   Processed {i + 1:,} awards, {total_detections:,} detections, {rate:,.0f} det/min"
             )
 
     end_time = time.time()

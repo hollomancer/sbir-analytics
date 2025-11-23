@@ -223,7 +223,7 @@ def enriched_cet_award_classifications() -> Output:
     extractor = None
     if EvidenceExtractor is not None:
         try:
-        # type: ignore[arg-type]
+            # type: ignore[arg-type]
             extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)  # type: ignore[arg-type]
         except Exception:
             extractor = None
@@ -618,7 +618,9 @@ def enriched_cet_award_classifications() -> Output:
                     "model_f1_score": checks.get("f1_score", 0.0),
                 },
                 "taxonomy_data": {
-                    "taxonomy_areas": [area.cet_id for area in taxonomy.cet_areas] if hasattr(taxonomy, "cet_areas") and isinstance(taxonomy.cet_areas, list) else [],
+                    "taxonomy_areas": [area.cet_id for area in taxonomy.cet_areas]
+                    if hasattr(taxonomy, "cet_areas") and isinstance(taxonomy.cet_areas, list)
+                    else [],
                     "total_areas": len(taxonomy.cet_areas) if hasattr(taxonomy, "cet_areas") else 0,
                 },
                 "run_context": run_context,

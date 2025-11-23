@@ -154,7 +154,9 @@ class PatentsViewClient:
         )
 
         # HTTP client with default headers
-        timeout_float: float = float(self.timeout_seconds) if self.timeout_seconds is not None else 30.0  # type: ignore[arg-type]
+        timeout_float: float = (
+            float(self.timeout_seconds) if self.timeout_seconds is not None else 30.0
+        )  # type: ignore[arg-type]
         self.client = httpx.Client(
             timeout=timeout_float,
             headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},

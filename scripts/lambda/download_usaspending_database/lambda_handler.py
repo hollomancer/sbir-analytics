@@ -9,8 +9,8 @@ due to the 15-minute Lambda timeout limitation.
 
 import hashlib
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 from urllib.request import Request, urlopen
 
 import boto3
@@ -35,7 +35,7 @@ USASPENDING_DOWNLOADS = {
 }
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Download USAspending database dump and upload to S3.
 
@@ -85,20 +85,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             # If no date provided, use current month (dumps are monthly)
             if not date_str:
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 # Try current month first, then previous month
                 date_str = now.strftime("%Y%m%d")
 
             url_template = USASPENDING_DOWNLOADS[database_type]
-            source_url = url_template.format(
-                base=USASPENDING_DB_BASE_URL,
-                date=date_str
-            )
+            source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
 
         print(f"Downloading USAspending database ({database_type}) from {source_url}")
 
         # Generate S3 key
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         s3_date_str = timestamp.strftime("%Y-%m-%d")
         filename = source_url.split("/")[-1]
         s3_key = f"raw/usaspending/database/{s3_date_str}/{filename}"
@@ -142,6 +139,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error downloading USAspending database: {e}")
         import traceback
+
         traceback.print_exc()
         return {
             "statusCode": 500,
@@ -159,7 +157,7 @@ def _download_direct(
     s3_key: str,
     database_type: str,
     timestamp: datetime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Download entire file to memory then upload to S3 (for smaller files)."""
     print(f"Using direct download method for {source_url}")
 
@@ -213,7 +211,7 @@ def _download_with_multipart_upload(
     s3_key: str,
     database_type: str,
     timestamp: datetime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Download file in chunks and upload to S3 using multipart upload (for large files)."""
     print(f"Using multipart upload method for {source_url}")
 
@@ -269,10 +267,12 @@ def _download_with_multipart_upload(
                     Body=chunk,
                 )
 
-                parts.append({
-                    "ETag": part_response["ETag"],
-                    "PartNumber": part_number,
-                })
+                parts.append(
+                    {
+                        "ETag": part_response["ETag"],
+                        "PartNumber": part_number,
+                    }
+                )
 
                 part_number += 1
 

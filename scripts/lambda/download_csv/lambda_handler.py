@@ -1,10 +1,9 @@
 """Lambda function to download SBIR awards CSV and upload to S3."""
 
 import hashlib
-import json
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 from urllib.request import urlopen
 
 import boto3
@@ -14,10 +13,10 @@ s3_client = boto3.client("s3")
 DEFAULT_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Download CSV from SBIR.gov and upload to S3.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -31,7 +30,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             raise ValueError("S3_BUCKET not provided in event or environment")
 
         source_url = event.get("source_url") or DEFAULT_SOURCE_URL
-        force_refresh = event.get("force_refresh", False)
 
         # Download CSV
         print(f"Downloading CSV from {source_url}")
@@ -46,7 +44,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         file_size = len(csv_data)
 
         # Generate S3 key with date
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         date_str = timestamp.strftime("%Y-%m-%d")
         s3_key = f"raw/awards/{date_str}/award_data.csv"
 
@@ -87,4 +85,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

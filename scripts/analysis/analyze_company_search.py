@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -56,11 +57,11 @@ except Exception:
 # -------------------------
 def normalize_name_for_matching(s: str | None) -> str:
     """Normalize name for matching using centralized utility.
-    
+
     Uses centralized text normalization utility with suffix normalization.
     """
     from src.utils.text_normalization import normalize_name as normalize_name_util
-    
+
     return normalize_name_util(s, remove_suffixes=False)
 
 
@@ -312,7 +313,7 @@ def estimate_enrichment_value(
                     continue
                 best_score = 0.0
                 best_name = ""
-                for idx, cname in choices:
+                for _idx, cname in choices:
                     score = SequenceMatcher(None, tgt, cname).ratio() * 100.0
                     if score > best_score:
                         best_score = score
@@ -389,9 +390,9 @@ def render_markdown_report(out_path: Path, diagnostics: dict[str, object]) -> No
         fh.write(f"- Awards rows: **{diagnostics['awards_rows']}**\n\n")
         fh.write("## Identifier coverage\n\n")
         cs = diagnostics["company_summary"]
-        fh.write(f"- UEI non-null: **{cs.get('uei_nonnull',0)}**\n")
-        fh.write(f"- DUNS non-null: **{cs.get('duns_nonnull',0)}**\n")
-        fh.write(f"- Company URLs present: **{cs.get('url_nonnull',0)}**\n\n")
+        fh.write(f"- UEI non-null: **{cs.get('uei_nonnull', 0)}**\n")
+        fh.write(f"- DUNS non-null: **{cs.get('duns_nonnull', 0)}**\n")
+        fh.write(f"- Company URLs present: **{cs.get('url_nonnull', 0)}**\n\n")
         fh.write("## Exact match counts (awards -> companies)\n\n")
         fh.write(f"- Exact UEI matches: **{diagnostics['exact_uei_matches']}**\n")
         fh.write(f"- Exact DUNS matches: **{diagnostics['exact_duns_matches']}**\n")

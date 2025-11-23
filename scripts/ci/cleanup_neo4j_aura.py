@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Clean up Neo4j Aura Free test data."""
+
 import os
 import sys
 from neo4j import GraphDatabase
@@ -10,19 +11,19 @@ def main():
     uri = os.environ.get("NEO4J_URI", "")
     user = os.environ.get("NEO4J_USERNAME", "neo4j")
     password = os.environ.get("NEO4J_PASSWORD", "")
-    
+
     if not uri or not password:
         print("⚠️  Skipping cleanup - no Aura credentials")
         sys.exit(0)
-    
+
     try:
         driver = GraphDatabase.driver(uri, auth=(user, password))
-        
+
         # Get count before cleanup
         with driver.session() as session:
             before = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
             print(f"📊 Nodes before cleanup: {before:,}")
-        
+
         # Delete test data (with batching for safety)
         with driver.session() as session:
             # Delete in batches to avoid memory issues
@@ -40,12 +41,12 @@ def main():
                 if deleted == 0:
                     break
                 print(f"  Deleted {deleted:,} nodes (total: {total_deleted:,})")
-        
+
         # Verify cleanup
         with driver.session() as session:
             after = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
             print(f"✅ Cleanup complete! Nodes after: {after:,}")
-        
+
         driver.close()
     except Exception as e:
         print(f"⚠️  Cleanup warning: {e}")
@@ -54,6 +55,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-

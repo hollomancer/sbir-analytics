@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check Neo4j Aura Free node count before tests."""
+
 import os
 import sys
 from neo4j import GraphDatabase
@@ -10,11 +11,11 @@ def main():
     uri = os.environ.get("NEO4J_URI", "")
     user = os.environ.get("NEO4J_USERNAME", "neo4j")
     password = os.environ.get("NEO4J_PASSWORD", "")
-    
+
     if not uri or not password:
         print("⚠️  Skipping node count check - no Aura credentials")
         sys.exit(0)
-    
+
     try:
         driver = GraphDatabase.driver(uri, auth=(user, password))
         with driver.session() as session:
@@ -29,9 +30,5 @@ def main():
         print(f"Note: Could not check node count: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-
-
-

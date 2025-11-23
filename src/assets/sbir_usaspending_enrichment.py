@@ -398,7 +398,11 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
     # Get configuration
     config = get_config()
     enrichment_config = config.data_quality.enrichment
-    min_match_rate = enrichment_config.get("usaspending_match_rate", 0.70) if isinstance(enrichment_config, dict) else 0.70  # type: ignore[arg-type]
+    min_match_rate = (
+        enrichment_config.get("usaspending_match_rate", 0.70)
+        if isinstance(enrichment_config, dict)
+        else 0.70
+    )  # type: ignore[arg-type]
 
     # Calculate match rate
     total_awards = len(enriched_sbir_awards)

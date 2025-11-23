@@ -212,9 +212,7 @@ class DuckDBUSAspendingExtractor:
 
                         if extract_result.returncode != 0:
                             stderr_bytes = extract_result.stderr  # type: ignore[assignment]
-                            stderr_str = (
-                                stderr_bytes.decode() if stderr_bytes else "Unknown error"
-                            )
+                            stderr_str = stderr_bytes.decode() if stderr_bytes else "Unknown error"
                             logger.error(f"Failed to extract {filename}: {stderr_str}")
                             continue
 

@@ -630,7 +630,10 @@ def validated_cet_drift_detection() -> Output:
 
     # Build alerts based on thresholds
     alerts_list: list[dict[str, str | float]] = []
-    alerts_payload: dict[str, list[dict[str, str | float]] | str] = {"alerts": alerts_list, "generated_at": datetime.utcnow().isoformat()}
+    alerts_payload: dict[str, list[dict[str, str | float]] | str] = {
+        "alerts": alerts_list,
+        "generated_at": datetime.utcnow().isoformat(),
+    }
     if label_js is not None and label_js > LABEL_JS_THRESHOLD:
         alerts_list.append(
             {
@@ -672,7 +675,11 @@ def validated_cet_drift_detection() -> Output:
                 for a in alerts_list_val:
                     if not isinstance(a, dict):
                         continue
-                    sev = AlertSeverity.WARNING if a.get("severity") == "WARNING" else AlertSeverity.FAILURE
+                    sev = (
+                        AlertSeverity.WARNING
+                        if a.get("severity") == "WARNING"
+                        else AlertSeverity.FAILURE
+                    )
                     alert = Alert(
                         timestamp=datetime.utcnow(),
                         severity=sev,

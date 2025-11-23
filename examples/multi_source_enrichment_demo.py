@@ -25,8 +25,6 @@ repo_root = Path(__file__).parent.parent
 sys.path.insert(0, str(repo_root))
 
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
-from src.extractors.sam_gov import SAMGovExtractor
-from src.extractors.sbir import SbirDuckDBExtractor
 
 
 def create_sample_data():
@@ -152,7 +150,9 @@ def enrich_with_sam_gov(df, sam_entities):
 
     # Count matches
     match_count = enriched["sam_cage_code"].notna().sum()
-    logger.info(f"SAM.gov matches: {match_count}/{len(enriched)} ({match_count/len(enriched):.1%})")
+    logger.info(
+        f"SAM.gov matches: {match_count}/{len(enriched)} ({match_count / len(enriched):.1%})"
+    )
 
     return enriched
 
@@ -169,7 +169,7 @@ def print_enrichment_summary(enriched_df):
     # USAspending enrichment
     usa_matches = enriched_df["_usaspending_match_method"].notna().sum()
     usa_rate = usa_matches / total_awards
-    logger.info(f"\nUSAspending Enrichment:")
+    logger.info("\nUSAspending Enrichment:")
     logger.info(f"  Matched: {usa_matches}/{total_awards} ({usa_rate:.1%})")
 
     # Match method breakdown
@@ -181,17 +181,18 @@ def print_enrichment_summary(enriched_df):
     # SAM.gov enrichment
     sam_matches = enriched_df["sam_cage_code"].notna().sum()
     sam_rate = sam_matches / total_awards
-    logger.info(f"\nSAM.gov Enrichment:")
+    logger.info("\nSAM.gov Enrichment:")
     logger.info(f"  Matched: {sam_matches}/{total_awards} ({sam_rate:.1%})")
     logger.info(f"  CAGE Codes: {enriched_df['sam_cage_code'].notna().sum()}")
     logger.info(f"  NAICS Codes: {enriched_df['sam_primary_naics'].notna().sum()}")
 
     # Overall enrichment
     fully_enriched = (
-        enriched_df["_usaspending_match_method"].notna()
-        & enriched_df["sam_cage_code"].notna()
+        enriched_df["_usaspending_match_method"].notna() & enriched_df["sam_cage_code"].notna()
     ).sum()
-    logger.info(f"\nFully Enriched: {fully_enriched}/{total_awards} ({fully_enriched/total_awards:.1%})")
+    logger.info(
+        f"\nFully Enriched: {fully_enriched}/{total_awards} ({fully_enriched / total_awards:.1%})"
+    )
 
     logger.info("=" * 80 + "\n")
 
@@ -209,13 +210,13 @@ def print_sample_records(enriched_df, n=3):
         logger.info(f"  Contract: {row.get('Contract', 'N/A')}")
         logger.info(f"  Award Amount: ${row.get('Award Amount', 0):,.2f}")
 
-        logger.info(f"\n  USAspending Match:")
+        logger.info("\n  USAspending Match:")
         logger.info(f"    Method: {row.get('_usaspending_match_method', 'N/A')}")
         logger.info(f"    Score: {row.get('_usaspending_match_score', 0)}")
         logger.info(f"    City: {row.get('usaspending_recipient_recipient_city', 'N/A')}")
         logger.info(f"    State: {row.get('usaspending_recipient_recipient_state', 'N/A')}")
 
-        logger.info(f"\n  SAM.gov Data:")
+        logger.info("\n  SAM.gov Data:")
         logger.info(f"    CAGE Code: {row.get('sam_cage_code', 'N/A')}")
         logger.info(f"    Legal Name: {row.get('sam_legal_business_name', 'N/A')}")
         logger.info(f"    Primary NAICS: {row.get('sam_primary_naics', 'N/A')}")
@@ -227,9 +228,7 @@ def main():
     """Main demonstration function."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Demonstrate multi-source SBIR data enrichment"
-    )
+    parser = argparse.ArgumentParser(description="Demonstrate multi-source SBIR data enrichment")
     parser.add_argument(
         "--use-sample-data",
         action="store_true",
@@ -252,7 +251,9 @@ def main():
         logger.info(f"Loaded {len(sbir_awards)} sample SBIR awards")
     else:
         logger.warning("Real data loading not implemented in this demo.")
-        logger.warning("Using sample data instead. (Specify --use-sample-data to suppress this warning)")
+        logger.warning(
+            "Using sample data instead. (Specify --use-sample-data to suppress this warning)"
+        )
         sbir_awards, usaspending_recipients, sam_entities = create_sample_data()
 
     if args.limit:
@@ -268,12 +269,12 @@ def main():
         sbir_duns_col="Duns",
         sbir_company_col="Company",
     )
-    logger.info(f"USAspending enrichment complete")
+    logger.info("USAspending enrichment complete")
 
     # Step 3: Enrich with SAM.gov
     logger.info("\nStep 3: Enriching with SAM.gov Data...")
     enriched = enrich_with_sam_gov(enriched, sam_entities)
-    logger.info(f"SAM.gov enrichment complete")
+    logger.info("SAM.gov enrichment complete")
 
     # Step 4: Display Results
     print_enrichment_summary(enriched)

@@ -2,8 +2,8 @@
 
 import hashlib
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 from urllib.request import Request, urlopen
 
 import boto3
@@ -22,14 +22,18 @@ USPTO_ASSIGNMENT_DEFAULT_URLS = {
     # Parquet format may not be available - CSV and DTA are the standard formats
 }
 
-USPTO_ASSIGNMENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset"
-USPTO_ASSIGNMENT_LEGACY_PAGE = "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
+USPTO_ASSIGNMENT_DATASET_PAGE = (
+    "https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset"
+)
+USPTO_ASSIGNMENT_LEGACY_PAGE = (
+    "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
+)
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Download USPTO Patent Assignment Dataset and upload to S3.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -45,15 +49,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         source_url = event.get("source_url")
         file_format = event.get("format", "csv")
-        force_refresh = event.get("force_refresh", False)
 
         # Construct URL if not provided
         if not source_url:
             # Use default URL based on format (2023 release)
             if file_format in USPTO_ASSIGNMENT_DEFAULT_URLS:
                 source_url = USPTO_ASSIGNMENT_DEFAULT_URLS[file_format]
-                print(f"Using default USPTO Patent Assignment URL ({file_format} format): {source_url}")
-                print(f"Note: This is the 2023 release. Check {USPTO_ASSIGNMENT_DATASET_PAGE} for newer releases.")
+                print(
+                    f"Using default USPTO Patent Assignment URL ({file_format} format): {source_url}"
+                )
+                print(
+                    f"Note: This is the 2023 release. Check {USPTO_ASSIGNMENT_DATASET_PAGE} for newer releases."
+                )
             else:
                 # Unknown format - try to construct URL or provide helpful error
                 if file_format == "parquet":
@@ -73,7 +80,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"Downloading USPTO Patent Assignment data ({file_format}) from {source_url}")
         req = Request(source_url)
         req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0")
-        
+
         with urlopen(req, timeout=600) as response:  # Longer timeout for large files
             data = response.read()
 
@@ -81,7 +88,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         file_hash = hashlib.sha256(data).hexdigest()
 
         # Generate S3 key with date
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         date_str = timestamp.strftime("%Y-%m-%d")
         file_ext = file_format if file_format.startswith(".") else f".{file_format}"
         s3_key = f"raw/uspto/assignments/{date_str}/patent_assignments{file_ext}"
@@ -126,6 +133,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error downloading USPTO Assignment data: {e}")
         import traceback
+
         traceback.print_exc()
         return {
             "statusCode": 500,

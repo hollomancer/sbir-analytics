@@ -6,7 +6,6 @@ from aws_cdk import (
     CfnOutput,
     Duration,
     Stack,
-    aws_ecr as ecr,
     aws_lambda as lambda_,
 )
 from constructs import Construct

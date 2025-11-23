@@ -315,7 +315,7 @@ class EnrichmentQualityValidator:
         overall = self.report["overall"]
         if overall["overall_match_rate"] < 0.70:
             issues.append(
-                f"Low overall match rate: {overall['overall_match_rate']:.1%} " f"(target: >=70%)"
+                f"Low overall match rate: {overall['overall_match_rate']:.1%} (target: >=70%)"
             )
 
         # Poor identifier coverage
@@ -330,7 +330,7 @@ class EnrichmentQualityValidator:
         consistency = self.report["quality_metrics"]["consistency"]
         if consistency < 0.95:
             issues.append(
-                f"Consistency issues: {1-consistency:.1%} of company groups "
+                f"Consistency issues: {1 - consistency:.1%} of company groups "
                 f"have inconsistent enrichment"
             )
 
@@ -485,25 +485,27 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
 <body>
     <div class="header">
         <h1>SBIR-USAspending Enrichment Quality Assessment</h1>
-        <p>Generated: {report['overall']['timestamp']}</p>
+        <p>Generated: {report["overall"]["timestamp"]}</p>
     </div>
 
     <div class="section">
         <h2>Overall Statistics</h2>
         <div class="metric">
-            <div class="metric-value">{report['overall']['total_records']}</div>
+            <div class="metric-value">{report["overall"]["total_records"]}</div>
             <div class="metric-label">Total Records</div>
         </div>
         <div class="metric">
-            <div class="metric-value {('good' if report['overall']['overall_match_rate'] >= 0.70 else 'bad')}">{report['overall']['overall_match_rate']:.1%}</div>
+            <div class="metric-value {
+        ("good" if report["overall"]["overall_match_rate"] >= 0.70 else "bad")
+    }">{report["overall"]["overall_match_rate"]:.1%}</div>
             <div class="metric-label">Match Rate</div>
         </div>
         <div class="metric">
-            <div class="metric-value">{report['overall']['matched_records']}</div>
+            <div class="metric-value">{report["overall"]["matched_records"]}</div>
             <div class="metric-label">Matched Records</div>
         </div>
         <div class="metric">
-            <div class="metric-value">{report['overall']['unmatched_records']}</div>
+            <div class="metric-value">{report["overall"]["unmatched_records"]}</div>
             <div class="metric-label">Unmatched Records</div>
         </div>
     </div>
@@ -516,10 +518,14 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
                 <th>Count</th>
                 <th>Percentage</th>
             </tr>
-            {"".join([
+            {
+        "".join(
+            [
                 f'<tr><td>{method}</td><td>{data["count"]}</td><td>{data["percentage"]:.1f}%</td></tr>'
-                for method, data in report.get('by_match_method', {}).items()
-            ])}
+                for method, data in report.get("by_match_method", {}).items()
+            ]
+        )
+    }
         </table>
     </div>
 
@@ -532,11 +538,15 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
                 <th>Matched</th>
                 <th>Match Rate</th>
             </tr>
-            {"".join([
+            {
+        "".join(
+            [
                 f'<tr><td>{itype}</td><td>{data["total"]}</td><td>{data["matched"]}</td>'
                 f'<td class="{("good" if data["match_rate"] >= 0.70 else "bad")}">{data["match_rate"]:.1%}</td></tr>'
-                for itype, data in report.get('by_identifier_type', {}).items()
-            ])}
+                for itype, data in report.get("by_identifier_type", {}).items()
+            ]
+        )
+    }
         </table>
     </div>
 
@@ -547,23 +557,37 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
                 <th>Metric</th>
                 <th>Value</th>
             </tr>
-            {"".join([
-                f'<tr><td>{metric}</td><td>{value:.1%}</td></tr>'
-                for metric, value in report.get('quality_metrics', {}).items()
+            {
+        "".join(
+            [
+                f"<tr><td>{metric}</td><td>{value:.1%}</td></tr>"
+                for metric, value in report.get("quality_metrics", {}).items()
                 if isinstance(value, int | float)
-            ])}
+            ]
+        )
+    }
         </table>
     </div>
 
-    {"".join([
-        f'<div class="section issues"><strong>⚠ Issues:</strong><ul>{"".join([f"<li>{issue}</li>" for issue in report.get("issues", [])])}</ul></div>'
-        if report.get('issues') else ''
-    ])}
+    {
+        "".join(
+            [
+                f'<div class="section issues"><strong>⚠ Issues:</strong><ul>{"".join([f"<li>{issue}</li>" for issue in report.get("issues", [])])}</ul></div>'
+                if report.get("issues")
+                else ""
+            ]
+        )
+    }
 
-    {"".join([
-        f'<div class="section recommendations"><strong>💡 Recommendations:</strong><ul>{"".join([f"<li>{rec}</li>" for rec in report.get("recommendations", [])])}</ul></div>'
-        if report.get('recommendations') else ''
-    ])}
+    {
+        "".join(
+            [
+                f'<div class="section recommendations"><strong>💡 Recommendations:</strong><ul>{"".join([f"<li>{rec}</li>" for rec in report.get("recommendations", [])])}</ul></div>'
+                if report.get("recommendations")
+                else ""
+            ]
+        )
+    }
 </body>
 </html>
 """

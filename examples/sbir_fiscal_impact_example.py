@@ -143,7 +143,17 @@ def main():
         print()
 
         sector_summary = calculator.calculate_summary_by_sector(impacts)
-        print(sector_summary[["bea_sector", "sector_description", "total_awards", "total_tax_impact", "total_jobs_created"]].to_string(index=False))
+        print(
+            sector_summary[
+                [
+                    "bea_sector",
+                    "sector_description",
+                    "total_awards",
+                    "total_tax_impact",
+                    "total_jobs_created",
+                ]
+            ].to_string(index=False)
+        )
         print()
 
         # Step 7: Key metrics
@@ -167,7 +177,9 @@ def main():
         print(f"  Total Jobs Created:       {total_jobs:,.1f} jobs")
         print()
         print(f"  Production Multiplier:    {production_multiplier:.2f}x")
-        print(f"  Tax Revenue Multiplier:   {tax_multiplier:.2f}x (${tax_multiplier*100:.2f} per $100 invested)")
+        print(
+            f"  Tax Revenue Multiplier:   {tax_multiplier:.2f}x (${tax_multiplier * 100:.2f} per $100 invested)"
+        )
         print(f"  Jobs per $1M Investment:  {jobs_per_million:.1f} jobs")
         print()
 

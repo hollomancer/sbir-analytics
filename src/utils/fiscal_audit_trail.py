@@ -50,7 +50,9 @@ class FiscalAuditTrail:
         }
 
         # Track data lineage
-        self.lineage: dict[str, list[dict[str, str | None]]] = {}  # award_id -> [transformation steps]
+        self.lineage: dict[
+            str, list[dict[str, str | None]]
+        ] = {}  # award_id -> [transformation steps]
 
     def log_configuration(self) -> None:
         """Log configuration parameters used in analysis."""

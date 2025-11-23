@@ -8,9 +8,10 @@ import csv
 import hashlib
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import Any
+from collections.abc import Iterable, Sequence
 
 
 DEFAULT_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
@@ -52,7 +53,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_schema(schema_path: Path) -> List[str]:
+def load_schema(schema_path: Path) -> list[str]:
     if not schema_path.exists():
         raise FileNotFoundError(f"Schema file not found: {schema_path}")
     with schema_path.open("r", encoding="utf-8") as fp:
@@ -76,7 +77,7 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def read_previous_metadata(path: Path | None) -> Dict[str, Any] | None:
+def read_previous_metadata(path: Path | None) -> dict[str, Any] | None:
     if not path:
         return None
     if not path.exists():
@@ -85,7 +86,7 @@ def read_previous_metadata(path: Path | None) -> Dict[str, Any] | None:
         return json.load(fp)
 
 
-def validate_header(header: Sequence[str], expected: Sequence[str]) -> Dict[str, Any]:
+def validate_header(header: Sequence[str], expected: Sequence[str]) -> dict[str, Any]:
     missing = [col for col in expected if col not in header]
     extra = [col for col in header if col not in expected]
     matches = list(header) == list(expected)
@@ -98,7 +99,7 @@ def validate_header(header: Sequence[str], expected: Sequence[str]) -> Dict[str,
     }
 
 
-def count_rows(csv_path: Path) -> tuple[int, List[str]]:
+def count_rows(csv_path: Path) -> tuple[int, list[str]]:
     with csv_path.open("r", encoding="utf-8", newline="") as fp:
         reader = csv.reader(fp)
         try:
@@ -109,7 +110,7 @@ def count_rows(csv_path: Path) -> tuple[int, List[str]]:
     return row_count, header
 
 
-def render_summary_markdown(metadata: Dict[str, Any], warnings: Iterable[str]) -> str:
+def render_summary_markdown(metadata: dict[str, Any], warnings: Iterable[str]) -> str:
     row_delta = metadata.get("row_delta")
     row_delta_pct = metadata.get("row_delta_pct")
     row_delta_str = f"{row_delta:+,}" if isinstance(row_delta, int) else "N/A"
@@ -171,10 +172,10 @@ def main() -> int:
     if isinstance(prev_row_count, int) and prev_row_count > 0:
         row_delta_pct = (row_count - prev_row_count) / prev_row_count
 
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     iso_timestamp = timestamp.isoformat().replace("+00:00", "Z")
 
-    metadata: Dict[str, Any] = {
+    metadata: dict[str, Any] = {
         "dataset": "sbir_awards",
         "csv_path": str(csv_path),
         "source_url": args.source_url,
@@ -204,7 +205,7 @@ def main() -> int:
         json.dump(metadata, fp, indent=2)
         fp.write("\n")
 
-    warnings: List[str] = []
+    warnings: list[str] = []
     if row_delta_pct is not None and row_delta_pct < -0.05:
         warnings.append(
             f"Row count dropped by {row_delta_pct:.2%} ({row_delta:+,} rows) compared to the previous snapshot."

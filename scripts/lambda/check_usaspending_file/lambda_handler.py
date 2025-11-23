@@ -5,9 +5,8 @@ and trigger the download workflow if a new file is detected.
 """
 
 import os
-import re
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 
 import boto3
 from email.utils import parsedate_to_datetime
@@ -113,7 +112,7 @@ def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict:
         return None
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Check if a new USAspending database file is available.
 
@@ -141,7 +140,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     }
     """
     try:
-        s3_bucket = event.get("s3_bucket") or os.environ.get("S3_BUCKET", "sbir-etl-production-data")
+        s3_bucket = event.get("s3_bucket") or os.environ.get(
+            "S3_BUCKET", "sbir-etl-production-data"
+        )
         database_type = event.get("database_type", "full")
         date_str = event.get("date")
         source_url = event.get("source_url")
@@ -150,13 +151,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Construct URL if not provided
         if not source_url:
             if not date_str:
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 date_str = now.strftime("%Y%m%d")
 
             url_template = USASPENDING_DOWNLOADS[database_type]
-            source_url = url_template.format(
-                base=USASPENDING_DB_BASE_URL, date=date_str
-            )
+            source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
 
         print(f"Checking for new USAspending database file: {source_url}")
 
@@ -208,9 +207,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             response_body["last_modified"] = result["last_modified"].isoformat()
         if result.get("content_length"):
             response_body["content_length"] = result["content_length"]
-            response_body["size_gb"] = round(
-                result["content_length"] / 1024 / 1024 / 1024, 2
-            )
+            response_body["size_gb"] = round(result["content_length"] / 1024 / 1024 / 1024, 2)
         if result.get("s3_last_modified"):
             response_body["s3_last_modified"] = result["s3_last_modified"].isoformat()
         if result.get("error"):
@@ -234,4 +231,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "database_type": event.get("database_type"),
             },
         }
-

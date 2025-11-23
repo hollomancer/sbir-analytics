@@ -6,7 +6,6 @@ from aws_cdk import (
     RemovalPolicy,
     Stack,
     aws_s3 as s3,
-    aws_s3_deployment as s3_deployment,
 )
 from constructs import Construct
 
@@ -62,7 +61,7 @@ class StorageStack(Stack):
                     ),
                 ],
                 removal_policy=RemovalPolicy.RETAIN,  # Don't delete data on stack deletion
-        )
+            )
         else:
             # Import existing bucket (default - bucket already exists)
             self.bucket = s3.Bucket.from_bucket_name(
@@ -74,4 +73,3 @@ class StorageStack(Stack):
         # Output bucket name and ARN
         CfnOutput(self, "BucketName", value=self.bucket.bucket_name)
         CfnOutput(self, "BucketArn", value=self.bucket.bucket_arn)
-

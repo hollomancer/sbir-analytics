@@ -4,9 +4,8 @@ import csv
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
-from io import BytesIO
-from typing import Any, Dict
+from datetime import datetime, UTC
+from typing import Any
 
 import boto3
 
@@ -36,7 +35,7 @@ def compute_sha256_from_s3(bucket: str, key: str) -> str:
     return digest.hexdigest()
 
 
-def read_previous_metadata(bucket: str, key: str | None) -> Dict[str, Any] | None:
+def read_previous_metadata(bucket: str, key: str | None) -> dict[str, Any] | None:
     """Read previous metadata from S3."""
     if not key:
         return None
@@ -47,7 +46,7 @@ def read_previous_metadata(bucket: str, key: str | None) -> Dict[str, Any] | Non
         return None
 
 
-def validate_header(header: list[str], expected: list[str]) -> Dict[str, Any]:
+def validate_header(header: list[str], expected: list[str]) -> dict[str, Any]:
     """Validate CSV header against expected schema."""
     missing = [col for col in expected if col not in header]
     extra = [col for col in header if col not in expected]
@@ -74,10 +73,10 @@ def count_rows_from_s3(bucket: str, key: str) -> tuple[int, list[str]]:
     return row_count, header
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Validate SBIR awards CSV from S3.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -96,7 +95,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         schema_s3_key = event.get("schema_s3_key", "schemas/sbir_awards_columns.json")
         previous_metadata_key = event.get("previous_metadata_s3_key")
-        source_url = event.get("source_url", "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv")
+        source_url = event.get(
+            "source_url", "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+        )
         allow_schema_drift = event.get("allow_schema_drift", False)
 
         # Load schema
@@ -131,7 +132,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         changed = file_hash != prev_hash if prev_hash else True
 
         # Build metadata
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         metadata = {
             "dataset": "sbir_awards",
             "s3_bucket": s3_bucket,
@@ -187,4 +188,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

@@ -9,10 +9,10 @@ This script checks the source URL to see if a new file is available by:
 Usage:
     # Auto-discover latest available file (recommended)
     python check_new_file.py --database-type full --s3-bucket sbir-etl-production-data
-    
+
     # Check specific date
     python check_new_file.py --database-type full --date 20251106
-    
+
     # Check specific URL
     python check_new_file.py --source-url https://files.usaspending.gov/...
 """
@@ -21,7 +21,7 @@ import argparse
 import os
 import re
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from urllib.request import Request, urlopen
 
 import boto3
@@ -41,7 +41,7 @@ def check_file_availability(
     s3_key: str = None,
 ) -> dict:
     """Check if a new file is available at the source URL.
-    
+
     Returns:
         dict with:
             - available: bool - whether file exists at source
@@ -74,9 +74,7 @@ def check_file_availability(
                 if last_modified_str:
                     from email.utils import parsedate_to_datetime
 
-                    result["last_modified"] = parsedate_to_datetime(
-                        last_modified_str
-                    )
+                    result["last_modified"] = parsedate_to_datetime(last_modified_str)
 
                 # Get Content-Length
                 content_length_str = response.headers.get("Content-Length")
@@ -124,12 +122,12 @@ def check_file_availability(
 
 def find_latest_file_in_s3(s3_bucket: str, database_type: str) -> dict:
     """Find the most recent file in S3 for a given database type.
-    
+
     Returns:
         dict with s3_key, last_modified, and date_str of the latest file, or None
     """
     s3_client = boto3.client("s3")
-    prefix = f"raw/usaspending/database/"
+    prefix = "raw/usaspending/database/"
 
     try:
         # List all files in the database directory
@@ -181,39 +179,39 @@ def find_latest_available_file(
 ) -> dict:
     """
     Find the latest available file by checking recent dates.
-    
+
     Strategy:
     1. Check S3 for latest file date (if available) - start from there
     2. Try current month and previous months (checking 1st, 6th, 15th of each month)
     3. Return the first available file found (newest first)
-    
+
     Args:
         database_type: "full" or "test"
         s3_bucket: S3 bucket to check for existing files
         max_months_back: Maximum number of months to check backwards
-        
+
     Returns:
         dict with source_url, date_str, and availability info, or None
     """
     # Get starting date - use S3 latest date if available, otherwise current date
-    start_date = datetime.now(timezone.utc)
+    start_date = datetime.now(UTC)
     if s3_bucket:
         latest_s3 = find_latest_file_in_s3(s3_bucket, database_type)
         if latest_s3 and latest_s3.get("date_str"):
             # Start from S3 date and check forward (in case newer file available)
             try:
                 s3_date = datetime.strptime(latest_s3["date_str"], "%Y%m%d")
-                s3_date = s3_date.replace(tzinfo=timezone.utc)
+                s3_date = s3_date.replace(tzinfo=UTC)
                 # Check from S3 date forward, then backwards
                 start_date = max(start_date, s3_date + timedelta(days=1))
             except (ValueError, TypeError):
                 pass
-    
+
     url_template = USASPENDING_DOWNLOADS[database_type]
-    
+
     # Build list of dates to check (newest first)
     dates_to_check = []
-    
+
     # Start from current date and go backwards
     current = start_date
     for _ in range(max_months_back + 1):
@@ -225,28 +223,26 @@ def find_latest_available_file(
             except ValueError:
                 # Invalid day for this month (e.g., Feb 30)
                 continue
-        
+
         # Move to previous month
         if current.month == 1:
             current = current.replace(year=current.year - 1, month=12)
         else:
             current = current.replace(month=current.month - 1)
-    
+
     # Remove duplicates and sort (newest first)
     dates_to_check = sorted(set(dates_to_check), reverse=True)
-    
+
     # Check each date
     for test_date_str in dates_to_check:
-        source_url = url_template.format(
-            base=USASPENDING_DB_BASE_URL, date=test_date_str
-        )
-        
+        source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=test_date_str)
+
         # Quick check if file exists
         try:
             req = Request(source_url, method="HEAD")
             req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")
             req.add_header("Accept", "*/*")
-            
+
             with urlopen(req, timeout=10) as response:
                 if response.getcode() == 200:
                     # Found an available file
@@ -258,7 +254,7 @@ def find_latest_available_file(
         except Exception:
             # File doesn't exist at this date, try next
             continue
-    
+
     # No file found
     return None
 
@@ -309,9 +305,7 @@ def main():
             # Use explicit date if provided
             date_str = args.date
             url_template = USASPENDING_DOWNLOADS[args.database_type]
-            source_url = url_template.format(
-                base=USASPENDING_DB_BASE_URL, date=date_str
-            )
+            source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
         else:
             # Auto-discover latest available file
             print("No date specified - searching for latest available file...", file=sys.stderr)
@@ -319,20 +313,28 @@ def main():
                 database_type=args.database_type,
                 s3_bucket=args.s3_bucket if args.compare_with_s3 else None,
             )
-            
+
             if not latest_file:
-                error_msg = f"No available {args.database_type} database file found in recent months"
+                error_msg = (
+                    f"No available {args.database_type} database file found in recent months"
+                )
                 if args.json:
                     import json
-                    print(json.dumps({
-                        "available": False,
-                        "error": error_msg,
-                        "database_type": args.database_type,
-                    }, indent=2))
+
+                    print(
+                        json.dumps(
+                            {
+                                "available": False,
+                                "error": error_msg,
+                                "database_type": args.database_type,
+                            },
+                            indent=2,
+                        )
+                    )
                 else:
                     print(f"Error: {error_msg}")
                 sys.exit(1)
-            
+
             source_url = latest_file["source_url"]
             date_str = latest_file["date_str"]
             if not args.json:
@@ -364,9 +366,7 @@ def main():
         if json_result.get("last_modified"):
             json_result["last_modified"] = json_result["last_modified"].isoformat()
         if json_result.get("s3_last_modified"):
-            json_result["s3_last_modified"] = json_result[
-                "s3_last_modified"
-            ].isoformat()
+            json_result["s3_last_modified"] = json_result["s3_last_modified"].isoformat()
 
         print(json.dumps(json_result, indent=2))
     else:
@@ -389,4 +389,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

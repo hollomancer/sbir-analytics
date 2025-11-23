@@ -366,5 +366,8 @@ def sbir_data_quality_check(
     context.log.info(f"Quality check result: {'PASSED' if passed else 'FAILED'}", extra=metadata)
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata=metadata,  # type: ignore[arg-type]
     )

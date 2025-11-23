@@ -113,7 +113,7 @@ class PatentETLValidator:
             }
             avg_completeness = sum(completeness_rates.values()) / len(completeness_rates)
 
-            logger.info(f"✓ Average completeness: {avg_completeness:.2f}% " f"(threshold: 95.00%)")
+            logger.info(f"✓ Average completeness: {avg_completeness:.2f}% (threshold: 95.00%)")
 
             if avg_completeness < 95.0:
                 logger.warning(f"Completeness below threshold: {avg_completeness:.2f}%")
@@ -123,7 +123,7 @@ class PatentETLValidator:
             uniqueness_rate = (unique_rf_ids / total_records) * 100
 
             logger.info(
-                f"✓ Unique rf_ids: {unique_rf_ids}/{total_records} " f"({uniqueness_rate:.2f}%)"
+                f"✓ Unique rf_ids: {unique_rf_ids}/{total_records} ({uniqueness_rate:.2f}%)"
             )
 
             self.metrics["extraction_success_rate"] = 100.0

@@ -27,6 +27,7 @@ from ...utils.text_normalization import normalize_recipient_name
 
 try:
     from rapidfuzz import fuzz, process
+
     _rapidfuzz_available = True
 except ImportError:
     # Fallback to simple string matching if rapidfuzz not available

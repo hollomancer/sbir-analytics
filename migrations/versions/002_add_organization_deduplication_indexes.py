@@ -43,4 +43,3 @@ class AddOrganizationDeduplicationIndexes(Migration):
                     session.run(stmt)
                 except Exception:
                     pass
-

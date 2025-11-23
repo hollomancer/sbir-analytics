@@ -8,7 +8,6 @@ from aws_cdk import (
     Duration,
     Stack,
     aws_stepfunctions as sfn,
-    aws_stepfunctions_tasks as tasks,
 )
 from constructs import Construct
 
@@ -27,8 +26,12 @@ class StepFunctionsStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # Load state machine definition from JSON file
-        state_machine_path = Path(__file__).parent.parent.parent / "step-functions" / "weekly-refresh-state-machine.json"
-        
+        state_machine_path = (
+            Path(__file__).parent.parent.parent
+            / "step-functions"
+            / "weekly-refresh-state-machine.json"
+        )
+
         if state_machine_path.exists():
             with state_machine_path.open() as f:
                 definition = json.load(f)
@@ -198,4 +201,3 @@ class StepFunctionsStack(Stack):
                 },
             },
         }
-

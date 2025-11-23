@@ -1,6 +1,5 @@
 """Merge existing duplicate Organization nodes."""
 
-from datetime import datetime
 
 from migrations.base import Migration
 from neo4j import Driver
@@ -34,8 +33,8 @@ class MergeExistingDuplicateOrganizations(Migration):
             uei_merge_query = """
             MATCH (o1:Organization), (o2:Organization)
             WHERE o1.organization_id <> o2.organization_id
-              AND o1.uei IS NOT NULL 
-              AND o2.uei IS NOT NULL 
+              AND o1.uei IS NOT NULL
+              AND o2.uei IS NOT NULL
               AND o1.uei = o2.uei
             WITH o1, collect(o2) as duplicates
             UNWIND duplicates as duplicate
@@ -64,8 +63,8 @@ class MergeExistingDuplicateOrganizations(Migration):
             duns_merge_query = """
             MATCH (o1:Organization), (o2:Organization)
             WHERE o1.organization_id <> o2.organization_id
-              AND o1.duns IS NOT NULL 
-              AND o2.duns IS NOT NULL 
+              AND o1.duns IS NOT NULL
+              AND o2.duns IS NOT NULL
               AND o1.duns = o2.duns
               AND o1.uei IS NULL
             WITH o1, collect(o2) as duplicates
@@ -108,4 +107,3 @@ class MergeExistingDuplicateOrganizations(Migration):
             "Merge history is preserved in __merged_from and __merge_history properties. "
             "Manual restoration would be required."
         )
-

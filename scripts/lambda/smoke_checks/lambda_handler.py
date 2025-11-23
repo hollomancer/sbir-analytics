@@ -2,16 +2,17 @@
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import boto3
 from neo4j import GraphDatabase
+from datetime import UTC
 
 s3_client = boto3.client("s3")
 secrets_client = boto3.client("secretsmanager")
 
 
-def get_neo4j_credentials(secret_name: str) -> Dict[str, str]:
+def get_neo4j_credentials(secret_name: str) -> dict[str, str]:
     """Get Neo4j credentials from Secrets Manager."""
     response = secrets_client.get_secret_value(SecretId=secret_name)
     secret = json.loads(response["SecretString"])
@@ -129,10 +130,10 @@ def run_smoke_checks(uri: str, username: str, password: str, database: str) -> d
     return results
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Run Neo4j smoke checks after SBIR award loading.
-    
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
@@ -141,18 +142,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     try:
         s3_bucket = event.get("s3_bucket") or os.environ.get("S3_BUCKET")
-        secret_name = event.get("neo4j_secret_name") or os.environ.get("NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura")
+        secret_name = event.get("neo4j_secret_name") or os.environ.get(
+            "NEO4J_SECRET_NAME", "sbir-analytics/neo4j-aura"
+        )
 
         # Get credentials
         creds = get_neo4j_credentials(secret_name)
 
         # Run smoke checks
-        results = run_smoke_checks(creds["uri"], creds["username"], creds["password"], creds["database"])
+        results = run_smoke_checks(
+            creds["uri"], creds["username"], creds["password"], creds["database"]
+        )
 
         # Upload results to S3
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         smoke_check_json_key = f"artifacts/{date_str}/neo4j_smoke_check.json"
         smoke_check_md_key = f"artifacts/{date_str}/neo4j_smoke_check.md"
 
@@ -220,4 +225,3 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "error": str(e),
             },
         }
-

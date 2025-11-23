@@ -43,7 +43,11 @@ from src.utils.monitoring import performance_monitor
 def setup_logging_for_script(script_name: str) -> None:
     """Configure logging for the script."""
     logger.remove()
-    logger.add(sys.stderr, format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>", level="INFO")
+    logger.add(
+        sys.stderr,
+        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+        level="INFO",
+    )
 
 
 def create_parser(description: str, prog: str) -> argparse.ArgumentParser:
@@ -53,22 +57,30 @@ def create_parser(description: str, prog: str) -> argparse.ArgumentParser:
 
 def add_sample_size_argument(parser: argparse.ArgumentParser) -> None:
     """Add sample size argument."""
-    parser.add_argument("--sample-size", type=int, help="Number of records to process (default: all)")
+    parser.add_argument(
+        "--sample-size", type=int, help="Number of records to process (default: all)"
+    )
 
 
-def add_output_file_argument(parser: argparse.ArgumentParser, name: str, default: str, help_text: str) -> None:
+def add_output_file_argument(
+    parser: argparse.ArgumentParser, name: str, default: str, help_text: str
+) -> None:
     """Add output file argument."""
     parser.add_argument(f"--{name}", type=str, default=default, help=help_text)
 
 
 def add_baseline_argument(parser: argparse.ArgumentParser) -> None:
     """Add baseline file argument."""
-    parser.add_argument("--baseline", type=str, help="Path to baseline benchmark file for comparison")
+    parser.add_argument(
+        "--baseline", type=str, help="Path to baseline benchmark file for comparison"
+    )
 
 
 def add_save_as_baseline_argument(parser: argparse.ArgumentParser) -> None:
     """Add save as baseline flag."""
-    parser.add_argument("--save-as-baseline", action="store_true", help="Save results as new baseline")
+    parser.add_argument(
+        "--save-as-baseline", action="store_true", help="Save results as new baseline"
+    )
 
 
 def print_header(text: str) -> None:
@@ -107,7 +119,7 @@ def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]
     config = get_config()
     sbir_config = config.extraction.sbir
 
-    logger.info(f"Loading SBIR sample data (S3-first, local fallback)")
+    logger.info("Loading SBIR sample data (S3-first, local fallback)")
 
     try:
         # Use SbirDuckDBExtractor which handles S3 automatically
@@ -328,8 +340,7 @@ def detect_regressions(current: dict[str, Any], baseline: dict[str, Any]) -> dic
         )
     elif time_delta_percent > 10:
         regressions["warnings"].append(
-            f"Time warning: +{time_delta_percent:.1f}% "
-            f"({baseline_time:.2f}s → {current_time:.2f}s)"
+            f"Time warning: +{time_delta_percent:.1f}% ({baseline_time:.2f}s → {current_time:.2f}s)"
         )
 
     # Memory regressions

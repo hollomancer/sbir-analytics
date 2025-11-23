@@ -25,7 +25,6 @@ if str(PROJECT_ROOT) not in sys.path:
 # Import mock versions for demonstration
 from examples.sbir_fiscal_impact_example_mock import (
     MockSBIRFiscalImpactCalculator,
-    MockRStateIOAdapter,
 )
 
 # Import district-specific components
@@ -82,93 +81,93 @@ class MockCongressionalDistrictResolver:
 
 def create_sample_sbir_awards_with_addresses() -> pd.DataFrame:
     """Create sample SBIR awards with full address information."""
-    return pd.DataFrame({
-        "award_id": [
-            "SBIR-2023-001",
-            "SBIR-2023-002",
-            "SBIR-2023-003",
-            "SBIR-2023-004",
-            "SBIR-2023-005",
-            "SBIR-2023-006",
-            "SBIR-2023-007",
-            "SBIR-2023-008",
-        ],
-        "company_name": [
-            "Tech Innovations Inc",
-            "Silicon Valley AI Corp",
-            "Engineering Solutions LLC",
-            "MedTech Research Corp",
-            "BioLife Sciences Inc",
-            "Communications Systems Inc",
-            "Data Analytics Co",
-            "Clean Energy Solutions",
-        ],
-        "award_amount": [
-            1_000_000,  # $1M
-            800_000,    # $800K
-            500_000,    # $500K
-            750_000,    # $750K
-            600_000,    # $600K
-            1_200_000,  # $1.2M
-            400_000,    # $400K
-            900_000,    # $900K
-        ],
-        "company_address": [
-            "1600 Amphitheatre Parkway",
-            "3500 Deer Creek Road",
-            "100 Main Street",
-            "One Kendall Square",
-            "200 Boston Avenue",
-            "500 Congress Avenue",
-            "350 Fifth Avenue",
-            "1000 Innovation Drive",
-        ],
-        "company_city": [
-            "Mountain View",
-            "Mountain View",
-            "Cambridge",
-            "Cambridge",
-            "Boston",
-            "Austin",
-            "New York",
-            "Austin",
-        ],
-        "company_state": [
-            "CA",
-            "CA",
-            "MA",
-            "MA",
-            "MA",
-            "TX",
-            "NY",
-            "TX",
-        ],
-        "company_zip": [
-            "94043",
-            "94043",
-            "02142",
-            "02142",
-            "02101",
-            "78701",
-            "10001",
-            "78701",
-        ],
-        "naics_code": [
-            "541512",  # Computer Systems Design
-            "541512",  # Computer Systems Design
-            "541330",  # Engineering Services
-            "621111",  # Physician Offices
-            "541714",  # Biotech R&D
-            "334220",  # Broadcasting Equipment Mfg
-            "541512",  # Computer Systems Design
-            "221114",  # Solar Electric Power
-        ],
-        "fiscal_year": [2023] * 8,
-        # Note: fiscal pipeline expects 'state' column (gets mapped from company_state in real pipeline)
-        "state": [
-            "CA", "CA", "MA", "MA", "MA", "TX", "NY", "TX"
-        ],
-    })
+    return pd.DataFrame(
+        {
+            "award_id": [
+                "SBIR-2023-001",
+                "SBIR-2023-002",
+                "SBIR-2023-003",
+                "SBIR-2023-004",
+                "SBIR-2023-005",
+                "SBIR-2023-006",
+                "SBIR-2023-007",
+                "SBIR-2023-008",
+            ],
+            "company_name": [
+                "Tech Innovations Inc",
+                "Silicon Valley AI Corp",
+                "Engineering Solutions LLC",
+                "MedTech Research Corp",
+                "BioLife Sciences Inc",
+                "Communications Systems Inc",
+                "Data Analytics Co",
+                "Clean Energy Solutions",
+            ],
+            "award_amount": [
+                1_000_000,  # $1M
+                800_000,  # $800K
+                500_000,  # $500K
+                750_000,  # $750K
+                600_000,  # $600K
+                1_200_000,  # $1.2M
+                400_000,  # $400K
+                900_000,  # $900K
+            ],
+            "company_address": [
+                "1600 Amphitheatre Parkway",
+                "3500 Deer Creek Road",
+                "100 Main Street",
+                "One Kendall Square",
+                "200 Boston Avenue",
+                "500 Congress Avenue",
+                "350 Fifth Avenue",
+                "1000 Innovation Drive",
+            ],
+            "company_city": [
+                "Mountain View",
+                "Mountain View",
+                "Cambridge",
+                "Cambridge",
+                "Boston",
+                "Austin",
+                "New York",
+                "Austin",
+            ],
+            "company_state": [
+                "CA",
+                "CA",
+                "MA",
+                "MA",
+                "MA",
+                "TX",
+                "NY",
+                "TX",
+            ],
+            "company_zip": [
+                "94043",
+                "94043",
+                "02142",
+                "02142",
+                "02101",
+                "78701",
+                "10001",
+                "78701",
+            ],
+            "naics_code": [
+                "541512",  # Computer Systems Design
+                "541512",  # Computer Systems Design
+                "541330",  # Engineering Services
+                "621111",  # Physician Offices
+                "541714",  # Biotech R&D
+                "334220",  # Broadcasting Equipment Mfg
+                "541512",  # Computer Systems Design
+                "221114",  # Solar Electric Power
+            ],
+            "fiscal_year": [2023] * 8,
+            # Note: fiscal pipeline expects 'state' column (gets mapped from company_state in real pipeline)
+            "state": ["CA", "CA", "MA", "MA", "MA", "TX", "NY", "TX"],
+        }
+    )
 
 
 def main():
@@ -196,7 +195,9 @@ def main():
     awards_with_districts = district_resolver.enrich_awards_with_districts(awards)
 
     resolved_count = awards_with_districts["congressional_district"].notna().sum()
-    print(f"  ✓ Resolved {resolved_count}/{len(awards)} districts ({resolved_count/len(awards):.1%})")
+    print(
+        f"  ✓ Resolved {resolved_count}/{len(awards)} districts ({resolved_count / len(awards):.1%})"
+    )
 
     districts = awards_with_districts["congressional_district"].dropna().unique()
     print(f"  Districts found: {', '.join(sorted(districts))}")
@@ -280,16 +281,20 @@ def main():
     print("STATE LEVEL:")
     state_summary = calculator.calculate_summary_by_state(state_impacts)
     for _, row in state_summary.iterrows():
-        print(f"  {row['state']}: ${row['total_tax_impact']:,.2f} tax impact, "
-              f"{row['total_jobs_created']:.1f} jobs")
+        print(
+            f"  {row['state']}: ${row['total_tax_impact']:,.2f} tax impact, "
+            f"{row['total_jobs_created']:.1f} jobs"
+        )
     print()
 
     # District-level breakdown (top 5)
     print("CONGRESSIONAL DISTRICT LEVEL (Top 5 by Tax Impact):")
     top_districts = district_summary.nlargest(5, "total_tax_impact")
     for _, row in top_districts.iterrows():
-        print(f"  {row['congressional_district']}: ${row['total_tax_impact']:,.2f} tax impact, "
-              f"{row['total_jobs_created']:.1f} jobs, {row['sector_count']} sectors")
+        print(
+            f"  {row['congressional_district']}: ${row['total_tax_impact']:,.2f} tax impact, "
+            f"{row['total_jobs_created']:.1f} jobs, {row['sector_count']} sectors"
+        )
     print()
 
     # Step 9: Use case examples
@@ -306,7 +311,9 @@ def main():
         print(f"Q: What's the economic impact in district {target_district}?")
         print(f"A: District {target_district} received ${row['total_awards']:,.2f} in SBIR awards,")
         print(f"   generating ${row['total_tax_impact']:,.2f} in tax revenue and")
-        print(f"   creating {row['total_jobs_created']:.1f} jobs across {row['sector_count']} sectors.")
+        print(
+            f"   creating {row['total_jobs_created']:.1f} jobs across {row['sector_count']} sectors."
+        )
         print()
 
     # Question 2: How do districts compare within a state?
@@ -314,7 +321,9 @@ def main():
     if not ca_districts.empty:
         print(f"A: California has {len(ca_districts)} districts with SBIR activity.")
         top_ca = ca_districts.iloc[0]
-        print(f"   Top district: {top_ca['congressional_district']} with ${top_ca['total_tax_impact']:,.2f}")
+        print(
+            f"   Top district: {top_ca['congressional_district']} with ${top_ca['total_tax_impact']:,.2f}"
+        )
         print(f"   Combined CA impact: ${ca_districts['total_tax_impact'].sum():,.2f}")
     print()
 

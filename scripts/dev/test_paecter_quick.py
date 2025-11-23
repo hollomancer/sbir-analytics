@@ -58,7 +58,7 @@ def main():
                 "[bold red]Warning:[/bold red] HF_TOKEN environment variable not set.\n"
                 "API calls may fail or have rate limits.\n\n"
                 "[yellow]To use API mode:[/yellow]\n"
-                "  export HF_TOKEN=\"your_token_here\"\n\n"
+                '  export HF_TOKEN="your_token_here"\n\n'
                 "[yellow]Or use local mode instead:[/yellow]\n"
                 "  python scripts/test_paecter_quick.py --local\n"
             )
@@ -141,7 +141,9 @@ def main():
     except ImportError as e:
         console.print(f"[red]✗ Error: {e}[/red]\n")
         if use_local:
-            console.print("[yellow]Install local dependencies:[/yellow] pip install sentence-transformers torch")
+            console.print(
+                "[yellow]Install local dependencies:[/yellow] pip install sentence-transformers torch"
+            )
         else:
             console.print("[yellow]Install API dependencies:[/yellow] pip install huggingface-hub")
         return 1
@@ -191,9 +193,7 @@ def main():
     # Step 4: Compute similarities
     console.print("[yellow]Step 4:[/yellow] Computing award-patent similarities...")
     similarities = client.compute_similarity(award_result.embeddings, patent_result.embeddings)
-    console.print(
-        f"✓ Computed similarity matrix (shape: {similarities.shape})\n", style="green"
-    )
+    console.print(f"✓ Computed similarity matrix (shape: {similarities.shape})\n", style="green")
 
     # Step 5: Display results
     console.print("[bold blue]Results: Award-Patent Similarity Matrix[/bold blue]\n")
@@ -224,7 +224,7 @@ def main():
     console.print("\n[bold blue]Top Patent Matches for Each Award[/bold blue]\n")
 
     for i, award in enumerate(awards):
-        console.print(f"[cyan]Award {i+1}:[/cyan] {award['title']}")
+        console.print(f"[cyan]Award {i + 1}:[/cyan] {award['title']}")
 
         # Get top 2 matches
         top_indices = np.argsort(similarities[i])[::-1][:2]
@@ -262,11 +262,17 @@ def main():
     console.print("1. Review the similarity scores above")
 
     if use_local:
-        console.print("2. Try API mode: [cyan]export HF_TOKEN=\"...\" && python scripts/test_paecter_quick.py[/cyan]")
+        console.print(
+            '2. Try API mode: [cyan]export HF_TOKEN="..." && python scripts/test_paecter_quick.py[/cyan]'
+        )
     else:
-        console.print("2. Try local mode: [cyan]python scripts/test_paecter_quick.py --local[/cyan]")
+        console.print(
+            "2. Try local mode: [cyan]python scripts/test_paecter_quick.py --local[/cyan]"
+        )
 
-    console.print("3. Run full integration tests: [cyan]pytest tests/integration/test_paecter_client.py -v[/cyan]")
+    console.print(
+        "3. Run full integration tests: [cyan]pytest tests/integration/test_paecter_client.py -v[/cyan]"
+    )
     console.print("4. Test with your real data (see docs/PAECTER_TESTING_GUIDE.md)")
     console.print("5. Integrate with Dagster pipeline\n")
 

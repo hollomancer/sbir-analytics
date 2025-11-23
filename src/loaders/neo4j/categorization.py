@@ -87,16 +87,16 @@ class CompanyCategorizationLoader(BaseNeo4jLoader):
         """Create indexes for categorization properties on Company nodes."""
         if indexes is None:
             indexes = [
-            # Index on classification for filtering queries
-            "CREATE INDEX company_classification_idx IF NOT EXISTS "
-            "FOR (c:Company) ON (c.classification)",
-            # Index on confidence for quality filtering
-            "CREATE INDEX company_categorization_confidence_idx IF NOT EXISTS "
-            "FOR (c:Company) ON (c.categorization_confidence)",
-            # Composite index for classification + confidence queries
-            "CREATE INDEX company_classification_confidence_idx IF NOT EXISTS "
-            "FOR (c:Company) ON (c.classification, c.categorization_confidence)",
-        ]
+                # Index on classification for filtering queries
+                "CREATE INDEX company_classification_idx IF NOT EXISTS "
+                "FOR (c:Company) ON (c.classification)",
+                # Index on confidence for quality filtering
+                "CREATE INDEX company_categorization_confidence_idx IF NOT EXISTS "
+                "FOR (c:Company) ON (c.categorization_confidence)",
+                # Composite index for classification + confidence queries
+                "CREATE INDEX company_classification_confidence_idx IF NOT EXISTS "
+                "FOR (c:Company) ON (c.classification, c.categorization_confidence)",
+            ]
         super().create_indexes(indexes)
 
     # -------------------------------------------------------------------------

@@ -35,7 +35,6 @@ python sbir-analytics/scripts/merge_company_search.py \
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,11 +63,11 @@ def clean_duns(v: str | None) -> str:
 
 def normalize_name(v: str | None) -> str:
     """Lowercase, remove punctuation, collapse whitespace.
-    
+
     Uses centralized text normalization utility.
     """
     from src.utils.text_normalization import normalize_name as normalize_name_util
-    
+
     return normalize_name_util(v, remove_suffixes=True)
 
 

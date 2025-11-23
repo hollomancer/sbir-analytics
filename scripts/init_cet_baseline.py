@@ -37,6 +37,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import logging
+
 from loguru import logger
 
 
@@ -87,7 +89,7 @@ def read_json_records(path: Path) -> list[dict[str, Any]]:
         return []
 
 
-def read_parquet_dataframe(path: Path, pd) -> pd.DataFrame | None:
+def read_parquet_dataframe(path: Path, pd: Any) -> Any | None:
     """Attempt to read a parquet into a DataFrame using pandas if available."""
     if pd is None:
         return None

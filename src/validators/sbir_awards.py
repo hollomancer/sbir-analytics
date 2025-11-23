@@ -502,7 +502,9 @@ def validate_sbir_award_record(row: pd.Series, row_index: int) -> list[QualityIs
     return issues
 
 
-def validate_sbir_awards(df: pd.DataFrame, pass_rate_threshold: float = 0.95) -> Any:  # Returns SimpleNamespace, not QualityReport
+def validate_sbir_awards(
+    df: pd.DataFrame, pass_rate_threshold: float = 0.95
+) -> Any:  # Returns SimpleNamespace, not QualityReport
     """
     Validate a DataFrame of SBIR awards.
 

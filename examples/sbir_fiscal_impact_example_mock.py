@@ -162,13 +162,15 @@ class MockSBIRFiscalImpactCalculator:
         """Calculate state-level summary."""
         summary = (
             impacts.groupby("state")
-            .agg({
-                "award_total": "sum",
-                "tax_impact": "sum",
-                "jobs_created": "sum",
-                "wage_impact": "sum",
-                "production_impact": "sum",
-            })
+            .agg(
+                {
+                    "award_total": "sum",
+                    "tax_impact": "sum",
+                    "jobs_created": "sum",
+                    "wage_impact": "sum",
+                    "production_impact": "sum",
+                }
+            )
             .reset_index()
         )
         summary.rename(
@@ -187,13 +189,15 @@ class MockSBIRFiscalImpactCalculator:
         """Calculate sector-level summary."""
         summary = (
             impacts.groupby("bea_sector")
-            .agg({
-                "award_total": "sum",
-                "tax_impact": "sum",
-                "jobs_created": "sum",
-                "wage_impact": "sum",
-                "production_impact": "sum",
-            })
+            .agg(
+                {
+                    "award_total": "sum",
+                    "tax_impact": "sum",
+                    "jobs_created": "sum",
+                    "wage_impact": "sum",
+                    "production_impact": "sum",
+                }
+            )
             .reset_index()
         )
         summary.rename(
@@ -331,7 +335,17 @@ def main():
     print()
 
     sector_summary = calculator.calculate_summary_by_sector(impacts)
-    print(sector_summary[["bea_sector", "sector_description", "total_awards", "total_tax_impact", "total_jobs_created"]].to_string(index=False))
+    print(
+        sector_summary[
+            [
+                "bea_sector",
+                "sector_description",
+                "total_awards",
+                "total_tax_impact",
+                "total_jobs_created",
+            ]
+        ].to_string(index=False)
+    )
     print()
 
     # Step 7: Key metrics
@@ -355,7 +369,9 @@ def main():
     print(f"  Total Jobs Created:       {total_jobs:,.1f} jobs")
     print()
     print(f"  Production Multiplier:    {production_multiplier:.2f}x")
-    print(f"  Tax Revenue Multiplier:   {tax_multiplier:.2f}x (${tax_multiplier*100:.2f} per $100 invested)")
+    print(
+        f"  Tax Revenue Multiplier:   {tax_multiplier:.2f}x (${tax_multiplier * 100:.2f} per $100 invested)"
+    )
     print(f"  Jobs per $1M Investment:  {jobs_per_million:.1f} jobs")
     print()
 
@@ -381,7 +397,9 @@ def main():
     print()
     print("Next steps:")
     print("  - For real calculations: docker compose --profile dev up --build")
-    print("  - Then run: docker compose exec dagster-webserver python examples/sbir_fiscal_impact_example.py")
+    print(
+        "  - Then run: docker compose exec dagster-webserver python examples/sbir_fiscal_impact_example.py"
+    )
     print("  - Export results to CSV/database")
     print("  - Create visualizations")
     print("  - Compare across fiscal years")

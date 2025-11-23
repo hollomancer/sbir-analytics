@@ -1,7 +1,6 @@
 """Migration runner for Neo4j schema migrations."""
 
 import importlib
-from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -84,11 +83,7 @@ class MigrationRunner:
                 # Find Migration subclass
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
-                    if (
-                        isinstance(attr, type)
-                        and issubclass(attr, Migration)
-                        and attr != Migration
-                    ):
+                    if isinstance(attr, type) and issubclass(attr, Migration) and attr != Migration:
                         migrations.append(attr())
             except Exception as e:
                 logger.warning(f"Failed to load migration from {file_path}: {e}")
@@ -189,4 +184,3 @@ class MigrationRunner:
             )
 
         return history
-

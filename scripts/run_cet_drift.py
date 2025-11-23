@@ -150,7 +150,7 @@ def score_hist_pmf(scores: Iterable[float], bins: list[float]) -> dict[str, floa
                 return {}
             pmf: dict[str, float] = {}
             for i in range(len(hist)):
-                label = f"{int(edges[i])}-{int(edges[i+1])}"
+                label = f"{int(edges[i])}-{int(edges[i + 1])}"
                 pmf[label] = float(hist[i]) / float(total)
             return pmf
         except Exception:

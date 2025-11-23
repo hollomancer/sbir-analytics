@@ -34,7 +34,7 @@ def main():
     if not os.getenv("HF_TOKEN"):
         console.print(
             "[bold red]Warning:[/bold red] HF_TOKEN environment variable not set.\n"
-            "Set it with: export HF_TOKEN=\"your_token_here\"\n"
+            'Set it with: export HF_TOKEN="your_token_here"\n'
         )
         return 1
 
@@ -79,18 +79,22 @@ def main():
     # Display prepared texts
     console.print("[bold blue]Prepared Texts[/bold blue]\n")
 
-    console.print(Panel(
-        f"[cyan]Award Text:[/cyan]\n{award_text}",
-        title="Deep Learning for Drug Discovery",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            f"[cyan]Award Text:[/cyan]\n{award_text}",
+            title="Deep Learning for Drug Discovery",
+            border_style="cyan",
+        )
+    )
     console.print()
 
-    console.print(Panel(
-        f"[yellow]Patent Text:[/yellow]\n{patent_text}",
-        title="High-Performance Photovoltaic Device",
-        border_style="yellow",
-    ))
+    console.print(
+        Panel(
+            f"[yellow]Patent Text:[/yellow]\n{patent_text}",
+            title="High-Performance Photovoltaic Device",
+            border_style="yellow",
+        )
+    )
     console.print()
 
     # Generate embeddings
@@ -104,10 +108,7 @@ def main():
         return 1
 
     # Compute similarity
-    similarity = client.compute_similarity(
-        award_result.embeddings,
-        patent_result.embeddings
-    )[0, 0]
+    similarity = client.compute_similarity(award_result.embeddings, patent_result.embeddings)[0, 0]
 
     # Compute additional metrics
     award_emb = award_result.embeddings[0]
@@ -153,17 +154,20 @@ def main():
     overlap_table.add_row(
         "Common Words",
         str(len(common_words)),
-        ", ".join(sorted(common_words))[:100] + ("..." if len(", ".join(sorted(common_words))) > 100 else "")
+        ", ".join(sorted(common_words))[:100]
+        + ("..." if len(", ".join(sorted(common_words))) > 100 else ""),
     )
     overlap_table.add_row(
         "Award-Only Words",
         str(len(unique_award_words)),
-        ", ".join(sorted(list(unique_award_words)[:10])) + ("..." if len(unique_award_words) > 10 else "")
+        ", ".join(sorted(list(unique_award_words)[:10]))
+        + ("..." if len(unique_award_words) > 10 else ""),
     )
     overlap_table.add_row(
         "Patent-Only Words",
         str(len(unique_patent_words)),
-        ", ".join(sorted(list(unique_patent_words)[:10])) + ("..." if len(unique_patent_words) > 10 else "")
+        ", ".join(sorted(list(unique_patent_words)[:10]))
+        + ("..." if len(unique_patent_words) > 10 else ""),
     )
 
     console.print(overlap_table)
@@ -194,15 +198,15 @@ def main():
     )
 
     related_patent_text = client.prepare_patent_text(
-        related_patent["title"],
-        related_patent["abstract"]
+        related_patent["title"], related_patent["abstract"]
     )
 
     related_award_result = client.generate_embeddings([related_award_text], show_progress_bar=False)
-    related_patent_result = client.generate_embeddings([related_patent_text], show_progress_bar=False)
+    related_patent_result = client.generate_embeddings(
+        [related_patent_text], show_progress_bar=False
+    )
     related_similarity = client.compute_similarity(
-        related_award_result.embeddings,
-        related_patent_result.embeddings
+        related_award_result.embeddings, related_patent_result.embeddings
     )[0, 0]
 
     # Test with a clearly unrelated pair
@@ -216,14 +220,14 @@ def main():
     }
 
     unrelated_patent_text = client.prepare_patent_text(
-        unrelated_patent["title"],
-        unrelated_patent["abstract"]
+        unrelated_patent["title"], unrelated_patent["abstract"]
     )
 
-    unrelated_patent_result = client.generate_embeddings([unrelated_patent_text], show_progress_bar=False)
+    unrelated_patent_result = client.generate_embeddings(
+        [unrelated_patent_text], show_progress_bar=False
+    )
     unrelated_similarity = client.compute_similarity(
-        award_result.embeddings,
-        unrelated_patent_result.embeddings
+        award_result.embeddings, unrelated_patent_result.embeddings
     )[0, 0]
 
     comparison_table = Table(show_header=True, header_style="bold magenta")
@@ -232,19 +236,13 @@ def main():
     comparison_table.add_column("Expected", style="dim")
 
     comparison_table.add_row(
-        "Drug Discovery ↔ Molecular Prediction",
-        f"{related_similarity:.4f}",
-        "High (related)"
+        "Drug Discovery ↔ Molecular Prediction", f"{related_similarity:.4f}", "High (related)"
     )
     comparison_table.add_row(
-        "Drug Discovery ↔ Photovoltaic Device",
-        f"{similarity:.4f}",
-        "Low (unrelated)"
+        "Drug Discovery ↔ Photovoltaic Device", f"{similarity:.4f}", "Low (unrelated)"
     )
     comparison_table.add_row(
-        "Drug Discovery ↔ Additive Manufacturing",
-        f"{unrelated_similarity:.4f}",
-        "Low (unrelated)"
+        "Drug Discovery ↔ Additive Manufacturing", f"{unrelated_similarity:.4f}", "Low (unrelated)"
     )
 
     console.print(comparison_table)
@@ -275,4 +273,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

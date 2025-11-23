@@ -37,11 +37,7 @@ class CongressionalDistrictResolver:
         self.method = method
 
     def resolve_district_from_address(
-        self,
-        address: str,
-        city: str,
-        state: str,
-        zip_code: str
+        self, address: str, city: str, state: str, zip_code: str
     ) -> dict:
         """Resolve congressional district from address components.
 
@@ -71,9 +67,7 @@ class CongressionalDistrictResolver:
         else:
             raise ValueError(f"Unknown method: {self.method}")
 
-    def _resolve_via_census_api(
-        self, address: str, city: str, state: str, zip_code: str
-    ) -> dict:
+    def _resolve_via_census_api(self, address: str, city: str, state: str, zip_code: str) -> dict:
         """Resolve district using US Census Geocoder API.
 
         Census API: https://geocoding.geo.census.gov/geocoder/
@@ -92,9 +86,6 @@ class CongressionalDistrictResolver:
         import time
         import requests
 
-        # Format full address for Census API
-        full_address = f"{address}, {city}, {state} {zip_code}"
-
         # Census Geocoder API endpoint
         base_url = "https://geocoding.geo.census.gov/geocoder/geographies/address"
 
@@ -105,7 +96,7 @@ class CongressionalDistrictResolver:
             "zip": zip_code,
             "benchmark": "Public_AR_Current",
             "vintage": "Current_Current",
-            "format": "json"
+            "format": "json",
         }
 
         try:
@@ -142,7 +133,7 @@ class CongressionalDistrictResolver:
             "congressional_district": None,
             "confidence": 0.0,
             "method": "census_api",
-            "error": "Could not resolve district"
+            "error": "Could not resolve district",
         }
 
     def _resolve_via_zip_crosswalk(self, zip_code: str) -> dict:
@@ -182,12 +173,10 @@ class CongressionalDistrictResolver:
             "congressional_district": None,
             "confidence": 0.0,
             "method": "zip_crosswalk",
-            "error": "ZIP not in crosswalk"
+            "error": "ZIP not in crosswalk",
         }
 
-    def _resolve_via_google_civic(
-        self, address: str, city: str, state: str, zip_code: str
-    ) -> dict:
+    def _resolve_via_google_civic(self, address: str, city: str, state: str, zip_code: str) -> dict:
         """Resolve district using Google Civic Information API.
 
         Requires API key. Very accurate and includes current representative info.
@@ -202,7 +191,7 @@ class CongressionalDistrictResolver:
                 "congressional_district": None,
                 "confidence": 0.0,
                 "method": "google_civic",
-                "error": "GOOGLE_CIVIC_API_KEY not set"
+                "error": "GOOGLE_CIVIC_API_KEY not set",
             }
 
         # Format address
@@ -213,7 +202,7 @@ class CongressionalDistrictResolver:
             "key": api_key,
             "address": full_address,
             "levels": "country",
-            "roles": "legislatorLowerBody"
+            "roles": "legislatorLowerBody",
         }
 
         try:
@@ -223,7 +212,7 @@ class CongressionalDistrictResolver:
 
             # Extract congressional district info
             divisions = data.get("divisions", {})
-            for division_id, division_data in divisions.items():
+            for division_id, _division_data in divisions.items():
                 if "cd:" in division_id:
                     # Extract state and district from ocd-division ID
                     # Example: ocd-division/country:us/state:ca/cd:12
@@ -255,7 +244,7 @@ class CongressionalDistrictResolver:
             "congressional_district": None,
             "confidence": 0.0,
             "method": "google_civic",
-            "error": "Could not resolve district"
+            "error": "Could not resolve district",
         }
 
     def enrich_awards_with_districts(self, awards_df: pd.DataFrame) -> pd.DataFrame:
@@ -311,19 +300,21 @@ def demonstrate_district_resolution():
     """Demonstrate congressional district resolution."""
 
     # Create sample awards with addresses
-    awards_df = pd.DataFrame({
-        "award_id": ["SBIR-001", "SBIR-002", "SBIR-003"],
-        "company_name": ["Tech Corp", "Bio Inc", "Mfg LLC"],
-        "company_address": [
-            "1600 Amphitheatre Parkway",
-            "1 Main Street",
-            "100 Innovation Drive"
-        ],
-        "company_city": ["Mountain View", "Cambridge", "Austin"],
-        "company_state": ["CA", "MA", "TX"],
-        "company_zip": ["94043", "02142", "78701"],
-        "award_amount": [1000000, 500000, 750000],
-    })
+    awards_df = pd.DataFrame(
+        {
+            "award_id": ["SBIR-001", "SBIR-002", "SBIR-003"],
+            "company_name": ["Tech Corp", "Bio Inc", "Mfg LLC"],
+            "company_address": [
+                "1600 Amphitheatre Parkway",
+                "1 Main Street",
+                "100 Innovation Drive",
+            ],
+            "company_city": ["Mountain View", "Cambridge", "Austin"],
+            "company_state": ["CA", "MA", "TX"],
+            "company_zip": ["94043", "02142", "78701"],
+            "award_amount": [1000000, 500000, 750000],
+        }
+    )
 
     print("=" * 80)
     print("CONGRESSIONAL DISTRICT RESOLUTION DEMONSTRATION")
@@ -339,7 +330,11 @@ def demonstrate_district_resolution():
     print("-" * 80)
     resolver_zip = CongressionalDistrictResolver(method="zip_crosswalk")
     enriched_zip = resolver_zip.enrich_awards_with_districts(awards_df)
-    print(enriched_zip[["company_name", "congressional_district", "district_confidence"]].to_string(index=False))
+    print(
+        enriched_zip[["company_name", "congressional_district", "district_confidence"]].to_string(
+            index=False
+        )
+    )
     print()
 
     # Census API method would be:

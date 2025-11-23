@@ -33,7 +33,8 @@ def check_r_available():
     """Check if R is available."""
     try:
         import rpy2.robjects as ro
-        r_version = ro.r('R.version.string')[0]
+
+        r_version = ro.r("R.version.string")[0]
         print(f"✓ R available ({r_version})")
         return True
     except Exception as e:
@@ -47,7 +48,7 @@ def check_r_package(package_name: str) -> bool:
     try:
         from rpy2.robjects.packages import importr
 
-        pkg = importr(package_name)
+        importr(package_name)
         print(f"✓ R package '{package_name}' installed")
         return True
     except Exception as e:
@@ -65,7 +66,7 @@ def check_stateio_functions():
         stateio = importr("stateior")
 
         # Try to call a function to verify it works
-        ro.r('library(stateior)')
+        ro.r("library(stateior)")
 
         # Check if key functions exist
         functions_to_check = [

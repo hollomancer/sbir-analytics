@@ -489,12 +489,8 @@ class PerformanceReporter:
                 enrichment_stats = {}
                 benchmark_data["enrichment_stats"] = enrichment_stats
             enrichment_stats["match_rate"] = comparison.current_metrics.match_rate
-            enrichment_stats["matched_awards"] = (
-                comparison.current_metrics.matched_records or 0
-            )
-            enrichment_stats["total_awards"] = (
-                comparison.current_metrics.total_records or 0
-            )
+            enrichment_stats["matched_awards"] = comparison.current_metrics.matched_records or 0
+            enrichment_stats["total_awards"] = comparison.current_metrics.total_records or 0
 
         html = self.generate_html_report(benchmark_data, comparison, title)
         path.write_text(html)
