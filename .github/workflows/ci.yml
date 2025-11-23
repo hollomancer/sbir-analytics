@@ -309,11 +309,24 @@ jobs:
     if: needs.detect-changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      id-token: write  # For OIDC authentication to AWS
+      contents: read   # Only read access needed
+    env:
+      AWS_REGION: us-east-2
+      S3_BUCKET: sbir-etl-production-data
+      SBIR_ANALYTICS_S3_BUCKET: sbir-etl-production-data
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
