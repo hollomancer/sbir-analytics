@@ -34,8 +34,8 @@ from .utils import (
 try:
     from ...loaders.neo4j import TransitionLoader, TransitionProfileLoader
 except Exception:
-    TransitionLoader = None  # type: ignore[assignment, no-redef]
-    TransitionProfileLoader = None  # type: ignore[assignment, no-redef]
+    TransitionLoader = None  # type: ignore[assignment, misc, no-redef]
+    TransitionProfileLoader = None  # type: ignore[assignment, misc, no-redef]
 
 
 @asset(

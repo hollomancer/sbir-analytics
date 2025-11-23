@@ -179,7 +179,7 @@ class PaECTERClient:
                     generation_timestamp=0.0,
                     input_count=len(texts),
                     dimension=self.embedding_dim,
-                    inference_mode=self.inference_mode,
+                    inference_mode=self.inference_mode,  # type: ignore[arg-type]
                 )
         else:
             texts_to_process = texts
@@ -243,9 +243,10 @@ class PaECTERClient:
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
 
-            # Use feature extraction endpoint
+            # Use feature extraction endpoint - join batch into single string
+            batch_text = " ".join(batch)  # type: ignore[arg-type]
             response = self.client.feature_extraction(
-                batch,
+                batch_text,
                 model=self.model_name,
             )
 

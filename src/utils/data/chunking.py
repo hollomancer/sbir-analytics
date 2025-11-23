@@ -94,7 +94,7 @@ class ChunkIterator:
     def __len__(self) -> int:
         """Return number of chunks."""
         if self._is_dataframe:
-            total = len(self.data)
+            total = len(self.data)  # type: ignore[arg-type]
             return (total - self.start_idx + self.chunk_size - 1) // self.chunk_size
         else:
             # For iterables, we can't determine length without consuming
