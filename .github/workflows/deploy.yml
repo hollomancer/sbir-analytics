@@ -112,6 +112,14 @@ jobs:
             echo "::warning::Low disk space (${AVAILABLE}GB available). PEX build may fail."
           fi
 
+      - name: Check Disk Space Before Build
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          echo "Disk space before PEX build:"
+          df -h
+          AVAILABLE=$(df -BG "$GITHUB_WORKSPACE" | tail -1 | awk '{print $4}' | sed 's/G//')
+          echo "Available disk space: ${AVAILABLE}GB"
+          
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.12.3
@@ -121,6 +129,8 @@ jobs:
           python_version: "${{ env.PYTHON_VERSION }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set PEX cache to a temp directory that we can clean up
+          PEX_ROOT: "/tmp/pex-cache"
 
   dagster_cloud_docker_deploy:
     name: Docker Deploy
