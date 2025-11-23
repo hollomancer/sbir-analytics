@@ -152,7 +152,7 @@ class PatentFeatureExtractor:
                 pfv = _SimpleFV(normalized_title, assignee_hint)
                 feature_vectors.append(pfv)
             else:
-                pfv: PatentFeatureVector = extract_features(  # type: ignore[assignment]
+                pfv = extract_features(  # type: ignore[assignment,no-redef,valid-type]
                     rec, keywords_map=self.keywords_map, stopwords=self.stopwords
                 )
                 feature_vectors.append(pfv)  # type: ignore[arg-type]
