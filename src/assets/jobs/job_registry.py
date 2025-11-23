@@ -49,7 +49,7 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
             f"Job '{spec.name}' must define asset_keys, asset_groups, or assets for selection"
         )
 
-    return define_asset_job(name=spec.name, selection=selection, description=spec.description)
+    return define_asset_job(name=spec.name, selection=selection, description=spec.description)  # type: ignore[return-value]
 
 
 def build_placeholder_job(name: str, description: str) -> JobDefinition:

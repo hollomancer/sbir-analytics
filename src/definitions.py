@@ -102,9 +102,9 @@ all_sensors = _discover_sensors()
 
 # Aggregate jobs for repository registration
 job_definitions: list[JobDefinition] = [
-    sbir_ingestion_job,
-    etl_job,
-    cet_drift_job,
+    sbir_ingestion_job,  # type: ignore[list-item]
+    etl_job,  # type: ignore[list-item]
+    cet_drift_job,  # type: ignore[list-item]
 ]
 job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)
 

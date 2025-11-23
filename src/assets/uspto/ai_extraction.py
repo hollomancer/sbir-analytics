@@ -363,7 +363,11 @@ def raw_uspto_ai_human_sample_extraction(context, uspto_ai_deduplicate) -> str:
     output_path = Path(getattr(context, "op_config", {}).get("output_path", DEFAULT_AI_SAMPLE_PATH))
 
     try:
-        pass
+        # TODO: Implement sampling logic
+        _ensure_dir_ai(output_path)
+        with output_path.open("w", encoding="utf-8") as fh:
+            fh.write("")  # empty sentinel
+        return str(output_path)
     except Exception as exc:
         context.log.warning("duckdb unavailable; cannot sample: %s", exc)
         _ensure_dir_ai(output_path)

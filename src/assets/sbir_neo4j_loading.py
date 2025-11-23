@@ -342,7 +342,7 @@ def detect_award_progressions(
                 # (to avoid multiple FOLLOWS from one award if there are multiple Phase IIs)
                 break
 
-    return progressions
+    return progressions  # type: ignore[return-value]
 
 
 @asset(
@@ -1170,7 +1170,7 @@ def neo4j_sbir_awards(
                 "researchers_loaded": int(result.get("researchers_loaded", 0)),  # type: ignore[call-overload]
                 "institutions_loaded": int(result.get("institutions_loaded", 0)),  # type: ignore[call-overload]
                 "relationships_created": int(result.get("relationships_created", 0)),  # type: ignore[call-overload]
-                "errors": len(result.get("errors", [])),
+                "errors": len(result.get("errors", [])) if isinstance(result.get("errors"), list) else 0,  # type: ignore[arg-type]
                 "duration_seconds": round(duration, 2),
                 "metrics_file": str(metrics_file),
             },

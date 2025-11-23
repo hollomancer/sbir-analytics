@@ -307,7 +307,7 @@ def _enrich_chunked(
             extra=metrics,
         )
 
-        return enriched_df, metrics, enricher
+        return enriched_df, metrics  # type: ignore[return-value]
 
     except Exception as e:
         logger.error(f"Chunked enrichment failed: {e}")

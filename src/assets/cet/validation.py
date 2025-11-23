@@ -629,9 +629,10 @@ def validated_cet_drift_detection() -> Output:
     }
 
     # Build alerts based on thresholds
-    alerts_payload: dict[str, list[dict[str, str | float]] | str] = {"alerts": [], "generated_at": datetime.utcnow().isoformat()}
+    alerts_list: list[dict[str, str | float]] = []
+    alerts_payload: dict[str, list[dict[str, str | float]] | str] = {"alerts": alerts_list, "generated_at": datetime.utcnow().isoformat()}
     if label_js is not None and label_js > LABEL_JS_THRESHOLD:
-        alerts_payload["alerts"].append(
+        alerts_list.append(
             {
                 "severity": "WARNING" if label_js <= 2 * LABEL_JS_THRESHOLD else "FAILURE",
                 "type": "label_distribution_drift",
@@ -640,7 +641,7 @@ def validated_cet_drift_detection() -> Output:
             }
         )
     if score_js is not None and score_js > SCORE_JS_THRESHOLD:
-        alerts_payload["alerts"].append(
+        alerts_list.append(
             {
                 "severity": "WARNING" if score_js <= 2 * SCORE_JS_THRESHOLD else "FAILURE",
                 "type": "score_distribution_drift",
@@ -666,9 +667,9 @@ def validated_cet_drift_detection() -> Output:
     if AlertCollector is not None and Alert is not None and AlertSeverity is not None:
         try:
             collector = AlertCollector(asset_name="validated_cet_drift_detection")
-            alerts_list = alerts_payload.get("alerts", [])
-            if isinstance(alerts_list, list):
-                for a in alerts_list:
+            alerts_list_val: list[dict[str, str | float]] = alerts_payload.get("alerts", [])  # type: ignore[assignment]
+            if isinstance(alerts_list_val, list):
+                for a in alerts_list_val:
                     if not isinstance(a, dict):
                         continue
                     sev = AlertSeverity.WARNING if a.get("severity") == "WARNING" else AlertSeverity.FAILURE

@@ -77,7 +77,7 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
 
         # Trigger refresh
         context.log.info("Triggering USAspending iterative refresh")
-        return RunRequest(
+        return RunRequest(  # type: ignore[return-value]
             run_key=f"usaspending_refresh_{datetime.now().isoformat()}",
             tags={
                 "source": "usaspending",

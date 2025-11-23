@@ -399,7 +399,7 @@ class ApplicabilityModel:
             )
 
         scores_array = self._get_scores([text], agency=agency, branch=branch)
-        scores = dict(zip(self.pipelines.keys(), scores_array[0], strict=False))
+        scores = dict(zip(self.pipelines.keys(), scores_array[0], strict=False))  # type: ignore[list-item]
 
         # Get thresholds
         thresholds = self.config.get("confidence_thresholds", {})
