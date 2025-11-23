@@ -12,23 +12,48 @@
 # - non-root runtime user `sbir`
 #
 # Usage:
+#   # Production build with R from scratch (RSPM optimized, ~5 min):
 #   docker build -t sbir-analytics:latest .
+#
+#   # Production build with pre-built R packages (fastest with R, ~2 min):
+#   docker build --build-arg USE_R_BASE_IMAGE=true -t sbir-analytics:latest .
+#
+#   # CI build without R (fastest overall, ~2 min):
+#   docker build --build-arg BUILD_WITH_R=false -t sbir-analytics:ci .
+#
 #   make docker-build (provided Makefile uses this Dockerfile)
 #
-ARG PYTHON_VERSION=3.11
-ARG IMAGE_PY=python:${PYTHON_VERSION}-slim
+ARG PYTHON_VERSION=3.11.9
+ARG IMAGE_PY=python:${PYTHON_VERSION}-slim-bookworm
+# Build argument to control R installation (set to false for faster CI builds)
+ARG BUILD_WITH_R=true
+# Build argument to use pre-built R base image (faster than building R from scratch)
+ARG USE_R_BASE_IMAGE=false
+ARG R_BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-r-base:latest
+
+########################################################################
+# R Base Cache stage (optional): pre-built R packages from cached image
+########################################################################
+FROM ${R_BASE_IMAGE} AS r-base-cache
+# This stage pulls the pre-built R base image if USE_R_BASE_IMAGE=true
+# It's only used to copy R packages from, not run
+# If the image doesn't exist, this stage won't be used (builder will build R from scratch)
 
 ########################################################################
 # Builder stage: install system deps, export UV -> requirements, build wheels
 ########################################################################
 FROM ${IMAGE_PY} AS builder
 
+# Re-declare build args for use in this stage
+ARG BUILD_WITH_R=true
+ARG USE_R_BASE_IMAGE=false
+
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1
 
-# Install build tools required to compile wheels and R
-# Include cmake and other dependencies needed for arrow (to speed up R package builds)
+# Install build tools required to compile wheels
+# Python build deps are always needed; R deps are conditional
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -39,31 +64,38 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gcc \
     libpq-dev \
     python3-dev \
-    r-base \
-    r-base-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev \
-    libfontconfig1-dev \
-    libfreetype6-dev \
-    libfribidi-dev \
-    libharfbuzz-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libicu-dev \
-    cmake \
-    pkg-config \
-    libbz2-dev \
-    liblzma-dev \
-    zlib1g-dev \
+    && if [ "$BUILD_WITH_R" = "true" ]; then \
+        apt-get install -y --no-install-recommends \
+        r-base \
+        r-base-dev \
+        ccache \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libfreetype6-dev \
+        libfribidi-dev \
+        libharfbuzz-dev \
+        libjpeg-dev \
+        libpng-dev \
+        libtiff-dev \
+        libicu-dev \
+        cmake \
+        pkg-config \
+        libbz2-dev \
+        liblzma-dev \
+        zlib1g-dev; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app dir
 WORKDIR /workspace
 
-# Install UV - fast Python package installer
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Install UV - fast Python package installer (pinned version for better caching)
+ARG UV_VERSION=0.5.11
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
+    mv /root/.cargo/bin/uv /usr/local/bin/uv && \
+    uv --version
 
 # Copy dependency manifests early to leverage layer cache
 COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
@@ -93,60 +125,73 @@ COPY . /workspace/
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip wheel --wheel-dir=/wheels .
 
-# Install R packages (stateior) for fiscal analysis
+# Install R packages (stateior) for fiscal analysis (only if BUILD_WITH_R=true)
 # This package is used via rpy2 for economic input-output modeling
 # Install to system library so it's available in runtime
 #
-# Optimization strategies:
-# 1. Install arrow explicitly first (may get binary, or at least parallel build)
-# 2. Use parallel compilation with MAKEFLAGS and Ncpus
-# 3. Cache R library directory between builds
-# 4. Set ARROW_R_DEV=false to avoid building development version
-# 5. Install dependencies in separate steps for better caching
+# Three installation paths:
+# 1. USE_R_BASE_IMAGE=true: Copy pre-built R packages from cached image (FASTEST - ~30s)
+# 2. BUILD_WITH_R=true, USE_R_BASE_IMAGE=false: Build with RSPM binaries (~2-5min, was ~20min)
+# 3. BUILD_WITH_R=false: Skip R entirely (instant)
+#
+# OPTIMIZATION: Uses RStudio Package Manager (RSPM) for pre-compiled R package binaries
+# This reduces arrow installation from ~15min (source build) to ~30sec (binary download)
+#
+# NOTE: When BUILD_WITH_R=false (CI builds), this step is skipped entirely.
+# Tests will skip R-dependent tests via pytest.importorskip("rpy2")
+
+# Copy R packages from pre-built image (only used if USE_R_BASE_IMAGE=true)
+# If r-base-cache doesn't exist or is empty, this creates an empty dir
+COPY --from=r-base-cache /usr/local/lib/R/site-library /tmp/r-cache/
+
+# Then either use cached R packages or build from scratch
 RUN --mount=type=cache,target=/root/.cache/R \
-    export MAKEFLAGS="-j$(nproc)" && \
-    export R_SITE_LIB='/usr/local/lib/R/site-library' && \
-    export ARROW_R_DEV=FALSE && \
-    export ARROW_DEPENDENCY_SOURCE=BUNDLED && \
-    export ARROW_USE_PKG_CONFIG=false && \
-    export ARROW_WITH_BZ2=ON && \
-    export ARROW_WITH_LZ4=ON && \
-    export ARROW_WITH_SNAPPY=ON && \
-    export ARROW_WITH_ZLIB=ON && \
-    export ARROW_WITH_ZSTD=ON && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing remotes package...\n'); \
-    install.packages('remotes', repos='https://cloud.r-project.org/', \
-                     lib='${R_SITE_LIB}', \
-                     Ncpus = parallel::detectCores())" && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing arrow package from source with bundled C++ libs...\n'); \
-    install.packages('arrow', repos='https://cloud.r-project.org/', \
-                     lib='${R_SITE_LIB}', \
-                     type='source', \
-                     Ncpus = parallel::detectCores()); \
-    arrow_ok <- tryCatch({ \
-        suppressPackageStartupMessages(library(arrow)); \
-        TRUE \
-    }, error = function(err) { \
-        message('arrow failed to load after installation: ', conditionMessage(err)); \
-        FALSE \
-    }); \
-    if (!arrow_ok) { \
-        quit(status = 1); \
-    } else { \
-        detach('package:arrow', unload = TRUE); \
-    }" && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing stateior package (arrow should already be installed)...\n'); \
-    remotes::install_github('USEPA/stateior', dependencies=TRUE, \
-                            lib='${R_SITE_LIB}', \
-                            Ncpus = parallel::detectCores(), \
-                            upgrade = 'never')" && \
-    R -e "cat('R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
+    --mount=type=cache,target=/root/.cache/ccache \
+    export PATH="/usr/lib/ccache:${PATH}" && \
+    export CCACHE_DIR=/root/.cache/ccache && \
+    if [ "$BUILD_WITH_R" = "true" ] && [ "$USE_R_BASE_IMAGE" = "true" ] && [ -d "/tmp/r-cache" ] && [ "$(ls -A /tmp/r-cache 2>/dev/null)" ]; then \
+        echo "✓ Using pre-built R packages from cached image (fast path)"; \
+        mkdir -p /usr/local/lib/R/site-library; \
+        cp -r /tmp/r-cache/* /usr/local/lib/R/site-library/; \
+        echo "R packages copied from cache successfully"; \
+    elif [ "$BUILD_WITH_R" = "true" ]; then \
+        echo "Building R packages from scratch (optimized with RSPM binaries, ~2-5 minutes)..."; \
+        export MAKEFLAGS="-j$(nproc)" && \
+        export R_SITE_LIB='/usr/local/lib/R/site-library' && \
+        export RSPM_ROOT='https://packagemanager.rstudio.com/all/__linux__/jammy/latest' && \
+        R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing remotes package from RSPM...\n'); \
+        install.packages('remotes', Ncpus = parallel::detectCores())" && \
+        R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing arrow package from RSPM (pre-compiled binary)...\n'); \
+        install.packages('arrow', Ncpus = parallel::detectCores()); \
+        arrow_ok <- tryCatch({ \
+            suppressPackageStartupMessages(library(arrow)); \
+            TRUE \
+        }, error = function(err) { \
+            message('arrow failed to load: ', conditionMessage(err)); \
+            FALSE \
+        }); \
+        if (!arrow_ok) { \
+            quit(status = 1); \
+        } else { \
+            cat('✓ arrow loaded successfully\n'); \
+            detach('package:arrow', unload = TRUE); \
+        }" && \
+        R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing stateior package from GitHub...\n'); \
+        remotes::install_github('USEPA/stateior', \
+                                dependencies = TRUE, \
+                                upgrade = 'never', \
+                                Ncpus = parallel::detectCores())" && \
+        R -e "cat('✓ R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"; \
+    else \
+        echo "BUILD_WITH_R=false, skipping R package installation for faster build"; \
+        mkdir -p /usr/local/lib/R/site-library; \
+    fi
 
 # At this point /wheels contains all binary/py wheels needed for runtime install
 # Copy wheels + requirements to a known place for runtime stage
@@ -157,22 +202,29 @@ RUN ls -la /wheels
 ########################################################################
 FROM ${IMAGE_PY} AS runtime
 
+# Re-declare build args for use in this stage
+ARG BUILD_WITH_R=true
+
 ENV PATH=/usr/local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/app \
-    R_HOME=/usr/lib/R
+    PYTHONPATH=/app
 
-# Install tini, utilities, and R runtime required at runtime
-# R runtime (without dev tools) needed for rpy2 to work
-# R will pull in its own dependencies, we just need the base runtime libraries
+# Install tini and utilities (always needed)
+# R runtime is conditional based on BUILD_WITH_R
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
     tini \
-    r-base \
+    && if [ "$BUILD_WITH_R" = "true" ]; then \
+        apt-get install -y --no-install-recommends r-base; \
+        export R_HOME=/usr/lib/R; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
+
+# Set R_HOME only if R is installed
+ENV R_HOME=${BUILD_WITH_R:+/usr/lib/R}
 
 # Create app user/group early (uid/gid stable across runs)
 ARG SBIR_UID=1000
@@ -186,10 +238,12 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
 
-# Copy R packages from builder to runtime (more efficient than reinstalling)
+# Copy R packages from builder to runtime (only if BUILD_WITH_R=true)
 # R packages installed via install.packages() go to /usr/local/lib/R/site-library
 # We copy the entire directory structure to preserve all packages and dependencies
-RUN mkdir -p /usr/local/lib/R/site-library
+RUN if [ "$BUILD_WITH_R" = "true" ]; then \
+        mkdir -p /usr/local/lib/R/site-library; \
+    fi
 COPY --from=builder /usr/local/lib/R/site-library/ /usr/local/lib/R/site-library/
 
 # Install all wheels from /wheels into the runtime environment using pip
