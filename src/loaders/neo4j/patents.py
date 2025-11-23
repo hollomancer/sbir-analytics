@@ -570,7 +570,7 @@ class PatentLoader(BaseNeo4jLoader):
             )
 
         metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
-            relationships=relationships, metrics=metrics
+            relationships=relationships, metrics=metrics  # type: ignore[arg-type]
         )
 
         duration = time.time() - start_time
@@ -658,7 +658,7 @@ class PatentLoader(BaseNeo4jLoader):
             )
 
         metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
-            relationships=relationships, metrics=metrics
+            relationships=relationships, metrics=metrics  # type: ignore[arg-type]
         )
 
         duration = time.time() - start_time
