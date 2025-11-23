@@ -124,8 +124,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
  && python -m pip install --upgrade pip setuptools wheel \
  && if [ "$BUILD_WITH_R" = "false" ]; then \
         export RPY2_CFFI_MODE=ABI; \
+        (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt); \
+    else \
+        (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt); \
     fi \
- && (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt) \
  && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
  && if [ "$BUILD_WITH_R" = "false" ]; then \
         export RPY2_CFFI_MODE=ABI; \
