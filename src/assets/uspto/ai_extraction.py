@@ -272,13 +272,13 @@ def uspto_ai_deduplicate(context, raw_uspto_ai_extract) -> dict[str, object]:
         return {"ok": False, "reason": "duckdb_unavailable"}
 
     con = duckdb.connect(database=str(duckdb_path), read_only=False)
+    try:
+        # Counts before
         try:
-            # Counts before
-            try:
-                row = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
-                before_cnt = int(row[0]) if row is not None and len(row) > 0 else 0  # type: ignore[index]
-            except Exception:
-                before_cnt = 0
+            row = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+            before_cnt = int(row[0]) if row is not None and len(row) > 0 else 0  # type: ignore[index]
+        except Exception:
+            before_cnt = 0
 
         # Create or replace dedup table with row_number window over grant_doc_num
         con.execute(
