@@ -243,10 +243,9 @@ class PaECTERClient:
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
 
-            # Use feature extraction endpoint - join batch into single string
-            batch_text = " ".join(batch)  # type: ignore[arg-type]
+            # Use feature extraction endpoint
             response = self.client.feature_extraction(
-                batch_text,
+                batch,  # type: ignore[arg-type]
                 model=self.model_name,
             )
 

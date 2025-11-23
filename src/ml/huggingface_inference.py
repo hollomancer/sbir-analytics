@@ -180,7 +180,7 @@ class HuggingFaceInferenceClient:
                 try:
                     # Use feature_extraction endpoint
                     batch_embeddings = self.client.feature_extraction(
-                        text=batch,
+                        text=batch,  # type: ignore[arg-type]
                         model=self.model_name,
                     )
 
