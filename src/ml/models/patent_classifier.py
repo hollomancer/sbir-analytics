@@ -107,7 +107,7 @@ class PatentFeatureExtractor:
             )
 
         texts: list[str] = []
-        feature_vectors: list[PatentFeatureVector] = []
+        feature_vectors: list[PatentFeatureVector] = [] # type: ignore[valid-type]
 
         # iterate deterministic order
         for _, row in df.iterrows():

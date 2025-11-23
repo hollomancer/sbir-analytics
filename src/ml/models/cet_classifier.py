@@ -398,7 +398,7 @@ class ApplicabilityModel:
                 details={"is_trained": self.is_trained, "num_pipelines": len(self.pipelines)},
             )
 
-        scores_array = self._get_scores([text], agency=agency, branch=branch)
+        scores_array = self._get_scores([text], agency=agency, branch=branch) # type: ignore[list-item,misc]
         scores = dict(zip(self.pipelines.keys(), scores_array[0], strict=False))  # type: ignore[list-item]
 
         # Get thresholds
