@@ -51,6 +51,8 @@ ARG USE_R_BASE_IMAGE=false
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1
+# Set RPY2_CFFI_MODE=ABI when building without R (allows rpy2 to build without R installation)
+ARG RPY2_CFFI_MODE=""
 
 # Install build tools required to compile wheels
 # Python build deps are always needed; R deps are conditional
@@ -102,20 +104,32 @@ COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 
 # Export a requirements.txt for pip-based wheel building (main + dev + r groups for test tooling)
 # Use --locked to ensure exact versions from uv.lock are used
-# Include 'r' extra to get rpy2 for R integration
+# Include 'r' extra only if BUILD_WITH_R=true (for R integration)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 --locked -o requirements.txt || \
-    uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt
+    if [ "$BUILD_WITH_R" = "true" ]; then \
+        uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 --locked -o requirements.txt || \
+        uv pip compile pyproject.toml --extra dev --extra r --universal --python-version 3.11 -o requirements.txt; \
+    else \
+        uv pip compile pyproject.toml --extra dev --universal --python-version 3.11 --locked -o requirements.txt || \
+        uv pip compile pyproject.toml --extra dev --universal --python-version 3.11 -o requirements.txt; \
+    fi
 
 # Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
 # Install from lock file using uv (ensures exact versions), then build wheels from installed packages
 # If lock file doesn't exist or sync fails, fall back to requirements.txt
+# Set RPY2_CFFI_MODE=ABI when building without R to allow rpy2 to build without R installation
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,target=/root/.cache/pip \
     mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
+ && if [ "$BUILD_WITH_R" = "false" ]; then \
+        export RPY2_CFFI_MODE=ABI; \
+    fi \
  && (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt) \
  && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
+ && if [ "$BUILD_WITH_R" = "false" ]; then \
+        export RPY2_CFFI_MODE=ABI; \
+    fi \
  && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
 
 # NOW copy the rest of the code for building the package wheel
