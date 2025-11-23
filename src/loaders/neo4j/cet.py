@@ -364,6 +364,7 @@ class CETLoader(BaseNeo4jLoader):
             primary_id = _as_str(row.get("primary_cet"))
             if primary_id:
                 props = {
+            # type: ignore[arg-type]
                     "score": float(row.get("primary_score"))
                     if row.get("primary_score") is not None
                     else None,

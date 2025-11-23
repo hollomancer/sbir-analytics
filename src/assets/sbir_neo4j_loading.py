@@ -393,7 +393,7 @@ def neo4j_sbir_awards(
 
         # STEP 1: Pre-loading deduplication - canonicalize companies before processing
         config = get_config()
-        dedup_config = config.company_deduplication
+        dedup_config = config.transformation.company_deduplication  # type: ignore[attr-defined]
         context.log.info("Pre-processing: Canonicalizing companies...")
 
         canonical_map = canonicalize_companies_from_awards(

@@ -223,6 +223,7 @@ def enriched_cet_award_classifications() -> Output:
     extractor = None
     if EvidenceExtractor is not None:
         try:
+        # type: ignore[arg-type]
             extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)
         except Exception:
             extractor = None

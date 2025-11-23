@@ -277,7 +277,7 @@ def check_fiscal_impacts_quality(
     # Determine pass/fail
     passed = avg_confidence >= 0.7 and failed_pct < 10
 
-    severity = AssetCheckSeverity.WARN if not passed else AssetCheckSeverity.INFO
+    severity = AssetCheckSeverity.WARN if not passed else AssetCheckSeverity.INFO  # type: ignore[attr-defined]
 
     return AssetCheckResult(
         passed=passed,
