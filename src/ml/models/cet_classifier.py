@@ -485,7 +485,12 @@ class ApplicabilityModel:
             )
 
             # Get scores for batch with agency/branch priors
-            batch_scores_array = self._get_scores(batch, agency=agency, branch=branch)
+            # Extract text from batch items (could be str or dict)
+            batch_strs: list[str] = [
+                item if isinstance(item, str) else item.get("abstract", "") if isinstance(item, dict) else str(item)
+                for item in batch
+            ]
+            batch_scores_array = self._get_scores(batch_strs, agency=agency, branch=branch)  # type: ignore[arg-type]
 
             # Convert to classifications
             cet_ids = list(self.pipelines.keys())
