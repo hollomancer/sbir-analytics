@@ -12,7 +12,7 @@ RUN yum install -y curl && \
 
 # Install UV
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    cp $HOME/.cargo/bin/uv /usr/local/bin/uv && \
+    cp $HOME/.local/bin/uv /usr/local/bin/uv && \
     chmod +x /usr/local/bin/uv
 
 # Copy dependency files

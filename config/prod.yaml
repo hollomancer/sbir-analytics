@@ -92,8 +92,8 @@ enrichment:
     memory_threshold_mb: 4096
     timeout_seconds: 600
     retry_backoff: exponential
-    high_confidence_threshold: 92
-    low_confidence_threshold: 80
+    high_confidence_threshold: 0.92 # 92%
+    low_confidence_threshold: 0.80 # 80%
     enable_fuzzy_matching: true
     enable_memory_monitoring: true
     enable_progress_tracking: true

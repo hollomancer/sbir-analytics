@@ -96,8 +96,9 @@ enrichment:
 
     # Fuzzy matching confidence thresholds
     # Affects match quality and speed tradeoff
-    high_confidence_threshold: 90 # Min score for high-confidence match
-    low_confidence_threshold: 75 # Min score for low-confidence match
+    # Values are in range 0.0-1.0 (will be converted to 0-100 for fuzzy matching)
+    high_confidence_threshold: 0.90 # Min score for high-confidence match (90%)
+    low_confidence_threshold: 0.75 # Min score for low-confidence match (75%)
 
     # Enable/disable features
     enable_fuzzy_matching: true # Enable fuzzy name matching

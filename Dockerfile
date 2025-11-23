@@ -94,7 +94,7 @@ WORKDIR /workspace
 # Install UV - fast Python package installer (pinned version for better caching)
 ARG UV_VERSION=0.5.11
 RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
-    mv /root/.cargo/bin/uv /usr/local/bin/uv && \
+    mv /root/.local/bin/uv /usr/local/bin/uv && \
     uv --version
 
 # Copy dependency manifests early to leverage layer cache
