@@ -80,7 +80,7 @@ aws ec2 associate-iam-instance-profile \
 
 ### 3. Configure GitHub Secrets
 
-Add the EC2 instance ID to GitHub secrets:
+Add the EC2 instance ID to GitHub secrets:  # pragma: allowlist secret
 
 1. Go to GitHub repository → Settings → Secrets and variables → Actions
 2. Add secret: `EC2_INSTANCE_ID` = your EC2 instance ID
@@ -285,4 +285,5 @@ aws s3 head-object s3://sbir-etl-production-data/raw/usaspending/database/2025-1
 2. Add `EC2_INSTANCE_ID` to GitHub secrets
 3. Test with `test` database type first
 4. Schedule monthly runs or trigger manually as needed
+
 

@@ -174,7 +174,7 @@ async def lookup_entity():
     client = SAMGovAPIClient()
 
     # Get entity by UEI
-    entity = await client.get_entity_by_uei("ABC123456789")
+    entity = await client.get_entity_by_uei("ABC123456789")  # pragma: allowlist secret
 
     # Get entity by CAGE
     entity = await client.get_entity_by_cage("1ABC5")
@@ -228,7 +228,7 @@ export S3_BUCKET="your-bucket-name"
 
 # AWS credentials (required for S3 access)
 export AWS_ACCESS_KEY_ID="your-key"
-export AWS_SECRET_ACCESS_KEY="your-secret"
+export AWS_SECRET_ACCESS_KEY="your-secret"  # pragma: allowlist secret
 export AWS_DEFAULT_REGION="us-east-1"
 ```
 
@@ -369,3 +369,4 @@ MemoryError: Unable to allocate array
 - ✅ Added configuration schema
 - ✅ Comprehensive unit and integration tests
 - ✅ Documentation and examples
+

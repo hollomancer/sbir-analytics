@@ -591,7 +591,7 @@ def neo4j_loader(neo4j_container):
     return BaseNeo4jLoader(
         uri=neo4j_container.get_connection_url(),
         user="neo4j",
-        password="test"
+        password="test"  # pragma: allowlist secret
     )
 
 @pytest.fixture
@@ -1047,3 +1047,4 @@ class EvaluationFramework:
 **Document Version**: 1.0
 **Last Updated**: October 26, 2025
 **Next Review**: After first module deployment
+

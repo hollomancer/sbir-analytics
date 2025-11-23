@@ -269,7 +269,7 @@ ORDER BY award_count DESC
 
 ```cypher
 // Find all subsidiaries of a company
-MATCH (parent:Organization {uei: "ABC123DEF456"})<-[:SUBSIDIARY_OF]-(child:Organization)
+MATCH (parent:Organization {uei: "ABC123DEF456"})<-[:SUBSIDIARY_OF]-(child:Organization)  # pragma: allowlist secret
 RETURN child.name, child.uei, child.organization_type
 
 // Find parent company of a subsidiary
@@ -310,4 +310,5 @@ LIMIT 10
 - Legacy properties (`company_id`, `entity_id`) preserved on Organization nodes
 - Old node types (Company, PatentEntity, ResearchInstitution) remain in database until explicitly removed
 - Queries can filter by `organization_type` to maintain type-specific behavior
+
 

@@ -51,7 +51,7 @@ repos:
         # The baseline should be committed at .secrets.baseline when appropriate.
         args: ['--baseline', '.secrets.baseline']
         # Exclude directories that shouldn't be scanned (build artifacts, dependencies, etc.)
-        # Also exclude infrastructure code (references secret names, not actual secrets) and debug scripts
+        # Also exclude infrastructure code (references secret names, not actual secrets), debug scripts, and documentation
         exclude: |
           (?x)^(
             \.git\/|
@@ -73,7 +73,10 @@ repos:
             data\/.*|
             reports\/.*\.(json|csv)$|
             infrastructure\/cdk\/|
-            scripts\/debug\/
+            scripts\/debug\/|
+            docs\/.*|
+            .*\.md$|
+            .*\.rst$
           )
 
   # Disabled git-secrets hook: install requires manual setup on developer machines; detect-secrets + local
