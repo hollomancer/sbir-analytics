@@ -52,6 +52,41 @@ jobs:
           ref: ${{ github.head_ref }}
           path: project-repo
 
+      - name: Free Disk Space
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+          
+          # Remove unnecessary packages and tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+          # Clean apt cache
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          
+          # Clean pip cache
+          pip cache purge || true
+          
+          # Clean node modules cache
+          npm cache clean --force || true
+          
+          # Clean Docker if present
+          sudo docker system prune -af --volumes || true
+          
+          # Remove large Python caches
+          find ~/.cache -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "Disk space after cleanup:"
+          df -h
+
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.12.3
