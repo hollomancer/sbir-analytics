@@ -15,10 +15,10 @@
 #   This image should be built and published to GHCR via a GitHub workflow
 #   that runs on a schedule (weekly) or when this file changes.
 #
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.11.9
 
 # Start from the same base as the main Dockerfile for consistency
-FROM python:${PYTHON_VERSION}-slim
+FROM python:${PYTHON_VERSION}-slim-bookworm
 
 # Install R and all required build dependencies for stateio
 # This matches the dependencies from the main Dockerfile's BUILD_WITH_R section
@@ -61,16 +61,8 @@ ENV R_LIBS_USER=/usr/local/lib/R/site-library \
 # See: https://packagemanager.rstudio.com/client/#/repos/1/overview
 ENV RSPM_ROOT=https://packagemanager.rstudio.com/all/__linux__/jammy/latest
 
-# Install remotes package first (small, fast)
-# Split into separate RUN for better layer caching
-RUN export R_SITE_LIB='/usr/local/lib/R/site-library' && \
-    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
-    options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing remotes package from RSPM...\n'); \
-    install.packages('remotes', Ncpus = parallel::detectCores())"
-
-# Install arrow from RSPM (binary package - MUCH faster than source)
-# This is the most time-consuming package, so we do it separately for caching
+# Install remotes and arrow packages in parallel from RSPM (binary packages - MUCH faster than source)
+# Combined into single RUN for better parallel installation with Ncpus
 # Use ccache mount for C++ compilation caching in case of source builds
 RUN --mount=type=cache,target=/root/.cache/R \
     --mount=type=cache,target=/root/.cache/ccache \
@@ -78,8 +70,8 @@ RUN --mount=type=cache,target=/root/.cache/R \
     export R_SITE_LIB='/usr/local/lib/R/site-library' && \
     R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
     options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
-    cat('Installing arrow package from RSPM (binary if available)...\n'); \
-    install.packages('arrow', Ncpus = parallel::detectCores()); \
+    cat('Installing remotes and arrow packages from RSPM (binaries if available)...\n'); \
+    install.packages(c('remotes', 'arrow'), Ncpus = parallel::detectCores()); \
     arrow_ok <- tryCatch({ \
         suppressPackageStartupMessages(library(arrow)); \
         TRUE \
