@@ -251,6 +251,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: ${{ steps.branch.outputs.branch }}
+          base: main
           title: "CI: nightly minimal repair"
           commit-message: "ci: minimal nightly repair"
           body: |
