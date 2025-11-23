@@ -569,7 +569,7 @@ class PatentLoader(BaseNeo4jLoader):
                 )
             )
 
-        metrics = self.client.batch_create_relationships(
+        metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
             relationships=relationships, metrics=metrics
         )
 
@@ -657,7 +657,7 @@ class PatentLoader(BaseNeo4jLoader):
                 )
             )
 
-        metrics = self.client.batch_create_relationships(
+        metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
             relationships=relationships, metrics=metrics
         )
 
