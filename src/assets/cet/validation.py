@@ -666,19 +666,23 @@ def validated_cet_drift_detection() -> Output:
     if AlertCollector is not None and Alert is not None and AlertSeverity is not None:
         try:
             collector = AlertCollector(asset_name="validated_cet_drift_detection")
-            for a in alerts_payload.get("alerts", []):
-                sev = AlertSeverity.WARNING if a["severity"] == "WARNING" else AlertSeverity.FAILURE
-                alert = Alert(
-                    timestamp=datetime.utcnow(),
-                    severity=sev,
-                    alert_type=a["type"],
-                    message=a["message"],
-                    threshold_value=LABEL_JS_THRESHOLD
-                    if "label" in a["type"]
-                    else SCORE_JS_THRESHOLD,
-                    actual_value=a["value"],
-                    metric_name=a["type"],
-                )
+            alerts_list = alerts_payload.get("alerts", [])
+            if isinstance(alerts_list, list):
+                for a in alerts_list:
+                    if not isinstance(a, dict):
+                        continue
+                    sev = AlertSeverity.WARNING if a.get("severity") == "WARNING" else AlertSeverity.FAILURE
+                    alert = Alert(
+                        timestamp=datetime.utcnow(),
+                        severity=sev,
+                        alert_type=str(a.get("type", "")),
+                        message=str(a.get("message", "")),
+                        threshold_value=LABEL_JS_THRESHOLD
+                        if "label" in str(a.get("type", ""))
+                        else SCORE_JS_THRESHOLD,
+                        actual_value=a.get("value", 0.0),  # type: ignore[arg-type]
+                        metric_name=str(a.get("type", "")),
+                    )
                 collector.alerts.append(alert)
             # Save structured alerts JSON via collector
             try:

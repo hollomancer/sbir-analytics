@@ -114,7 +114,8 @@ class TransitionLoader(BaseNeo4jLoader):
                         """,
                         transitions=[t.to_dict() for _, t in batch.iterrows()],
                     )
-                    count = result.single()["created"] if result.peek() else 0
+                    single_result = result.single()
+                    count = single_result["created"] if single_result is not None and result.peek() else 0  # type: ignore[index]
                     self.metrics.nodes_created["Transition"] = (
                         self.metrics.nodes_created.get("Transition", 0) + count
                     )
@@ -181,7 +182,8 @@ class TransitionLoader(BaseNeo4jLoader):
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"] if result.peek() else 0
+                    single_result = result.single()
+                    count = single_result["created"] if single_result is not None and result.peek() else 0  # type: ignore[index]
                     rel_count += count
 
                 except Exception as e:
@@ -237,7 +239,8 @@ class TransitionLoader(BaseNeo4jLoader):
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"] if result.peek() else 0
+                    single_result = result.single()
+                    count = single_result["created"] if single_result is not None and result.peek() else 0  # type: ignore[index]
                     rel_count += count
 
                 except Exception as e:
@@ -301,7 +304,8 @@ class TransitionLoader(BaseNeo4jLoader):
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"] if result.peek() else 0
+                    single_result = result.single()
+                    count = single_result["created"] if single_result is not None and result.peek() else 0  # type: ignore[index]
                     rel_count += count
 
                 except Exception as e:
@@ -366,7 +370,8 @@ class TransitionLoader(BaseNeo4jLoader):
                             for _, t in batch.iterrows()
                         ],
                     )
-                    count = result.single()["created"] if result.peek() else 0
+                    single_result = result.single()
+                    count = single_result["created"] if single_result is not None and result.peek() else 0  # type: ignore[index]
                     rel_count += count
 
                 except Exception as e:
