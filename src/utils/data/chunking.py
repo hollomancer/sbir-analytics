@@ -6,8 +6,8 @@ other data structures to enable memory-efficient processing.
 
 from __future__ import annotations
 
-from collections.abc import Generator, Iterable
-from typing import Any, Callable
+from collections.abc import Callable, Generator, Iterable
+from typing import Any
 
 import pandas as pd
 from loguru import logger

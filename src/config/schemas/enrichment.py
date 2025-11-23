@@ -106,7 +106,7 @@ class EnrichmentSourceConfig(BaseModel):
         cache_dir: str = Field(default="data/cache/usaspending", description="Cache directory path")
         max_entries: int = Field(default=1000, ge=10, description="Max cached responses")
         backend: str = Field(default="filesystem", description="Cache backend type")
-        
+
         def model_post_init(self, __context: Any) -> None:
             """Derive ttl_hours from ttl_seconds if not set."""
             if self.ttl_hours is None:

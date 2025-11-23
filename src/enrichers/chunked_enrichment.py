@@ -150,7 +150,7 @@ class ChunkedEnricher:
         self.chunk_size_reductions: int = 0
         self.chunks_spilled: int = 0
         self.current_chunk_size: int = self.chunk_size
-        
+
         # Initialize progress tracking
         self.progress = ChunkProgress(
             total_records=len(sbir_df),

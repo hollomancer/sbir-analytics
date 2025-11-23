@@ -92,6 +92,7 @@ ignore = [
     "B017", # pytest.raises(Exception) considered evil - but OK for integration tests
     "C901", # too complex
     "E402", # module level import not at top - OK for conditional imports after version checks
+    "I001", # import sorting - OK for optional imports in try blocks
 ]
 
 [tool.ruff.lint.isort]
