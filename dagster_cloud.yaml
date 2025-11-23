@@ -8,7 +8,7 @@
 locations:
   - location_name: sbir-analytics-production
     code_source:
-      python_module: src.definitions
+      module_name: src.definitions
     build:
       directory: .
       python_version: "3.11"
