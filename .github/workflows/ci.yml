@@ -271,6 +271,7 @@ jobs:
           build-args: |
             BUILD_WITH_R=false
           cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository }}:latest
             type=gha,scope=ci-no-r
             type=gha,scope=main
           cache-to: type=gha,mode=max,scope=ci-no-r
@@ -753,7 +754,9 @@ jobs:
       - name: Build runtime image
         run: |
           set -eux
-          docker build --target runtime -t "${IMAGE_NAME}:${IMAGE_TAG}" .
+          docker build --target runtime \
+            --cache-from ghcr.io/${{ github.repository }}:latest \
+            -t "${IMAGE_NAME}:${IMAGE_TAG}" .
 
       - name: Start development compose stack (dev profile)
         run: |
