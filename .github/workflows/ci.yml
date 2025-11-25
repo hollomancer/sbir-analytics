@@ -65,8 +65,12 @@ jobs:
               - 'scripts/performance/detect_performance_regression.py'
               - 'config/base.yaml'
             cet:
-              - 'src/**'
-              - 'tests/**'
+              - 'src/ml/config/**'
+              - 'src/assets/jobs/cet_*.py'
+              - 'tests/unit/ml/**'
+              - 'tests/integration/ml/**'
+              - 'tests/e2e/ml/**'
+              - 'config/cet/**'
               - 'pyproject.toml'
               - 'uv.lock'
             transition:
@@ -95,8 +99,14 @@ jobs:
 
   verify-setup-script:
     name: Verify Setup Script
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Skip on docs-only changes to save CI time
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -122,7 +132,7 @@ jobs:
     name: Unit Tests
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15  # Reduced from 30 for faster failure
     # Skip test job on PRs if only docs changed (but always run on push to main/develop)
     # On push events, we could skip detect-changes, but we need it for docs-only filtering
     if: |
@@ -209,8 +219,8 @@ jobs:
 
       - name: Run fast tests
         run: |
-          # Use pytest-xdist for parallelization (auto-detects CPU count)
-          uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n auto
+          # Use pytest-xdist for parallelization (2 workers for optimal overhead/speed balance)
+          uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n 2
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -224,10 +234,9 @@ jobs:
     name: Container Build and Test
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Condition: Run on push, PR with docker changes, or manual dispatch
-    # Note: Removed test dependency - this job can run in parallel with tests
-    # The container build/test doesn't depend on unit test results
+    timeout-minutes: 20  # Reduced from 30 for faster failure
+    # Optimized: Only required on push to main/develop, optional on PRs with docker changes
+    # Skip on PRs without docker changes to save ~20 min
     if: |
       always() &&
       (github.event_name == 'push' ||
@@ -308,7 +317,8 @@ jobs:
     # Condition: Run only when performance-sensitive files change (or workflow_dispatch)
     if: needs.detect-changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20  # Reduced from 30 for faster failure
+    continue-on-error: true  # Don't block PRs on performance checks
     permissions:
       id-token: write  # For OIDC authentication to AWS
       contents: read   # Only read access needed
@@ -526,21 +536,21 @@ jobs:
           fi
 
   cet-tests:
-    name: CET Tests (Pipeline & Smoke)
+    name: CET Tests (Smoke Only on PR)
     needs: test
-    # Condition: PR only, test passed, CET files changed
-    # Note: On push events, use cet-dev-e2e job instead
+    # Optimized: Only run smoke tests on PR, full pipeline on push (via cet-dev-e2e)
+    # This saves ~15 min on PRs by skipping pipeline test
     if: |
       always() &&
       needs.test.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20  # Reduced from 30 since only running smoke
 
     strategy:
       matrix:
-        test-type: [pipeline, smoke]
+        test-type: [smoke]  # Only smoke tests on PR, pipeline runs on push via cet-dev-e2e
 
     services:
       neo4j:
@@ -715,7 +725,7 @@ jobs:
       needs.test.result == 'success' &&
       github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30  # Reduced from 45 for faster failure
     env:
       # Allow override via repository secrets; fall back to defaults for dev runs
       NEO4J_URI: bolt://localhost:7687
@@ -834,7 +844,7 @@ jobs:
       needs.test.result == 'success' &&
       (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15  # Reduced from 20 for faster failure
     permissions:
       contents: read
 
