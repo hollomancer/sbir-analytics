@@ -610,7 +610,7 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context) -> dict[str, int | None | str]:
+def validated_uspto_ai_cache_stats(context) -> dict[str, Any]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """
