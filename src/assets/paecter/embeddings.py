@@ -27,7 +27,6 @@ from ...utils.monitoring import performance_monitor
     description="PaECTER embeddings for SBIR awards",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_awards(
     context,
@@ -138,7 +137,6 @@ def paecter_embeddings_awards(
     description="PaECTER embeddings for USPTO patents",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_patents(
     context,
@@ -317,7 +315,6 @@ def paecter_embeddings_patents(
     description="Similarity scores between SBIR awards and USPTO patents",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_award_patent_similarity(
     context,
