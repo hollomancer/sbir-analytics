@@ -5,6 +5,7 @@ import os
 from dagster import (
     AssetSelection,
     Definitions,
+    FilesystemIOManager,
     JobDefinition,
     ScheduleDefinition,
     SensorDefinition,
@@ -115,4 +116,7 @@ defs = Definitions(
     jobs=job_definitions,
     schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
     sensors=all_sensors,
+    resources={
+        "parquet_io_manager": FilesystemIOManager(base_dir="data/embeddings"),
+    },
 )

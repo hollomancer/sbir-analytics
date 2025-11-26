@@ -12,6 +12,9 @@ from dagster import (
     JobDefinition,
     define_asset_job,
 )
+from dagster._core.definitions.unresolved_asset_job_definition import (
+    UnresolvedAssetJobDefinition,
+)
 
 
 @dataclass(frozen=True)
@@ -25,7 +28,7 @@ class JobSpec:
     assets: Sequence[AssetsDefinition] | None = None
 
 
-def build_job_from_spec(spec: JobSpec) -> JobDefinition:
+def build_job_from_spec(spec: JobSpec) -> JobDefinition | UnresolvedAssetJobDefinition:
     """Create a Dagster job from a JobSpec."""
 
     if spec.assets:
@@ -50,7 +53,7 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
     return define_asset_job(name=spec.name, selection=selection, description=spec.description)  # type: ignore[return-value]
 
 
-def build_placeholder_job(name: str, description: str) -> JobDefinition:
+def build_placeholder_job(name: str, description: str) -> JobDefinition | UnresolvedAssetJobDefinition:
     """Create a placeholder job when assets cannot be imported."""
 
     return define_asset_job(
