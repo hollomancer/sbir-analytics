@@ -321,8 +321,10 @@ jobs:
     timeout-minutes: 20  # Reduced from 30 for faster failure
     continue-on-error: true  # Don't block PRs on performance checks
     permissions:
-      id-token: write  # For OIDC authentication to AWS
-      contents: read   # Only read access needed
+      id-token: write        # For OIDC authentication to AWS
+      contents: read         # For checking out code
+      pull-requests: write   # For posting PR comments
+      checks: write          # For creating check runs
     env:
       AWS_REGION: us-east-2
       S3_BUCKET: sbir-etl-production-data
