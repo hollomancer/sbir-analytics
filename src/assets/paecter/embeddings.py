@@ -225,8 +225,8 @@ def paecter_embeddings_patents(
         all_rows = []
         for file_path in files:
             context.log.info(f"Loading from {file_path.name}")
-            for row in extractor.stream_rows(file_path, chunk_size=10000):
-                all_rows.append(row)
+            for patent_row in extractor.stream_rows(file_path, chunk_size=10000):
+                all_rows.append(patent_row)
                 if len(all_rows) >= 1000:  # Limit for testing
                     break
             if len(all_rows) >= 1000:
