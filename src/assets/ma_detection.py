@@ -7,15 +7,15 @@ from dagster import asset
 from src.models.ma_models import MAEvent
 
 
-@asset(deps=["sbir_awards", "loaded_patent_assignments"])
+@asset(deps=["raw_sbir_awards", "loaded_patent_assignments"])
 def company_mergers_and_acquisitions(
-    sbir_awards: pd.DataFrame, loaded_patent_assignments: pd.DataFrame
+    raw_sbir_awards: pd.DataFrame, loaded_patent_assignments: pd.DataFrame
 ):
     """Detects potential mergers and acquisitions based on patent assignment data and stores them."""
 
     # 1.3: Join SBIR companies with patent assignor data
     merged_data = pd.merge(
-        sbir_awards,
+        raw_sbir_awards,
         loaded_patent_assignments,
         left_on="company_name",
         right_on="assignor_name",
