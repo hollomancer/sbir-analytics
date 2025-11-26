@@ -53,7 +53,9 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition | UnresolvedAssetJobDefi
     return define_asset_job(name=spec.name, selection=selection, description=spec.description)  # type: ignore[return-value]
 
 
-def build_placeholder_job(name: str, description: str) -> JobDefinition | UnresolvedAssetJobDefinition:
+def build_placeholder_job(
+    name: str, description: str
+) -> JobDefinition | UnresolvedAssetJobDefinition:
     """Create a placeholder job when assets cannot be imported."""
 
     return define_asset_job(
