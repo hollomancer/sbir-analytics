@@ -27,8 +27,8 @@ try:
     import numpy as np  # used for numeric safety
     import pandas as pd
 except Exception:  # pragma: no cover - defensive import
-    pd = None
-    np = None  # type: ignore
+    pd = None  # type: ignore[assignment]
+    np = None  # type: ignore[assignment]
 
 __all__ = ["CompanyCETAggregator"]
 
@@ -154,7 +154,7 @@ class CompanyCETAggregator:
             company_name = row.get("company_name")
             award_date = row.get("award_date_parsed", pd.NaT)
             phase = row.get("phase")
-            cet_rows = self._extract_cet_rows_from_award(row)
+            cet_rows = self._extract_cet_rows_from_award(row)  # type: ignore[arg-type]
             if not cet_rows:
                 # keep a placeholder row to count awards_with_cet correctly later (no CETs)
                 records.append(

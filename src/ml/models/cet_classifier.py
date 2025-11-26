@@ -323,7 +323,7 @@ class ApplicabilityModel:
             y_binary = y_train[cet_id].values
 
             # Check class balance
-            pos_count = y_binary.sum()
+            pos_count = y_binary.sum()  # type: ignore[union-attr]
             neg_count = len(y_binary) - pos_count
             logger.debug(f"  Class balance: {pos_count} positive, {neg_count} negative")
 
@@ -342,8 +342,8 @@ class ApplicabilityModel:
             y_pred = (y_pred_proba >= 0.5).astype(int)
 
             accuracy = (y_pred == y_binary).mean()
-            precision = (y_pred * y_binary).sum() / (y_pred.sum() + 1e-10)
-            recall = (y_pred * y_binary).sum() / (y_binary.sum() + 1e-10)
+            precision = (y_pred * y_binary).sum() / (y_pred.sum() + 1e-10)  # type: ignore[union-attr]
+            recall = (y_pred * y_binary).sum() / (y_binary.sum() + 1e-10)  # type: ignore[union-attr]
             f1 = 2 * precision * recall / (precision + recall + 1e-10)
 
             metrics[cet_id] = {

@@ -78,7 +78,7 @@ class CongressionalDistrictResolver:
 
             # HUD crosswalk format: ZIP, CD (congressional district), allocation ratio
             # Example columns: ZIP, TOT_RATIO, CD118 (for 118th Congress)
-            df = pd.read_csv(self.crosswalk_path)
+            df = pd.read_csv(self.crosswalk_path)  # type: ignore[arg-type]
 
             # Build lookup dictionary: ZIP -> {district, state, allocation}
             self.zip_crosswalk = {}

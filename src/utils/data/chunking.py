@@ -87,7 +87,7 @@ class ChunkIterator:
     def __iter__(self) -> Generator[pd.DataFrame | list[Any], None, None]:
         """Iterate over chunks."""
         if self._is_dataframe:
-            yield from chunk_dataframe(self.data, self.chunk_size, self.start_idx)
+            yield from chunk_dataframe(self.data, self.chunk_size, self.start_idx)  # type: ignore[arg-type]
         else:
             yield from chunk_iterable(self.data, self.chunk_size)
 
