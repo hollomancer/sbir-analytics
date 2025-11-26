@@ -50,11 +50,12 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
-  analysis:
-    name: Code Quality Suite
+  # Split analysis into parallel jobs for faster execution
+  lint:
+    name: Lint (Ruff)
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
@@ -70,69 +71,58 @@ jobs:
           install-pyreadstat: "false"
       - name: Ensure Ruff is installed
         run: |
-          # Explicitly install ruff to ensure it's available
-          # This is needed because cached venvs might not have it
           uv pip install ruff
           uv run python -m ruff --version
       - name: Run Ruff lint
         run: uv run python -m ruff check src tests
       - name: Run Ruff format check
         run: uv run python -m ruff format --check src tests
-      - name: Ensure MyPy is installed
-        run: |
-          # Explicitly install mypy to ensure it's available
-          # This is needed because cached venvs might not have it
-          uv pip install mypy
-          uv run python -m mypy --version
-      - name: Run MyPy type checker
-        run: uv run python -m mypy src
-      - name: Run Bandit
-        run: uv run python -m bandit -r src -c pyproject.toml
 
-  secret-scan:
-    name: Secret Scan
+  types:
+    name: Type Check (MyPy)
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Reduced from 30 - secret scanning shouldn't take that long
-    # DISABLED: Causing too many false positives in documentation
-    if: false
-    # Original condition (kept for reference):
-    # if: |
-    #   github.event_name == 'push' ||
-    #   (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: "3.11"
-          install-dev-deps: "false"
+          install-dev-deps: "true"
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      - name: Install pre-commit and detect-secrets
+      - name: Ensure MyPy is installed
         run: |
-          uv pip install pre-commit detect-secrets
-      - name: Run secret scan
-        id: secret-scan
-        run: |
-          uv run python scripts/ci/scan_secrets.py \
-            --baseline .secrets.baseline \
-            --skip-patterns \
-            || exit_code=$?
-          exit ${exit_code:-0}
-      - name: Upload scan artifacts on failure
-        if: failure()
-        uses: ./.github/actions/upload-artifacts
+          uv pip install mypy
+          uv run python -m mypy --version
+      - name: Run MyPy type checker
+        run: uv run python -m mypy src
+
+  security:
+    name: Security Scan (Bandit)
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
         with:
-          name: secret-scan-output
-          path: |
-            detect-secrets-output.json
-            .secrets.baseline
-          if-no-files-found: ignore
+          python-version: "3.11"
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+      - name: Run Bandit
+        run: uv run python -m bandit -r src -c pyproject.toml
 
   docs-link-check:
     name: Docs Link Check

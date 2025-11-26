@@ -42,7 +42,7 @@ jobs:
   tests:
     name: Run Nightly Test Suites
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30  # Reduced from 45 for faster failure
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -302,7 +302,7 @@ jobs:
   neo4j-smoke:
     name: Neo4j smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15  # Reduced from 30 for faster failure
     env:
       PROFILE: dev
       # Use dry-run mode for scheduled runs, live mode for manual dispatch with input
