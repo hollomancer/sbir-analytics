@@ -61,7 +61,7 @@ def transformed_transition_scores(
     # Prepare mapping vendor_id -> award_ids
     vendor_to_awards: dict[str, list[str]] = {}
     for vid, grp in awards.groupby("_vendor_id"):
-        vendor_to_awards[vid] = list(grp["award_id"].astype(str).dropna().unique())
+        vendor_to_awards[str(vid)] = list(grp["award_id"].astype(str).dropna().unique())
 
     # Lightweight score by method + small boosts from temporal and agency alignment
     METHOD_WEIGHTS = {"uei": 0.9, "duns": 0.8, "name_exact": 0.85, "name_fuzzy": 0.7}

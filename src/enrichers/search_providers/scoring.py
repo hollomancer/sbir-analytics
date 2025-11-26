@@ -198,7 +198,7 @@ def score_citation(candidate_url: str | None, truth_url: str | None) -> float:
 
 
 def score_result_against_truth(
-    result: ProviderResult,
+    result: ProviderResult | Any,
     truth: dict[str, Any],
     fields_to_check: Sequence[str] | None = None,
     text_weight: float = 0.5,

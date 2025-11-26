@@ -56,7 +56,7 @@ def paecter_embeddings_awards(
     # Find award ID column using helper
     award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
     if not award_id_col:
-        award_ids = validated_sbir_awards.index.astype(str)
+        award_ids = pd.Series(validated_sbir_awards.index.astype(str))
         context.log.warning("No award ID column found, using index")
     else:
         award_ids = validated_sbir_awards[award_id_col].astype(str)
@@ -241,7 +241,7 @@ def paecter_embeddings_patents(
     # Find patent ID column using helper
     patent_id_col = AssetColumnHelper.find_patent_id_column(patents_df)
     if not patent_id_col:
-        patent_ids = patents_df.index.astype(str)
+        patent_ids = pd.Series(patents_df.index.astype(str))
         context.log.warning("No patent ID column found, using index")
     else:
         patent_ids = patents_df[patent_id_col].astype(str)

@@ -158,7 +158,7 @@ def enriched_sbir_companies_with_categorization(
 
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_classification = aggregate_company_classification(
-                contract_dicts, company_uei=uei, company_name=name
+                contract_dicts, company_uei=uei, company_name=name  # type: ignore[arg-type]
             )
 
             # Add to results
@@ -212,7 +212,7 @@ def enriched_sbir_companies_with_categorization(
             "preview": MetadataValue.md(result_df.head(10).to_markdown()),
         }
 
-        return Output(value=result_df, metadata=metadata)
+        return Output(value=result_df, metadata=metadata)  # type: ignore[arg-type]
 
     finally:
         # Clean up extractor connection
@@ -484,7 +484,7 @@ def neo4j_company_categorization(
             f"{loader_config.batch_size}"
         )
 
-        metrics = loader.load_categorizations(categorization_records)
+        metrics = loader.load_categorizations(categorization_records)  # type: ignore[arg-type]
 
         # Calculate success rate
         total_attempted = len(categorization_records)

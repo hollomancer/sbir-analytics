@@ -477,7 +477,7 @@ class PatentAnalysisAnalyzer(ModuleAnalyzer):
 
                 # Grant date distribution by year
                 grant_years = grant_dates.dt.year.value_counts().sort_index()
-                metrics["grants_by_year"] = grant_years.to_dict()
+                metrics["grants_by_year"] = {str(k): v for k, v in grant_years.to_dict().items()}
 
         # Patent title analysis
         if "title" in patent_df.columns:

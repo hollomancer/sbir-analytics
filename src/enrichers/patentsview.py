@@ -155,8 +155,8 @@ class PatentsViewClient:
 
         # HTTP client with default headers
         timeout_float: float = (
-            float(self.timeout_seconds) if self.timeout_seconds is not None else 30.0
-        )  # type: ignore[arg-type]
+            float(self.timeout_seconds) if self.timeout_seconds is not None else 30.0  # type: ignore[arg-type]
+        )
         self.client = httpx.Client(
             timeout=timeout_float,
             headers={"X-Api-Key": self.api_key, "Content-Type": "application/json"},
@@ -265,7 +265,7 @@ class PatentsViewClient:
         )
         if cached_df is not None:
             logger.debug(f"Using cached patents for {company_name}")
-            return cached_df.to_dict(orient="records")
+            return cached_df.to_dict(orient="records")  # type: ignore[return-value]
 
         all_patents: list[dict[str, Any]] = []
         page = 0

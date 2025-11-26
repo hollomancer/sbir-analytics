@@ -45,8 +45,8 @@ def usaspending_refresh_sensor(context: SensorEvaluationContext) -> SensorResult
         # Check if materialization was successful
         if (
             not enriched_awards_record.dagster_event
-            or not enriched_awards_record.dagster_event.asset_materialization
-        ):  # type: ignore[attr-defined, truthy-function]
+            or not enriched_awards_record.dagster_event.asset_materialization  # type: ignore[attr-defined, truthy-function]
+        ):
             return SkipReason("Bulk enrichment asset materialization not found")
 
         # Check freshness ledger to see if refresh is needed

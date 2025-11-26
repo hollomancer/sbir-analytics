@@ -470,7 +470,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         if "competition_type" in transitions_df.columns:
             competition_dist = transitions_df["competition_type"].value_counts()
             patterns["competition_distribution"] = {
-                comp_type: count / total_transitions
+                str(comp_type): count / total_transitions
                 for comp_type, count in competition_dist.items()
             }
 
@@ -649,7 +649,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         return timing_analysis
 
     def _calculate_data_hygiene(
-        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame
+        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame | None
     ) -> DataHygieneMetrics:
         """Calculate data hygiene metrics for transition detection data.
 
@@ -720,7 +720,7 @@ class TransitionDetectionAnalyzer(ModuleAnalyzer):
         )
 
     def _calculate_changes_summary(
-        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame
+        self, transitions_df: pd.DataFrame, awards_df: pd.DataFrame | None
     ) -> ChangesSummary:
         """Calculate summary of changes made during transition detection.
 

@@ -77,7 +77,7 @@ def r_to_pandas(r_df: Any, preserve_types: bool = True) -> pd.DataFrame:
                 if df[col].dtype == "object":
                     # Try to convert to numeric
                     try:
-                        df[col] = pd.to_numeric(df[col], errors="ignore")
+                        df[col] = pd.to_numeric(df[col], errors="coerce")  # type: ignore[call-overload]
                     except (ValueError, TypeError):
                         pass
 

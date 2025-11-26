@@ -489,8 +489,8 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
                 )
                 try:
                     # Read DTA file in chunks
-                    df = pd.read_stata(dfp, chunksize=batch_size)
-                    for chunk in df:
+                    stata_reader = pd.read_stata(dfp, chunksize=batch_size)
+                    for chunk in stata_reader:
                         if total_ingested == 0:
                             # Create table on first chunk
                             con.execute(
