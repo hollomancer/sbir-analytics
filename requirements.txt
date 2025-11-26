@@ -14,7 +14,7 @@ anyio==4.11.0
     #   watchfiles
 backoff==2.2.1
     # via gql
-bandit==1.9.1
+bandit==1.9.2
     # via sbir-analytics (pyproject.toml)
 black==24.10.0
     # via sbir-analytics (pyproject.toml)

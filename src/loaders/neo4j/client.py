@@ -46,7 +46,8 @@ def _compute_node_hash(properties: dict[str, Any]) -> str:
     clean_props = {k: v for k, v in properties.items() if not k.startswith("__")}
     # Sort keys for consistent hashing
     stable_json = json.dumps(clean_props, sort_keys=True, default=str)
-    return hashlib.md5(stable_json.encode()).hexdigest()
+    # MD5 used for fingerprinting/deduplication, not cryptographic security
+    return hashlib.md5(stable_json.encode(), usedforsecurity=False).hexdigest()
 
 
 class Neo4jClient:
