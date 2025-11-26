@@ -338,11 +338,11 @@ jobs:
       - name: Configure AWS credentials
         id: aws-credentials
         continue-on-error: true  # Optional: Falls back to local data if AWS not configured
+        if: secrets.AWS_ROLE_ARN != ''
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-        if: secrets.AWS_ROLE_ARN != ''
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
