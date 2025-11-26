@@ -158,9 +158,9 @@ def enriched_sbir_companies_with_categorization(
 
             # Aggregate to company level (pass original dicts for agency breakdown)
             company_classification = aggregate_company_classification(
-                contract_dicts,
+                contract_dicts,  # type: ignore[arg-type]
                 company_uei=uei,
-                company_name=name,  # type: ignore[arg-type]
+                company_name=name,
             )
 
             # Add to results
