@@ -97,12 +97,15 @@ def iter_sensor_modules() -> list[ModuleType]:
 
 def iter_public_jobs() -> list[JobDefinition]:
     from dagster import JobDefinition  # Imported lazily
+    from dagster._core.definitions.unresolved_asset_job_definition import (
+        UnresolvedAssetJobDefinition,
+    )
 
     jobs: list[JobDefinition] = []
     for module in iter_job_modules():
         for value in vars(module).values():
-            if isinstance(value, JobDefinition):
-                jobs.append(value)
+            if isinstance(value, (JobDefinition, UnresolvedAssetJobDefinition)):
+                jobs.append(value)  # type: ignore[arg-type]
     return jobs
 
 

@@ -10,7 +10,6 @@ from dagster import (
     AssetsDefinition,
     AssetSelection,
     JobDefinition,
-    build_assets_job,
     define_asset_job,
 )
 
@@ -31,9 +30,8 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
 
     if spec.assets:
         initial_selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
-        return build_assets_job(
+        return define_asset_job(
             name=spec.name,
-            assets=list(spec.assets),
             selection=initial_selection,
             description=spec.description,
         )
@@ -55,8 +53,8 @@ def build_job_from_spec(spec: JobSpec) -> JobDefinition:
 def build_placeholder_job(name: str, description: str) -> JobDefinition:
     """Create a placeholder job when assets cannot be imported."""
 
-    return build_assets_job(
+    return define_asset_job(
         name=f"{name}_placeholder",
-        assets=[],
+        selection=AssetSelection.keys(),
         description=description,
     )
