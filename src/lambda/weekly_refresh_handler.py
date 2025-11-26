@@ -169,8 +169,14 @@ def lambda_handler(event: dict, context) -> dict:
 def download_csv(url: str, output_path: Path) -> None:
     """Download CSV file from URL."""
     import urllib.request
+    from urllib.parse import urlparse
 
-    urllib.request.urlretrieve(url, output_path)
+    # Validate URL scheme to prevent file:// or other unsafe schemes
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http and https are allowed.")
+
+    urllib.request.urlretrieve(url, output_path)  # nosec B310
     logger.info(f"Downloaded CSV: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
 
 
