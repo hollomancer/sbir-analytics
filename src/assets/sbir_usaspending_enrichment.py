@@ -442,7 +442,10 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata  # type: ignore[arg-type]
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata=metadata,  # type: ignore[arg-type]
     )
 
 

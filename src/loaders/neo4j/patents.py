@@ -85,26 +85,26 @@ class PatentLoader(BaseNeo4jLoader):
         """Create indexes for frequently queried patent properties."""
         if indexes is None:
             indexes = [
-            # Tier 1: Essential indexes
-            "CREATE INDEX patent_grant_doc_num_idx IF NOT EXISTS "
-            "FOR (p:Patent) ON (p.grant_doc_num)",
-            "CREATE INDEX patent_assignment_rf_id_idx IF NOT EXISTS "
-            "FOR (a:PatentAssignment) ON (a.rf_id)",
-            # Legacy PatentEntity indexes (kept for backward compatibility)
-            "CREATE INDEX patent_entity_normalized_name_idx IF NOT EXISTS "
-            "FOR (e:PatentEntity) ON (e.normalized_name)",
-            "CREATE INDEX patent_entity_type_idx IF NOT EXISTS "
-            "FOR (e:PatentEntity) ON (e.entity_type)",
-            # Organization indexes for unified entities
-            "CREATE INDEX organization_entity_id_idx IF NOT EXISTS "
-            "FOR (o:Organization) ON (o.entity_id)",
-            "CREATE INDEX organization_normalized_name_idx IF NOT EXISTS "
-            "FOR (o:Organization) ON (o.normalized_name)",
-            # Tier 2: High value indexes
-            "CREATE INDEX patent_appno_date_idx IF NOT EXISTS FOR (p:Patent) ON (p.appno_date)",
-            "CREATE INDEX patent_assignment_exec_date_idx IF NOT EXISTS "
-            "FOR (a:PatentAssignment) ON (a.exec_date)",
-        ]
+                # Tier 1: Essential indexes
+                "CREATE INDEX patent_grant_doc_num_idx IF NOT EXISTS "
+                "FOR (p:Patent) ON (p.grant_doc_num)",
+                "CREATE INDEX patent_assignment_rf_id_idx IF NOT EXISTS "
+                "FOR (a:PatentAssignment) ON (a.rf_id)",
+                # Legacy PatentEntity indexes (kept for backward compatibility)
+                "CREATE INDEX patent_entity_normalized_name_idx IF NOT EXISTS "
+                "FOR (e:PatentEntity) ON (e.normalized_name)",
+                "CREATE INDEX patent_entity_type_idx IF NOT EXISTS "
+                "FOR (e:PatentEntity) ON (e.entity_type)",
+                # Organization indexes for unified entities
+                "CREATE INDEX organization_entity_id_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.entity_id)",
+                "CREATE INDEX organization_normalized_name_idx IF NOT EXISTS "
+                "FOR (o:Organization) ON (o.normalized_name)",
+                # Tier 2: High value indexes
+                "CREATE INDEX patent_appno_date_idx IF NOT EXISTS FOR (p:Patent) ON (p.appno_date)",
+                "CREATE INDEX patent_assignment_exec_date_idx IF NOT EXISTS "
+                "FOR (a:PatentAssignment) ON (a.exec_date)",
+            ]
         super().create_indexes(indexes)
 
     def load_patents(
@@ -570,7 +570,8 @@ class PatentLoader(BaseNeo4jLoader):
             )
 
         metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
-            relationships=relationships, metrics=metrics  # type: ignore[arg-type]
+            relationships=relationships,
+            metrics=metrics,  # type: ignore[arg-type]
         )
 
         duration = time.time() - start_time
@@ -658,7 +659,8 @@ class PatentLoader(BaseNeo4jLoader):
             )
 
         metrics = self.client.batch_create_relationships(  # type: ignore[arg-type]
-            relationships=relationships, metrics=metrics  # type: ignore[arg-type]
+            relationships=relationships,
+            metrics=metrics,  # type: ignore[arg-type]
         )
 
         duration = time.time() - start_time

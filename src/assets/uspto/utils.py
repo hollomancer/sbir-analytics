@@ -22,7 +22,14 @@ from loguru import logger
 from src.exceptions import DependencyError
 
 # Re-export dagster decorators for use in other USPTO asset modules
-__all__ = ["asset", "asset_check", "AssetIn", "AssetCheckResult", "AssetCheckSeverity", "MetadataValue"]
+__all__ = [
+    "asset",
+    "asset_check",
+    "AssetIn",
+    "AssetCheckResult",
+    "AssetCheckSeverity",
+    "MetadataValue",
+]
 
 
 # Statistical reporting imports

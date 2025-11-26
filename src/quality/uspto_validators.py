@@ -127,7 +127,9 @@ def _iter_rows_from_dta(
     if pd is not None:
         # try iterator-based pandas read_stata if supported
         try:
-            reader = pd.read_stata(str(path), iterator=True, convert_categoricals=False, chunksize=chunk_size)
+            reader = pd.read_stata(
+                str(path), iterator=True, convert_categoricals=False, chunksize=chunk_size
+            )
             for chunk in reader:
                 for rec in chunk.to_dict(orient="records"):
                     yield rec  # type: ignore[misc]
