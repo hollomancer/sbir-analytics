@@ -2,19 +2,9 @@
 
 from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
-# Try to import fiscal assets to check if they're available
+# Check if fiscal assets module is available
 try:
-    from ..fiscal_assets import (
-        bea_mapped_sbir_awards,
-        economic_impacts,
-        economic_shocks,
-        federal_tax_estimates,
-        fiscal_naics_enriched_awards,
-        fiscal_prepared_sbir_awards,
-        fiscal_return_summary,
-        inflation_adjusted_awards,
-        tax_base_components,
-    )
+    from .. import fiscal_assets  # noqa: F401 - imported to check availability
 
     fiscal_assets_available = True
 except Exception:  # pragma: no cover - handles optional dependencies
