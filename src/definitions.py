@@ -89,9 +89,7 @@ schedules = [daily_schedule]  # Always include daily schedule
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(
         job=cet_full_pipeline_job,
-        cron_schedule=os.getenv(
-            "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"
-        ),
+        cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"),
         name="daily_cet_full_pipeline",
         description="Daily CET full pipeline end-to-end execution",
     )
@@ -100,9 +98,7 @@ if cet_full_pipeline_job is not None:
 if cet_drift_job is not None:
     cet_drift_schedule = ScheduleDefinition(
         job=cet_drift_job,
-        cron_schedule=os.getenv(
-            "SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"
-        ),
+        cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"),
         name="daily_cet_drift_detection",
         description="Daily CET drift detection and alerting",
     )

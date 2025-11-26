@@ -83,7 +83,9 @@ def iter_asset_modules() -> list[ModuleType]:
     for module_name in _asset_module_names():
         # Skip heavy modules if configured
         if not load_heavy and module_name in HEAVY_ASSET_MODULES:
-            LOG.info("Skipping heavy asset module (DAGSTER_LOAD_HEAVY_ASSETS=false): %s", module_name)
+            LOG.info(
+                "Skipping heavy asset module (DAGSTER_LOAD_HEAVY_ASSETS=false): %s", module_name
+            )
             continue
 
         module = _safe_import(module_name)
