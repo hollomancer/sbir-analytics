@@ -37,16 +37,13 @@ def _discover_sensors() -> list[SensorDefinition]:
 auto_jobs = _discover_jobs()
 
 
-def _require_job(name: str) -> JobDefinition:
-    """Retrieve a named job or raise if it is missing."""
-
-    job = auto_jobs.get(name)
-    if job is None:
-        raise RuntimeError(f"Required Dagster job '{name}' not found during discovery")
-    return job
+def _get_job(name: str) -> JobDefinition | None:
+    """Retrieve a named job or return None if it is missing."""
+    return auto_jobs.get(name)
 
 
-cet_full_pipeline_job = _require_job("cet_full_pipeline_job")
+# Try to get CET jobs (may not be available if heavy assets are skipped)
+cet_full_pipeline_job = _get_job("cet_full_pipeline_job")
 
 # Define SBIR ingestion job (just the ingestion assets)
 sbir_ingestion_job = define_asset_job(
@@ -72,30 +69,44 @@ daily_schedule = ScheduleDefinition(
     description="Daily SBIR ETL pipeline execution",
 )
 
-# Define a small asset job to run the CET drift detection asset
-cet_drift_job = define_asset_job(
-    name="cet_drift_job",
-    selection=AssetSelection.keys(["ml", "validated_cet_drift_detection"]),
-    description="Run CET drift detection asset",
+# Define CET drift job only if ML assets are available
+cet_drift_job = None
+# Check if the drift detection asset exists before creating job
+drift_asset_exists = any(
+    hasattr(asset, "key") and asset.key.path == ["ml", "validated_cet_drift_detection"]
+    for asset in all_assets
 )
+if drift_asset_exists:
+    cet_drift_job = define_asset_job(
+        name="cet_drift_job",
+        selection=AssetSelection.keys(["ml", "validated_cet_drift_detection"]),
+        description="Run CET drift detection asset",
+    )
 
-# Schedule CET full pipeline daily (02:00 UTC by default) and drift detection (06:00 UTC)
-cet_full_pipeline_schedule = ScheduleDefinition(
-    job=cet_full_pipeline_job,
-    cron_schedule=os.getenv(
-        "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"
-    ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB
-    name="daily_cet_full_pipeline",
-    description="Daily CET full pipeline end-to-end execution",
-)
-cet_drift_schedule = ScheduleDefinition(
-    job=cet_drift_job,
-    cron_schedule=os.getenv(
-        "SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"
-    ),  # Default 06:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB
-    name="daily_cet_drift_detection",
-    description="Daily CET drift detection and alerting",
-)
+# Create schedules only for available jobs
+schedules = [daily_schedule]  # Always include daily schedule
+
+if cet_full_pipeline_job is not None:
+    cet_full_pipeline_schedule = ScheduleDefinition(
+        job=cet_full_pipeline_job,
+        cron_schedule=os.getenv(
+            "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"
+        ),
+        name="daily_cet_full_pipeline",
+        description="Daily CET full pipeline end-to-end execution",
+    )
+    schedules.append(cet_full_pipeline_schedule)
+
+if cet_drift_job is not None:
+    cet_drift_schedule = ScheduleDefinition(
+        job=cet_drift_job,
+        cron_schedule=os.getenv(
+            "SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"
+        ),
+        name="daily_cet_drift_detection",
+        description="Daily CET drift detection and alerting",
+    )
+    schedules.append(cet_drift_schedule)
 
 # Load sensors automatically
 all_sensors = _discover_sensors()
@@ -104,8 +115,12 @@ all_sensors = _discover_sensors()
 job_definitions: list[JobDefinition] = [
     sbir_ingestion_job,  # type: ignore[list-item]
     etl_job,  # type: ignore[list-item]
-    cet_drift_job,  # type: ignore[list-item]
 ]
+# Add conditional jobs if they exist
+if cet_drift_job is not None:
+    job_definitions.append(cet_drift_job)  # type: ignore[arg-type]
+
+# Add auto-discovered jobs that aren't already in the list
 job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)
 
 # Create the definitions object
@@ -113,6 +128,6 @@ defs = Definitions(
     assets=all_assets,
     asset_checks=all_asset_checks,
     jobs=job_definitions,
-    schedules=[daily_schedule, cet_full_pipeline_schedule, cet_drift_schedule],
+    schedules=schedules,  # Use conditional schedules list
     sensors=all_sensors,
 )
