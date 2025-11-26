@@ -9,6 +9,10 @@ locations:
   - location_name: sbir-analytics-production
     code_source:
       module_name: src.definitions
+      # Environment configuration for serverless optimization
+      env_vars:
+        # Skip heavy ML/fiscal assets in serverless to reduce cold start time
+        - DAGSTER_LOAD_HEAVY_ASSETS=false
     build:
       directory: .
       python_version: "3.11"
