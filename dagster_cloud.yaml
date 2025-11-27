@@ -1,14 +1,29 @@
-# Dagster Cloud Hybrid Configuration
+# Dagster Cloud Multi-Location Deployment
 #
-# Runs code on GitHub Actions runners instead of serverless containers.
-# No dependency size limits, no 10-minute timeout.
+# sbir-analytics-core: Lightweight ETL (serverless) - ingestion, enrichment, Neo4j
+# sbir-analytics-ml: Heavy ML workloads (hybrid/EC2) - training, inference, embeddings
 #
 # Documentation: https://docs.dagster.io/dagster-cloud/deployment/hybrid
 
 locations:
-  - location_name: sbir-analytics-production
+  # Core ETL - runs on Dagster Cloud Serverless (lightweight, fast)
+  - location_name: sbir-analytics-core
     code_source:
-      module_name: src.definitions
+      module_name: src.definitions_core
     build:
       directory: .
-      registry: ghcr.io/hollomancer/sbir-analytics  # GitHub Container Registry
+      python_version: "3.11"
+    container_context:
+      k8s:
+        env_vars:
+          # Skip heavy ML/fiscal assets in serverless
+          - DAGSTER_LOAD_HEAVY_ASSETS=false
+
+  # ML workloads - runs on your own compute (hybrid agent)
+  - location_name: sbir-analytics-ml
+    code_source:
+      module_name: src.definitions_ml
+    build:
+      directory: .
+      registry: ghcr.io/hollomancer/sbir-analytics-ml
+    agent_queue: ml-queue  # Route to specific agent for ML workloads
