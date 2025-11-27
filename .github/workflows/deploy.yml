@@ -30,7 +30,7 @@ jobs:
   dagster_cloud_default_deploy:
     name: Dagster Serverless Deploy
     runs-on: ubuntu-22.04
-    timeout-minutes: 20  # Reduced from 30 for faster failure
+    timeout-minutes: 30  # Increased for lightweight requirements deployment
     outputs:
       build_info: ${{ steps.parse-workspace.outputs.build_info }}
 

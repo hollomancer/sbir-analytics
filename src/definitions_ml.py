@@ -16,7 +16,6 @@ from dagster import (
     Definitions,
     JobDefinition,
     ScheduleDefinition,
-    SensorDefinition,
     load_asset_checks_from_modules,
     load_assets_from_modules,
 )
