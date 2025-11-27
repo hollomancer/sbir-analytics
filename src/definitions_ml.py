@@ -61,9 +61,7 @@ schedules = []
 if cet_full_pipeline_job is not None:
     cet_full_pipeline_schedule = ScheduleDefinition(
         job=cet_full_pipeline_job,
-        cron_schedule=os.getenv(
-            "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 3 * * *"
-        ),
+        cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 3 * * *"),
         name="daily_cet_full_pipeline",
         description="Daily CET ML pipeline end-to-end execution",
     )
