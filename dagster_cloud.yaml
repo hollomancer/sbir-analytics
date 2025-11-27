@@ -27,7 +27,3 @@ locations:
               limits:
                 cpu: "2000m"
                 memory: "4Gi"
-        startup_probe:
-          initial_delay_seconds: 60
-          timeout_seconds: 30
-          failure_threshold: 10
