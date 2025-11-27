@@ -1,0 +1,62 @@
+name: Dagster Cloud Hybrid Deployment
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+  AWS_REGION: us-east-2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: dagster-sbir-analytics
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build Docker image for Dagster code
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -f Dockerfile .
+
+          # Push to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy to Dagster Cloud
+        uses: dagster-io/dagster-cloud-action/actions/hybrid_deploy@v0.1
+        with:
+          dagster_cloud_api_token: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+          location_file: dagster_cloud.yaml
+          deployment: prod
+          image_tag: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
