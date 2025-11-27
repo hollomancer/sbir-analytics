@@ -59,6 +59,7 @@ def sample_pipeline_metrics() -> PipelineMetrics:
 
     module1 = ModuleMetrics(
         module_name="extraction",
+        run_id="test_run_123",
         stage="extract",
         records_in=1000,
         records_out=950,
@@ -73,6 +74,7 @@ def sample_pipeline_metrics() -> PipelineMetrics:
 
     module2 = ModuleMetrics(
         module_name="enrichment",
+        run_id="test_run_123",
         stage="enrich",
         records_in=950,
         records_out=920,

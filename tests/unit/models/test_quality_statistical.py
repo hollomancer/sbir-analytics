@@ -471,6 +471,7 @@ class TestModuleMetrics:
 
         metrics = ModuleMetrics(
             module_name="sbir_extractor",
+            run_id="test_run_001",
             stage="extract",
             execution_time=duration,
             start_time=start,
@@ -500,6 +501,7 @@ class TestModuleMetrics:
         with pytest.raises(ValidationError):
             ModuleMetrics(
                 module_name="test",
+                run_id="test_run_001",
                 stage="test",
                 execution_time=timedelta(seconds=60),
                 start_time=start,
