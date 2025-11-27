@@ -6,10 +6,10 @@
 # Documentation: docs/deployment/github-actions-ml.md
 
 locations:
-  # Core ETL - runs on Dagster Cloud Serverless (lightweight, fast)
+  # Core ETL - runs on Dagster Cloud Serverless (minimal, fast startup)
   - location_name: sbir-analytics-core
     code_source:
-      module_name: src.definitions_core
+      module_name: src.definitions_minimal
     build:
       directory: .
       python_version: "3.11"
