@@ -1,9 +1,9 @@
-# Dagster Cloud Multi-Location Deployment
+# Dagster Cloud Serverless Deployment
 #
-# sbir-analytics-core: Lightweight ETL (serverless) - ingestion, enrichment, Neo4j
-# sbir-analytics-ml: Heavy ML workloads (hybrid/EC2) - training, inference, embeddings
+# Core ETL runs on Dagster Cloud Serverless (lightweight, fast)
+# ML jobs run on-demand via GitHub Actions (see .github/workflows/run-ml-jobs.yml)
 #
-# Documentation: https://docs.dagster.io/dagster-cloud/deployment/hybrid
+# Documentation: docs/deployment/github-actions-ml.md
 
 locations:
   # Core ETL - runs on Dagster Cloud Serverless (lightweight, fast)
@@ -18,12 +18,3 @@ locations:
         env_vars:
           # Skip heavy ML/fiscal assets in serverless
           - DAGSTER_LOAD_HEAVY_ASSETS=false
-
-  # ML workloads - runs on your own compute (hybrid agent)
-  - location_name: sbir-analytics-ml
-    code_source:
-      module_name: src.definitions_ml
-    build:
-      directory: .
-      registry: ghcr.io/hollomancer/sbir-analytics-ml
-    agent_queue: ml-queue  # Route to specific agent for ML workloads

@@ -1,0 +1,99 @@
+name: ML Jobs On-Demand
+
+on:
+  # Run manually
+  workflow_dispatch:
+    inputs:
+      job_name:
+        description: 'Job to run'
+        required: true
+        type: choice
+        options:
+          - cet_full_pipeline
+          - fiscal_returns_mvp
+          - paecter_embeddings
+          - all_ml_jobs
+
+  # Or weekly schedule (optional)
+  schedule:
+    - cron: '0 3 * * 1'  # Monday 3 AM UTC
+
+env:
+  AWS_REGION: us-east-2
+
+jobs:
+  run-ml-job:
+    name: Run ML Job
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hours max
+
+    permissions:
+      contents: read
+      id-token: write  # For AWS OIDC
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install dagster dagster-cloud
+
+      - name: Run ML Job
+        env:
+          DAGSTER_LOAD_HEAVY_ASSETS: "true"
+          DAGSTER_HOME: /tmp/dagster_home
+        run: |
+          # Initialize Dagster
+          mkdir -p $DAGSTER_HOME
+
+          # Determine which job to run
+          JOB_NAME="${{ github.event.inputs.job_name || 'all_ml_jobs' }}"
+
+          case $JOB_NAME in
+            cet_full_pipeline)
+              echo "Running CET full pipeline..."
+              dagster job execute -m src.definitions_ml -j cet_full_pipeline_job
+              ;;
+            fiscal_returns_mvp)
+              echo "Running fiscal returns analysis..."
+              dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job
+              ;;
+            paecter_embeddings)
+              echo "Running PaECTER embeddings..."
+              dagster job execute -m src.definitions_ml -j paecter_job
+              ;;
+            all_ml_jobs)
+              echo "Running all ML jobs..."
+              dagster job execute -m src.definitions_ml -j cet_full_pipeline_job
+              dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job
+              dagster job execute -m src.definitions_ml -j paecter_job
+              ;;
+            *)
+              echo "Unknown job: $JOB_NAME"
+              exit 1
+              ;;
+          esac
+
+      - name: Upload job results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-job-results
+          path: |
+            /tmp/dagster_home
+            reports/
+          retention-days: 7
