@@ -120,7 +120,18 @@ jobs:
           df -h
           AVAILABLE=$(df -BG "$GITHUB_WORKSPACE" | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available disk space: ${AVAILABLE}GB"
-          
+
+      - name: Use lightweight requirements for serverless
+        if: steps.prerun.outputs.result == 'pex-deploy'
+        run: |
+          cd "$GITHUB_WORKSPACE/project-repo"
+          # Backup full requirements
+          cp requirements.txt requirements-full.txt
+          # Use core-only requirements for serverless (no ML/NLP heavy deps)
+          cp requirements-core.txt requirements.txt
+          echo "✅ Switched to lightweight requirements (core ETL only)"
+          echo "Excluded: scikit-learn, spacy, sentence-transformers, torch, rpy2"
+
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.12.3
