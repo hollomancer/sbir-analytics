@@ -377,8 +377,10 @@ jobs:
       - name: Check if AWS credentials are available
         id: check_aws
         run: |
-          if [ -n "$AWS_ACCESS_KEY_ID" ] || [ -n "$AWS_SESSION_TOKEN" ]; then
+          # Check if AWS credentials step succeeded (not just if env vars exist)
+          if [ "${{ steps.aws-credentials.outcome }}" == "success" ]; then
             echo "aws_available=true" >> $GITHUB_OUTPUT
+            echo "✓ AWS credentials configured successfully"
           else
             echo "aws_available=false" >> $GITHUB_OUTPUT
             echo "⚠️  Skipping performance check - AWS credentials not configured"
