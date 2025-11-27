@@ -11,11 +11,14 @@ Heavy ML/fiscal assets are excluded and run in the ML location instead.
 """
 
 import os
+from typing import Any
 
 from dagster import (
     AssetSelection,
     Definitions,
+    JobDefinition,
     ScheduleDefinition,
+    SensorDefinition,
     define_asset_job,
     load_asset_checks_from_modules,
     load_assets_from_modules,
@@ -32,12 +35,12 @@ all_assets = load_assets_from_modules(asset_modules)
 all_asset_checks = load_asset_checks_from_modules(asset_modules)
 
 
-def _discover_jobs() -> dict[str, any]:
+def _discover_jobs() -> dict[str, Any]:
     """Discover job definitions exposed under src.assets.jobs."""
     return {job.name: job for job in assets_pkg.iter_public_jobs()}
 
 
-def _discover_sensors() -> list[any]:
+def _discover_sensors() -> list[Any]:
     """Discover sensors exposed under src.assets.sensors."""
     return list(assets_pkg.iter_public_sensors())
 
@@ -70,7 +73,7 @@ daily_schedule = ScheduleDefinition(
 all_sensors = _discover_sensors()
 
 # Aggregate jobs
-job_definitions: list[any] = [
+job_definitions: list[Any] = [
     sbir_ingestion_job,
     core_etl_job,
 ]

@@ -10,11 +10,13 @@ These run on your own compute (EC2, etc.) to avoid serverless timeouts.
 """
 
 import os
+from typing import Any
 
 from dagster import (
     Definitions,
     JobDefinition,
     ScheduleDefinition,
+    SensorDefinition,
     load_asset_checks_from_modules,
     load_assets_from_modules,
 )
@@ -35,7 +37,7 @@ def _discover_jobs() -> dict[str, JobDefinition]:
     return {job.name: job for job in assets_pkg.iter_public_jobs()}
 
 
-def _discover_sensors() -> list[any]:
+def _discover_sensors() -> list[Any]:
     """Discover sensors exposed under src.assets.sensors."""
     return list(assets_pkg.iter_public_sensors())
 
