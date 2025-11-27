@@ -321,8 +321,10 @@ jobs:
     timeout-minutes: 20  # Reduced from 30 for faster failure
     continue-on-error: true  # Don't block PRs on performance checks
     permissions:
-      id-token: write  # For OIDC authentication to AWS
-      contents: read   # Only read access needed
+      id-token: write        # For OIDC authentication to AWS
+      contents: read         # For checking out code
+      pull-requests: write   # For posting PR comments
+      checks: write          # For creating check runs
     env:
       AWS_REGION: us-east-2
       S3_BUCKET: sbir-etl-production-data
@@ -334,6 +336,8 @@ jobs:
           fetch-depth: 0
 
       - name: Configure AWS credentials
+        id: aws-credentials
+        continue-on-error: true  # Optional: Falls back to local data if AWS not configured
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: ./.github/actions/setup-aws-credentials
         with:
@@ -370,8 +374,27 @@ jobs:
             echo "⚠ No baseline found - this is first run or cache miss"
           fi
 
+      - name: Check if AWS credentials are available
+        id: check_aws
+        run: |
+          # Check if AWS credentials step succeeded AND credentials actually work
+          if [ "${{ steps.aws-credentials.outcome }}" == "success" ]; then
+            # Verify credentials are actually usable
+            if aws sts get-caller-identity >/dev/null 2>&1; then
+              echo "aws_available=true" >> $GITHUB_OUTPUT
+              echo "✓ AWS credentials configured and verified"
+            else
+              echo "aws_available=false" >> $GITHUB_OUTPUT
+              echo "⚠️  AWS credentials step succeeded but credentials not usable"
+            fi
+          else
+            echo "aws_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️  AWS credentials step did not succeed (outcome: ${{ steps.aws-credentials.outcome }})"
+          fi
+
       - name: Run Performance Regression Detection
         id: regression
+        if: steps.check_aws.outputs.aws_available == 'true'
         continue-on-error: true
         run: |
           mkdir -p reports/benchmarks

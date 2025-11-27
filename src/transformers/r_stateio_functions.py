@@ -243,9 +243,9 @@ def calculate_value_added_ratios(
                 if hasattr(wages_df, "index"):
                     sectors = wages_df.index
                 elif "sector" in wages_df.columns:
-                    sectors = wages_df["sector"]
+                    sectors = wages_df["sector"]  # type: ignore[assignment]
                 elif "BEA" in wages_df.columns:
-                    sectors = wages_df["BEA"]
+                    sectors = wages_df["BEA"]  # type: ignore[assignment]
 
                 if sectors is not None:
                     for sector in sectors:
@@ -303,7 +303,7 @@ def _extract_sector_value(df: pd.DataFrame, sector: str | int) -> float:
         # Get the first numeric column value
         numeric_cols = df.select_dtypes(include=["number"]).columns
         if len(numeric_cols) > 0:
-            return float(df.loc[sector, numeric_cols[0]])
+            return float(df.loc[sector, numeric_cols[0]])  # type: ignore[arg-type]
 
     # Try column lookup
     if "sector" in df.columns or "BEA" in df.columns:
@@ -665,7 +665,7 @@ def calculate_employment_coefficients(
         if hasattr(employment_data, "index"):
             sectors = employment_data.index
         elif "sector" in employment_data.columns:
-            sectors = employment_data["sector"]
+            sectors = employment_data["sector"]  # type: ignore[assignment]
         else:
             logger.warning("Cannot identify sectors in employment data")
             return pd.DataFrame()

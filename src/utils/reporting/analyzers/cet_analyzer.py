@@ -344,7 +344,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
                 if col in ["primary_cet_area", "cet_classification", "technology_category"]:
                     category_counts = classified_df[col].value_counts()
                     for category, count in category_counts.items():
-                        if pd.notna(category):
+                        if pd.notna(category):  # type: ignore[call-overload]
                             category_name = str(category).lower()
                             category_distribution[category_name] = count / total_records
 

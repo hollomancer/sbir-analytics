@@ -11,7 +11,7 @@ Usage:
   - Requires validated_sbir_awards and transformed_patents assets to be materialized first
 """
 
-from dagster import AssetSelection, build_assets_job
+from dagster import AssetSelection, define_asset_job
 
 
 try:
@@ -34,13 +34,8 @@ if all(
         paecter_award_patent_similarity,
     ]
 ):
-    paecter_job = build_assets_job(
+    paecter_job = define_asset_job(
         name="paecter_job",
-        assets=[
-            paecter_embeddings_awards,
-            paecter_embeddings_patents,
-            paecter_award_patent_similarity,
-        ],
         selection=AssetSelection.keys(
             paecter_embeddings_awards.key,
             paecter_embeddings_patents.key,
@@ -53,9 +48,9 @@ if all(
         ),
     )
 else:
-    paecter_job = build_assets_job(  # type: ignore[unreachable]
+    paecter_job = define_asset_job(  # type: ignore[unreachable]
         name="paecter_job_placeholder",
-        assets=[],
+        selection=AssetSelection.keys(),
         description="Placeholder job (PaECTER assets unavailable at import time).",
     )
 

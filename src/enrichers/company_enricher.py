@@ -94,7 +94,7 @@ def _build_company_indexes(
     zip_col: str | None = None,
     prefix_len: int = 2,
     enhanced_config: dict[str, Any] | None = None,
-) -> dict[str, dict]:
+) -> dict[str, Any]:
     """
     Precompute indexes used by the enricher:
       - comp_by_uei: mapping UEI -> company index
@@ -145,7 +145,7 @@ def _build_company_indexes(
         for idx, v in df[uei_col].dropna().items():
             key = str(v).strip().upper()
             if key:
-                comp_by_uei[key] = idx
+                comp_by_uei[key] = idx  # type: ignore[assignment]
 
     # DUNS exact mapping (digits-only)
     comp_by_duns: dict[str, int] = {}
@@ -153,12 +153,12 @@ def _build_company_indexes(
         for idx, v in df[duns_col].dropna().items():
             digits = "".join(ch for ch in str(v) if ch.isdigit())
             if digits:
-                comp_by_duns[digits] = idx
+                comp_by_duns[digits] = idx  # type: ignore[assignment]
 
     # Blocks dict: block_key -> list of indices
     blocks: dict[str, list[int]] = {}
     for idx, blk in block_series.items():
-        blocks.setdefault(blk, []).append(idx)
+        blocks.setdefault(blk, []).append(idx)  # type: ignore[arg-type]
 
     # Phonetic codes (if enabled)
     phonetic_by_code: dict[str, list[int]] = {}
@@ -169,7 +169,7 @@ def _build_company_indexes(
         for idx, name in df[company_name_col].items():
             code = get_phonetic_code(str(name), algorithm=algo)
             if code:
-                phonetic_by_code.setdefault(code, []).append(idx)
+                phonetic_by_code.setdefault(code, []).append(idx)  # type: ignore[arg-type]
 
     indexes = {
         "df": df,

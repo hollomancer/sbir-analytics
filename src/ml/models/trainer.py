@@ -166,7 +166,7 @@ class CETModelTrainer:
 
         # Train model
         logger.info("Training model with final parameters")
-        training_metrics = model.train(X_train, y_train)
+        training_metrics = model.train(X_train, y_train)  # type: ignore[arg-type]
 
         # Evaluate on test set
         logger.info("Evaluating model on test set")

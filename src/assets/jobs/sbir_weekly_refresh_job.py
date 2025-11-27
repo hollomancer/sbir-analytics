@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dagster import JobDefinition
+from dagster._core.definitions.unresolved_asset_job_definition import (
+    UnresolvedAssetJobDefinition,
+)
 
 
 try:
@@ -17,7 +20,7 @@ except Exception:  # pragma: no cover - handles optional Dagster deps
 from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
 
-def _build_job() -> JobDefinition:
+def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
     assets = [raw_sbir_awards, validated_sbir_awards, sbir_validation_report, neo4j_sbir_awards]
     if any(asset is None for asset in assets):  # type: ignore[arg-type]
         return build_placeholder_job(

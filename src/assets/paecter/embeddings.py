@@ -27,7 +27,6 @@ from ...utils.monitoring import performance_monitor
     description="PaECTER embeddings for SBIR awards",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_awards(
     context,
@@ -56,7 +55,7 @@ def paecter_embeddings_awards(
     # Find award ID column using helper
     award_id_col = AssetColumnHelper.find_award_id_column(validated_sbir_awards)
     if not award_id_col:
-        award_ids = validated_sbir_awards.index.astype(str)
+        award_ids = pd.Series(validated_sbir_awards.index.astype(str))
         context.log.warning("No award ID column found, using index")
     else:
         award_ids = validated_sbir_awards[award_id_col].astype(str)
@@ -138,7 +137,6 @@ def paecter_embeddings_awards(
     description="PaECTER embeddings for USPTO patents",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_embeddings_patents(
     context,
@@ -225,8 +223,8 @@ def paecter_embeddings_patents(
         all_rows = []
         for file_path in files:
             context.log.info(f"Loading from {file_path.name}")
-            for row in extractor.stream_rows(file_path, chunk_size=10000):
-                all_rows.append(row)
+            for patent_row in extractor.stream_rows(file_path, chunk_size=10000):
+                all_rows.append(patent_row)
                 if len(all_rows) >= 1000:  # Limit for testing
                     break
             if len(all_rows) >= 1000:
@@ -241,7 +239,7 @@ def paecter_embeddings_patents(
     # Find patent ID column using helper
     patent_id_col = AssetColumnHelper.find_patent_id_column(patents_df)
     if not patent_id_col:
-        patent_ids = patents_df.index.astype(str)
+        patent_ids = pd.Series(patents_df.index.astype(str))
         context.log.warning("No patent ID column found, using index")
     else:
         patent_ids = patents_df[patent_id_col].astype(str)
@@ -317,7 +315,6 @@ def paecter_embeddings_patents(
     description="Similarity scores between SBIR awards and USPTO patents",
     group_name="paecter",
     compute_kind="ml",
-    io_manager_key="parquet_io_manager",
 )
 def paecter_award_patent_similarity(
     context,

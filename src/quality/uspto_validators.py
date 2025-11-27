@@ -96,7 +96,7 @@ def _iter_rows_from_parquet(
         for i in range(0, len(df), chunk_size):
             batch = df.iloc[i : i + chunk_size]
             for rec in batch.to_dict(orient="records"):
-                yield rec
+                yield rec  # type: ignore[misc]
         return
     raise RuntimeError("No parquet reader available (pyarrow or pandas required)")
 
@@ -127,14 +127,12 @@ def _iter_rows_from_dta(
     if pd is not None:
         # try iterator-based pandas read_stata if supported
         try:
-            reader = pd.read_stata(str(path), iterator=True, convert_categoricals=False)
-            while True:
-                try:
-                    chunk = reader.get_chunk(chunk_size)
-                except StopIteration:
-                    break
+            reader = pd.read_stata(
+                str(path), iterator=True, convert_categoricals=False, chunksize=chunk_size
+            )
+            for chunk in reader:
                 for rec in chunk.to_dict(orient="records"):
-                    yield rec
+                    yield rec  # type: ignore[misc]
             return
         except Exception:
             # last resort: read entirely
@@ -142,7 +140,7 @@ def _iter_rows_from_dta(
             for i in range(0, len(df), chunk_size):
                 chunk = df.iloc[i : i + chunk_size]
                 for rec in chunk.to_dict(orient="records"):
-                    yield rec
+                    yield rec  # type: ignore[misc]
             return
     raise RuntimeError("No Stata reader available (pyreadstat or pandas required)")
 

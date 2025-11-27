@@ -16,10 +16,20 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset_check
+from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
 from src.exceptions import DependencyError
+
+# Re-export dagster decorators for use in other USPTO asset modules
+__all__ = [
+    "asset",
+    "asset_check",
+    "AssetIn",
+    "AssetCheckResult",
+    "AssetCheckSeverity",
+    "MetadataValue",
+]
 
 
 # Statistical reporting imports

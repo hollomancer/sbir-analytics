@@ -307,7 +307,7 @@ class SbirEnrichmentAnalyzer(ModuleAnalyzer):
             if col in enriched_df.columns:
                 source_counts = enriched_df[col].value_counts()
                 for source, count in source_counts.items():
-                    if pd.notna(source):
+                    if pd.notna(source):  # type: ignore[call-overload]
                         source_name = str(source).lower()
                         match_rates[source_name] = count / total_records
 

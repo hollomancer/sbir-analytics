@@ -371,11 +371,11 @@ def sbir_usaspending_enrichment_report(
         "match_rate": f"{report['match_rate']:.1%}",
         "matched_awards": report["matched_awards"],
         "unmatched_awards": report["unmatched_total"],
-        "match_methods": MetadataValue.json(report["match_methods"]),
-        "fuzzy_score_distribution": MetadataValue.json(report["fuzzy_score_distribution"]),
+        "match_methods": MetadataValue.json(report["match_methods"]),  # type: ignore[arg-type]
+        "fuzzy_score_distribution": MetadataValue.json(report["fuzzy_score_distribution"]),  # type: ignore[arg-type]
     }
 
-    return Output(value=report, metadata=metadata)
+    return Output(value=report, metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset_check(
@@ -442,7 +442,10 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
     }
 
     return AssetCheckResult(
-        passed=passed, severity=severity, description=description, metadata=metadata
+        passed=passed,
+        severity=severity,
+        description=description,
+        metadata=metadata,  # type: ignore[arg-type]
     )
 
 

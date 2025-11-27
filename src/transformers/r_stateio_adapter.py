@@ -696,15 +696,15 @@ class RStateIOAdapter(EconomicModelInterface):
         # Typical I-O multipliers range from 1.5-3.0 depending on sector
         multiplier = Decimal("2.0")
 
-        result_df["wage_impact"] = result_df["shock_amount"] * Decimal("0.4") * multiplier
+        result_df["wage_impact"] = result_df["shock_amount"] * Decimal("0.4") * multiplier  # type: ignore[operator]
         result_df["proprietor_income_impact"] = (
-            result_df["shock_amount"] * Decimal("0.1") * multiplier
+            result_df["shock_amount"] * Decimal("0.1") * multiplier  # type: ignore[operator]
         )
         result_df["gross_operating_surplus"] = (
-            result_df["shock_amount"] * Decimal("0.3") * multiplier
+            result_df["shock_amount"] * Decimal("0.3") * multiplier  # type: ignore[operator]
         )
-        result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier
-        result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier
+        result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier  # type: ignore[operator]
+        result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier  # type: ignore[operator]
         result_df["production_impact"] = result_df["shock_amount"] * multiplier
         result_df["model_version"] = model_version
         result_df["confidence"] = Decimal("0.75")

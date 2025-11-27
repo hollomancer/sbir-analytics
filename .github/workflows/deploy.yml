@@ -3,7 +3,8 @@ name: Serverless Deployment
 # Permissions: Minimal required permissions for deployment
 permissions:
   contents: read
-  id-token: write  # For OIDC authentication to Dagster Cloud
+  id-token: write        # For OIDC authentication to Dagster Cloud
+  pull-requests: write   # For posting deployment status comments on PRs
 
 on:
   push:
@@ -29,7 +30,7 @@ jobs:
   dagster_cloud_default_deploy:
     name: Dagster Serverless Deploy
     runs-on: ubuntu-22.04
-    timeout-minutes: 20  # Reduced from 30 for faster failure
+    timeout-minutes: 30  # Increased for lightweight requirements deployment
     outputs:
       build_info: ${{ steps.parse-workspace.outputs.build_info }}
 
@@ -119,7 +120,7 @@ jobs:
           df -h
           AVAILABLE=$(df -BG "$GITHUB_WORKSPACE" | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available disk space: ${AVAILABLE}GB"
-          
+
       - name: Python Executable Deploy
         if: steps.prerun.outputs.result == 'pex-deploy'
         uses: dagster-io/dagster-cloud-action/actions/build_deploy_python_executable@v1.12.3

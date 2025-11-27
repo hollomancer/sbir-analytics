@@ -15,7 +15,7 @@ Notes:
 - Provide runtime configuration via Dagster run config (e.g., duckdb path, raw_dir, etc).
 """
 
-from dagster import AssetSelection, build_assets_job
+from dagster import AssetSelection, define_asset_job
 
 
 # Import the USPTO AI asset definitions. These are expected to be defined in:
@@ -40,13 +40,8 @@ if (
     and uspto_ai_deduplicate is not None
     and raw_uspto_ai_human_sample_extraction is not None
 ):
-    uspto_ai_extraction_job = build_assets_job(
+    uspto_ai_extraction_job = define_asset_job(
         name="uspto_ai_extraction_job",
-        assets=[
-            raw_uspto_ai_extract,
-            uspto_ai_deduplicate,
-            raw_uspto_ai_human_sample_extraction,
-        ],
         selection=AssetSelection.keys(
             raw_uspto_ai_extract.key,
             uspto_ai_deduplicate.key,
@@ -58,9 +53,9 @@ if (
         ),
     )
 else:
-    uspto_ai_extraction_job = build_assets_job(  # type: ignore[unreachable]
+    uspto_ai_extraction_job = define_asset_job(  # type: ignore[unreachable]
         name="uspto_ai_extraction_job_placeholder",
-        assets=[],
+        selection=AssetSelection.keys(),
         description="Placeholder job (USPTO AI assets unavailable at import time).",
     )
 

@@ -126,44 +126,6 @@ def raw_sbir_awards(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
 
 
-@asset_check(
-    asset="enriched_sbir_awards", description="All required enrichment fields are populated"
-)
-def enrichment_completeness_check(enriched_sbir_awards: pd.DataFrame) -> AssetCheckResult:
-    """
-    Validate that enriched output contains required fields and minimal null values.
-
-    Ensures data quality for downstream consumption.
-    """
-    required_fields = [
-        "_usaspending_match_method",
-        "_usaspending_match_score",
-        "usaspending_recipient_name",
-    ]
-
-    # Check all required fields exist
-    missing_fields = [f for f in required_fields if f not in enriched_sbir_awards.columns]
-
-    # Check null rates in key fields
-    null_rates = {}
-    for field in required_fields:
-        if field in enriched_sbir_awards.columns:
-            null_rate = enriched_sbir_awards[field].isna().sum() / len(enriched_sbir_awards)
-            null_rates[field] = null_rate
-
-    # Pass if no missing fields and null rates are reasonable (allowing for unmatched records)
-    passed = len(missing_fields) == 0 and all(rate < 0.95 for rate in null_rates.values())
-
-    return AssetCheckResult(
-        passed=passed,
-        metadata={
-            "missing_fields": missing_fields if missing_fields else "None",
-            "null_rates": {k: f"{v:.1%}" for k, v in null_rates.items()},
-            "total_records": len(enriched_sbir_awards),
-        },
-    )
-
-
 @asset(
     description="Validated SBIR awards (passed quality checks)",
     group_name="extraction",

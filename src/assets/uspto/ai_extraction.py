@@ -489,8 +489,8 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
                 )
                 try:
                     # Read DTA file in chunks
-                    df = pd.read_stata(dfp, chunksize=batch_size)
-                    for chunk in df:
+                    stata_reader = pd.read_stata(dfp, chunksize=batch_size)
+                    for chunk in stata_reader:
                         if total_ingested == 0:
                             # Create table on first chunk
                             con.execute(
@@ -610,7 +610,7 @@ def raw_uspto_ai_predictions(context) -> dict[str, object]:
     name="validated_uspto_ai_cache_stats",
     description="Return quick statistics about the USPTO AI DuckDB cache (count).",
 )
-def validated_uspto_ai_cache_stats(context) -> dict[str, int | None | str]:
+def validated_uspto_ai_cache_stats(context) -> dict[str, Any]:
     """
     Inspect the DuckDB cache and return a small dict with the number of cached predictions.
     """

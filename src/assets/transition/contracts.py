@@ -230,7 +230,7 @@ def validated_contracts_sample(context) -> Output[pd.DataFrame]:
             df[c] = pd.Series(dtype="object")
 
     total = len(df)
-    date_series = pd.to_datetime(df.get("action_date"), errors="coerce")
+    date_series = pd.to_datetime(df.get("action_date", pd.Series(dtype=object)), errors="coerce")
     date_cov = float(date_series.notna().mean()) if total > 0 else 0.0
     uei_cov = (
         float(df.get("vendor_uei", pd.Series(dtype=object)).notna().mean()) if total > 0 else 0.0
