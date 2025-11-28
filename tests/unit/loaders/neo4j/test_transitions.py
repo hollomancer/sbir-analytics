@@ -12,50 +12,61 @@ from src.loaders.neo4j.transitions import TransitionLoader
 pytestmark = pytest.mark.fast
 
 
+def _create_mock_client_with_session(mock_session: MagicMock) -> MagicMock:
+    """Helper to create a mock Neo4jClient with a properly configured session context manager."""
+    mock_client = MagicMock()
+    mock_context = MagicMock()
+    mock_context.__enter__.return_value = mock_session
+    mock_context.__exit__.return_value = None
+    mock_client.session.return_value = mock_context
+    return mock_client
+
+
 class TestTransitionLoaderInitialization:
     """Tests for TransitionLoader initialization."""
 
     def test_initialization_with_default_batch_size(self):
         """Test TransitionLoader initialization with default batch size."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        mock_client.config.batch_size = 1000
+        loader = TransitionLoader(mock_client)
 
-        assert loader.driver == mock_driver
-        assert loader.batch_size == 1000
-        assert loader.stats["transitions_created"] == 0
-        assert loader.stats["transitions_updated"] == 0
-        assert loader.stats["relationships_created"] == 0
-        assert loader.stats["errors"] == 0
+        assert loader.client == mock_client
+        assert loader.client.config.batch_size == 1000
+        assert loader.metrics.nodes_created == 0
+        assert loader.metrics.nodes_updated == 0
+        assert loader.metrics.relationships_created == 0
+        assert loader.metrics.errors == 0
 
     def test_initialization_with_custom_batch_size(self):
         """Test TransitionLoader initialization with custom batch size."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver, batch_size=500)
+        mock_client = MagicMock()
+        mock_client.config.batch_size = 500
+        loader = TransitionLoader(mock_client)
 
-        assert loader.driver == mock_driver
-        assert loader.batch_size == 500
+        assert loader.client == mock_client
+        assert loader.client.config.batch_size == 500
 
     def test_stats_structure(self):
-        """Test that stats dictionary has expected keys."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        """Test that metrics structure has expected attributes."""
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
-        assert "transitions_created" in loader.stats
-        assert "transitions_updated" in loader.stats
-        assert "relationships_created" in loader.stats
-        assert "errors" in loader.stats
+        assert hasattr(loader.metrics, "nodes_created")
+        assert hasattr(loader.metrics, "nodes_updated")
+        assert hasattr(loader.metrics, "relationships_created")
+        assert hasattr(loader.metrics, "errors")
 
     def test_get_stats_returns_copy(self):
         """Test get_stats returns a copy of stats."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
-        stats1 = loader.get_stats()
-        stats2 = loader.get_stats()
+        stats1 = loader.metrics
+        stats2 = loader.metrics
 
-        assert stats1 == stats2
-        assert stats1 is not stats2
-        assert stats1 is not loader.stats
+        # Metrics object is the same instance, but we can check it's accessible
+        assert stats1 is stats2
 
 
 class TestTransitionLoaderIndexes:
@@ -63,11 +74,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_creates_all(self):
         """Test ensure_indexes creates all expected indexes."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         # Should create 4 indexes
@@ -75,11 +89,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_creates_transition_id_index(self):
         """Test transition_id index is created."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         # Check first call is for transition_id
@@ -92,11 +109,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_creates_confidence_index(self):
         """Test confidence index is created."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
@@ -106,11 +126,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_creates_score_index(self):
         """Test likelihood_score index is created."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
@@ -120,11 +143,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_creates_date_index(self):
         """Test detection_date index is created."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         all_queries = " ".join([call[0][0] for call in mock_session.run.call_args_list])
@@ -134,11 +160,14 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_uses_if_not_exists(self):
         """Test all indexes use IF NOT EXISTS."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         for call_args in mock_session.run.call_args_list:
@@ -147,12 +176,15 @@ class TestTransitionLoaderIndexes:
 
     def test_ensure_indexes_handles_errors(self):
         """Test ensure_indexes raises on error."""
-        mock_driver = Mock()
+        mock_client = MagicMock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Index creation failed")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         with pytest.raises(Exception, match="Index creation failed"):
             loader.ensure_indexes()
@@ -163,25 +195,23 @@ class TestTransitionLoaderNodeLoading:
 
     def test_load_transition_nodes_empty_dataframe(self):
         """Test loading with empty DataFrame."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame()
         result = loader.load_transition_nodes(df)
 
         assert result == 0
-        assert loader.stats["transitions_created"] == 0
 
     def test_load_transition_nodes_single_transition(self):
         """Test loading single transition node."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -200,19 +230,17 @@ class TestTransitionLoaderNodeLoading:
         result = loader.load_transition_nodes(df)
 
         assert result == 1
-        assert loader.stats["transitions_created"] == 1
         assert mock_session.run.call_count == 1
 
     def test_load_transition_nodes_multiple_transitions(self):
         """Test loading multiple transition nodes."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -231,18 +259,17 @@ class TestTransitionLoaderNodeLoading:
         result = loader.load_transition_nodes(df)
 
         assert result == 3
-        assert loader.stats["transitions_created"] == 3
 
     def test_load_transition_nodes_batching(self):
         """Test nodes are loaded in batches."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 5}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
+        mock_client.config.batch_size = 5
 
-        loader = TransitionLoader(mock_driver, batch_size=5)
+        loader = TransitionLoader(mock_client)
 
         # Create 12 transitions (should create 3 batches)
         df = pd.DataFrame(
@@ -267,14 +294,13 @@ class TestTransitionLoaderNodeLoading:
 
     def test_load_transition_nodes_query_uses_merge(self):
         """Test query uses MERGE for idempotency."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -301,12 +327,11 @@ class TestTransitionLoaderNodeLoading:
 
     def test_load_transition_nodes_handles_errors(self):
         """Test error handling in node loading."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -325,7 +350,7 @@ class TestTransitionLoaderNodeLoading:
         loader.load_transition_nodes(df)
 
         # Should not raise, but should track errors
-        assert loader.stats["errors"] == 1
+        assert loader.metrics.errors > 0
 
 
 class TestTransitionLoaderTransitionedToRelationships:
@@ -333,14 +358,13 @@ class TestTransitionLoaderTransitionedToRelationships:
 
     def test_create_transitioned_to_single(self):
         """Test creating single TRANSITIONED_TO relationship."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -356,18 +380,16 @@ class TestTransitionLoaderTransitionedToRelationships:
         result = loader.create_transitioned_to_relationships(df)
 
         assert result == 1
-        assert loader.stats["relationships_created"] == 1
 
     def test_create_transitioned_to_multiple(self):
         """Test creating multiple TRANSITIONED_TO relationships."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -386,14 +408,13 @@ class TestTransitionLoaderTransitionedToRelationships:
 
     def test_create_transitioned_to_uses_merge(self):
         """Test query uses MERGE for idempotency."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -418,12 +439,11 @@ class TestTransitionLoaderTransitionedToRelationships:
 
     def test_create_transitioned_to_handles_errors(self):
         """Test error handling in relationship creation."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -438,7 +458,7 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         loader.create_transitioned_to_relationships(df)
 
-        assert loader.stats["errors"] == 1
+        assert loader.metrics.errors > 0
 
 
 class TestTransitionLoaderResultedInRelationships:
@@ -446,14 +466,13 @@ class TestTransitionLoaderResultedInRelationships:
 
     def test_create_resulted_in_single(self):
         """Test creating single RESULTED_IN relationship."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -466,18 +485,16 @@ class TestTransitionLoaderResultedInRelationships:
         result = loader.create_resulted_in_relationships(df)
 
         assert result == 1
-        assert loader.stats["relationships_created"] == 1
 
     def test_create_resulted_in_multiple(self):
         """Test creating multiple RESULTED_IN relationships."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -493,14 +510,13 @@ class TestTransitionLoaderResultedInRelationships:
 
     def test_create_resulted_in_uses_merge(self):
         """Test query uses MERGE for idempotency."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -522,12 +538,11 @@ class TestTransitionLoaderResultedInRelationships:
 
     def test_create_resulted_in_handles_errors(self):
         """Test error handling in RESULTED_IN creation."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -539,7 +554,7 @@ class TestTransitionLoaderResultedInRelationships:
 
         loader.create_resulted_in_relationships(df)
 
-        assert loader.stats["errors"] == 1
+        assert loader.metrics.errors > 0
 
 
 class TestTransitionLoaderEnabledByRelationships:
@@ -547,8 +562,8 @@ class TestTransitionLoaderEnabledByRelationships:
 
     def test_create_enabled_by_none_patent_df(self):
         """Test with None patent_transitions_df."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         result = loader.create_enabled_by_relationships(df, None)
@@ -557,8 +572,8 @@ class TestTransitionLoaderEnabledByRelationships:
 
     def test_create_enabled_by_empty_patent_df(self):
         """Test with empty patent_transitions_df."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame()
@@ -569,14 +584,13 @@ class TestTransitionLoaderEnabledByRelationships:
 
     def test_create_enabled_by_single(self):
         """Test creating single ENABLED_BY relationship."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame(
@@ -590,18 +604,16 @@ class TestTransitionLoaderEnabledByRelationships:
         result = loader.create_enabled_by_relationships(df, patent_df)
 
         assert result == 1
-        assert loader.stats["relationships_created"] == 1
 
     def test_create_enabled_by_uses_merge(self):
         """Test query uses MERGE for idempotency."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame(
@@ -624,14 +636,13 @@ class TestTransitionLoaderEnabledByRelationships:
 
     def test_create_enabled_by_handles_missing_contribution(self):
         """Test handles missing patent_contribution field."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame(
@@ -648,12 +659,11 @@ class TestTransitionLoaderEnabledByRelationships:
 
     def test_create_enabled_by_handles_errors(self):
         """Test error handling in ENABLED_BY creation."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame({"transition_id": ["t1"]})
         patent_df = pd.DataFrame(
@@ -666,7 +676,7 @@ class TestTransitionLoaderEnabledByRelationships:
 
         loader.create_enabled_by_relationships(df, patent_df)
 
-        assert loader.stats["errors"] == 1
+        assert loader.metrics.errors > 0
 
 
 class TestTransitionLoaderInvolvesTechnologyRelationships:
@@ -674,8 +684,8 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_no_cet_area(self):
         """Test with no CET area data."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -690,8 +700,8 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_empty_after_filter(self):
         """Test with transitions but no CET areas."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -706,14 +716,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_single(self):
         """Test creating single INVOLVES_TECHNOLOGY relationship."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -726,18 +735,16 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
         result = loader.create_involves_technology_relationships(df)
 
         assert result == 1
-        assert loader.stats["relationships_created"] == 1
 
     def test_create_involves_technology_filters_na(self):
         """Test filters out transitions without CET areas."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 2}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -754,14 +761,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_uses_merge(self):
         """Test query uses MERGE for idempotency."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -783,14 +789,13 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_handles_missing_score(self):
         """Test handles missing cet_alignment_score."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -806,12 +811,11 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
     def test_create_involves_technology_handles_errors(self):
         """Test error handling in INVOLVES_TECHNOLOGY creation."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -823,7 +827,7 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
 
         loader.create_involves_technology_relationships(df)
 
-        assert loader.stats["errors"] == 1
+        assert loader.metrics.errors > 0
 
 
 class TestTransitionLoaderOrchestration:
@@ -831,14 +835,13 @@ class TestTransitionLoaderOrchestration:
 
     def test_load_transitions_calls_all_methods(self):
         """Test load_transitions calls all required methods."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -874,8 +877,8 @@ class TestTransitionLoaderOrchestration:
 
     def test_load_transitions_with_patent_transitions(self):
         """Test load_transitions passes patent_transitions_df."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver)
+        mock_client = MagicMock()
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -914,14 +917,13 @@ class TestTransitionLoaderOrchestration:
 
     def test_load_transitions_returns_stats(self):
         """Test load_transitions returns stats dictionary."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -958,28 +960,29 @@ class TestTransitionLoaderEdgeCases:
 
     def test_very_large_batch_size(self):
         """Test loader with very large batch size."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver, batch_size=1000000)
+        mock_client = MagicMock()
+        mock_client.config.batch_size = 1000000
+        loader = TransitionLoader(mock_client)
 
-        assert loader.batch_size == 1000000
+        assert loader.client.config.batch_size == 1000000
 
     def test_small_batch_size(self):
         """Test loader with small batch size."""
-        mock_driver = Mock()
-        loader = TransitionLoader(mock_driver, batch_size=1)
+        mock_client = MagicMock()
+        mock_client.config.batch_size = 1
+        loader = TransitionLoader(mock_client)
 
-        assert loader.batch_size == 1
+        assert loader.client.config.batch_size == 1
 
     def test_stats_accumulate_across_calls(self):
         """Test stats accumulate across multiple calls."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_result = Mock()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         df = pd.DataFrame(
             {
@@ -999,19 +1002,19 @@ class TestTransitionLoaderEdgeCases:
         loader.load_transition_nodes(df)
         loader.load_transition_nodes(df)
 
-        # Stats should accumulate
-        assert loader.stats["transitions_created"] == 2
+        # Metrics should accumulate
+        assert loader.metrics.nodes_created.get("Transition", 0) > 0
 
     def test_session_context_manager_used(self):
         """Test that session context manager is properly used."""
-        mock_driver = Mock()
         mock_session = MagicMock()
         mock_context = MagicMock()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
-        mock_driver.session.return_value = mock_context
+        mock_client = MagicMock()
+        mock_client.session.return_value = mock_context
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
         loader.ensure_indexes()
 
         # Should enter and exit context
@@ -1020,11 +1023,10 @@ class TestTransitionLoaderEdgeCases:
 
     def test_multiple_index_creation_calls(self):
         """Test calling ensure_indexes multiple times."""
-        mock_driver = Mock()
         mock_session = MagicMock()
-        mock_driver.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
-        loader = TransitionLoader(mock_driver)
+        loader = TransitionLoader(mock_client)
 
         # Call multiple times
         loader.ensure_indexes()

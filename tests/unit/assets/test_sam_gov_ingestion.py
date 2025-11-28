@@ -84,12 +84,8 @@ class TestImportSAMGovEntitiesHelper:
         mock_extractor.load_parquet.return_value = sample_sam_gov_df
         mock_extractor_class.return_value = mock_extractor
 
-        # Mock Path.exists to return True
-        with patch("src.assets.sam_gov_ingestion.Path") as mock_path_class:
-            mock_path = MagicMock()
-            mock_path.exists.return_value = True
-            mock_path_class.return_value = mock_path
-
+        # Mock Path.exists to return True for the parquet file
+        with patch.object(Path, "exists", return_value=True):
             # Execute
             result = _import_sam_gov_entities(mock_context)
 
@@ -155,11 +151,7 @@ class TestImportSAMGovEntitiesHelper:
         mock_config.extraction.sam_gov.parquet_path = "/nonexistent/file.parquet"
 
         # Mock Path.exists to return False
-        with patch("src.assets.sam_gov_ingestion.Path") as mock_path_class:
-            mock_path = MagicMock()
-            mock_path.exists.return_value = False
-            mock_path_class.return_value = mock_path
-
+        with patch.object(Path, "exists", return_value=False):
             # Execute and expect error
             from src.exceptions import ExtractionError
 
@@ -214,11 +206,7 @@ class TestRawSAMGovEntitiesAsset:
         mock_extractor_class.return_value = mock_extractor
 
         # Mock Path.exists to return True
-        with patch("src.assets.sam_gov_ingestion.Path") as mock_path_class:
-            mock_path = MagicMock()
-            mock_path.exists.return_value = True
-            mock_path_class.return_value = mock_path
-
+        with patch.object(Path, "exists", return_value=True):
             # Execute
             result = raw_sam_gov_entities(mock_context)
 

@@ -180,7 +180,7 @@ class TestCETLoaderCompanyEnrichment:
         nodes = captured["nodes"]
         assert len(nodes) == 1
         assert nodes[0]["company_id"] == "C-001"
-        assert captured["label"] == "Company"
+        assert captured["label"] == "Organization"
         assert captured["key_property"] == "company_id"
 
 

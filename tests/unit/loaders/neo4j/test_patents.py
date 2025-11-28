@@ -85,6 +85,7 @@ class TestPatentLoaderConstraints:
         """Test create_constraints executes all constraint statements."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -98,6 +99,7 @@ class TestPatentLoaderConstraints:
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Constraint already exists")
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -112,6 +114,7 @@ class TestPatentLoaderConstraints:
         """Test Patent constraint is for grant_doc_num uniqueness."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -133,6 +136,7 @@ class TestPatentLoaderIndexes:
         """Test create_indexes executes multiple index statements."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -160,6 +164,7 @@ class TestPatentLoaderIndexes:
         """Test indexes cover key properties."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -279,6 +284,7 @@ class TestPatentLoaderEdgeCases:
         """Test calling create_constraints multiple times."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -294,6 +300,7 @@ class TestPatentLoaderEdgeCases:
         """Test calling create_indexes multiple times."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -375,6 +382,7 @@ class TestPatentLoaderConstraintQueries:
         """Test PatentAssignment constraint includes rf_id."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -391,6 +399,7 @@ class TestPatentLoaderConstraintQueries:
         """Test PatentEntity constraint includes entity_id."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -407,6 +416,7 @@ class TestPatentLoaderConstraintQueries:
         """Test all constraints use IF NOT EXISTS for idempotency."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)

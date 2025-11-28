@@ -95,7 +95,10 @@ class TestCETLoaderConstraints:
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Constraint already exists")
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
         loader = CETLoader(mock_client)
 
@@ -372,7 +375,10 @@ class TestCETLoaderConstraintQueries:
         """Test Company constraint is included."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
         loader = CETLoader(mock_client)
         loader.create_constraints()
@@ -417,7 +423,10 @@ class TestCETLoaderBatchOperations:
         """Test batch size is preserved across multiple operations."""
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_context = MagicMock()
+        mock_context.__enter__.return_value = mock_session
+        mock_context.__exit__.return_value = None
+        mock_client.session.return_value = mock_context
 
         config = CETLoaderConfig(batch_size=250)
         loader = CETLoader(mock_client, config)

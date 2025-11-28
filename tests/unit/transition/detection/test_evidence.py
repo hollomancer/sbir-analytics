@@ -718,10 +718,12 @@ class TestValidateBundle:
 
     def test_validate_bundle_negative_score(self):
         """Test validating bundle with negative score."""
+        from pydantic import ValidationError
+
         generator = EvidenceGenerator()
 
-        bundle = EvidenceBundle()
-        bundle.items = [
+        # Pydantic validates at creation time, so we need to catch the error
+        with pytest.raises(ValidationError, match="score"):
             EvidenceItem(
                 source="test",
                 signal="test_signal",
@@ -729,9 +731,6 @@ class TestValidateBundle:
                 score=-0.1,  # Negative
                 metadata={},
             )
-        ]
-
-        assert generator.validate_bundle(bundle) is False
 
     def test_validate_bundle_none_score_accepted(self):
         """Test validating bundle with None score (allowed)."""

@@ -603,7 +603,8 @@ class TestEdgeCases:
 
     def test_process_line_no_award_id_but_has_naics(self, enricher):
         """Test line processing when NAICS found but no award ID."""
-        line = "SHORT 541511 UEI12345ABCD"  # No 6+ digit award ID
+        # Use a 5-digit NAICS code so it doesn't match the 6+ digit award ID pattern
+        line = "SHORT 54151 UEI12345ABCD"  # No 6+ digit award ID
 
         enricher._process_line(line)
 

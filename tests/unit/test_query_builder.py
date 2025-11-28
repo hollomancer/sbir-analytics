@@ -80,8 +80,8 @@ def test_build_relationship_merge_query_with_properties():
         rel_properties={"score": "rel.score", "confidence": "rel.confidence"},
     )
 
-    assert "SET r.score = rel.score" in query
-    assert "SET r.confidence = rel.confidence" in query
+    # The query builder generates a comma-separated SET clause
+    assert "SET r.score = rel.score, r.confidence = rel.confidence" in query
 
 
 def test_build_batch_create_query():
