@@ -51,6 +51,7 @@ jobs:
       docker: ${{ steps.detect.outputs.docker }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
+      - uses: actions/checkout@v4
       - name: Detect changes
         id: detect
         uses: ./.github/actions/detect-changes
