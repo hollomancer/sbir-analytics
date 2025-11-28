@@ -645,5 +645,6 @@ class TestReportCollection:
             collection_id="COLL-002",
             run_id="RUN-002",
             generated_at=datetime.now(),
+            output_directory=Path("/reports"),
         )
         assert collection.artifacts == []

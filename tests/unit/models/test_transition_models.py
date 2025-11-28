@@ -227,13 +227,15 @@ class TestTransitionSignals:
         """Test text_similarity_score validator rejects negative."""
         with pytest.raises(ValidationError) as exc_info:
             TransitionSignals(text_similarity_score=-0.1)
-        assert "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
+        # Pydantic's ge constraint is checked first, so the error message is from Pydantic
+        assert "greater than or equal to 0" in str(exc_info.value) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
 
     def test_text_similarity_score_validator_rejects_too_high(self):
         """Test text_similarity_score validator rejects > 1.0."""
         with pytest.raises(ValidationError) as exc_info:
             TransitionSignals(text_similarity_score=1.5)
-        assert "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
+        # Pydantic Field validation (ge/le) runs before custom validator, so check for Pydantic error
+        assert "less than or equal to 1" in str(exc_info.value) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
 
     def test_text_similarity_score_validator_coerces_int(self):
         """Test text_similarity_score validator coerces int to float."""
@@ -314,7 +316,8 @@ class TestEvidenceBundle:
                 EvidenceItem(source="src3", signal="sig3", score=1.0),
             ]
         )
-        assert bundle.total_score() == 0.8  # (0.8 + 0.6 + 1.0) / 3
+        # Use approximate comparison to handle floating point precision
+        assert abs(bundle.total_score() - 0.8) < 1e-10  # (0.8 + 0.6 + 1.0) / 3 = 0.8
 
     def test_total_score_with_none_scores(self):
         """Test total_score ignores None scores."""
