@@ -141,22 +141,35 @@ class TestEscapeFunctions:
 
     def test_escape_identifier_fallback(self):
         """Test escape_identifier fallback when DuckDB function unavailable."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then patch it to raise AttributeError
+        original = getattr(usaspending_module.duckdb, "escape_identifier", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_identifier"):
+                delattr(usaspending_module.duckdb, "escape_identifier")
             result = DuckDBUSAspendingExtractor._escape_identifier("table_name")
-
-        assert result == '"table_name"'
+            assert result == '"table_name"'
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_identifier", original)
 
     def test_escape_identifier_with_quotes(self):
         """Test escape_identifier with embedded quotes."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_identifier", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_identifier"):
+                delattr(usaspending_module.duckdb, "escape_identifier")
             result = DuckDBUSAspendingExtractor._escape_identifier('table"name')
 
-        # Should escape internal quotes
-        assert result == '"table""name"'
+            # Should escape internal quotes
+            assert result == '"table""name"'
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_identifier", original)
 
     @patch("src.extractors.usaspending.duckdb.escape_string_literal")
     def test_escape_literal_with_duckdb(self, mock_escape):
@@ -170,32 +183,52 @@ class TestEscapeFunctions:
 
     def test_escape_literal_fallback(self):
         """Test escape_literal fallback when DuckDB function unavailable."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
             result = DuckDBUSAspendingExtractor._escape_literal("value")
-
-        assert result == "'value'"
+            assert result == "'value'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_string_literal", original)
 
     def test_escape_literal_with_quotes(self):
         """Test escape_literal with embedded quotes."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
             result = DuckDBUSAspendingExtractor._escape_literal("val'ue")
 
-        # Should escape internal quotes
-        assert result == "'val''ue'"
+            # Should escape internal quotes
+            assert result == "'val''ue'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_string_literal", original)
 
     def test_escape_literal_with_backslashes(self):
         """Test escape_literal with backslashes."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
             result = DuckDBUSAspendingExtractor._escape_literal("val\\ue")
 
-        # Should escape backslashes
-        assert result == "'val\\\\ue'"
+            # Should escape backslashes
+            assert result == "'val\\\\ue'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_string_literal", original)
 
 
 # ==================== Import Tests ====================
@@ -545,21 +578,33 @@ class TestEdgeCases:
 
     def test_escape_identifier_empty_string(self):
         """Test escape_identifier with empty string."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_identifier", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_identifier", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_identifier"):
+                delattr(usaspending_module.duckdb, "escape_identifier")
             result = DuckDBUSAspendingExtractor._escape_identifier("")
-
-        assert result == '""'
+            assert result == '""'
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_identifier", original)
 
     def test_escape_literal_empty_string(self):
         """Test escape_literal with empty string."""
-        with patch(
-            "src.extractors.usaspending.duckdb.escape_string_literal", side_effect=AttributeError
-        ):
+        import src.extractors.usaspending as usaspending_module
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
             result = DuckDBUSAspendingExtractor._escape_literal("")
-
-        assert result == "''"
+            assert result == "''"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                setattr(usaspending_module.duckdb, "escape_string_literal", original)
 
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_multiple_close_calls(self, mock_connect):

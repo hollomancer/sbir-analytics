@@ -299,7 +299,7 @@ class ContractExtractor:
             )
 
             # Parse dates using centralized utility with 8-digit format support
-            from src.utils.date_utils import parse_date
+            from src.utils.common.date_utils import parse_date
 
             action_date = parse_date(get_col(2), allow_8digit=True, strict=False)
             start_date = parse_date(
