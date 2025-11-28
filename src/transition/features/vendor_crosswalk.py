@@ -97,14 +97,20 @@ def _iso_date(val: str | date | datetime | None) -> str | None:
     """Format date as ISO string using centralized utility."""
     from src.utils.common.date_utils import format_date_iso, parse_date
 
-    # Try to format directly first
-    result = format_date_iso(val)
-    if result is not None:
-        return result
+    if val is None:
+        return None
 
-    # If formatting failed, try parsing first
-    parsed = parse_date(val, strict=False)
-    return format_date_iso(parsed) if parsed else str(val) if val else None
+    # If it's already a date/datetime, format directly
+    if isinstance(val, (date, datetime)):
+        return format_date_iso(val)
+
+    # If it's a string, parse it first
+    if isinstance(val, str):
+        parsed = parse_date(val, strict=False)
+        return format_date_iso(parsed) if parsed else val
+
+    # Fallback: try to convert to string
+    return str(val) if val else None
 
 
 # ---------------------------------------------------------------------------
