@@ -13,6 +13,7 @@ locations:
     build:
       directory: .
       python_version: "3.11"
+      base_requirements_txt: requirements.txt
     container_context:
       k8s:
         env_vars:
