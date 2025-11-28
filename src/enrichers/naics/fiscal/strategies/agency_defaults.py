@@ -75,7 +75,43 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
                         metadata={"agency": agency_value, "column": col},
                     )
 
-            # Check for partial match (e.g., "Department of Defense" contains "DOD")
+            # Check for partial match using pattern matching
+            # Map common agency name patterns to agency keys
+            agency_patterns = {
+                "DEFENSE": "DOD",
+                "DEPARTMENT OF DEFENSE": "DOD",
+                "HEALTH": "HHS",
+                "HUMAN SERVICES": "HHS",
+                "ENERGY": "DOE",
+                "AERONAUTICS": "NASA",
+                "SPACE": "NASA",
+                "SCIENCE FOUNDATION": "NSF",
+                "AGRICULTURE": "USDA",
+                "HOMELAND SECURITY": "DHS",
+                "TRANSPORTATION": "DOT",
+                "COMMERCE": "DOC",
+            }
+            
+            # First check pattern matches
+            for pattern, agency_key in agency_patterns.items():
+                if pattern in agency_value and agency_key in self.agency_defaults:
+                    naics_code = self.agency_defaults[agency_key]
+                    normalized = normalize_naics_code(naics_code)
+                    if normalized:
+                        return NAICSEnrichmentResult(
+                            naics_code=normalized,
+                            confidence=self.confidence_level,
+                            source=self.strategy_name,
+                            method="agency_default_partial",
+                            timestamp=datetime.now(),
+                            metadata={
+                                "agency": agency_value,
+                                "matched_key": agency_key,
+                                "column": col,
+                            },
+                        )
+            
+            # Fallback to substring match
             for agency_key, naics_code in self.agency_defaults.items():
                 if agency_key in agency_value:
                     normalized = normalize_naics_code(naics_code)
