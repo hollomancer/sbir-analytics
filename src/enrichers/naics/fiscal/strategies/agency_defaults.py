@@ -92,7 +92,7 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
                 ("TRANSPORTATION", "DOT"),
                 ("COMMERCE", "DOC"),
             ]
-            
+
             # First check pattern matches (longer patterns first)
             for pattern, agency_key in agency_patterns:
                 if pattern in agency_value and agency_key in self.agency_defaults:
@@ -111,7 +111,7 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
                                 "column": col,
                             },
                         )
-            
+
             # Fallback to substring match
             for agency_key, naics_code in self.agency_defaults.items():
                 if agency_key in agency_value:

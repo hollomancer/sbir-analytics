@@ -152,7 +152,7 @@ class TestEscapeFunctions:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_identifier", original)
+                usaspending_module.duckdb.escape_identifier = original
 
     def test_escape_identifier_with_quotes(self):
         """Test escape_identifier with embedded quotes."""
@@ -169,7 +169,7 @@ class TestEscapeFunctions:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_identifier", original)
+                usaspending_module.duckdb.escape_identifier = original
 
     @patch("src.extractors.usaspending.duckdb.escape_string_literal")
     def test_escape_literal_with_duckdb(self, mock_escape):
@@ -194,7 +194,7 @@ class TestEscapeFunctions:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_string_literal", original)
+                usaspending_module.duckdb.escape_string_literal = original
 
     def test_escape_literal_with_quotes(self):
         """Test escape_literal with embedded quotes."""
@@ -211,7 +211,7 @@ class TestEscapeFunctions:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_string_literal", original)
+                usaspending_module.duckdb.escape_string_literal = original
 
     def test_escape_literal_with_backslashes(self):
         """Test escape_literal with backslashes."""
@@ -228,7 +228,7 @@ class TestEscapeFunctions:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_string_literal", original)
+                usaspending_module.duckdb.escape_string_literal = original
 
 
 # ==================== Import Tests ====================
@@ -589,7 +589,7 @@ class TestEdgeCases:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_identifier", original)
+                usaspending_module.duckdb.escape_identifier = original
 
     def test_escape_literal_empty_string(self):
         """Test escape_literal with empty string."""
@@ -604,7 +604,7 @@ class TestEdgeCases:
         finally:
             # Restore the original attribute if it existed
             if original is not None:
-                setattr(usaspending_module.duckdb, "escape_string_literal", original)
+                usaspending_module.duckdb.escape_string_literal = original
 
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_multiple_close_calls(self, mock_connect):

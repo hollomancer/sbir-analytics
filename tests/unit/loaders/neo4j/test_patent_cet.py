@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.exceptions import ConfigurationError
 from src.loaders.neo4j.client import Neo4jClient, Neo4jConfig
 from src.loaders.neo4j.patent_cet import Neo4jPatentCETLoader
 

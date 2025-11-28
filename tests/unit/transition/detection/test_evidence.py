@@ -720,7 +720,7 @@ class TestValidateBundle:
         """Test validating bundle with negative score."""
         from pydantic import ValidationError
 
-        generator = EvidenceGenerator()
+        EvidenceGenerator()
 
         # Pydantic validates at creation time, so we need to catch the error
         with pytest.raises(ValidationError, match="score"):

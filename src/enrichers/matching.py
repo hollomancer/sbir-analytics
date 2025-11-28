@@ -134,7 +134,7 @@ def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
             return jellyfish.soundex(name_clean)
     except Exception:  # pragma: no cover
         return None
-    
+
     return None
 
 

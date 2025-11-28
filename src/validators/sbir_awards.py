@@ -354,11 +354,11 @@ def validate_award_year_date_consistency(
     # Handle missing values (None, pd.NA, or pd.isna)
     if pd.isna(award_year):
         return None
-    
+
     # Check for None first
     if proposal_date is None:
         return None
-    
+
     # Check for pandas NA types - must do this before isinstance check
     try:
         if pd.isna(proposal_date):
