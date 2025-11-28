@@ -95,7 +95,7 @@ def _fuzzy_score(a: str, b: str) -> float:
 
 def _iso_date(val: str | date | datetime | None) -> str | None:
     """Format date as ISO string using centralized utility."""
-    from src.utils.date_utils import format_date_iso, parse_date
+    from src.utils.common.date_utils import format_date_iso, parse_date
 
     # Try to format directly first
     result = format_date_iso(val)
