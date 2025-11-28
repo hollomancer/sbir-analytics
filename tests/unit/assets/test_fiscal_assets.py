@@ -258,9 +258,16 @@ class TestFiscalNAICSEnrichment:
         assert "avg_confidence" in result.metadata
 
     @patch("src.assets.fiscal_assets.get_config")
-    def test_fiscal_naics_quality_check_fails(self, mock_get_config, mock_config):
+    @patch("src.enrichers.usaspending.client.get_config")
+    @patch("src.enrichers.company_categorization.USAspendingAPIClient")
+    def test_fiscal_naics_quality_check_fails(
+        self, mock_client_class, mock_usaspending_get_config, mock_get_config, mock_config
+    ):
         """Test NAICS quality check fails with low confidence."""
         mock_get_config.return_value = mock_config
+        mock_usaspending_get_config.return_value = mock_config
+        # Prevent USAspendingAPIClient from being initialized
+        mock_client_class.side_effect = Exception("Should not initialize client")
 
         # Create DataFrame with low confidence scores
         low_quality_df = pd.DataFrame(
