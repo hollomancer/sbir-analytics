@@ -259,12 +259,13 @@ class TestDuckDBClientCSVImport:
 
     def test_import_csv_missing_file(self, tmp_path):
         """Test CSV import with missing file."""
+        from src.exceptions import FileSystemError
+
         client = DuckDBClient()
         missing_file = tmp_path / "missing.csv"
 
-        success = client.import_csv(missing_file, "test_table")
-
-        assert success is False
+        with pytest.raises(FileSystemError, match="CSV file not found"):
+            client.import_csv(missing_file, "test_table")
 
     def test_import_csv_creates_table(self, sample_csv_file):
         """Test that CSV import creates table if it doesn't exist."""

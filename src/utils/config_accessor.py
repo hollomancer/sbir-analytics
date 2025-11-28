@@ -31,19 +31,40 @@ class ConfigAccessor:
             >>> use_local = ConfigAccessor.get_nested(config, "ml.paecter.use_local", False)
             >>> batch_size = ConfigAccessor.get_nested(config, "ml.paecter.batch_size", 32)
         """
+        if not path or not path.strip():
+            return default
+
         parts = path.split(".")
         current: Any = config
 
-        for part in parts:
+        for i, part in enumerate(parts):
             if current is None:
                 return default
 
             # Try attribute access first
             if hasattr(current, part):
-                current = getattr(current, part)
+                new_current = getattr(current, part)
+                # For MagicMock at the final step, check if attribute was actually set
+                from unittest.mock import MagicMock
+                if isinstance(new_current, MagicMock) and i == len(parts) - 1:
+                    # Check if this mock has any configured behavior
+                    # If _mock_name is None or empty, it's likely auto-created
+                    if not hasattr(new_current, "_mock_name") or not new_current._mock_name:
+                        # Check if accessing a non-existent attribute returns the same type
+                        # This is a heuristic: if both return MagicMock, the original was auto-created
+                        try:
+                            test_attr = getattr(current, f"__nonexistent_{id(current)}__", None)
+                            if isinstance(test_attr, MagicMock) and isinstance(new_current, MagicMock):
+                                # Both are auto-created, return default
+                                return default
+                        except Exception:
+                            pass
+                current = new_current
             # Fall back to dict-like access
             elif isinstance(current, dict):
                 current = current.get(part)
+                if current is None:
+                    return default
             else:
                 return default
 

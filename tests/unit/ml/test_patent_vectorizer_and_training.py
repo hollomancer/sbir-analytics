@@ -26,18 +26,18 @@ pd = pytest.importorskip("pandas")
 np = pytest.importorskip("numpy")
 
 # Commented out - module is empty, but keeping imports for linting
-# from src.ml.features.patent_features import (
-#     DEFAULT_KEYWORDS_MAP,
-#     PatentFeatureVector,
-#     extract_features,
-# )
-# from src.ml.features.vectorizers import (
-#     AssigneeTypeVectorizer,
-#     FeatureMatrixBuilder,
-#     IPCPresenceVectorizer,
-#     KeywordVectorizer,
-#     TokenCounterVectorizer,
-# )
+from src.ml.features.patent_features import (
+    DEFAULT_KEYWORDS_MAP,
+    PatentFeatureVector,
+    extract_features,
+)
+from src.ml.features.vectorizers import (
+    AssigneeTypeVectorizer,
+    FeatureMatrixBuilder,
+    IPCPresenceVectorizer,
+    KeywordVectorizer,
+    TokenCounterVectorizer,
+)
 from src.ml.models.dummy_pipeline import DummyPipeline  # noqa: F401
 from src.ml.models.patent_classifier import PatentCETClassifier  # noqa: F401
 from src.ml.train.patent_training import (  # noqa: F401
@@ -67,19 +67,19 @@ def make_feature_vectors():  # type: ignore[no-untyped-def]
             "application_year": 2021,
         },
     ]
-    fvs = [extract_features(rec) for rec in records]  # noqa: F821
+    fvs = [extract_features(rec) for rec in records]
     # Sanity checks
-    assert all(isinstance(fv, PatentFeatureVector) for fv in fvs)  # noqa: F821
+    assert all(isinstance(fv, PatentFeatureVector) for fv in fvs)
     return fvs
 
 
 def test_keyword_vectorizer_counts_and_names():  # type: ignore[no-untyped-def]
     fvs = make_feature_vectors()
-    kv = KeywordVectorizer(DEFAULT_KEYWORDS_MAP)  # noqa: F821
+    kv = KeywordVectorizer(DEFAULT_KEYWORDS_MAP)
     X = kv.fit_transform(fvs)
     # Expect 2 rows and 2 * (#keyword groups) columns (count + presence)
     assert X.shape[0] == len(fvs)
-    expected_cols = 2 * len(DEFAULT_KEYWORDS_MAP)  # noqa: F821
+    expected_cols = 2 * len(DEFAULT_KEYWORDS_MAP)
     assert X.shape[1] == expected_cols
     # Private accessor for names (acceptable in tests)
     names = kv._get_feature_names()
@@ -92,10 +92,10 @@ def test_keyword_vectorizer_counts_and_names():  # type: ignore[no-untyped-def]
 def test_feature_matrix_builder_combines_all_vectorizers():  # type: ignore[no-untyped-def]
     fvs = make_feature_vectors()
     # Build individual matrices
-    kv = KeywordVectorizer(DEFAULT_KEYWORDS_MAP)  # noqa: F821
-    tcv = TokenCounterVectorizer()  # noqa: F821
-    atv = AssigneeTypeVectorizer()  # noqa: F821
-    ipv = IPCPresenceVectorizer()  # noqa: F821
+    kv = KeywordVectorizer(DEFAULT_KEYWORDS_MAP)
+    tcv = TokenCounterVectorizer()
+    atv = AssigneeTypeVectorizer()
+    ipv = IPCPresenceVectorizer()
 
     X_kv = kv.fit_transform(fvs)
     X_tc = tcv.fit_transform(fvs)
@@ -103,7 +103,7 @@ def test_feature_matrix_builder_combines_all_vectorizers():  # type: ignore[no-u
     X_ip = ipv.fit_transform(fvs)
 
     # Combined builder
-    builder = FeatureMatrixBuilder([kv, tcv, atv, ipv])  # noqa: F821
+    builder = FeatureMatrixBuilder([kv, tcv, atv, ipv])
     X_all = builder.fit_transform(fvs)
 
     # Rows must match

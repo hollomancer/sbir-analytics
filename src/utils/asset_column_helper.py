@@ -73,6 +73,35 @@ class AssetColumnHelper:
         return ColumnFinder.find_id_column(df, "patent")
 
     @staticmethod
+    def find_company_id_column(df: pd.DataFrame) -> str | None:
+        """Find company ID column with fallback logic.
+
+        Searches for common company ID column names with priority:
+        1. Exact matches: "company_id", "uei", "duns"
+        2. Partial matches: columns containing "company", "uei", "duns"
+        3. Generic "id" or "ID" columns
+
+        Args:
+            df: DataFrame to search
+
+        Returns:
+            Column name if found, None otherwise
+
+        Example:
+            >>> df = pd.DataFrame({"uei": ["U1", "U2"], "name": ["A", "B"]})
+            >>> AssetColumnHelper.find_company_id_column(df)
+            'uei'
+        """
+        # Try specific company patterns first
+        company_patterns = ["company_id", "uei", "duns"]
+        col = ColumnFinder.find_column_by_patterns(df, company_patterns)
+        if col:
+            return col
+
+        # Fallback to generic ID column
+        return ColumnFinder.find_id_column(df, "company")
+
+    @staticmethod
     def find_text_columns(df: pd.DataFrame, entity_type: str = "award") -> dict[str, str | None]:
         """Find common text columns (title, abstract, solicitation).
 

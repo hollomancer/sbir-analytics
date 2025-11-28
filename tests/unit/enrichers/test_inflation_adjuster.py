@@ -13,7 +13,6 @@ Tests for BEA GDP deflator-based inflation adjustment:
 
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -39,15 +38,15 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 def mock_config():
     """Create mock configuration for inflation adjuster using consolidated utility."""
     from unittest.mock import MagicMock
-    
+
     config = create_mock_pipeline_config()
     # Set fiscal_analysis settings
     if not hasattr(config, "fiscal_analysis"):
         config.fiscal_analysis = MagicMock()
-    
+
     config.fiscal_analysis.base_year = 2023
     config.fiscal_analysis.inflation_source = "BEA GDP Deflator"
-    
+
     if not hasattr(config.fiscal_analysis, "quality_thresholds"):
         config.fiscal_analysis.quality_thresholds = MagicMock()
     elif isinstance(config.fiscal_analysis.quality_thresholds, dict):
@@ -55,7 +54,7 @@ def mock_config():
         thresholds = MagicMock()
         thresholds.inflation_adjustment_success = config.fiscal_analysis.quality_thresholds.get("inflation_adjustment_success", 0.95)
         config.fiscal_analysis.quality_thresholds = thresholds
-    
+
     config.fiscal_analysis.quality_thresholds.inflation_adjustment_success = 0.95
     return config
 

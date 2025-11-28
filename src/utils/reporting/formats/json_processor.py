@@ -158,7 +158,15 @@ class JsonReportProcessor(BaseReportProcessor):
 
         # Handle other complex objects by converting to string
         if hasattr(obj, "__str__"):
-            return str(obj)
+            try:
+                return str(obj)
+            except (NotImplementedError, Exception):
+                # If __str__ fails, raise ValidationError
+                raise ValidationError(
+                    f"Object of type {type(obj)} is not JSON serializable (__str__ raised exception)",
+                    component="json_processor",
+                    operation="serialize",
+                )
 
         # Use ValidationError since this is about validating JSON serializability
         raise ValidationError(

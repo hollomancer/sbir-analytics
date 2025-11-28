@@ -586,12 +586,11 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
                         evidence_metrics[f"{col}_median_length"] = float(text_lengths.median())
 
         # Overall evidence availability
-        total_evidence_fields = len(
-            [col for col in evidence_columns if col in classified_df.columns]
-        )
+        existing_evidence_columns = [col for col in evidence_columns if col in classified_df.columns]
+        total_evidence_fields = len(existing_evidence_columns)
         if total_evidence_fields > 0:
             # Records with any evidence
-            has_any_evidence = classified_df[evidence_columns].notna().any(axis=1).sum()
+            has_any_evidence = classified_df[existing_evidence_columns].notna().any(axis=1).sum()
             evidence_metrics["overall_evidence_rate"] = has_any_evidence / len(classified_df)
             evidence_metrics["records_with_evidence"] = int(has_any_evidence)
 

@@ -54,7 +54,14 @@ class BaseReportProcessor(ABC):
         Returns:
             Path for the report file
         """
-        filename = f"report.{self.format_type.value}"
+        # Map format types to file extensions
+        extension_map = {
+            "markdown": "md",
+            "html": "html",
+            "json": "json",
+        }
+        extension = extension_map.get(self.format_type.value, self.format_type.value)
+        filename = f"report.{extension}"
         return output_dir / pipeline_metrics.run_id / filename
 
     def _ensure_output_directory(self, file_path: Path) -> None:
