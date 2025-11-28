@@ -275,7 +275,7 @@ services:
         curl -LsSf https://astral.sh/uv/install.sh | sh;
         export PATH=\"/root/.local/bin:$$PATH\";
         echo 'Installing CI test dependencies using UV (faster than pip)';
-        uv pip install --system --no-cache pandas pyarrow pyreadstat dagster dagit dagster-core || pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
+        uv pip install --system --no-cache pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist || pip install --no-cache-dir pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist;
         echo 'Running fast tests inside container';
         pytest -m fast -q;
         echo 'Running Dagster uspto_validation_job runner (in-process)';
