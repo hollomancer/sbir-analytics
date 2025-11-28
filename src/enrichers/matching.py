@@ -119,6 +119,11 @@ def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
     if not name_clean:
         return None
 
+    # Define valid algorithms
+    valid_algorithms = {"metaphone", "double_metaphone", "soundex"}
+    if algorithm not in valid_algorithms:
+        return None
+
     try:
         if algorithm == "metaphone":
             return jellyfish.metaphone(name_clean)
@@ -127,11 +132,10 @@ def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
             return jellyfish.match_rating_codex(name_clean)
         elif algorithm == "soundex":
             return jellyfish.soundex(name_clean)
-        else:
-            # Unknown algorithm - return None
-            return None
     except Exception:  # pragma: no cover
         return None
+    
+    return None
 
 
 def phonetic_match(name1: str, name2: str, algorithm: str = "metaphone") -> bool:

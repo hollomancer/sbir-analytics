@@ -125,7 +125,7 @@ def enrich_sbir_with_usaspending(
             sbir.loc[uei_mask, "_usaspending_match_score"] = 100
             sbir.loc[uei_mask, "_usaspending_match_method"] = "uei-exact"
 
-    # DUNS exact matches
+    # DUNS exact matches (only for rows that don't already have a UEI match)
     if sbir_duns_col in sbir.columns:
         duns_series = (
             sbir[sbir_duns_col]
@@ -134,6 +134,8 @@ def enrich_sbir_with_usaspending(
             .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
         )
         duns_mask = duns_series.isin(recipient_by_duns.keys())
+        # Only match DUNS for rows that don't already have a UEI match
+        duns_mask = duns_mask & sbir["_usaspending_recipient_idx"].isna()
         if duns_mask.any():
             sbir.loc[duns_mask, "_usaspending_recipient_idx"] = duns_series[duns_mask].map(
                 recipient_by_duns

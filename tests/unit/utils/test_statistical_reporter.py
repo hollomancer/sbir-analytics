@@ -453,7 +453,7 @@ class TestFormatGeneration:
         assert md_path.suffix == ".md"
         assert "# Pipeline Statistical Report" in content
 
-    @patch("src.utils.statistical_reporter.PLOTLY_AVAILABLE", False)
+    @patch("src.utils.reporting.formats.html_processor.PLOTLY_AVAILABLE", False)
     def test_generate_html_report_no_plotly(self, temp_output_dir, sample_statistical_report):
         """Test HTML report generation without Plotly."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)

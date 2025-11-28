@@ -77,23 +77,24 @@ class AgencyDefaultsStrategy(EnrichmentStrategy):
 
             # Check for partial match using pattern matching
             # Map common agency name patterns to agency keys
-            agency_patterns = {
-                "DEFENSE": "DOD",
-                "DEPARTMENT OF DEFENSE": "DOD",
-                "HEALTH": "HHS",
-                "HUMAN SERVICES": "HHS",
-                "ENERGY": "DOE",
-                "AERONAUTICS": "NASA",
-                "SPACE": "NASA",
-                "SCIENCE FOUNDATION": "NSF",
-                "AGRICULTURE": "USDA",
-                "HOMELAND SECURITY": "DHS",
-                "TRANSPORTATION": "DOT",
-                "COMMERCE": "DOC",
-            }
+            # Order matters: longer, more specific patterns should be checked first
+            agency_patterns = [
+                ("DEPARTMENT OF DEFENSE", "DOD"),
+                ("HUMAN SERVICES", "HHS"),
+                ("SCIENCE FOUNDATION", "NSF"),
+                ("HOMELAND SECURITY", "DHS"),
+                ("DEFENSE", "DOD"),
+                ("HEALTH", "HHS"),
+                ("ENERGY", "DOE"),
+                ("AERONAUTICS", "NASA"),
+                ("SPACE", "NASA"),
+                ("AGRICULTURE", "USDA"),
+                ("TRANSPORTATION", "DOT"),
+                ("COMMERCE", "DOC"),
+            ]
             
-            # First check pattern matches
-            for pattern, agency_key in agency_patterns.items():
+            # First check pattern matches (longer patterns first)
+            for pattern, agency_key in agency_patterns:
                 if pattern in agency_value and agency_key in self.agency_defaults:
                     naics_code = self.agency_defaults[agency_key]
                     normalized = normalize_naics_code(naics_code)
