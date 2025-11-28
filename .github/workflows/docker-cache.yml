@@ -44,7 +44,9 @@ jobs:
             build_args: BUILD_WITH_R=false
             tag_suffix: ""
           - name: with-r
-            build_args: BUILD_WITH_R=true
+            build_args: |
+              BUILD_WITH_R=true
+              USE_R_BASE_IMAGE=true
             tag_suffix: -r
 
     steps:

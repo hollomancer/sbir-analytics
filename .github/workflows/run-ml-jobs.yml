@@ -35,22 +35,75 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install dependencies
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "false"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "true"
+
+      - name: Install ML dependencies
         run: |
-          pip install -e .
-          pip install dagster dagster-cloud
+          # Install heavy ML/fiscal extras that aren't in base dependencies
+          uv pip install dagster dagster-cloud
+          # Install R integration for fiscal analysis
+          uv pip install "rpy2>=3.5.0,<4.0.0"
+          # Install sentence-transformers for PaECTER embeddings
+          uv pip install "sentence-transformers>=2.7.0,<3.0.0"
+
+      - name: Verify ML jobs are available
+        env:
+          DAGSTER_LOAD_HEAVY_ASSETS: "true"
+        run: |
+          echo "Verifying that ML jobs loaded correctly..."
+          uv run python -c "
+          import os
+          import sys
+
+          # Ensure heavy assets are loaded
+          os.environ['DAGSTER_LOAD_HEAVY_ASSETS'] = 'true'
+
+          # Import definitions_ml
+          try:
+              from src.definitions_ml import auto_jobs
+          except Exception as e:
+              print(f'❌ Failed to import definitions_ml: {e}')
+              sys.exit(1)
+
+          # Check that expected jobs exist
+          available_jobs = list(auto_jobs.keys())
+          print(f'Available jobs: {available_jobs}')
+
+          required_jobs = [
+              'cet_full_pipeline_job',
+              'fiscal_returns_mvp_job',
+              'paecter_job'
+          ]
+
+          missing_jobs = [job for job in required_jobs if job not in available_jobs]
+
+          if missing_jobs:
+              print(f'❌ Missing required jobs: {missing_jobs}')
+              print(f'   This likely means heavy dependencies are not installed correctly.')
+              sys.exit(1)
+
+          print('✅ All ML jobs loaded successfully:')
+          for job_name in required_jobs:
+              job = auto_jobs[job_name]
+              # Check if it's a placeholder (empty selection)
+              if hasattr(job, 'asset_selection') and len(list(job.asset_selection.resolve([]))) == 0:
+                  print(f'   ⚠️  {job_name}: PLACEHOLDER (no assets)')
+              else:
+                  print(f'   ✅ {job_name}: OK')
+          "
 
       - name: Run ML Job
         env:
