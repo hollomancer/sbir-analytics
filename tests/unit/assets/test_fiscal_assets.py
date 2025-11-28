@@ -50,7 +50,7 @@ def mock_context():
 def mock_config():
     """Mock configuration using consolidated utility."""
     from types import SimpleNamespace
-    
+
     config = create_mock_pipeline_config()
     # Set fiscal_analysis settings
     if hasattr(config, "fiscal_analysis"):
@@ -66,7 +66,7 @@ def mock_config():
         quality_thresholds = SimpleNamespace(**thresholds_dict)
         quality_thresholds.get = lambda key, default=None: thresholds_dict.get(key, default)
         config.fiscal_analysis.quality_thresholds = quality_thresholds
-        
+
         # Create performance config that supports both attribute and dict access
         performance_dict = {
             "chunk_size": 10000,

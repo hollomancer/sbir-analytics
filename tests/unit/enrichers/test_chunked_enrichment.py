@@ -29,7 +29,7 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 def mock_config():
     """Mock configuration for testing."""
     from unittest.mock import Mock
-    
+
     config = create_mock_pipeline_config()
     # Ensure enrichment.performance exists with all required attributes
     if not hasattr(config, "enrichment"):

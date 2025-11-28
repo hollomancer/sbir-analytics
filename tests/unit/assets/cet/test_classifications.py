@@ -136,7 +136,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -163,7 +163,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -188,7 +188,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -220,7 +220,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -245,7 +245,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -270,7 +270,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -294,7 +294,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -320,7 +320,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -496,7 +496,7 @@ class TestEdgeCases:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -520,7 +520,7 @@ class TestEdgeCases:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -586,7 +586,7 @@ class TestEdgeCases:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
@@ -616,7 +616,7 @@ class TestEdgeCases:
             mock_path.exists.return_value = True
             # Set up context manager for open()
             mock_file_context = Mock()
-            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, encoding="utf-8"))
             mock_file_context.__exit__ = Mock(return_value=None)
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path

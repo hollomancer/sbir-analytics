@@ -6,7 +6,7 @@ codes using multiple resolution strategies.
 """
 
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -27,20 +27,20 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 def mock_config():
     """Mock configuration for testing using consolidated utility."""
     from src.config.schemas.fiscal import FiscalAnalysisConfig
-    
+
     config = create_mock_pipeline_config()
     # Ensure fiscal_analysis exists and is properly configured
     if not hasattr(config, "fiscal_analysis") or config.fiscal_analysis is None:
         config.fiscal_analysis = FiscalAnalysisConfig()
-    
+
     # Set quality_thresholds (it's a dict)
     if not hasattr(config.fiscal_analysis, "quality_thresholds"):
         config.fiscal_analysis.quality_thresholds = {}
-    
+
     # Ensure it's a dict and set the value
     if not isinstance(config.fiscal_analysis.quality_thresholds, dict):
         config.fiscal_analysis.quality_thresholds = {}
-    
+
     config.fiscal_analysis.quality_thresholds["geographic_resolution_rate"] = 0.90
     return config
 
@@ -621,7 +621,7 @@ class TestResolveAwardGeography:
     def test_resolve_award_geography_with_custom_config(self):
         """Test main function with custom config."""
         from src.config.schemas.fiscal import FiscalAnalysisConfig
-        
+
         df = pd.DataFrame({"award_id": ["AWD001"], "State": ["CA"]})
 
         # Create a proper FiscalAnalysisConfig with custom threshold
