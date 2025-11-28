@@ -21,13 +21,10 @@ pytestmark = pytest.mark.fast
 
 @pytest.fixture
 def mock_context():
-    """Mock Dagster context."""
-    context = Mock()
-    context.log = Mock()
-    context.log.info = Mock()
-    context.log.warning = Mock()
-    context.log.error = Mock()
-    return context
+    """Mock Dagster context using build_op_context."""
+    from dagster import build_op_context
+
+    return build_op_context()
 
 
 @pytest.fixture
@@ -340,8 +337,9 @@ class TestEnrichedCETAwardClassifications:
     @patch("src.assets.cet.classifications.TaxonomyLoader")
     @patch("src.assets.cet.classifications.Path")
     @patch("src.assets.cet.classifications.save_dataframe_parquet")
+    @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_taxonomy_load_failure(
-        self, mock_save, mock_path_class, mock_taxonomy_loader
+        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
     ):
         """Test asset handles taxonomy load failure gracefully."""
         mock_taxonomy_loader.side_effect = Exception("Taxonomy load failed")
@@ -349,7 +347,10 @@ class TestEnrichedCETAwardClassifications:
         # Mock Path behaviors
         mock_path = Mock()
         mock_path.exists.return_value = False
-        mock_path.with_suffix.return_value = Mock()
+        mock_checks_path = Mock()
+        mock_checks_path.parent = Mock()
+        mock_checks_path.parent.mkdir = Mock()
+        mock_path.with_suffix.return_value = mock_checks_path
         mock_path_class.return_value = mock_path
 
         enriched_cet_award_classifications()
@@ -435,8 +436,9 @@ class TestEnrichedCETPatentClassifications:
     @patch("src.assets.cet.classifications.TaxonomyLoader")
     @patch("src.assets.cet.classifications.Path")
     @patch("src.assets.cet.classifications.save_dataframe_parquet")
+    @patch("builtins.open", new_callable=mock_open)
     def test_patent_classifications_taxonomy_load_failure(
-        self, mock_save, mock_path_class, mock_taxonomy_loader
+        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
     ):
         """Test patent asset handles taxonomy load failure."""
         mock_taxonomy_loader.side_effect = Exception("Taxonomy load failed")
@@ -444,7 +446,10 @@ class TestEnrichedCETPatentClassifications:
         # Mock Path behaviors
         mock_path = Mock()
         mock_path.exists.return_value = False
-        mock_path.with_suffix.return_value = Mock()
+        mock_checks_path = Mock()
+        mock_checks_path.parent = Mock()
+        mock_checks_path.parent.mkdir = Mock()
+        mock_path.with_suffix.return_value = mock_checks_path
         mock_path_class.return_value = mock_path
 
         enriched_cet_patent_classifications()

@@ -128,7 +128,8 @@ def get_phonetic_code(name: str, algorithm: str = "metaphone") -> str | None:
         elif algorithm == "soundex":
             return jellyfish.soundex(name_clean)
         else:
-            return jellyfish.metaphone(name_clean)
+            # Unknown algorithm - return None
+            return None
     except Exception:  # pragma: no cover
         return None
 
