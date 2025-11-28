@@ -97,20 +97,23 @@ def parse_date(
             return value
         return value.date()
 
-    # Handle pandas Timestamp
+    # Handle pandas Timestamp and NaT
     if pd is not None:
-        if isinstance(value, pd.Timestamp):
-            dt = value.to_pydatetime()
-            if return_datetime:
-                return dt
-            return dt.date()
-
-        # Check for pandas NaT/NaN
+        # Check for pandas NaT/NaN first (before Timestamp check, since NaT is a Timestamp)
         try:
             if pd.isna(value):
                 return None
         except (TypeError, ValueError):
             pass
+
+        if isinstance(value, pd.Timestamp):
+            # Double-check it's not NaT (isna check above should catch it, but be safe)
+            if pd.isna(value):
+                return None
+            dt = value.to_pydatetime()
+            if return_datetime:
+                return dt
+            return dt.date()
 
     # Handle string values
     if isinstance(value, str):

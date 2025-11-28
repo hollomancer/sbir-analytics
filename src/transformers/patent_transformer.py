@@ -124,6 +124,8 @@ class PatentAssignmentTransformer:
             return None
         s = " ".join(str(name).strip().split())
         s = s.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
+        # Collapse multiple spaces to single space
+        s = " ".join(s.split())
         return s.strip()
 
     @staticmethod
@@ -499,8 +501,11 @@ class PatentAssignmentTransformer:
                 }
 
         # Detect transition type based on assignee change
-        if isinstance(assignment.assignee, PatentAssignee) and isinstance(
-            assignment.assignor, PatentAssignor
+        if (
+            PatentAssignee is not None
+            and PatentAssignor is not None
+            and isinstance(assignment.assignee, PatentAssignee)
+            and isinstance(assignment.assignor, PatentAssignor)
         ):
             assignee_name = assignment.normalized_assignee_name or assignment.assignee.name or ""
             assignor_name = assignment.normalized_assignor_name or assignment.assignor.name or ""

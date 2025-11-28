@@ -49,6 +49,9 @@ class EnrichmentCheckpoint:
         """Create checkpoint from dictionary."""
         import json
 
+        # Make a copy to avoid modifying the input dictionary
+        data = dict(data)
+
         # Convert ISO strings to datetime
         # Convert metadata JSON string back to dict
         for key in ["last_success_timestamp", "checkpoint_timestamp"]:

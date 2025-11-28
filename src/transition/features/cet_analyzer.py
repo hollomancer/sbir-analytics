@@ -26,7 +26,6 @@ CET_KEYWORD_MAPPINGS = {
         "LLM",
     ],
     "Advanced Computing": [
-        "quantum computing",
         "high-performance computing",
         "HPC",
         "parallel computing",
@@ -221,9 +220,14 @@ class CETSignalExtractor:
                 match_count += len(matches)
 
             if match_count > 0:
-                # Score based on keyword density (normalized by description length)
-                # Cap at 1.0 to avoid inflating scores
-                score = min(1.0, (match_count / (len(description_lower) / 100.0)))
+                # Score based on keyword density (normalized by word count)
+                # Use a formula that differentiates between dense and sparse matches
+                word_count = len(description_lower.split())
+                # Base score from match count, plus density component
+                # This ensures dense descriptions score higher than sparse ones
+                base_score = min(0.7, match_count * 0.15)  # Up to 0.7 for match count
+                density_score = min(0.3, (match_count / max(1, word_count)) * 2.0)  # Up to 0.3 for density
+                score = min(1.0, base_score + density_score)
 
                 if score > best_score:
                     best_score = score
