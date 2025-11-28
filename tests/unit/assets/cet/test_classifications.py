@@ -569,11 +569,15 @@ class TestEdgeCases:
         # Should not raise, just log error
         enriched_cet_award_classifications()
 
-    def test_quality_check_file_permission_error(self, mock_context, tmp_path):
+    def test_quality_check_file_permission_error(self, tmp_path):
         """Test quality check handles file permission errors."""
+        from dagster import build_op_context
+
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text('{"high_conf_rate": 0.75}')
         checks_path.chmod(0o000)  # Remove all permissions
+
+        context = build_op_context()
 
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
@@ -581,7 +585,7 @@ class TestEdgeCases:
             mock_path.open.side_effect = PermissionError("Permission denied")
             mock_path_class.return_value = mock_path
 
-            result = cet_award_classifications_quality_check(mock_context)
+            result = cet_award_classifications_quality_check(context)
 
         # Restore permissions for cleanup
         checks_path.chmod(0o644)
