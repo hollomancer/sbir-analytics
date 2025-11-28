@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from dagster import AssetCheckSeverity, AssetExecutionContext, Output
+from dagster import AssetCheckSeverity, Output, build_asset_context
 
 from src.assets.fiscal_assets import (
     _create_placeholder_impacts,
@@ -38,7 +38,8 @@ from tests.utils.fixtures import create_sample_enriched_awards_df
 @pytest.fixture
 def mock_context():
     """Mock Dagster execution context."""
-    context = Mock(spec=AssetExecutionContext)
+    context = build_asset_context()
+    # Replace log with mock to allow assertions in tests
     context.log = Mock()
     context.log.info = Mock()
     context.log.warning = Mock()
@@ -357,8 +358,10 @@ class TestEconomicShocks:
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.assets.fiscal_assets.FiscalShockAggregator")
     @patch("src.assets.fiscal_assets.performance_monitor")
+    @patch("src.transformers.fiscal.shocks.get_config")
     def test_economic_shocks_success(
         self,
+        mock_shocks_get_config,
         mock_perf_monitor,
         mock_aggregator_class,
         mock_get_config,
@@ -369,6 +372,7 @@ class TestEconomicShocks:
     ):
         """Test successful economic shock aggregation."""
         mock_get_config.return_value = mock_config
+        mock_shocks_get_config.return_value = mock_config
         mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
         mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
@@ -807,32 +811,35 @@ class TestReporting:
         mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
         mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
-        roi_summary = pd.DataFrame(
+        fiscal_return_summary = pd.DataFrame(
             {
                 "fiscal_year": [2021, 2022],
                 "roi_ratio": [0.50, 0.55],
             }
         )
+        fiscal_return_summary.index = [0, 1]
 
-        sensitivity = pd.DataFrame(
+        uncertainty_analysis = pd.DataFrame(
             {
-                "scenario_id": ["base", "optimistic"],
-                "total_impact": [100000, 120000],
+                "metric": ["roi_ratio", "roi_ratio"],
+                "mean": [0.50, 0.55],
+                "ci_lower": [0.45, 0.50],
+                "ci_upper": [0.55, 0.60],
             }
         )
+        uncertainty_analysis.index = [0, 1]
 
-        uncertainty = pd.DataFrame(
+        federal_tax_estimates = pd.DataFrame(
             {
-                "metric": ["roi_ratio"],
-                "mean": [0.50],
-                "ci_lower": [0.45],
-                "ci_upper": [0.55],
+                "total_tax_receipt": [50000, 75000],
             }
         )
 
         with patch("builtins.open", create=True):
             with patch("pathlib.Path.mkdir"):
-                result = fiscal_returns_report(mock_context, roi_summary, sensitivity, uncertainty)
+                result = fiscal_returns_report(
+                    mock_context, fiscal_return_summary, uncertainty_analysis, federal_tax_estimates
+                )
 
         assert isinstance(result, Output)
         assert result.value is not None
