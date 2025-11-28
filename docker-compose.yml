@@ -44,11 +44,11 @@ x-ci-environment: &ci-environment
 x-healthcheck-neo4j: &healthcheck-neo4j
   test:
     - "CMD-SHELL"
-    - "/app/scripts/docker/healthcheck/neo4j.sh"
+    - "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
   interval: 10s
   timeout: 5s
   retries: 12
-  start_period: 10s
+  start_period: 40s
 
 x-healthcheck-dagster: &healthcheck-dagster
   test:
@@ -230,6 +230,7 @@ services:
   app:
     image: sbir-analytics:ci-${GITHUB_SHA:-latest}
     container_name: sbir-app-test
+    user: root
     profiles:
       - ci
     env_file:
@@ -272,9 +273,9 @@ services:
         set -eux;
         echo 'Installing UV for fast dependency management';
         curl -LsSf https://astral.sh/uv/install.sh | sh;
-        export PATH=\"/root/.cargo/bin:$$PATH\";
-        echo 'Installing CI test dependencies using UV (faster than pip)';
-        uv pip install --system --no-cache pandas pyarrow pyreadstat dagster dagit dagster-core || pip install --no-cache-dir pandas pyarrow pyreadstat dagster dagit dagster-core || true;
+        export PATH=\"/root/.local/bin:$$PATH\";
+        echo 'Installing CI test dependencies (data libs, pytest, ML libs for test collection)';
+        uv pip install --system --no-cache pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn || pip install --no-cache-dir pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn;
         echo 'Running fast tests inside container';
         pytest -m fast -q;
         echo 'Running Dagster uspto_validation_job runner (in-process)';
@@ -287,11 +288,11 @@ services:
       "
     working_dir: /app
     volumes:
-      - ./:/app:ro
       - ./data/raw/uspto:/app/data/raw/uspto:rw
       - ./tests/fixtures:/app/test-data:ro
       - ./src:/app/src:ro
       - ./config:/app/config:ro
+      - ./scripts:/app/scripts:ro
     restart: "no"
 
   # =============================================================================
