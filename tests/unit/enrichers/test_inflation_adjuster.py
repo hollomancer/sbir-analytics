@@ -47,13 +47,21 @@ def mock_config():
     config.fiscal_analysis.base_year = 2023
     config.fiscal_analysis.inflation_source = "BEA GDP Deflator"
 
+    # Always ensure quality_thresholds is a MagicMock (not a dict)
+    # Check type first, then handle accordingly
     if not hasattr(config.fiscal_analysis, "quality_thresholds"):
         config.fiscal_analysis.quality_thresholds = MagicMock()
-    elif isinstance(config.fiscal_analysis.quality_thresholds, dict):
-        # Convert dict to MagicMock if needed
-        thresholds = MagicMock()
-        thresholds.inflation_adjustment_success = config.fiscal_analysis.quality_thresholds.get("inflation_adjustment_success", 0.95)
-        config.fiscal_analysis.quality_thresholds = thresholds
+    else:
+        # Check if it's a dict and convert to MagicMock
+        existing_value = getattr(config.fiscal_analysis, "quality_thresholds", None)
+        if isinstance(existing_value, dict):
+            # Convert dict to MagicMock
+            thresholds = MagicMock()
+            thresholds.inflation_adjustment_success = existing_value.get("inflation_adjustment_success", 0.95)
+            config.fiscal_analysis.quality_thresholds = thresholds
+        elif not isinstance(existing_value, MagicMock):
+            # If it's something else, create a new MagicMock
+            config.fiscal_analysis.quality_thresholds = MagicMock()
 
     config.fiscal_analysis.quality_thresholds.inflation_adjustment_success = 0.95
     return config
