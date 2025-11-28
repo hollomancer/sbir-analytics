@@ -22,6 +22,30 @@ pytestmark = pytest.mark.fast
 # Note: Fixtures (mock_enrichment_config, sample_sbir_df, sample_recipient_df)
 # are now in tests/unit/enrichers/conftest.py and automatically available
 
+from tests.utils.config_mocks import create_mock_pipeline_config
+
+
+@pytest.fixture
+def mock_config():
+    """Mock configuration for testing."""
+    from unittest.mock import Mock
+    
+    config = create_mock_pipeline_config()
+    # Ensure enrichment.performance exists with all required attributes
+    if not hasattr(config, "enrichment"):
+        config.enrichment = Mock()
+    if not hasattr(config.enrichment, "performance"):
+        config.enrichment.performance = Mock()
+    # Set all required performance attributes
+    config.enrichment.performance.chunk_size = 100
+    config.enrichment.performance.memory_threshold_mb = 512
+    config.enrichment.performance.timeout_seconds = 300
+    config.enrichment.performance.high_confidence_threshold = 0.95
+    config.enrichment.performance.low_confidence_threshold = 0.85
+    config.enrichment.performance.enable_memory_monitoring = True
+    config.enrichment.performance.enable_fuzzy_matching = True
+    return config
+
 
 @pytest.fixture
 def temp_checkpoint_dir(tmp_path):

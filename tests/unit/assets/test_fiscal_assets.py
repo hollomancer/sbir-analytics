@@ -49,27 +49,31 @@ def mock_context():
 @pytest.fixture
 def mock_config():
     """Mock configuration using consolidated utility."""
+    from types import SimpleNamespace
+    
     config = create_mock_pipeline_config()
     # Set fiscal_analysis settings
     if hasattr(config, "fiscal_analysis"):
-        if not hasattr(config.fiscal_analysis, "quality_thresholds"):
-            config.fiscal_analysis.quality_thresholds = Mock()
-        config.fiscal_analysis.quality_thresholds.naics_coverage_rate = 0.85
-        config.fiscal_analysis.quality_thresholds.bea_sector_mapping_rate = 0.90
-        config.fiscal_analysis.quality_thresholds.geographic_resolution_rate = 0.90
-        config.fiscal_analysis.quality_thresholds.naics_confidence_threshold = 0.60
-        config.fiscal_analysis.quality_thresholds.get = lambda key, default: {
+        # Create quality_thresholds that supports both attribute and dict access
+        thresholds_dict = {
             "naics_coverage_rate": 0.85,
             "bea_sector_mapping_rate": 0.90,
             "geographic_resolution_rate": 0.90,
             "naics_confidence_threshold": 0.60,
-        }.get(key, default)
-        if not hasattr(config.fiscal_analysis, "performance"):
-            config.fiscal_analysis.performance = Mock()
-        config.fiscal_analysis.performance.chunk_size = 10000
-        config.fiscal_analysis.performance.get = lambda key, default: {
+            "inflation_adjustment_success": 0.95,
+        }
+        # Use SimpleNamespace for attribute access, but add .get() method for dict-style access
+        quality_thresholds = SimpleNamespace(**thresholds_dict)
+        quality_thresholds.get = lambda key, default=None: thresholds_dict.get(key, default)
+        config.fiscal_analysis.quality_thresholds = quality_thresholds
+        
+        # Create performance config that supports both attribute and dict access
+        performance_dict = {
             "chunk_size": 10000,
-        }.get(key, default)
+        }
+        performance = SimpleNamespace(**performance_dict)
+        performance.get = lambda key, default=None: performance_dict.get(key, default)
+        config.fiscal_analysis.performance = performance
     return config
 
 

@@ -541,16 +541,16 @@ class TestValidateResolutionQuality:
         df = pd.DataFrame(
             {
                 "fiscal_state_code": ["CA", "NY", "TX", "FL"],
-                "fiscal_geo_confidence": [0.95, 0.75, 0.65, 0.50],
+                "fiscal_geo_confidence": [0.95, 0.85, 0.65, 0.50],
                 "fiscal_geo_source": ["state_field"] * 4,
             }
         )
 
         quality = resolver.validate_resolution_quality(df)
 
-        assert quality["confidence_distribution"]["high_confidence"] == 2  # 0.95, 0.75
-        assert quality["confidence_distribution"]["medium_confidence"] == 1  # 0.65
-        assert quality["confidence_distribution"]["low_confidence"] == 1  # 0.50
+        assert quality["confidence_distribution"]["high_confidence"] == 2  # 0.95, 0.85 (>=0.80)
+        assert quality["confidence_distribution"]["medium_confidence"] == 1  # 0.65 (0.60-0.80)
+        assert quality["confidence_distribution"]["low_confidence"] == 1  # 0.50 (<0.60)
 
     def test_validate_quality_source_distribution(self, resolver):
         """Test quality validation tracks source distribution."""
@@ -620,15 +620,15 @@ class TestResolveAwardGeography:
 
     def test_resolve_award_geography_with_custom_config(self):
         """Test main function with custom config."""
+        from src.config.schemas.fiscal import FiscalAnalysisConfig
+        
         df = pd.DataFrame({"award_id": ["AWD001"], "State": ["CA"]})
 
-        custom_config = Mock()
-        custom_config.fiscal_analysis = Mock()
-        custom_config.fiscal_analysis.quality_thresholds = {
-            "geographic_resolution_rate": 0.95,
-        }
+        # Create a proper FiscalAnalysisConfig with custom threshold
+        custom_fiscal_config = FiscalAnalysisConfig()
+        custom_fiscal_config.quality_thresholds["geographic_resolution_rate"] = 0.95
 
-        enriched_df, quality_metrics = resolve_award_geography(df, config=custom_config)
+        enriched_df, quality_metrics = resolve_award_geography(df, config=custom_fiscal_config)
 
         assert quality_metrics["resolution_threshold"] == 0.95
 

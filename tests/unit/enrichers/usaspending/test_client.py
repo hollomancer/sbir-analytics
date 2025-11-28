@@ -78,7 +78,7 @@ def freshness_record():
     return EnrichmentFreshnessRecord(
         award_id="AWD001",
         source="usaspending",
-        last_refreshed=datetime(2023, 1, 1, 12, 0, 0),
+        last_attempt_at=datetime(2023, 1, 1, 12, 0, 0),
         payload_hash="abc123",
         metadata={"modification_number": "0"},
     )
