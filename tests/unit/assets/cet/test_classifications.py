@@ -491,10 +491,14 @@ class TestEnrichedCETPatentClassifications:
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
-    def test_quality_check_empty_checks_file(self, mock_context, tmp_path):
+    def test_quality_check_empty_checks_file(self, tmp_path):
         """Test quality check handles empty checks file."""
+        from dagster import build_op_context
+
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text("{}")
+
+        context = build_op_context()
 
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
@@ -506,12 +510,14 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            result = cet_award_classifications_quality_check(mock_context)
+            result = cet_award_classifications_quality_check(context)
 
         assert result.passed is False
 
-    def test_quality_check_none_values(self, mock_context, tmp_path):
+    def test_quality_check_none_values(self, tmp_path):
         """Test quality check handles None values in metrics."""
+        from dagster import build_op_context
+
         checks_data = {
             "high_conf_rate": None,
             "evidence_coverage_rate": None,
@@ -520,6 +526,8 @@ class TestEdgeCases:
         checks_path = tmp_path / "cet_award_classifications.checks.json"
         checks_path.write_text(json.dumps(checks_data))
 
+        context = build_op_context()
+
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
@@ -530,7 +538,7 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            result = cet_award_classifications_quality_check(mock_context)
+            result = cet_award_classifications_quality_check(context)
 
         assert result.passed is False
         assert "missing quality metrics" in result.description.lower()
@@ -538,8 +546,9 @@ class TestEdgeCases:
     @patch("src.assets.cet.classifications.TaxonomyLoader")
     @patch("src.assets.cet.classifications.Path")
     @patch("src.assets.cet.classifications.save_dataframe_parquet")
+    @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_save_failure(
-        self, mock_save, mock_path_class, mock_taxonomy_loader
+        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
     ):
         """Test asset handles save failure gracefully."""
         mock_taxonomy_loader.side_effect = Exception("Load failed")
@@ -548,7 +557,13 @@ class TestEdgeCases:
         # Mock Path behaviors
         mock_path = Mock()
         mock_path.exists.return_value = False
-        mock_path.with_suffix.return_value = Mock()
+        mock_json_path = Mock()
+        mock_json_path.parent = Mock()
+        mock_json_path.parent.mkdir = Mock()
+        mock_checks_path = Mock()
+        mock_checks_path.parent = Mock()
+        mock_checks_path.parent.mkdir = Mock()
+        mock_path.with_suffix.side_effect = lambda suffix: mock_json_path if suffix == ".json" else mock_checks_path
         mock_path_class.return_value = mock_path
 
         # Should not raise, just log error
