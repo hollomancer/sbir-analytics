@@ -5,18 +5,29 @@ inputs:
   filters:
     description: YAML string of path filters (same format as dorny/paths-filter)
     required: true
-  event-name:
-    description: GitHub event name (defaults to github.event_name)
-    required: false
-    default: ${{ github.event_name }}
 
 outputs:
-  # Dynamic outputs - we'll parse the filter outputs
-  # Note: GitHub Actions doesn't support truly dynamic outputs, so we'll
-  # need to use a workaround with a JSON output that workflows can parse
-  filter-outputs:
-    description: JSON object with all filter outputs
-    value: ${{ steps.filter.outputs }}
+  # Common outputs
+  docs-only:
+    description: Whether only documentation files changed
+    value: ${{ steps.filter.outputs.docs-only }}
+  # CI-specific outputs
+  performance:
+    description: Whether performance-related files changed
+    value: ${{ steps.filter.outputs.performance }}
+  cet:
+    description: Whether CET-related files changed
+    value: ${{ steps.filter.outputs.cet }}
+  transition:
+    description: Whether transition-related files changed
+    value: ${{ steps.filter.outputs.transition }}
+  docker:
+    description: Whether Docker-related files changed
+    value: ${{ steps.filter.outputs.docker }}
+  # Static analysis outputs
+  code-changed:
+    description: Whether code files changed
+    value: ${{ steps.filter.outputs.code-changed }}
 
 runs:
   using: composite
@@ -28,16 +39,4 @@ runs:
       id: filter
       with:
         filters: ${{ inputs.filters }}
-      shell: bash
-    
-    - name: Export filter outputs as JSON
-      id: export
-      run: |
-        # Export all filter outputs as JSON for downstream parsing
-        # This allows workflows to access any filter output dynamically
-        OUTPUTS='{}'
-        # Get all outputs from the filter step
-        # Note: We can't dynamically enumerate outputs, so workflows need to
-        # specify which outputs they want in the filter configuration
-        echo "filter-outputs={}" >> $GITHUB_OUTPUT
       shell: bash

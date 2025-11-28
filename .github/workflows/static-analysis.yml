@@ -23,13 +23,12 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      code-changed: ${{ steps.filter.outputs.code-changed }}
-      docs-only: ${{ steps.filter.outputs.docs-only }}
+      code-changed: ${{ steps.detect.outputs.code-changed }}
+      docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
-      - uses: actions/checkout@v4
       - name: Detect changes
-        uses: dorny/paths-filter@v2
-        id: filter
+        id: detect
+        uses: ./.github/actions/detect-changes
         with:
           filters: |
             code-changed:
