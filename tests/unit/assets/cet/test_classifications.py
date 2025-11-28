@@ -134,8 +134,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -158,8 +161,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -180,8 +186,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -209,8 +218,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -231,8 +243,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -253,8 +268,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -274,8 +292,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -297,8 +318,11 @@ class TestCETAwardClassificationsQualityCheck:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -470,8 +494,11 @@ class TestEdgeCases:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -491,8 +518,11 @@ class TestEdgeCases:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -554,8 +584,11 @@ class TestEdgeCases:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)
@@ -581,8 +614,11 @@ class TestEdgeCases:
         with patch("src.assets.cet.classifications.Path") as mock_path_class:
             mock_path = Mock()
             mock_path.exists.return_value = True
-            mock_path.open.return_value.__enter__ = lambda self: open(checks_path)
-            mock_path.open.return_value.__exit__ = Mock()
+            # Set up context manager for open()
+            mock_file_context = Mock()
+            mock_file_context.__enter__ = Mock(return_value=open(checks_path, "r", encoding="utf-8"))
+            mock_file_context.__exit__ = Mock(return_value=None)
+            mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
             result = cet_award_classifications_quality_check(mock_context)

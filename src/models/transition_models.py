@@ -243,7 +243,7 @@ class FederalContract(BaseModel):
     @classmethod
     def validate_and_parse_dates(cls, v):
         """Parse and validate date fields from various input formats."""
-        from src.utils.date_utils import parse_date
+        from src.utils.common.date_utils import parse_date
 
         result = parse_date(v, strict=True)
         if result is None:

@@ -26,15 +26,22 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing using consolidated utility."""
+    from src.config.schemas.fiscal import FiscalAnalysisConfig
+    
     config = create_mock_pipeline_config()
-    # Set fiscal_analysis.quality_thresholds
-    if hasattr(config, "fiscal_analysis"):
-        if not hasattr(config.fiscal_analysis, "quality_thresholds"):
-            config.fiscal_analysis.quality_thresholds = Mock()
-        config.fiscal_analysis.quality_thresholds.geographic_resolution_rate = 0.90
-        config.fiscal_analysis.quality_thresholds.get = lambda key, default: {
-            "geographic_resolution_rate": 0.90,
-        }.get(key, default)
+    # Ensure fiscal_analysis exists and is properly configured
+    if not hasattr(config, "fiscal_analysis") or config.fiscal_analysis is None:
+        config.fiscal_analysis = FiscalAnalysisConfig()
+    
+    # Set quality_thresholds (it's a dict)
+    if not hasattr(config.fiscal_analysis, "quality_thresholds"):
+        config.fiscal_analysis.quality_thresholds = {}
+    
+    # Ensure it's a dict and set the value
+    if not isinstance(config.fiscal_analysis.quality_thresholds, dict):
+        config.fiscal_analysis.quality_thresholds = {}
+    
+    config.fiscal_analysis.quality_thresholds["geographic_resolution_rate"] = 0.90
     return config
 
 

@@ -32,21 +32,21 @@ def sample_patents():
     """Sample patent data for testing."""
     return [
         Patent(
-            patent_id="US001",
+            patent_number="US001",
             title="Advanced Machine Learning System",
             abstract="A novel machine learning system for data analysis",
             filing_date=date(2023, 3, 1),
             assignee="Acme Corporation",
         ),
         Patent(
-            patent_id="US002",
+            patent_number="US002",
             title="Distributed Computing Framework",
             abstract="Framework for distributed computation across nodes",
             filing_date=date(2023, 7, 15),
             assignee="Acme Corporation",
         ),
         Patent(
-            patent_id="US003",
+            patent_number="US003",
             title="Data Encryption Method",
             abstract="Novel approach to data encryption",
             filing_date=date(2024, 1, 10),
@@ -130,19 +130,19 @@ class TestExtractSignals:
         """Test extract_signals counts patents filed before contract start."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test Patent 1",
                 filing_date=date(2023, 5, 1),  # Before contract
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test Patent 2",
                 filing_date=date(2023, 8, 1),  # Before contract
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US003",
+                patent_number="US003",
                 title="Test Patent 3",
                 filing_date=date(2023, 10, 1),  # After contract
                 assignee="Acme",
@@ -164,13 +164,13 @@ class TestExtractSignals:
 
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 6, 11),  # 10 days after award
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2023, 7, 1),  # 30 days after award
                 assignee="Acme",
@@ -190,7 +190,7 @@ class TestExtractSignals:
         """Test extract_signals when no patents in timing window."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2022, 1, 1),  # Way before award
                 assignee="Acme",
@@ -242,13 +242,13 @@ class TestFilterByTiming:
 
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),  # In window
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2023, 8, 15),  # In window
                 assignee="Acme",
@@ -267,13 +267,13 @@ class TestFilterByTiming:
         # 6 months before award = Dec 1, 2022 (180 days)
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2022, 12, 3),  # ~180 days before award (in window)
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2022, 11, 1),  # Too early (out of window)
                 assignee="Acme",
@@ -292,13 +292,13 @@ class TestFilterByTiming:
 
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 10, 15),  # Within 90 days after contract
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2024, 1, 1),  # Too late (>90 days)
                 assignee="Acme",
@@ -316,9 +316,9 @@ class TestFilterByTiming:
         contract_start = date(2023, 9, 1)
 
         patents = [
-            Patent(patent_id="US001", title="Test", filing_date=None, assignee="Acme"),
+            Patent(patent_number="US001", title="Test", filing_date=None, assignee="Acme"),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
@@ -338,7 +338,7 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity with similar patent and contract content."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Machine Learning System",
                 abstract="Advanced machine learning for data analysis",
                 filing_date=date(2023, 7, 1),
@@ -358,7 +358,7 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity with unrelated content."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Medical Device Innovation",
                 abstract="Novel approach to medical diagnostics",
                 filing_date=date(2023, 7, 1),
@@ -380,7 +380,7 @@ class TestCalculateTopicSimilarity:
 
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Machine Learning",
                 abstract="Unrelated abstract about biology",  # Should be ignored
                 filing_date=date(2023, 7, 1),
@@ -403,7 +403,7 @@ class TestCalculateTopicSimilarity:
 
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Unrelated Title",  # Should be ignored
                 abstract="Machine learning data analysis system",
                 filing_date=date(2023, 7, 1),
@@ -424,7 +424,7 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity includes award description in contract text."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Quantum Computing",
                 abstract="Novel quantum computing approach",
                 filing_date=date(2023, 7, 1),
@@ -454,7 +454,7 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity without contract description returns None."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 abstract="Test abstract",
                 filing_date=date(2023, 7, 1),
@@ -473,7 +473,7 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity with patents missing title/abstract."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title=None,
                 abstract=None,
                 filing_date=date(2023, 7, 1),
@@ -492,14 +492,14 @@ class TestCalculateTopicSimilarity:
         """Test topic similarity returns maximum across all patents."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Unrelated Topic",
                 abstract="Something completely different",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Machine Learning System",
                 abstract="Advanced machine learning",
                 filing_date=date(2023, 8, 1),
@@ -524,13 +524,13 @@ class TestDetectTechnologyTransfer:
         """Test no technology transfer when assignee matches vendor."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme Corporation",
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2023, 8, 1),
                 assignee="ACME CORPORATION",  # Case variation
@@ -548,7 +548,7 @@ class TestDetectTechnologyTransfer:
         """Test technology transfer detected with different assignee."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Beta Technologies",  # Different assignee
@@ -566,7 +566,7 @@ class TestDetectTechnologyTransfer:
         """Test partial name match counts as same assignee."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme Corporation LLC",  # Partial match
@@ -594,7 +594,7 @@ class TestDetectTechnologyTransfer:
         """Test no transfer when vendor name not provided."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Some Company",
@@ -612,7 +612,7 @@ class TestDetectTechnologyTransfer:
         """Test skips patents without assignee."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee=None,
@@ -630,13 +630,13 @@ class TestDetectTechnologyTransfer:
         """Test transfer detected when any patent has different assignee."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme Corporation",  # Same
             ),
             Patent(
-                patent_id="US002",
+                patent_number="US002",
                 title="Test",
                 filing_date=date(2023, 8, 1),
                 assignee="Different Company",  # Different
@@ -792,7 +792,7 @@ class TestEdgeCases:
         """Test extract_signals handles TF-IDF vectorization errors gracefully."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 abstract="Test",
                 filing_date=date(2023, 7, 1),
@@ -818,7 +818,7 @@ class TestEdgeCases:
         """Test extract_signals when award completion equals contract start."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 6, 15),  # Between award and contract
                 assignee="Acme",
@@ -838,7 +838,7 @@ class TestEdgeCases:
         """Test filtering when contract start is before award completion."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
@@ -859,7 +859,7 @@ class TestEdgeCases:
         """Test topic similarity with very short texts."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="ML",
                 abstract="AI",
                 filing_date=date(2023, 7, 1),
@@ -879,7 +879,7 @@ class TestEdgeCases:
         """Test technology transfer detection is case-insensitive."""
         patents = [
             Patent(
-                patent_id="US001",
+                patent_number="US001",
                 title="Test",
                 filing_date=date(2023, 7, 1),
                 assignee="acme corporation",  # Lowercase

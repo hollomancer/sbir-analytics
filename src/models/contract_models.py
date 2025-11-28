@@ -98,7 +98,7 @@ class ContractPeriod(BaseModel):
     )
     @classmethod
     def parse_dates(cls, v):
-        from src.utils.date_utils import parse_date
+        from src.utils.common.date_utils import parse_date
 
         result = parse_date(v, strict=True)
         if result is None:
