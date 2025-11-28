@@ -82,8 +82,8 @@ class TestSetupLogging:
 class TestConfigureLoggingFromConfig:
     """Tests for configure_logging_from_config function."""
 
-    @patch("src.utils.logging_config.get_config")
-    @patch("src.utils.logging_config.setup_logging")
+    @patch("src.utils.common.logging_config.get_config")
+    @patch("src.utils.common.logging_config.setup_logging")
     def test_configure_logging_from_config(self, mock_setup, mock_get_config):
         """Test configure_logging_from_config calls setup_logging with config."""
         mock_config = MagicMock()

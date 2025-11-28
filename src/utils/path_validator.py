@@ -11,7 +11,7 @@ from pathlib import Path
 from loguru import logger
 
 from ..config.schemas import PathsConfig
-from ..exceptions import FileSystemError
+from ..exceptions import ErrorCode, FileSystemError
 
 
 class PathValidator:
@@ -127,7 +127,7 @@ class PathValidator:
                         component="path_validator",
                         operation="create_directory",
                         details={"path": str(path), "error": str(e)},
-                        error_code=4003,  # FILE_WRITE_FAILED
+                        status_code=ErrorCode.FILE_WRITE_FAILED,
                     ) from e
             else:
                 logger.warning(
@@ -139,7 +139,7 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_directory",
                 details={"path": str(path)},
-                error_code=4001,  # FILE_NOT_FOUND
+                status_code=ErrorCode.FILE_NOT_FOUND,
             )
         else:
             logger.debug(
@@ -165,7 +165,7 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_file",
                 details={"path": str(path), "parent": str(path.parent)},
-                error_code=4001,  # FILE_NOT_FOUND
+                status_code=ErrorCode.FILE_NOT_FOUND,
             )
 
         # Check file existence
@@ -176,7 +176,7 @@ class PathValidator:
                     component="path_validator",
                     operation="validate_file",
                     details={"path": str(path)},
-                    error_code=4001,  # FILE_NOT_FOUND
+                    status_code=ErrorCode.FILE_NOT_FOUND,
                 )
             else:
                 logger.debug(
@@ -189,7 +189,7 @@ class PathValidator:
                 component="path_validator",
                 operation="validate_file",
                 details={"path": str(path)},
-                error_code=4002,  # FILE_READ_FAILED
+                status_code=ErrorCode.FILE_READ_FAILED,
             )
         else:
             logger.debug(

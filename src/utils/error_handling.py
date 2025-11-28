@@ -42,7 +42,7 @@ def log_and_raise(
     logger.error(f"{context_str}Error: {error}{info_str}", exc_info=True)
 
     if reraise:
-        raise
+        raise error
 
 
 def handle_asset_error(
@@ -77,7 +77,7 @@ def handle_asset_error(
         logger.warning(f"Returning placeholder value for asset {asset_name}")
         return placeholder_value
 
-    raise
+    raise error
 
 
 def retry_with_backoff(

@@ -259,7 +259,7 @@ class TestCIContextDetection:
         assert reporter.ci_context["is_pr"] is True
         assert reporter.ci_context["pr_number"] == "42"
 
-    @patch.dict(os.environ, {"CI": "true"})
+    @patch.dict(os.environ, {"CI": "true"}, clear=True)
     def test_detect_unknown_ci_context(self, temp_output_dir):
         """Test detection of unknown CI provider."""
         reporter = StatisticalReporter(output_dir=temp_output_dir)

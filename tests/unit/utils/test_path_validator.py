@@ -41,9 +41,9 @@ class TestPathValidator:
         return config
 
     @pytest.fixture
-    def validator(self, mock_paths_config):
+    def validator(self, mock_paths_config, tmp_path):
         """Create a PathValidator instance."""
-        return PathValidator(mock_paths_config)
+        return PathValidator(mock_paths_config, project_root=tmp_path)
 
     def test_validate_all_paths_creates_missing_dirs(self, validator, tmp_path):
         """Test that validate_all_paths creates missing directories."""
@@ -144,7 +144,7 @@ class TestPathValidator:
 class TestValidatePathsOnStartup:
     """Tests for validate_paths_on_startup convenience function."""
 
-    @patch("src.utils.path_validator.get_config")
+    @patch("src.config.loader.get_config")
     def test_validate_paths_on_startup_success(self, mock_get_config, tmp_path):
         """Test validate_paths_on_startup returns True on success."""
         # Create mock config
@@ -168,7 +168,7 @@ class TestValidatePathsOnStartup:
 
         assert result is True
 
-    @patch("src.utils.path_validator.get_config")
+    @patch("src.config.loader.get_config")
     def test_validate_paths_on_startup_failure(self, mock_get_config):
         """Test validate_paths_on_startup returns False on failure."""
         # Create mock config that will fail validation

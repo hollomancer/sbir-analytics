@@ -43,9 +43,13 @@ from src.models.statistical_reports import (
 )
 from src.utils.metrics import MetricsCollector
 from src.utils.monitoring import performance_monitor
+from src.utils.reporting.formats.html_processor import PLOTLY_AVAILABLE
 from src.utils.reporting.formats.html_processor import HtmlReportProcessor
 from src.utils.reporting.formats.json_processor import JsonReportProcessor
 from src.utils.reporting.formats.markdown_processor import MarkdownProcessor
+
+# Export PLOTLY_AVAILABLE for tests
+__all__ = ["StatisticalReporter", "PLOTLY_AVAILABLE"]
 
 
 class StatisticalReporter:
@@ -619,3 +623,89 @@ class StatisticalReporter:
 
         collection.pr_comment_generated = True
         logger.info("PR comment content generated")
+
+    # ============================================================================
+    # Wrapper methods for StatisticalReport (legacy API compatibility)
+    # ============================================================================
+
+    def _convert_statistical_report_to_pipeline_metrics(
+        self, report: StatisticalReport
+    ) -> PipelineMetrics:
+        """Convert StatisticalReport to PipelineMetrics for processor compatibility."""
+        from datetime import timedelta
+
+        module_metrics_list = []
+        for module_report in report.module_reports:
+            start_time = datetime.now()
+            duration_seconds = getattr(module_report, "duration_seconds", None) or report.total_duration_seconds
+            end_time = start_time + timedelta(seconds=duration_seconds or 0)
+
+            module_metrics = ModuleMetrics(
+                module_name=getattr(module_report, "module_name", "unknown") or "unknown",
+                run_id=report.run_id,
+                stage=getattr(module_report, "stage", "unknown") or "unknown",
+                execution_time=timedelta(seconds=duration_seconds or 0),
+                start_time=start_time,
+                end_time=end_time,
+                records_in=getattr(module_report, "total_records", 0) or 0,
+                records_out=getattr(module_report, "records_processed", 0) or 0,
+                records_processed=getattr(module_report, "records_processed", 0) or 0,
+                records_failed=getattr(module_report, "records_failed", 0) or 0,
+                success_rate=getattr(module_report, "success_rate", 0.0) or 0.0,
+                throughput_records_per_second=getattr(module_report, "throughput_records_per_second", 0.0) or 0.0,
+                data_hygiene=getattr(module_report, "data_hygiene", None),
+                changes_summary=getattr(module_report, "changes_summary", None),
+            )
+            module_metrics_list.append(module_metrics)
+
+        report_timestamp = (
+            datetime.fromisoformat(report.timestamp.replace("Z", "+00:00"))
+            if isinstance(report.timestamp, str)
+            else report.timestamp
+        )
+
+        return PipelineMetrics(
+            run_id=report.run_id,
+            generated_at=report_timestamp,
+            total_records=report.total_records_processed,
+            total_duration=timedelta(seconds=report.total_duration_seconds),
+            overall_success_rate=report.overall_success_rate,
+            module_metrics=module_metrics_list,
+        )
+
+    def generate_json_report(self, report: StatisticalReport) -> Path:
+        """Generate JSON report from StatisticalReport (legacy API)."""
+        pipeline_metrics = self._convert_statistical_report_to_pipeline_metrics(report)
+        artifact = self.processors[ReportFormat.JSON].generate(
+            pipeline_metrics=pipeline_metrics, output_dir=self.output_dir
+        )
+        return artifact.file_path
+
+    def generate_markdown_summary(self, report: StatisticalReport) -> tuple[str, Path]:
+        """Generate Markdown summary from StatisticalReport (legacy API)."""
+        pipeline_metrics = self._convert_statistical_report_to_pipeline_metrics(report)
+        artifact = self.processors[ReportFormat.MARKDOWN].generate(
+            pipeline_metrics=pipeline_metrics, output_dir=self.output_dir
+        )
+        with open(artifact.file_path) as f:
+            content = f.read()
+        return content, artifact.file_path
+
+    def generate_html_report(self, report: StatisticalReport) -> Path:
+        """Generate HTML report from StatisticalReport (legacy API)."""
+        pipeline_metrics = self._convert_statistical_report_to_pipeline_metrics(report)
+        artifact = self.processors[ReportFormat.HTML].generate(
+            pipeline_metrics=pipeline_metrics, output_dir=self.output_dir
+        )
+        return artifact.file_path
+
+    def generate_all_formats(self, report: StatisticalReport) -> dict[str, Path]:
+        """Generate all report formats from StatisticalReport (legacy API)."""
+        pipeline_metrics = self._convert_statistical_report_to_pipeline_metrics(report)
+        format_paths = {}
+        for format_enum in [ReportFormat.JSON, ReportFormat.HTML, ReportFormat.MARKDOWN]:
+            artifact = self.processors[format_enum].generate(
+                pipeline_metrics=pipeline_metrics, output_dir=self.output_dir
+            )
+            format_paths[format_enum.value] = artifact.file_path
+        return format_paths
