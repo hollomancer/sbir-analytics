@@ -180,6 +180,8 @@ testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+# Exclude validation scripts that are standalone scripts, not pytest tests
+norecursedirs = ["validation"]
 addopts = "-v --cov=src --cov-report=term-missing --cov-report=html:/tmp/htmlcov"
 asyncio_mode = "auto"
 
