@@ -174,7 +174,7 @@ RUN --mount=type=cache,target=/root/.cache/R \
         echo "Building R packages from scratch (optimized with RSPM binaries, ~2-5 minutes)..."; \
         export MAKEFLAGS="-j$(nproc)" && \
         export R_SITE_LIB='/usr/local/lib/R/site-library' && \
-        export RSPM_ROOT='https://packagemanager.rstudio.com/all/__linux__/jammy/latest' && \
+        export RSPM_ROOT='https://packagemanager.posit.co/cran/__linux__/bookworm/latest' && \
         R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
         options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
         cat('Installing remotes package from RSPM...\n'); \
