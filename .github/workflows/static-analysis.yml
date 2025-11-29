@@ -71,9 +71,8 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      - name: Install pre-commit
-        run: |
-          uv run pre-commit --version
+      - name: Verify pre-commit installation
+        run: uv run pre-commit --version
       - name: Run all pre-commit hooks
         run: uv run pre-commit run --all-files
         env:
