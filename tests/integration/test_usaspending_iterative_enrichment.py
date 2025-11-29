@@ -292,7 +292,6 @@ class TestResumeFlow:
         assert loaded.records_processed == 50
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="EnrichmentCheckpoint API changed")
     async def test_resume_after_interruption(
         self, tmp_checkpoint_store, tmp_freshness_store, mock_usaspending_api_client
     ):
@@ -309,6 +308,7 @@ class TestResumeFlow:
             records_failed=2,
             records_total=100,
             checkpoint_timestamp=datetime.now() - timedelta(hours=1),
+            metadata={},
         )
         tmp_checkpoint_store.save_checkpoint(checkpoint)
 

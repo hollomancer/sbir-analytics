@@ -159,6 +159,41 @@ test: ## Run all tests
 	@$(call info,Running tests)
 	$(call run,uv run pytest -v --cov=src)
 
+.PHONY: test-unit
+test-unit: ## Run unit tests only
+	@$(call info,Running unit tests)
+	$(call run,uv run pytest tests/unit/ -v)
+
+.PHONY: test-integration
+test-integration: ## Run integration tests only
+	@$(call info,Running integration tests)
+	$(call run,uv run pytest tests/integration/ -v)
+
+.PHONY: test-functional
+test-functional: ## Run functional pipeline tests
+	@$(call info,Running functional tests)
+	$(call run,uv run pytest tests/functional/ -v)
+
+.PHONY: test-transition
+test-transition: ## Test transition detection pipeline
+	@$(call info,Testing transition pipeline)
+	$(call run,uv run pytest tests/functional/test_pipelines.py::TestTransitionPipeline -v)
+
+.PHONY: test-cet
+test-cet: ## Test CET classification pipeline
+	@$(call info,Testing CET pipeline)
+	$(call run,uv run pytest tests/functional/test_pipelines.py::TestCETPipeline -v)
+
+.PHONY: test-fiscal
+test-fiscal: ## Test fiscal returns pipeline
+	@$(call info,Testing fiscal pipeline)
+	$(call run,uv run pytest tests/functional/test_pipelines.py::TestFiscalPipeline -v)
+
+.PHONY: test-paecter
+test-paecter: ## Test PaECTER pipeline
+	@$(call info,Testing PaECTER pipeline)
+	$(call run,uv run pytest tests/functional/test_pipelines.py::TestPaECTERPipeline -v)
+
 .PHONY: lint
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
@@ -433,14 +468,44 @@ neo4j-check: env-check ## Run the Neo4j health check
 	 fi
 
 # -----------------------------------------------------------------------------
-# Transition MVP
+# Function-specific pipeline runs
+# -----------------------------------------------------------------------------
+
+.PHONY: transition-run
+transition-run: ## Run transition detection pipeline
+	@$(call info,Running transition detection)
+	$(call run,uv run dagster job execute -m src.definitions -j transition_job)
+	@$(call success,Transition detection completed)
+
+.PHONY: cet-run
+cet-run: ## Run CET classification pipeline
+	@$(call info,Running CET classification)
+	$(call run,uv run dagster job execute -m src.definitions_ml -j cet_full_pipeline_job)
+	@$(call success,CET classification completed)
+
+.PHONY: fiscal-run
+fiscal-run: ## Run fiscal returns analysis (R-based)
+	@$(call info,Running fiscal returns analysis)
+	$(call run,uv run dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job)
+	@$(call success,Fiscal returns analysis completed)
+
+.PHONY: paecter-run
+paecter-run: ## Run PaECTER embeddings and similarity
+	@$(call info,Running PaECTER analysis)
+	$(call run,uv run dagster job execute -m src.definitions_ml -j paecter_job)
+	@$(call success,PaECTER analysis completed)
+
+# -----------------------------------------------------------------------------
+# Legacy aliases (deprecated, use function-specific targets above)
 # -----------------------------------------------------------------------------
 
 .PHONY: transition-mvp-run
-transition-mvp-run: ## Run the Transition MVP pipeline locally (no Dagster required)
-	@$(call info,Running Transition MVP pipeline)
-	$(call run,uv run sbir-cli transition mvp)
-	@$(call success,Transition MVP pipeline completed)
+transition-mvp-run: transition-run ## [DEPRECATED] Use 'make transition-run' instead
+	@$(call warn,transition-mvp-run is deprecated, use 'make transition-run' instead)
+
+.PHONY: cet-pipeline-dev
+cet-pipeline-dev: cet-run ## [DEPRECATED] Use 'make cet-run' instead
+	@$(call warn,cet-pipeline-dev is deprecated, use 'make cet-run' instead)
 
 .PHONY: transition-mvp-clean
 transition-mvp-clean: ## Clean up Transition MVP artifacts

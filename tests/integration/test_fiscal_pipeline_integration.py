@@ -168,12 +168,9 @@ class TestFiscalPipelineIntegration:
     @patch("src.enrichers.geographic_resolver.resolve_award_geography")
     @patch("src.enrichers.inflation_adjuster.adjust_awards_for_inflation")
     @patch("src.enrichers.fiscal_bea_mapper.enrich_awards_with_bea_sectors")
-    @patch(
-        "src.transformers.fiscal_shock_aggregator.FiscalShockAggregator.aggregate_shocks_to_dataframe"
-    )
+    @patch("src.transformers.fiscal.shocks.FiscalShockAggregator.aggregate_shocks_to_dataframe")
     @patch("src.transformers.r_stateio_adapter.RStateIOAdapter._compute_impacts_r")
     @patch("src.transformers.r_stateio_adapter.RStateIOAdapter.is_available")
-    @pytest.mark.skip(reason="fiscal_shock_aggregator module missing")
     def test_end_to_end_pipeline(
         self,
         mock_is_available,

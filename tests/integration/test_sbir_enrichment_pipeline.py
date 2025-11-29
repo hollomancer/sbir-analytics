@@ -105,8 +105,10 @@ def test_enrichment_pipeline_runs_and_merges_company_data(
     assert "company_industry" in enriched.columns
 
     # Find rows with Test Company (match by original Company value)
-    test_company_rows = enriched[enriched["Company"].astype(str).str.contains("Test Company", case=False, na=False)]
-    
+    test_company_rows = enriched[
+        enriched["Company"].astype(str).str.contains("Test Company", case=False, na=False)
+    ]
+
     # If no matches found, that's okay - enrichment may not find matches for test data
     # Just verify the enrichment ran and added the expected columns
     if len(test_company_rows) > 0:
@@ -114,16 +116,18 @@ def test_enrichment_pipeline_runs_and_merges_company_data(
         test_row = test_company_rows.iloc[0]
         assert "_match_score" in test_row.index
         assert "_match_method" in test_row.index
-    assert match_method is not None
-    # If match was successful, the industry column should equal our companies entry
-    if acme_row.get("company_industry") is not None:
-        assert acme_row["company_industry"] == "Aerospace"
+        match_method = test_row.get("_match_method")
+        assert match_method is not None
 
-    # Ensure candidates JSON parses if present
-    cand = acme_row.get("_match_candidates")
-    if pd.notna(cand):
-        parsed = json.loads(cand)
-        assert isinstance(parsed, list)
+        # If match was successful, the industry column should equal our companies entry
+        if test_row.get("company_industry") is not None:
+            assert test_row["company_industry"] == "Aerospace"
+
+        # Ensure candidates JSON parses if present
+        cand = test_row.get("_match_candidates")
+        if pd.notna(cand):
+            parsed = json.loads(cand)
+            assert isinstance(parsed, list)
 
     # Basic sanity: enrichment should not alter total row count
     assert len(enriched) == len(raw_df)
