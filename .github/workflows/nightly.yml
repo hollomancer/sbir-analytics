@@ -252,6 +252,7 @@ jobs:
         with:
           branch: ${{ steps.branch.outputs.branch }}
           base: main
+          delete-branch: true
           title: "CI: nightly minimal repair"
           commit-message: "ci: minimal nightly repair"
           body: |
