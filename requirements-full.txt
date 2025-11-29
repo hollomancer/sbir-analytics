@@ -316,7 +316,7 @@ psutil==7.1.3
     #   sbir-analytics (pyproject.toml)
     #   dagster
     #   memory-profiler
-pyarrow==14.0.2
+pyarrow==22.0.0
     # via sbir-analytics (pyproject.toml)
 pycparser==2.23 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
     # via cffi
