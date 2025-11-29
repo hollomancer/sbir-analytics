@@ -885,7 +885,7 @@ class TestSensitivityUncertainty:
         tax_df = pd.DataFrame(
             {
                 "fiscal_year": [2021, 2022],
-                "total_tax_receipts": [50000, 75000],
+                "total_tax_receipt": [50000, 75000],
             }
         )
 
