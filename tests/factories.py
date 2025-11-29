@@ -194,3 +194,254 @@ class CompanyCETProfileFactory:
         }
         defaults.update(kwargs)
         return CompanyCETProfile(**defaults)
+
+
+# DataFrame Builders
+# ==================
+
+
+class DataFrameBuilder:
+    """Fluent builder for test DataFrames."""
+
+    @staticmethod
+    def awards(count: int = 5) -> "AwardDataFrameBuilder":
+        """Create an award DataFrame builder."""
+        return AwardDataFrameBuilder(count)
+
+    @staticmethod
+    def contracts(count: int = 5) -> "ContractDataFrameBuilder":
+        """Create a contract DataFrame builder."""
+        return ContractDataFrameBuilder(count)
+
+    @staticmethod
+    def companies(count: int = 5) -> "CompanyDataFrameBuilder":
+        """Create a company DataFrame builder."""
+        return CompanyDataFrameBuilder(count)
+
+    @staticmethod
+    def patents(count: int = 5) -> "PatentDataFrameBuilder":
+        """Create a patent DataFrame builder."""
+        return PatentDataFrameBuilder(count)
+
+
+class AwardDataFrameBuilder:
+    """Builder for award DataFrames."""
+
+    def __init__(self, count: int):
+        self.count = count
+        self.overrides = {}
+        self.custom_rows = []
+
+    def with_agency(self, agency: str) -> "AwardDataFrameBuilder":
+        self.overrides["agency"] = agency
+        return self
+
+    def with_phase(self, phase: str) -> "AwardDataFrameBuilder":
+        self.overrides["phase"] = phase
+        return self
+
+    def with_amount_range(self, min_amount: float, max_amount: float) -> "AwardDataFrameBuilder":
+        self.overrides["amount_range"] = (min_amount, max_amount)
+        return self
+
+    def with_date_range(self, start_date: date, end_date: date) -> "AwardDataFrameBuilder":
+        self.overrides["date_range"] = (start_date, end_date)
+        return self
+
+    def with_naics(self, naics: str) -> "AwardDataFrameBuilder":
+        self.overrides["naics_code"] = naics
+        return self
+
+    def with_custom_row(self, **kwargs) -> "AwardDataFrameBuilder":
+        self.custom_rows.append(kwargs)
+        return self
+
+    def build(self):
+        """Build the DataFrame."""
+        import pandas as pd
+        import random
+        from datetime import timedelta
+
+        awards = []
+        for i in range(1, self.count + 1):
+            award_data = {
+                "award_id": f"TEST-AWARD-{i:03d}",
+                "company_name": f"Test Company {i}",
+                "award_amount": 100000.0,
+                "award_date": date(2023, 1, 1),
+                "program": "SBIR",
+                "phase": "I",
+                "agency": "DOD",
+                "branch": "Army",
+                "contract": f"C-2023-{i:03d}",
+                "abstract": f"Test abstract for award {i}",
+                "award_title": f"Test Award Title {i}",
+                "company_uei": f"UEI{i:09d}",
+                "company_duns": f"{i:09d}",
+                "company_address": f"{i} Test St",
+                "company_city": "Test City",
+                "company_state": "CA",
+                "company_zip": "90210",
+                "number_of_employees": 10,
+            }
+
+            for key, value in self.overrides.items():
+                if key == "amount_range":
+                    min_amt, max_amt = value
+                    award_data["award_amount"] = random.uniform(min_amt, max_amt)
+                elif key == "date_range":
+                    start, end = value
+                    days_diff = (end - start).days
+                    random_days = random.randint(0, days_diff)
+                    award_data["award_date"] = start + timedelta(days=random_days)
+                else:
+                    award_data[key] = value
+
+            awards.append(award_data)
+
+        for custom in self.custom_rows:
+            award_data = awards[0].copy()
+            award_data.update(custom)
+            awards.append(award_data)
+
+        return pd.DataFrame(awards)
+
+
+class ContractDataFrameBuilder:
+    """Builder for contract DataFrames."""
+
+    def __init__(self, count: int):
+        self.count = count
+        self.overrides = {}
+
+    def with_agency(self, agency: str) -> "ContractDataFrameBuilder":
+        self.overrides["awarding_agency_name"] = agency
+        return self
+
+    def with_recipient(self, name: str, uei: str) -> "ContractDataFrameBuilder":
+        self.overrides["recipient_name"] = name
+        self.overrides["recipient_uei"] = uei
+        return self
+
+    def with_date_range(self, start_date: date, end_date: date) -> "ContractDataFrameBuilder":
+        self.overrides["date_range"] = (start_date, end_date)
+        return self
+
+    def build(self):
+        """Build the DataFrame."""
+        import pandas as pd
+        import random
+        from datetime import timedelta
+
+        contracts = []
+        for i in range(1, self.count + 1):
+            contract_data = {
+                "contract_id": f"CONTRACT-{i:03d}",
+                "piid": f"PIID-{i:03d}",
+                "recipient_name": f"Test Company {i}",
+                "recipient_uei": f"UEI{i:09d}",
+                "awarding_agency_name": "DOD",
+                "federal_action_obligation": 500000.0,
+                "action_date": date(2023, 8, 1),
+                "period_of_performance_start_date": date(2023, 8, 1),
+                "period_of_performance_current_end_date": date(2024, 8, 1),
+            }
+
+            for key, value in self.overrides.items():
+                if key == "date_range":
+                    start, end = value
+                    days_diff = (end - start).days
+                    random_days = random.randint(0, days_diff)
+                    contract_data["action_date"] = start + timedelta(days=random_days)
+                else:
+                    contract_data[key] = value
+
+            contracts.append(contract_data)
+
+        return pd.DataFrame(contracts)
+
+
+class CompanyDataFrameBuilder:
+    """Builder for company DataFrames."""
+
+    def __init__(self, count: int):
+        self.count = count
+        self.overrides = {}
+
+    def with_state(self, state: str) -> "CompanyDataFrameBuilder":
+        self.overrides["state"] = state
+        return self
+
+    def with_size_range(self, min_employees: int, max_employees: int) -> "CompanyDataFrameBuilder":
+        self.overrides["size_range"] = (min_employees, max_employees)
+        return self
+
+    def build(self):
+        """Build the DataFrame."""
+        import pandas as pd
+        import random
+
+        companies = []
+        for i in range(1, self.count + 1):
+            company_data = {
+                "name": f"Test Company {i}",
+                "uei": f"UEI{i:09d}",
+                "duns": f"{i:09d}",
+                "address": f"{i} Test St",
+                "city": "Test City",
+                "state": "CA",
+                "zip": "90210",
+                "number_of_employees": 10,
+            }
+
+            for key, value in self.overrides.items():
+                if key == "size_range":
+                    min_emp, max_emp = value
+                    company_data["number_of_employees"] = random.randint(min_emp, max_emp)
+                else:
+                    company_data[key] = value
+
+            companies.append(company_data)
+
+        return pd.DataFrame(companies)
+
+
+class PatentDataFrameBuilder:
+    """Builder for patent DataFrames."""
+
+    def __init__(self, count: int):
+        self.count = count
+        self.overrides = {}
+
+    def with_grant_date_range(self, start_date: date, end_date: date) -> "PatentDataFrameBuilder":
+        self.overrides["date_range"] = (start_date, end_date)
+        return self
+
+    def build(self):
+        """Build the DataFrame."""
+        import pandas as pd
+        import random
+        from datetime import timedelta
+
+        patents = []
+        for i in range(1, self.count + 1):
+            patent_data = {
+                "grant_doc_num": f"{5858000 + i}",
+                "title": f"Test Patent {i}",
+                "abstract": f"Test patent abstract {i}",
+                "grant_date": date(2023, 1, 1),
+                "assignee_name": f"Test Company {i}",
+            }
+
+            for key, value in self.overrides.items():
+                if key == "date_range":
+                    start, end = value
+                    days_diff = (end - start).days
+                    random_days = random.randint(0, days_diff)
+                    patent_data["grant_date"] = start + timedelta(days=random_days)
+                else:
+                    patent_data[key] = value
+
+            patents.append(patent_data)
+
+        return pd.DataFrame(patents)
