@@ -183,12 +183,16 @@ module = [
 [tool.pytest.ini_options]
 markers = [
     "fast: fast unit tests (< 1 second each) - run on every commit",
+    "smoke: critical path smoke tests - run first for fast feedback",
     "integration: integration tests - run on PR",
-    "slow: long-running tests - run nightly",
+    "slow: long-running tests (>5 seconds) - run nightly",
     "e2e: end-to-end tests - run nightly/weekly",
     "real_data: tests using real data - run weekly",
     "weekly: comprehensive validation - run weekly only",
-    "neo4j: tests requiring real Neo4j connection (not mocked)"
+    "regression: regression prevention tests for known bugs",
+    "neo4j: tests requiring real Neo4j connection (not mocked)",
+    "requires_s3: tests requiring S3 access",
+    "requires_api: tests requiring external API access",
 ]
 testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]

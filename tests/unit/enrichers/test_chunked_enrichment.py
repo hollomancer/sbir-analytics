@@ -947,6 +947,7 @@ class TestModuleFunctions:
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
+    @pytest.mark.slow
     @patch("src.enrichers.chunked_enrichment.get_config")
     @patch("src.enrichers.chunked_enrichment.enrich_sbir_with_usaspending")
     @patch("src.enrichers.chunked_enrichment.performance_monitor")

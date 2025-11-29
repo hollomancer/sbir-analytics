@@ -124,7 +124,7 @@ make docker-up-dev
 # Open http://localhost:3000 and materialize the assets
 ```
 
-See [`docs/deployment/containerization.md`](docs/deployment/containerization.md) for full details.
+See [Docker Development Guide](docs/deployment/docker-guide.md) for complete setup instructions.
 
 **Note**: Docker Compose is recommended for local development and serves as a failover option for production.
 

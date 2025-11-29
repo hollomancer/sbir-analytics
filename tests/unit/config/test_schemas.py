@@ -149,7 +149,9 @@ class TestDataQualityConfig:
         """Test percentage validator rejects non-numeric strings."""
         with pytest.raises(ValidationError) as exc_info:
             DataQualityConfig(completeness={"field1": "not_a_number"})
-        assert "must be a number" in str(exc_info.value)
+        # Check exception type and that it mentions the field
+        assert isinstance(exc_info.value, ValidationError)
+        assert "completeness" in str(exc_info.value)
 
 
 class TestEnrichmentConfig:

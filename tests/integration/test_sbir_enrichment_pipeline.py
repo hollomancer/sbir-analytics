@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 from dagster import build_asset_context
 
 import src.assets.sbir_ingestion as assets_module
@@ -22,6 +23,8 @@ def _make_test_config(
     return SimpleNamespace(extraction=extraction, data_quality=data_quality)
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_enrichment_pipeline_runs_and_merges_company_data(
     tmp_path: Path, monkeypatch, sbir_csv_path: Path
 ):

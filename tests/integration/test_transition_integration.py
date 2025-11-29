@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
 class TestFullDetectionPipeline:
