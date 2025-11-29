@@ -1177,9 +1177,51 @@ jobs:
           print('✅ Model loads successfully')
           "
 
+  test-s3-integration:
+    name: S3 Integration Tests
+    needs: [detect-changes, test]
+    if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-cloud-tests')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        continue-on-error: true
+        id: aws-creds
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Run S3 integration tests
+        if: steps.aws-creds.outcome == 'success'
+        env:
+          TEST_S3_BUCKET: sbir-analytics-test
+        run: |
+          uv run pytest tests/integration/test_s3_operations.py -v -m s3
+
+      - name: Skip S3 tests (no credentials)
+        if: steps.aws-creds.outcome != 'success'
+        run: |
+          echo "⚠️ AWS credentials not available, skipping S3 integration tests"
+          echo "This is expected for external PRs"
+
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp, ml-smoke-test]
+    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp, ml-smoke-test, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1209,6 +1251,10 @@ jobs:
 
           if [ "${{ needs.ml-smoke-test.result }}" != "skipped" ]; then
             echo "| 🤖 ML Smoke Test | ${{ needs.ml-smoke-test.result == 'success' && '✅' || '❌' }} ${{ needs.ml-smoke-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-s3-integration.result }}" != "skipped" ]; then
+            echo "| ☁️ S3 Integration | ${{ needs.test-s3-integration.result == 'success' && '✅' || '❌' }} ${{ needs.test-s3-integration.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.cet-tests.result }}" != "skipped" ]; then
@@ -1243,6 +1289,7 @@ jobs:
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||
           needs.ml-smoke-test.result == 'failure' ||
+          needs.test-s3-integration.result == 'failure' ||
           needs.cet-tests.result == 'failure' ||
           needs.cet-dev-e2e.result == 'failure' ||
           needs.transition-mvp.result == 'failure'

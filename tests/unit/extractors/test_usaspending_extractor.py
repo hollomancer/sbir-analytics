@@ -41,18 +41,21 @@ def sample_dump_file(tmp_path):
 class TestDuckDBUSAspendingExtractorInitialization:
     """Tests for DuckDBUSAspendingExtractor initialization."""
 
-    def test_initialization_in_memory(self):
-        """Test initialization with in-memory database."""
-        extractor = DuckDBUSAspendingExtractor()
+    @pytest.mark.parametrize(
+        "db_path,expected_path",
+        [
+            (None, ":memory:"),  # default in-memory
+            ("/tmp/test.db", "/tmp/test.db"),  # custom path
+        ],
+        ids=["in_memory", "with_path"],
+    )
+    def test_initialization(self, db_path, expected_path):
+        """Test initialization with various database paths."""
+        extractor = (
+            DuckDBUSAspendingExtractor(db_path=db_path) if db_path else DuckDBUSAspendingExtractor()
+        )
 
-        assert extractor.db_path == ":memory:"
-        assert extractor.connection is None
-
-    def test_initialization_with_path(self, temp_db_path):
-        """Test initialization with file path."""
-        extractor = DuckDBUSAspendingExtractor(db_path=temp_db_path)
-
-        assert extractor.db_path == temp_db_path
+        assert extractor.db_path == expected_path
         assert extractor.connection is None
 
 

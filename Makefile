@@ -194,6 +194,11 @@ test-paecter: ## Test PaECTER pipeline
 	@$(call info,Testing PaECTER pipeline)
 	$(call run,uv run pytest tests/functional/test_pipelines.py::TestPaECTERPipeline -v)
 
+.PHONY: test-s3
+test-s3: ## Test S3 integration (requires AWS credentials)
+	@$(call info,Testing S3 integration)
+	$(call run,uv run pytest tests/integration/test_s3_operations.py -v -m s3)
+
 .PHONY: lint
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)

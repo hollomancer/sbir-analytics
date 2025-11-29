@@ -372,3 +372,14 @@ def mock_context():
     from tests.mocks import ContextMocks
 
     return ContextMocks.context_with_logging()
+
+
+@pytest.fixture
+def mock_config():
+    """
+    Shared mock pipeline configuration.
+    Uses consolidated config mock utility for consistency.
+    """
+    from tests.utils.config_mocks import create_mock_pipeline_config
+
+    return create_mock_pipeline_config()
