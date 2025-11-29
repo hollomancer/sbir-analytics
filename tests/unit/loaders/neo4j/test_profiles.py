@@ -1,7 +1,6 @@
 """Tests for Neo4j transition profile loader."""
 
 from datetime import datetime
-from unittest.mock import Mock
 from tests.mocks import Neo4jMocks
 
 import pandas as pd
@@ -30,14 +29,14 @@ class TestTransitionProfileLoader:
 
     def test_initialization_default_batch_size(self):
         """Test initialization with default batch size."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         assert loader.batch_size == 500
 
     def test_calculate_company_profiles_empty_transitions(self):
         """Test calculating profiles with empty transitions DataFrame."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame()
@@ -47,7 +46,7 @@ class TestTransitionProfileLoader:
 
     def test_calculate_company_profiles_no_awards_df(self):
         """Test calculating profiles without awards DataFrame."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -67,7 +66,7 @@ class TestTransitionProfileLoader:
 
     def test_calculate_company_profiles_with_awards(self):
         """Test calculating profiles with awards DataFrame."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -122,7 +121,7 @@ class TestTransitionProfileCalculations:
 
     def test_profile_metrics_calculation(self):
         """Test calculation of profile metrics."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         # Create test data
@@ -157,7 +156,7 @@ class TestTransitionProfileCalculations:
 
     def test_high_confidence_counting(self):
         """Test counting of high confidence transitions."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -185,7 +184,7 @@ class TestTransitionProfileCalculations:
 
     def test_success_rate_calculation(self):
         """Test success rate calculation."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         # 3 transitions out of 5 awards for company c1
@@ -218,7 +217,7 @@ class TestTransitionProfileLoaderIntegration:
 
     def test_multiple_companies_profiles(self):
         """Test profiles for multiple companies."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -246,7 +245,7 @@ class TestTransitionProfileLoaderIntegration:
 
     def test_average_score_calculation(self):
         """Test average likelihood score calculation."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -274,7 +273,7 @@ class TestTransitionProfileLoaderIntegration:
 
     def test_last_transition_date_tracking(self):
         """Test tracking of last transition date."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         detected_dates = pd.to_datetime(
@@ -310,7 +309,7 @@ class TestTransitionProfileLoaderIntegration:
 
     def test_empty_awards_with_transitions(self):
         """Test handling transitions without corresponding awards data."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -337,7 +336,7 @@ class TestTransitionProfileLoaderEdgeCases:
 
     def test_single_transition(self):
         """Test profile calculation with single transition."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -364,7 +363,7 @@ class TestTransitionProfileLoaderEdgeCases:
 
     def test_missing_confidence_field(self):
         """Test handling of missing confidence field."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -391,7 +390,7 @@ class TestTransitionProfileLoaderEdgeCases:
 
     def test_duplicate_transition_ids(self):
         """Test handling of duplicate transition IDs."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -417,7 +416,7 @@ class TestTransitionProfileLoaderEdgeCases:
 
     def test_all_confidence_levels(self):
         """Test profiles with all confidence levels."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(
@@ -445,7 +444,7 @@ class TestTransitionProfileLoaderEdgeCases:
 
     def test_zero_likelihood_scores(self):
         """Test handling of zero likelihood scores."""
-        mock_driver = Mock()
+        mock_driver = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_driver)
 
         transitions_df = pd.DataFrame(

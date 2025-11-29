@@ -14,9 +14,11 @@ Tests cover:
 All tests use mocks to avoid requiring a real Neo4j instance.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
+
+from tests.mocks import Neo4jMocks
 
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
 
@@ -204,7 +206,7 @@ class TestNeo4jClientNodeOperations:
 
     def test_upsert_node_creates_new(self, mock_transaction):
         """Test upsert_node creates new node."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_record = {"operation": "created"}
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
@@ -220,7 +222,7 @@ class TestNeo4jClientNodeOperations:
 
     def test_upsert_node_updates_existing(self, mock_transaction):
         """Test upsert_node updates existing node."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_record = {"operation": "updated"}
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
@@ -235,7 +237,7 @@ class TestNeo4jClientNodeOperations:
 
     def test_upsert_node_query_format(self, mock_transaction):
         """Test upsert_node generates correct Cypher query."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"operation": "created"}
         mock_transaction.run.return_value = mock_result
 
@@ -262,12 +264,12 @@ class TestNeo4jClientBatchOperations:
         """Test batch upsert with nodes fitting in single batch."""
         neo4j_config.auto_migrate = False  # Disable auto-migration
         # Setup mocks
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return result with created_count and updated_count
-        mock_result = MagicMock()
-        mock_record = MagicMock()
+        mock_result = Neo4jMocks.result()
+        mock_record = Neo4jMocks.result()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 0}[
             key
         ]
@@ -292,13 +294,13 @@ class TestNeo4jClientBatchOperations:
         # Setup for small batch size
         neo4j_config.batch_size = 2
 
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return different counts per batch
         def mock_run_side_effect(query, **kwargs):
-            mock_result = MagicMock()
-            mock_record = MagicMock()
+            mock_result = Neo4jMocks.result()
+            mock_record = Neo4jMocks.result()
             # First two batches: 2 created each, last batch: 1 created
             batch_size = len(kwargs.get("batch", []))
             mock_record.__getitem__.side_effect = lambda key: {
@@ -321,14 +323,14 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_tracks_creates_and_updates(self, mock_session_cm, neo4j_config):
         """Test batch upsert correctly tracks creates vs updates."""
-        mock_session = MagicMock()
-        mock_tx = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_tx = Neo4jMocks.transaction()
         mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return 2 created, 1 updated
-        mock_result = MagicMock()
-        mock_record = MagicMock()
+        mock_result = Neo4jMocks.result()
+        mock_record = Neo4jMocks.result()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 1}[
             key
         ]
@@ -347,8 +349,8 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_handles_missing_key(self, mock_session_cm, neo4j_config):
         """Test batch upsert handles nodes missing key property."""
-        mock_session = MagicMock()
-        mock_tx = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_tx = Neo4jMocks.transaction()
         mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
@@ -366,8 +368,8 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_handles_transaction_error(self, mock_session_cm, neo4j_config):
         """Test batch upsert handles transaction errors gracefully."""
-        mock_session = MagicMock()
-        mock_tx = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_tx = Neo4jMocks.transaction()
         mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
@@ -388,7 +390,7 @@ class TestNeo4jClientRelationshipOperations:
 
     def test_create_relationship_success(self, mock_transaction):
         """Test creating relationship between existing nodes."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_record = {"r": "relationship", "source": "node1", "target": "node2"}
         mock_result.single.return_value = mock_record
         mock_transaction.run.return_value = mock_result
@@ -412,7 +414,7 @@ class TestNeo4jClientRelationshipOperations:
 
     def test_create_relationship_missing_source(self, mock_transaction):
         """Test creating relationship when source node doesn't exist."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = None  # No match found
         mock_transaction.run.return_value = mock_result
 
@@ -434,7 +436,7 @@ class TestNeo4jClientRelationshipOperations:
 
     def test_create_relationship_query_format(self, mock_transaction):
         """Test relationship creation generates correct Cypher query."""
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"r": "rel"}
         mock_transaction.run.return_value = mock_result
 
@@ -467,14 +469,14 @@ class TestNeo4jClientBatchRelationships:
     @patch.object(Neo4jClient, "session")
     def test_batch_create_relationships(self, mock_session_cm, neo4j_config):
         """Test batch relationship creation."""
-        mock_session = MagicMock()
-        mock_tx = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_tx = Neo4jMocks.transaction()
         mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock tx.run() to return result with created_count
-        mock_result = MagicMock()
-        mock_record = MagicMock()
+        mock_result = Neo4jMocks.result()
+        mock_record = Neo4jMocks.result()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2}[key]
         mock_result.single.return_value = mock_record
         mock_tx.run.return_value = mock_result
@@ -492,14 +494,14 @@ class TestNeo4jClientBatchRelationships:
     @patch.object(Neo4jClient, "session")
     def test_batch_create_relationships_with_failures(self, mock_session_cm, neo4j_config):
         """Test batch relationship creation with some failures."""
-        mock_session = MagicMock()
-        mock_tx = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_tx = Neo4jMocks.transaction()
         mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock tx.run() to return result with created_count
-        mock_result = MagicMock()
-        mock_record = MagicMock()
+        mock_result = Neo4jMocks.result()
+        mock_record = Neo4jMocks.result()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2}[key]
         mock_result.single.return_value = mock_record
         mock_tx.run.return_value = mock_result
@@ -522,7 +524,7 @@ class TestNeo4jClientConstraintsAndIndexes:
     @patch.object(Neo4jClient, "session")
     def test_create_constraints(self, mock_session_cm, neo4j_config):
         """Test creating uniqueness constraints."""
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         client = Neo4jClient(neo4j_config)
@@ -534,7 +536,7 @@ class TestNeo4jClientConstraintsAndIndexes:
     @patch.object(Neo4jClient, "session")
     def test_create_constraints_handles_existing(self, mock_session_cm, neo4j_config):
         """Test creating constraints when they already exist."""
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Constraint already exists")
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
@@ -545,7 +547,7 @@ class TestNeo4jClientConstraintsAndIndexes:
     @patch.object(Neo4jClient, "session")
     def test_create_indexes(self, mock_session_cm, neo4j_config):
         """Test creating property indexes."""
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         client = Neo4jClient(neo4j_config)
@@ -557,7 +559,7 @@ class TestNeo4jClientConstraintsAndIndexes:
     @patch.object(Neo4jClient, "session")
     def test_create_indexes_handles_existing(self, mock_session_cm, neo4j_config):
         """Test creating indexes when they already exist."""
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Index already exists")
         mock_session_cm.return_value.__enter__.return_value = mock_session
 

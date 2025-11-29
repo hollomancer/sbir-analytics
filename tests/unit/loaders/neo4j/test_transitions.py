@@ -3,7 +3,7 @@ from tests.mocks import Neo4jMocks
 """Tests for Neo4j Transition loader."""
 
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -18,7 +18,7 @@ def _create_mock_client_with_session(mock_session: MagicMock) -> MagicMock:
     """Helper to create a mock Neo4jClient with a properly configured session context manager."""
     mock_client = Neo4jMocks.driver()
     mock_client.config.batch_size = 1000  # Set actual int value for pandas indexing
-    mock_context = MagicMock()
+    mock_context = Neo4jMocks.session()
     mock_context.__enter__.return_value = mock_session
     mock_context.__exit__.return_value = None
     mock_client.session.return_value = mock_context
@@ -79,7 +79,7 @@ class TestTransitionLoaderIndexes:
         """Test ensure_indexes creates all expected indexes."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -94,7 +94,7 @@ class TestTransitionLoaderIndexes:
         """Test transition_id index is created."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -114,7 +114,7 @@ class TestTransitionLoaderIndexes:
         """Test confidence index is created."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -131,7 +131,7 @@ class TestTransitionLoaderIndexes:
         """Test likelihood_score index is created."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -148,7 +148,7 @@ class TestTransitionLoaderIndexes:
         """Test detection_date index is created."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -165,7 +165,7 @@ class TestTransitionLoaderIndexes:
         """Test all indexes use IF NOT EXISTS."""
         mock_client = Neo4jMocks.driver()
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -183,7 +183,7 @@ class TestTransitionLoaderIndexes:
         mock_client.config.batch_size = 1000
         mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Index creation failed")
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -212,7 +212,7 @@ class TestTransitionLoaderNodeLoading:
     def test_load_transition_nodes_single_transition(self):
         """Test loading single transition node."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -241,7 +241,7 @@ class TestTransitionLoaderNodeLoading:
     def test_load_transition_nodes_multiple_transitions(self):
         """Test loading multiple transition nodes."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -269,7 +269,7 @@ class TestTransitionLoaderNodeLoading:
     def test_load_transition_nodes_batching(self):
         """Test nodes are loaded in batches."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 5}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -301,7 +301,7 @@ class TestTransitionLoaderNodeLoading:
     def test_load_transition_nodes_query_uses_merge(self):
         """Test query uses MERGE for idempotency."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -365,7 +365,7 @@ class TestTransitionLoaderTransitionedToRelationships:
     def test_create_transitioned_to_single(self):
         """Test creating single TRANSITIONED_TO relationship."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -390,7 +390,7 @@ class TestTransitionLoaderTransitionedToRelationships:
     def test_create_transitioned_to_multiple(self):
         """Test creating multiple TRANSITIONED_TO relationships."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -415,7 +415,7 @@ class TestTransitionLoaderTransitionedToRelationships:
     def test_create_transitioned_to_uses_merge(self):
         """Test query uses MERGE for idempotency."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -473,7 +473,7 @@ class TestTransitionLoaderResultedInRelationships:
     def test_create_resulted_in_single(self):
         """Test creating single RESULTED_IN relationship."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -495,7 +495,7 @@ class TestTransitionLoaderResultedInRelationships:
     def test_create_resulted_in_multiple(self):
         """Test creating multiple RESULTED_IN relationships."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 3}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -517,7 +517,7 @@ class TestTransitionLoaderResultedInRelationships:
     def test_create_resulted_in_uses_merge(self):
         """Test query uses MERGE for idempotency."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -591,7 +591,7 @@ class TestTransitionLoaderEnabledByRelationships:
     def test_create_enabled_by_single(self):
         """Test creating single ENABLED_BY relationship."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -614,7 +614,7 @@ class TestTransitionLoaderEnabledByRelationships:
     def test_create_enabled_by_uses_merge(self):
         """Test query uses MERGE for idempotency."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -643,7 +643,7 @@ class TestTransitionLoaderEnabledByRelationships:
     def test_create_enabled_by_handles_missing_contribution(self):
         """Test handles missing patent_contribution field."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -723,7 +723,7 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
     def test_create_involves_technology_single(self):
         """Test creating single INVOLVES_TECHNOLOGY relationship."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -745,7 +745,7 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
     def test_create_involves_technology_filters_na(self):
         """Test filters out transitions without CET areas."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 2}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -768,7 +768,7 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
     def test_create_involves_technology_uses_merge(self):
         """Test query uses MERGE for idempotency."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -796,7 +796,7 @@ class TestTransitionLoaderInvolvesTechnologyRelationships:
     def test_create_involves_technology_handles_missing_score(self):
         """Test handles missing cet_alignment_score."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -842,7 +842,7 @@ class TestTransitionLoaderOrchestration:
     def test_load_transitions_calls_all_methods(self):
         """Test load_transitions calls all required methods."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -924,7 +924,7 @@ class TestTransitionLoaderOrchestration:
     def test_load_transitions_returns_stats(self):
         """Test load_transitions returns stats dictionary."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -983,7 +983,7 @@ class TestTransitionLoaderEdgeCases:
     def test_stats_accumulate_across_calls(self):
         """Test stats accumulate across multiple calls."""
         mock_session = Neo4jMocks.session()
-        mock_result = Mock()
+        mock_result = Neo4jMocks.result()
         mock_result.single.return_value = {"created": 1}
         mock_session.run.return_value = mock_result
         mock_client = _create_mock_client_with_session(mock_session)
@@ -1014,7 +1014,7 @@ class TestTransitionLoaderEdgeCases:
     def test_session_context_manager_used(self):
         """Test that session context manager is properly used."""
         mock_session = Neo4jMocks.session()
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client = Neo4jMocks.driver()
