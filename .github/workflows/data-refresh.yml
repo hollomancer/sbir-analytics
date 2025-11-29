@@ -466,25 +466,66 @@ jobs:
           echo "## 📦 USPTO S3 Upload Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### 📂 Latest Files by Category" >> $GITHUB_STEP_SUMMARY
+          echo "### 📂 Downloaded Files with Details" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          # PatentsView
           echo "**PatentsView:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/patentsview/ --recursive --human-readable | tail -3 || echo "No files found"
+          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable 2>&1 | grep -v "^$"; then
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable | tail -5
+            echo ""
+            echo "Total size:"
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --summarize | grep "Total Size"
+          else
+            echo "No files found in raw/uspto/patentsview/"
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          # Assignments
           echo "**Assignments:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/assignments/ --recursive --human-readable | tail -3 || echo "No files found"
+          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable 2>&1 | grep -v "^$"; then
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable | tail -5
+            echo ""
+            echo "Total size:"
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --summarize | grep "Total Size"
+          else
+            echo "No files found in raw/uspto/assignments/"
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          # AI Patents
           echo "**AI Patents:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/ai-patents/ --recursive --human-readable | tail -3 || echo "No files found"
+          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable 2>&1 | grep -v "^$"; then
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable | tail -5
+            echo ""
+            echo "Total size:"
+            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --summarize | grep "Total Size"
+          else
+            echo "No files found in raw/uspto/ai_patents/"
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Summary from Lambda responses
+          echo "### 📊 Download Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Dataset | Status | File Size | S3 Key |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Extract info from response files if they exist
+          if [ -f response.json ]; then
+            STATUS=$(jq -r '.body.status // "unknown"' response.json)
+            SIZE=$(jq -r '.body.file_size // 0' response.json)
+            KEY=$(jq -r '.body.s3_key // "N/A"' response.json)
+            SIZE_MB=$(echo "scale=2; $SIZE / 1048576" | bc)
+            echo "| Last Dataset | $STATUS | ${SIZE_MB} MB | \`$KEY\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
 
   summary:
     name: Refresh Summary
