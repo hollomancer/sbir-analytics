@@ -191,7 +191,7 @@ murmurhash==1.0.15
     #   thinc
 neo4j==6.0.3
     # via sbir-analytics (pyproject.toml)
-numpy==1.26.4
+numpy==2.3.5
     # via
     #   sbir-analytics (pyproject.toml)
     #   blis
