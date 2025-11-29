@@ -54,7 +54,7 @@ jobs:
             pytest_args: '-m "e2e and not weekly" -v'
             needs_neo4j: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -116,7 +116,7 @@ jobs:
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create repair branch
         id: branch
@@ -173,7 +173,7 @@ jobs:
        needs.attempt_repair.outputs.changed == 'false')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             await github.rest.issues.create({
@@ -190,7 +190,7 @@ jobs:
     timeout-minutes: 120
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -235,7 +235,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: weekly-comprehensive
@@ -243,7 +243,7 @@ jobs:
 
       - name: Upload HTML coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: weekly-coverage-report
           path: htmlcov/
@@ -255,7 +255,7 @@ jobs:
     timeout-minutes: 60
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload validation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: validation-reports
           path: |
@@ -284,7 +284,7 @@ jobs:
     timeout-minutes: 45
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -303,7 +303,7 @@ jobs:
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: performance-benchmarks
           path: benchmark-results.json

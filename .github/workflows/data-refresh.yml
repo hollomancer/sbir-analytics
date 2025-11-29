@@ -109,10 +109,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        if: secrets.AWS_ROLE_ARN != ''
+        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -140,10 +140,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        if: secrets.AWS_ROLE_ARN != ''
+        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -169,10 +169,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        if: secrets.AWS_ROLE_ARN != ''
+        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
