@@ -3,13 +3,14 @@
 import os
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
 
 # Neo4j fixtures
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+from tests.mocks import Neo4jMocks
 from tests.utils.config_mocks import create_mock_neo4j_config
 from tests.utils.fixtures import (
     create_sample_award_dict,
@@ -129,26 +130,19 @@ def neo4j_helper(neo4j_client):
 @pytest.fixture
 def mock_driver():
     """Mock Neo4j driver."""
-    driver = MagicMock()
-    driver.close = Mock()
-    return driver
+    return Neo4jMocks.driver()
 
 
 @pytest.fixture
 def mock_session():
     """Mock Neo4j session."""
-    session = MagicMock()
-    session.close = Mock()
-    return session
+    return Neo4jMocks.session()
 
 
 @pytest.fixture
 def mock_transaction():
     """Mock Neo4j transaction."""
-    tx = MagicMock()
-    tx.run = Mock()
-    tx.commit = Mock()
-    return tx
+    return Neo4jMocks.transaction()
 
 
 @pytest.fixture
