@@ -452,7 +452,7 @@ class TestRetryLogic:
     """Tests for retry logic."""
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.time.sleep")
+    @patch("time.sleep")
     def test_enrich_with_retry_success_first_attempt(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -473,7 +473,7 @@ class TestRetryLogic:
         mock_sleep.assert_not_called()
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.time.sleep")
+    @patch("time.sleep")
     def test_enrich_with_retry_success_second_attempt(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
@@ -498,7 +498,7 @@ class TestRetryLogic:
         mock_sleep.assert_called_once_with(1)  # 2^0 = 1
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    @patch("src.enrichers.chunked_enrichment.time.sleep")
+    @patch("time.sleep")
     def test_enrich_with_retry_all_attempts_fail(
         self, mock_sleep, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
