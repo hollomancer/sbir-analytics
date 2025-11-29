@@ -169,9 +169,13 @@ class NAICSEnricher:
                 continue
             rows.append({"key_type": "recipient", "key": str(k), "naics_candidates": filtered})
 
-        df = pd.DataFrame(rows)
-        # ensure deterministic ordering
-        df = df.sort_values(["key_type", "key"]).reset_index(drop=True)
+        if rows:
+            df = pd.DataFrame(rows)
+            # ensure deterministic ordering
+            df = df.sort_values(["key_type", "key"]).reset_index(drop=True)
+        else:
+            # Create empty DataFrame with correct columns
+            df = pd.DataFrame(columns=["key_type", "key", "naics_candidates"])
         from src.utils.data.file_io import save_dataframe_parquet
 
         save_dataframe_parquet(df, cache, index=False)
@@ -305,7 +309,19 @@ class NAICSEnricher:
             }
             assigned.append(df_val)
 
-        assigned_df = pd.DataFrame(assigned)
+        # Create DataFrame with explicit columns for empty case
+        if assigned:
+            assigned_df = pd.DataFrame(assigned)
+        else:
+            assigned_df = pd.DataFrame(
+                columns=[
+                    "naics_assigned",
+                    "naics_origin",
+                    "naics_confidence",
+                    "naics_quality_flags",
+                    "naics_trace",
+                ]
+            )
         out = pd.concat([df.reset_index(drop=True), assigned_df], axis=1)
         return out
 

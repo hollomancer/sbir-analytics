@@ -348,10 +348,10 @@ class TestIndexLoading:
         assert "123456" in enricher.award_map
         assert enricher.award_map["123456"] == {"541511", "541512"}
 
-    def test_load_from_zip_missing_file(self, enricher):
+    def test_load_from_zip_missing_file(self, enricher, tmp_path):
         """Test loading raises error when zip file doesn't exist."""
-        enricher.config.cache_path = "/nonexistent/cache.parquet"
-        enricher.config.zip_path = "/nonexistent/data.zip"
+        enricher.config.cache_path = str(tmp_path / "cache.parquet")
+        enricher.config.zip_path = str(tmp_path / "nonexistent.zip")
 
         with pytest.raises(FileNotFoundError, match="USAspending zip not found"):
             enricher.load_usaspending_index()
