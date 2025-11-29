@@ -440,11 +440,13 @@ jobs:
             sbir-analytics:ci-${{ github.sha }}
           build-args: |
             BUILD_WITH_R=false
+            BUILDKIT_INLINE_CACHE=1
           cache-from: |
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
             type=gha,scope=ci-no-r
-            type=gha,scope=main
-          cache-to: type=gha,mode=max,scope=ci-no-r
+          cache-to: |
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            type=gha,mode=max,scope=ci-no-r
 
       - name: Tag and push to registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

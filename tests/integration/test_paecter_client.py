@@ -358,32 +358,40 @@ class TestPaECTERClient:
 @pytest.mark.integration
 def test_api_mode_requires_huggingface_hub():
     """Test that API mode requires huggingface_hub."""
+    from src.ml.config import PaECTERClientConfig
+
     try:
         import huggingface_hub  # noqa: F401
 
         # If we get here, huggingface_hub is installed
         # API mode should work (even without token, just won't make requests)
-        client = PaECTERClient(use_local=False)
-        assert client.inference_mode == "api"
+        config = PaECTERClientConfig(use_local=False)
+        client = PaECTERClient(config)
+        assert client.config.use_local is False
         assert client.client is not None
     except ImportError:
         # If huggingface_hub is not installed, verify our error handling
         with pytest.raises(ImportError, match="huggingface_hub is required"):
-            PaECTERClient(use_local=False)
+            config = PaECTERClientConfig(use_local=False)
+            PaECTERClient(config)
 
 
 @pytest.mark.integration
 @pytest.mark.slow
 def test_local_mode_requires_sentence_transformers():
     """Test that local mode requires sentence-transformers."""
+    from src.ml.config import PaECTERClientConfig
+
     try:
         import sentence_transformers  # noqa: F401
 
         # If we get here, sentence_transformers is installed
-        client = PaECTERClient(use_local=True)
-        assert client.inference_mode == "local"
+        config = PaECTERClientConfig(use_local=True)
+        client = PaECTERClient(config)
+        assert client.config.use_local is True
         assert client.model is not None
     except ImportError:
         # If sentence_transformers is not installed, verify our error handling
         with pytest.raises(ImportError, match="sentence-transformers is required"):
-            PaECTERClient(use_local=True)
+            config = PaECTERClientConfig(use_local=True)
+            PaECTERClient(config)

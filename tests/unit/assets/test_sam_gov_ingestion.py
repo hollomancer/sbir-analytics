@@ -15,6 +15,7 @@ import pytest
 from dagster import Output
 
 from src.assets.sam_gov_ingestion import _import_sam_gov_entities, raw_sam_gov_entities
+from tests.mocks import ContextMocks
 
 
 pytestmark = pytest.mark.fast
@@ -46,17 +47,7 @@ def sample_parquet_file(tmp_path, sample_sam_gov_df):
 @pytest.fixture
 def mock_context():
     """Mock AssetExecutionContext."""
-    from dagster import build_asset_context
-    from unittest.mock import PropertyMock, Mock
-
-    context = build_asset_context()
-    # Mock the log property since it's read-only
-    mock_log = Mock()
-    mock_log.info = Mock()
-    mock_log.warning = Mock()
-    mock_log.error = Mock()
-    type(context).log = PropertyMock(return_value=mock_log)
-    return context
+    return ContextMocks.context_with_logging()
 
 
 @pytest.fixture

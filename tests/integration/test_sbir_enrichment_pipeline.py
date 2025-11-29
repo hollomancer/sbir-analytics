@@ -14,7 +14,11 @@ def _make_test_config(
     csv_path: str, db_path: str, table_name: str, pass_rate_threshold: float = 0.95
 ):
     sbir = SimpleNamespace(
-        csv_path=str(csv_path), database_path=str(db_path), table_name=table_name
+        csv_path=str(csv_path),
+        database_path=str(db_path),
+        table_name=table_name,
+        csv_path_s3=None,
+        use_s3_first=False,
     )
     extraction = SimpleNamespace(sbir=sbir)
     data_quality = SimpleNamespace(

@@ -16,7 +16,11 @@ def _make_test_config(
     Uses SimpleNamespace to mimic the nested Pydantic model used by get_config().
     """
     sbir = SimpleNamespace(
-        csv_path=str(csv_path), database_path=str(db_path), table_name=table_name
+        csv_path=str(csv_path),
+        database_path=str(db_path),
+        table_name=table_name,
+        csv_path_s3=None,
+        use_s3_first=False,
     )
     extraction = SimpleNamespace(sbir=sbir)
     data_quality = SimpleNamespace(

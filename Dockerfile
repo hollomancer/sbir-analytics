@@ -40,22 +40,15 @@ FROM ${R_BASE_IMAGE} AS r-base-cache
 # If the image doesn't exist, this stage won't be used (builder will build R from scratch)
 
 ########################################################################
-# Builder stage: install system deps, export UV -> requirements, build wheels
+# System dependencies stage: install system packages (rarely changes)
 ########################################################################
-FROM ${IMAGE_PY} AS builder
+FROM ${IMAGE_PY} AS system-deps
 
-# Re-declare build args for use in this stage
 ARG BUILD_WITH_R=true
-ARG USE_R_BASE_IMAGE=false
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PIP_NO_CACHE_DIR=1 \
-    PYTHONUNBUFFERED=1
-# Set RPY2_CFFI_MODE=ABI when building without R (allows rpy2 to build without R installation)
-ARG RPY2_CFFI_MODE=""
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools required to compile wheels
-# Python build deps are always needed; R deps are conditional
+# Install system dependencies in separate layer for better caching
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -90,36 +83,37 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     fi \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app dir
+########################################################################
+# Dependencies stage: build Python wheels (changes occasionally)
+########################################################################
+FROM system-deps AS dependencies
+
+ARG BUILD_WITH_R=true
+ARG UV_VERSION=0.5.11
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /workspace
 
-# Install UV - fast Python package installer (pinned version for better caching)
-ARG UV_VERSION=0.5.11
+# Install UV in separate layer
 RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
     mv /root/.local/bin/uv /usr/local/bin/uv && \
     uv --version
 
-# Copy dependency manifests early to leverage layer cache
+# Copy only dependency files for better layer caching
 COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 
-# Export a requirements.txt for pip-based wheel building (main + dev + cloud + r groups for test tooling)
-# Use uv export to get exact versions from uv.lock
-# Include 'r' extra only if BUILD_WITH_R=true (for R integration)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    if [ "$BUILD_WITH_R" = "true" ]; then \
-        uv export --extra dev --extra cloud --extra r --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
-    else \
-        uv export --extra dev --extra cloud --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
-    fi
-
-# Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
-# Install from lock file using uv (ensures exact versions), then build wheels from installed packages
-# If lock file doesn't exist or sync fails, fall back to requirements.txt
-# Set RPY2_CFFI_MODE=ABI when building without R to allow rpy2 to build without R installation
+# Export requirements and build wheels in single layer
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,target=/root/.cache/pip \
     mkdir -p /wheels \
  && python -m pip install --upgrade pip setuptools wheel \
+ && if [ "$BUILD_WITH_R" = "true" ]; then \
+        uv export --extra dev --extra cloud --extra r --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
+    else \
+        uv export --extra dev --extra cloud --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
+    fi \
  && if [ "$BUILD_WITH_R" = "false" ]; then \
         export RPY2_CFFI_MODE=ABI; \
         (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt); \
@@ -132,7 +126,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     fi \
  && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
 
-# NOW copy the rest of the code for building the package wheel
+########################################################################
+# Builder stage: build application wheel (changes frequently)
+########################################################################
+FROM dependencies AS builder
+
+ARG BUILD_WITH_R=true
+ARG USE_R_BASE_IMAGE=false
+
+# Copy application code
 COPY . /workspace/
 
 # Build package wheel

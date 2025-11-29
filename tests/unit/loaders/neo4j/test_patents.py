@@ -1,12 +1,13 @@
 """Tests for Neo4j patents loader."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 
 from src.loaders.neo4j.client import Neo4jClient
 from src.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig
+from tests.mocks import Neo4jMocks
 
 
 pytestmark = pytest.mark.fast
@@ -85,8 +86,8 @@ class TestPatentLoaderConstraints:
     def test_create_constraints_executes_all(self):
         """Test create_constraints executes all constraint statements."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -98,9 +99,9 @@ class TestPatentLoaderConstraints:
     def test_create_constraints_handles_existing_constraints(self):
         """Test create_constraints handles already existing constraints."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Constraint already exists")
-        mock_client.session.return_value = MagicMock()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -114,8 +115,8 @@ class TestPatentLoaderConstraints:
     def test_create_constraints_patent_uniqueness(self):
         """Test Patent constraint is for grant_doc_num uniqueness."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -136,8 +137,8 @@ class TestPatentLoaderIndexes:
     def test_create_indexes_executes_multiple(self):
         """Test create_indexes executes multiple index statements."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -149,9 +150,9 @@ class TestPatentLoaderIndexes:
     def test_create_indexes_handles_existing_indexes(self):
         """Test create_indexes handles already existing indexes."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Index already exists")
-        mock_client.session.return_value = MagicMock()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -165,8 +166,8 @@ class TestPatentLoaderIndexes:
     def test_create_indexes_covers_key_properties(self):
         """Test indexes cover key properties."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -275,8 +276,8 @@ class TestPatentLoaderEdgeCases:
     def test_multiple_constraint_creation_calls(self):
         """Test calling create_constraints multiple times."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -291,8 +292,8 @@ class TestPatentLoaderEdgeCases:
     def test_multiple_index_creation_calls(self):
         """Test calling create_indexes multiple times."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -312,8 +313,8 @@ class TestPatentLoaderIntegration:
     def test_session_context_manager_used(self):
         """Test that session context manager is properly used."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_context = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_context.__exit__.return_value = None
         mock_client.session.return_value = mock_context
@@ -328,9 +329,9 @@ class TestPatentLoaderIntegration:
     def test_session_cleanup_on_error(self):
         """Test session is cleaned up even on error."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_session.run.side_effect = Exception("Database error")
-        mock_context = MagicMock()
+        mock_context = Neo4jMocks.session()
         mock_context.__enter__.return_value = mock_session
         mock_client.session.return_value = mock_context
 
@@ -373,8 +374,8 @@ class TestPatentLoaderConstraintQueries:
     def test_patent_assignment_constraint_query(self):
         """Test PatentAssignment constraint includes rf_id."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -390,8 +391,8 @@ class TestPatentLoaderConstraintQueries:
     def test_patent_entity_constraint_query(self):
         """Test PatentEntity constraint includes entity_id."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -407,8 +408,8 @@ class TestPatentLoaderConstraintQueries:
     def test_all_constraints_use_if_not_exists(self):
         """Test all constraints use IF NOT EXISTS for idempotency."""
         mock_client = Mock(spec=Neo4jClient)
-        mock_session = MagicMock()
-        mock_client.session.return_value = MagicMock()
+        mock_session = Neo4jMocks.session()
+        mock_client.session.return_value = Neo4jMocks.session()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
