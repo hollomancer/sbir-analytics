@@ -53,7 +53,7 @@ def sample_awards_df():
 @pytest.fixture
 def mock_usaspending_api_client():
     """Mock USAspending API client with fixtures."""
-    with patch("src.enrichers.usaspending_api_client.USAspendingAPIClient") as mock_client_class:
+    with patch("src.enrichers.usaspending.USAspendingAPIClient") as mock_client_class:
         mock_client = MagicMock(spec=USAspendingAPIClient)
         mock_client_class.return_value = mock_client
 

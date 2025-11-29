@@ -53,7 +53,13 @@ def transition_detector():
     """Instantiate the TransitionDetector for smoke tests."""
     from src.transition.detection.detector import TransitionDetector
 
-    return TransitionDetector()
+    # Minimal config for smoke tests
+    config = {
+        "timing_window": {"min_days": 0, "max_days": 1825},
+        "vendor_matching": {"require_match": False},
+        "scoring": {"high_confidence_threshold": 0.75},
+    }
+    return TransitionDetector(config=config)
 
 
 @pytest.fixture
@@ -63,15 +69,21 @@ def transition_detection_dataframe(
     transition_contracts_sample: pd.DataFrame,
 ) -> pd.DataFrame:
     """Run a lightweight detection pass to produce a detections DataFrame."""
+    from src.models.transition_models import FederalContract
+
     detections: list[dict] = []
 
+    # Convert contracts DataFrame to FederalContract objects
+    contracts = [
+        FederalContract(**row.to_dict()) for _, row in transition_contracts_sample.iterrows()
+    ]
+
     for _, award in transition_awards_sample.iloc[:10].iterrows():
-        records = transition_detector.detect_transitions_for_award(
-            award_dict=award.to_dict(),
-            contracts_df=transition_contracts_sample,
-            score_threshold=0.5,
+        records = transition_detector.detect_for_award(
+            award=award.to_dict(),
+            candidate_contracts=contracts,
         )
-        detections.extend(records)
+        detections.extend([r.to_dict() for r in records])
 
     return pd.DataFrame(detections or [{"award_id": None, "contract_id": None, "score": 0.0}])
 

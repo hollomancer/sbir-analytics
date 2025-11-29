@@ -105,11 +105,17 @@ def paecter_client():
         pytest.importorskip("huggingface_hub")
         if not os.getenv("HF_TOKEN"):
             pytest.skip("HF_TOKEN environment variable required for API mode")
-        return PaECTERClient(use_local=False)
+        from src.ml.config import PaECTERClientConfig
+
+        config = PaECTERClientConfig(use_local=False)
+        return PaECTERClient(config=config)
     else:
         # Local mode - requires sentence-transformers
         pytest.importorskip("sentence_transformers")
-        return PaECTERClient(use_local=True)
+        from src.ml.config import PaECTERClientConfig
+
+        config = PaECTERClientConfig(use_local=True)
+        return PaECTERClient(config=config)
 
 
 @pytest.mark.integration
