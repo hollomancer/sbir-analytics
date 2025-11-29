@@ -447,7 +447,7 @@ class TestFederalContract:
                 contract_id="CONTRACT-006",
                 start_date="invalid-date",
             )
-        assert "Dates must be ISO-formatted strings or date objects" in str(exc_info.value)
+        assert "Could not parse date from value" in str(exc_info.value)
 
     def test_date_logic_validator_rejects_end_before_start(self):
         """Test model validator rejects end_date before start_date."""
@@ -531,7 +531,7 @@ class TestTransition:
                 likelihood_score=-0.1,
                 confidence=ConfidenceLevel.POSSIBLE,
             )
-        assert "likelihood_score must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "greater than or equal to 0" in str(exc_info.value)
 
     def test_likelihood_score_validator_rejects_too_high(self):
         """Test likelihood_score validator rejects values > 1.0."""
@@ -541,7 +541,7 @@ class TestTransition:
                 likelihood_score=1.5,
                 confidence=ConfidenceLevel.HIGH,
             )
-        assert "likelihood_score must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "less than or equal to 1" in str(exc_info.value)
 
     def test_likelihood_score_validator_coerces_to_float(self):
         """Test likelihood_score validator coerces to float."""
@@ -627,13 +627,13 @@ class TestTransitionProfile:
         """Test success_rate validator rejects negative values."""
         with pytest.raises(ValidationError) as exc_info:
             TransitionProfile(company_id="COMPANY-006", success_rate=-0.1)
-        assert "ratio fields must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "greater than or equal to 0" in str(exc_info.value)
 
     def test_success_rate_validator_rejects_too_high(self):
         """Test success_rate validator rejects values > 1.0."""
         with pytest.raises(ValidationError) as exc_info:
             TransitionProfile(company_id="COMPANY-007", success_rate=1.5)
-        assert "ratio fields must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "less than or equal to 1" in str(exc_info.value)
 
     def test_avg_likelihood_score_validator_accepts_valid(self):
         """Test avg_likelihood_score validator accepts 0-1 range."""

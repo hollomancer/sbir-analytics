@@ -63,6 +63,7 @@ def _transition_asset_keys() -> list[str]:
     """Return asset key strings for transition MVP assets."""
     return [
         "validated_contracts_sample",
+        "enriched_sbir_awards",
         "enriched_vendor_resolution",
         "transformed_transition_scores",
         "transformed_transition_evidence",
