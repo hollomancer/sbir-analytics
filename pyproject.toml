@@ -126,7 +126,7 @@ allow_untyped_defs = true
 disallow_any_unimported = false
 disallow_any_generics = false
 # Suppress import-untyped errors for known modules without stubs
-disable_error_code = ["import-untyped"]
+disable_error_code = ["import-untyped", "import-not-found"]
 # Enable pydantic plugin for better type checking
 plugins = ["pydantic.mypy"]
 

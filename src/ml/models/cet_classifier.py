@@ -486,14 +486,16 @@ class ApplicabilityModel:
 
             # Get scores for batch with agency/branch priors
             # Extract text from batch items (could be str or dict)
-            batch_strs: list[str] = [
-                item
-                if isinstance(item, str)
-                else item.get("abstract", "")
-                if isinstance(item, dict)
-                else str(item)
-                for item in batch
-            ]
+            def _get_text_from_item(item: Any) -> str:
+                """Extract text from a single batch item."""
+                if isinstance(item, str):
+                    return item
+                elif isinstance(item, dict):
+                    return item.get("abstract", "")
+                else:
+                    return str(item)
+
+            batch_strs: list[str] = [_get_text_from_item(item) for item in batch]
             batch_scores_array = self._get_scores(batch_strs, agency=agency, branch=branch)  # type: ignore[arg-type]
 
             # Convert to classifications
