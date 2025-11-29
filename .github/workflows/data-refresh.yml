@@ -161,7 +161,7 @@ jobs:
           uv pip install aiohttp aioboto3
 
       - name: Download and process USAspending database (parallel)
-        uses: nick-fields/retry-action@v3
+        uses: nick-invision/retry@v2
         with:
           timeout_minutes: 90
           max_attempts: 3
