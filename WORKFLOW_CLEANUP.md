@@ -1,65 +1,66 @@
 # GitHub Actions Workflow Cleanup
 
-## Executive Summary
+## ✅ COMPLETED
 
-**Current state:** 14 workflows
-**Recommended state:** 7 workflows (50% reduction)
+**Previous state:** 14 workflows
+**Current state:** 7 workflows (50% reduction)
+**Date completed:** 2025-11-29
 
-## Quick Actions
+## Actions Completed
 
-### 1. Remove Deprecated Workflows (Immediate)
+### ✅ 1. Removed Deprecated Workflows
 
-Run the cleanup script:
-```bash
-./scripts/cleanup-workflows.sh
-```
+Removed 5 deprecated workflows:
+- ✅ `docker-cache.yml` → merged into `ci.yml`
+- ✅ `static-analysis.yml` → merged into `ci.yml`
+- ✅ `usaspending-database-download.yml` → merged into `data-refresh.yml`
+- ✅ `uspto-data-refresh.yml` → merged into `data-refresh.yml`
+- ✅ `weekly-award-data-refresh.yml` → merged into `data-refresh.yml`
 
-This removes 5 deprecated workflows that have been consolidated:
-- `docker-cache.yml` → merged into `ci.yml`
-- `static-analysis.yml` → merged into `ci.yml`
-- `usaspending-database-download.yml` → merged into `data-refresh.yml`
-- `uspto-data-refresh.yml` → merged into `data-refresh.yml`
-- `weekly-award-data-refresh.yml` → merged into `data-refresh.yml`
+### ✅ 2. Consolidated Weekly Tests
 
-### 2. Optional Consolidations
+Merged `weekly.yml` into `nightly.yml`:
+- Added weekly schedule (Sunday 2 AM UTC)
+- Added `test_level` input parameter (nightly/weekly)
+- Moved comprehensive-tests, real-data-validation, performance-profiling jobs
+- Jobs run conditionally based on schedule or input
 
-**Consolidate `weekly.yml` into `nightly.yml`:**
-- Benefit: Single comprehensive testing workflow
-- Effort: Medium (requires merging jobs and schedules)
+### ✅ 3. Consolidated Developer Experience
 
-**Consolidate `developer-experience.yml` into `nightly.yml`:**
-- Benefit: Unified verification testing
-- Effort: Low (simple job addition)
+Merged `developer-experience.yml` into `nightly.yml`:
+- Added verify-local-workflow job
+- Added verify-ml-workflow job
+- Runs as part of nightly testing suite
 
-## Final Workflow Structure
+## Final Workflow Structure (7 workflows)
 
-After cleanup, 7 workflows remain:
+| Workflow | Purpose | Trigger | Jobs |
+|----------|---------|---------|------|
+| `ci.yml` | Main CI pipeline | PR, push to main/develop | 11 jobs (lint, test, container, performance, etc.) |
+| `deploy.yml` | Dagster Cloud deployment | Push to main, PRs | 2 jobs (default deploy, docker deploy) |
+| `data-refresh.yml` | Unified data refresh | Scheduled + manual | 5 jobs (SBIR, USAspending, USPTO refresh) |
+| `lambda-deploy.yml` | AWS Lambda deployment | Push to main (lambda paths) | 3 jobs (detect changes, build layer, deploy CDK) |
+| `nightly.yml` | Extended testing & security | Nightly 3 AM + Weekly Sunday 2 AM | 13 jobs (tests, security, developer verification, weekly comprehensive) |
+| `build-r-base.yml` | R base image builder | Weekly Sunday 2 AM | 1 job (build and push R image) |
+| `run-ml-jobs.yml` | On-demand ML jobs | Manual only | 1 job (CET/fiscal jobs) |
 
-| Workflow | Purpose | Trigger |
-|----------|---------|---------|
-| `ci.yml` | Main CI pipeline | PR, push to main/develop |
-| `deploy.yml` | Dagster Cloud deployment | Push to main, PRs |
-| `data-refresh.yml` | Unified data refresh | Scheduled + manual |
-| `lambda-deploy.yml` | AWS Lambda deployment | Push to main (lambda paths) |
-| `nightly.yml` | Extended testing & security | Nightly 3 AM UTC |
-| `build-r-base.yml` | R base image builder | Weekly Sunday 2 AM |
-| `run-ml-jobs.yml` | On-demand ML jobs | Manual only |
+## Benefits Achieved
 
-## Detailed Analysis
+1. ✅ **Reduced complexity:** 14 → 7 workflows (50% reduction)
+2. ✅ **Easier maintenance:** Fewer files to update and monitor
+3. ✅ **Better organization:** Related functionality grouped together
+4. ✅ **Reduced CI minutes:** Eliminated duplicate deprecated workflows
+5. ✅ **Clearer purpose:** Each workflow has a distinct, well-defined role
+6. ✅ **Unified testing:** Nightly and weekly tests in single workflow with conditional execution
 
-See `docs/workflows-analysis.md` for complete analysis including:
-- Job-level breakdown of each workflow
-- Consolidation recommendations
-- Benefits and implementation priority
+## Workflow Responsibilities Matrix
 
-## Implementation
-
-1. **Immediate (no risk):** Remove deprecated workflows
-   ```bash
-   ./scripts/cleanup-workflows.sh
-   git add .github/workflows/
-   git commit -m "chore: remove deprecated GitHub Actions workflows"
-   ```
-
-2. **Optional (medium effort):** Consolidate weekly.yml
-3. **Optional (low effort):** Consolidate developer-experience.yml
+| Workflow | CI/CD | Testing | Deployment | Data Refresh | Infrastructure |
+|----------|-------|---------|------------|--------------|----------------|
+| ci.yml | ✅ | ✅ | - | - | - |
+| deploy.yml | - | - | ✅ | - | - |
+| data-refresh.yml | - | - | - | ✅ | - |
+| lambda-deploy.yml | - | - | ✅ | - | ✅ |
+| nightly.yml | - | ✅ | - | - | - |
+| build-r-base.yml | - | - | - | - | ✅ |
+| run-ml-jobs.yml | - | - | - | - | - |
