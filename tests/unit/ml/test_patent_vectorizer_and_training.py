@@ -26,25 +26,25 @@ pd = pytest.importorskip("pandas")
 np = pytest.importorskip("numpy")
 
 # Commented out - module is empty, but keeping imports for linting
-from src.ml.features.patent_features import (
-    DEFAULT_KEYWORDS_MAP,
-    PatentFeatureVector,
-    extract_features,
-)
-from src.ml.features.vectorizers import (
-    AssigneeTypeVectorizer,
-    FeatureMatrixBuilder,
-    IPCPresenceVectorizer,
-    KeywordVectorizer,
-    TokenCounterVectorizer,
-)
-from src.ml.models.dummy_pipeline import DummyPipeline  # noqa: F401
-from src.ml.models.patent_classifier import PatentCETClassifier  # noqa: F401
-from src.ml.train.patent_training import (  # noqa: F401
-    evaluate_patent_classifier,
-    precision_recall_at_k,
-    train_patent_classifier,
-)
+# from src.ml.features.patent_features import (
+#     DEFAULT_KEYWORDS_MAP,
+#     PatentFeatureVector,
+#     extract_features,
+# )
+# from src.ml.features.vectorizers import (
+#     AssigneeTypeVectorizer,
+#     FeatureMatrixBuilder,
+#     IPCPresenceVectorizer,
+#     KeywordVectorizer,
+#     TokenCounterVectorizer,
+# )
+# from src.ml.models.dummy_pipeline import DummyPipeline  # noqa: F401
+# from src.ml.models.patent_classifier import PatentCETClassifier  # noqa: F401
+# from src.ml.train.patent_training import (  # noqa: F401
+#     evaluate_patent_classifier,
+#     precision_recall_at_k,
+#     train_patent_classifier,
+# )
 
 
 

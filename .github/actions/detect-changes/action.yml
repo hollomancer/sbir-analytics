@@ -33,10 +33,10 @@ runs:
   using: composite
   steps:
     - uses: actions/checkout@v4
-      shell: bash
+
     
     - uses: dorny/paths-filter@v2
       id: filter
       with:
         filters: ${{ inputs.filters }}
-      shell: bash
+
