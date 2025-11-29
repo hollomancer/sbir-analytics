@@ -77,7 +77,7 @@ class TestUSPTOExtractorSupportedExtensions:
 
     def test_supported_extensions_count(self):
         """Test expected number of supported extensions."""
-        assert len(SUPPORTED_EXTENSIONS) == 3
+        assert len(SUPPORTED_EXTENSIONS) == 4  # .dta, .csv, .parquet, .tsv
 
 
 class TestUSPTOExtractorFileDiscovery:
