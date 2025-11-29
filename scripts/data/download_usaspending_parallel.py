@@ -190,13 +190,26 @@ def main():
     # Find latest file if not specified
     if not args.source_url:
         print("🔍 Finding latest available file...")
-        latest = find_latest_available_file(database_type=args.database_type, s3_bucket=None)
-        if not latest:
-            print("❌ No available file found")
+        print(f"   Database type: {args.database_type}")
+        print(f"   Checking last 3 months of releases...")
+
+        try:
+            latest = find_latest_available_file(database_type=args.database_type, s3_bucket=None)
+            if not latest:
+                print("❌ No available file found")
+                print("   Checked dates: 1st, 6th, and 15th of each month")
+                print("   Base URL: https://files.usaspending.gov/database_download/")
+                print(f"   Pattern: usaspending-db_YYYYMMDD.zip")
+                sys.exit(1)
+            source_url = latest["source_url"]
+            date_str = latest["date_str"]
+            print(f"✅ Found file dated {date_str}")
+            print(f"   URL: {source_url}")
+        except Exception as e:
+            print(f"❌ Error finding file: {e}")
+            import traceback
+            traceback.print_exc()
             sys.exit(1)
-        source_url = latest["source_url"]
-        date_str = latest["date_str"]
-        print(f"✅ Found file dated {date_str}")
     else:
         source_url = args.source_url
         date_str = args.date or "unknown"
