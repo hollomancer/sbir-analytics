@@ -461,3 +461,39 @@ jobs:
             --ignore "**/.venv/**/*.md" \
             --ignore "**/venv/**/*.md" \
             --ignore "**/node_modules/**/*.md"
+
+  security-scan:
+    name: Security Scan (Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+      - name: Run Bandit security scanner
+        run: uv run python -m bandit -r src -c pyproject.toml
+
+  secret-detection:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+      - name: Run detect-secrets
+        run: uv run detect-secrets scan --baseline .secrets.baseline

@@ -61,8 +61,6 @@ jobs:
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Needed for detect-secrets to work properly
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
@@ -131,26 +129,8 @@ jobs:
       - name: "Run MyPy type checker (matches pre-commit: mypy src)"
         run: uv run python -m mypy src
 
-  security:
-    name: Security Scan (Bandit)
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-      - name: "Run Bandit (matches pre-commit: bandit -r src -c pyproject.toml)"
-        run: uv run python -m bandit -r src -c pyproject.toml
+  # Security scanning (bandit and detect-secrets) moved to nightly workflow
+  # See .github/workflows/nightly.yml for security-scan and secret-detection jobs
 
   docs-link-check:
     name: Docs Link Check
