@@ -26,7 +26,7 @@ class StepFunctionsStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # Load state machine definition from JSON file
-        state_machine_path = (
+        (
             Path(__file__).parent.parent.parent
             / "step-functions"
             / "weekly-refresh-state-machine.json"
