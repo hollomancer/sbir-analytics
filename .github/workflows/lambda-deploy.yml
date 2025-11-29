@@ -47,7 +47,7 @@ jobs:
       lambda-code-changed: ${{ steps.filter.outputs.lambda-code }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -83,7 +83,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
