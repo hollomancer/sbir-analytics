@@ -120,6 +120,60 @@ def repo_root() -> Path:
     return _repo_root
 
 
+# Cached Test Data Fixtures
+# =========================
+
+
+@pytest.fixture(scope="session")
+def cached_sbir_sample_df(sbir_sample_csv_path: Path):
+    """
+    Load SBIR sample CSV once per session and cache in memory.
+    Significantly faster than reloading for each test.
+    """
+    import pandas as pd
+
+    return pd.read_csv(sbir_sample_csv_path)
+
+
+@pytest.fixture(scope="session")
+def cached_test_companies():
+    """
+    Generate test company data once per session.
+    Reused across multiple tests to avoid regeneration overhead.
+    """
+    return [
+        {"name": "Acme Corp", "uei": "TEST001", "duns": "123456789"},
+        {"name": "TechStart Inc", "uei": "TEST002", "duns": "987654321"},
+        {"name": "Innovation Labs", "uei": "TEST003", "duns": "456789123"},
+    ]
+
+
+@pytest.fixture(scope="session")
+def cached_test_awards():
+    """
+    Generate test award data once per session.
+    Reused across multiple tests to avoid regeneration overhead.
+    """
+    from datetime import date
+
+    return [
+        {
+            "award_id": "AWARD001",
+            "company_name": "Acme Corp",
+            "award_amount": 100000,
+            "award_date": date(2023, 1, 15),
+            "phase": "Phase I",
+        },
+        {
+            "award_id": "AWARD002",
+            "company_name": "TechStart Inc",
+            "award_amount": 750000,
+            "award_date": date(2023, 6, 20),
+            "phase": "Phase II",
+        },
+    ]
+
+
 # SBIR Data Fixtures
 # ===================
 
@@ -234,3 +288,72 @@ def sbir_csv_path(
             # Test will use sample by default, or real data when marked
     """
     return sbir_award_data_csv_path if use_real_sbir_data else sbir_sample_csv_path
+
+
+# Neo4j Test Fixtures
+# ===================
+
+
+@pytest.fixture(scope="session")
+def neo4j_driver():
+    """
+    Session-scoped Neo4j driver for tests requiring real database connection.
+    Connection is reused across all tests in the session for better performance.
+
+    Tests using this fixture should be marked with @pytest.mark.neo4j
+    """
+    import os
+    from neo4j import GraphDatabase
+
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    user = os.getenv("NEO4J_USER", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "password")
+
+    try:
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+        driver.verify_connectivity()
+    except Exception as e:
+        pytest.skip(f"Neo4j not available: {e}")
+
+    yield driver
+    driver.close()
+
+
+@pytest.fixture
+def neo4j_session(neo4j_driver):
+    """
+    Function-scoped Neo4j session that cleans up after each test.
+    Provides isolated test environment while reusing connection pool.
+    """
+    with neo4j_driver.session() as session:
+        yield session
+        # Cleanup: delete all test data
+        session.run("MATCH (n) WHERE n.test_marker = true DETACH DELETE n")
+
+
+# Configuration Fixtures
+# ======================
+
+
+@pytest.fixture(scope="session")
+def test_config():
+    """
+    Load test configuration once per session.
+    Cached to avoid repeated file I/O.
+    """
+    from src.config.loader import get_config
+
+    return get_config()
+
+
+# Temporary Directory Fixtures
+# ============================
+
+
+@pytest.fixture(scope="session")
+def session_tmp_dir(tmp_path_factory):
+    """
+    Session-scoped temporary directory for shared test artifacts.
+    Useful for caching expensive computations across tests.
+    """
+    return tmp_path_factory.mktemp("session_data")

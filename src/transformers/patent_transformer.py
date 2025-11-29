@@ -504,8 +504,10 @@ class PatentAssignmentTransformer:
         if (
             PatentAssignee is not None
             and PatentAssignor is not None
-            and isinstance(assignment.assignee, PatentAssignee)
-            and isinstance(assignment.assignor, PatentAssignor)
+            and hasattr(assignment, "assignee")
+            and hasattr(assignment, "assignor")
+            and assignment.assignee is not None
+            and assignment.assignor is not None
         ):
             assignee_name = assignment.normalized_assignee_name or assignment.assignee.name or ""
             assignor_name = assignment.normalized_assignor_name or assignment.assignor.name or ""

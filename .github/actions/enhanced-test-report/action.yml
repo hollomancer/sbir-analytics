@@ -1,0 +1,79 @@
+name: Enhanced Test Report
+description: Generate detailed test failure report with coverage diff for PR comments
+
+inputs:
+  test-results:
+    description: Path to test results JSON
+    required: false
+    default: "test-results.json"
+  coverage-file:
+    description: Path to coverage XML file
+    required: false
+    default: "coverage.xml"
+  baseline-coverage:
+    description: Baseline coverage percentage
+    required: false
+    default: "0"
+
+runs:
+  using: composite
+  steps:
+    - name: Generate test failure report
+      if: always()
+      shell: bash
+      run: |
+        cat > /tmp/test_report.md << 'EOF'
+        ## 🧪 Test Results
+
+        EOF
+
+        # Check if test results exist
+        if [ -f "${{ inputs.test-results }}" ]; then
+          FAILED=$(jq -r '.summary.failed // 0' ${{ inputs.test-results }})
+          PASSED=$(jq -r '.summary.passed // 0' ${{ inputs.test-results }})
+          SKIPPED=$(jq -r '.summary.skipped // 0' ${{ inputs.test-results }})
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "### ❌ Test Failures ($FAILED)" >> /tmp/test_report.md
+            echo "" >> /tmp/test_report.md
+            jq -r '.tests[] | select(.outcome == "failed") | "- **\(.nodeid)**\n  ```\n  \(.call.longrepr)\n  ```"' ${{ inputs.test-results }} >> /tmp/test_report.md
+          else
+            echo "### ✅ All Tests Passed" >> /tmp/test_report.md
+          fi
+
+          echo "" >> /tmp/test_report.md
+          echo "**Summary:** $PASSED passed, $FAILED failed, $SKIPPED skipped" >> /tmp/test_report.md
+        fi
+
+    - name: Generate coverage diff
+      if: always()
+      shell: bash
+      run: |
+        echo "" >> /tmp/test_report.md
+        echo "## 📊 Coverage Report" >> /tmp/test_report.md
+        echo "" >> /tmp/test_report.md
+
+        if [ -f "${{ inputs.coverage-file }}" ]; then
+          CURRENT_COV=$(python3 -c "import xml.etree.ElementTree as ET; tree = ET.parse('${{ inputs.coverage-file }}'); print(f\"{float(tree.getroot().attrib['line-rate']) * 100:.2f}\")")
+          BASELINE_COV="${{ inputs.baseline-coverage }}"
+
+          DIFF=$(python3 -c "print(f'{float('$CURRENT_COV') - float('$BASELINE_COV'):.2f}')")
+
+          if (( $(echo "$DIFF > 0" | bc -l) )); then
+            EMOJI="📈"
+            STATUS="increased"
+          elif (( $(echo "$DIFF < 0" | bc -l) )); then
+            EMOJI="📉"
+            STATUS="decreased"
+          else
+            EMOJI="➡️"
+            STATUS="unchanged"
+          fi
+
+          echo "**Current Coverage:** ${CURRENT_COV}% ${EMOJI}" >> /tmp/test_report.md
+          echo "**Change:** ${DIFF}% (${STATUS})" >> /tmp/test_report.md
+        fi
+
+    - name: Output report path
+      shell: bash
+      run: echo "report_path=/tmp/test_report.md" >> $GITHUB_OUTPUT

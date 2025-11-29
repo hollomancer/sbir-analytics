@@ -159,7 +159,7 @@ class TestQualityDashboard:
         assert len(metrics_list) == 0
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
-    @patch("src.quality.dashboard.make_subplots")
+    @patch("plotly.subplots.make_subplots")
     def test_generate_trend_dashboard_with_plotly(self, mock_subplots, dashboard, metrics_history):
         """Test trend dashboard generation with Plotly available."""
         mock_fig = Mock()
@@ -188,7 +188,7 @@ class TestQualityDashboard:
         assert "empty_dashboard" in str(output_file)
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
-    @patch("src.quality.dashboard.make_subplots")
+    @patch("plotly.subplots.make_subplots")
     def test_generate_distribution_dashboard(self, mock_subplots, dashboard, sample_metrics):
         """Test distribution dashboard generation."""
         mock_fig = Mock()
@@ -210,8 +210,8 @@ class TestQualityDashboard:
         assert "metrics" in data
 
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
-    @patch("src.quality.dashboard.go")
-    def test_generate_comparison_dashboard(self, mock_go, dashboard):
+    @patch("plotly.graph_objects.Figure")
+    def test_generate_comparison_dashboard(self, mock_figure, dashboard):
         """Test comparison dashboard generation."""
         current = DashboardMetrics(
             timestamp=datetime.now(),
@@ -233,7 +233,7 @@ class TestQualityDashboard:
         )
 
         mock_fig = Mock()
-        mock_go.Figure.return_value = mock_fig
+        mock_figure.return_value = mock_fig
 
         output_file = dashboard.generate_comparison_dashboard(current, baseline)
 

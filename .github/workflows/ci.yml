@@ -279,6 +279,8 @@ jobs:
         run: uv run python scripts/ci/verify_dependencies.py
 
       - name: Run fast tests (sharded)
+        id: run_tests
+        continue-on-error: true
         run: |
           # Use pytest-xdist with test sharding for parallel execution across jobs
           # Each shard runs 1/4 of the tests with 2 workers for optimal performance
@@ -288,7 +290,25 @@ jobs:
             --cov-report=term-missing \
             --shard-id=${{ matrix.shard }} \
             --num-shards=4 \
+            --json-report \
+            --json-report-file=test-results-shard-${{ matrix.shard }}.json \
             -n 2
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-shard-${{ matrix.shard }}
+          path: test-results-shard-${{ matrix.shard }}.json
+          retention-days: 7
+
+      - name: Check test results
+        if: always()
+        run: |
+          if [ "${{ steps.run_tests.outcome }}" != "success" ]; then
+            echo "::error::Tests failed in shard ${{ matrix.shard }}"
+            exit 1
+          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -297,6 +317,97 @@ jobs:
           flags: unittests-shard-${{ matrix.shard }}
           name: codecov-shard-${{ matrix.shard }}
           fail_ci_if_error: false
+
+  test-report:
+    name: Test Report Summary
+    needs: [test]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-shard-*
+          path: test-results/
+
+      - name: Aggregate test results
+        run: |
+          cat > /tmp/test_summary.md << 'EOF'
+          ## 🧪 Test Results Summary
+
+          EOF
+
+          TOTAL_PASSED=0
+          TOTAL_FAILED=0
+          TOTAL_SKIPPED=0
+          FAILED_TESTS=""
+
+          for shard in 1 2 3 4; do
+            if [ -f "test-results/test-results-shard-${shard}/test-results-shard-${shard}.json" ]; then
+              RESULT_FILE="test-results/test-results-shard-${shard}/test-results-shard-${shard}.json"
+
+              PASSED=$(jq -r '.summary.passed // 0' "$RESULT_FILE")
+              FAILED=$(jq -r '.summary.failed // 0' "$RESULT_FILE")
+              SKIPPED=$(jq -r '.summary.skipped // 0' "$RESULT_FILE")
+
+              TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
+              TOTAL_FAILED=$((TOTAL_FAILED + FAILED))
+              TOTAL_SKIPPED=$((TOTAL_SKIPPED + SKIPPED))
+
+              if [ "$FAILED" -gt 0 ]; then
+                echo "### ❌ Shard $shard Failures" >> /tmp/test_summary.md
+                echo "" >> /tmp/test_summary.md
+                jq -r '.tests[] | select(.outcome == "failed") | "- **\(.nodeid)**\n  ```\n  \(.call.longrepr // "No details")\n  ```"' "$RESULT_FILE" >> /tmp/test_summary.md
+                echo "" >> /tmp/test_summary.md
+              fi
+            fi
+          done
+
+          # Add summary at top
+          sed -i "3i **Total:** $TOTAL_PASSED ✅ passed, $TOTAL_FAILED ❌ failed, $TOTAL_SKIPPED ⏭️ skipped\n" /tmp/test_summary.md
+
+          if [ "$TOTAL_FAILED" -eq 0 ]; then
+            sed -i "3i ### ✅ All Tests Passed!\n" /tmp/test_summary.md
+          fi
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('/tmp/test_summary.md', 'utf8');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🧪 Test Results Summary')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+            }
 
   container-build-test:
     name: Container Build and Test
