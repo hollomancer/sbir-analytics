@@ -121,6 +121,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Start SBIR refresh Step Functions
+        id: sbir-stepfunctions
         run: |
           INPUT_PAYLOAD=$(jq -n \
             --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
@@ -130,10 +131,19 @@ jobs:
               s3_bucket: $s3_bucket
             }')
 
-          aws stepfunctions start-execution \
+          EXECUTION=$(aws stepfunctions start-execution \
             --state-machine-arn "${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
             --input "$INPUT_PAYLOAD" \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ env.AWS_REGION }})
+
+          EXECUTION_ARN=$(echo $EXECUTION | jq -r '.executionArn')
+          echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
+
+          echo "## 🚀 SBIR Refresh Started" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Execution ARN:** \`$EXECUTION_ARN\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Monitor at: https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN" >> $GITHUB_STEP_SUMMARY
 
   refresh-usaspending:
     name: Refresh USAspending Database
@@ -161,6 +171,7 @@ jobs:
           uv pip install aiohttp aioboto3
 
       - name: Download and process USAspending database (parallel)
+        id: usaspending-download
         uses: nick-invision/retry@v2
         with:
           timeout_minutes: 90
@@ -170,7 +181,23 @@ jobs:
             uv run python scripts/data/download_usaspending_parallel.py \
               --s3-bucket ${{ env.S3_BUCKET }} \
               --database-type full \
-              --max-concurrent 10
+              --max-concurrent 10 | tee usaspending_output.txt
+
+      - name: Report USAspending status
+        if: always()
+        run: |
+          echo "## 💾 USAspending Database Download" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f usaspending_output.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -20 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### S3 Status:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/usaspending/ --human-readable >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   refresh-uspto:
     name: Refresh USPTO Patents
@@ -194,11 +221,36 @@ jobs:
           install-dev-deps: "false"
 
       - name: Trigger USPTO data downloads via Lambda
+        id: uspto-lambda
         run: |
-          # Trigger Lambda functions for USPTO data downloads
+          echo "## 📥 USPTO Data Downloads" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # PatentsView
+          echo "### PatentsView Data" >> $GITHUB_STEP_SUMMARY
           aws lambda invoke --function-name sbir-analytics-download-uspto-patentsview response.json
+          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Assignments
+          echo "### Patent Assignments" >> $GITHUB_STEP_SUMMARY
           aws lambda invoke --function-name sbir-analytics-download-uspto-assignments response.json
+          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # AI Patents
+          echo "### AI Patents" >> $GITHUB_STEP_SUMMARY
           aws lambda invoke --function-name sbir-analytics-download-uspto-ai-patents response.json
+          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+
+      - name: Check S3 uploads
+        run: |
+          echo "## 📦 S3 Upload Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Latest USPTO files:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/ --recursive --human-readable | tail -10 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   summary:
     name: Refresh Summary
