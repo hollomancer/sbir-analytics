@@ -77,6 +77,15 @@ def enrich_sbir_with_usaspending(
     sbir = sbir_df.copy()
     recipients = recipient_df.copy()
 
+    # Handle empty recipient DataFrame - return SBIR data with empty enrichment columns
+    if recipients.empty:
+        sbir["_usaspending_recipient_idx"] = pd.NA
+        sbir["_usaspending_match_score"] = pd.NA
+        sbir["_usaspending_match_method"] = pd.NA
+        if return_candidates:
+            sbir["_usaspending_match_candidates"] = pd.NA
+        return sbir
+
     # Normalize column names
     if sbir_company_col not in sbir.columns:
         for col in ["company", "Company Name", "Company"]:

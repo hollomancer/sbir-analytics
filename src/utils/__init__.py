@@ -1,5 +1,8 @@
 """Shared utilities for the SBIR ETL pipeline."""
 
+# Cache utilities
+from src.utils.cache.base_cache import BaseDataFrameCache
+
 # Date utilities
 from src.utils.common.date_utils import (
     format_date_iso,
@@ -63,6 +66,8 @@ from .text_normalization import normalize_company_name, normalize_name, normaliz
 
 
 __all__ = [
+    # Cache
+    "BaseDataFrameCache",
     # Logging
     "LogContext",
     "configure_logging_from_config",

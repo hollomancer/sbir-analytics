@@ -37,7 +37,7 @@ from __future__ import annotations
 from .client import USAspendingAPIClient, USAspendingAPIError, USAspendingRateLimitError
 
 # Enricher module
-from .enricher import enrich_sbir_with_usaspending, normalize_recipient_name
+from .enricher import enrich_sbir_with_usaspending
 
 # Index module
 from .index import extract_table_sample, parse_toc_table_dat_map
@@ -50,7 +50,6 @@ __all__ = [
     "USAspendingRateLimitError",
     # Enricher
     "enrich_sbir_with_usaspending",
-    "normalize_recipient_name",
     # Index
     "parse_toc_table_dat_map",
     "extract_table_sample",

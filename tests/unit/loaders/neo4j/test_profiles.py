@@ -22,9 +22,9 @@ class TestTransitionProfileLoader:
 
         assert loader.client == mock_client
         assert loader.batch_size == 100
-        assert loader.metrics.created == 0
-        assert loader.metrics.updated == 0
-        assert loader.metrics.skipped == 0
+        # LoadMetrics now uses dictionaries
+        assert isinstance(loader.metrics.nodes_created, dict)
+        assert isinstance(loader.metrics.nodes_updated, dict)
         assert loader.metrics.errors == 0
 
     def test_initialization_default_batch_size(self):
@@ -100,10 +100,10 @@ class TestTransitionProfileLoader:
         mock_client = Mock()
         loader = TransitionProfileLoader(mock_client)
 
-        # Check metrics attributes exist
-        assert hasattr(loader.metrics, "created")
-        assert hasattr(loader.metrics, "updated")
-        assert hasattr(loader.metrics, "skipped")
+        # Check metrics attributes exist (now dictionaries)
+        assert hasattr(loader.metrics, "nodes_created")
+        assert hasattr(loader.metrics, "nodes_updated")
+        assert hasattr(loader.metrics, "relationships_created")
         assert hasattr(loader.metrics, "errors")
 
     def test_batch_size_respected(self):
