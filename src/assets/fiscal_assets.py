@@ -169,6 +169,21 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
 
     # Calculate coverage
     total_records = len(fiscal_naics_enriched_awards)
+
+    # Handle empty DataFrame or missing column
+    if total_records == 0 or "fiscal_naics_code" not in fiscal_naics_enriched_awards.columns:
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            metadata={
+                "total_records": 0,
+                "covered_records": 0,
+                "actual_coverage_rate": 0.0,
+                "min_coverage_rate": min_coverage_rate,
+                "message": "Empty DataFrame or missing fiscal_naics_code column",
+            },
+        )
+
     covered_records = fiscal_naics_enriched_awards["fiscal_naics_code"].notna().sum()
     actual_coverage_rate = covered_records / total_records if total_records > 0 else 0.0
 
@@ -315,6 +330,22 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
     )
 
     total_mappings = len(bea_mapped_sbir_awards)
+
+    # Handle empty DataFrame or missing columns
+    if total_mappings == 0 or "bea_sector_code" not in bea_mapped_sbir_awards.columns:
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            metadata={
+                "total_mappings": 0,
+                "valid_mappings": 0,
+                "coverage_rate": 0.0,
+                "avg_confidence": 0.0,
+                "min_coverage_rate": min_coverage_rate,
+            },
+            description="Empty DataFrame or missing bea_sector_code column",
+        )
+
     valid_mappings = bea_mapped_sbir_awards["bea_sector_code"].notna().sum()
     coverage_rate = valid_mappings / total_mappings if total_mappings > 0 else 0.0
 
