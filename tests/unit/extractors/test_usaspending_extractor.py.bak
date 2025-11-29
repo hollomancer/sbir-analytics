@@ -167,6 +167,56 @@ class TestEscapeFunctions:
         # Should escape embedded quotes
         assert result == "'value''s'"
 
+        # ==================== Module Functions Tests ====================
+
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
+            result = DuckDBUSAspendingExtractor._escape_literal("value")
+            assert result == "'value'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                usaspending_module.duckdb.escape_string_literal = original
+
+    def test_escape_literal_with_quotes(self):
+        """Test escape_literal with embedded quotes."""
+        import src.extractors.usaspending as usaspending_module
+
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
+            result = DuckDBUSAspendingExtractor._escape_literal("val'ue")
+
+            # Should escape internal quotes
+            assert result == "'val''ue'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                usaspending_module.duckdb.escape_string_literal = original
+
+    def test_escape_literal_with_backslashes(self):
+        """Test escape_literal with backslashes."""
+        import src.extractors.usaspending as usaspending_module
+
+        # Remove the attribute if it exists, then test fallback
+        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
+        try:
+            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
+                delattr(usaspending_module.duckdb, "escape_string_literal")
+            result = DuckDBUSAspendingExtractor._escape_literal("val\\ue")
+
+            # Should escape backslashes
+            assert result == "'val\\\\ue'"
+        finally:
+            # Restore the original attribute if it existed
+            if original is not None:
+                usaspending_module.duckdb.escape_string_literal = original
+
 
 # ==================== Import Tests ====================
 

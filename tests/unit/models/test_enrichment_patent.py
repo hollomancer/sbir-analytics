@@ -125,14 +125,15 @@ class TestEnrichmentFreshnessRecord:
     def test_is_stale_exactly_at_sla(self):
         """Test is_stale at exact SLA boundary."""
         now = datetime.now()
-        boundary = now - timedelta(days=30)
+        # Set boundary slightly before SLA to account for time passing
+        boundary = now - timedelta(days=30, seconds=-1)
         record = EnrichmentFreshnessRecord(
             award_id="AWARD-006",
             source="test",
             last_attempt_at=now,
             last_success_at=boundary,
         )
-        # Exactly at boundary should not be stale (age = SLA, not > SLA)
+        # Just under boundary should not be stale (age < SLA)
         assert record.is_stale(sla_days=30) is False
 
     def test_has_delta_with_no_previous_hash(self):

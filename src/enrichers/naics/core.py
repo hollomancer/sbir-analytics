@@ -24,7 +24,7 @@ import pandas as pd
 from loguru import logger
 
 
-NAICS_RE = re.compile(r"\b(\d{2,6})\b")
+NAICS_RE = re.compile(r"\b(0*\d{2,6})\b")
 RECIPIENT_UEI_RE = re.compile(r"\b[A-Z0-9]{8,20}\b")
 
 

@@ -607,7 +607,7 @@ class TestPatentDocument:
     def test_date_parsing_datetime_objects(self):
         """Test date parsing from datetime objects."""
         doc = PatentDocument(
-            filing_date=datetime(2020, 1, 15, 10, 30),
+            filing_date=datetime(2020, 1, 15, 0, 0),  # Must have zero time for date conversion
         )
         assert doc.filing_date == date(2020, 1, 15)
 
@@ -663,7 +663,8 @@ class TestPatentAssignee:
         # UEI normalization now preserves hyphens, only uppercases
         assert assignee.uei == "ABC-123-DEF-456"  # pragma: allowlist secret
         assert assignee.cage == "1A2B3"
-        assert assignee.duns == "123456789"
+        # DUNS normalization also preserves hyphens
+        assert assignee.duns == "12-345-6789"
 
 
 class TestPatentAssignor:

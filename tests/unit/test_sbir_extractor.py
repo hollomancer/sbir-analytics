@@ -25,10 +25,11 @@ def test_import_csv_returns_metadata_and_columns(tmp_path: Path):
     metadata = extractor.import_csv(use_incremental=False)
 
     # Use custom assertion helper - validates structure, types, and expected counts
+    # Note: sbir_sample.csv has 3 data rows (4 total with header) and 9 columns
     assert_valid_extraction_metadata(
         metadata,
-        expected_row_count=100,
-        expected_column_count=42,
+        expected_row_count=3,
+        expected_column_count=9,
     )
 
 

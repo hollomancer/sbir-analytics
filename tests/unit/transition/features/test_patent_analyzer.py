@@ -474,7 +474,7 @@ class TestCalculateTopicSimilarity:
         patents = [
             Patent(
                 patent_number="US123456",
-                title=None,
+                title="",  # Empty string instead of None (title is required)
                 abstract=None,
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",

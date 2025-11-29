@@ -243,7 +243,7 @@ class CETSignalExtractor:
 
         Scores:
         - 1.0: Exact match (case-insensitive)
-        - 0.5: Partial match (one area contains keywords from the other)
+        - 0.5: Partial match (one area contains keywords from the other, or acronym match)
         - 0.0: No match or missing data
 
         Args:
@@ -264,9 +264,36 @@ class CETSignalExtractor:
         if award_cet_norm == contract_cet_norm:
             return 1.0
 
-        # Partial match (substring or shared keywords)
+        # Partial match (substring)
         if award_cet_norm in contract_cet_norm or contract_cet_norm in award_cet_norm:
             return 0.5
+
+        # Check for acronym match (e.g., "AI" matches "Artificial Intelligence")
+        # Extract first letters of words from longer string
+        longer = award_cet if len(award_cet) > len(contract_cet) else contract_cet
+        shorter = contract_cet if len(award_cet) > len(contract_cet) else award_cet
+
+        # If shorter is 2-5 chars and all uppercase, check if it's an acronym
+        if 2 <= len(shorter) <= 5 and shorter.isupper():
+            words = longer.split()
+            acronym = "".join(w[0].upper() for w in words if w)
+            if acronym == shorter.upper():
+                return 0.5
+
+        # Check for significant word overlap
+        award_words = set(award_cet_norm.split())
+        contract_words = set(contract_cet_norm.split())
+
+        # Remove common stop words
+        stop_words = {"the", "and", "or", "of", "in", "for", "to", "a", "an"}
+        award_words -= stop_words
+        contract_words -= stop_words
+
+        if award_words and contract_words:
+            overlap = len(award_words & contract_words)
+            min_words = min(len(award_words), len(contract_words))
+            if overlap > 0 and overlap / min_words >= 0.5:
+                return 0.5
 
         return 0.0
 

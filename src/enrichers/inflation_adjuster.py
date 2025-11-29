@@ -295,6 +295,8 @@ class InflationAdjuster:
         Returns:
             Award year or None if not found
         """
+        import numpy as np
+
         # Check common date column names
         date_columns = [
             "Award_Date",
@@ -313,9 +315,11 @@ class InflationAdjuster:
 
                 # Handle different date formats
                 try:
-                    # If it's already a year (integer or numeric)
-                    if isinstance(value, (int, float)) and 1980 <= value <= 2030:
-                        return int(value)
+                    # If it's already a year (integer or numeric, including numpy types)
+                    if isinstance(value, (int, float, np.integer, np.floating)):
+                        year_val = int(value)
+                        if 1980 <= year_val <= 2030:
+                            return year_val
 
                     # If it's a date string or datetime
                     if isinstance(value, str):

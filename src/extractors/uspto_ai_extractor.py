@@ -513,8 +513,10 @@ class USPTOAIExtractor:
                 "grant_doc_num",
                 "grant_number",
                 "grant_docnum",
+                "grant_id",
                 "doc_num",
                 "patent_id",
+                "patent_number",
                 "publication_number",
                 "grant",
                 "grant_no",
@@ -543,6 +545,9 @@ class USPTOAIExtractor:
         """
         out = dict(rec)
         float_fields = [
+            "score",
+            "confidence",
+            "probability",
             "ai_score_any_ai",
             "ai_score_ml",
             "ai_score_vision",
