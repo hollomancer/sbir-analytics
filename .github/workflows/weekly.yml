@@ -54,7 +54,7 @@ jobs:
             pytest_args: '-m "e2e and not weekly" -v'
             needs_neo4j: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -116,7 +116,7 @@ jobs:
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create repair branch
         id: branch
@@ -190,7 +190,7 @@ jobs:
     timeout-minutes: 120
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -255,7 +255,7 @@ jobs:
     timeout-minutes: 60
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -284,7 +284,7 @@ jobs:
     timeout-minutes: 45
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
