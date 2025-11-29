@@ -76,9 +76,12 @@ runs:
     - name: Cache UV cache directory
       uses: actions/cache@v4
       with:
-        path: ~/.cache/uv
-        key: uv-cache-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock') }}
+        path: |
+          ~/.cache/uv
+          ~/.local/share/uv
+        key: uv-cache-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
         restore-keys: |
+          uv-cache-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock') }}
           uv-cache-${{ runner.os }}-${{ inputs.python-version }}-
           uv-cache-${{ runner.os }}-
 

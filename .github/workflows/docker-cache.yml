@@ -1,4 +1,9 @@
-name: Docker Cache Builder
+name: Docker Cache Builder (DEPRECATED - Merged into ci.yml)
+
+# ⚠️ DEPRECATION NOTICE:
+# Docker cache building has been integrated into ci.yml container-build-test job.
+# Cache is now built and pushed automatically on push to main.
+# This file is kept temporarily for reference and will be removed in a future release.
 
 # Build and push Docker images to GHCR for faster PR builds
 # This runs on push to main and weekly to keep cache fresh

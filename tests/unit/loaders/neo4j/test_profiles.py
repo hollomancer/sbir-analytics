@@ -17,15 +17,15 @@ class TestTransitionProfileLoader:
 
     def test_initialization(self):
         """Test TransitionProfileLoader initialization."""
-        mock_driver = Mock()
-        loader = TransitionProfileLoader(mock_driver, batch_size=100)
+        mock_client = Mock()
+        loader = TransitionProfileLoader(mock_client, batch_size=100)
 
-        assert loader.driver == mock_driver
+        assert loader.client == mock_client
         assert loader.batch_size == 100
-        assert loader.stats["profiles_created"] == 0
-        assert loader.stats["profiles_updated"] == 0
-        assert loader.stats["relationships_created"] == 0
-        assert loader.stats["errors"] == 0
+        assert loader.metrics.created == 0
+        assert loader.metrics.updated == 0
+        assert loader.metrics.skipped == 0
+        assert loader.metrics.errors == 0
 
     def test_initialization_default_batch_size(self):
         """Test initialization with default batch size."""
@@ -97,20 +97,21 @@ class TestTransitionProfileLoader:
 
     def test_stats_tracking(self):
         """Test that loader tracks statistics."""
-        mock_driver = Mock()
-        loader = TransitionProfileLoader(mock_driver)
+        mock_client = Mock()
+        loader = TransitionProfileLoader(mock_client)
 
-        assert "profiles_created" in loader.stats
-        assert "profiles_updated" in loader.stats
-        assert "relationships_created" in loader.stats
-        assert "errors" in loader.stats
+        # Check metrics attributes exist
+        assert hasattr(loader.metrics, "created")
+        assert hasattr(loader.metrics, "updated")
+        assert hasattr(loader.metrics, "skipped")
+        assert hasattr(loader.metrics, "errors")
 
     def test_batch_size_respected(self):
         """Test that custom batch size is respected."""
-        mock_driver = Mock()
+        mock_client = Mock()
         custom_batch_size = 250
 
-        loader = TransitionProfileLoader(mock_driver, batch_size=custom_batch_size)
+        loader = TransitionProfileLoader(mock_client, batch_size=custom_batch_size)
 
         assert loader.batch_size == custom_batch_size
 

@@ -96,10 +96,15 @@ class TestImportSAMGovEntitiesHelper:
             assert len(result.value) == 2
             assert "unique_entity_id" in result.value.columns
 
-            # Check metadata
+            # Check metadata - extract .value from Dagster metadata types
             assert result.metadata is not None
             assert "row_count" in result.metadata
-            assert result.metadata["row_count"] == 2
+            from dagster import IntMetadataValue
+
+            if isinstance(result.metadata["row_count"], IntMetadataValue):
+                assert result.metadata["row_count"].value == 2
+            else:
+                assert result.metadata["row_count"] == 2
 
     @patch("src.assets.sam_gov_ingestion.find_latest_sam_gov_parquet")
     @patch("src.assets.sam_gov_ingestion.resolve_data_path")
@@ -177,8 +182,8 @@ class TestRawSAMGovEntitiesAsset:
             },
         )
 
-        # Execute
-        result = raw_sam_gov_entities(mock_context)
+        # Execute - pass context as keyword argument for Dagster
+        result = raw_sam_gov_entities(context=mock_context)
 
         # Assertions
         assert isinstance(result, Output)
@@ -208,8 +213,8 @@ class TestRawSAMGovEntitiesAsset:
 
         # Mock Path.exists to return True
         with patch.object(Path, "exists", return_value=True):
-            # Execute
-            result = raw_sam_gov_entities(mock_context)
+            # Execute - pass context as keyword argument
+            result = raw_sam_gov_entities(context=mock_context)
 
             # Check metadata structure
             assert result.metadata is not None

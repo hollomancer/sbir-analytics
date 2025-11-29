@@ -185,7 +185,8 @@ markers = [
     "slow: long-running tests - run nightly",
     "e2e: end-to-end tests - run nightly/weekly",
     "real_data: tests using real data - run weekly",
-    "weekly: comprehensive validation - run weekly only"
+    "weekly: comprehensive validation - run weekly only",
+    "neo4j: tests requiring real Neo4j connection (not mocked)"
 ]
 testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]

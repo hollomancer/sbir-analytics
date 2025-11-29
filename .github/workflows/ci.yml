@@ -217,21 +217,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
 
-    services:
-      neo4j:
-        image: neo4j:5
-        ports:
-          - 7687:7687
-          - 7474:7474
-        env:
-          NEO4J_AUTH: neo4j/password
-          NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
-        options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-          --health-start-period 40s
+    # Neo4j service removed - fast tests use mocks, integration tests start Neo4j conditionally
 
     env:
       # Environment variables are set by setup-test-environment action
@@ -256,14 +242,7 @@ jobs:
           default-timeout: ${{ env.DEFAULT_TIMEOUT }}
 
       - name: Display test environment
-        run: echo "🐳 Using Dockerized Neo4j service for tests"
-
-      - name: Wait for Neo4j
-        uses: ./.github/actions/wait-for-neo4j
-        with:
-          method: "http"
-          uri: "http://localhost:7474"
-          timeout: "120"
+        run: echo "🚀 Running fast tests without Neo4j service (mocked)"
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -319,6 +298,12 @@ jobs:
       (github.event_name == 'push' ||
        (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
        github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: read
+      packages: write  # For pushing cache to GHCR
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -329,6 +314,14 @@ jobs:
         uses: ./.github/actions/setup-docker-buildx
         with:
           setup-qemu: "true"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare .env for CI
         uses: ./.github/actions/prepare-env-file
@@ -342,13 +335,16 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          push: false
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           load: true
-          tags: sbir-analytics:ci-${{ github.sha }}
+          tags: |
+            sbir-analytics:ci-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             BUILD_WITH_R=false
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:latest
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             type=gha,scope=ci-no-r
             type=gha,scope=main
           cache-to: type=gha,mode=max,scope=ci-no-r
