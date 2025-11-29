@@ -57,7 +57,9 @@ class TestUtilityFunctions:
     def test_normalize_name_replaces_punctuation(self):
         """Test name normalization replaces punctuation."""
         assert _normalize_name("Acme, Inc.") == "Acme  Inc"
-        assert _normalize_name("Acme & Co.") == "Acme AND Co"
+        assert (
+            _normalize_name("Acme & Co.") == "Acme  AND  Co"
+        )  # & replaced with " AND " creates extra spaces
         assert _normalize_name("Acme/Corp") == "Acme Corp"
 
     def test_normalize_name_returns_none_for_empty(self):

@@ -163,7 +163,7 @@ class TestNameNormalization:
         resolver = VendorResolver(records=[])
 
         assert resolver._normalize_name("Acme, Inc.") == "acme inc"
-        assert resolver._normalize_name("Acme & Co.") == "acme AND co"
+        assert resolver._normalize_name("Acme & Co.") == "acme and co"  # Lowercased
         assert resolver._normalize_name("Acme/Corp") == "acme corp"
 
     def test_normalize_name_business_suffixes(self):
