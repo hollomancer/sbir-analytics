@@ -33,16 +33,13 @@ pytestmark = pytest.mark.fast
 def mock_context():
     """Mock Dagster context using build_asset_context."""
     from dagster import build_asset_context
+    from unittest.mock import Mock
 
     context = build_asset_context()
-    # Ensure log methods exist
-    if not hasattr(context, "log"):
-        from unittest.mock import Mock
-
-        context.log = Mock()
-        context.log.info = Mock()
-        context.log.warning = Mock()
-        context.log.error = Mock()
+    # Replace log methods with Mocks for assertion
+    context.log.info = Mock()
+    context.log.warning = Mock()
+    context.log.error = Mock()
     return context
 
 
@@ -164,8 +161,8 @@ class TestCETAwardClassificationsQualityCheck:
 
         assert result.passed is True
         assert "meets thresholds" in result.description.lower()
-        assert result.metadata["high_conf_rate"] == 0.75
-        assert result.metadata["evidence_coverage_rate"] == 0.85
+        assert result.metadata["high_conf_rate"].value == 0.75
+        assert result.metadata["evidence_coverage_rate"].value == 0.85
 
     def test_quality_check_fails_low_confidence(self, mock_context, tmp_path):
         """Test quality check fails with low confidence rate."""
@@ -187,8 +184,7 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "below thresholds" in result.description.lower()
@@ -213,8 +209,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
 
@@ -225,8 +221,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.exists.return_value = False
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "Missing" in result.description or "missing" in result.description
@@ -247,8 +243,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "Failed to read" in result.description
@@ -273,8 +269,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "model_missing" in result.description
@@ -299,8 +295,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "model_load_failed" in result.description
@@ -324,8 +320,8 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
         assert "missing quality metrics" in result.description.lower()
@@ -351,11 +347,11 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is False
-        assert result.metadata["target_high_conf_rate"] == 0.80
+        assert result.metadata["target_high_conf_rate"].value == 0.80
 
 
 # ==================== Award Classifications Asset Tests ====================
@@ -417,7 +413,7 @@ class TestEnrichedCETAwardClassifications:
 
     @patch("src.assets.cet.classifications.TaxonomyLoader")
     @patch("src.assets.cet.classifications.Path")
-    @patch("src.assets.cet.classifications.pd.read_parquet")
+    @patch("pandas.read_parquet")
     @patch("src.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_model_missing(
@@ -471,7 +467,10 @@ class TestEnrichedCETPatentClassifications:
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
     ):
         """Test patent asset handles taxonomy load failure."""
-        mock_taxonomy_loader.side_effect = Exception("Taxonomy load failed")
+        # Mock taxonomy loader to raise exception on load_taxonomy() call
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.side_effect = Exception("Taxonomy load failed")
+        mock_taxonomy_loader.return_value = mock_loader
 
         # Mock Path behaviors
         mock_path = Mock()
@@ -540,8 +539,7 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(context)
+            result = cet_award_classifications_quality_check(context)
 
         assert result.passed is False
 
@@ -569,8 +567,7 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(context)
+            result = cet_award_classifications_quality_check(context)
 
         assert result.passed is False
         assert "missing quality metrics" in result.description.lower()
@@ -619,8 +616,7 @@ class TestEdgeCases:
             mock_path.open.side_effect = PermissionError("Permission denied")
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(context)
+            result = cet_award_classifications_quality_check(context)
 
         # Restore permissions for cleanup
         checks_path.chmod(0o644)
@@ -650,13 +646,13 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         # Should fail because actual rates (0.75, 0.85) are below thresholds (0.90, 0.95)
         assert result.passed is False
-        assert result.metadata["target_high_conf_rate"] == 0.90
-        assert result.metadata["target_evidence_coverage_rate"] == 0.95
+        assert result.metadata["target_high_conf_rate"].value == 0.90
+        assert result.metadata["target_evidence_coverage_rate"].value == 0.95
 
     def test_quality_check_preserves_extra_metadata(self, mock_context, tmp_path):
         """Test quality check preserves extra metadata from checks file."""
@@ -681,10 +677,10 @@ class TestEdgeCases:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Direct call
+            result = cet_award_classifications_quality_check(mock_context)
 
         # Extra fields should be preserved in metadata
-        assert result.metadata["total_classified"] == 1000
-        assert result.metadata["model_version"] == "v1.0"
-        assert result.metadata["custom_field"] == "custom_value"
+        assert result.metadata["total_classified"].value == 1000
+        assert result.metadata["model_version"].value == "v1.0"
+        assert result.metadata["custom_field"].value == "custom_value"
