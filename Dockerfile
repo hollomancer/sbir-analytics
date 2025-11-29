@@ -107,9 +107,9 @@ COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 # Include 'r' extra only if BUILD_WITH_R=true (for R integration)
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ "$BUILD_WITH_R" = "true" ]; then \
-        uv export --extra dev --extra cloud --extra r --no-hashes --format requirements-txt -o requirements.txt; \
+        uv export --extra dev --extra cloud --extra r --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
     else \
-        uv export --extra dev --extra cloud --no-hashes --format requirements-txt -o requirements.txt; \
+        uv export --extra dev --extra cloud --no-hashes --no-editable --format requirements-txt -o requirements.txt && sed -i '/^\.$/d' requirements.txt; \
     fi
 
 # Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)
