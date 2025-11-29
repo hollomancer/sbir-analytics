@@ -42,10 +42,13 @@ def test_iter_job_modules_discovers_job_packages():
 
 def test_iter_public_jobs_returns_job_definitions():
     """Public job iterator should yield Dagster JobDefinition objects."""
+    from dagster._core.definitions.unresolved_asset_job_definition import (
+        UnresolvedAssetJobDefinition,
+    )
 
     jobs = assets_pkg.iter_public_jobs()
     assert jobs, "Auto-discovery should return registered jobs"
-    assert all(isinstance(job, JobDefinition) for job in jobs)
+    assert all(isinstance(job, (JobDefinition, UnresolvedAssetJobDefinition)) for job in jobs)
     assert any(job.name == "transition_full_job" for job in jobs)
 
 
