@@ -18,7 +18,6 @@ dependencies = [
     "rapidfuzz>=3.0.0,<4.0.0",
     "jellyfish>=1.0.0,<2.0.0",
     "psutil",
-    "memory_profiler",
     "scikit-learn>=1.4.0,<2.0.0",
     "joblib>=1.4.2,<2.0.0",
     "spacy>=3.7.0,<4.0.0",

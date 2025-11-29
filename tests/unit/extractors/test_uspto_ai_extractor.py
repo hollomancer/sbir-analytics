@@ -55,30 +55,31 @@ def sample_csv_data():
 class TestUSPTOAIExtractorInitialization:
     """Tests for USPTOAIExtractor initialization."""
 
-    def test_initialization_success(self, temp_input_dir, temp_checkpoint_dir):
-        """Test successful initialization."""
+    @pytest.mark.parametrize(
+        "continue_on_error,log_every,expected_log_every",
+        [
+            (True, 100_000, 100_000),  # defaults
+            (False, 50000, 50000),  # custom settings
+            (True, -100, 0),  # negative log_every becomes 0
+        ],
+        ids=["defaults", "custom_settings", "negative_log_every"],
+    )
+    def test_initialization(
+        self, temp_input_dir, temp_checkpoint_dir, continue_on_error, log_every, expected_log_every
+    ):
+        """Test initialization with various configurations."""
         extractor = USPTOAIExtractor(
             temp_input_dir,
             checkpoint_dir=temp_checkpoint_dir,
+            continue_on_error=continue_on_error,
+            log_every=log_every,
         )
 
         assert extractor.input_dir == temp_input_dir
         assert extractor.checkpoint_dir == temp_checkpoint_dir
-        assert extractor.continue_on_error is True
-        assert extractor.log_every == 100_000
+        assert extractor.continue_on_error == continue_on_error
+        assert extractor.log_every == expected_log_every
         assert extractor._seen_ids_mem == set()
-
-    def test_initialization_custom_settings(self, temp_input_dir, temp_checkpoint_dir):
-        """Test initialization with custom settings."""
-        extractor = USPTOAIExtractor(
-            temp_input_dir,
-            checkpoint_dir=temp_checkpoint_dir,
-            continue_on_error=False,
-            log_every=50000,
-        )
-
-        assert extractor.continue_on_error is False
-        assert extractor.log_every == 50000
 
     def test_initialization_creates_checkpoint_dir(self, temp_input_dir, tmp_path):
         """Test initialization creates checkpoint directory."""
@@ -98,15 +99,6 @@ class TestUSPTOAIExtractorInitialization:
 
         with pytest.raises(FileNotFoundError, match="Input directory does not exist"):
             USPTOAIExtractor(nonexistent)
-
-    def test_initialization_negative_log_every(self, temp_input_dir):
-        """Test initialization handles negative log_every."""
-        extractor = USPTOAIExtractor(
-            temp_input_dir,
-            log_every=-100,
-        )
-
-        assert extractor.log_every == 0  # max(0, -100)
 
 
 # ==================== File Discovery Tests ====================

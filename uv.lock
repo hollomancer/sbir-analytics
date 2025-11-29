@@ -1583,18 +1583,6 @@ wheels = [
 ]
 
 [[package]]
-name = "memory-profiler"
-version = "0.61.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "psutil" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/88/e1907e1ca3488f2d9507ca8b0ae1add7b1cd5d3ca2bc8e5b329382ea2c7b/memory_profiler-0.61.0.tar.gz", hash = "sha256:4e5b73d7864a1d1292fb76a03e82a3e78ef934d06828a698d9dada76da2067b0", size = 35935, upload-time = "2022-11-15T17:57:28.994Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/26/aaca612a0634ceede20682e692a6c55e35a94c21ba36b807cc40fe910ae1/memory_profiler-0.61.0-py3-none-any.whl", hash = "sha256:400348e61031e3942ad4d4109d18753b2fb08c2f6fb8290671c5513a34182d84", size = 31803, upload-time = "2022-11-15T17:57:27.031Z" },
-]
-
-[[package]]
 name = "mistune"
 version = "3.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2994,7 +2982,6 @@ dependencies = [
     { name = "jellyfish" },
     { name = "joblib" },
     { name = "loguru" },
-    { name = "memory-profiler" },
     { name = "neo4j" },
     { name = "numpy" },
     { name = "pandas" },
@@ -3076,7 +3063,6 @@ requires-dist = [
     { name = "jupyterlab", marker = "extra == 'ml'", specifier = ">=4.0.0,<5.0.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
     { name = "matplotlib", marker = "extra == 'ml'", specifier = ">=3.8.0,<4.0.0" },
-    { name = "memory-profiler" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0,<2.0.0" },
     { name = "neo4j", specifier = ">=5.20.0,<7.0.0" },
     { name = "notebook", marker = "extra == 'ml'", specifier = ">=7.0.0,<8.0.0" },

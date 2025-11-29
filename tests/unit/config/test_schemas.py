@@ -35,39 +35,30 @@ pytestmark = pytest.mark.fast
 class TestSbirValidationConfig:
     """Tests for SbirValidationConfig model."""
 
-    def test_default_values(self):
-        """Test SbirValidationConfig default values."""
-        config = SbirValidationConfig()
-        assert config.pass_rate_threshold == 0.95
-        assert config.completeness_threshold == 0.90
-        assert config.uniqueness_threshold == 0.99
+    @pytest.mark.parametrize(
+        "pass_rate,completeness,uniqueness",
+        [
+            (0.95, 0.90, 0.99),  # defaults
+            (0.98, 0.85, 1.0),  # custom
+            (0.0, 0.0, 0.0),  # min bounds
+            (1.0, 1.0, 1.0),  # max bounds
+        ],
+        ids=["defaults", "custom", "min_bounds", "max_bounds"],
+    )
+    def test_threshold_values(self, pass_rate, completeness, uniqueness):
+        """Test SbirValidationConfig with various threshold values."""
+        if pass_rate == 0.95:  # defaults case
+            config = SbirValidationConfig()
+        else:
+            config = SbirValidationConfig(
+                pass_rate_threshold=pass_rate,
+                completeness_threshold=completeness,
+                uniqueness_threshold=uniqueness,
+            )
 
-    def test_custom_thresholds(self):
-        """Test SbirValidationConfig with custom thresholds."""
-        config = SbirValidationConfig(
-            pass_rate_threshold=0.98,
-            completeness_threshold=0.85,
-            uniqueness_threshold=1.0,
-        )
-        assert config.pass_rate_threshold == 0.98
-        assert config.completeness_threshold == 0.85
-        assert config.uniqueness_threshold == 1.0
-
-    def test_threshold_validator_accepts_valid_bounds(self):
-        """Test threshold validator accepts 0.0 and 1.0."""
-        config_min = SbirValidationConfig(
-            pass_rate_threshold=0.0,
-            completeness_threshold=0.0,
-            uniqueness_threshold=0.0,
-        )
-        assert all([config_min.pass_rate_threshold == 0.0])
-
-        config_max = SbirValidationConfig(
-            pass_rate_threshold=1.0,
-            completeness_threshold=1.0,
-            uniqueness_threshold=1.0,
-        )
-        assert all([config_max.pass_rate_threshold == 1.0])
+        assert config.pass_rate_threshold == pass_rate
+        assert config.completeness_threshold == completeness
+        assert config.uniqueness_threshold == uniqueness
 
     def test_threshold_validator_rejects_negative(self):
         """Test threshold validator rejects negative values."""
