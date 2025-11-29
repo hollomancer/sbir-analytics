@@ -376,7 +376,7 @@ tabulate==0.9.0
     # via dagster
 tenacity==9.1.2
     # via sbir-analytics (pyproject.toml)
-thinc==8.3.10
+thinc==9.1.1
     # via spacy
 threadpoolctl==3.6.0
     # via scikit-learn
