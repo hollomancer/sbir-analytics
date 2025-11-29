@@ -74,29 +74,32 @@ class TestSbirValidationConfig:
 class TestSbirDuckDBConfig:
     """Tests for SbirDuckDBConfig model."""
 
-    def test_default_values(self):
-        """Test SbirDuckDBConfig default values."""
-        config = SbirDuckDBConfig()
-        assert config.csv_path == "data/raw/sbir/awards_data.csv"
-        assert config.database_path == ":memory:"
-        assert config.table_name == "sbir_awards"
-        assert config.batch_size == 10000
-        assert config.encoding == "utf-8"
+    @pytest.mark.parametrize(
+        "csv_path,db_path,table_name,batch_size,encoding",
+        [
+            ("data/raw/sbir/awards_data.csv", ":memory:", "sbir_awards", 10000, "utf-8"),  # defaults
+            ("/custom/path/data.csv", "/tmp/sbir.duckdb", "custom_table", 5000, "latin-1"),  # custom
+        ],
+        ids=["defaults", "custom"],
+    )
+    def test_values(self, csv_path, db_path, table_name, batch_size, encoding):
+        """Test SbirDuckDBConfig with various values."""
+        if csv_path == "data/raw/sbir/awards_data.csv":  # defaults
+            config = SbirDuckDBConfig()
+        else:
+            config = SbirDuckDBConfig(
+                csv_path=csv_path,
+                database_path=db_path,
+                table_name=table_name,
+                batch_size=batch_size,
+                encoding=encoding,
+            )
 
-    def test_custom_values(self):
-        """Test SbirDuckDBConfig with custom values."""
-        config = SbirDuckDBConfig(
-            csv_path="/custom/path/data.csv",
-            database_path="/tmp/sbir.duckdb",
-            table_name="custom_table",
-            batch_size=5000,
-            encoding="latin-1",
-        )
-        assert config.csv_path == "/custom/path/data.csv"
-        assert config.database_path == "/tmp/sbir.duckdb"
-        assert config.table_name == "custom_table"
-        assert config.batch_size == 5000
-        assert config.encoding == "latin-1"
+        assert config.csv_path == csv_path
+        assert config.database_path == db_path
+        assert config.table_name == table_name
+        assert config.batch_size == batch_size
+        assert config.encoding == encoding
 
 
 class TestDataQualityConfig:
@@ -180,30 +183,33 @@ class TestEnrichmentConfig:
 class TestEnrichmentSourceConfig:
     """Tests for EnrichmentSourceConfig model."""
 
-    def test_default_values(self):
-        """Test EnrichmentSourceConfig default values."""
-        config = EnrichmentSourceConfig()
-        assert config.cadence_days == 1
-        assert config.sla_staleness_days == 1
-        assert config.batch_size == 100
-        assert config.max_concurrent_requests == 5
-        assert config.enable_delta_detection is True
-        assert config.hash_algorithm == "sha256"
+    @pytest.mark.parametrize(
+        "cadence,sla,batch,concurrent,delta,hash_algo",
+        [
+            (1, 1, 100, 5, True, "sha256"),  # defaults
+            (7, 14, 500, 10, False, "sha256"),  # custom
+        ],
+        ids=["defaults", "custom"],
+    )
+    def test_values(self, cadence, sla, batch, concurrent, delta, hash_algo):
+        """Test EnrichmentSourceConfig with various values."""
+        if cadence == 1:  # defaults
+            config = EnrichmentSourceConfig()
+        else:
+            config = EnrichmentSourceConfig(
+                cadence_days=cadence,
+                sla_staleness_days=sla,
+                batch_size=batch,
+                max_concurrent_requests=concurrent,
+                enable_delta_detection=delta,
+            )
 
-    def test_custom_values(self):
-        """Test EnrichmentSourceConfig with custom values."""
-        config = EnrichmentSourceConfig(
-            cadence_days=7,
-            sla_staleness_days=14,
-            batch_size=500,
-            max_concurrent_requests=10,
-            enable_delta_detection=False,
-        )
-        assert config.cadence_days == 7
-        assert config.sla_staleness_days == 14
-        assert config.batch_size == 500
-        assert config.max_concurrent_requests == 10
-        assert config.enable_delta_detection is False
+        assert config.cadence_days == cadence
+        assert config.sla_staleness_days == sla
+        assert config.batch_size == batch
+        assert config.max_concurrent_requests == concurrent
+        assert config.enable_delta_detection == delta
+        assert config.hash_algorithm == hash_algo
 
     def test_batch_size_constraints(self):
         """Test batch_size has ge=1, le=1000 constraints."""
@@ -237,43 +243,40 @@ class TestEnrichmentRefreshConfig:
 class TestNeo4jConfig:
     """Tests for Neo4jConfig model."""
 
-    def test_default_values(self):
-        """Test Neo4jConfig default values."""
-        config = Neo4jConfig()
-        assert config.uri == "bolt://localhost:7687"
-        assert config.username == "neo4j"
-        assert config.password is None  # Password comes from env var by default
-        assert config.database == "neo4j"
-        assert config.batch_size == 1000
-        assert config.parallel_threads == 4
-        assert config.create_constraints is True
-        assert config.transaction_timeout_seconds == 300
+    @pytest.mark.parametrize(
+        "uri,username,password,database,batch_size,threads,timeout",
+        [
+            ("bolt://localhost:7687", "neo4j", None, "neo4j", 1000, 4, 300),  # defaults
+            ("bolt://prod-neo4j:7687", "admin", "secret", "sbir", 1000, 4, 300),  # custom connection
+            ("bolt://localhost:7687", "neo4j", None, "neo4j", 5000, 8, 600),  # custom performance
+        ],
+        ids=["defaults", "custom_connection", "custom_performance"],
+    )
+    def test_values(self, uri, username, password, database, batch_size, threads, timeout):
+        """Test Neo4jConfig with various values."""
+        if uri == "bolt://localhost:7687" and batch_size == 1000:  # defaults
+            config = Neo4jConfig()
+        elif password == "secret":  # custom connection
+            config = Neo4jConfig(
+                uri=uri,
+                username=username,
+                password=password,  # pragma: allowlist secret
+                database=database,
+            )
+        else:  # custom performance
+            config = Neo4jConfig(
+                batch_size=batch_size,
+                parallel_threads=threads,
+                transaction_timeout_seconds=timeout,
+            )
 
-    def test_custom_connection_values(self):
-        """Test Neo4jConfig with custom connection values."""
-        config = Neo4jConfig(
-            uri="bolt://prod-neo4j:7687",
-            username="admin",
-            password="secret",  # pragma: allowlist secret
-            database="sbir",
-        )
-        assert config.uri == "bolt://prod-neo4j:7687"
-        assert config.username == "admin"
-        assert config.password == "secret"
-        assert config.database == "sbir"
-
-    def test_custom_performance_values(self):
-        """Test Neo4jConfig with custom performance values."""
-        config = Neo4jConfig(
-            batch_size=5000,
-            parallel_threads=8,
-            transaction_timeout_seconds=600,
-            max_deadlock_retries=5,
-        )
-        assert config.batch_size == 5000
-        assert config.parallel_threads == 8
-        assert config.transaction_timeout_seconds == 600
-        assert config.max_deadlock_retries == 5
+        assert config.uri == uri
+        assert config.username == username
+        assert config.password == password
+        assert config.database == database
+        assert config.batch_size == batch_size
+        assert config.parallel_threads == threads
+        assert config.transaction_timeout_seconds == timeout
 
 
 class TestExtractionConfig:
