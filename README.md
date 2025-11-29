@@ -4,62 +4,60 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
 
 ## Quick Start
 
-### Local Development Setup (Recommended)
+### Choose Your Journey
 
-#### Prerequisites
+#### 1. Local Developer (No Cloud)
+**Best for:** Code contributions, local testing, and offline work.
 
-- **Python**: 3.11 or 3.12
-- **uv**: For dependency management ([install uv](https://github.com/astral-sh/uv))
-- **Neo4j Aura**: Neo4j cloud instance (Free tier available) - [Setup Guide](docs/data/neo4j-aura-setup.md)
-- **R** (optional): For fiscal returns analysis with StateIO models
+1.  **Clone and Install:**
+    ```bash
+    git clone <repository-url>
+    cd sbir-analytics
+    make install
+    ```
 
-#### 1. Clone and Install
+2.  **Configure Local Environment:**
+    ```bash
+    make setup-local
+    # Creates .env with local defaults (no S3, local Neo4j)
+    ```
 
-```bash
-git clone <repository-url>
-cd sbir-analytics
-make install
-```
+3.  **Run the Pipeline:**
+    ```bash
+    make dev
+    # Open http://localhost:3000
+    ```
 
-#### 2. Configure Environment
+#### 2. Cloud Developer
+**Best for:** Production debugging, working with full datasets (S3), and cloud deployment.
 
-Create a `.env` file from the example:
+1.  **Clone and Install:**
+    ```bash
+    git clone <repository-url>
+    cd sbir-analytics
+    make install
+    ```
 
-```bash
-cp .env.example .env
-```
+2.  **Configure Cloud Environment:**
+    ```bash
+    make setup-cloud
+    # Enables S3 usage. Ensure AWS credentials are set in your environment.
+    ```
 
-**Configure Neo4j:**
-- **Option A (Recommended):** Use Neo4j Aura (Cloud). Set `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` in `.env`.
-- **Option B (Local):** Use Docker.
-  ```bash
-  make neo4j-up
-  # Set NEO4J_URI=bolt://localhost:7687 in .env
-  ```
+#### 3. ML Engineer / Data Scientist
+**Best for:** Fiscal analysis, CET classification, and notebook-based exploration.
 
-**Configure Data Storage:**
-- **Option A (S3):** Set `SBIR_ETL_USE_S3=true` and `SBIR_ETL_S3_BUCKET=your-bucket` in `.env`.
-- **Option B (Local):** Set `SBIR_ETL_USE_S3=false` (default). Data will be stored in `data/`.
+1.  **Install ML Tools:**
+    ```bash
+    make install-ml
+    # Installs Jupyter, Matplotlib, etc.
+    ```
 
-#### 3. Run the Pipeline
-
-```bash
-make dev
-```
-
-Open **http://localhost:3000** to view the Dagster UI.
-
-#### 4. Materialize Assets
-
-1. Navigate to the **Assets** tab in the UI.
-2. Click **Materialize** on desired assets (e.g., `raw_sbir_awards`).
-3. Monitor progress in the **Runs** tab.
-
-#### 5. Run Tests
-
-```bash
-make test
-```
+2.  **Start Analysis:**
+    ```bash
+    make notebook
+    # Opens Jupyter Lab. See notebooks/getting_started.ipynb
+    ```
 
 ### Production Deployment
 

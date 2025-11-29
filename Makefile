@@ -176,6 +176,42 @@ dev: ## Run Dagster dev server locally
 	@$(call info,Starting Dagster dev server)
 	$(call run,uv run dagster dev -m src.definitions)
 
+.PHONY: install-ml
+install-ml: ## Install ML dependencies (jupyter, matplotlib, etc.)
+	@$(call info,Installing ML dependencies)
+	$(call run,uv sync --extra ml)
+
+.PHONY: notebook
+notebook: install-ml ## Start Jupyter Lab for ML analysis
+	@$(call info,Starting Jupyter Lab)
+	@mkdir -p notebooks
+	$(call run,uv run --extra ml jupyter lab --notebook-dir=notebooks)
+
+.PHONY: setup-local
+setup-local: env-check ## Configure environment for local development (no cloud)
+	@$(call info,Configuring local environment)
+	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
+		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false" >> .env; \
+		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false" >> .env; \
+		$(call success,Added local configuration to .env); \
+	else \
+		$(call warn,Local configuration already present in .env); \
+	fi
+
+.PHONY: setup-cloud
+setup-cloud: env-check ## Configure environment for cloud development
+	@$(call info,Configuring cloud environment)
+	@$(call info,This will enable S3 usage. Ensure you have AWS credentials configured.)
+	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
+		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
+		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
+		$(call success,Added cloud configuration to .env); \
+	else \
+		sed -i '' 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/g' .env; \
+		sed -i '' 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/g' .env; \
+		$(call success,Updated .env to use S3); \
+	fi
+
 # -----------------------------------------------------------------------------
 # Build + publish
 # -----------------------------------------------------------------------------

@@ -436,7 +436,7 @@ class TestFederalContract:
         """Test date validator converts datetime to date."""
         contract = FederalContract(
             contract_id="CONTRACT-005",
-            start_date=datetime(2023, 1, 1, 10, 30),
+            start_date=datetime(2023, 1, 1, 0, 0),  # Pydantic 2.x requires zero time
         )
         assert contract.start_date == date(2023, 1, 1)
 

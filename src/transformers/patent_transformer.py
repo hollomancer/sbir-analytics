@@ -202,7 +202,7 @@ class PatentAssignmentTransformer:
     @staticmethod
     def _parse_date(value: Any | None) -> date | None:
         """Parse date using centralized utility."""
-        from src.utils.date_utils import parse_date
+        from src.utils.common.date_utils import parse_date
 
         return parse_date(value, strict=False)
 
