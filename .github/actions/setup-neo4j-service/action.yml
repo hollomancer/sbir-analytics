@@ -1,11 +1,11 @@
 name: Setup Neo4j Environment
 description: |
   Sets up Neo4j environment variables for use with Neo4j service containers.
-  
+
   Note: This action only sets environment variables. Service containers must be defined
   at the job level. This action sets environment variables that should be used with a
   service configuration like:
-  
+
   ```yaml
   services:
     neo4j:
@@ -63,4 +63,3 @@ runs:
         echo "SBIR_ETL__NEO4J__USERNAME=${{ inputs.username }}" >> $GITHUB_ENV
         echo "SBIR_ETL__NEO4J__PASSWORD=${{ inputs.password }}" >> $GITHUB_ENV
       shell: bash
-

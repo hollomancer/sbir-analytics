@@ -33,7 +33,7 @@ This section provides comprehensive documentation for all data sources used in t
 - **Format:** PostgreSQL dump (bulk data) + REST API (enrichment)
 - **Update Cadence:** Daily (API), Weekly (bulk data)
 - **Purpose:** Enrich SBIR awards with additional transaction details
-- **Assets:** 
+- **Assets:**
   - `raw_usaspending_recipients`
   - `raw_usaspending_transactions`
   - `usaspending_iterative_enrichment`

@@ -88,7 +88,7 @@ Output: enriched_sbir_companies_with_categorization
 ```python
 def classify_contract(contract: dict) -> dict:
     """Classify a single contract.
-    
+
     Returns:
         {
             "classification": "Product" | "Service" | "R&D",
@@ -101,7 +101,7 @@ def classify_contract(contract: dict) -> dict:
     pricing = contract.get("pricing", "")
     description = contract.get("description", "")
     sbir_phase = contract.get("sbir_phase", "")
-    
+
     # Rule 1: Contract type overrides (highest priority)
     if contract_type in ["CPFF", "Cost-Type"] or pricing == "T&M":
         return {
@@ -109,7 +109,7 @@ def classify_contract(contract: dict) -> dict:
             "method": "contract_type",
             "confidence": 0.95
         }
-    
+
     # Rule 2: PSC-based classification
     if psc:
         if psc[0].isdigit():  # Numeric PSC
@@ -121,7 +121,7 @@ def classify_contract(contract: dict) -> dict:
         else:  # Alphabetic PSC
             classification = "Service"
             method = "psc_alphabetic"
-        
+
         # Rule 3: Description inference (can override PSC for FFP contracts)
         if pricing == "FFP" and description:
             product_keywords = ["prototype", "hardware", "device"]
@@ -131,7 +131,7 @@ def classify_contract(contract: dict) -> dict:
                     "method": "description_inference",
                     "confidence": 0.85
                 }
-        
+
         # Rule 4: SBIR phase adjustment
         if sbir_phase in ["I", "II"]:
             if classification == "Product":
@@ -148,13 +148,13 @@ def classify_contract(contract: dict) -> dict:
                     "method": "sbir_adjustment",
                     "confidence": 0.90
                 }
-        
+
         return {
             "classification": classification,
             "method": method,
             "confidence": 0.90
         }
-    
+
     # Default: Service (low confidence)
     return {
         "classification": "Service",
@@ -183,7 +183,7 @@ def classify_contract(contract: dict) -> dict:
 ```python
 def aggregate_company_classification(contracts: list[dict], company_uei: str) -> dict:
     """Aggregate contract classifications to company level.
-    
+
     Returns:
         {
             "company_uei": str,
@@ -207,33 +207,33 @@ def aggregate_company_classification(contracts: list[dict], company_uei: str) ->
                 "override_reason": "insufficient_awards"
             }
         }
-    
+
     # Calculate dollar-weighted percentages
     total_dollars = sum(c.get("award_amount", 0) for c in contracts)
     product_dollars = sum(
-        c.get("award_amount", 0) 
-        for c in contracts 
+        c.get("award_amount", 0)
+        for c in contracts
         if c.get("classification") == "Product"
     )
     service_rd_dollars = sum(
-        c.get("award_amount", 0) 
-        for c in contracts 
+        c.get("award_amount", 0)
+        for c in contracts
         if c.get("classification") in ["Service", "R&D"]
     )
-    
+
     product_pct = (product_dollars / total_dollars * 100) if total_dollars > 0 else 0
     service_pct = (service_rd_dollars / total_dollars * 100) if total_dollars > 0 else 0
-    
+
     # Count PSC families
     psc_families = set()
     for c in contracts:
         psc = c.get("psc", "")
         if psc:
             psc_families.add(psc[0])
-    
+
     # Apply override rules
     override_reason = None
-    
+
     # Override 1: Too many PSC families (integrator)
     if len(psc_families) > 6:
         classification = "Mixed"
@@ -245,7 +245,7 @@ def aggregate_company_classification(contracts: list[dict], company_uei: str) ->
         classification = "Service-leaning"
     else:
         classification = "Mixed"
-    
+
     # Determine confidence level
     if len(contracts) <= 2:
         confidence = "Low"
@@ -253,7 +253,7 @@ def aggregate_company_classification(contracts: list[dict], company_uei: str) ->
         confidence = "Medium"
     else:
         confidence = "High"
-    
+
     return {
         "company_uei": company_uei,
         "classification": classification,
@@ -297,7 +297,7 @@ def retrieve_company_contracts(
     cage: str | None = None
 ) -> pd.DataFrame:
     """Retrieve all contracts for a company from USAspending.
-    
+
     Returns DataFrame with columns:
     - award_id
     - psc (product_or_service_code)
@@ -308,7 +308,7 @@ def retrieve_company_contracts(
     - sbir_phase (extracted from description or award metadata)
     """
     conn = extractor.connect()
-    
+
     # Build WHERE clause based on available identifiers
     where_clauses = []
     if uei:
@@ -317,14 +317,14 @@ def retrieve_company_contracts(
         where_clauses.append(f"recipient_duns = '{duns}'")
     if cage:
         where_clauses.append(f"cage_code = '{cage}'")
-    
+
     if not where_clauses:
         return pd.DataFrame()
-    
+
     where_clause = " OR ".join(where_clauses)
-    
+
     query = f"""
-    SELECT 
+    SELECT
         award_id,
         product_or_service_code as psc,
         type_of_contract_pricing as contract_type,
@@ -337,7 +337,7 @@ def retrieve_company_contracts(
     FROM usaspending_awards
     WHERE {where_clause}
     """
-    
+
     return conn.execute(query).fetchdf()
 ```
 
@@ -350,12 +350,12 @@ from pydantic import BaseModel, Field
 
 class ContractClassification(BaseModel):
     """Classification result for a single contract."""
-    
+
     award_id: str = Field(..., description="Contract/award identifier")
     classification: str = Field(..., description="Product, Service, or R&D")
     method: str = Field(..., description="Classification method used")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Classification confidence")
-    
+
     # Original contract data
     psc: str | None = Field(None, description="Product Service Code")
     contract_type: str | None = Field(None, description="Contract type")
@@ -370,14 +370,14 @@ class ContractClassification(BaseModel):
 ```python
 class CompanyClassification(BaseModel):
     """Classification result for a company."""
-    
+
     company_uei: str = Field(..., description="Company UEI")
     company_name: str = Field(..., description="Company name")
     classification: str = Field(..., description="Product-leaning, Service-leaning, Mixed, or Uncertain")
     product_pct: float = Field(..., ge=0.0, le=100.0, description="Percentage of dollars from product contracts")
     service_pct: float = Field(..., ge=0.0, le=100.0, description="Percentage of dollars from service/R&D contracts")
     confidence: str = Field(..., description="Low, Medium, or High")
-    
+
     # Metadata
     award_count: int = Field(..., description="Total number of contracts")
     psc_family_count: int = Field(..., description="Number of distinct PSC families")
@@ -385,7 +385,7 @@ class CompanyClassification(BaseModel):
     product_dollars: float = Field(..., description="Product contract dollars")
     service_rd_dollars: float = Field(..., description="Service/R&D contract dollars")
     override_reason: str | None = Field(None, description="Reason for override if applied")
-    
+
     # Contract details (for audit trail)
     contracts: list[ContractClassification] = Field(default_factory=list, description="Individual contract classifications")
 ```
@@ -578,22 +578,22 @@ company_categorization:
     product_leaning_pct: 60.0
     service_leaning_pct: 60.0
     psc_family_diversity_threshold: 6
-    
+
   # Confidence levels
   confidence:
     low_max_awards: 2
     medium_max_awards: 5
-    
+
   # Processing
   batch_size: 100
   parallel_workers: 4
-  
+
   # USAspending query
   usaspending:
     table_name: "usaspending_awards"
     timeout_seconds: 30
     retry_attempts: 3
-    
+
   # Output
   output:
     include_contract_details: true
@@ -616,13 +616,13 @@ def enriched_sbir_companies_with_categorization(
     validated_sbir_awards: pd.DataFrame
 ) -> pd.DataFrame:
     """Categorize SBIR companies based on USAspending contract portfolio."""
-    
+
     config = get_config()
     extractor = DuckDBUSAspendingExtractor(config.duckdb.database_path)
-    
+
     # Get unique companies
     companies = validated_sbir_awards[["company_uei", "company_name"]].drop_duplicates()
-    
+
     results = []
     for _, company in companies.iterrows():
         # Retrieve contracts
@@ -630,21 +630,21 @@ def enriched_sbir_companies_with_categorization(
             extractor,
             uei=company["company_uei"]
         )
-        
+
         # Classify contracts
         classified_contracts = [
             classify_contract(contract.to_dict())
             for _, contract in contracts.iterrows()
         ]
-        
+
         # Aggregate to company level
         company_classification = aggregate_company_classification(
             classified_contracts,
             company["company_uei"]
         )
-        
+
         results.append(company_classification)
-    
+
     return pd.DataFrame(results)
 ```
 
@@ -656,17 +656,17 @@ def company_categorization_completeness_check(
     enriched_sbir_companies_with_categorization: pd.DataFrame
 ) -> AssetCheckResult:
     """Verify categorization completeness and quality."""
-    
+
     total = len(enriched_sbir_companies_with_categorization)
     uncertain = (
         enriched_sbir_companies_with_categorization["classification"] == "Uncertain"
     ).sum()
-    
+
     uncertain_pct = (uncertain / total * 100) if total > 0 else 0
-    
+
     # Target: <20% uncertain classifications
     passed = uncertain_pct < 20.0
-    
+
     return AssetCheckResult(
         passed=passed,
         metadata={

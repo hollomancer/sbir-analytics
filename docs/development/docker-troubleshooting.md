@@ -111,7 +111,7 @@ make docker-logs SERVICE=<service-name>
    ```bash
    # macOS/Linux
    lsof -i :3000
-   
+
    # Or
    netstat -an | grep 3000
    ```
@@ -121,7 +121,7 @@ make docker-logs SERVICE=<service-name>
    # If it's another Docker container
    docker ps
    docker stop <container-id>
-   
+
    # If it's a local process
    kill <pid>
    ```
@@ -158,7 +158,7 @@ ERROR: failed to solve: no space left on device
    ```bash
    # Remove unused images, containers, volumes
    docker system prune -a
-   
+
    # Remove unused volumes (careful - deletes data)
    docker volume prune
    ```
@@ -227,7 +227,7 @@ Error in install.packages: package 'arrow' failed to install
    ```bash
    # Enter builder container
    docker run -it --rm python:3.11-slim bash
-   
+
    # Install R packages manually to debug
    ```
 
@@ -432,7 +432,7 @@ make docker-verify
    ```bash
    # macOS
    Activity Monitor
-   
+
    # Linux
    htop
    ```
@@ -635,4 +635,3 @@ If you're still stuck:
 ---
 
 **Still need help?** Check the [Docker Quick Start](docker-quickstart.md) or [Containerization Guide](../deployment/containerization.md) for more information.
-

@@ -59,4 +59,3 @@ except Exception as e:
 "
 
 log_info "Local test completed"
-

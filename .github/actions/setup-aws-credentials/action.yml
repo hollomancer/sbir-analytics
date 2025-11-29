@@ -18,4 +18,3 @@ runs:
       with:
         role-to-assume: ${{ inputs.role-arn }}
         aws-region: ${{ inputs.aws-region }}
-

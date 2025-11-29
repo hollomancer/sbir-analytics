@@ -109,5 +109,3 @@ runs:
         # duckdb is already installed via uv sync (it's in main dependencies)
         uv pip install --cache-dir ~/.cache/pip pyreadstat
       shell: bash
-
-

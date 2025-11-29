@@ -28,4 +28,3 @@ Load metrics and smoke check results are archived as JSON and Markdown artifacts
 
 - **Supplemental datasets**: USPTO, transition detection, and fiscal assets remain out of scope for this job; they require their own source refreshes and validation harnesses.
 - **Company enrichment realism**: The enrichment coverage step reports match quality but does not yet validate downstream dependants that consume the enriched frame (e.g., DAG outputs or dashboards). Consider extending regression tests to assert selected `company_` fields for real award samples.
-

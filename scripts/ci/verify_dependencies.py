@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Verify that required dependencies are installed."""
 
-
 try:
     import pandas
     import duckdb

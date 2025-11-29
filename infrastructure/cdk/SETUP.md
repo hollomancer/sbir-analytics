@@ -57,4 +57,3 @@ cdk deploy --all --context github_repo=your-username/sbir-analytics
 3. Build and publish Lambda layer
 
 4. Build and push container images to ECR
-

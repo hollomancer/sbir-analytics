@@ -9,12 +9,12 @@ graph TB
     subgraph "GitHub Actions"
         GA[GitHub Actions<br/>Weekly Schedule/Manual Trigger]
     end
-    
+
     subgraph "AWS us-east-2"
         subgraph "Orchestration"
             SF[Step Functions<br/>State Machine]
         end
-        
+
         subgraph "Compute"
             L1[Lambda: download-csv<br/>Container Image]
             L2[Lambda: validate-dataset<br/>Layer]
@@ -25,18 +25,18 @@ graph TB
             L7[Lambda: load-neo4j<br/>Container Image]
             L8[Lambda: smoke-checks<br/>Layer]
         end
-        
+
         subgraph "Storage"
             S3[S3 Bucket<br/>sbir-analytics-production-data]
             SM[Secrets Manager<br/>neo4j-aura credentials]
         end
-        
+
         subgraph "External"
             NEO4J[Neo4j Aura<br/>Cloud Database]
             SBIR[SBIR.gov<br/>CSV Download]
         end
     end
-    
+
     GA -->|OIDC Auth| SF
     SF --> L1
     SF --> L2
@@ -46,7 +46,7 @@ graph TB
     SF --> L6
     SF --> L7
     SF --> L8
-    
+
     L1 --> S3
     L1 --> SBIR
     L2 --> S3
@@ -60,11 +60,11 @@ graph TB
     L7 --> NEO4J
     L8 --> SM
     L8 --> NEO4J
-    
+
     SM -.->|Provides Credentials| L6
     SM -.->|Provides Credentials| L7
     SM -.->|Provides Credentials| L8
-    
+
     style GA fill:#2088ff
     style SF fill:#ff9900
     style S3 fill:#569a31
@@ -79,29 +79,29 @@ graph TB
 ```mermaid
 stateDiagram-v2
     [*] --> DownloadCSV
-    
+
     DownloadCSV --> CheckChanges: Success
-    
+
     CheckChanges --> ProcessPipeline: Changed or ForceRefresh
     CheckChanges --> EndNoChanges: No Changes
-    
+
     state ProcessPipeline {
         [*] --> ValidateDataset
         [*] --> ProfileInputs
         ValidateDataset --> [*]
         ProfileInputs --> [*]
     }
-    
+
     ProcessPipeline --> IngestionChecks: Both Complete
     IngestionChecks --> EnrichmentChecks: Success
     EnrichmentChecks --> ResetNeo4j: Success
     ResetNeo4j --> LoadNeo4j: Success (Optional)
     LoadNeo4j --> SmokeChecks: Success
     SmokeChecks --> [*]: Success
-    
+
     CheckChanges --> EndNoChanges: No Changes
     EndNoChanges --> [*]
-    
+
     DownloadCSV --> ErrorHandler: Error
     ValidateDataset --> ErrorHandler: Error
     ProfileInputs --> ErrorHandler: Error
@@ -110,14 +110,14 @@ stateDiagram-v2
     ResetNeo4j --> ErrorHandler: Error
     LoadNeo4j --> ErrorHandler: Error
     SmokeChecks --> ErrorHandler: Error
-    
+
     ErrorHandler --> [*]
-    
+
     note right of ProcessPipeline
         Parallel Execution
         Both branches run simultaneously
     end note
-    
+
     note right of ResetNeo4j
         Optional Step
         Can be skipped via config
@@ -132,13 +132,13 @@ flowchart LR
         SBIR[SBIR.gov CSV]
         CONFIG[Workflow Config]
     end
-    
+
     subgraph "S3 Bucket Structure"
         RAW[raw/awards/<br/>YYYY-MM-DD/<br/>award_data.csv]
         PROC[processed/<br/>validation/<br/>profiles/<br/>ingestion/<br/>enrichment/]
         ART[artifacts/<br/>YYYY-MM-DD/<br/>*.json<br/>*.md]
     end
-    
+
     subgraph "Processing"
         L1[Download]
         L2[Validate]
@@ -148,11 +148,11 @@ flowchart LR
         L6[Load]
         L7[Smoke]
     end
-    
+
     subgraph "Output"
         NEO4J[(Neo4j Aura)]
     end
-    
+
     SBIR -->|HTTP GET| L1
     L1 -->|Upload| RAW
     RAW -->|Read| L2
@@ -168,7 +168,7 @@ flowchart LR
     L6 -->|Load| NEO4J
     ART -->|Read| L7
     L7 -->|Query| NEO4J
-    
+
     CONFIG -.->|Controls Flow| L1
     CONFIG -.->|Controls Flow| L2
     CONFIG -.->|Controls Flow| L3
@@ -187,51 +187,51 @@ graph TB
         IAM2[IAM Role<br/>Step Functions]
         IAM3[IAM Role<br/>GitHub Actions OIDC]
     end
-    
+
     subgraph "Compute & Orchestration"
         SF[Step Functions<br/>State Machine]
         L1[Lambda Functions<br/>9 functions]
         LC[Lambda Layers<br/>Dependencies]
         ECR[ECR Repositories<br/>Container Images]
     end
-    
+
     subgraph "Storage & Secrets"
         S3[S3 Bucket<br/>sbir-analytics-production-data]
         SM[Secrets Manager<br/>neo4j-aura]
     end
-    
+
     subgraph "Monitoring"
         CW[CloudWatch Logs]
         CM[CloudWatch Metrics]
     end
-    
+
     subgraph "External Services"
         NEO4J[Neo4j Aura]
         SBIR[SBIR.gov]
     end
-    
+
     IAM3 -->|Assume Role| SF
     IAM2 -->|Invoke| L1
     IAM1 -->|Execute| L1
     IAM1 -->|Read/Write| S3
     IAM1 -->|Read| SM
-    
+
     SF -->|Orchestrates| L1
     L1 -->|Uses| LC
     L1 -->|Uses| ECR
-    
+
     L1 -->|Read/Write| S3
     L1 -->|Read| SM
     L1 -->|Logs| CW
     L1 -->|Metrics| CM
-    
+
     SM -->|Credentials| NEO4J
     L1 -->|Connect| NEO4J
     L1 -->|Download| SBIR
-    
+
     SF -->|Logs| CW
     SF -->|Metrics| CM
-    
+
     style IAM1 fill:#ff9900
     style IAM2 fill:#ff9900
     style IAM3 fill:#ff9900
@@ -251,7 +251,7 @@ graph TB
         FUNC1[Function Code<br/>validate-dataset<br/>profile-inputs<br/>smoke-checks]
         FUNC1 -->|Uses| LAYER
     end
-    
+
     subgraph "Packaging Option B: Container Images"
         ECR[ECR Repository<br/>sbir-analytics-lambda]
         CONTAINER[Docker Image<br/>Python 3.11<br/>+ Dependencies<br/>+ Dagster]
@@ -259,15 +259,14 @@ graph TB
         CONTAINER -->|Contains| FUNC2
         FUNC2 -->|Deployed as| ECR
     end
-    
+
     subgraph "Packaging Option C: Hybrid"
         HYBRID[Combination<br/>Layers for simple<br/>Containers for Dagster]
         HYBRID --> LAYER
         HYBRID --> CONTAINER
     end
-    
+
     style LAYER fill:#569a31
     style CONTAINER fill:#008cc1
     style HYBRID fill:#ff9900
 ```
-

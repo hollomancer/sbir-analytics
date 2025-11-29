@@ -27,12 +27,12 @@ runs:
         else
           touch .env
         fi
-        
+
         # Inject Neo4j credentials if provided
         if [ -n "${{ inputs.neo4j-user }}" ]; then
           sed -i "s|NEO4J_USER=.*|NEO4J_USER=${{ inputs.neo4j-user }}|" .env || echo "NEO4J_USER=${{ inputs.neo4j-user }}" >> .env
         fi
-        
+
         if [ -n "${{ inputs.neo4j-password }}" ]; then
           sed -i "s|NEO4J_PASSWORD=.*|NEO4J_PASSWORD=${{ inputs.neo4j-password }}|" .env || echo "NEO4J_PASSWORD=${{ inputs.neo4j-password }}" >> .env
           # Optionally set NEO4J_AUTH
@@ -40,7 +40,6 @@ runs:
             sed -i "s|NEO4J_AUTH=.*|NEO4J_AUTH=${{ inputs.neo4j-user }}/${{ inputs.neo4j-password }}|" .env || echo "NEO4J_AUTH=${{ inputs.neo4j-user }}/${{ inputs.neo4j-password }}" >> .env
           fi
         fi
-        
+
         echo ".env file prepared"
       shell: bash
-

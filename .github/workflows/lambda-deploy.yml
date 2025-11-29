@@ -92,17 +92,17 @@ jobs:
           LAYER_DIR="lambda/layers/python-dependencies"
           OUTPUT_DIR="/tmp/lambda-layer"
           PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
-          
+
           # Create output directory structure
           mkdir -p "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
-          
+
           # Install dependencies to the layer directory
           pip install -r "${LAYER_DIR}/requirements.txt" -t "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
-          
+
           # Create zip file
           cd "${OUTPUT_DIR}"
           zip -r /tmp/python-dependencies-layer.zip python/
-          
+
           echo "Layer built: /tmp/python-dependencies-layer.zip"
           ls -lh /tmp/python-dependencies-layer.zip
 
@@ -116,10 +116,10 @@ jobs:
             --compatible-runtimes "python${{ env.PYTHON_VERSION }}" \
             --query '[LayerVersionArn, Version]' \
             --output text)
-          
+
           LAYER_ARN=$(echo $RESPONSE | awk '{print $1}')
           LAYER_VERSION=$(echo $RESPONSE | awk '{print $2}')
-          
+
           echo "layer-arn=${LAYER_ARN}" >> $GITHUB_OUTPUT
           echo "layer-version=${LAYER_VERSION}" >> $GITHUB_OUTPUT
           echo "Published layer: ${LAYER_ARN} (version ${LAYER_VERSION})"
@@ -224,4 +224,3 @@ jobs:
           echo ""
           echo "View Lambda functions in AWS Console:"
           echo "https://console.aws.amazon.com/lambda/home?region=${{ env.AWS_REGION }}#/functions"
-

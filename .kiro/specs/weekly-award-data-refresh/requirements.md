@@ -52,4 +52,3 @@ Acceptance:
 - Alerts rely on the default workflow failure notifications plus optional Slack/webhook integration stub
 - Manual dispatch exposes inputs `force_refresh` (bool) and `source_url` (string, default canonical)
 - Forced refresh bypasses hash comparison but still records the delta metadata
-

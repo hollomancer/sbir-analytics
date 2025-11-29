@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from neo4j import Driver
+from neo4j import Driver  # type: ignore[attr-defined]
 
 
 class Migration(ABC):

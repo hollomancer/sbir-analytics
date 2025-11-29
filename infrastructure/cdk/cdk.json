@@ -44,4 +44,3 @@
     "lambda_layer_arn": "arn:aws:lambda:us-east-2:658445659195:layer:sbir-analytics-python-dependencies:1"
   }
 }
-

@@ -266,7 +266,9 @@ class TestNeo4jClientBatchOperations:
         # Mock session.run() to return result with created_count and updated_count
         mock_result = MagicMock()
         mock_record = MagicMock()
-        mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 0}[key]
+        mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 0}[
+            key
+        ]
         mock_result.single.return_value = mock_record
         mock_session.run.return_value = mock_result
 
@@ -300,7 +302,7 @@ class TestNeo4jClientBatchOperations:
             batch_size = len(kwargs.get("batch", []))
             mock_record.__getitem__.side_effect = lambda key: {
                 "created_count": batch_size,
-                "updated_count": 0
+                "updated_count": 0,
             }[key]
             mock_result.single.return_value = mock_record
             return mock_result
@@ -316,9 +318,7 @@ class TestNeo4jClientBatchOperations:
         assert mock_tx.commit.call_count == 3  # 3 batches
 
     @patch.object(Neo4jClient, "session")
-    def test_batch_upsert_tracks_creates_and_updates(
-        self, mock_session_cm, neo4j_config
-    ):
+    def test_batch_upsert_tracks_creates_and_updates(self, mock_session_cm, neo4j_config):
         """Test batch upsert correctly tracks creates vs updates."""
         mock_session = MagicMock()
         mock_tx = MagicMock()
@@ -328,10 +328,9 @@ class TestNeo4jClientBatchOperations:
         # Mock session.run() to return 2 created, 1 updated
         mock_result = MagicMock()
         mock_record = MagicMock()
-        mock_record.__getitem__.side_effect = lambda key: {
-            "created_count": 2,
-            "updated_count": 1
-        }[key]
+        mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 1}[
+            key
+        ]
         mock_result.single.return_value = mock_record
         mock_session.run.return_value = mock_result
 
@@ -364,9 +363,7 @@ class TestNeo4jClientBatchOperations:
         assert metrics.errors == 1  # One node had missing key
 
     @patch.object(Neo4jClient, "session")
-    def test_batch_upsert_handles_transaction_error(
-        self, mock_session_cm, neo4j_config
-    ):
+    def test_batch_upsert_handles_transaction_error(self, mock_session_cm, neo4j_config):
         """Test batch upsert handles transaction errors gracefully."""
         mock_session = MagicMock()
         mock_tx = MagicMock()
@@ -492,9 +489,7 @@ class TestNeo4jClientBatchRelationships:
         assert metrics.relationships_created["HAS_AWARD"] == 2
 
     @patch.object(Neo4jClient, "session")
-    def test_batch_create_relationships_with_failures(
-        self, mock_session_cm, neo4j_config
-    ):
+    def test_batch_create_relationships_with_failures(self, mock_session_cm, neo4j_config):
         """Test batch relationship creation with some failures."""
         mock_session = MagicMock()
         mock_tx = MagicMock()

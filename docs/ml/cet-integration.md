@@ -188,7 +188,7 @@ cet_areas:
       - ...
     parent_cet_id: null
     taxonomy_version: "NSTC-2025Q1"
-  
+
   - cet_id: quantum_computing
     name: "Quantum Computing"
     # ... similar structure
@@ -204,11 +204,11 @@ cet:
     high_confidence_threshold: 0.70    # Score ≥ 70 = HIGH
     medium_confidence_threshold: 0.40  # Score 40-69 = MEDIUM
     # Rest (<40) = LOW
-    
+
     quality_gates:
       min_high_conf_rate: 0.60         # At least 60% of awards HIGH confidence
       min_evidence_coverage: 0.80      # At least 80% have evidence statements
-      
+
     model_path: "models/cet_classifier.pkl"  # Where to load/save model
 ```
 
@@ -319,7 +319,7 @@ class HierarchicalCETClassifier:
     def __init__(self):
         self.tier1_model = ...  # Predict broad category first
         self.tier2_models = {}  # Separate model per parent
-    
+
     def predict(self, text):
         parent = self.tier1_model.predict(text)
         child_probs = self.tier2_models[parent].predict(text)
@@ -343,7 +343,7 @@ class MultiModalCETClassifier:
         self.text_model = TfidfVectorizer(...)
         self.structured_encoder = StructuredFeatureEncoder(...)
         self.fusion_model = LogisticRegression()
-    
+
     def predict(self, text_features, structured_features):
         text_emb = self.text_model.transform(text_features)
         struct_emb = self.structured_encoder.encode(structured_features)
@@ -369,13 +369,13 @@ class MultiModalCETClassifier:
 def retrained_cet_classifier(new_labels, baseline_model):
     # Load baseline
     model = pickle.load(baseline_model)
-    
+
     # Incrementally train on new data
     model.fit(new_labels['abstract'], new_labels['cet_labels'], partial=True)
-    
+
     # Evaluate against test set
     perf = evaluate_classifier(model, test_set)
-    
+
     # Only persist if ≥1% improvement
     if perf['f1'] > baseline_perf['f1'] * 1.01:
         save_classifier(model, 'models/cet_classifier.pkl')
@@ -393,14 +393,14 @@ class UncertainCETClassifier:
     def predict_with_uncertainty(self, text):
         # Get probability distribution
         probs = self.model.predict_proba(text)
-        
+
         # Compute entropy (uncertainty measure)
         entropy = -np.sum(probs * np.log(probs + 1e-10), axis=1)
-        
+
         # Compute margin (distance between top 2 predictions)
         sorted_probs = np.sort(probs, axis=1)
         margin = sorted_probs[:, -1] - sorted_probs[:, -2]
-        
+
         return {
             'predictions': probs,
             'entropy': entropy,      # High = uncertain
@@ -420,18 +420,18 @@ def cet_active_learning_candidates(
     num_candidates=1000
 ):
     """Identify N awards most beneficial to label for model improvement"""
-    
+
     candidates = []
-    
+
     # Strategy 1: Uncertainty sampling
     uncertain = df[df['entropy'] > entropy_threshold].head(300)
-    
-    # Strategy 2: Disagreement sampling  
+
+    # Strategy 2: Disagreement sampling
     disagreed = df[df['margin'] < margin_threshold].head(300)
-    
+
     # Strategy 3: Out-of-distribution detection
     outliers = detect_outliers(df['embeddings']).head(400)
-    
+
     return pd.concat([uncertain, disagreed, outliers]).drop_duplicates()
 ```
 
@@ -520,7 +520,7 @@ class CustomCETClassifier:
         """Train on texts and labels"""
         # Your training logic
         pass
-    
+
     def predict_proba(self, texts: List[str]) -> Dict[str, float]:
         """Return {cet_id: score} for each text"""
         # Your prediction logic
@@ -646,4 +646,3 @@ uv run dagster dev
 - **Taxonomy**: `config/cet/taxonomy.yaml`
 - **Documentation**: [`docs/ml/cet-classifier.md`](cet-classifier.md), [`docs/ml/cet-award-training-data.md`](cet-award-training-data.md)
 - **Tests**: `tests/unit/test_cet_*.py`, `tests/integration/test_cet_*.py`
-

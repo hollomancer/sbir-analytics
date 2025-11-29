@@ -10,7 +10,7 @@ The following has been configured:
 - **Location**: `.venv/` (Python 3.11.13)
 - **Setup**: Run via `uv sync --all-extras`
 - **Status**: ✓ All dependencies installed (205 packages)
-- **Dev Tools**: black, ruff, mypy, pytest, bandit
+- **Dev Tools**: ruff, mypy, pytest, bandit
 
 ### 2. Pre-commit Hooks
 - **Status**: ✓ Installed at `.git/hooks/pre-commit`
@@ -18,8 +18,7 @@ The following has been configured:
 - **Manual Run**: `pre-commit run --all-files`
 
 #### Hooks Configured:
-- **black**: Code formatting (line length 100, Python 3.11)
-- **ruff**: Linting and import sorting (with auto-fix)
+- **ruff**: Linting, import sorting, and code formatting (with auto-fix)
 - **mypy**: Type checking (standard mode)
 - **bandit**: Security scanning
 - **detect-secrets**: Secret detection with baseline
@@ -30,14 +29,14 @@ The following has been configured:
 #### `.zed/settings.json`
 Main Zed editor settings:
 - Python venv path: `.venv/bin/python`
-- Formatter: Black
+- Formatter: Ruff
 - Format on save: Enabled
 - LSP: Pyright with type checking in standard mode
 
 #### `.zed/workspace.json`
 Workspace-specific settings:
 - Python linter: Ruff
-- Python formatter: Black
+- Python formatter: Ruff
 - Tab size: 4 spaces
 - Indent guides: Enabled
 - Hot reload: Enabled
@@ -58,7 +57,7 @@ pre-commit install
    zed .
    ```
 
-2. **Code formatting** (automatic on save, or manual):
+2. **Code formatting** (automatic on save with Ruff, or manual):
    ```bash
    Cmd+Shift+I  # Format current file
    ```
@@ -111,8 +110,8 @@ pre-commit autoupdate
 
 ### Code Quality
 ```bash
-# Format code
-uv run black .
+# Format code with Ruff
+uv run ruff format .
 
 # Lint with auto-fix
 uv run ruff check . --fix
@@ -220,6 +219,14 @@ This is normal on first run. Subsequent runs cache dependencies.
 3. ✓ Verify Python environment is recognized (look for Python version in status bar)
 4. ✓ Create a test branch and make a small change to verify pre-commit hooks run
 5. ✓ Review `.kiro/specs/` and `CONTRIBUTING.md` for additional guidance
+
+## Code Formatting & Linting
+
+**Note**: This project uses **Ruff only** (no Black). Ruff handles both linting and formatting, ensuring consistent behavior between local development and CI.
+
+- **CI checks**: Static analysis uses Ruff (see `.github/workflows/static-analysis.yml`)
+- **Local pre-commit**: Uses Ruff for both linting and formatting
+- **Zed editor**: Format on save uses Ruff
 
 ## References
 

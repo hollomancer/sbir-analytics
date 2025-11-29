@@ -36,4 +36,3 @@ ENV PYTHONPATH=${LAMBDA_TASK_ROOT}
 
 # Set Lambda handler
 CMD ["src.lambda.weekly_refresh_handler.lambda_handler"]
-

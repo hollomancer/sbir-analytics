@@ -33,7 +33,7 @@ runs:
         TIMEOUT=${{ inputs.timeout }}
         INTERVAL=${{ inputs.check-interval }}
         ELAPSED=0
-        
+
         if [ "$METHOD" = "tcp" ]; then
           PORT="${{ inputs.port }}"
           echo "Waiting for Neo4j to be ready on TCP port ${PORT}..."
@@ -41,7 +41,7 @@ runs:
           if ! command -v nc >/dev/null 2>&1; then
             sudo apt-get update && sudo apt-get install -y --no-install-recommends netcat-openbsd
           fi
-          
+
           until nc -z localhost ${PORT} || [ $ELAPSED -ge $TIMEOUT ]; do
             echo "Waiting for Neo4j on ${PORT}... (${ELAPSED}/${TIMEOUT}s elapsed)"
             sleep $INTERVAL
@@ -50,19 +50,18 @@ runs:
         else
           URI="${{ inputs.uri }}"
           echo "Waiting for Neo4j to be ready at ${URI}..."
-          
+
           until curl -s -f -o /dev/null "${URI}" || [ $ELAPSED -ge $TIMEOUT ]; do
             echo "Neo4j not ready, sleeping for ${INTERVAL}s... (${ELAPSED}/${TIMEOUT}s elapsed)"
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
         fi
-        
+
         if [ $ELAPSED -ge $TIMEOUT ]; then
           echo "❌ Neo4j did not become ready within ${TIMEOUT}s"
           exit 1
         fi
-        
+
         echo "✅ Neo4j is ready!"
       shell: bash
-

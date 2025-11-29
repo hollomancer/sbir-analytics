@@ -20,4 +20,3 @@
   - [ ] 4.1 Document the workflow usage and manual override instructions in `docs/data/awards-refresh.md`
   - [ ] 4.2 Update `README.md` (or relevant data sourcing doc) to mention the automation
   - [ ] 4.3 Note validation + artifact expectations for on-call rotation
-

@@ -46,6 +46,7 @@ class ConfigAccessor:
                 new_current = getattr(current, part)
                 # For MagicMock at the final step, check if attribute was actually set
                 from unittest.mock import MagicMock
+
                 if isinstance(new_current, MagicMock) and i == len(parts) - 1:
                     # Check if this mock has any configured behavior
                     # If _mock_name is None or empty, it's likely auto-created
@@ -54,7 +55,9 @@ class ConfigAccessor:
                         # This is a heuristic: if both return MagicMock, the original was auto-created
                         try:
                             test_attr = getattr(current, f"__nonexistent_{id(current)}__", None)
-                            if isinstance(test_attr, MagicMock) and isinstance(new_current, MagicMock):
+                            if isinstance(test_attr, MagicMock) and isinstance(
+                                new_current, MagicMock
+                            ):
                                 # Both are auto-created, return default
                                 return default
                         except Exception:

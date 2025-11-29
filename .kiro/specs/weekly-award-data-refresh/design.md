@@ -100,4 +100,3 @@ Use auto-labels `data`, `automation`, and request review from `@sbir-etl/data-st
 - Introduce virus scan or schema diff before commit if upstream format changes.
 - Instead of storing raw CSV in git, move to Git LFS or release assets once existing downstream dependencies are decoupled.
 - Trigger downstream Dagster asset materialization or DuckDB refresh once PR merges (separate workflow).
-

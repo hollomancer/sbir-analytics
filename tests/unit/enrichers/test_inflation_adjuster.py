@@ -57,7 +57,9 @@ def mock_config():
         if isinstance(existing_value, dict):
             # Convert dict to MagicMock
             thresholds = MagicMock()
-            thresholds.inflation_adjustment_success = existing_value.get("inflation_adjustment_success", 0.95)
+            thresholds.inflation_adjustment_success = existing_value.get(
+                "inflation_adjustment_success", 0.95
+            )
             config.fiscal_analysis.quality_thresholds = thresholds
         elif not isinstance(existing_value, MagicMock):
             # If it's something else, create a new MagicMock

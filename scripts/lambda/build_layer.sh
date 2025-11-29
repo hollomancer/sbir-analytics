@@ -35,4 +35,3 @@ echo "aws lambda publish-layer-version \\"
 echo "  --layer-name sbir-analytics-python-dependencies \\"
 echo "  --zip-file fileb:///tmp/python-dependencies-layer.zip \\"
 echo "  --compatible-runtimes python${PYTHON_VERSION}"
-

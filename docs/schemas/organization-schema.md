@@ -310,5 +310,3 @@ LIMIT 10
 - Legacy properties (`company_id`, `entity_id`) preserved on Organization nodes
 - Old node types (Company, PatentEntity, ResearchInstitution) remain in database until explicitly removed
 - Queries can filter by `organization_type` to maintain type-specific behavior
-
-

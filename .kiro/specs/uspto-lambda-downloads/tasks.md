@@ -136,4 +136,3 @@ aws lambda invoke \
 - [ ] CloudWatch Logs show successful executions
 - [ ] Configuration documented in `config/base.yaml`
 - [ ] Specification documents complete
-

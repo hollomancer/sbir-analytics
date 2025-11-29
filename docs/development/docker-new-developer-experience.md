@@ -441,4 +441,3 @@ After implementing improvements, we should measure:
 - [ ] Improve error messages in entrypoint.sh
 - [ ] Add progress indicators to Dockerfile (R packages)
 - [ ] Test full setup flow as new developer
-

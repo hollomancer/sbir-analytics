@@ -160,4 +160,3 @@ This categorization system is part of a larger SBIR analytics platform that:
 5. Provides insights about SBIR companies, their capabilities, and program outcomes
 
 The company categorization adds an important dimension to understanding SBIR companies beyond just their SBIR awards, helping stakeholders make more informed decisions about the program and its participants.
-

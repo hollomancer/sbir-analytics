@@ -273,22 +273,22 @@ class Award(BaseModel):
     company_uei: str | None     # Unique Entity Identifier
     company_duns: str | None
     company_cage: str | None
-    
+
     # Award details
     award_amount: float
     award_date: date
     phase: str | None           # Phase I, II, III
     agency: str | None          # Federal agency
     program: str                # SBIR or STTR
-    
+
     # Contact/personnel
     principal_investigator: str | None
     contact_name: str | None
-    
+
     # Enrichment fields
     usaspending_id: str | None
     fiscal_year: int | None
-    
+
     # Validators: awards must have positive amount, valid dates, etc.
 ```
 
@@ -386,7 +386,7 @@ cet_taxonomy = load_cet_taxonomy()  # From config/cet/taxonomy.yaml
 # 2. TF-IDF Feature Extraction (with keyword boosting)
 class CETAwareTfidfVectorizer(TfidfVectorizer):
     """TF-IDF with CET-keyword boosting (2x multiplier)"""
-    
+
     def _apply_keyword_boost(self, X):
         X_boosted = X.copy()
         X_boosted[:, keyword_indices] *= self.keyword_boost_factor
@@ -427,7 +427,7 @@ def detect_transition(award: Award, contracts: List[Contract]) -> TransitionResu
         'patent_signal': compute_patent_signal(award, contracts, patents),
         'cet_alignment': compute_cet_alignment_signal(award, contracts)
     }
-    
+
     # Weighted composite score
     likelihood_score = (
         0.25 * signals['agency_continuity'] +
@@ -437,14 +437,14 @@ def detect_transition(award: Award, contracts: List[Contract]) -> TransitionResu
         0.10 * signals['cet_alignment'] +
         0.10 * signals['vendor_match']
     )
-    
+
     # Confidence classification
     confidence = (
         'HIGH'     if likelihood_score >= 0.85 else
         'LIKELY'   if likelihood_score >= 0.65 else
         'POSSIBLE'
     )
-    
+
     return TransitionResult(
         award_id=award.award_id,
         contract_id=matched_contract.id,
@@ -1079,11 +1079,11 @@ class CETClassifier(Protocol):
     def fit(self, X: List[str], y: List[dict]) -> None:
         """Train on award abstracts + labels"""
         pass
-    
+
     def predict_proba(self, X: List[str]) -> Dict[str, float]:
         """Return {cet_id: score} for each document"""
         pass
-    
+
     def get_evidence(self, X: str, cet_id: str) -> List[str]:
         """Extract supporting evidence snippets"""
         pass

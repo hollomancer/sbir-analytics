@@ -78,4 +78,3 @@ global-exclude *.code-workspace
 global-exclude .DS_Store
 global-exclude Thumbs.db
 global-exclude desktop.ini
-

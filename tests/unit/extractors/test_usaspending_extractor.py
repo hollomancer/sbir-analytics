@@ -142,6 +142,7 @@ class TestEscapeFunctions:
     def test_escape_identifier_fallback(self):
         """Test escape_identifier fallback when DuckDB function unavailable."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then patch it to raise AttributeError
         original = getattr(usaspending_module.duckdb, "escape_identifier", None)
         try:
@@ -157,6 +158,7 @@ class TestEscapeFunctions:
     def test_escape_identifier_with_quotes(self):
         """Test escape_identifier with embedded quotes."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_identifier", None)
         try:
@@ -184,6 +186,7 @@ class TestEscapeFunctions:
     def test_escape_literal_fallback(self):
         """Test escape_literal fallback when DuckDB function unavailable."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
         try:
@@ -199,6 +202,7 @@ class TestEscapeFunctions:
     def test_escape_literal_with_quotes(self):
         """Test escape_literal with embedded quotes."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
         try:
@@ -216,6 +220,7 @@ class TestEscapeFunctions:
     def test_escape_literal_with_backslashes(self):
         """Test escape_literal with backslashes."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
         try:
@@ -579,6 +584,7 @@ class TestEdgeCases:
     def test_escape_identifier_empty_string(self):
         """Test escape_identifier with empty string."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_identifier", None)
         try:
@@ -594,6 +600,7 @@ class TestEdgeCases:
     def test_escape_literal_empty_string(self):
         """Test escape_literal with empty string."""
         import src.extractors.usaspending as usaspending_module
+
         # Remove the attribute if it exists, then test fallback
         original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
         try:

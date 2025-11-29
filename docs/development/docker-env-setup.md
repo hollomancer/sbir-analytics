@@ -349,4 +349,3 @@ See `.env.example` for the complete list of available variables with description
 ---
 
 **Need help?** Check the [Troubleshooting Guide](docker-troubleshooting.md) or see [Configuration Guide](../../config/README.md) for detailed variable documentation.
-

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase  # type: ignore[attr-defined]
 from rich.console import Console
 
 from src.config.schemas import PipelineConfig

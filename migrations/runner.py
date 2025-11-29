@@ -4,7 +4,7 @@ import importlib
 from typing import Any
 
 from loguru import logger
-from neo4j import Driver
+from neo4j import Driver  # type: ignore[attr-defined]
 
 from migrations.base import Migration
 from migrations.config import MIGRATIONS_DIR, TRACKING_ID, TRACKING_LABEL
@@ -84,7 +84,7 @@ class MigrationRunner:
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
                     if isinstance(attr, type) and issubclass(attr, Migration) and attr != Migration:
-                        migrations.append(attr())
+                        migrations.append(attr())  # type: ignore[call-arg]
             except Exception as e:
                 logger.warning(f"Failed to load migration from {file_path}: {e}")
 

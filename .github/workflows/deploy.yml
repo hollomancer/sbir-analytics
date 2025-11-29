@@ -58,31 +58,31 @@ jobs:
         run: |
           echo "Disk space before cleanup:"
           df -h
-          
+
           # Remove unnecessary packages and tools
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          
+
           # Clean apt cache
           sudo apt-get clean
           sudo rm -rf /var/lib/apt/lists/*
-          
+
           # Clean pip cache
           pip cache purge || true
-          
+
           # Clean node modules cache
           npm cache clean --force || true
-          
+
           # Clean Docker if present
           sudo docker system prune -af --volumes || true
-          
+
           # Clean PEX cache (this is critical for PEX builds)
           rm -rf ~/.cache/pex || true
           rm -rf /home/runner/.cache/pex || true
-          
+
           # Clean Python virtual environments and caches
           find ~/.cache -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
           find ~/.cache -type d -name "*.pyc" -exec rm -rf {} + 2>/dev/null || true
@@ -91,23 +91,23 @@ jobs:
           find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
           find . -name "*.pyc" -delete 2>/dev/null || true
           find . -name "*.pyo" -delete 2>/dev/null || true
-          
+
           # Clean up any existing build artifacts
           rm -rf "$GITHUB_WORKSPACE/build" || true
           rm -rf "$GITHUB_WORKSPACE/project-repo/build" || true
           rm -rf "$GITHUB_WORKSPACE/project-repo/dist" || true
           rm -rf "$GITHUB_WORKSPACE/project-repo/*.egg-info" || true
-          
+
           # Clean up large log files if any
           find . -name "*.log" -size +10M -delete 2>/dev/null || true
-          
+
           echo "Disk space after cleanup:"
           df -h
-          
+
           # Show available disk space
           AVAILABLE=$(df -BG "$GITHUB_WORKSPACE" | tail -1 | awk '{print $4}' | sed 's/G//')
           echo "Available disk space: ${AVAILABLE}GB"
-          
+
           # Warn if less than 2GB available
           if [ "$AVAILABLE" -lt 2 ]; then
             echo "::warning::Low disk space (${AVAILABLE}GB available). PEX build may fail."

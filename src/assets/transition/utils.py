@@ -162,7 +162,7 @@ def _env_bool(key: str, default: bool) -> bool:
 
 # Neo4j imports (import-safe)
 try:
-    from neo4j import Driver
+    from neo4j import Driver  # type: ignore[attr-defined]
 
     from src.loaders.neo4j import Neo4jClient, Neo4jConfig
 except Exception:
@@ -192,7 +192,7 @@ def _get_neo4j_driver() -> Any:
         return None
 
     try:
-        from neo4j import GraphDatabase
+        from neo4j import GraphDatabase  # type: ignore[attr-defined]
 
         driver = GraphDatabase.driver(
             DEFAULT_NEO4J_URI,

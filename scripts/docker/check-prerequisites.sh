@@ -103,7 +103,7 @@ if command -v df >/dev/null 2>&1; then
     # Linux
     available=$(df -BG . | tail -1 | awk '{print $4}' | sed 's/G//')
   fi
-  
+
   if [ "$available" -lt 5 ]; then
     warn "Low disk space: ${available}GB available (recommend 5GB+)"
     echo "    Docker image + data requires ~5GB"
@@ -132,4 +132,3 @@ else
   echo "You're ready to run: make docker-build"
   exit 0
 fi
-

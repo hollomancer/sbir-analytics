@@ -140,13 +140,16 @@ class CheckpointStore:
         checkpoint_dict = row.to_dict()
         # Convert datetime objects to ISO strings for from_dict
         import json
+
         for col in ["last_success_timestamp", "checkpoint_timestamp"]:
             if col in checkpoint_dict and isinstance(checkpoint_dict[col], datetime):
                 checkpoint_dict[col] = checkpoint_dict[col].isoformat()
         # Ensure metadata is handled correctly (it's stored as JSON string)
         if "metadata" in checkpoint_dict:
             if isinstance(checkpoint_dict["metadata"], dict):
-                checkpoint_dict["metadata"] = json.dumps(checkpoint_dict["metadata"]) if checkpoint_dict["metadata"] else "{}"
+                checkpoint_dict["metadata"] = (
+                    json.dumps(checkpoint_dict["metadata"]) if checkpoint_dict["metadata"] else "{}"
+                )
             elif isinstance(checkpoint_dict["metadata"], str):
                 # Already a string, keep as is
                 pass

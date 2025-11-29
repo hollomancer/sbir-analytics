@@ -228,14 +228,18 @@ class TestTransitionSignals:
         with pytest.raises(ValidationError) as exc_info:
             TransitionSignals(text_similarity_score=-0.1)
         # Pydantic's ge constraint is checked first, so the error message is from Pydantic
-        assert "greater than or equal to 0" in str(exc_info.value) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "greater than or equal to 0" in str(
+            exc_info.value
+        ) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
 
     def test_text_similarity_score_validator_rejects_too_high(self):
         """Test text_similarity_score validator rejects > 1.0."""
         with pytest.raises(ValidationError) as exc_info:
             TransitionSignals(text_similarity_score=1.5)
         # Pydantic Field validation (ge/le) runs before custom validator, so check for Pydantic error
-        assert "less than or equal to 1" in str(exc_info.value) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
+        assert "less than or equal to 1" in str(
+            exc_info.value
+        ) or "text_similarity_score must be between 0.0 and 1.0" in str(exc_info.value)
 
     def test_text_similarity_score_validator_coerces_int(self):
         """Test text_similarity_score validator coerces int to float."""

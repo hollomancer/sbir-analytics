@@ -76,7 +76,6 @@ class TestNeo4jPatentCETLoaderInitialization:
 
         assert loader._batch_size == 500
 
-
     def test_initialization_with_zero_batch_size(self):
         """Test initialization with zero batch size defaults to 1000."""
         mock_client, _ = _create_mock_client()

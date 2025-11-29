@@ -199,4 +199,3 @@ pytest -m integration
 - New utilities are optional - can be adopted gradually
 - Pytest automatically discovers conftest.py files in subdirectories
 - Markers are registered but not enforced (tests can still run without markers)
-

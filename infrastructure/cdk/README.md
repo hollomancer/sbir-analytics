@@ -118,4 +118,3 @@ cdk destroy --all
 ```
 
 **Warning**: This will delete all resources. S3 bucket has `RemovalPolicy.RETAIN` to prevent data loss.
-

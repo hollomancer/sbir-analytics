@@ -4,7 +4,6 @@
     "virtual_environment": ".venv"
   },
   "format_on_save": true,
-  "formatter": "black",
   "tab_size": 4,
   "hard_tabs": false,
   "lsp": {
@@ -18,7 +17,6 @@
   "languages": {
     "Python": {
       "format_on_save": true,
-      "formatter": "black",
       "language_servers": ["pyright"]
     }
   }

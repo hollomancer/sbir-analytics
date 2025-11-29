@@ -288,4 +288,3 @@ RETURN award, t, contract
 - [Transition Graph Schema](./transition-graph-schema.md)
 - [Organization Schema](./organization-schema.md)
 - [Architecture Overview](../architecture/detailed-overview.md) - For migration context
-

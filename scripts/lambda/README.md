@@ -104,4 +104,3 @@ aws lambda update-function-code \
 ```
 
 **Note:** This only updates the function code, not dependencies. For dependency changes, use CDK deployment.
-

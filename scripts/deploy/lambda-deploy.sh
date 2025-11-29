@@ -33,22 +33,22 @@ log_error() {
 # Check prerequisites
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     if ! command -v aws &> /dev/null; then
         log_error "AWS CLI not found. Please install it first."
         exit 1
     fi
-    
+
     if ! command -v docker &> /dev/null; then
         log_error "Docker not found. Please install it first."
         exit 1
     fi
-    
+
     if ! aws sts get-caller-identity &> /dev/null; then
         log_error "AWS credentials not configured. Please run 'aws configure' first."
         exit 1
     fi
-    
+
     log_info "Prerequisites check passed"
 }
 
@@ -66,7 +66,7 @@ get_ecr_url() {
 # Create ECR repository if it doesn't exist
 ensure_ecr_repo() {
     log_info "Ensuring ECR repository exists..."
-    
+
     if aws ecr describe-repositories --repository-names "${ECR_REPO_NAME}" --region "${AWS_REGION}" &> /dev/null; then
         log_info "ECR repository already exists"
     else
@@ -91,16 +91,16 @@ ecr_login() {
 # Build Docker image
 build_image() {
     log_info "Building Lambda container image..."
-    
+
     local ecr_url=$(get_ecr_url)
     local image_uri="${ecr_url}:${IMAGE_TAG}"
-    
+
     cd "${PROJECT_ROOT}"
     docker build \
         -f docker/lambda/Dockerfile \
         -t "${image_uri}" \
         .
-    
+
     log_info "Image built: ${image_uri}"
     echo "${image_uri}"
 }
@@ -108,7 +108,7 @@ build_image() {
 # Push image to ECR
 push_image() {
     local image_uri="$1"
-    
+
     log_info "Pushing image to ECR..."
     docker push "${image_uri}"
     log_info "Image pushed successfully"
@@ -117,22 +117,22 @@ push_image() {
 # Update Lambda function
 update_lambda() {
     local image_uri="$1"
-    
+
     log_info "Updating Lambda function..."
-    
+
     aws lambda update-function-code \
         --function-name "${LAMBDA_FUNCTION_NAME}" \
         --image-uri "${image_uri}" \
         --region "${AWS_REGION}" \
         --output json > /tmp/lambda-update.json
-    
+
     log_info "Waiting for Lambda function update to complete..."
     aws lambda wait function-updated \
         --function-name "${LAMBDA_FUNCTION_NAME}" \
         --region "${AWS_REGION}"
-    
+
     log_info "Lambda function updated successfully"
-    
+
     # Display function info
     local function_arn=$(jq -r '.FunctionArn' /tmp/lambda-update.json)
     log_info "Lambda function ARN: ${function_arn}"
@@ -141,15 +141,15 @@ update_lambda() {
 # Main deployment flow
 main() {
     log_info "Starting Lambda deployment..."
-    
+
     check_prerequisites
     ensure_ecr_repo
     ecr_login
-    
+
     local image_uri=$(build_image)
     push_image "${image_uri}"
     update_lambda "${image_uri}"
-    
+
     log_info "Deployment completed successfully!"
     log_info "Lambda function: ${LAMBDA_FUNCTION_NAME}"
     log_info "Image URI: ${image_uri}"
@@ -157,4 +157,3 @@ main() {
 
 # Run main function
 main "$@"
-

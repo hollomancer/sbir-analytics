@@ -99,4 +99,3 @@ Migrations are tracked in Neo4j using a `__MigrationTracking` node that stores:
 
 - **Schema migrations**: Fully reversible via `downgrade()`
 - **Data migrations**: Not automatically reversible, but merge history is tracked in node properties (`__merged_from`, `__merge_history`)
-

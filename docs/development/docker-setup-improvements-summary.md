@@ -269,4 +269,3 @@ After implementation, new developers should be able to:
 - [Docker Quick Start](../development/docker-quickstart.md) - Step-by-step guide (to be created)
 - [Containerization Guide](../deployment/containerization.md) - Advanced usage
 - [Troubleshooting Guide](../development/docker-troubleshooting.md) - Common issues (to be created)
-

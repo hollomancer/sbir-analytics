@@ -64,8 +64,12 @@ print(f"   PSC: {contract3['psc']}")
 print(f"   Result: {result3.classification}")
 print(f"   Method: {result3.method}")
 # Note: R&D PSC codes are treated as Service for Fixed Price contracts
-assert result3.classification == "Service", "Expected Service classification (R&D PSC treated as Service for FFP)"
-assert result3.method == "fixed_price_rd_psc_as_service", "Expected fixed_price_rd_psc_as_service method"
+assert result3.classification == "Service", (
+    "Expected Service classification (R&D PSC treated as Service for FFP)"
+)
+assert result3.method == "fixed_price_rd_psc_as_service", (
+    "Expected fixed_price_rd_psc_as_service method"
+)
 print("   ✓ PASS")
 
 # Test 4: Contract Type Override - CPFF → Service

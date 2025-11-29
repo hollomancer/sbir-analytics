@@ -1,26 +1,23 @@
-"""Configuration loaders for CET taxonomy and hyperparameters."""
+"""Configuration loaders for CET taxonomy, hyperparameters, and PaECTER client."""
 
-# Import PaECTERClientConfig from parent ml.config.py module
-# Use a relative import that avoids the config package
-import importlib.util
-from pathlib import Path
+from pydantic import BaseModel, Field
 
 from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
 
 
-_parent_dir = Path(__file__).parent.parent
-_config_py = _parent_dir / "config.py"
-if _config_py.exists():
-    _spec = importlib.util.spec_from_file_location("_ml_config", _config_py)
-    if _spec is not None:  # type: ignore[misc]
-        _ml_config_module = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
-        if _spec.loader is not None:  # type: ignore[misc]
-            _spec.loader.exec_module(_ml_config_module)  # type: ignore[union-attr]
-    PaECTERClientConfig = _ml_config_module.PaECTERClientConfig
-    del _spec, _ml_config_module  # Clean up
-else:
-    # Fallback: raise error
-    raise ImportError(f"Could not find {_config_py} to import PaECTERClientConfig")
+class PaECTERClientConfig(BaseModel):
+    """Configuration for the PaECTERClient."""
+
+    model_name: str = Field("mpi-inno-comp/paecter", description="HuggingFace model identifier")
+    use_local: bool = Field(
+        False, description="If True, use local sentence-transformers. If False, use API."
+    )
+    hf_token: str | None = Field(
+        None, description="HuggingFace API token. If None, read from HF_TOKEN env var."
+    )
+    device: str | None = Field(None, description="Device for local inference ('cpu', 'cuda').")
+    cache_folder: str | None = Field(None, description="Cache folder for local model.")
+    enable_cache: bool = Field(True, description="Enable in-memory caching for embeddings.")
 
 
 __all__ = [

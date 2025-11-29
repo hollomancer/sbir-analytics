@@ -24,13 +24,15 @@ def test_asset_uses_fixture(tmp_path):
     shutil.copy(fixture, dest_dir / "naics_index.parquet")
 
     # prepare a small raw_awards DataFrame with required columns
-    raw_awards = pd.DataFrame([
-        {
-            "award_id": "A12345",
-            "recipient_uei": "R-UEI-001",
-            "fiscal_naics_code": "541330",  # Add required column
-        }
-    ])
+    raw_awards = pd.DataFrame(
+        [
+            {
+                "award_id": "A12345",
+                "recipient_uei": "R-UEI-001",
+                "fiscal_naics_code": "541330",  # Add required column
+            }
+        ]
+    )
 
     # Mock the context and call the asset
     mock_context = Mock(spec=AssetExecutionContext)
@@ -39,6 +41,7 @@ def test_asset_uses_fixture(tmp_path):
 
     with patch("src.assets.fiscal_assets.get_config") as mock_get_config:
         from tests.utils.config_mocks import create_mock_pipeline_config
+
         mock_config = create_mock_pipeline_config()
         mock_get_config.return_value = mock_config
 

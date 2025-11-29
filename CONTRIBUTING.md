@@ -52,8 +52,8 @@ Thank you for your interest in contributing to the SBIR ETL Pipeline project! Th
 
    ```bash
    uv run pytest
-   uv run black --check .
    uv run ruff check .
+   uv run ruff format --check .
    uv run mypy src/
    ```
 
@@ -81,7 +81,7 @@ See the [Testing Index](docs/testing/index.md) for the complete list of commands
 make check-all
 
 # Or run individually:
-uv run black .
+uv run ruff format .
 uv run ruff check . --fix
 uv run mypy src/
 uv run pytest -v --cov=src
@@ -101,20 +101,16 @@ Then create a pull request on the repository.
 
 ## Code Quality Standards
 
-### Code Formatting
+### Code Formatting and Linting
 
-- **Black**: Line length 100, Python 3.11 target
-
-  ```bash
-  black --line-length 100 .
-  ```
-
-### Linting
-
-- **Ruff**: Configured in `pyproject.toml`
+- **Ruff**: Handles both formatting and linting, configured in `pyproject.toml`
 
   ```bash
-  ruff check .
+  # Format code
+  ruff format .
+
+  # Check and fix issues
+  ruff check . --fix
   ```
 
   Key rules:
@@ -123,10 +119,12 @@ Then create a pull request on the repository.
   - Use type hints for all functions
   - No unused imports or variables
   - Consistent import ordering (isort)
+  - Line length: 100 characters
+  - Target version: Python 3.11
 
 ### Type Checking
 
-- **MyPy**: Strict type checking enabled
+- **MyPy**: Standard type checking with gradual typing support
 
   ```bash
   mypy src/
@@ -134,8 +132,8 @@ Then create a pull request on the repository.
 
   Requirements:
 
-  - All functions must have type hints
-  - No `Any` types without justification
+  - Functions should have type hints (gradual typing supported)
+  - Minimize `Any` types where possible
   - Handle Optional types explicitly
 
 ### Security

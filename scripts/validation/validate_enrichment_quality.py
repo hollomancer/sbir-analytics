@@ -521,7 +521,7 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
             {
         "".join(
             [
-                f'<tr><td>{method}</td><td>{data["count"]}</td><td>{data["percentage"]:.1f}%</td></tr>'
+                f"<tr><td>{method}</td><td>{data['count']}</td><td>{data['percentage']:.1f}%</td></tr>"
                 for method, data in report.get("by_match_method", {}).items()
             ]
         )
@@ -541,7 +541,7 @@ def generate_html_report(report: dict[str, Any], output_path: Path) -> None:
             {
         "".join(
             [
-                f'<tr><td>{itype}</td><td>{data["total"]}</td><td>{data["matched"]}</td>'
+                f"<tr><td>{itype}</td><td>{data['total']}</td><td>{data['matched']}</td>"
                 f'<td class="{("good" if data["match_rate"] >= 0.70 else "bad")}">{data["match_rate"]:.1%}</td></tr>'
                 for itype, data in report.get("by_identifier_type", {}).items()
             ]

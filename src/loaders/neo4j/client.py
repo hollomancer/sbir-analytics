@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from loguru import logger
-from neo4j import Driver, GraphDatabase, Session, Transaction
+from neo4j import Driver, GraphDatabase, Session, Transaction  # type: ignore[attr-defined]
 from pydantic import BaseModel, Field
 
 

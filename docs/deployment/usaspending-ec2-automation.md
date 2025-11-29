@@ -285,5 +285,3 @@ aws s3 head-object s3://sbir-etl-production-data/raw/usaspending/database/2025-1
 2. Add `EC2_INSTANCE_ID` to GitHub secrets
 3. Test with `test` database type first
 4. Schedule monthly runs or trigger manually as needed
-
-

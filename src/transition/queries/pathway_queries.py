@@ -12,7 +12,7 @@ Implements sophisticated queries to traverse transition detection pathways:
 from dataclasses import dataclass
 from typing import Any
 
-from neo4j import Driver
+from neo4j import Driver  # type: ignore[attr-defined]
 
 
 @dataclass

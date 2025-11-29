@@ -21,10 +21,10 @@
 **Files with custom normalization:**
 - `src/assets/sbir_neo4j_loading.py` - Has specialized `normalize_company_name()` with abbreviation mappings
   - **Recommendation:** Keep as-is (domain-specific, more complex than base utility)
-  
+
 - `src/transformers/patent_transformer.py` - Has `_normalize_name()` method (simple: strip, replace punctuation)
   - **Recommendation:** Could migrate to `normalize_name()` but current implementation is intentionally lightweight
-  
+
 - `src/transition/features/vendor_crosswalk.py` - Has `_normalize_name()` function (simple: strip, replace punctuation)
   - **Recommendation:** Could migrate to `normalize_name()` but current implementation is intentionally lightweight
 
@@ -37,10 +37,10 @@
 **Files with nested `.get()` chains:**
 - `src/assets/cet/classifications.py` - Accesses `classification_config` from TaxonomyLoader (not PipelineConfig)
   - **Recommendation:** Keep as-is (different config structure)
-  
+
 - `src/assets/uspto/validation.py` - Accesses validation result dictionaries
   - **Recommendation:** Keep as-is (result data, not config)
-  
+
 - `src/utils/statistical_reporter.py` - Accesses `self.config` dict and `ci_context` dict
   - **Recommendation:** Keep as-is (dict configs, not PipelineConfig)
 
@@ -83,4 +83,3 @@
 - Validation checks rather than discovery patterns
 
 **No additional cleanup is required for the optimizations to be effective.** The new utilities are ready for use and have been integrated into the key assets that needed them.
-

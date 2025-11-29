@@ -25,4 +25,3 @@ Status: <active|draft|deprecated|archived>
 
 - [Main README](/README.md)
 - [Documentation Index](index.md)
-

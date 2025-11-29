@@ -8,7 +8,7 @@
 
 **Consolidated Fixtures**:
 - `sample_impacts_df` - Economic impacts DataFrame
-- `sample_components_df` - Components DataFrame  
+- `sample_components_df` - Components DataFrame
 - `sample_tax_estimates_df` - Tax estimates DataFrame
 - `sample_scenario_results_df` - Scenario results DataFrame
 
@@ -18,7 +18,7 @@
 - `tests/unit/transformers/test_fiscal_roi_calculator.py` - Removed duplicate `sample_tax_estimates_df` fixture
 - `tests/unit/transformers/test_fiscal_uncertainty_quantifier.py` - Removed duplicate `sample_scenario_results_df` fixture
 
-**Impact**: 
+**Impact**:
 - Eliminated ~80 lines of duplicate fixture code
 - Centralized fiscal transformer test data
 - Easier to maintain and update test data
@@ -53,7 +53,7 @@
 - Some files (like `test_asset_column_helper.py`, `test_column_finder.py`) have simple DataFrames that are test-specific and should remain inline
 - Other files have more complex, reusable DataFrames that could benefit from fixture generators
 
-**Recommendation**: 
+**Recommendation**:
 - Focus on files with complex, repeated DataFrame structures
 - Create fixture generators for common patterns (awards, contracts, transitions)
 - Leave simple, test-specific DataFrames as-is
@@ -128,4 +128,3 @@
 - Tests continue to pass with new fixtures
 - Can continue incrementally - no need to update everything at once
 - Focus on high-impact changes first
-

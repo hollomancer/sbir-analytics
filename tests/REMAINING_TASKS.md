@@ -67,11 +67,11 @@ df = create_sample_sbir_data(num_awards=2)
   - `sample_components_df`
   - `sample_tax_estimates_df`
   - `sample_scenario_results_df`
-  
+
 - `tests/unit/models/conftest.py` - For shared model test fixtures
   - Common model instances
   - Validation test helpers
-  
+
 - `tests/unit/extractors/conftest.py` - Already exists, could expand
   - More extractor-specific fixtures
 
@@ -146,4 +146,3 @@ df = create_sample_sbir_data(num_awards=2)
 - Can be done incrementally - no need to update everything at once
 - Focus on high-impact files first (most duplication, most frequently used)
 - Test after each batch of changes to ensure nothing breaks
-

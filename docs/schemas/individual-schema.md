@@ -217,4 +217,3 @@ RETURN i.name, i.individual_type, i.source_contexts
 - Legacy properties (`researcher_id`, `entity_id`) preserved on Individual nodes
 - Old node types (Researcher, PatentEntity) remain in database until explicitly removed
 - Queries can filter by `individual_type` to maintain type-specific behavior
-

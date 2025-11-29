@@ -637,7 +637,9 @@ class StatisticalReporter:
         module_metrics_list = []
         for module_report in report.module_reports:
             start_time = datetime.now()
-            duration_seconds = getattr(module_report, "duration_seconds", None) or report.total_duration_seconds
+            duration_seconds = (
+                getattr(module_report, "duration_seconds", None) or report.total_duration_seconds
+            )
             end_time = start_time + timedelta(seconds=duration_seconds or 0)
 
             module_metrics = ModuleMetrics(
@@ -652,7 +654,10 @@ class StatisticalReporter:
                 records_processed=getattr(module_report, "records_processed", 0) or 0,
                 records_failed=getattr(module_report, "records_failed", 0) or 0,
                 success_rate=getattr(module_report, "success_rate", 0.0) or 0.0,
-                throughput_records_per_second=getattr(module_report, "throughput_records_per_second", 0.0) or 0.0,
+                throughput_records_per_second=getattr(
+                    module_report, "throughput_records_per_second", 0.0
+                )
+                or 0.0,
                 data_hygiene=getattr(module_report, "data_hygiene", None),
                 changes_summary=getattr(module_report, "changes_summary", None),
             )
@@ -664,13 +669,31 @@ class StatisticalReporter:
             else report.timestamp
         )
 
+        # Convert module metrics list to dict with module names as keys
+        module_metrics_dict = {m.module_name: m for m in module_metrics_list}
+
+        # Create a minimal PerformanceMetrics object from available data
+        performance_metrics = PerformanceMetrics(
+            start_time=report_timestamp,
+            end_time=report_timestamp,
+            duration=timedelta(seconds=report.total_duration_seconds),
+            records_per_second=(
+                report.total_records_processed / report.total_duration_seconds
+                if report.total_duration_seconds > 0
+                else 0
+            ),
+            peak_memory_mb=0.0,
+            average_memory_mb=0.0,
+        )
+
         return PipelineMetrics(
             run_id=report.run_id,
-            generated_at=report_timestamp,
-            total_records=report.total_records_processed,
-            total_duration=timedelta(seconds=report.total_duration_seconds),
+            timestamp=report_timestamp,
+            duration=timedelta(seconds=report.total_duration_seconds),
+            total_records_processed=report.total_records_processed,
             overall_success_rate=report.overall_success_rate,
-            module_metrics=module_metrics_list,
+            module_metrics=module_metrics_dict,
+            performance_metrics=performance_metrics,
         )
 
     def generate_json_report(self, report: StatisticalReport) -> Path:

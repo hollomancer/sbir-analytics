@@ -47,9 +47,6 @@ np = pytest.importorskip("numpy")
 # )
 
 
-
-
-
 def make_feature_vectors():  # type: ignore[no-untyped-def]
     records = [
         {

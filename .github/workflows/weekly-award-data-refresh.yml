@@ -52,13 +52,13 @@ jobs:
               source_url: (if $source_url == "" then null else $source_url end),
               s3_bucket: $s3_bucket
             }')
-          
+
           EXECUTION_ARN=$(aws stepfunctions start-execution \
             --state-machine-arn "${{ env.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
             --input "$INPUT_PAYLOAD" \
             --query 'executionArn' \
             --output text)
-          
+
           echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
           echo "Started Step Functions execution: $EXECUTION_ARN"
 

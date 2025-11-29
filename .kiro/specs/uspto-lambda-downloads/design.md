@@ -229,4 +229,3 @@ python -c "from lambda_handler import lambda_handler; print(lambda_handler({'s3_
 - Invoke manually via AWS CLI
 - Verify S3 uploads and metadata
 - Test GitHub Actions workflow via manual dispatch
-

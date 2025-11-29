@@ -226,7 +226,9 @@ class CETSignalExtractor:
                 # Base score from match count, plus density component
                 # This ensures dense descriptions score higher than sparse ones
                 base_score = min(0.7, match_count * 0.15)  # Up to 0.7 for match count
-                density_score = min(0.3, (match_count / max(1, word_count)) * 2.0)  # Up to 0.3 for density
+                density_score = min(
+                    0.3, (match_count / max(1, word_count)) * 2.0
+                )  # Up to 0.3 for density
                 score = min(1.0, base_score + density_score)
 
                 if score > best_score:
