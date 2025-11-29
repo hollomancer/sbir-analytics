@@ -120,12 +120,21 @@ jobs:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Start SBIR refresh Step Functions
-        id: sbir-stepfunctions
+      - name: Check existing SBIR files
+        id: check-existing
         run: |
           echo "## 🎯 SBIR Awards Refresh Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          echo "### 📂 Current S3 Files" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive --human-readable | tail -10 || echo "No existing files"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Start SBIR refresh Step Functions
+        id: sbir-stepfunctions
+        run: |
           INPUT_PAYLOAD=$(jq -n \
             --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
             --arg s3_bucket "${{ env.S3_BUCKET }}" \
@@ -162,7 +171,110 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **Monitor execution:** [AWS Console](https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> ℹ️ The Step Functions workflow will continue running asynchronously. Check the AWS Console link above to monitor progress." >> $GITHUB_STEP_SUMMARY
+
+      - name: Wait for Step Functions completion
+        id: wait-completion
+        run: |
+          EXECUTION_ARN="${{ steps.sbir-stepfunctions.outputs.execution_arn }}"
+          echo "⏳ Waiting for Step Functions execution to complete..."
+
+          MAX_WAIT=300  # 5 minutes
+          ELAPSED=0
+          INTERVAL=10
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(aws stepfunctions describe-execution \
+              --execution-arn "$EXECUTION_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'status' \
+              --output text)
+
+            echo "Status: $STATUS (${ELAPSED}s elapsed)"
+
+            if [ "$STATUS" = "SUCCEEDED" ]; then
+              echo "✅ Execution completed successfully"
+              echo "status=success" >> $GITHUB_OUTPUT
+              break
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "TIMED_OUT" ] || [ "$STATUS" = "ABORTED" ]; then
+              echo "❌ Execution failed with status: $STATUS"
+              echo "status=failed" >> $GITHUB_OUTPUT
+              break
+            fi
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "⏰ Timeout waiting for execution (still running)"
+            echo "status=running" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get execution results
+        if: always()
+        run: |
+          EXECUTION_ARN="${{ steps.sbir-stepfunctions.outputs.execution_arn }}"
+
+          echo "### 📊 Execution Status" >> $GITHUB_STEP_SUMMARY
+
+          # Get execution details
+          EXECUTION_DETAILS=$(aws stepfunctions describe-execution \
+            --execution-arn "$EXECUTION_ARN" \
+            --region ${{ env.AWS_REGION }})
+
+          STATUS=$(echo "$EXECUTION_DETAILS" | jq -r '.status')
+          STOP_DATE=$(echo "$EXECUTION_DETAILS" | jq -r '.stopDate // "Still running"')
+
+          if [ "$STATUS" = "SUCCEEDED" ]; then
+            echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
+          elif [ "$STATUS" = "RUNNING" ]; then
+            echo "⏳ **Status:** RUNNING (check console for progress)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** $STATUS" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "**Completed:** $STOP_DATE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get execution history for errors
+          if [ "$STATUS" = "FAILED" ]; then
+            echo "### ❌ Error Details" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            aws stepfunctions get-execution-history \
+              --execution-arn "$EXECUTION_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --max-results 10 \
+              --reverse-order \
+              | jq '.events[] | select(.type | contains("Failed"))' >> $GITHUB_STEP_SUMMARY || echo "No error details available"
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check CloudWatch logs
+          echo "### 📋 Recent Logs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          LOG_GROUP="/aws/lambda/sbir-etl-download"
+          aws logs tail "$LOG_GROUP" --since 5m --format short --region ${{ env.AWS_REGION }} 2>&1 | tail -20 || echo "No recent logs found"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check downloaded files
+        if: always()
+        run: |
+          echo "### 📦 Downloaded Files" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Files in s3://${{ env.S3_BUCKET }}/raw/sbir/:" >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive --human-readable --summarize | tail -20 || echo "No files found"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Compare before/after
+          echo "### 📈 Changes" >> $GITHUB_STEP_SUMMARY
+          CURRENT_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive | wc -l)
+          echo "**Total files:** $CURRENT_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "> ℹ️ The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs." >> $GITHUB_STEP_SUMMARY
 
   refresh-usaspending:
     name: Refresh USAspending Database
