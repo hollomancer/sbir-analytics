@@ -72,17 +72,17 @@ The SBIR ETL project supports multiple deployment strategies optimized for diffe
 
 | Scenario | Recommended Deployment | Guide |
 |----------|----------------------|-------|
-| **Production ETL pipeline** | Dagster Cloud + Neo4j Aura + S3 | [Dagster Cloud Deployment Guide](dagster-cloud-deployment-guide.md) |
-| **Weekly SBIR data refresh** | AWS Lambda + Step Functions | [AWS Serverless Deployment Guide](aws-serverless-deployment-guide.md) |
+| **Production ETL pipeline** | Dagster Cloud + Neo4j Aura + S3 | [Dagster Cloud Deployment Guide](dagster-cloud.md) |
+| **Weekly SBIR data refresh** | AWS Lambda + Step Functions | [AWS Serverless Deployment Guide](aws-deployment.md) |
 | **Local development** | Docker Compose + Local Dagster | [Containerization Guide](docker-guide.md) |
 | **CI/CD testing** | Docker Compose (ci profile) | [Containerization Guide](docker-guide.md) |
 | **Emergency failover** | Docker Compose | [Containerization Guide](docker-guide.md) |
 
 ## Detailed Deployment Guides
 
--   **[Dagster Cloud Overview](dagster-cloud-overview.md)**: Single source of truth for prerequisites, environment variables, and validation steps referenced by other docs.
--   **[Dagster Cloud Deployment Guide](dagster-cloud-deployment-guide.md)**: Comprehensive guide for deploying to Dagster Cloud, including UI and CLI-based methods, managing multiple Neo4j instances, and S3 data access.
--   **[AWS Serverless Deployment Guide](aws-serverless-deployment-guide.md)**: Detailed instructions for setting up AWS infrastructure using Step Functions and Lambda, covering architecture, deployment steps, and S3 data migration.
+-   **[Dagster Cloud Overview](dagster-cloud.md)**: Single source of truth for prerequisites, environment variables, and validation steps referenced by other docs.
+-   **[Dagster Cloud Deployment Guide](dagster-cloud.md)**: Comprehensive guide for deploying to Dagster Cloud, including UI and CLI-based methods, managing multiple Neo4j instances, and S3 data access.
+-   **[AWS Serverless Deployment Guide](aws-deployment.md)**: Detailed instructions for setting up AWS infrastructure using Step Functions and Lambda, covering architecture, deployment steps, and S3 data migration.
 -   **[Containerization Guide](docker-guide.md)**: Explains how to build, run, and validate the SBIR ETL stack with Docker Compose for local development and failover scenarios.
 
 ## Related Documentation

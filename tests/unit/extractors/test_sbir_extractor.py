@@ -41,8 +41,19 @@ def mock_duckdb_client():
     client.import_csv = Mock(return_value=True)
     client.import_csv_incremental = Mock(return_value=True)
     client.create_table_from_df = Mock(return_value=True)
+    # Return actual column names that match the CSV fixture
     client.get_table_info = Mock(
-        return_value={"row_count": 3, "columns": [{"column_name": f"col{i}"} for i in range(42)]}
+        return_value={
+            "row_count": 3,
+            "columns": [
+                {"column_name": "Company"},
+                {"column_name": "Award Amount"},
+                {"column_name": "Agency"},
+                {"column_name": "Phase"},
+                {"column_name": "Award Number"},
+                {"column_name": "Award Year"},
+            ],
+        }
     )
     client.query = Mock(return_value=Mock())
     return client
@@ -120,11 +131,13 @@ class TestSbirDuckDBExtractorImport:
         call_args = mock_duckdb_client.import_csv_incremental.call_args
         assert call_args.kwargs.get("batch_size") == 1000
 
+    @patch("src.extractors.sbir.resolve_data_path")
     @patch("src.extractors.sbir.DuckDBClient")
-    def test_import_csv_missing_file(self, mock_duckdb_class, tmp_path):
+    def test_import_csv_missing_file(self, mock_duckdb_class, mock_resolve, tmp_path):
         """Test import with non-existent CSV file."""
         mock_duckdb_class.return_value = MagicMock()
         missing_file = tmp_path / "nonexistent.csv"
+        mock_resolve.return_value = missing_file  # Return the path without validation
 
         extractor = SbirDuckDBExtractor(csv_path=missing_file)
 

@@ -62,7 +62,7 @@ This document summarizes the infrastructure consolidation work completed to simp
 
 **Files Changed**:
 - `config/README.md` - updated to note consolidated prod.yaml
-- `docs/deployment/aws-serverless-deployment-guide.md` - removed Terraform references
+- `docs/deployment/aws-deployment.md` - removed Terraform references
 - `infrastructure/cdk/README.md` - added note about CDK-only approach
 
 **Impact**:

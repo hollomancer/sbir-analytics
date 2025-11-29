@@ -18,7 +18,7 @@ This directory hosts the complete testing playbook for SBIR ETL. The [Testing In
 
 ## Supporting References
 
-- [Test Coverage Strategy](test-coverage-strategy.md)
+- [Test Coverage Strategy](testing-strategy.md)
 - [Categorization Testing](categorization-testing.md)
 - [Validation Testing](validation-testing.md)
 - [CLI Testing Guide](../cli/TESTING.md)
@@ -120,7 +120,7 @@ See [docs/performance](../performance) and [docs/guides/quality-assurance.md](..
 
 - [Neo4j Testing Environments](neo4j-testing-environments-guide.md) – switch between local Docker and Aura for graph tests.
 - [E2E Testing Guide](e2e-testing-guide.md) – scenarios, data prep, CI integration.
-- [Test Coverage Strategy](test-coverage-strategy.md) – coverage goals and focus areas.
+- [Test Coverage Strategy](testing-strategy.md) – coverage goals and focus areas.
 - [Categorization Testing](categorization-testing.md) / [Validation Testing](validation-testing.md) – domain-specific instructions.
 - [CLI Testing Guide](../cli/TESTING.md) – CLI-specific fixtures and snapshot tests.
 

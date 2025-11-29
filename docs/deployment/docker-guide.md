@@ -376,6 +376,6 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 
 - [Docker Reference](docker-reference.md) - Configuration and optimization details
 - [Docker Troubleshooting](../development/docker-troubleshooting.md) - Common issues and solutions
-- [Dagster Cloud Deployment](dagster-cloud-deployment-guide.md) - Primary deployment method
+- [Dagster Cloud Deployment](dagster-cloud.md) - Primary deployment method
 - [Testing Guide](../testing/index.md) - Running tests in Docker
 - [Configuration Patterns](.kiro/steering/configuration-patterns.md) - Environment variable overrides

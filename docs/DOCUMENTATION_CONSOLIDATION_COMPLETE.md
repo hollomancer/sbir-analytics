@@ -192,11 +192,11 @@ Successfully implemented Phases 1, 2, and 4 of the documentation improvement pla
 ### Additional Consolidation Opportunities
 
 1. **Deployment docs** (15 files):
-   - Merge `dagster-cloud-overview.md` + `dagster-cloud-deployment-guide.md`
-   - Merge `aws-serverless-deployment-guide.md` + `aws-batch-setup.md`
+   - Merge `dagster-cloud.md` + `dagster-cloud.md`
+   - Merge `aws-deployment.md` + `aws-deployment.md`
 
 2. **Testing docs** (12 files):
-   - Merge `test-coverage-strategy.md` + `improvement-roadmap.md`
+   - Merge `testing-strategy.md` + `testing-strategy.md`
    - Archive `test-evaluation-2025-01.md`
 
 3. **Schema docs** (9 files):

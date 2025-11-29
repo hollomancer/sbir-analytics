@@ -20,9 +20,9 @@ After Phase 1 consolidation (114 → 113 files), analysis reveals 5 high-impact 
 ### Current State
 ```
 docs/deployment/
-  - dagster-cloud-overview.md          (Overview + architecture)
-  - dagster-cloud-deployment-guide.md  (Step-by-step setup)
-  - dagster-hybrid-setup.md            (Hybrid agent config)
+  - dagster-cloud.md          (Overview + architecture)
+  - dagster-cloud.md  (Step-by-step setup)
+  - dagster-cloud.md#hybrid-deployment            (Hybrid agent config)
 ```
 
 ### Recommended Structure
@@ -62,8 +62,8 @@ docs/deployment/
 ### Current State
 ```
 docs/testing/
-  - test-coverage-strategy.md          (Coverage goals, focus areas)
-  - improvement-roadmap.md             (Future improvements)
+  - testing-strategy.md          (Coverage goals, focus areas)
+  - testing-strategy.md             (Future improvements)
   - IMPROVEMENTS.md                    (Historical improvements)
 ```
 
@@ -107,9 +107,9 @@ archive/testing/
 ### Current State
 ```
 docs/deployment/
-  - aws-serverless-deployment-guide.md (Lambda + Step Functions)
-  - aws-batch-setup.md                 (AWS Batch configuration)
-  - aws-architecture-diagrams.md       (Architecture diagrams)
+  - aws-deployment.md (Lambda + Step Functions)
+  - aws-deployment.md                 (AWS Batch configuration)
+  - aws-deployment.md       (Architecture diagrams)
 ```
 
 ### Recommended Structure
@@ -275,24 +275,24 @@ docs/testing/
 ### Dagster Cloud
 | Old | New |
 |-----|-----|
-| `dagster-cloud-overview.md` | `dagster-cloud.md#overview` |
-| `dagster-cloud-deployment-guide.md` | `dagster-cloud.md#setup-guide` |
-| `dagster-hybrid-setup.md` | `dagster-cloud.md#hybrid-deployment` |
+| `dagster-cloud.md` | `dagster-cloud.md#overview` |
+| `dagster-cloud.md` | `dagster-cloud.md#setup-guide` |
+| `dagster-cloud.md#hybrid-deployment` | `dagster-cloud.md#hybrid-deployment` |
 
 ### Testing
 | Old | New |
 |-----|-----|
-| `test-coverage-strategy.md` | `testing-strategy.md#coverage-goals` |
-| `improvement-roadmap.md` | `testing-strategy.md#roadmap` |
+| `testing-strategy.md` | `testing-strategy.md#coverage-goals` |
+| `testing-strategy.md` | `testing-strategy.md#roadmap` |
 | `test-scheduling-implementation.md` | `test-scheduling.md` |
 | `test-scheduling-recommendations.md` | `test-scheduling.md` |
 
 ### AWS
 | Old | New |
 |-----|-----|
-| `aws-serverless-deployment-guide.md` | `aws-deployment.md#serverless` |
-| `aws-batch-setup.md` | `aws-deployment.md#batch` |
-| `aws-architecture-diagrams.md` | `aws-deployment.md#architecture` |
+| `aws-deployment.md` | `aws-deployment.md#serverless` |
+| `aws-deployment.md` | `aws-deployment.md#batch` |
+| `aws-deployment.md` | `aws-deployment.md#architecture` |
 
 ## Related
 

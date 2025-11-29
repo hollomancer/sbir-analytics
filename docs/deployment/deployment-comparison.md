@@ -220,7 +220,7 @@ You currently have **EC2 configuration ready**:
 - ✅ `dagster_cloud.yaml` - configured for ml-queue
 
 To switch to Batch later, you'll have:
-- ✅ `docs/deployment/aws-batch-setup.md` - full guide (just created)
+- ✅ `docs/deployment/aws-deployment.md` - full guide (just created)
 
 ## Decision Helper
 

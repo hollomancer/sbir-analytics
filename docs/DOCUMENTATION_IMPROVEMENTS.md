@@ -41,7 +41,7 @@ docs/development/
 
 **Duplicates to Merge:**
 - `README.md` + `index.md` → Single `index.md` (testing/ has both)
-- `test-coverage-strategy.md` + `improvement-roadmap.md` → `testing-strategy.md`
+- `testing-strategy.md` + `testing-strategy.md` → `testing-strategy.md`
 - `test-scheduling-implementation.md` + `test-scheduling-recommendations.md` → `test-scheduling.md`
 
 **Archive:**
@@ -50,8 +50,8 @@ docs/development/
 ### Deployment Documentation (15 files - well organized, minor tweaks)
 
 **Consolidation:**
-- `dagster-cloud-overview.md` + `dagster-cloud-deployment-guide.md` → `dagster-cloud.md`
-- `aws-serverless-deployment-guide.md` + `aws-batch-setup.md` → `aws-deployment.md` (with sections)
+- `dagster-cloud.md` + `dagster-cloud.md` → `dagster-cloud.md`
+- `aws-deployment.md` + `aws-deployment.md` → `aws-deployment.md` (with sections)
 
 ## Priority 2: Archive Completed Analysis
 

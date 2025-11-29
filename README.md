@@ -88,8 +88,8 @@ The SBIR ETL pipeline supports multiple production deployment strategies optimiz
 5. Deploy automatically on git push
 
 **Deployment Methods:**
-- **UI-Based**: Best for initial setup ([guide](docs/deployment/dagster-cloud-deployment-guide.md))
-- **CLI-Based**: Best for CI/CD ([guide](docs/deployment/dagster-cloud-deployment-guide.md#5-setup-cli-based-serverless-deployment))
+- **UI-Based**: Best for initial setup ([guide](docs/deployment/dagster-cloud.md))
+- **CLI-Based**: Best for CI/CD ([guide](docs/deployment/dagster-cloud.md#5-setup-cli-based-serverless-deployment))
 
 **Cost:** $10/month Solo Plan
 
@@ -110,7 +110,7 @@ pip install -r requirements.txt
 cdk deploy --all
 ```
 
-**Full Guide:** [AWS Serverless Deployment Guide](docs/deployment/aws-serverless-deployment-guide.md)
+**Full Guide:** [AWS Serverless Deployment Guide](docs/deployment/aws-deployment.md)
 
 ### Container Development (Alternative)
 

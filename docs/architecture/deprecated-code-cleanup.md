@@ -41,7 +41,7 @@ This document summarizes the cleanup of deprecated Lambda container code and rel
 - Updated packaging options section
 - Changed "Container Images" to "Dagster Cloud" option
 - Removed container build troubleshooting steps
-- **Files**: `docs/deployment/aws-serverless-deployment-guide.md`
+- **Files**: `docs/deployment/aws-deployment.md`
 
 ## Migration Context
 
@@ -85,7 +85,7 @@ scripts/lambda/
 └── README.md                    ✅ Updated (removed container references)
 
 docs/deployment/
-└── aws-serverless-deployment-guide.md  ✅ Updated (removed container build steps)
+└── aws-deployment.md  ✅ Updated (removed container build steps)
 ```
 
 ## Impact Summary

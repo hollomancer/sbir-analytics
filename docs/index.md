@@ -37,8 +37,8 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
-- **[Production deployment](deployment/dagster-cloud-deployment-guide.md)** - Dagster Cloud (Primary)
-- **[AWS Infrastructure](deployment/aws-serverless-deployment-guide.md)** - Lambda + S3 + Step Functions
+- **[Production deployment](deployment/dagster-cloud.md)** - Dagster Cloud (Primary)
+- **[AWS Infrastructure](deployment/aws-deployment.md)** - Lambda + S3 + Step Functions
 - [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
 
 ### Development Guides
