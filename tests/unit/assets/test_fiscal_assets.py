@@ -292,7 +292,7 @@ class TestFiscalNAICSEnrichment:
 
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.enrichers.usaspending.client.get_config")
-    @patch("src.enrichers.company_categorization.USAspendingAPIClient")
+    @patch("src.enrichers.usaspending.client.USAspendingAPIClient")
     def test_fiscal_naics_quality_check_fails(
         self, mock_client_class, mock_usaspending_get_config, mock_get_config, mock_config
     ):
