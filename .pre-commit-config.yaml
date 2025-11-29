@@ -80,6 +80,7 @@ repos:
             infrastructure\/cdk\/|
             scripts\/debug\/|
             docs\/.*|
+            archive\/.*|
             .*\.md$|
             .*\.rst$
           )
