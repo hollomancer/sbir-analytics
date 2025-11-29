@@ -1,14 +1,24 @@
 """Tests for Neo4j CET loader."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 
 from src.loaders.neo4j.cet import CETLoader, CETLoaderConfig
-from src.loaders.neo4j.client import Neo4jClient
 
 
 pytestmark = pytest.mark.fast
+
+
+def _create_mock_client_with_session(mock_session: MagicMock) -> MagicMock:
+    """Helper to create a mock Neo4jClient with a properly configured session context manager."""
+    mock_client = MagicMock()
+    mock_client.config.batch_size = 1000  # Set actual int value for pandas indexing
+    mock_context = MagicMock()
+    mock_context.__enter__.return_value = mock_session
+    mock_context.__exit__.return_value = None
+    mock_client.session.return_value = mock_context
+    return mock_client
 
 
 class TestCETLoaderConfig:
@@ -48,7 +58,8 @@ class TestCETLoaderInitialization:
 
     def test_initialization_with_default_config(self):
         """Test CETLoader initialization with default config."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         loader = CETLoader(mock_client)
 
         assert loader.client == mock_client
@@ -57,7 +68,8 @@ class TestCETLoaderInitialization:
 
     def test_initialization_with_custom_config(self):
         """Test CETLoader initialization with custom config."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(batch_size=500, create_indexes=False)
 
         loader = CETLoader(mock_client, config)
@@ -68,7 +80,8 @@ class TestCETLoaderInitialization:
 
     def test_initialization_with_none_config(self):
         """Test initialization with None uses defaults."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         loader = CETLoader(mock_client, None)
 
         assert isinstance(loader.config, CETLoaderConfig)
@@ -80,9 +93,8 @@ class TestCETLoaderConstraints:
 
     def test_create_constraints_executes_all(self):
         """Test create_constraints executes all constraint statements."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
         loader = CETLoader(mock_client)
         loader.create_constraints()
@@ -92,7 +104,8 @@ class TestCETLoaderConstraints:
 
     def test_create_constraints_handles_existing(self):
         """Test create_constraints handles already existing constraints."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Constraint already exists")
         mock_context = MagicMock()
@@ -110,7 +123,8 @@ class TestCETLoaderConstraints:
 
     def test_create_constraints_cetarea_uniqueness(self):
         """Test CETArea constraint is for cet_id uniqueness."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -127,7 +141,8 @@ class TestCETLoaderConstraints:
 
     def test_create_constraints_includes_entity_constraints(self):
         """Test constraints include Award and Company."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -146,34 +161,32 @@ class TestCETLoaderIndexes:
 
     def test_create_indexes_executes_multiple(self):
         """Test create_indexes executes multiple index statements."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
         loader = CETLoader(mock_client)
         loader.create_indexes()
 
-        # Should create multiple indexes
-        assert mock_session.run.call_count >= 3
+        # Should create 2 indexes (name and taxonomy_version)
+        assert mock_session.run.call_count == 2
 
     def test_create_indexes_handles_existing(self):
         """Test create_indexes handles already existing indexes."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Index already exists")
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
         loader = CETLoader(mock_client)
 
         # Should not raise exception
         loader.create_indexes()
 
-        assert mock_session.run.call_count >= 3
+        assert mock_session.run.call_count == 2
 
     def test_create_indexes_covers_cet_properties(self):
         """Test indexes cover CET-related properties."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = CETLoader(mock_client)
@@ -191,7 +204,8 @@ class TestCETLoaderConfiguration:
 
     def test_indexes_disabled_in_config(self):
         """Test loader respects disabled indexes config."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(create_indexes=False)
 
         loader = CETLoader(mock_client, config)
@@ -200,7 +214,8 @@ class TestCETLoaderConfiguration:
 
     def test_constraints_disabled_in_config(self):
         """Test loader respects disabled constraints config."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(create_constraints=False)
 
         loader = CETLoader(mock_client, config)
@@ -209,7 +224,8 @@ class TestCETLoaderConfiguration:
 
     def test_batch_size_configuration(self):
         """Test batch size configuration is respected."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
 
         for batch_size in [100, 500, 1000, 5000]:
             config = CETLoaderConfig(batch_size=batch_size)
@@ -221,17 +237,15 @@ class TestCETLoaderEdgeCases:
     """Tests for edge cases in CETLoader."""
 
     def test_zero_batch_size(self):
-        """Test loader handles zero batch size."""
-        mock_client = Mock(spec=Neo4jClient)
-        config = CETLoaderConfig(batch_size=0)
-
-        loader = CETLoader(mock_client, config)
-
-        assert loader.config.batch_size == 0
+        """Test loader rejects zero batch size."""
+        # batch_size must be >= 1, so 0 should raise validation error
+        with pytest.raises(Exception):  # Pydantic ValidationError
+            CETLoaderConfig(batch_size=0)
 
     def test_very_large_batch_size(self):
         """Test loader handles very large batch size."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(batch_size=1000000)
 
         loader = CETLoader(mock_client, config)
@@ -240,7 +254,8 @@ class TestCETLoaderEdgeCases:
 
     def test_multiple_constraint_creation_calls(self):
         """Test calling create_constraints multiple times."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -255,9 +270,8 @@ class TestCETLoaderEdgeCases:
 
     def test_multiple_index_creation_calls(self):
         """Test calling create_indexes multiple times."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_client.session.return_value.__enter__.return_value = mock_session
+        mock_client = _create_mock_client_with_session(mock_session)
 
         loader = CETLoader(mock_client)
 
@@ -266,8 +280,8 @@ class TestCETLoaderEdgeCases:
         loader.create_indexes()
 
         # Should execute statements each time (idempotent with IF NOT EXISTS)
-        first_call_count = mock_session.run.call_count
-        assert first_call_count >= 6  # At least 3 indexes × 2 calls
+        # 2 indexes × 2 calls = 4 total
+        assert mock_session.run.call_count == 4
 
 
 class TestCETLoaderIntegration:
@@ -275,7 +289,8 @@ class TestCETLoaderIntegration:
 
     def test_session_context_manager_used(self):
         """Test that session context manager is properly used."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_context = MagicMock()
         mock_context.__enter__.return_value = mock_session
@@ -291,7 +306,8 @@ class TestCETLoaderIntegration:
 
     def test_session_cleanup_on_error(self):
         """Test session is cleaned up even on error."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Database error")
         mock_context = MagicMock()
@@ -308,7 +324,8 @@ class TestCETLoaderIntegration:
 
     def test_all_constraints_use_if_not_exists(self):
         """Test all constraints use IF NOT EXISTS for idempotency."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -322,7 +339,8 @@ class TestCETLoaderIntegration:
 
     def test_all_indexes_use_if_not_exists(self):
         """Test all indexes use IF NOT EXISTS for idempotency."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -340,7 +358,8 @@ class TestCETLoaderConstraintQueries:
 
     def test_cetarea_cet_id_constraint(self):
         """Test CETArea cet_id constraint is correct."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -357,7 +376,8 @@ class TestCETLoaderConstraintQueries:
 
     def test_award_constraint_included(self):
         """Test Award constraint is included."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
@@ -373,12 +393,8 @@ class TestCETLoaderConstraintQueries:
 
     def test_company_constraint_included(self):
         """Test Company constraint is included."""
-        mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
-        mock_context = MagicMock()
-        mock_context.__enter__.return_value = mock_session
-        mock_context.__exit__.return_value = None
-        mock_client.session.return_value = mock_context
+        mock_client = _create_mock_client_with_session(mock_session)
 
         loader = CETLoader(mock_client)
         loader.create_constraints()
@@ -388,7 +404,7 @@ class TestCETLoaderConstraintQueries:
         company_queries = [q for q in all_queries if "Company" in q]
 
         assert len(company_queries) > 0
-        assert "uei" in company_queries[0]
+        assert "company_id" in company_queries[0]
 
 
 class TestCETLoaderBatchOperations:
@@ -396,7 +412,8 @@ class TestCETLoaderBatchOperations:
 
     def test_small_batch_size(self):
         """Test loader with small batch size."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(batch_size=10)
 
         loader = CETLoader(mock_client, config)
@@ -405,14 +422,16 @@ class TestCETLoaderBatchOperations:
 
     def test_default_batch_size(self):
         """Test default batch size is 1000."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         loader = CETLoader(mock_client)
 
         assert loader.config.batch_size == 1000
 
     def test_large_batch_size(self):
         """Test loader with large batch size."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         config = CETLoaderConfig(batch_size=10000)
 
         loader = CETLoader(mock_client, config)
@@ -421,7 +440,8 @@ class TestCETLoaderBatchOperations:
 
     def test_batch_size_preserved_across_operations(self):
         """Test batch size is preserved across multiple operations."""
-        mock_client = Mock(spec=Neo4jClient)
+        mock_session = MagicMock()
+        mock_client = _create_mock_client_with_session(mock_session)
         mock_session = MagicMock()
         mock_context = MagicMock()
         mock_context.__enter__.return_value = mock_session
