@@ -4,7 +4,7 @@
 
 **Goal**: Reduce inline Mock() usage by adopting reusable mock factories and fixtures.
 
-**Progress**: 221 Mock() usages eliminated (33% reduction: 664 → 443)
+**Progress**: 327 Mock() usages eliminated (49% reduction: 664 → 337)
 
 ## Mock Factories Created
 
