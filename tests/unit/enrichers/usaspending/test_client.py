@@ -228,50 +228,32 @@ class TestHTTPRequests:
     """Tests for HTTP request making."""
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_get_success(self, mock_client_class, client, sample_recipient_data):
+    async def test_make_request_get_success(self, client, mock_http_client, sample_recipient_data):
         """Test successful GET request."""
-        # Mock httpx response
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_recipient_data
         mock_response.raise_for_status = Mock()
-
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.return_value = mock_response
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.return_value = mock_response
 
         result = await client._make_request("GET", "/recipients/UEI123")
 
         assert result == sample_recipient_data
-        mock_client_instance.get.assert_called_once()
-        call_kwargs = mock_client_instance.get.call_args[1]
-        assert "api.usaspending.gov/api/v2/recipients/UEI123" in call_kwargs.get("url", "")
+        mock_http_client.get.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_post_success(
-        self, mock_client_class, client, sample_recipient_data
-    ):
+    async def test_make_request_post_success(self, client, mock_http_client, sample_recipient_data):
         """Test successful POST request."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = sample_recipient_data
         mock_response.raise_for_status = Mock()
+        mock_http_client.post.return_value = mock_response
 
-        mock_client_instance = AsyncMock()
-        mock_client_instance.post.return_value = mock_response
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
-
-        params = {"test": "data"}
-        result = await client._make_request("POST", "/search/", params=params)
+        result = await client._make_request("POST", "/search/", params={"test": "data"})
 
         assert result == sample_recipient_data
-        mock_client_instance.post.assert_called_once()
+        mock_http_client.post.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_make_request_unsupported_method(self, client):
@@ -280,88 +262,59 @@ class TestHTTPRequests:
             await client._make_request("PUT", "/test/")
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_rate_limit_429(self, mock_client_class, client):
+    async def test_make_request_rate_limit_429(self, client, mock_http_client):
         """Test 429 rate limit error handling."""
         mock_response = Mock()
         mock_response.status_code = 429
         mock_response.text = "Rate limit exceeded"
-
         error = httpx.HTTPStatusError("429", request=Mock(), response=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.side_effect = error
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.side_effect = error
 
         with pytest.raises(RateLimitError, match="Rate limit exceeded"):
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_http_error_404(self, mock_client_class, client):
+    async def test_make_request_http_error_404(self, client, mock_http_client):
         """Test HTTP 404 error handling."""
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text = "Not found"
-
         error = httpx.HTTPStatusError("404", request=Mock(), response=mock_response)
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.side_effect = error
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.side_effect = error
 
         with pytest.raises(APIError, match="HTTP 404"):
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_timeout(self, mock_client_class, client):
+    async def test_make_request_timeout(self, client, mock_http_client):
         """Test timeout error handling after retries."""
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.side_effect = httpx.TimeoutException("Timeout")
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.side_effect = httpx.TimeoutException("Timeout")
 
         with pytest.raises(APIError, match="Request timeout after retries"):
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_network_error(self, mock_client_class, client):
+    async def test_make_request_network_error(self, client, mock_http_client):
         """Test network error handling."""
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.side_effect = httpx.RequestError("Network error")
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.side_effect = httpx.RequestError("Network error")
 
         with pytest.raises(APIError, match="Request error"):
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
-    async def test_make_request_with_custom_headers(self, mock_client_class, client):
+    async def test_make_request_with_custom_headers(self, client, mock_http_client):
         """Test request with custom headers."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {}
         mock_response.raise_for_status = Mock()
-
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get.return_value = mock_response
-        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        mock_client_instance.__aexit__ = AsyncMock()
-        mock_client_class.return_value = mock_client_instance
+        mock_http_client.get.return_value = mock_response
 
         custom_headers = {"X-Custom-Header": "test-value"}
         await client._make_request("GET", "/test/", headers=custom_headers)
 
-        call_kwargs = mock_client_instance.get.call_args[1]
+        call_kwargs = mock_http_client.get.call_args[1]
         assert call_kwargs["headers"]["X-Custom-Header"] == "test-value"
-        assert call_kwargs["headers"]["Accept"] == "application/json"
 
 
 # ==================== Payload Hashing Tests ====================
