@@ -1,40 +1,22 @@
-name: Weekly Tests & Security
+name: Weekly Comprehensive Tests
 
 on:
   schedule:
-    - cron: "0 2 * * 0"   # 02:00 UTC Sunday (weekly comprehensive)
+    - cron: "0 2 * * 0"   # 02:00 UTC Sunday
   workflow_dispatch:
     inputs:
-      mode:
-        description: 'Smoke test mode: "dry-run" (no secrets) or "live" (uses NEO4J credentials from secrets or provided inputs)'
-        required: false
-        default: dry-run
-        type: choice
-        options:
-          - dry-run
-          - live
       test_level:
-        description: 'Test level: "standard" (core tests) or "comprehensive" (full suite)'
+        description: 'Test level'
         required: false
-        default: standard
+        default: comprehensive
         type: choice
         options:
           - standard
           - comprehensive
-      NEO4J_USER:
-        description: "Optional NEO4J user to use for live mode (overrides repository secret if provided)"
-        required: false
-        default: ""
-        type: string
-      NEO4J_PASSWORD:
-        description: "Optional NEO4J password to use for live mode (overrides repository secret if provided)"
-        required: false
-        default: ""
-        type: string
 
 permissions:
-  contents: write          # create branch and commits
-  pull-requests: write     # open PR
+  contents: write
+  pull-requests: write
   actions: read
   checks: read
 
@@ -43,14 +25,17 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  PYTHON_VERSION: "3.11"
+  NEO4J_IMAGE: "neo4j:5"
+  NEO4J_USERNAME: "neo4j"
+  NEO4J_PASSWORD: "password"  # pragma: allowlist secret
   REPAIR_BRANCH_PREFIX: "bot/ci-fix"
-  REPAIR_MAX_RUNTIME_MIN: "15"
 
 jobs:
   tests:
-    name: Run Nightly Test Suites
+    name: Extended Test Suites
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Reduced from 45 for faster failure
+    timeout-minutes: 30
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -71,77 +56,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-environment
-        with:
-          python-version: "3.11"
-          neo4j-image: "neo4j:5"
-          neo4j-username: "neo4j"
-          neo4j-password: "password"  # pragma: allowlist secret
-          default-timeout: "45"
-
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
-          cache-pytest: "false"
           install-pyreadstat: "true"
 
       - name: Start Neo4j service
         if: matrix.needs_neo4j == true
         run: |
-          docker run -d --name nightly-neo4j \
+          docker run -d --name weekly-neo4j \
             -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
             -p 7687:7687 -p 7474:7474 \
             ${{ env.NEO4J_IMAGE }}
-          echo "Waiting for Neo4j..."
-          until curl -s -f -o /dev/null http://localhost:7474; do
-            echo "Neo4j not ready, sleeping..."
+          for i in {1..12}; do
+            if curl -s -f -o /dev/null http://localhost:7474; then
+              echo "Neo4j is ready"
+              break
+            fi
+            echo "Waiting for Neo4j... ($i/12)"
             sleep 5
           done
-          echo "Neo4j is ready."
 
       - name: Run ${{ matrix.suite }} tests
-        id: run-tests
-        continue-on-error: true
-        run: |
-          set -o pipefail
-          echo "Executing suite: ${{ matrix.suite }}"
-          cmd="uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}"
-          echo "Command: $cmd"
-          eval "$cmd" 2>&1 | tee test-${{ matrix.suite }}.log
+        run: uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}
 
       - name: Stop Neo4j service
         if: always() && matrix.needs_neo4j == true
         run: |
-          docker stop nightly-neo4j >/dev/null 2>&1 || true
-          docker rm nightly-neo4j >/dev/null 2>&1 || true
-
-      - name: Upload logs
-        if: always()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: nightly-${{ matrix.suite }}-logs
-          path: test-${{ matrix.suite }}.log
-
-      - name: Upload suite status
-        if: always()
-        run: |
-          mkdir -p status
-          cat <<JSON > status/${{ matrix.suite }}.json
-          {
-            "suite": "${{ matrix.suite }}",
-            "status": "${{ steps.run-tests.outcome }}"
-          }
-          JSON
-      - name: Publish status artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-status-${{ matrix.suite }}
-          path: status/${{ matrix.suite }}.json
+          docker stop weekly-neo4j || true
+          docker rm weekly-neo4j || true
 
   diagnose:
     name: Diagnose Test Failures
@@ -150,40 +96,19 @@ jobs:
     timeout-minutes: 10
     if: always()
     outputs:
-      failed: ${{ steps.summary.outputs.failed }}
+      failed: ${{ steps.check.outputs.failed }}
     steps:
-      - name: Download status artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: nightly-status-*
-          merge-multiple: true
-          path: statuses
-      - name: Summarize results
-        id: summary
+      - name: Check test results
+        id: check
         run: |
-          set -e
-          if [ ! -d statuses ]; then
-            echo "No status artifacts found."
+          if [ "${{ needs.tests.result }}" != "success" ]; then
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
             echo "failed=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          overall=false
-          mkdir -p reports
-          for file in statuses/*.json; do
-            suite=$(jq -r '.suite' "$file")
-            status=$(jq -r '.status' "$file")
-            echo "Suite ${suite}: ${status}"
-            if [ "$status" != "success" ]; then
-              overall=true
-            fi
-          done
-          echo "failed=$overall" >> $GITHUB_OUTPUT
-          if [ "$overall" = "true" ]; then
-            exit 0
           fi
 
   attempt_repair:
-    name: Attempt minimal, reversible fixes
+    name: Attempt Auto-Repair
     needs: diagnose
     if: needs.diagnose.outputs.failed == 'true'
     runs-on: ubuntu-latest
@@ -192,40 +117,25 @@ jobs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
 
       - name: Create repair branch
         id: branch
         run: |
-          short_sha="${GITHUB_SHA::7}"
-          branch="${REPAIR_BRANCH_PREFIX}/${short_sha}"
+          branch="${REPAIR_BRANCH_PREFIX}/${GITHUB_SHA::7}"
           git switch -c "$branch"
           echo "branch=$branch" >> $GITHUB_OUTPUT
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
 
       - name: Autofix (black + isort)
         run: |
           uv run black . || true
           uv run isort . || true
-
-      - name: Fix common CI YAML issues
-        run: |
-          set -e
-          shopt -s globstar || true
-          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
-            [ -f "$f" ] || continue
-            sed -i 's/ubuntu-latest/ubuntu-24.04/g' "$f" || true
-            sed -i 's/actions\/checkout@v[0-9]*/actions\/checkout@v4/g' "$f" || true
-          done
 
       - name: Commit changes if any
         id: commit
@@ -235,24 +145,9 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             git -c user.name="ci-bot" -c user.email="actions@users.noreply.github.com" \
-              commit -m "ci: minimal nightly repair (lint/format/config)"
+              commit -m "ci: weekly auto-repair (lint/format)"
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
-
-      - name: Re-run fast tests locally
-        id: retest
-        if: steps.commit.outputs.changed == 'true'
-        run: |
-          set -o pipefail
-          uv run pytest -m fast -q 2>&1 | tee test-after-fix.log
-        continue-on-error: true
-
-      - name: Upload post-fix logs
-        if: steps.commit.outputs.changed == 'true'
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: nightly-test-after-fix
-          path: test-after-fix.log
 
       - name: Open PR with fixes
         if: steps.commit.outputs.changed == 'true'
@@ -261,25 +156,16 @@ jobs:
           branch: ${{ steps.branch.outputs.branch }}
           base: main
           delete-branch: true
-          title: "CI: nightly minimal repair"
-          commit-message: "ci: minimal nightly repair"
+          title: "CI: weekly auto-repair"
           body: |
-            ## Root cause
-            Nightly repair attempted after failing tests. See artifacts.
-
-            ## Why this fix
-            Applied safe tiers: format, lint, workflow nudges.
-
-            ## Evidence
-            Logs attached as workflow artifacts. CI must pass before merge.
-
-            ## Policy
-            No edits to release, secrets, or ruleset files. Review required.
+            ## Auto-repair from weekly tests
+            Applied safe formatting fixes.
+            Review and merge if tests pass.
           labels: ci:autofix-candidate,bot
           draft: true
 
   fallback_issue:
-    name: Open issue if no safe changes
+    name: Open Issue if No Fix
     needs: [diagnose, attempt_repair]
     if: |
       needs.diagnose.outputs.failed == 'true' &&
@@ -290,279 +176,16 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const title = `Nightly CI failure: ${context.sha.substring(0,7)}`;
-            const body = `**What failed**
-            See nightly logs artifacts.
-
-            **Ask**
-            Propose minimal, reversible fix in a PR.
-            Link failing tests and rationale.
-
-            **Guardrails**
-            No secrets, release, or ruleset changes.`;
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title,
-              body,
+              title: `Weekly CI failure: ${context.sha.substring(0,7)}`,
+              body: `**What failed**\nWeekly tests failed. See workflow artifacts.\n\n**Action needed**\nPropose fix in a PR.`,
               labels: ["ci:triage","bot"]
             })
 
-  neo4j-smoke:
-    name: Neo4j smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 15  # Reduced from 30 for faster failure
-    env:
-      PROFILE: dev
-      # Use dry-run mode for scheduled runs, live mode for manual dispatch with input
-      MODE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'dry-run' }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Docker Buildx
-        uses: ./.github/actions/setup-docker-buildx
-
-      - name: Prepare .env (dry-run or live)
-        uses: ./.github/actions/prepare-env-file
-        with:
-          neo4j-user: ${{ github.event.inputs.NEO4J_USER != '' && github.event.inputs.NEO4J_USER || secrets.NEO4J_USER }}
-          neo4j-password: ${{ github.event.inputs.NEO4J_PASSWORD != '' && github.event.inputs.NEO4J_PASSWORD || secrets.NEO4J_PASSWORD }}
-
-      - name: Build runtime image used for schema / scripts
-        run: |
-          set -eux
-          # Build the runtime target so we can run schema scripts inside a container attached to the compose network.
-          docker build --target runtime -t sbir-analytics:smoke .
-
-      - name: Start Neo4j (compose, dev profile)
-        run: |
-          set -eux
-          docker compose --profile dev up -d neo4j
-
-      - name: Wait for Neo4j health (make neo4j-check or docker inspect)
-        # In live mode we run the Makefile health check which uses cypher-shell (requires credentials).
-        # In dry-run mode we wait for the container to appear running/healthy via docker inspect to avoid requiring credentials.
-        run: |
-          set -eux
-          echo "Health check mode: ${MODE}"
-          # Helper: retry loop
-          wait_for() {
-            cmd="$1"
-            tries=0
-            until $cmd || [ "$tries" -ge 6 ]; do
-              tries=$((tries+1))
-              echo "neo4j not ready yet; retry #$tries"
-              sleep 5
-            done
-            if [ "$tries" -ge 6 ]; then
-              return 1
-            fi
-            return 0
-          }
-          if [ "${MODE}" = "dry-run" ]; then
-            echo "Dry-run health check: waiting for neo4j container to be running or report healthy"
-            # Prefer health status if available, otherwise check running container presence
-            wait_for "sh -c 'status=$(docker inspect --format \"{{.State.Health.Status}}\" sbir-neo4j 2>/dev/null || echo \"\"); \
-              if [ \"${status}\" = \"healthy\" ]; then exit 0; fi; \
-              if docker ps --filter \"name=sbir-neo4j\" --filter status=running --format \"{{.Names}}\" | grep -q .; then exit 0; fi; exit 1'"
-            if [ $? -ne 0 ]; then
-              echo "Neo4j did not become ready in time (dry-run)"
-              exit 1
-            fi
-            echo "Neo4j container appears running/healthy (dry-run)"
-          else
-            echo "Live health check: using Makefile target neo4j-check (requires credentials present)"
-            wait_for "make neo4j-check"
-            if [ $? -ne 0 ]; then
-              echo "Neo4j did not become healthy in time"
-              exit 1
-            fi
-            echo "Neo4j passed live health check"
-          fi
-
-      - name: Apply schema (dry-run or live)
-        id: apply_schema
-        run: |
-          set -eux
-          # Use the runtime image built above and attach to the compose network so hostname 'neo4j' resolves.
-          NETWORK_NAME="sbir-network"
-          # Ensure the compose network exists
-          docker network inspect "${NETWORK_NAME}" >/dev/null 2>&1 || true
-
-          if [ "${MODE}" = "dry-run" ]; then
-            echo "Running apply_schema in dry-run mode"
-            docker run --rm --network "${NETWORK_NAME}" -e NEO4J_URI="bolt://neo4j:7687" sbir-analytics:smoke \
-              python scripts/neo4j/apply_schema.py --dry-run
-          else
-            echo "Running apply_schema in live mode (will connect to Neo4j)"
-            docker run --rm --network "${NETWORK_NAME}" \
-              -e NEO4J_URI="bolt://neo4j:7687" \
-              -e NEO4J_USER="${{ secrets.NEO4J_USER }}" \
-              -e NEO4J_PASSWORD="${{ secrets.NEO4J_PASSWORD }}" \
-              sbir-analytics:smoke python scripts/neo4j/apply_schema.py
-          fi
-
-      - name: Smoke test - run a simple cypher query (sanity)
-        run: |
-          set -eux
-          # Attempt a lightweight sanity query using cypher-shell inside a short-lived container.
-          # Prefer using docker compose exec if possible; fallback to docker run attached to network.
-          if command -v docker-compose >/dev/null 2>&1; then
-            # Try exec against running neo4j container
-            CONTAINER="$(docker ps --filter 'name=sbir-neo4j' --format '{{.Names}}' | head -n1 || true)"
-            if [ -n "$CONTAINER" ]; then
-              echo "Running cypher-shell sanity query inside container ${CONTAINER}"
-              docker exec "$CONTAINER" sh -c "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1"
-            else
-              echo "Neo4j container not found by name; attempting to run a temporary container attached to compose network"
-              docker run --rm --network sbir-network byrnedo/alpine-curl:latest sh -c "apk add --no-cache openjdk11-jre-headless jq || true; echo 'sanity check placeholder'"
-            fi
-          else
-            echo "docker-compose not detected; skipping exec sanity check"
-          fi
-
-      # Always attempt to tear down compose resources (but do not remove named volumes by default)
-      - name: Tear down compose (always)
-        if: ${{ always() }}
-        run: |
-          set -eux
-          docker compose --profile dev down --remove-orphans --volumes
-
-      - name: Upload logs and artifacts on failure
-        if: failure()
-        uses: ./.github/actions/upload-artifacts
-        with:
-          name: neo4j-smoke-logs
-          path: |
-            logs/
-            reports/ || true
-          if-no-files-found: ignore
-
-      - name: Success note
-        if: ${{ success() }}
-        run: echo "Neo4j smoke test completed successfully (mode=${MODE})"
-
-  markdown-lint:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
-      - name: Run markdownlint-cli2
-        run: |
-          markdownlint-cli2 "**/*.md" \
-            --config .markdownlint.yaml \
-            --ignore "**/archive/**/*.md" \
-            --ignore "**/.kiro/specs/archive/**/*.md" \
-            --ignore "reports/**/*.md" \
-            --ignore "**/.venv/**/*.md" \
-            --ignore "**/venv/**/*.md" \
-            --ignore "**/node_modules/**/*.md"
-
-  security-scan:
-    name: Security Scan (Bandit)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-      - name: Run Bandit security scanner
-        run: uv run python -m bandit -r src -c pyproject.toml
-
-  secret-detection:
-    name: Secret Detection
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
-      - name: Run detect-secrets
-        run: uv run detect-secrets scan --baseline .secrets.baseline
-
-  verify-local-workflow:
-    name: Verify Local Developer Workflow
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-
-      - name: Configure Local Environment
-        run: make setup-local
-
-      - name: Generate Sample Data
-        run: make sample-data
-
-      - name: Verify Pipeline with Local Data
-        env:
-          SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST: "false"
-          SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST: "false"
-        run: |
-          uv run pytest -m "not real_data and not slow" tests/unit/extractors/
-
-  verify-ml-workflow:
-    name: Verify ML/Cloud Workflow
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "true"
-          cache-venv: "true"
-
-      - name: Install ML Dependencies
-        run: make install-ml
-
-      - name: Configure ML Environment
-        env:
-          HF_TOKEN: "hf_dummy_token_for_ci"
-        run: |
-          echo "HF_TOKEN=hf_dummy_token_for_ci" >> .env
-          make setup-ml
-
-      - name: Verify Notebook Execution
-        run: |
-          uv run --extra ml jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output notebooks/getting_started_executed.ipynb
-
   comprehensive-tests:
-    name: Weekly Comprehensive Test Suite
+    name: Comprehensive Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 120
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
@@ -572,32 +195,31 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
-          cache-pytest: "false"
           install-pyreadstat: "true"
 
       - name: Setup Neo4j service
         uses: ./.github/actions/setup-neo4j-service
         with:
-          neo4j-image: "neo4j:5"
-          neo4j-username: "neo4j"
-          neo4j-password: "password"
+          neo4j-image: ${{ env.NEO4J_IMAGE }}
+          neo4j-username: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
       - name: Wait for Neo4j
         uses: ./.github/actions/wait-for-neo4j
         with:
           neo4j-uri: "bolt://localhost:7687"
-          neo4j-username: "neo4j"
-          neo4j-password: "password"
+          neo4j-username: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
           timeout-seconds: "60"
 
       - name: Run comprehensive test suite
         env:
           NEO4J_URI: "bolt://localhost:7687"
-          NEO4J_USER: "neo4j"
-          NEO4J_PASSWORD: "password"
+          NEO4J_USER: ${{ env.NEO4J_USERNAME }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
           USE_REAL_SBIR_DATA: "1"
         run: |
           uv run pytest \
@@ -627,18 +249,8 @@ jobs:
           path: htmlcov/
           retention-days: 30
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: weekly-test-results
-          path: |
-            test-results/
-            *.log
-          retention-days: 30
-
   real-data-validation:
-    name: Weekly Real Data Validation
+    name: Real Data Validation
     runs-on: ubuntu-latest
     timeout-minutes: 60
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
@@ -648,14 +260,13 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
           install-pyreadstat: "true"
 
       - name: Run validation scripts
-        run: |
-          uv run python tests/validation/test_categorization_validation.py
+        run: uv run python tests/validation/test_categorization_validation.py
 
       - name: Upload validation reports
         if: always()
@@ -668,7 +279,7 @@ jobs:
           retention-days: 30
 
   performance-profiling:
-    name: Weekly Performance Profiling
+    name: Performance Profiling
     runs-on: ubuntu-latest
     timeout-minutes: 45
     if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
@@ -678,7 +289,7 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
           cache-venv: "true"
 

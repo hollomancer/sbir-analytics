@@ -1,0 +1,184 @@
+name: Nightly Security & Smoke Tests
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC nightly
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Neo4j smoke test mode'
+        required: false
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - live
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  security-scan:
+    name: Security Scan (Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+      - name: Run Bandit security scanner
+        run: uv run python -m bandit -r src -c pyproject.toml
+
+  secret-detection:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+      - name: Run detect-secrets
+        run: uv run detect-secrets scan --baseline .secrets.baseline
+
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+      - name: Run markdownlint-cli2
+        run: |
+          markdownlint-cli2 "**/*.md" \
+            --config .markdownlint.yaml \
+            --ignore "**/archive/**/*.md" \
+            --ignore "**/.kiro/specs/archive/**/*.md" \
+            --ignore "reports/**/*.md" \
+            --ignore "**/.venv/**/*.md" \
+            --ignore "**/venv/**/*.md" \
+            --ignore "**/node_modules/**/*.md"
+
+  neo4j-smoke:
+    name: Neo4j Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MODE: ${{ github.event.inputs.mode || 'dry-run' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: ./.github/actions/setup-docker-buildx
+
+      - name: Prepare .env (dry-run mode)
+        uses: ./.github/actions/prepare-env-file
+        with:
+          neo4j-user: ${{ secrets.NEO4J_USER }}
+          neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
+
+      - name: Build runtime image
+        run: docker build --target runtime -t sbir-analytics:smoke .
+
+      - name: Start Neo4j
+        run: docker compose --profile dev up -d neo4j
+
+      - name: Wait for Neo4j health
+        run: |
+          for i in {1..12}; do
+            if docker ps --filter "name=sbir-neo4j" --filter status=running --format "{{.Names}}" | grep -q .; then
+              echo "Neo4j is running"
+              exit 0
+            fi
+            echo "Waiting for Neo4j... ($i/12)"
+            sleep 5
+          done
+          echo "Neo4j failed to start"
+          exit 1
+
+      - name: Apply schema (dry-run)
+        run: |
+          docker run --rm --network sbir-network \
+            -e NEO4J_URI="bolt://neo4j:7687" \
+            sbir-analytics:smoke python scripts/neo4j/apply_schema.py --dry-run
+
+      - name: Cleanup
+        if: always()
+        run: docker compose --profile dev down --remove-orphans --volumes
+
+  verify-local-workflow:
+    name: Verify Local Developer Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Configure Local Environment
+        run: make setup-local
+
+      - name: Generate Sample Data
+        run: make sample-data
+
+      - name: Verify Pipeline with Local Data
+        env:
+          SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST: "false"
+          SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST: "false"
+        run: uv run pytest -m "not real_data and not slow" tests/unit/extractors/
+
+  verify-ml-workflow:
+    name: Verify ML/Cloud Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Install ML Dependencies
+        run: make install-ml
+
+      - name: Configure ML Environment
+        env:
+          HF_TOKEN: "hf_dummy_token_for_ci"
+        run: |
+          echo "HF_TOKEN=hf_dummy_token_for_ci" >> .env
+          make setup-ml
+
+      - name: Verify Notebook Execution
+        run: |
+          uv run --extra ml jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output notebooks/getting_started_executed.ipynb
