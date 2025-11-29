@@ -69,7 +69,6 @@ def _install_dagster_shim(monkeypatch) -> None:
     monkeypatch.setitem(sys.modules, "dagster", shim)
 
 
-@pytest.mark.skip(reason="Asset renamed: contracts_ingestion -> raw_contracts")
 def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
@@ -104,10 +103,10 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition import AssetExecutionContext, contracts_ingestion
+    from src.assets.transition import AssetExecutionContext, raw_contracts
 
     ctx = AssetExecutionContext()
-    result_df, metadata = _unwrap_output(contracts_ingestion(ctx))
+    result_df, metadata = _unwrap_output(raw_contracts(ctx))
 
     assert isinstance(result_df, pd.DataFrame)
     assert len(result_df) == len(seed_df)
@@ -126,7 +125,6 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
     assert checks_payload["coverage"]["vendor_uei"] >= 0.5
 
 
-@pytest.mark.skip(reason="Asset renamed: contracts_ingestion -> raw_contracts")
 def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
@@ -170,7 +168,7 @@ def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
 
     _install_dagster_shim(monkeypatch)
 
-    from src.assets.transition import AssetExecutionContext, contracts_ingestion
+    from src.assets.transition import AssetExecutionContext, raw_contracts
     from src.extractors.contract_extractor import ContractExtractor
 
     def _fake_extract(self, dump_dir, output_file, table_files=None):
@@ -180,7 +178,7 @@ def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
     monkeypatch.setattr(ContractExtractor, "extract_from_dump", _fake_extract)
 
     ctx = AssetExecutionContext()
-    refreshed_df, metadata = _unwrap_output(contracts_ingestion(ctx))
+    refreshed_df, metadata = _unwrap_output(raw_contracts(ctx))
 
     assert isinstance(refreshed_df, pd.DataFrame)
     assert len(refreshed_df) == len(fresh_df)

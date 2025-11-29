@@ -691,7 +691,8 @@ class TestEdgeCases:
         mock_connect.return_value = mock_conn
 
         try:
-            with DuckDBUSAspendingExtractor():
+            with DuckDBUSAspendingExtractor() as extractor:
+                extractor.connect()  # Establish connection
                 raise ValueError("Test exception")
         except ValueError:
             pass

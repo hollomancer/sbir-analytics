@@ -133,12 +133,9 @@ class TestSAMGovExtractorIntegration:
 class TestSAMGovAssetIntegration:
     """Integration tests for SAM.gov Dagster asset."""
 
-    @pytest.mark.skip(reason="Needs proper Dagster context setup")
     def test_asset_execution_with_local_file(self, sample_sam_gov_parquet):
         """Test Dagster asset execution with local parquet file."""
-        # Mock context
-        context = MagicMock()
-        context.log = MagicMock()
+        from dagster import build_asset_context
 
         # Mock config
         with patch("src.assets.sam_gov_ingestion.get_config") as mock_config:
@@ -157,7 +154,8 @@ class TestSAMGovAssetIntegration:
                     mock_extractor.load_parquet.return_value = test_df
                     mock_extractor_class.return_value = mock_extractor
 
-                    # Execute asset
+                    # Execute asset with proper context
+                    context = build_asset_context()
                     result = raw_sam_gov_entities(context)
 
                     # Verify result
@@ -173,14 +171,10 @@ class TestSAMGovAssetIntegration:
                     assert "num_columns" in result.metadata
                     assert "key_columns" in result.metadata
 
-    @pytest.mark.skip(reason="Needs proper Dagster context setup")
     def test_asset_error_handling_no_file(self):
         """Test Dagster asset error handling when parquet file is missing."""
+        from dagster import build_asset_context
         from src.exceptions import ExtractionError
-
-        # Mock context
-        context = MagicMock()
-        context.log = MagicMock()
 
         # Mock config with non-existent file
         with patch("src.assets.sam_gov_ingestion.get_config") as mock_config:
@@ -193,6 +187,7 @@ class TestSAMGovAssetIntegration:
                 mock_path.return_value.exists.return_value = False
 
                 # Execute and expect error
+                context = build_asset_context()
                 with pytest.raises(ExtractionError) as exc_info:
                     raw_sam_gov_entities(context)
 
@@ -202,7 +197,6 @@ class TestSAMGovAssetIntegration:
 class TestSAMGovS3Integration:
     """Integration tests for S3 path resolution (mocked S3)."""
 
-    @pytest.mark.skip(reason="Missing find_latest_sam_gov_parquet function")
     def test_s3_path_resolution(self, sample_sam_gov_parquet):
         """Test S3 path resolution with mocked S3 client."""
         with patch("src.extractors.sam_gov.get_config") as mock_config:
