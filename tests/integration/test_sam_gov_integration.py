@@ -166,7 +166,9 @@ class TestSAMGovAssetIntegration:
                     # Verify metadata
                     assert result.metadata is not None
                     assert "row_count" in result.metadata
-                    assert result.metadata["row_count"] == 5
+                    # Metadata values are wrapped in MetadataValue objects
+                    row_count = result.metadata["row_count"]
+                    assert row_count == 5 or (hasattr(row_count, "value") and row_count.value == 5)
                     assert "num_columns" in result.metadata
                     assert "key_columns" in result.metadata
 

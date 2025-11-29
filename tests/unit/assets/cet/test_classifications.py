@@ -30,20 +30,6 @@ pytestmark = pytest.mark.fast
 
 
 @pytest.fixture
-def mock_context():
-    """Mock Dagster context using build_asset_context."""
-    from dagster import build_asset_context
-    from unittest.mock import Mock
-
-    context = build_asset_context()
-    # Replace log methods with Mocks for assertion
-    context.log.info = Mock()
-    context.log.warning = Mock()
-    context.log.error = Mock()
-    return context
-
-
-@pytest.fixture
 def sample_checks_data():
     """Sample checks JSON data."""
     return {

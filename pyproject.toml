@@ -202,7 +202,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 # Exclude validation scripts that are standalone scripts, not pytest tests
 norecursedirs = ["validation"]
-addopts = "-v"
+# Enable parallel execution with pytest-xdist (use -n auto for automatic CPU detection)
+# Override with -n 0 to disable parallel execution for debugging
+addopts = "-v -n auto"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 

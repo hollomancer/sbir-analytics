@@ -52,32 +52,24 @@ class TestPatentLoaderConfig:
 class TestPatentLoaderInitialization:
     """Tests for PatentLoader initialization."""
 
-    def test_initialization_with_default_config(self):
-        """Test PatentLoader initialization with default config."""
-        mock_client = Mock(spec=Neo4jClient)
-        loader = PatentLoader(mock_client)
+    @pytest.mark.parametrize(
+        "config,expected_batch_size,expected_create_indexes",
+        [
+            (None, 1000, True),  # default config
+            (PatentLoaderConfig(batch_size=500, create_indexes=False), 500, False),  # custom
+            (PatentLoaderConfig(batch_size=2000), 2000, True),  # partial custom
+        ],
+        ids=["default", "custom", "partial_custom"],
+    )
+    def test_initialization(self, config, expected_batch_size, expected_create_indexes):
+        """Test PatentLoader initialization with various configurations."""
+        mock_client = Neo4jMocks.client()
+        loader = PatentLoader(mock_client, config) if config else PatentLoader(mock_client)
 
         assert loader.client == mock_client
         assert isinstance(loader.config, PatentLoaderConfig)
-        assert loader.config.batch_size == 1000
-
-    def test_initialization_with_custom_config(self):
-        """Test PatentLoader initialization with custom config."""
-        mock_client = Mock(spec=Neo4jClient)
-        config = PatentLoaderConfig(batch_size=500, create_indexes=False)
-
-        loader = PatentLoader(mock_client, config)
-
-        assert loader.client == mock_client
-        assert loader.config.batch_size == 500
-        assert loader.config.create_indexes is False
-
-    def test_initialization_stores_client_reference(self):
-        """Test that client reference is stored correctly."""
-        mock_client = Mock(spec=Neo4jClient)
-        loader = PatentLoader(mock_client)
-
-        assert loader.client is mock_client
+        assert loader.config.batch_size == expected_batch_size
+        assert loader.config.create_indexes is expected_create_indexes
 
 
 class TestPatentLoaderConstraints:

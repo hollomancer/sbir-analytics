@@ -357,3 +357,18 @@ def session_tmp_dir(tmp_path_factory):
     Useful for caching expensive computations across tests.
     """
     return tmp_path_factory.mktemp("session_data")
+
+
+# Mock Fixtures
+# =============
+
+
+@pytest.fixture
+def mock_context():
+    """
+    Shared mock Dagster execution context with logging.
+    Uses ContextMocks factory for consistency.
+    """
+    from tests.mocks import ContextMocks
+
+    return ContextMocks.context_with_logging()
