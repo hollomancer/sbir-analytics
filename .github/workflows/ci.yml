@@ -393,6 +393,16 @@ jobs:
             echo "⚠️  AWS credentials step did not succeed (outcome: ${{ steps.aws-credentials.outcome }})"
           fi
 
+      - name: Prepare test data for benchmark
+        if: steps.check_aws.outputs.aws_available == 'true'
+        run: |
+          # Use test fixture if S3 data not available
+          mkdir -p data/raw/sbir
+          if ! aws s3 ls s3://${{ env.S3_BUCKET }}/data/raw/sbir/award_data.csv >/dev/null 2>&1; then
+            echo "⚠️  S3 data not available, using test fixture"
+            cp tests/fixtures/sbir_sample.csv data/raw/sbir/award_data.csv
+          fi
+
       - name: Run Performance Regression Detection
         id: regression
         if: steps.check_aws.outputs.aws_available == 'true'
@@ -423,6 +433,12 @@ jobs:
       - name: Create baseline if needed
         if: steps.baseline_check.outputs.baseline_exists == 'false' && success()
         run: |
+          # Ensure test data is available
+          mkdir -p data/raw/sbir
+          if [ ! -f "data/raw/sbir/award_data.csv" ]; then
+            echo "Using test fixture for baseline"
+            cp tests/fixtures/sbir_sample.csv data/raw/sbir/award_data.csv
+          fi
           export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}"
           uv run python scripts/performance/benchmark_enrichment.py \
             --sample-size ${{ env.PERFORMANCE_SAMPLE_SIZE }} \

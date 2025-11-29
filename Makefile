@@ -176,6 +176,37 @@ dev: ## Run Dagster dev server locally
 	@$(call info,Starting Dagster dev server)
 	$(call run,uv run dagster dev -m src.definitions)
 
+.PHONY: install-ml
+install-ml: ## Install ML dependencies (jupyter, paecter, r, etc.)
+	@$(call info,Installing ML dependencies)
+	$(call run,uv sync --extra ml --extra paecter-local --extra r)
+
+.PHONY: notebook
+notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
+	@$(call info,Starting Jupyter Lab)
+	@mkdir -p notebooks
+	$(call run,uv run --extra ml --extra paecter-local --extra r jupyter lab --notebook-dir=notebooks)
+
+.PHONY: setup-ml
+setup-ml: env-check ## Configure environment for ML (Cloud + HF)
+	@$(call info,Configuring ML environment)
+	@$(call info,This will enable S3 usage and prompt for HuggingFace Token.)
+	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
+		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
+		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
+		$(call success,Added cloud configuration to .env); \
+	else \
+		sed -i '' 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/g' .env; \
+		sed -i '' 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/g' .env; \
+		$(call success,Updated .env to use S3); \
+	fi
+	@if ! grep -q "HF_TOKEN" .env; then \
+		echo "HF_TOKEN=" >> .env; \
+		$(call warn,Added HF_TOKEN to .env. Please edit it to add your HuggingFace token.); \
+	else \
+		$(call success,HF_TOKEN already present in .env); \
+	fi
+
 .PHONY: sample-data
 sample-data: ## Generate sample data for local development
 	@$(call info,Generating sample data)

@@ -79,7 +79,7 @@ def transformed_transition_scores(
         """Parse date using centralized utility, returning datetime."""
         from src.utils.date_utils import parse_date
 
-        result = parse_date(v, return_datetime=True, strict=False)
+        result = parse_date(v, return_datetime=True)
         return result if isinstance(result, datetime) else None
 
     def _award_date_from_row(r: pd.Series | None):

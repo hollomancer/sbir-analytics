@@ -204,7 +204,7 @@ class PatentAssignmentTransformer:
         """Parse date using centralized utility."""
         from src.utils.common.date_utils import parse_date
 
-        return parse_date(value, strict=False)
+        return parse_date(value)
 
     # ------------------------
     # Conveyance parsing

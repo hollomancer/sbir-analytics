@@ -529,7 +529,7 @@ def validate_date_fields(
             """Parse date using centralized utility, returning datetime."""
             from src.utils.date_utils import parse_date as parse_date_util
 
-            result = parse_date_util(val, return_datetime=True, strict=False)
+            result = parse_date_util(val, return_datetime=True)
             return result if isinstance(result, datetime) else None
 
         for row in iter_rows_from_path(file_path, chunk_size=chunk_size):

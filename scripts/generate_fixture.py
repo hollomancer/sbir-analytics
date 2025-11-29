@@ -96,7 +96,7 @@ SAMPLE_ROWS: list[dict[str, str]] = [
         "Contract": "C-2023-0001",
         "Solicitation Number": "SOL-2023-01",
         "Solicitation Year": "2023",
-        "UEI": "A1B2C3D4E5F6",  # 12 chars
+        "UEI": "A1B2C3D4E5F6",  # 12 chars  # pragma: allowlist secret
         "Duns": "123456789",
         "HUBZone Owned": "N",
         "Socially and Economically Disadvantaged": "Y",
