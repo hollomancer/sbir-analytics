@@ -325,7 +325,7 @@ requests==2.32.5
     #   weasel
 requests-toolbelt==1.0.0
     # via gql
-rich==13.9.4
+rich==14.2.0
     # via
     #   sbir-analytics (pyproject.toml)
     #   dagster
