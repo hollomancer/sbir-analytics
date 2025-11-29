@@ -407,6 +407,14 @@ def default_config():
                 "weight": 0.10,
             },
         },
+        "timing_window": {
+            "min_days_after_completion": 0,
+            "max_days_after_completion": 730,
+        },
+        "vendor_matching": {
+            "require_match": True,
+            "min_confidence": 0.7,
+        },
         "confidence_thresholds": {
             "high": 0.85,
             "likely": 0.65,

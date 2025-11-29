@@ -207,12 +207,12 @@ class TestLineProcessing:
     def test_process_line_filters_invalid_naics(self, enricher):
         """Test line processing filters invalid NAICS codes."""
         # 2-digit codes < 11, 3+ digit codes < 100
-        line = "123456 CONT 05 99 11 541511"
+        line = "123456 CONT 05 09 11 541511"
 
         enricher._process_line(line)
 
-        assert "05" not in enricher.award_map["123456"]
-        assert "99" not in enricher.award_map["123456"]
+        assert "5" not in enricher.award_map["123456"]  # Normalized from 05, filtered (< 11)
+        assert "9" not in enricher.award_map["123456"]  # Normalized from 09, filtered (< 11)
         assert "11" in enricher.award_map["123456"]  # Valid 2-digit
         assert "541511" in enricher.award_map["123456"]
 

@@ -192,18 +192,19 @@ class TestChunkProgress:
         assert checkpoint_dir.exists()
         assert checkpoint_path.exists()
 
-    def test_log_progress(self, caplog):
+    def test_log_progress(self, capsys):
         """Test progress logging."""
         progress = ChunkProgress(total_records=1000, chunk_size=100)
         progress.chunks_processed = 5
         progress.records_processed = 500
 
-        with caplog.at_level("INFO"):
-            progress.log_progress()
+        progress.log_progress()
 
-        assert "50.0%" in caplog.text
-        assert "500/1000 records" in caplog.text
-        assert "5/10 chunks" in caplog.text
+        captured = capsys.readouterr()
+        # Loguru writes to stderr
+        assert "50.0%" in captured.err
+        assert "500/1000 records" in captured.err
+        assert "5/10 chunks" in captured.err
 
 
 # ==================== ChunkedEnricher Initialization Tests ====================
@@ -369,16 +370,16 @@ class TestEnrichChunk:
         """Test successful chunk enrichment."""
         mock_get_config.return_value = mock_config
 
-        # Mock enrichment result
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = [
-            "exact_uei",
-            "exact_uei",
-            "fuzzy_name",
-            None,
-            "exact_uei",
-        ]
-        mock_enrich.return_value = enriched_df
+        # Mock enrichment to return only the chunk being processed
+        def mock_enrich_func(chunk_df, *args, **kwargs):
+            enriched = chunk_df.copy()
+            # Add match method column based on chunk size
+            enriched["_usaspending_match_method"] = ["exact_uei", "exact_uei", "fuzzy_name"][
+                : len(chunk_df)
+            ]
+            return enriched
+
+        mock_enrich.side_effect = mock_enrich_func
 
         # Mock performance monitor context
 
