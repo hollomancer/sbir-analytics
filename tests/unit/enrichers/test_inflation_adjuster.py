@@ -37,44 +37,26 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 @pytest.fixture
 def mock_config():
     """Create mock configuration for inflation adjuster using consolidated utility."""
+    config = create_mock_pipeline_config()
+    # Set fiscal_analysis settings with actual dict for quality_thresholds
     from unittest.mock import MagicMock
 
-    config = create_mock_pipeline_config()
-    # Set fiscal_analysis settings
     if not hasattr(config, "fiscal_analysis"):
         config.fiscal_analysis = MagicMock()
 
     config.fiscal_analysis.base_year = 2023
     config.fiscal_analysis.inflation_source = "BEA GDP Deflator"
+    # Use actual dict so .get() works
+    config.fiscal_analysis.quality_thresholds = {"inflation_adjustment_success": 0.95}
 
-    # Always ensure quality_thresholds is a MagicMock (not a dict)
-    # Check type first, then handle accordingly
-    if not hasattr(config.fiscal_analysis, "quality_thresholds"):
-        config.fiscal_analysis.quality_thresholds = MagicMock()
-    else:
-        # Check if it's a dict and convert to MagicMock
-        existing_value = getattr(config.fiscal_analysis, "quality_thresholds", None)
-        if isinstance(existing_value, dict):
-            # Convert dict to MagicMock
-            thresholds = MagicMock()
-            thresholds.inflation_adjustment_success = existing_value.get(
-                "inflation_adjustment_success", 0.95
-            )
-            config.fiscal_analysis.quality_thresholds = thresholds
-        elif not isinstance(existing_value, MagicMock):
-            # If it's something else, create a new MagicMock
-            config.fiscal_analysis.quality_thresholds = MagicMock()
-
-    config.fiscal_analysis.quality_thresholds.inflation_adjustment_success = 0.95
     return config
 
 
 @pytest.fixture
-def adjuster(mock_config) -> InflationAdjuster:
+def adjuster(mock_config, monkeypatch) -> InflationAdjuster:
     """Create inflation adjuster instance."""
-    with pytest.MonkeyPatch.context() as m:
-        m.setattr("src.enrichers.inflation_adjuster.get_config", lambda: mock_config)
-        return InflationAdjuster()
+    monkeypatch.setattr("src.enrichers.inflation_adjuster.get_config", lambda: mock_config)
+    return InflationAdjuster()
 
 
 # =============================================================================
