@@ -627,6 +627,9 @@ class TestCalculateChainMetadata:
         assignment.metadata = {}
         assignment.execution_date = None
         assignment.recorded_date = None
+        assignment.conveyance = None
+        assignment.assignee = None
+        assignment.assignor = None
 
         row = {"conveyance_description": "Patent assignment Part 1 of 3"}
 
