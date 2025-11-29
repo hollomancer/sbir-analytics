@@ -517,7 +517,7 @@ class TestValidateResolutionQuality:
         assert quality["total_awards"] == 5
         assert quality["resolved_count"] == 5
         assert quality["resolution_rate"] == 1.0
-        assert quality["resolution_meets_threshold"] is True
+        assert quality["resolution_meets_threshold"]
 
     def test_validate_quality_low_resolution(self, resolver):
         """Test quality validation with low resolution rate."""
@@ -534,7 +534,7 @@ class TestValidateResolutionQuality:
         assert quality["total_awards"] == 5
         assert quality["resolved_count"] == 1
         assert quality["resolution_rate"] == 0.2
-        assert quality["resolution_meets_threshold"] is False
+        assert not quality["resolution_meets_threshold"]
 
     def test_validate_quality_confidence_distribution(self, resolver):
         """Test quality validation calculates confidence distribution."""

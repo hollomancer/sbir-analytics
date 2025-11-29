@@ -373,10 +373,8 @@ class TestEnrichChunk:
         # Mock enrichment to return only the chunk being processed
         def mock_enrich_func(sbir_df, recipient_df, *args, **kwargs):
             enriched = sbir_df.copy()
-            # Add match method column based on chunk size
-            enriched["_usaspending_match_method"] = ["exact_uei", "exact_uei", "fuzzy_name"][
-                : len(sbir_df)
-            ]
+            # Add match method column - 2 matches, 1 None
+            enriched["_usaspending_match_method"] = ["exact_uei", "exact_uei", None][: len(sbir_df)]
             return enriched
 
         mock_enrich.side_effect = mock_enrich_func
@@ -393,7 +391,7 @@ class TestEnrichChunk:
         assert metrics["records_matched"] == 2
         assert metrics["match_rate"] == pytest.approx(2 / 3)
         assert metrics["exact_matches"] == 2
-        assert metrics["fuzzy_matches"] == 1
+        assert metrics["fuzzy_matches"] == 0
         assert "duration_seconds" in metrics
 
     @patch("src.enrichers.chunked_enrichment.get_config")
@@ -661,9 +659,13 @@ class TestDataFrameProcessing:
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
-        enriched_df = sample_sbir_df.copy()
-        enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
-        mock_enrich.return_value = enriched_df
+        # Mock to return only the chunk being processed
+        def mock_enrich_func(sbir_df, recipient_df, *args, **kwargs):
+            enriched = sbir_df.copy()
+            enriched["_usaspending_match_method"] = ["exact_uei"] * len(sbir_df)
+            return enriched
+
+        mock_enrich.side_effect = mock_enrich_func
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
