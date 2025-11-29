@@ -651,7 +651,8 @@ class TestFiscalPreparation:
         adjusted_df["amount_real"] = adjusted_df["Amount"] * 1.1
         adjusted_df["inflation_factor"] = 1.1
 
-        mock_adjust_func.return_value = adjusted_df
+        quality_metrics = {"adjustment_success_rate": 0.95}
+        mock_adjust_func.return_value = (adjusted_df, quality_metrics)
 
         result = inflation_adjusted_awards(mock_context, sample_bea_mapped_awards)
 
