@@ -50,7 +50,39 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
+  # Run all pre-commit hooks for comprehensive local/CI consistency check
+  pre-commit-check:
+    name: Pre-commit Hooks (Local/CI Consistency)
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.code-changed == 'true')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed for detect-secrets to work properly
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+      - name: Install pre-commit
+        run: |
+          uv pip install pre-commit
+          pre-commit --version
+      - name: Run all pre-commit hooks
+        run: pre-commit run --all-files
+        env:
+          SKIP: docs-link-check # Skip external link checks in CI to avoid rate limiting
+
   # Split analysis into parallel jobs for faster execution
+  # Note: These individual jobs run the same commands as pre-commit hooks
+  # to ensure consistency between local development and CI. See .pre-commit-config.yaml.
   lint:
     name: Lint (Ruff)
     needs: [detect-changes]
@@ -73,9 +105,9 @@ jobs:
         run: |
           uv pip install ruff
           uv run python -m ruff --version
-      - name: Run Ruff lint
+      - name: "Run Ruff lint (matches pre-commit: ruff check src tests)"
         run: uv run python -m ruff check src tests
-      - name: Run Ruff format check
+      - name: "Run Ruff format check (matches pre-commit: ruff format src tests)"
         run: uv run python -m ruff format --check src tests
 
   types:
@@ -100,7 +132,7 @@ jobs:
         run: |
           uv pip install mypy
           uv run python -m mypy --version
-      - name: Run MyPy type checker
+      - name: "Run MyPy type checker (matches pre-commit: mypy src)"
         run: uv run python -m mypy src
 
   security:
@@ -121,7 +153,7 @@ jobs:
           cache-venv: "true"
           cache-pytest: "false"
           install-pyreadstat: "false"
-      - name: Run Bandit
+      - name: "Run Bandit (matches pre-commit: bandit -r src -c pyproject.toml)"
         run: uv run python -m bandit -r src -c pyproject.toml
 
   docs-link-check:

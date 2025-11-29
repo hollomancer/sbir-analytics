@@ -1,4 +1,5 @@
 repos:
+  # Standard file checks (good practice for all files)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -7,25 +8,27 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  # Python linting and formatting with Ruff
+  # Python linting and formatting (matches CI scope: src and tests)
+  # CI equivalent: ruff check src tests && ruff format --check src tests
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.4
     hooks:
       - id: ruff
+        files: ^(src|tests)/
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+        files: ^(src|tests)/
 
+  # Type checking (matches CI scope: src only)
+  # CI equivalent: mypy src
+  # Note: mypy is configured in pyproject.toml with exclude patterns for
+  # scripts/, tests/, examples/, and migrations/ to match this scope
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
       - id: mypy
-        exclude: |
-          (?x)^(
-            scripts/|
-            tests/|
-            examples/|
-            migrations/
-          )
+        files: ^src/
+        args: [--config-file=pyproject.toml]
         additional_dependencies:
           [
             pandas-stubs,
@@ -36,24 +39,24 @@ repos:
             "boto3-stubs[s3]",
             pydantic,
           ]
-        args: [--config-file=pyproject.toml]
 
+  # Security scanning (matches CI scope: src only)
+  # CI equivalent: bandit -r src -c pyproject.toml
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
     hooks:
       - id: bandit
+        files: ^src/
         args: [-c, pyproject.toml]
         additional_dependencies: ["bandit[toml]"]
 
+  # Secret detection (scans all files with exclusions)
+  # This is not explicitly in CI but is a best practice
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        # Use a baseline file when teams have previously accepted secrets.
-        # The baseline should be committed at .secrets.baseline when appropriate.
         args: ["--baseline", ".secrets.baseline"]
-        # Exclude directories that shouldn't be scanned (build artifacts, dependencies, etc.)
-        # Also exclude infrastructure code (references secret names, not actual secrets), debug scripts, and documentation
         exclude: |
           (?x)^(
             \.git\/|
@@ -81,19 +84,32 @@ repos:
             .*\.rst$
           )
 
-  # Disabled git-secrets hook: install requires manual setup on developer machines; detect-secrets + local
-  # grep coverage is sufficient in current workflow. Re-enable when git-secrets hook exposes a pip-friendly tag.
-  # - repo: https://github.com/awslabs/git-secrets
-  #   rev: v1.3.0
-  #   hooks:
-  #     - id: git-secrets
-
-# Notes for maintainers:
-# - Install pre-commit locally and enable hooks:
+# Configuration notes for maintainers:
+#
+# SCOPE ALIGNMENT WITH CI:
+#   This pre-commit configuration is designed to match the CI workflow
+#   defined in .github/workflows/static-analysis.yml. All tools run on
+#   the same paths to ensure consistency between local and CI environments.
+#
+#   Tool Scope Mapping:
+#   - Ruff (lint/format): src/ tests/     [matches CI: ruff check src tests]
+#   - MyPy (type check):  src/            [matches CI: mypy src]
+#   - Bandit (security):  src/            [matches CI: bandit -r src]
+#   - Standard hooks:     all files       [good practice, not in CI]
+#   - Detect-secrets:     all files       [best practice, not in CI]
+#
+# SETUP:
+#   Install pre-commit:
 #     pip install pre-commit
+#   Enable hooks:
 #     pre-commit install
-# - To scan all files (one-off), run:
+#   Run all hooks on all files (useful for onboarding):
 #     pre-commit run --all-files
-# - The detect-secrets hook uses a baseline (.secrets.baseline). When you audit and accept existing secrets
-#   in the baseline, commit it. New secrets will still be flagged.
-# - For CI enforcement add a job that runs `pre-commit run --all-files` on PRs (ensures all PRs are scanned even if devs skip hooks).
+#
+# TESTING:
+#   The detect-secrets hook uses .secrets.baseline for approved secrets.
+#   When the baseline is updated, commit it with your PR.
+#
+# CI ENFORCEMENT:
+#   For additional CI enforcement, run pre-commit via GitHub Actions.
+#   See .github/workflows/static-analysis.yml for the complete set of checks.
