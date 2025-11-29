@@ -235,7 +235,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           flags: weekly-comprehensive
