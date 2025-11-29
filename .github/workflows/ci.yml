@@ -454,12 +454,10 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: false
           load: true
           tags: |
             sbir-analytics:ci-${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             BUILD_WITH_R=false
           cache-from: |
@@ -467,6 +465,14 @@ jobs:
             type=gha,scope=ci-no-r
             type=gha,scope=main
           cache-to: type=gha,mode=max,scope=ci-no-r
+
+      - name: Tag and push to registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker tag sbir-analytics:ci-${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker tag sbir-analytics:ci-${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Show built image
         run: docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}' | rg "sbir-analytics" || true
