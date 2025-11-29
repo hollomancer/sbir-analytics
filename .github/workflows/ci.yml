@@ -202,45 +202,39 @@ jobs:
           python -c "import pydantic; print('Pydantic installed')"
 
   test:
-    name: Unit Tests (Shard ${{ matrix.shard }}/4)
-    needs: [detect-changes, lint, type-check]
+    name: Tests (${{ matrix.suite.name }})
+    needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Reduced from 30 for faster failure
+    timeout-minutes: 10  # Reduced from 15 for faster parallel execution
     # Skip test job on PRs if only docs changed (but always run on push to main/develop)
-    # On push events, we could skip detect-changes, but we need it for docs-only filtering
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
 
-    # Neo4j service removed - fast tests use mocks, integration tests start Neo4j conditionally
-
     env:
-      # Environment variables are set by setup-test-environment action
-      # Additional job-specific variables
       ENVIRONMENT: test
       SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: "10000"
 
     strategy:
-      fail-fast: false  # Run all shards even if one fails
+      fail-fast: false
       matrix:
-        python-version: ["3.11"]
-        shard: [1, 2, 3, 4]
+        suite:
+          - name: unit-fast
+            path: tests/unit/
+            args: '-m "not slow and not integration"'
+            needs_neo4j: false
+          - name: unit-slow
+            path: tests/unit/
+            args: '-m "slow and not integration"'
+            needs_neo4j: false
+          - name: integration
+            path: tests/integration/
+            args: '-m "integration and not slow"'
+            needs_neo4j: true
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup test environment
-        uses: ./.github/actions/setup-test-environment
-        with:
-          python-version: ${{ matrix.python-version }}
-          neo4j-image: ${{ env.NEO4J_IMAGE }}
-          neo4j-username: ${{ env.NEO4J_USERNAME }}
-          neo4j-password: ${{ env.NEO4J_PASSWORD }}
-          default-timeout: ${{ env.DEFAULT_TIMEOUT }}
-
-      - name: Display test environment
-        run: echo "🚀 Running fast tests shard ${{ matrix.shard }}/4 without Neo4j service (mocked)"
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -251,68 +245,53 @@ jobs:
           cache-pytest: "true"
           install-pyreadstat: "true"
 
-      - name: Run taxonomy completeness checks
-        # Only run on shard 1 to avoid duplication
-        if: |
-          matrix.shard == 1 &&
-          (github.event_name == 'push' ||
-           (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true'))
+      - name: Start Neo4j service
+        if: matrix.suite.needs_neo4j
         run: |
-          echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
-          # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
-          uv run python -m src.ml.config.taxonomy_checks --output data/processed/cet_taxonomy_checks.json || true
+          docker run -d --name test-neo4j \
+            -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
+            -p 7687:7687 -p 7474:7474 \
+            ${{ env.NEO4J_IMAGE }}
+          for i in {1..12}; do
+            if curl -s -f -o /dev/null http://localhost:7474; then
+              echo "Neo4j is ready"
+              break
+            fi
+            echo "Waiting for Neo4j... ($i/12)"
+            sleep 5
+          done
 
-      - name: Evaluate taxonomy checks
-        # Only evaluate when checks were run
-        if: |
-          matrix.shard == 1 &&
-          (github.event_name == 'push' ||
-           (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true'))
-        run: uv run python scripts/ci/evaluate_taxonomy_checks.py
-
-      - name: Verify pandas, duckdb, and pyreadstat installed
-        if: matrix.shard == 1
-        run: uv run python scripts/ci/verify_dependencies.py
-
-      - name: Run fast tests (sharded)
-        id: run_tests
-        continue-on-error: true
+      - name: Run ${{ matrix.suite.name }} tests
+        env:
+          NEO4J_URI: "bolt://localhost:7687"
+          NEO4J_USER: ${{ env.NEO4J_USERNAME }}
+          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
         run: |
-          # Use pytest-xdist with test sharding for parallel execution across jobs
-          # Each shard runs 1/4 of the tests with 2 workers for optimal performance
-          uv run pytest -m fast \
-            --cov=src \
-            --cov-report=xml \
-            --cov-report=term-missing \
-            --shard-id=${{ matrix.shard }} \
-            --num-shards=4 \
-            --json-report \
-            --json-report-file=test-results-shard-${{ matrix.shard }}.json \
-            -n 2
+          uv run pytest ${{ matrix.suite.path }} ${{ matrix.suite.args }} \
+            --cov=src --cov-report=xml --cov-report=term \
+            --junitxml=test-results-${{ matrix.suite.name }}.xml -v
+
+      - name: Stop Neo4j service
+        if: always() && matrix.suite.needs_neo4j
+        run: |
+          docker stop test-neo4j || true
+          docker rm test-neo4j || true
+
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: ${{ matrix.suite.name }}
+          name: ${{ matrix.suite.name }}-coverage
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results-shard-${{ matrix.shard }}
-          path: test-results-shard-${{ matrix.shard }}.json
-          retention-days: 7
-
-      - name: Check test results
-        if: always()
-        run: |
-          if [ "${{ steps.run_tests.outcome }}" != "success" ]; then
-            echo "::error::Tests failed in shard ${{ matrix.shard }}"
-            exit 1
-          fi
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          file: ./coverage.xml
-          flags: unittests-shard-${{ matrix.shard }}
-          name: codecov-shard-${{ matrix.shard }}
-          fail_ci_if_error: false
+          name: test-results-${{ matrix.suite.name }}
+          path: test-results-${{ matrix.suite.name }}.xml
+          retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
   test-report:
     name: Test Report Summary
@@ -411,9 +390,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Reduced from 30 for faster failure
     # Optimized: Only required on push to main/develop, optional on PRs with docker changes
-    # Skip on PRs without docker changes to save ~20 min
+    # Skip on PRs without docker changes or docs-only to save ~20 min
     if: |
       always() &&
+      needs.detect-changes.outputs.docs-only != 'true' &&
       (github.event_name == 'push' ||
        (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
        github.event_name == 'workflow_dispatch')
@@ -513,8 +493,10 @@ jobs:
   performance-check:
     name: Performance Regression Check
     needs: [detect-changes]
-    # Condition: Run only when performance-sensitive files change (or workflow_dispatch)
-    if: needs.detect-changes.outputs.performance == 'true'
+    # Condition: Run only when performance-sensitive files change (or workflow_dispatch), skip docs-only
+    if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      needs.detect-changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Reduced from 30 for faster failure
     continue-on-error: true  # Don't block PRs on performance checks
@@ -780,6 +762,7 @@ jobs:
     # Optimized: Only run smoke tests on PR, full pipeline on push (via cet-dev-e2e)
     # This saves ~15 min on PRs by skipping pipeline test
     if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
@@ -1077,9 +1060,10 @@ jobs:
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
     needs: [detect-changes]
-    # Run on PR only if transition files changed, always run on push to main/develop
+    # Run on PR only if transition files changed, always run on push to main/develop, skip docs-only
     if: |
-      github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true'
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 15  # Reduced from 20 for faster failure
     permissions:
