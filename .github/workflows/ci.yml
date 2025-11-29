@@ -206,7 +206,7 @@ jobs:
           python -c "import pydantic; print('Pydantic installed')"
 
   test:
-    name: Unit Tests
+    name: Unit Tests (Shard ${{ matrix.shard }}/4)
     needs: [detect-changes, lint, type-check]
     runs-on: ubuntu-latest
     timeout-minutes: 15  # Reduced from 30 for faster failure
@@ -226,8 +226,10 @@ jobs:
       SBIR_ETL__EXTRACTION__SAMPLE_LIMIT: "10000"
 
     strategy:
+      fail-fast: false  # Run all shards even if one fails
       matrix:
         python-version: ["3.11"]
+        shard: [1, 2, 3, 4]
 
     steps:
       - uses: actions/checkout@v4
@@ -242,7 +244,7 @@ jobs:
           default-timeout: ${{ env.DEFAULT_TIMEOUT }}
 
       - name: Display test environment
-        run: echo "🚀 Running fast tests without Neo4j service (mocked)"
+        run: echo "🚀 Running fast tests shard ${{ matrix.shard }}/4 without Neo4j service (mocked)"
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -254,10 +256,11 @@ jobs:
           install-pyreadstat: "true"
 
       - name: Run taxonomy completeness checks
-        # Only run taxonomy checks when CET-related files change or on push to main/develop
+        # Only run on shard 1 to avoid duplication
         if: |
-          github.event_name == 'push' ||
-          (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true')
+          matrix.shard == 1 &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true'))
         run: |
           echo "Running CET taxonomy checks (write checks JSON; evaluation in next step)..."
           # Run checks but don't let this step fail the job immediately; we'll evaluate and comment in the next step.
@@ -266,24 +269,33 @@ jobs:
       - name: Evaluate taxonomy checks
         # Only evaluate when checks were run
         if: |
-          github.event_name == 'push' ||
-          (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true')
+          matrix.shard == 1 &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'pull_request' && needs.detect-changes.outputs.cet == 'true'))
         run: uv run python scripts/ci/evaluate_taxonomy_checks.py
 
       - name: Verify pandas, duckdb, and pyreadstat installed
+        if: matrix.shard == 1
         run: uv run python scripts/ci/verify_dependencies.py
 
-      - name: Run fast tests
+      - name: Run fast tests (sharded)
         run: |
-          # Use pytest-xdist for parallelization (2 workers for optimal overhead/speed balance)
-          uv run pytest -m fast --cov=src --cov-report=xml --cov-report=term-missing -n 2
+          # Use pytest-xdist with test sharding for parallel execution across jobs
+          # Each shard runs 1/4 of the tests with 2 workers for optimal performance
+          uv run pytest -m fast \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --shard-id=${{ matrix.shard }} \
+            --num-shards=4 \
+            -n 2
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          flags: unittests-shard-${{ matrix.shard }}
+          name: codecov-shard-${{ matrix.shard }}
           fail_ci_if_error: false
 
   container-build-test:
@@ -1053,7 +1065,7 @@ jobs:
           echo "| 🧹 Lint | ${{ needs.lint.result == 'success' && '✅' || needs.lint.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔎 Type Check | ${{ needs.type-check.result == 'success' && '✅' || needs.type-check.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.type-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ Verify Setup | ${{ needs.verify-setup-script.result == 'success' && '✅' || needs.verify-setup-script.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.verify-setup-script.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 Unit Tests | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Unit Tests (4 shards) | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
 
           # Conditional jobs
           if [ "${{ needs.container-build-test.result }}" != "skipped" ]; then
