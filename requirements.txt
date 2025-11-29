@@ -57,7 +57,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   tqdm
     #   uvicorn
     #   wasabi
-coloredlogs==15.0.1
+coloredlogs==14.0
     # via dagster
 confection==0.1.5
     # via
@@ -376,7 +376,7 @@ tabulate==0.9.0
     # via dagster
 tenacity==9.1.2
     # via sbir-analytics (pyproject.toml)
-thinc==9.1.1
+thinc==8.3.10
     # via spacy
 threadpoolctl==3.6.0
     # via scikit-learn
