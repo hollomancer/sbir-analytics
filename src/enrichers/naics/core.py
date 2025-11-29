@@ -215,8 +215,11 @@ class NAICSEnricher:
             code = str(code_int)
 
             # NAICS codes are hierarchical 2-6 digits. Apply conservative filters:
+            # - 1-digit codes are invalid
             # - 2-digit codes should be >= 11 (valid sector codes start at 11)
             # - 3-6 digit codes should be >= 100 (avoid tiny numeric artifacts)
+            if len(code) < 2:
+                continue
             if len(code) == 2 and code_int < 11:
                 continue
             if len(code) >= 3 and code_int < 100:

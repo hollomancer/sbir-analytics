@@ -353,7 +353,7 @@ class TestInflationAdjuster:
         enriched_df = adjuster.adjust_awards_dataframe(awards_df, 2023)
         quality = adjuster.validate_adjustment_quality(enriched_df)
 
-        assert quality["success_meets_threshold"] is True
+        assert quality["success_meets_threshold"]
         assert quality["success_rate"] >= 0.95
 
     def test_validate_adjustment_quality_below_threshold(self, adjuster):
@@ -368,7 +368,7 @@ class TestInflationAdjuster:
         enriched_df = adjuster.adjust_awards_dataframe(awards_df, 2023)
         quality = adjuster.validate_adjustment_quality(enriched_df)
 
-        assert quality["success_meets_threshold"] is False
+        assert not quality["success_meets_threshold"]
         assert quality["success_rate"] < 0.95
 
 
