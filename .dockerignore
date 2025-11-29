@@ -8,12 +8,16 @@ __pycache__/
 dist/
 build/
 *.egg
+*.pyc
+*.pyo
+*.pyd
 
 # Virtual environments
 .venv/
 venv/
 ENV/
 env/
+.python-version
 
 # IDE
 .vscode/
@@ -21,13 +25,18 @@ env/
 *.swp
 *.swo
 *~
+.editorconfig
 
-# Data files
+# Data files (large, not needed in image)
 data/
 reports/
 *.csv
+*.parquet
 *.db
 *.duckdb
+*.sqlite
+*.json.gz
+*.tar.gz
 
 # Logs
 logs/
@@ -38,27 +47,37 @@ metrics/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 
 # Git
 .git/
 .gitignore
+.gitattributes
 
 # Docker
 docker-compose.yml
-Dockerfile
+docker-compose.*.yml
+Dockerfile*
 .dockerignore
 
-# Documentation
+# Documentation (except README)
 *.md
 !README.md
 docs/
+notebooks/
+*.ipynb
 
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+test-results/
+test-results*.json
+.mypy_cache/
+.ruff_cache/
 
 # OpenSpec
 openspec/
@@ -73,7 +92,28 @@ archive/
 .github/
 .gitlab-ci.yml
 .travis.yml
+.pre-commit-config.yaml
 
 # OS
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
+
+# Build artifacts
+*.whl
+*.tar.gz
+wheels/
+
+# Scripts not needed in runtime
+scripts/setup_dev.sh
+scripts/ci/
+scripts/performance/
+
+# Config files not needed in runtime
+.bandit
+.flake8
+.pylintrc
+mypy.ini
+pytest.ini
+setup.cfg
