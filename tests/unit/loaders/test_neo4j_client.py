@@ -14,7 +14,7 @@ Tests cover:
 All tests use mocks to avoid requiring a real Neo4j instance.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -269,7 +269,7 @@ class TestNeo4jClientBatchOperations:
 
         # Mock session.run() to return result with created_count and updated_count
         mock_result = Neo4jMocks.result()
-        mock_record = Neo4jMocks.result()
+        mock_record = MagicMock()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 0}[
             key
         ]
@@ -300,7 +300,7 @@ class TestNeo4jClientBatchOperations:
         # Mock session.run() to return different counts per batch
         def mock_run_side_effect(query, **kwargs):
             mock_result = Neo4jMocks.result()
-            mock_record = Neo4jMocks.result()
+            mock_record = MagicMock()
             # First two batches: 2 created each, last batch: 1 created
             batch_size = len(kwargs.get("batch", []))
             mock_record.__getitem__.side_effect = lambda key: {
@@ -330,7 +330,7 @@ class TestNeo4jClientBatchOperations:
 
         # Mock session.run() to return 2 created, 1 updated
         mock_result = Neo4jMocks.result()
-        mock_record = Neo4jMocks.result()
+        mock_record = MagicMock()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 1}[
             key
         ]
@@ -476,7 +476,7 @@ class TestNeo4jClientBatchRelationships:
 
         # Mock tx.run() to return result with created_count
         mock_result = Neo4jMocks.result()
-        mock_record = Neo4jMocks.result()
+        mock_record = MagicMock()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2}[key]
         mock_result.single.return_value = mock_record
         mock_tx.run.return_value = mock_result
@@ -501,7 +501,7 @@ class TestNeo4jClientBatchRelationships:
 
         # Mock tx.run() to return result with created_count
         mock_result = Neo4jMocks.result()
-        mock_record = Neo4jMocks.result()
+        mock_record = MagicMock()
         mock_record.__getitem__.side_effect = lambda key: {"created_count": 2}[key]
         mock_result.single.return_value = mock_record
         mock_tx.run.return_value = mock_result

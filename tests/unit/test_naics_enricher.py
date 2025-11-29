@@ -1,5 +1,4 @@
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -34,20 +33,15 @@ def _load_naics_module():
     return mod
 
 
-USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-subset_20251006.zip")
-
-
-def test_build_index_sampled(tmp_path):
-    # Use fixture instead of real USAspending zip
-    pytest.skip("Test requires large USAspending data - use integration test with fixture")
-
+def test_build_index_sampled(usaspending_sample, tmp_path):
+    """Test building NAICS index from sample data."""
     naics_mod = _load_naics_module()
     NAICSEnricher = naics_mod.NAICSEnricher
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
     cfg = NAICSEnricherConfig(
-        zip_path=USASPENDING_ZIP,
+        zip_path=str(usaspending_sample),
         cache_path=str(cache),
         sample_only=True,
         max_files=2,
@@ -61,17 +55,15 @@ def test_build_index_sampled(tmp_path):
     assert (len(enr.award_map) + len(enr.recipient_map)) > 0
 
 
-def test_enrich_awards_with_index(tmp_path):
-    # Use fixture instead of real USAspending zip
-    pytest.skip("Test requires large USAspending data - use integration test with fixture")
-
+def test_enrich_awards_with_index(usaspending_sample, tmp_path):
+    """Test enriching awards with NAICS index."""
     naics_mod = _load_naics_module()
     NAICSEnricher = naics_mod.NAICSEnricher
     NAICSEnricherConfig = naics_mod.NAICSEnricherConfig
 
     cache = tmp_path / "naics_index.parquet"
     cfg = NAICSEnricherConfig(
-        zip_path=USASPENDING_ZIP,
+        zip_path=str(usaspending_sample),
         cache_path=str(cache),
         sample_only=True,
         max_files=2,

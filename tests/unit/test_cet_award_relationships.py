@@ -37,16 +37,7 @@ except Exception:  # pragma: no cover
 # -----------------------------
 # CETLoader relationship tests
 # -----------------------------
-try:
-    import neo4j  # noqa: F401
-
-    HAVE_NEO4J = True
-except Exception:  # pragma: no cover - optional dependency
-    HAVE_NEO4J = False
-
-
-@pytest.mark.skipif(not HAVE_NEO4J, reason="neo4j driver missing")
-def test_create_award_cet_relationships_builds_primary_and_supporting():
+def test_create_award_cet_relationships_builds_primary_and_supporting(neo4j_available):
     from src.loaders.neo4j import CETLoader, LoadMetrics
 
     # Arrange: mock client with capture of relationships
@@ -118,8 +109,7 @@ def test_create_award_cet_relationships_builds_primary_and_supporting():
     assert metrics.relationships_created.get("APPLICABLE_TO", 0) == 2
 
 
-@pytest.mark.skipif(not HAVE_NEO4J, reason="neo4j driver missing")
-def test_create_award_cet_relationships_missing_award_id_skips_and_errors():
+def test_create_award_cet_relationships_missing_award_id_skips_and_errors(neo4j_available):
     from src.loaders.neo4j import CETLoader
 
     mock_client = MagicMock()

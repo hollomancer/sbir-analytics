@@ -27,18 +27,11 @@ def test_map_missing():
     assert m.map_code("999999") is None
 
 
-def test_map_bea_excel():
+def test_map_bea_excel(bea_mapping: Path):
     """Test BEA mapping using CSV fixture."""
-    # Use CSV fixture instead of Excel
-    bea_csv_path = "tests/fixtures/bea_mapping.csv"
-
-    if not Path(bea_csv_path).exists():
-        pytest.skip(f"BEA CSV fixture not found: {bea_csv_path}")
-
-    # Load CSV and create simple mapper
     import pandas as pd
 
-    df = pd.read_csv(bea_csv_path)
+    df = pd.read_csv(bea_mapping)
 
     # Test that we can read the mapping
     assert len(df) > 0

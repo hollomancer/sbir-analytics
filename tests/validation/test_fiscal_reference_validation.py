@@ -10,7 +10,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pandas as pd
-import pytest
 
 from src.transformers.fiscal import (
     FiscalComponentCalculator,
@@ -215,20 +214,14 @@ class TestNumericalStability:
 class TestReferenceValidation:
     """Tests for validating against reference implementation (when available)."""
 
-    @pytest.mark.skip(reason="Requires R reference implementation")
-    def test_validate_against_r_reference(self):
-        """Test that Python implementation matches R reference results.
+    # Test removed - R reference implementation not available
+    # This should be implemented when R reference is available for comparison
+    # Would validate: tax estimates, ROI calculations, component aggregations
+    pass
 
-        This test should be enabled when R reference implementation is available.
-        It validates that key calculations (tax estimates, ROI metrics) match
-        the reference within acceptable numerical precision.
-        """
-        # Placeholder for R reference validation
-        # Would compare:
-        # - Tax estimates for same inputs
-        # - ROI calculations
-        # - Component aggregations
-        pass
+
+class TestSensitivityAnalysis:
+    """Tests for sensitivity analysis consistency."""
 
     def test_sensitivity_analysis_consistency(self):
         """Test that sensitivity analysis produces consistent results."""

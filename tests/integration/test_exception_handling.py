@@ -77,88 +77,17 @@ class TestAPIErrorHandling:
 class TestValidationErrorHandling:
     """Integration tests for validation error handling."""
 
-    @pytest.mark.skip(reason="Module refactored - see INTEGRATION_TEST_ANALYSIS.md")
-    def test_company_enricher_missing_column_raises_validation_error(self):
-        """Test that missing DataFrame columns raise ValidationError."""
-        from src.enrichers.company_enricher import enrich_companies
-
-        # Create DataFrames without required columns
-        awards_df = pd.DataFrame({"wrong_column": ["value"]})
-        companies_df = pd.DataFrame({"Company Name": ["Test Co"]})
-
-        with pytest.raises(ValidationError) as exc_info:
-            enrich_companies(
-                awards_df,
-                companies_df,
-                award_company_col="Company",  # This column doesn't exist
-            )
-
-        exc = exc_info.value
-        assert_exception_structure(
-            exc,
-            expected_message="not in awards_df",
-            expected_component="enricher.company",
-            expected_operation="enrich_companies",
-        )
-        assert "award_company_col" in exc.details
-        assert "available_columns" in exc.details
-        assert_non_retryable_exception(exc)
-
-    @pytest.mark.skip(reason="Module refactored - see INTEGRATION_TEST_ANALYSIS.md")
-    def test_economic_model_missing_columns_raises_validation_error(self):
-        """Test that economic model validation raises ValidationError."""
-        from src.transformers.economic_model_interface import EconomicModelInterface
-
-        # Create DataFrame missing required columns
-        df = pd.DataFrame({"wrong": ["column"]})
-
-        # Use abstract base class method directly (it's not abstract)
-        interface = type(
-            "TestInterface",
-            (EconomicModelInterface,),
-            {"is_available": lambda self: True, "calculate_impacts": lambda self, df: df},
-        )()
-
-        with pytest.raises(ValidationError) as exc_info:
-            interface.validate_shocks_input(df)
-
-        exc = exc_info.value
-        assert_exception_structure(
-            exc,
-            expected_message="Missing required columns",
-            expected_component="transformer.economic_model",
-            expected_operation="validate_shocks_input",
-        )
-        assert "missing_columns" in exc.details
-        assert "required_columns" in exc.details
-        assert "provided_columns" in exc.details
+    # Tests removed - modules refactored
+    # See INTEGRATION_TEST_ANALYSIS.md for details
+    pass
 
 
 class TestDependencyErrorHandling:
     """Integration tests for dependency error handling."""
 
-    @pytest.mark.skip(reason="Module refactored - see INTEGRATION_TEST_ANALYSIS.md")
-    def test_neo4j_loader_without_driver_raises_configuration_error(self):
-        """Test Neo4j loader without driver/credentials raises ConfigurationError."""
-        from src.loaders.neo4j_patent_loader import Neo4jPatentCETLoader
-
-        with pytest.raises(ConfigurationError) as exc_info:
-            Neo4jPatentCETLoader(
-                driver=None,
-                uri=None,  # Missing credentials
-                user=None,
-                password=None,
-            )
-
-        exc = exc_info.value
-        assert_exception_structure(
-            exc,
-            expected_message="Provide either a driver or uri/user/password",
-            expected_component="loader.neo4j_patent",
-            expected_operation="__init__",
-        )
-        assert "driver_provided" in exc.details
-        assert "uri_provided" in exc.details
+    # Tests removed - modules refactored
+    # See INTEGRATION_TEST_ANALYSIS.md for details
+    pass
 
 
 class TestExceptionRetryability:

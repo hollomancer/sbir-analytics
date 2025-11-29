@@ -97,28 +97,20 @@ class TestParseDate:
         """Test non-strict mode returns None on failure."""
         assert parse_date("invalid-date", strict=False) is None
 
-    def test_parse_date_pandas_timestamp(self):
+    def test_parse_date_pandas_timestamp(self, pandas_available):
         """Test parsing pandas Timestamp."""
-        try:
-            import pandas as pd
+        pd = pandas_available
+        ts = pd.Timestamp("2023-01-15")
+        result = parse_date(ts)
+        # Function returns Timestamp unchanged
+        assert result == ts
 
-            ts = pd.Timestamp("2023-01-15")
-            result = parse_date(ts)
-            # Function returns Timestamp unchanged
-            assert result == ts
-        except ImportError:
-            pytest.skip("pandas not available")
-
-    def test_parse_date_pandas_na(self):
+    def test_parse_date_pandas_na(self, pandas_available):
         """Test parsing pandas NaT."""
-        try:
-            import pandas as pd
-
-            result = parse_date(pd.NaT)
-            # Function returns NaT unchanged, not None
-            assert pd.isna(result)
-        except ImportError:
-            pytest.skip("pandas not available")
+        pd = pandas_available
+        result = parse_date(pd.NaT)
+        # Function returns NaT unchanged, not None
+        assert pd.isna(result)
 
 
 class TestFormatDateIso:

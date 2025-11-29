@@ -832,21 +832,25 @@ class TestSensitivityUncertainty:
         mock_config,
     ):
         """Test successful uncertainty quantification."""
+        from decimal import Decimal
+        from src.transformers.fiscal.sensitivity import UncertaintyResult
+
         mock_get_config.return_value = mock_config
 
         mock_quantifier = Mock()
 
-        uncertainty_df = pd.DataFrame(
-            {
-                "metric": ["roi_ratio", "tax_return"],
-                "mean": [0.50, 50000],
-                "std": [0.05, 5000],
-                "ci_low": [0.40, 40000],
-                "ci_high": [0.60, 60000],
-            }
+        # Create proper UncertaintyResult object
+        uncertainty_result = UncertaintyResult(
+            min_estimate=Decimal("0.40"),
+            mean_estimate=Decimal("0.50"),
+            max_estimate=Decimal("0.60"),
+            confidence_intervals={0.95: (Decimal("0.40"), Decimal("0.60"))},
+            sensitivity_indices={"multiplier": 0.8},
+            quality_flags=[],
         )
 
-        mock_quantifier.quantify_uncertainty.return_value = uncertainty_df
+        mock_quantifier.quantify_uncertainty.return_value = uncertainty_result
+        mock_quantifier.flag_high_uncertainty.return_value = False
         mock_quantifier_class.return_value = mock_quantifier
 
         # Create scenarios DataFrame
@@ -869,7 +873,8 @@ class TestSensitivityUncertainty:
         result = uncertainty_analysis(mock_context, scenarios_df, tax_df)
 
         assert isinstance(result, Output)
-        assert "mean" in result.value.columns
+        assert isinstance(result.value, pd.DataFrame)
+        assert "mean_estimate" in result.value.columns
 
 
 # ==================== Reporting Tests ====================

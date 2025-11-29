@@ -155,7 +155,7 @@ class TestValueAddedRatioCalculation:
 
     @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_functions.ro")
-    def test_convert_r_gva_to_dataframe_success(self, mock_ro):
+    def test_convert_r_gva_to_dataframe_success(self, mock_ro, rpy2_available):
         """Test successful conversion of R GVA object to DataFrame."""
         mock_r_obj = RMocks.r_dataframe()
         mock_df = pd.DataFrame({"sector": ["11", "21"], "value": [1000, 2000]})
@@ -169,7 +169,7 @@ class TestValueAddedRatioCalculation:
 
     @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_functions.ro")
-    def test_convert_r_gva_series_to_dataframe(self, mock_ro):
+    def test_convert_r_gva_series_to_dataframe(self, mock_ro, rpy2_available):
         """Test conversion of R object to Series, then to DataFrame."""
         mock_r_obj = RMocks.r_dataframe()
         mock_series = pd.Series([1000, 2000], index=["11", "21"])
@@ -414,7 +414,7 @@ class TestMatrixCalculations:
 
     @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_functions.ro")
-    def test_extract_use_table_from_model(self, mock_ro):
+    def test_extract_use_table_from_model(self, mock_ro, rpy2_available):
         """Test extracting Use table from StateIO model."""
         mock_model = RMocks.r_result()
         mock_use_table = pd.DataFrame(
@@ -434,7 +434,7 @@ class TestMatrixCalculations:
 
     @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_functions.ro")
-    def test_extract_industry_output_from_model(self, mock_ro):
+    def test_extract_industry_output_from_model(self, mock_ro, rpy2_available):
         """Test extracting industry output from StateIO model."""
         mock_model = RMocks.r_result()
         mock_output = pd.Series([100, 200], index=["I1", "I2"])

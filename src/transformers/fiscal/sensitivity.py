@@ -211,6 +211,7 @@ class FiscalParameterSweep:
         """
         if random_seed is not None:
             np.random.seed(random_seed)
+            random.seed(random_seed)
 
         ranges = self._get_parameter_ranges()
         param_names = list(ranges.keys())

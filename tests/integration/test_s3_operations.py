@@ -8,7 +8,7 @@ import pytest
 from src.utils.cloud_storage import build_s3_path, resolve_data_path
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.s3]
+pytestmark = [pytest.mark.integration, pytest.mark.s3, pytest.mark.requires_aws]
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def s3_test_bucket():
 
 
 @pytest.fixture
-def s3_client():
+def s3_client(aws_credentials):
     """Create S3 client."""
     return boto3.client("s3")
 
@@ -46,7 +46,6 @@ def cleanup_test_files(s3_client, s3_test_bucket, test_key_prefix):
         pass  # Best effort cleanup
 
 
-@pytest.mark.skipif(not os.getenv("AWS_ACCESS_KEY_ID"), reason="AWS credentials required")
 class TestS3Upload:
     """Test S3 upload operations."""
 
@@ -85,7 +84,6 @@ class TestS3Upload:
         assert downloaded_content == test_content
 
 
-@pytest.mark.skipif(not os.getenv("AWS_ACCESS_KEY_ID"), reason="AWS credentials required")
 class TestS3Download:
     """Test S3 download operations."""
 
@@ -119,7 +117,6 @@ class TestS3Download:
         assert resolved_path.read_text() == test_content
 
 
-@pytest.mark.skipif(not os.getenv("AWS_ACCESS_KEY_ID"), reason="AWS credentials required")
 class TestS3Fallback:
     """Test S3 fallback to local."""
 
@@ -156,7 +153,6 @@ class TestS3Fallback:
         assert resolved_path.read_text() == "local content"
 
 
-@pytest.mark.skipif(not os.getenv("AWS_ACCESS_KEY_ID"), reason="AWS credentials required")
 class TestS3PathBuilding:
     """Test S3 path building utilities."""
 
@@ -175,7 +171,6 @@ class TestS3PathBuilding:
             assert result == f"s3://{s3_test_bucket}/data/test.txt"
 
 
-@pytest.mark.skipif(not os.getenv("AWS_ACCESS_KEY_ID"), reason="AWS credentials required")
 class TestS3Permissions:
     """Test S3 permissions and access."""
 

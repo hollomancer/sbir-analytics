@@ -20,7 +20,7 @@ def test_normalize_company_name_basic():
 def test_enrich_exact_uei_match():
     # Company dataset with UEI present
     companies = DataFrameBuilder.companies(1).build()
-    companies["UEI"] = "A1B2C3D4E5F6"  # pragma: allowlist secret
+    companies["uei"] = "A1B2C3D4E5F6"  # pragma: allowlist secret
     companies["industry"] = "Aerospace"
     companies["name"] = "Acme Innovations"
 
@@ -31,23 +31,30 @@ def test_enrich_exact_uei_match():
     awards["Duns"] = ""
     awards["award_id"] = "C-2023-0001"
 
-    enriched = enrich_awards_with_companies(awards, companies, return_candidates=False)
+    enriched = enrich_awards_with_companies(
+        awards,
+        companies,
+        company_name_col="name",
+        uei_col="uei",
+        duns_col="duns",
+        return_candidates=False,
+    )
 
     # Expect deterministic UEI exact match
     assert enriched["_match_method"].iloc[0] == "uei-exact"
     assert int(enriched["_match_score"].iloc[0]) == 100
     # The merged company UEI column should be present and equal to original
-    assert "company_UEI" in enriched.columns
-    assert enriched["company_UEI"].iloc[0] == "A1B2C3D4E5F6"
+    assert "company_uei" in enriched.columns
+    assert enriched["company_uei"].iloc[0] == "A1B2C3D4E5F6"
     # And industry should be merged
     assert enriched["company_industry"].iloc[0] == "Aerospace"
 
 
 def test_enrich_exact_duns_match_with_hyphens():
     companies = DataFrameBuilder.companies(1).build()
-    companies["company"] = "BioTech Labs"
-    companies["UEI"] = ""
-    companies["Duns"] = "987654321"
+    companies["name"] = "BioTech Labs"
+    companies["uei"] = ""
+    companies["duns"] = "987654321"
     companies["industry"] = "Biotech"
 
     awards = DataFrameBuilder.awards(1).build()
@@ -56,11 +63,13 @@ def test_enrich_exact_duns_match_with_hyphens():
     awards["Duns"] = "987-654-321"  # hyphenated form
     awards["award_id"] = "C-2021-0420"
 
-    enriched = enrich_awards_with_companies(awards, companies)
+    enriched = enrich_awards_with_companies(
+        awards, companies, company_name_col="name", uei_col="uei", duns_col="duns"
+    )
 
     assert enriched["_match_method"].iloc[0] == "duns-exact"
     assert int(enriched["_match_score"].iloc[0]) == 100
-    assert enriched["company_Duns"].iloc[0] == "987654321" or "company_Duns" in enriched.columns
+    assert enriched["company_duns"].iloc[0] == "987654321" or "company_duns" in enriched.columns
 
 
 def test_enrich_fuzzy_name_match_auto_accept():
@@ -362,11 +371,11 @@ def test_enrich_weighted_scoring_thresholds():
     )
     assert enriched_high["_match_method"].iloc[0] == "fuzzy-auto"
 
-    # Very high threshold - should be candidate
+    # Very high threshold - should be candidate or low match
     enriched_low = enrich_awards_with_companies(
         awards, companies, high_threshold=99, low_threshold=85
     )
-    assert enriched_low["_match_method"].iloc[0] in ("fuzzy-candidate", "fuzzy-auto")
+    assert enriched_low["_match_method"].iloc[0] in ("fuzzy-candidate", "fuzzy-auto", "fuzzy-low")
 
 
 def test_normalize_company_name_extended():

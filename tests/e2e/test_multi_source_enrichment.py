@@ -358,25 +358,10 @@ class TestMultiSourceEnrichmentPipeline:
 class TestRealDataEnrichmentPipeline:
     """Test enrichment pipeline with real data sources (slower, skipped by default)."""
 
-    @pytest.mark.real_data
-    @pytest.mark.slow
-    @pytest.mark.weekly
-    def test_real_sbir_with_real_usaspending(self, tmp_path):
-        """Test real SBIR data with real USAspending dump (requires real data files)."""
-        pytest.skip(
-            "This test requires real data files. "
-            "Run with: pytest -m real_data --run-real-data tests/e2e/test_multi_source_enrichment.py"
-        )
-
-    @pytest.mark.real_data
-    @pytest.mark.slow
-    @pytest.mark.weekly
-    def test_real_sbir_with_real_sam_gov(self, tmp_path):
-        """Test real SBIR data with real SAM.gov parquet (requires real data files)."""
-        pytest.skip(
-            "This test requires real data files. "
-            "Run with: pytest -m real_data --run-real-data tests/e2e/test_multi_source_enrichment.py"
-        )
+    # Tests removed - placeholders for real data testing
+    # These should be implemented when real data files are available
+    # See INTEGRATION_TEST_ANALYSIS.md for details
+    pass
 
 
 class TestDataSourceIntegrity:

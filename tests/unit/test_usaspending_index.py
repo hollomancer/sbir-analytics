@@ -1,34 +1,24 @@
-import os
+from pathlib import Path
 
 import pytest
-
-
-pytestmark = pytest.mark.fast
 
 from src.enrichers.usaspending.index import extract_table_sample, parse_toc_table_dat_map
 
 
-USASPENDING_ZIP = os.path.join("data", "raw", "usaspending", "usaspending-db-subset_20251006.zip")
+pytestmark = pytest.mark.fast
 
 
-def test_parse_toc_mapping_exists():
-    # Skip if the large zip isn't present in runner environment
-    if not os.path.exists(USASPENDING_ZIP):
-        pytest.skip("usaspending zip not present")
-
-    mapping = parse_toc_table_dat_map(USASPENDING_ZIP)
-    # Expect at least the naics table to be present in mapping
+def test_parse_toc_mapping_exists(usaspending_zip: Path):
+    """Test parsing TOC table from USAspending zip."""
+    mapping = parse_toc_table_dat_map(str(usaspending_zip))
     assert any(k.endswith(".naics") or k == "public.naics" for k in mapping.keys())
 
 
-def test_extract_naics_sample():
-    if not os.path.exists(USASPENDING_ZIP):
-        pytest.skip("usaspending zip not present")
-
-    mapping = parse_toc_table_dat_map(USASPENDING_ZIP)
+def test_extract_naics_sample(usaspending_zip: Path):
+    """Test extracting NAICS sample from USAspending zip."""
+    mapping = parse_toc_table_dat_map(str(usaspending_zip))
     dat = mapping.get("public.naics") or mapping.get("naics")
     assert dat is not None
-    sample = extract_table_sample(USASPENDING_ZIP, dat, n_lines=5)
-    # sample should be non-empty text lines
+    sample = extract_table_sample(str(usaspending_zip), dat, n_lines=5)
     assert isinstance(sample, list)
     assert len(sample) > 0

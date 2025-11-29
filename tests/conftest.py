@@ -110,6 +110,26 @@ def pytest_configure(config):
         "markers",
         "neo4j: Tests that require Neo4j database",
     )
+    config.addinivalue_line(
+        "markers",
+        "requires_aws: Tests requiring AWS credentials",
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_neo4j: Tests requiring Neo4j driver",
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_r: Tests requiring R/rpy2",
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_hf: Tests requiring HuggingFace token",
+    )
+    config.addinivalue_line(
+        "markers",
+        "requires_ml: Tests requiring ML dependencies",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -383,3 +403,194 @@ def mock_config():
     from tests.utils.config_mocks import create_mock_pipeline_config
 
     return create_mock_pipeline_config()
+
+
+# Data File Fixtures
+# ==================
+
+
+@pytest.fixture
+def usaspending_zip(repo_root: Path) -> Path:
+    """Fixture for USAspending zip file."""
+    path = repo_root / "data" / "raw" / "usaspending.zip"
+    if not path.exists():
+        pytest.skip(f"USAspending data not available: {path}")
+    return path
+
+
+@pytest.fixture
+def naics_index(repo_root: Path) -> Path:
+    """Fixture for NAICS index parquet."""
+    # Check fixture first, then processed data
+    fixture_path = repo_root / "tests" / "fixtures" / "naics_index_sample.parquet"
+    processed_path = repo_root / "data" / "processed" / "naics_index.parquet"
+
+    path = fixture_path if fixture_path.exists() else processed_path
+    if not path.exists():
+        pytest.skip(f"NAICS index not available: {path}")
+    return path
+
+
+@pytest.fixture
+def bea_mapping(repo_root: Path) -> Path:
+    """Fixture for BEA mapping CSV."""
+    path = repo_root / "data" / "reference" / "naics_to_bea.csv"
+    if not path.exists():
+        pytest.skip(f"BEA mapping not available: {path}")
+    return path
+
+
+@pytest.fixture
+def golden_transitions(repo_root: Path) -> Path:
+    """Fixture for golden transition data."""
+    path = repo_root / "tests" / "data" / "transition" / "golden_transitions.ndjson"
+    if not path.exists():
+        pytest.skip(f"Golden transitions not available: {path}")
+    return path
+
+
+@pytest.fixture(
+    params=["transitions", "cet_classifications", "fiscal_returns", "paecter_embeddings"]
+)
+def pipeline_output(request, repo_root: Path) -> tuple[str, Path]:
+    """Parametrized fixture for pipeline outputs."""
+    output_type = request.param
+    path = repo_root / "data" / "processed" / f"{output_type}.parquet"
+    if not path.exists():
+        pytest.skip(f"{output_type} output not available: {path}")
+    return output_type, path
+
+
+# Dependency Check Fixtures
+# =========================
+
+
+def _check_import(module_name: str) -> bool:
+    """Check if a module can be imported."""
+    import importlib.util
+
+    return importlib.util.find_spec(module_name) is not None
+
+
+@pytest.fixture
+def neo4j_available():
+    """Fixture that skips if neo4j driver not available."""
+    if not _check_import("neo4j"):
+        pytest.skip("neo4j driver not installed")
+    from neo4j import GraphDatabase
+
+    return GraphDatabase
+
+
+@pytest.fixture
+def pandas_available():
+    """Fixture that skips if pandas not available."""
+    if not _check_import("pandas"):
+        pytest.skip("pandas not installed")
+    import pandas as pd
+
+    return pd
+
+
+@pytest.fixture
+def rpy2_available():
+    """Fixture that skips if R/rpy2 not available."""
+    if not _check_import("rpy2"):
+        pytest.skip("R/rpy2 not installed")
+    import rpy2
+
+    return rpy2
+
+
+@pytest.fixture
+def sentence_transformers_available():
+    """Fixture that skips if sentence-transformers not available."""
+    if not _check_import("sentence_transformers"):
+        pytest.skip("sentence-transformers not installed")
+    from sentence_transformers import SentenceTransformer
+
+    return SentenceTransformer
+
+
+@pytest.fixture
+def hf_token():
+    """Fixture that provides HuggingFace token or skips."""
+    import os
+
+    token = os.getenv("HF_TOKEN")
+    if not token:
+        pytest.skip("HF_TOKEN environment variable required")
+    return token
+
+
+# AWS Fixtures
+# ============
+
+
+@pytest.fixture
+def aws_credentials():
+    """Fixture that skips if AWS credentials not available."""
+    import os
+
+    if not os.getenv("AWS_ACCESS_KEY_ID"):
+        pytest.skip("AWS credentials required (set AWS_ACCESS_KEY_ID)")
+    return {
+        "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+        "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        "region": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+    }
+
+
+# Data Generator Fixtures
+# =======================
+
+
+@pytest.fixture
+def usaspending_sample(tmp_path):
+    """Generate synthetic USAspending sample data."""
+    import pandas as pd
+    import random
+
+    random.seed(42)
+    n_records = 1000
+
+    data = {
+        "award_id": [f"AWARD_{i:06d}" for i in range(n_records)],
+        "recipient_uei": [f"UEI{i:012d}" for i in range(n_records)],
+        "naics_code": [random.choice(["541715", "541712", "334111"]) for _ in range(n_records)],
+        "award_amount": [random.uniform(50000, 1000000) for _ in range(n_records)],
+    }
+
+    df = pd.DataFrame(data)
+    output_path = tmp_path / "usaspending_sample.parquet"
+    df.to_parquet(output_path)
+    return output_path
+
+
+@pytest.fixture
+def mock_pipeline_config(tmp_path):
+    """Provide mock configuration for asset tests."""
+    from src.config.schemas import (
+        PipelineConfig,
+        DataQualityConfig,
+        EnrichmentConfig,
+        Neo4jConfig,
+    )
+
+    return PipelineConfig(
+        data_quality=DataQualityConfig(
+            max_duplicate_rate=0.10,
+            max_missing_rate=0.15,
+            min_enrichment_success=0.90,
+        ),
+        enrichment=EnrichmentConfig(
+            batch_size=100,
+            max_retries=3,
+            timeout_seconds=30,
+        ),
+        neo4j=Neo4jConfig(
+            uri="bolt://localhost:7687",
+            user="neo4j",
+            password="password",  # pragma: allowlist secret
+        ),
+    )

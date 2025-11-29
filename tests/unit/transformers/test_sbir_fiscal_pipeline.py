@@ -53,7 +53,7 @@ class TestSBIRFiscalImpactCalculator:
         mock_adapter = Mock()
         return SBIRFiscalImpactCalculator(r_adapter=mock_adapter)
 
-    def test_init_default(self):
+    def test_init_default(self, rpy2_available):
         """Test initialization with defaults."""
         calc = SBIRFiscalImpactCalculator()
         assert calc.r_adapter is not None

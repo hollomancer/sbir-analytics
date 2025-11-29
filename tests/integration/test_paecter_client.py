@@ -103,6 +103,7 @@ def paecter_client():
     if use_api:
         # API mode - requires HF_TOKEN
         pytest.importorskip("huggingface_hub")
+        # Use hf_token fixture to skip if not available
         if not os.getenv("HF_TOKEN"):
             pytest.skip("HF_TOKEN environment variable required for API mode")
         from src.ml.config import PaECTERClientConfig

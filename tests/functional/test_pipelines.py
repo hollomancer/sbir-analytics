@@ -8,6 +8,7 @@ Tests each major pipeline function end-to-end:
 """
 
 import pytest
+import pandas as pd
 from pathlib import Path
 
 
@@ -38,25 +39,6 @@ class TestTransitionPipeline:
         assert result.success
         assert len(result.asset_materializations_for_node("validated_contracts_sample")) > 0
 
-    def test_transition_outputs_valid_schema(self):
-        """Test that transition outputs have valid schema."""
-        import pandas as pd
-
-        # Load sample output
-        output_path = Path("data/processed/transitions.parquet")
-        if not output_path.exists():
-            pytest.skip("Transition output not found")
-
-        df = pd.read_parquet(output_path)
-
-        # Validate schema
-        required_cols = ["award_id", "contract_id", "transition_score", "confidence"]
-        assert all(col in df.columns for col in required_cols)
-
-        # Validate data types
-        assert df["transition_score"].dtype in ["float64", "float32"]
-        assert df["confidence"].dtype in ["float64", "float32"]
-
 
 class TestCETPipeline:
     """Functional tests for CET classification pipeline."""
@@ -71,32 +53,11 @@ class TestCETPipeline:
         assert result.success
         assert len(result.asset_materializations_for_node("cet_classifications")) > 0
 
-    def test_cet_outputs_valid_schema(self):
-        """Test that CET outputs have valid schema."""
-        import pandas as pd
-
-        output_path = Path("data/processed/cet_classifications.parquet")
-        if not output_path.exists():
-            pytest.skip("CET output not found")
-
-        df = pd.read_parquet(output_path)
-
-        # Validate schema
-        required_cols = ["award_id", "cet_id", "score", "classification"]
-        assert all(col in df.columns for col in required_cols)
-
-        # Validate classification values
-        assert df["classification"].isin(["High", "Medium", "Low"]).all()
-
 
 class TestFiscalPipeline:
     """Functional tests for fiscal returns analysis pipeline."""
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("rpy2", reason="R/rpy2 not available"),
-        reason="Fiscal analysis requires R",
-    )
-    def test_fiscal_run_produces_outputs(self):
+    def test_fiscal_run_produces_outputs(self, rpy2_available):
         """Test that fiscal pipeline produces expected outputs."""
         from dagster import materialize
         from src.assets.fiscal_assets import fiscal_returns_core
@@ -106,39 +67,11 @@ class TestFiscalPipeline:
         assert result.success
         assert len(result.asset_materializations_for_node("fiscal_returns_core")) > 0
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("rpy2", reason="R/rpy2 not available"),
-        reason="Fiscal analysis requires R",
-    )
-    def test_fiscal_outputs_valid_schema(self):
-        """Test that fiscal outputs have valid schema."""
-        import pandas as pd
-
-        output_path = Path("data/processed/fiscal_returns.parquet")
-        if not output_path.exists():
-            pytest.skip("Fiscal output not found")
-
-        df = pd.read_parquet(output_path)
-
-        # Validate schema
-        required_cols = ["award_id", "roi", "federal_tax_receipts", "economic_impact"]
-        assert all(col in df.columns for col in required_cols)
-
-        # Validate numeric values
-        assert df["roi"].dtype in ["float64", "float32"]
-        assert (df["roi"] >= 0).all()
-
 
 class TestPaECTERPipeline:
     """Functional tests for PaECTER embeddings pipeline."""
 
-    @pytest.mark.skipif(
-        not pytest.importorskip(
-            "sentence_transformers", reason="sentence-transformers not available"
-        ),
-        reason="PaECTER requires sentence-transformers",
-    )
-    def test_paecter_run_produces_outputs(self):
+    def test_paecter_run_produces_outputs(self, sentence_transformers_available):
         """Test that PaECTER pipeline produces expected outputs."""
         from dagster import materialize
         from src.assets.paecter.paecter_assets import paecter_embeddings
@@ -148,30 +81,70 @@ class TestPaECTERPipeline:
         assert result.success
         assert len(result.asset_materializations_for_node("paecter_embeddings")) > 0
 
-    @pytest.mark.skipif(
-        not pytest.importorskip(
-            "sentence_transformers", reason="sentence-transformers not available"
+
+@pytest.mark.parametrize(
+    "output_type,required_cols,validators",
+    [
+        (
+            "transitions",
+            ["award_id", "contract_id", "transition_score", "confidence"],
+            {
+                "transition_score": lambda df: df["transition_score"].dtype
+                in ["float64", "float32"],
+                "confidence": lambda df: df["confidence"].dtype in ["float64", "float32"],
+            },
         ),
-        reason="PaECTER requires sentence-transformers",
-    )
-    def test_paecter_outputs_valid_schema(self):
-        """Test that PaECTER outputs have valid schema."""
-        import pandas as pd
+        (
+            "cet_classifications",
+            ["award_id", "cet_id", "score", "classification"],
+            {
+                "classification": lambda df: df["classification"]
+                .isin(["High", "Medium", "Low"])
+                .all(),
+            },
+        ),
+        (
+            "fiscal_returns",
+            ["award_id", "roi", "federal_tax_receipts", "economic_impact"],
+            {
+                "roi": lambda df: df["roi"].dtype in ["float64", "float32"]
+                and (df["roi"] >= 0).all(),
+            },
+        ),
+        (
+            "paecter_embeddings",
+            ["award_id", "patent_id", "similarity_score"],
+            {
+                "similarity_score": lambda df: (
+                    df["similarity_score"].dtype in ["float64", "float32"]
+                    and (df["similarity_score"] >= 0).all()
+                    and (df["similarity_score"] <= 1).all()
+                ),
+            },
+        ),
+    ],
+)
+def test_pipeline_output_schema(
+    output_type: str, required_cols: list[str], validators: dict, repo_root: Path
+):
+    """Test that pipeline outputs have valid schema."""
+    output_path = repo_root / "data" / "processed" / f"{output_type}.parquet"
+    if not output_path.exists():
+        pytest.skip(f"{output_type} output not found")
 
-        output_path = Path("data/processed/paecter_embeddings.parquet")
-        if not output_path.exists():
-            pytest.skip("PaECTER output not found")
+    df = pd.read_parquet(output_path)
 
-        df = pd.read_parquet(output_path)
+    # Validate schema
+    for col in required_cols:
+        assert col in df.columns, f"Missing column: {col}"
 
-        # Validate schema
-        required_cols = ["award_id", "patent_id", "similarity_score"]
-        assert all(col in df.columns for col in required_cols)
+    # Validate data quality
+    assert len(df) > 0, "Output is empty"
+    assert df[required_cols[0]].notna().all(), f"Null values in {required_cols[0]}"
 
-        # Validate similarity scores
-        assert df["similarity_score"].dtype in ["float64", "float32"]
-        assert (df["similarity_score"] >= 0).all()
-        assert (df["similarity_score"] <= 1).all()
+    # Run custom validators
+    for field, validator in validators.items():
+        assert validator(df), f"Validation failed for {field}"
 
 
 class TestPipelineIntegration:
