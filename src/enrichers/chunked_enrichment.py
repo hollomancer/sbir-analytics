@@ -317,7 +317,10 @@ class ChunkedEnricher:
             combined_df = pd.DataFrame()
 
         # Calculate summary metrics
-        total_matched = combined_df["_usaspending_match_method"].notna().sum()
+        if len(combined_df) > 0 and "_usaspending_match_method" in combined_df.columns:
+            total_matched = combined_df["_usaspending_match_method"].notna().sum()
+        else:
+            total_matched = 0
         total_records = len(combined_df)
         overall_match_rate = total_matched / total_records if total_records > 0 else 0
 
