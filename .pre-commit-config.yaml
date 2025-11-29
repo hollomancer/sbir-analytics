@@ -40,50 +40,9 @@ repos:
             pydantic,
           ]
 
-  # Security scanning (matches CI scope: src only)
-  # CI equivalent: bandit -r src -c pyproject.toml
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.6
-    hooks:
-      - id: bandit
-        files: ^src/
-        args: [-c, pyproject.toml]
-        additional_dependencies: ["bandit[toml]"]
-
-  # Secret detection (scans all files with exclusions)
-  # This is not explicitly in CI but is a best practice
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
-    hooks:
-      - id: detect-secrets
-        args: ["--baseline", ".secrets.baseline"]
-        exclude: |
-          (?x)^(
-            \.git\/|
-            \.venv\/|
-            \.venv311\/|
-            \.uv-cache\/|
-            \.mypy_cache\/|
-            \.pytest_cache\/|
-            \.ruff_cache\/|
-            htmlcov\/|
-            .*\/\.git\/|
-            .*\/\.venv\/|
-            .*\/\.mypy_cache\/|
-            .*\/\.pytest_cache\/|
-            .*\/\.ruff_cache\/|
-            .*\/cdk\.out\/|
-            \.env$|
-            \.env\..*$|
-            data\/.*|
-            reports\/.*\.(json|csv)$|
-            infrastructure\/cdk\/|
-            scripts\/debug\/|
-            docs\/.*|
-            archive\/.*|
-            .*\.md$|
-            .*\.rst$
-          )
+# Security scanning (bandit and detect-secrets) moved to nightly CI only
+# Run manually with: uv run bandit -r src -c pyproject.toml
+# Run manually with: uv run detect-secrets scan --baseline .secrets.baseline
 
 # Configuration notes for maintainers:
 #
