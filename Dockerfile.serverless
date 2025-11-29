@@ -1,28 +1,37 @@
 # Minimal Dockerfile for Dagster Cloud Serverless
-# Optimized for fast builds and small image size
+# Optimized for fast builds and small image size with aggressive layer caching
 
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
-# Install system dependencies
+# Install system dependencies in a single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Set working directory
 WORKDIR /opt/dagster/app
 
 # Copy only requirements first for better caching
+# This layer is cached unless requirements.txt changes
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with pip cache
+# Use --mount=type=cache to cache pip downloads across builds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy source code (separate layer for code changes)
+# This layer only rebuilds when source code changes
 COPY src/ src/
 COPY config/ config/
 
 # Set Python path
 ENV PYTHONPATH=/opt/dagster/app
+
+# Add labels for better image management
+LABEL org.opencontainers.image.source="https://github.com/hollomancer/sbir-analytics"
+LABEL org.opencontainers.image.description="SBIR Analytics ETL Pipeline - Dagster Cloud Serverless"
 
 # Dagster Cloud will set the entrypoint
