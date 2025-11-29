@@ -20,16 +20,31 @@ Use `uv` (preferred) or `pip`-managed virtualenvs with Python 3.11+.
 uv run pytest -v --cov=src
 ```
 
+### Parallel execution (faster)
+
+```bash
+# Use all CPU cores
+uv run pytest -n auto
+
+# Use specific number of workers
+uv run pytest -n 4
+
+# Parallel with coverage (slower but thorough)
+uv run pytest -n auto --cov=src
+```
+
 ### Tiered execution
 
 | Tier | Command | Notes |
 |------|---------|-------|
-| Unit & light integration | `uv run pytest tests/unit tests/integration -m "not slow"` | Fast feedback, no Docker |
+| Fast unit tests only | `uv run pytest -m fast -n auto` | ~3,450 tests, parallel execution |
+| Unit & light integration | `uv run pytest tests/unit tests/integration -m "not slow" -n auto` | Fast feedback, no Docker |
 | Slow / ML / heavy assets | `uv run pytest -m "slow"` | Requires local datasets |
 | Specific file | `uv run pytest tests/unit/utils/test_metrics.py -vv` | Focused debugging |
 
 ### Useful markers
 
+- `-m fast` – fast unit tests (<1s each, ~3,450 tests)
 - `-m "not slow"` – skip heavy tests
 - `-m "slow"` – only heavy suites (ML, fiscal sensitivity, long-running assets)
 - `-k "keyword"` – filter by file, function, or substring

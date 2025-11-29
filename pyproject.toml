@@ -197,6 +197,10 @@ addopts = "-v --cov=src --cov-report=term-missing --cov-report=html:/tmp/htmlcov
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
+# Parallel execution: Use pytest-xdist for faster test runs
+# Run with: pytest -n auto (uses all CPU cores)
+# Run with: pytest -n 4 (uses 4 workers)
+
 [tool.dagster]
 python_module = "src.definitions"
 

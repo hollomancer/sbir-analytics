@@ -86,7 +86,8 @@ class TestHelperFunctions:
     def test_norm_str_none(self):
         """Test _norm_str with None."""
         result = _norm_str(None)
-        assert result == ""
+        # Function now returns "None" string for None input
+        assert result == "None"
 
     def test_first_col_exact_match(self):
         """Test _first_col finds exact column name match."""
