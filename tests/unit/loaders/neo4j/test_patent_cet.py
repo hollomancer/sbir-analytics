@@ -62,48 +62,43 @@ class TestNeo4jConfig:
 class TestNeo4jPatentCETLoaderInitialization:
     """Tests for Neo4jPatentCETLoader initialization."""
 
-    def test_initialization_with_client(self):
-        """Test initialization with Neo4jClient."""
-        mock_client, _ = _create_mock_client()
-        loader = Neo4jPatentCETLoader(client=mock_client)
+    @pytest.mark.parametrize(
+        "batch_size,expected_batch_size,auto_create,expected_auto_create",
+        [
+            (None, 1000, False, False),  # default
+            (500, 500, False, False),  # custom batch size
+            (0, 1000, False, False),  # zero defaults to 1000
+            (-100, 1000, False, False),  # negative defaults to 1000
+            (None, 1000, True, True),  # auto create constraints
+        ],
+        ids=["default", "custom_batch", "zero_batch", "negative_batch", "auto_create"],
+    )
+    def test_initialization(
+        self, batch_size, expected_batch_size, auto_create, expected_auto_create
+    ):
+        """Test initialization with various configurations."""
+        mock_client, mock_session = _create_mock_client()
+
+        if auto_create:
+            mock_tx = Neo4jMocks.transaction()
+            mock_tx.run.return_value.consume.return_value = None
+            mock_session.run.return_value = None
+
+        kwargs = {}
+        if batch_size is not None:
+            kwargs["batch_size"] = batch_size
+        if auto_create:
+            kwargs["auto_create_constraints"] = auto_create
+
+        loader = Neo4jPatentCETLoader(client=mock_client, **kwargs)
 
         assert loader.client == mock_client
-        assert loader._batch_size == 1000
-        assert loader._auto_create_constraints is False
+        assert loader._batch_size == expected_batch_size
+        assert loader._auto_create_constraints == expected_auto_create
 
-    def test_initialization_with_custom_batch_size(self):
-        """Test initialization with custom batch size."""
-        mock_client, _ = _create_mock_client()
-        loader = Neo4jPatentCETLoader(client=mock_client, batch_size=500)
-
-        assert loader._batch_size == 500
-
-    def test_initialization_with_zero_batch_size(self):
-        """Test initialization with zero batch size defaults to 1000."""
-        mock_client, _ = _create_mock_client()
-        loader = Neo4jPatentCETLoader(client=mock_client, batch_size=0)
-
-        assert loader._batch_size == 1000
-
-    def test_initialization_with_negative_batch_size(self):
-        """Test initialization with negative batch size defaults to 1000."""
-        mock_client, _ = _create_mock_client()
-        loader = Neo4jPatentCETLoader(client=mock_client, batch_size=-100)
-
-        assert loader._batch_size == 1000
-
-    def test_initialization_with_auto_create_constraints(self):
-        """Test initialization with auto_create_constraints."""
-        mock_client, mock_session = _create_mock_client()
-        mock_tx = Neo4jMocks.transaction()
-        mock_tx.run.return_value.consume.return_value = None
-        mock_session.run.return_value = None
-
-        loader = Neo4jPatentCETLoader(client=mock_client, auto_create_constraints=True)
-
-        assert loader._auto_create_constraints is True
-        # Should have called ensure_constraints
-        assert mock_client.session.called
+        # Only check session call for auto_create case
+        if auto_create:
+            assert mock_client.session.called
 
 
 class TestNeo4jPatentCETLoaderLifecycle:

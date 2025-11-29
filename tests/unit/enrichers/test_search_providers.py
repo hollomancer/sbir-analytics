@@ -166,24 +166,31 @@ class ConcreteProvider(BaseSearchProvider):
 class TestBaseSearchProvider:
     """Tests for BaseSearchProvider abstract class."""
 
-    def test_initialization_default(self):
-        """Test provider initialization with defaults."""
-        provider = ConcreteProvider("test_provider")
+    @pytest.mark.parametrize(
+        "name,config,expected_timeout,expected_retries,expected_backoff",
+        [
+            ("test_provider", {}, 10.0, 3, 2.0),  # defaults
+            (
+                "test",
+                {"timeout_seconds": 30.0, "max_retries": 5, "backoff_base": 1.5},
+                30.0,
+                5,
+                1.5,
+            ),  # custom config
+        ],
+        ids=["default", "custom_config"],
+    )
+    def test_initialization(
+        self, name, config, expected_timeout, expected_retries, expected_backoff
+    ):
+        """Test provider initialization with various configurations."""
+        provider = ConcreteProvider(name, config) if config else ConcreteProvider(name)
 
-        assert provider.name == "test_provider"
-        assert provider.config == {}
-        assert provider.default_timeout == 10.0
-        assert provider.max_retries == 3
-        assert provider.backoff_base == 2.0
-
-    def test_initialization_with_config(self):
-        """Test provider initialization with custom config."""
-        config = {"timeout_seconds": 30.0, "max_retries": 5, "backoff_base": 1.5}
-        provider = ConcreteProvider("test", config)
-
-        assert provider.default_timeout == 30.0
-        assert provider.max_retries == 5
-        assert provider.backoff_base == 1.5
+        assert provider.name == name
+        assert provider.config == config
+        assert provider.default_timeout == expected_timeout
+        assert provider.max_retries == expected_retries
+        assert provider.backoff_base == expected_backoff
 
     def test_measure_latency(self):
         """Test latency measurement utility."""
@@ -721,21 +728,21 @@ class TestPrecisionRecallMetrics:
 class TestMockSearxngProvider:
     """Tests for MockSearxngProvider."""
 
-    def test_initialization_defaults(self):
-        """Test mock provider initialization with defaults."""
-        provider = MockSearxngProvider()
+    @pytest.mark.parametrize(
+        "config,expected_count,expected_latency",
+        [
+            (None, 5, 20.0),  # defaults
+            ({"result_count": 3, "simulated_latency_ms": 50.0, "seed": 42}, 3, 50.0),  # custom
+        ],
+        ids=["defaults", "custom_config"],
+    )
+    def test_initialization(self, config, expected_count, expected_latency):
+        """Test mock provider initialization with various configurations."""
+        provider = MockSearxngProvider(config=config) if config else MockSearxngProvider()
 
         assert provider.name == "searxng-mock"
-        assert provider.config["result_count"] == 5
-        assert provider.config["simulated_latency_ms"] == 20.0
-
-    def test_initialization_custom_config(self):
-        """Test mock provider initialization with custom config."""
-        config = {"result_count": 3, "simulated_latency_ms": 50.0, "seed": 42}
-        provider = MockSearxngProvider(config=config)
-
-        assert provider.config["result_count"] == 3
-        assert provider.config["simulated_latency_ms"] == 50.0
+        assert provider.config["result_count"] == expected_count
+        assert provider.config["simulated_latency_ms"] == expected_latency
 
     def test_search_synthesize_results(self):
         """Test search with synthesized results."""
