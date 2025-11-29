@@ -46,7 +46,7 @@ jobs:
       cdk-changed: ${{ steps.filter.outputs.cdk }}
       lambda-code-changed: ${{ steps.filter.outputs.lambda-code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -74,10 +74,9 @@ jobs:
       layer-arn: ${{ steps.publish-layer.outputs.layer-arn }}
       layer-version: ${{ steps.publish-layer.outputs.layer-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        if: secrets.AWS_ROLE_ARN != ''
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -135,10 +134,9 @@ jobs:
       needs.build-layer.outputs.layer-arn != ''
     timeout-minutes: 15  # Reduced from 20 for faster failure
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        if: secrets.AWS_ROLE_ARN != ''
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
