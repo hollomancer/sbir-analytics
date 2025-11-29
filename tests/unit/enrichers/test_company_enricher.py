@@ -3,11 +3,12 @@ import json
 import pandas as pd
 import pytest
 
-
-pytestmark = pytest.mark.fast
-
 from src.enrichers.company_enricher import enrich_awards_with_companies
 from src.utils.text_normalization import normalize_company_name
+from tests.factories import DataFrameBuilder
+
+
+pytestmark = pytest.mark.fast
 
 
 def test_normalize_company_name_basic():
@@ -18,26 +19,17 @@ def test_normalize_company_name_basic():
 
 def test_enrich_exact_uei_match():
     # Company dataset with UEI present
-    companies = pd.DataFrame(
-        [
-            {
-                "company": "Acme Innovations",
-                "UEI": "A1B2C3D4E5F6",
-                "industry": "Aerospace",
-            },  # pragma: allowlist secret
-        ]
-    )
+    companies = DataFrameBuilder.companies(1).build()
+    companies["UEI"] = "A1B2C3D4E5F6"  # pragma: allowlist secret
+    companies["industry"] = "Aerospace"
+    companies["name"] = "Acme Innovations"
+
     # Award row referencing the same UEI
-    awards = pd.DataFrame(
-        [
-            {
-                "company": "Acme Innovations",
-                "UEI": "A1B2C3D4E5F6",
-                "Duns": "",
-                "award_id": "C-2023-0001",
-            }
-        ]
-    )
+    awards = DataFrameBuilder.awards(1).build()
+    awards["company"] = "Acme Innovations"
+    awards["UEI"] = "A1B2C3D4E5F6"
+    awards["Duns"] = ""
+    awards["award_id"] = "C-2023-0001"
 
     enriched = enrich_awards_with_companies(awards, companies, return_candidates=False)
 
@@ -52,21 +44,17 @@ def test_enrich_exact_uei_match():
 
 
 def test_enrich_exact_duns_match_with_hyphens():
-    companies = pd.DataFrame(
-        [
-            {"company": "BioTech Labs", "UEI": "", "Duns": "987654321", "industry": "Biotech"},
-        ]
-    )
-    awards = pd.DataFrame(
-        [
-            {
-                "company": "BioTech Labs",
-                "UEI": "",
-                "Duns": "987-654-321",  # hyphenated form
-                "award_id": "C-2021-0420",
-            }
-        ]
-    )
+    companies = DataFrameBuilder.companies(1).build()
+    companies["company"] = "BioTech Labs"
+    companies["UEI"] = ""
+    companies["Duns"] = "987654321"
+    companies["industry"] = "Biotech"
+
+    awards = DataFrameBuilder.awards(1).build()
+    awards["company"] = "BioTech Labs"
+    awards["UEI"] = ""
+    awards["Duns"] = "987-654-321"  # hyphenated form
+    awards["award_id"] = "C-2021-0420"
 
     enriched = enrich_awards_with_companies(awards, companies)
 
