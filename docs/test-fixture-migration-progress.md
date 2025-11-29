@@ -4,7 +4,7 @@
 
 **Goal**: Reduce inline Mock() usage by adopting reusable mock factories and fixtures.
 
-**Progress**: 120 Mock() usages eliminated (18% reduction: 664 → 544)
+**Progress**: 185 Mock() usages eliminated (28% reduction: 664 → 479)
 
 ## Mock Factories Created
 
@@ -16,7 +16,13 @@
 - `connection()`: Standard DuckDB connection mock
 - `connection_with_result(result)`: Connection with custom result
 
-### 3. Existing Factories (from previous work)
+### 3. RMocks (`tests/mocks/r_adapter.py`)
+- `stateio_package()`: R StateIO package mock
+- `importr_side_effect()`: importr mock configuration helper
+- `r_dataframe()`: R DataFrame object mock
+- `r_result()`: R function result mock
+
+### 4. Existing Factories (from previous work)
 - `Neo4jMocks`: Session, driver, transaction, result mocks
 - `EnrichmentMocks`: Enrichment service mocks
 - `ConfigMocks`: Configuration mocks
@@ -32,7 +38,10 @@
 | test_transitions.py | 55 | 0 | 55 | 100% | 46/46 |
 | test_fiscal_assets.py | 38 | 12 | 26 | 68% | 29/30 |
 | test_usaspending_extractor.py | 26 | 3 | 23 | 88% | 30/36 |
-| **Total** | **236** | **33** | **203** | **86%** | **224/237** |
+| test_r_stateio_adapter.py | 29 | 0 | 29 | 100% | skipped (rpy2) |
+| test_r_stateio_functions.py | 27 | 15 | 12 | 44% | skipped (rpy2) |
+| test_sensitivity.py | 30 | 0 | 30 | 100% | 37/38 |
+| **Total** | **322** | **48** | **274** | **85%** | **261/275** |
 
 Note: Total Mock() count includes files not yet migrated.
 
