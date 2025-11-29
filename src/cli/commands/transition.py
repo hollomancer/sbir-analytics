@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
@@ -60,13 +59,16 @@ def _seed_contracts(path: Path, verbose: bool) -> None:
         typer.echo(f"[yellow]PyArrow missing; wrote contracts seed to {csv_path}[/yellow]")
 
 
-def _transition_asset_keys() -> Iterable[str]:
+def _transition_asset_keys() -> list:
+    """Return AssetKey objects for transition MVP assets."""
+    from dagster import AssetKey
+
     return [
-        "validated_contracts_sample",
-        "enriched_vendor_resolution",
-        "transformed_transition_scores",
-        "transformed_transition_evidence",
-        "transformed_transition_detections",
+        AssetKey("validated_contracts_sample"),
+        AssetKey("enriched_vendor_resolution"),
+        AssetKey("transformed_transition_scores"),
+        AssetKey("transformed_transition_evidence"),
+        AssetKey("transformed_transition_detections"),
     ]
 
 

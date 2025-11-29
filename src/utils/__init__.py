@@ -1,7 +1,7 @@
 """Shared utilities for the SBIR ETL pipeline."""
 
 # Cache utilities
-from src.utils.cache.base_cache import BaseDataFrameCache
+from .cache.base_cache import BaseDataFrameCache
 
 # Date utilities
 from src.utils.common.date_utils import (
