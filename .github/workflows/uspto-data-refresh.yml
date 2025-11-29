@@ -1,4 +1,9 @@
-name: USPTO Patent Data Refresh
+name: USPTO Patent Data Refresh (DEPRECATED - Use data-refresh.yml)
+
+# ⚠️ DEPRECATION NOTICE:
+# This workflow has been consolidated into data-refresh.yml
+# Use the new unified workflow for all data refresh operations.
+# This file is kept temporarily for reference and will be removed in a future release.
 
 on:
   schedule:
