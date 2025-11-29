@@ -249,6 +249,6 @@ If issues arise, rollback is simple:
 
 - [Test Scheduling Recommendations](./test-scheduling-recommendations.md)
 - [Testing Guide](./README.md)
-- [CI Workflow](.github/workflows/ci.yml)
-- [Nightly Workflow](.github/workflows/nightly.yml)
-- [Weekly Workflow](.github/workflows/weekly.yml)
+- [CI Workflow](../../.github/workflows/ci.yml)
+- [Nightly Workflow](../../.github/workflows/nightly.yml)
+- [Weekly Workflow](../../.github/workflows/weekly.yml)

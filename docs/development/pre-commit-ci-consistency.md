@@ -382,8 +382,8 @@ If you need type checking for a specific file, add:
 
 - **Pre-commit documentation:** https://pre-commit.com/
 - **Ruff documentation:** https://docs.astral.sh/ruff/
-- **MyPy documentation:** https://mypy.readthedocs.io/
-- **Bandit documentation:** https://bandit.readthedocs.io/
+- **MyPy documentation:** https://mypy.readthedocs.io/en/stable/
+- **Bandit documentation:** https://bandit.readthedocs.io/en/latest/
 - **Detect-secrets:** https://github.com/Yelp/detect-secrets
 
 Project files:

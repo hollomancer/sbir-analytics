@@ -322,6 +322,6 @@ Until then, GitHub Actions is perfect! 🎉
 
 ## Support
 
-- GitHub Actions Docs: https://docs.github.com/actions
-- Dagster CLI: https://docs.dagster.io/concepts/ops-jobs-graphs/jobs
+- GitHub Actions Docs: https://docs.github.com/en/actions
+- Dagster CLI: https://docs.dagster.io/guides/build/jobs
 - Workflow file: `.github/workflows/run-ml-jobs.yml`

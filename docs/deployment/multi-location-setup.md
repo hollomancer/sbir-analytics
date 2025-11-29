@@ -319,6 +319,6 @@ cp ~/dagster-agent/dagster.yaml ~/dagster-agent/dagster.yaml.backup
 
 ## Support
 
-- Dagster Cloud Docs: https://docs.dagster.io/dagster-cloud
+- Dagster Cloud Docs: https://docs.dagster.io/deployment/dagster-plus
 - EC2 Instance Types: https://aws.amazon.com/ec2/instance-types/
 - Issues: https://github.com/hollomancer/sbir-analytics/issues

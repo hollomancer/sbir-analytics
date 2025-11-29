@@ -446,5 +446,5 @@ aws ecr get-login-password --region us-east-2 | \
 ## Resources
 
 - AWS Batch Docs: https://docs.aws.amazon.com/batch/
-- Dagster Cloud Batch: https://docs.dagster.io/dagster-cloud/deployment/agents/batch
+- Dagster Cloud Batch: https://docs.dagster.io/deployment/dagster-plus/deployment/agents/batch
 - Spot Instance Best Practices: https://aws.amazon.com/ec2/spot/

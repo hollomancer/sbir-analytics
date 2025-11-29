@@ -89,7 +89,7 @@ pytest tests/unit/test_example.py::test_function -vv
 
 ## Next Steps
 
-See [Test Suite Overview](../AGENTS.md#test-suite-overview) for additional improvement opportunities:
+See [AGENTS.md](../../AGENTS.md) for additional improvement opportunities:
 - Fix 253 failing tests
 - Improve coverage from 59% to 80%
 - Add performance regression tests
