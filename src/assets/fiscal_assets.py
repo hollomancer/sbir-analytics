@@ -28,6 +28,19 @@ from ..transformers.r_stateio_adapter import RStateIOAdapter
 from ..utils.monitoring import performance_monitor
 
 
+def _to_python_type(value):
+    """Convert numpy/pandas types to Python native types for Dagster metadata."""
+    import numpy as np
+
+    if isinstance(value, (np.integer, np.int64, np.int32)):
+        return int(value)
+    elif isinstance(value, (np.floating, np.float64, np.float32)):
+        return float(value)
+    elif isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    return value
+
+
 @asset(
     description="SBIR awards enriched with NAICS codes for fiscal analysis",
     group_name="enrichment",
@@ -160,7 +173,7 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
     actual_coverage_rate = covered_records / total_records if total_records > 0 else 0.0
 
     # Determine if check passes
-    passed = actual_coverage_rate >= min_coverage_rate
+    passed = bool(actual_coverage_rate >= min_coverage_rate)
 
     # Set severity and description
     if passed:
@@ -174,9 +187,9 @@ def fiscal_naics_coverage_check(fiscal_naics_enriched_awards: pd.DataFrame) -> A
     metadata = {
         "actual_coverage_rate": f"{actual_coverage_rate:.1%}",
         "threshold": f"{min_coverage_rate:.1%}",
-        "total_records": total_records,
-        "covered_records": covered_records,
-        "uncovered_records": total_records - covered_records,
+        "total_records": int(total_records),
+        "covered_records": int(covered_records),
+        "uncovered_records": int(total_records - covered_records),
         "source_distribution": fiscal_naics_enriched_awards["fiscal_naics_source"]
         .value_counts(dropna=False)
         .to_dict(),
@@ -220,7 +233,7 @@ def fiscal_naics_quality_check(fiscal_naics_enriched_awards: pd.DataFrame) -> As
     avg_confidence = confidence_scores.mean() if not confidence_scores.empty else 0.0
 
     # Determine if check passes
-    passed = avg_confidence >= min_confidence_threshold
+    passed = bool(avg_confidence >= min_confidence_threshold)
 
     # Set severity and description
     if passed:
@@ -308,7 +321,7 @@ def bea_mapping_quality_check(bea_mapped_sbir_awards: pd.DataFrame) -> AssetChec
     confidence_scores = bea_mapped_sbir_awards["bea_mapping_confidence"].dropna()
     avg_confidence = confidence_scores.mean() if not confidence_scores.empty else 0.0
 
-    passed = coverage_rate >= min_coverage_rate and avg_confidence >= 0.70
+    passed = bool(coverage_rate >= min_coverage_rate and avg_confidence >= 0.70)
 
     severity = AssetCheckSeverity.WARN if passed else AssetCheckSeverity.ERROR
     description = (
@@ -445,7 +458,7 @@ def economic_shocks_quality_check(economic_shocks: pd.DataFrame) -> AssetCheckRe
     min_geo_coverage = quality_thresholds.get("geographic_resolution_rate", 0.90)
 
     # Determine if checks pass
-    passed = (
+    passed = bool(
         passed_min_count
         and avg_naics_coverage >= min_naics_coverage * 0.8  # Allow some tolerance
         and avg_geo_coverage >= min_geo_coverage * 0.8

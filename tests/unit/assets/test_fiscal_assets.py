@@ -437,7 +437,7 @@ class TestEconomicShocks:
         result = economic_shocks(mock_context, sample_bea_mapped_awards)
 
         assert isinstance(result, Output)
-        assert len(result.value) == 3
+        assert len(result.value) == 12  # sample_economic_shocks has 12 rows
         assert "num_shocks" in result.metadata
         assert "total_shock_amount" in result.metadata
 
