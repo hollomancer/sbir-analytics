@@ -19,6 +19,7 @@ from src.models.transition_models import (
     TransitionSignals,
 )
 from src.transition.detection.detector import TransitionDetector
+from tests.mocks import TransitionMocks
 
 
 pytestmark = pytest.mark.fast
@@ -224,7 +225,7 @@ class TestMatchVendor:
     def test_match_by_uei_success(self, default_config, mock_vendor_resolver, sample_contract):
         """Test successful vendor match using UEI."""
         # Mock successful UEI match
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corporation"
         mock_record.metadata = {"vendor_id": "VENDOR001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -261,7 +262,7 @@ class TestMatchVendor:
 
         # UEI fails, CAGE succeeds
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=None, score=0.0)
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corp"
         mock_record.metadata = {"vendor_id": "VENDOR002"}
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=mock_record, score=1.0)
@@ -295,7 +296,7 @@ class TestMatchVendor:
         # UEI and CAGE fail, DUNS succeeds
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=None, score=0.0)
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=None, score=0.0)
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Inc"
         mock_record.metadata = {"vendor_id": "VENDOR003"}
         mock_vendor_resolver.resolve_by_duns.return_value = Mock(record=mock_record, score=1.0)
@@ -327,7 +328,7 @@ class TestMatchVendor:
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=None, score=0.0)
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=None, score=0.0)
         mock_vendor_resolver.resolve_by_duns.return_value = Mock(record=None, score=0.0)
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corporation"
         mock_record.metadata = {"vendor_id": "VENDOR004"}
         mock_vendor_resolver.resolve_by_name.return_value = Mock(record=mock_record, score=0.92)
@@ -358,7 +359,7 @@ class TestMatchVendor:
         )
 
         # Fuzzy match score below 0.85 threshold
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corp"
         mock_record.metadata = {"vendor_id": "VENDOR005"}
         mock_vendor_resolver.resolve_by_name.return_value = Mock(record=mock_record, score=0.60)
@@ -413,7 +414,7 @@ class TestDetectForAward:
     ):
         """Test successful transition detection for an award."""
         # Mock successful vendor match
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme Corp"
         mock_record.metadata = {"vendor_id": "VENDOR001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -464,7 +465,7 @@ class TestDetectForAward:
         )
         mock_scorer.score_and_classify.return_value = (signals, 0.90, ConfidenceLevel.HIGH)
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -593,7 +594,7 @@ class TestDetectForAward:
             naics_code="541715",
         )
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -625,7 +626,7 @@ class TestDetectForAward:
         patent_data = {"patent_count": 5, "topics": ["AI", "ML"]}
         cet_data = {"cet_areas": ["AI"]}
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -708,7 +709,7 @@ class TestDetectBatch:
             ),
         ]
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -758,7 +759,7 @@ class TestDetectBatch:
             for i in range(10)
         ]
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -814,7 +815,7 @@ class TestDetectBatch:
             ),
         ]
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -863,7 +864,7 @@ class TestDetectBatch:
             for i in range(3)
         ]
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -914,7 +915,7 @@ class TestMetrics:
         sample_contract,
     ):
         """Test get_metrics calculates rates correctly."""
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -962,7 +963,7 @@ class TestMetrics:
         sample_contract,
     ):
         """Test reset_metrics clears all counters."""
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Vendor"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -1036,7 +1037,7 @@ class TestEdgeCases:
             for i in range(5)
         ]
 
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_uei.return_value = Mock(record=mock_record, score=1.0)
@@ -1072,7 +1073,7 @@ class TestEdgeCases:
         )
 
         # CAGE succeeds
-        mock_record = Mock()
+        mock_record = TransitionMocks.vendor_record()
         mock_record.name = "Acme"
         mock_record.metadata = {"vendor_id": "V001"}
         mock_vendor_resolver.resolve_by_cage.return_value = Mock(record=mock_record, score=1.0)

@@ -57,6 +57,7 @@ def test_cet_training_scale_synthetic():
             definition="AI and machine learning technologies",
             keywords=["machine learning", "neural network", "deep learning", "nlp"],
             parent_cet_id=None,
+            taxonomy_version="test-v1",
         ),
         CETArea(
             cet_id="quantum_information_science",
@@ -64,6 +65,7 @@ def test_cet_training_scale_synthetic():
             definition="Quantum computing and information science",
             keywords=["quantum", "qubit", "entanglement", "quantum algorithm"],
             parent_cet_id=None,
+            taxonomy_version="test-v1",
         ),
         CETArea(
             cet_id="biotechnology",
@@ -71,6 +73,7 @@ def test_cet_training_scale_synthetic():
             definition="Biotech, bioinformatics, genomics",
             keywords=["genome", "protein", "biomedical", "assay"],
             parent_cet_id=None,
+            taxonomy_version="test-v1",
         ),
     ]
 

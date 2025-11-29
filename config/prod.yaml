@@ -84,7 +84,7 @@ data_quality:
   enrichment:
     sam_gov_success_rate: 0.90
     usaspending_match_rate: 0.80
-    regression_threshold_percent: 3.0   # alert on >3pp decline in prod
+    regression_threshold_percent: 0.03   # alert on >3pp decline in prod (0.03 = 3%)
 
 enrichment:
   performance:

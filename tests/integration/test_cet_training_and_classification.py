@@ -32,6 +32,7 @@ def test_cet_classifier_training_and_classification_synthetic():
             definition="AI and ML technologies",
             keywords=["machine learning", "neural network"],
             parent_cet_id=None,
+            taxonomy_version="test-v1",
         ),
         CETArea(
             cet_id="quantum_information_science",
@@ -39,6 +40,7 @@ def test_cet_classifier_training_and_classification_synthetic():
             definition="Quantum computing and related algorithms",
             keywords=["quantum", "qubit", "entanglement"],
             parent_cet_id=None,
+            taxonomy_version="test-v1",
         ),
     ]
 

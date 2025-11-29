@@ -28,7 +28,6 @@ from tests.utils.config_mocks import create_mock_pipeline_config
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""
-    from unittest.mock import Mock
 
     config = create_mock_pipeline_config()
     # Ensure enrichment.performance exists with all required attributes
@@ -382,8 +381,6 @@ class TestEnrichChunk:
         mock_enrich.return_value = enriched_df
 
         # Mock performance monitor context
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
         result_df, metrics = enricher.enrich_chunk(sample_sbir_df.iloc[:3], chunk_num=1)
@@ -418,9 +415,6 @@ class TestEnrichChunk:
         enriched_df["_usaspending_match_method"] = [None, None, None, None, None]
         mock_enrich.return_value = enriched_df
 
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
-
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
         result_df, metrics = enricher.enrich_chunk(sample_sbir_df, chunk_num=0)
 
@@ -444,9 +438,6 @@ class TestEnrichChunk:
         """Test chunk enrichment error handling."""
         mock_get_config.return_value = mock_config
         mock_enrich.side_effect = ValueError("Enrichment failed")
-
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
@@ -552,9 +543,6 @@ class TestProgressTracking:
         enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
         mock_enrich.return_value = enriched_df
 
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
-
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
         chunks_processed = 0
@@ -586,9 +574,6 @@ class TestProgressTracking:
         enriched_df = sample_sbir_df.copy()
         enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
         mock_enrich.return_value = enriched_df
-
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         enricher = ChunkedEnricher(
             sample_sbir_df,
@@ -636,9 +621,6 @@ class TestDataFrameProcessing:
         ]
         mock_enrich.return_value = enriched_df
 
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
-
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
         combined_df, metrics = enricher.process_to_dataframe()
 
@@ -684,9 +666,6 @@ class TestDataFrameProcessing:
         enriched_df = sample_sbir_df.copy()
         enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
         mock_enrich.return_value = enriched_df
-
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
@@ -895,9 +874,6 @@ class TestModuleFunctions:
         enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
         mock_enrich.return_value = enriched_df
 
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
-
         results = list(create_dynamic_outputs_enrichment(sample_sbir_df, sample_recipient_df))
 
         # Should yield (chunk_id, enriched_chunk) tuples
@@ -969,9 +945,6 @@ class TestEdgeCases:
         enriched_df = sample_sbir_df.copy()
         enriched_df["_usaspending_match_method"] = ["exact_uei"] * len(sample_sbir_df)
         mock_enrich.side_effect = [enriched_df, ValueError("Chunk error"), enriched_df]
-
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         enricher = ChunkedEnricher(
             sample_sbir_df, sample_recipient_df, checkpoint_dir=temp_checkpoint_dir

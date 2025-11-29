@@ -97,7 +97,7 @@ class TestExtractorBasicParsing:
             ],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         rows = list(extractor.stream_rows(str(csv_file), chunk_size=10))
 
         assert len(rows) == 2
@@ -108,7 +108,7 @@ class TestExtractorBasicParsing:
         """Test extractor handles empty CSV file."""
         csv_file = create_sample_csv_file(tmp_path, "empty.csv", [])
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         rows = list(extractor.stream_rows(str(csv_file)))
 
         assert len(rows) == 0
@@ -121,7 +121,7 @@ class TestExtractorBasicParsing:
             [sample_assignment_row(rf_id=f"RF{i:04d}") for i in range(25)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         chunks = list(extractor.stream_rows(str(csv_file), chunk_size=10))
 
         # Should get all 25 rows
@@ -146,7 +146,7 @@ class TestExtractorBasicParsing:
             [sample_assignment_row(rf_id=f"RF{i:04d}") for i in range(100)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         rows = list(extractor.stream_rows(str(csv_file), sample_limit=10))
 
         assert len(rows) <= 10
@@ -442,7 +442,7 @@ class TestBatchProcessing:
             [sample_assignment_row(rf_id=f"RF{i:04d}") for i in range(10)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         transformer = PatentAssignmentTransformer()
 
         rows = list(extractor.stream_rows(str(csv_file)))
@@ -458,7 +458,7 @@ class TestBatchProcessing:
             [sample_assignment_row(rf_id=f"RF{i:05d}") for i in range(100)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         transformer = PatentAssignmentTransformer()
 
         rows = list(extractor.stream_rows(str(csv_file)))
@@ -501,7 +501,7 @@ class TestEndToEndPipeline:
         )
 
         # Extract phase
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         raw_rows = list(extractor.stream_rows(str(csv_file)))
         assert len(raw_rows) == 3
 
@@ -524,7 +524,7 @@ class TestEndToEndPipeline:
         csv_file = create_sample_csv_file(tmp_path, "mixed_quality.csv", rows_to_create)
 
         # Extract
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         raw_rows = list(extractor.stream_rows(str(csv_file)))
 
         # Transform
@@ -548,7 +548,7 @@ class TestPerformanceMetrics:
             [sample_assignment_row(rf_id=f"RF{i:05d}") for i in range(100)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         transformer = PatentAssignmentTransformer()
 
         start = time.time()
@@ -569,7 +569,7 @@ class TestPerformanceMetrics:
             [sample_assignment_row(rf_id=f"RF{i:05d}") for i in range(100)],
         )
 
-        extractor = USPTOExtractor()
+        extractor = USPTOExtractor(tmp_path)
         transformer = PatentAssignmentTransformer()
 
         rows = list(extractor.stream_rows(str(csv_file)))
