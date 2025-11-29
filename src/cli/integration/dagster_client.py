@@ -201,7 +201,7 @@ class DagsterClient:
             # Materialize assets using selection directly
             if self.defs.assets:
                 result = materialize(
-                    assets=self.defs.assets,
+                    assets=list(self.defs.assets),
                     selection=selection,
                     instance=self.instance,
                     **kwargs,
