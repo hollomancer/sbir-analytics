@@ -103,15 +103,13 @@ RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
 COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
 
 # Export a requirements.txt for pip-based wheel building (main + dev + cloud + r groups for test tooling)
-# Use --locked to ensure exact versions from uv.lock are used
+# Use uv export to get exact versions from uv.lock
 # Include 'r' extra only if BUILD_WITH_R=true (for R integration)
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ "$BUILD_WITH_R" = "true" ]; then \
-        uv pip compile pyproject.toml --extra dev --extra cloud --extra r --universal --python-version 3.11 --locked -o requirements.txt || \
-        uv pip compile pyproject.toml --extra dev --extra cloud --extra r --universal --python-version 3.11 -o requirements.txt; \
+        uv export --extra dev --extra cloud --extra r --no-hashes --format requirements-txt -o requirements.txt; \
     else \
-        uv pip compile pyproject.toml --extra dev --extra cloud --universal --python-version 3.11 --locked -o requirements.txt || \
-        uv pip compile pyproject.toml --extra dev --extra cloud --universal --python-version 3.11 -o requirements.txt; \
+        uv export --extra dev --extra cloud --no-hashes --format requirements-txt -o requirements.txt; \
     fi
 
 # Build wheels for all requirements into /wheels (cached if requirements.txt doesn't change)

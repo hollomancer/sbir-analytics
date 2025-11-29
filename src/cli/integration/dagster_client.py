@@ -198,11 +198,11 @@ class DagsterClient:
             else:
                 selection = AssetSelection.all()
 
-            # Materialize assets - pass selection and assets separately to materialize
+            # Materialize assets using selection directly
             if self.defs.assets:
-                resolved = selection.resolve(self.defs.assets)
                 result = materialize(
-                    list(resolved),
+                    assets=self.defs.assets,
+                    selection=selection,
                     instance=self.instance,
                     **kwargs,
                 )
