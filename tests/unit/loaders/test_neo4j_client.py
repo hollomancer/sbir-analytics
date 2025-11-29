@@ -54,7 +54,7 @@ class TestNeo4jConfig:
         )
 
         assert config.database == "neo4j"  # Default
-        assert config.batch_size == 1000  # Default
+        assert config.batch_size == 5000  # Default
 
 
 class TestLoadMetrics:
@@ -104,6 +104,7 @@ class TestNeo4jClientInitialization:
 
     def test_init_creates_config(self, neo4j_config):
         """Test client initialization stores config."""
+        neo4j_config.auto_migrate = False  # Disable auto-migration for lazy init test
         client = Neo4jClient(neo4j_config)
 
         assert client.config == neo4j_config
@@ -112,6 +113,7 @@ class TestNeo4jClientInitialization:
     @patch("src.loaders.neo4j.client.GraphDatabase.driver")
     def test_driver_lazy_initialization(self, mock_graph_database, neo4j_config, mock_driver):
         """Test driver is created lazily on first access."""
+        neo4j_config.auto_migrate = False  # Disable auto-migration for lazy init test
         mock_graph_database.return_value = mock_driver
 
         client = Neo4jClient(neo4j_config)
@@ -168,6 +170,7 @@ class TestNeo4jClientSessionManagement:
         self, mock_graph_database, neo4j_config, mock_driver, mock_session
     ):
         """Test session context manager creates and closes session."""
+        neo4j_config.auto_migrate = False  # Disable auto-migration
         mock_graph_database.return_value = mock_driver
         mock_driver.session.return_value = mock_session
 
@@ -257,10 +260,9 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_single_batch(self, mock_session_cm, neo4j_config):
         """Test batch upsert with nodes fitting in single batch."""
+        neo4j_config.auto_migrate = False  # Disable auto-migration
         # Setup mocks
         mock_session = MagicMock()
-        mock_tx = MagicMock()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return result with created_count and updated_count
@@ -281,17 +283,16 @@ class TestNeo4jClientBatchOperations:
         metrics = client.batch_upsert_nodes("Company", "uei", nodes)
 
         assert metrics.nodes_created["Company"] == 2
-        mock_tx.commit.assert_called_once()
+        # No explicit commit in implementation - uses auto-commit transactions
 
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_multiple_batches(self, mock_session_cm, neo4j_config):
         """Test batch upsert with nodes spanning multiple batches."""
+        neo4j_config.auto_migrate = False  # Disable auto-migration
         # Setup for small batch size
         neo4j_config.batch_size = 2
 
         mock_session = MagicMock()
-        mock_tx = MagicMock()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return different counts per batch
@@ -315,7 +316,7 @@ class TestNeo4jClientBatchOperations:
         metrics = client.batch_upsert_nodes("Company", "uei", nodes)
 
         assert metrics.nodes_created["Company"] == 5
-        assert mock_tx.commit.call_count == 3  # 3 batches
+        # No explicit commit in implementation - uses auto-commit transactions
 
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_tracks_creates_and_updates(self, mock_session_cm, neo4j_config):

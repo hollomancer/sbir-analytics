@@ -1,6 +1,6 @@
 """Tests for fiscal assets pipeline."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pandas as pd
 import pytest
@@ -39,11 +39,12 @@ from tests.utils.fixtures import create_sample_enriched_awards_df
 def mock_context():
     """Mock Dagster execution context."""
     context = build_asset_context()
-    # Replace log with mock to allow assertions in tests
-    context.log = Mock()
-    context.log.info = Mock()
-    context.log.warning = Mock()
-    context.log.error = Mock()
+    # Mock the log property since it's read-only
+    mock_log = Mock()
+    mock_log.info = Mock()
+    mock_log.warning = Mock()
+    mock_log.error = Mock()
+    type(context).log = PropertyMock(return_value=mock_log)
     return context
 
 
@@ -130,16 +131,48 @@ def sample_bea_mapped_awards():
 @pytest.fixture
 def sample_economic_shocks():
     """Sample economic shocks."""
+    # Create 12 shocks to meet minimum threshold of 10
+    states = ["CA", "MA", "TX", "NY", "FL", "WA", "IL", "PA", "OH", "GA", "NC", "VA"]
+    sectors = [
+        "5415",
+        "5417",
+        "3364",
+        "5415",
+        "5417",
+        "3364",
+        "5415",
+        "5417",
+        "3364",
+        "5415",
+        "5417",
+        "3364",
+    ]
+    years = [2021, 2022, 2023, 2021, 2022, 2023, 2021, 2022, 2023, 2021, 2022, 2023]
+    amounts = [
+        100000,
+        150000,
+        200000,
+        120000,
+        160000,
+        180000,
+        110000,
+        140000,
+        190000,
+        130000,
+        170000,
+        210000,
+    ]
+
     return pd.DataFrame(
         {
-            "state": ["CA", "MA", "TX"],
-            "bea_sector": ["5415", "5417", "3364"],
-            "fiscal_year": [2021, 2022, 2023],
-            "shock_amount": [100000, 150000, 200000],
-            "awards_aggregated": [1, 1, 1],
-            "confidence": [0.90, 0.85, 0.95],
-            "naics_coverage_rate": [1.0, 1.0, 1.0],
-            "geographic_resolution_rate": [1.0, 1.0, 1.0],
+            "state": states,
+            "bea_sector": sectors,
+            "fiscal_year": years,
+            "shock_amount": amounts,
+            "awards_aggregated": [1] * 12,
+            "confidence": [0.90] * 12,
+            "naics_coverage_rate": [1.0] * 12,
+            "geographic_resolution_rate": [1.0] * 12,
         }
     )
 

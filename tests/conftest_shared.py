@@ -24,7 +24,7 @@ from tests.utils.fixtures import (
 # ============================================================================
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def neo4j_config():
     """Create Neo4j configuration for testing."""
     return Neo4jConfig(

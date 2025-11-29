@@ -107,16 +107,16 @@ def fiscal_naics_enriched_awards(
 
     # Create metadata
     metadata = {
-        "num_records": len(enriched_df),
+        "num_records": int(len(enriched_df)),
         "naics_coverage": f"{coverage_rate:.1%}",
-        "naics_coverage_count": naics_coverage,
+        "naics_coverage_count": int(naics_coverage),
         "source_distribution": MetadataValue.json(source_counts),
         "confidence_stats": MetadataValue.json(
             {
-                "mean": round(avg_confidence, 3),
-                "min": round(min_confidence, 3),
-                "max": round(max_confidence, 3),
-                "std": round(confidence_stats.get("std", 0.0), 3),
+                "mean": round(float(avg_confidence), 3),
+                "min": round(float(min_confidence), 3),
+                "max": round(float(max_confidence), 3),
+                "std": round(float(confidence_stats.get("std", 0.0)), 3),
             }
         ),
         "preview": MetadataValue.md(enriched_df.head(10).to_markdown()),
@@ -127,7 +127,7 @@ def fiscal_naics_enriched_awards(
         # Quality metrics
         "quality_coverage_threshold": f"{quality_metrics['naics_coverage_threshold']:.1%}",
         "quality_coverage_meets_threshold": quality_metrics["coverage_meets_threshold"],
-        "quality_avg_confidence": round(avg_confidence, 3),
+        "quality_avg_confidence": round(float(avg_confidence), 3),
     }
 
     return Output(value=enriched_df, metadata=metadata)
