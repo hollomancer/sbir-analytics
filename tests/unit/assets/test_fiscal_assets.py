@@ -103,9 +103,9 @@ def sample_naics_enriched_awards():
             "Award Number": ["AWD001", "AWD002", "AWD003"],
             "Company": ["TechCo", "BioCo", "AeroCo"],
             "Amount": [100000, 150000, 200000],
-            "fiscal_naics_code": ["541511", "541712", None],
-            "fiscal_naics_source": ["original_data", "usaspending_dataframe", "missing"],
-            "fiscal_naics_confidence": [0.95, 0.85, None],
+            "fiscal_naics_code": ["541511", "541712", "336411"],
+            "fiscal_naics_source": ["original_data", "usaspending_dataframe", "agency_defaults"],
+            "fiscal_naics_confidence": [0.95, 0.85, 0.70],
             "fiscal_year": [2021, 2022, 2023],
             "state_code": ["CA", "MA", "TX"],
         }
