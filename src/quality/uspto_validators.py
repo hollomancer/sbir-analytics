@@ -544,7 +544,10 @@ def validate_date_fields(
                         stats["missing"] = missing_count + 1
                     continue
 
-                parsed_date = parse_date(val)
+                try:
+                    parsed_date = parse_date(val)
+                except (ValueError, TypeError):
+                    parsed_date = None
 
                 if parsed_date is None:
                     stats = field_stats[field]

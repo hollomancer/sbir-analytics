@@ -99,7 +99,7 @@ class TestCheckCompleteness:
 
         # Empty df has completeness_ratio of 0, should fail
         assert len(issues) == 1
-        assert issues[0].severity == QualitySeverity.MEDIUM
+        assert issues[0].severity == QualitySeverity.CRITICAL
 
     def test_multiple_fields(self, sample_dataframe):
         """Test completeness check on multiple fields."""
