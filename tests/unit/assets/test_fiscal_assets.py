@@ -535,7 +535,7 @@ class TestEconomicImpacts:
         result = economic_impacts(mock_context, sample_economic_shocks)
 
         assert isinstance(result, Output)
-        assert len(result.value) == 3
+        assert len(result.value) == 12  # All shocks from sample_economic_shocks
         assert "wage_impact" in result.value.columns
         assert "model_version" in result.metadata
 

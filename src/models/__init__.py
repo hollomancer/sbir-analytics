@@ -65,7 +65,7 @@ __all__: list[str] = [
 # Mapping of exported symbol -> (module_path, attribute_name)
 # When a symbol is accessed on this package, the target module will be imported
 # and the attribute will be resolved and cached in the module globals for future use.
-_lazy_mapping: dict[str, tuple] = {
+_lazy_mapping: dict[str, tuple[str, str]] = {
     # Award models
     "Award": ("src.models.award", "Award"),
     "RawAward": ("src.models.award", "RawAward"),

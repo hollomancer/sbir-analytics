@@ -8,6 +8,8 @@ classification accuracy, especially for short or vague abstracts.
 Based on the sbir-cet-classifier multi-source approach, adapted for sbir-analytics.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -111,7 +113,7 @@ class MultiSourceCETVectorizer(TfidfVectorizer):
         # Combine with spaces
         return " ".join(parts) if parts else ""
 
-    def fit(self, raw_documents, y=None):
+    def fit(self, raw_documents: list, y=None) -> MultiSourceCETVectorizer:
         """
         Fit vectorizer on documents.
 
@@ -132,7 +134,7 @@ class MultiSourceCETVectorizer(TfidfVectorizer):
 
         return super().fit(combined_texts, y)
 
-    def transform(self, raw_documents):
+    def transform(self, raw_documents: list):
         """
         Transform documents to TF-IDF matrix.
 
@@ -158,7 +160,7 @@ class MultiSourceCETVectorizer(TfidfVectorizer):
 
         return X
 
-    def fit_transform(self, raw_documents, y=None):
+    def fit_transform(self, raw_documents: list, y=None):
         """
         Fit vectorizer and transform documents.
 
@@ -185,7 +187,7 @@ class MultiSourceCETVectorizer(TfidfVectorizer):
 
         return X
 
-    def _apply_keyword_boost(self, X):
+    def _apply_keyword_boost(self, X):  # type: ignore[no-untyped-def]
         """
         Apply keyword boosting to TF-IDF matrix.
 
