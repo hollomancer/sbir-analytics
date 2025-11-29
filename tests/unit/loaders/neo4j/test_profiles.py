@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from unittest.mock import Mock
+from tests.mocks import Neo4jMocks
 
 import pandas as pd
 import pytest
@@ -17,7 +18,7 @@ class TestTransitionProfileLoader:
 
     def test_initialization(self):
         """Test TransitionProfileLoader initialization."""
-        mock_client = Mock()
+        mock_client = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_client, batch_size=100)
 
         assert loader.client == mock_client
@@ -97,7 +98,7 @@ class TestTransitionProfileLoader:
 
     def test_stats_tracking(self):
         """Test that loader tracks statistics."""
-        mock_client = Mock()
+        mock_client = Neo4jMocks.driver()
         loader = TransitionProfileLoader(mock_client)
 
         # Check metrics attributes exist (now dictionaries)
@@ -108,7 +109,7 @@ class TestTransitionProfileLoader:
 
     def test_batch_size_respected(self):
         """Test that custom batch size is respected."""
-        mock_client = Mock()
+        mock_client = Neo4jMocks.driver()
         custom_batch_size = 250
 
         loader = TransitionProfileLoader(mock_client, batch_size=custom_batch_size)
