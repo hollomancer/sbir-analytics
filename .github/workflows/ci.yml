@@ -522,7 +522,7 @@ jobs:
       - name: Configure AWS credentials
         id: aws-credentials
         continue-on-error: true  # Optional: Falls back to local data if AWS not configured
-        if: secrets.AWS_ROLE_ARN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        if: secrets.AWS_ROLE_ARN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
