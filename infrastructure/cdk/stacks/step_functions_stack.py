@@ -32,19 +32,8 @@ class StepFunctionsStack(Stack):
             / "weekly-refresh-state-machine.json"
         )
 
-        if state_machine_path.exists():
-            with state_machine_path.open() as f:
-                definition = json.load(f)
-            # Replace Lambda ARN placeholders with actual function ARNs
-            definition_str = json.dumps(definition)
-            for func_name, func in lambda_functions.items():
-                definition_str = definition_str.replace(
-                    f"${{{{lambda.{func_name}.arn}}}}", func.function_arn
-                )
-            definition = json.loads(definition_str)
-        else:
-            # Fallback: Build state machine programmatically
-            definition = self._build_state_machine_definition(lambda_functions)
+        # Build state machine programmatically to properly handle CDK tokens
+        definition = self._build_state_machine_definition(lambda_functions)
 
         # Create Step Functions state machine
         self.state_machine = sfn.StateMachine(

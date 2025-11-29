@@ -325,7 +325,11 @@ class TestNeo4jClientBatchOperations:
         """Test batch upsert correctly tracks creates vs updates."""
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
+        # Create context manager for begin_transaction
+        mock_tx_cm = MagicMock()
+        mock_tx_cm.__enter__.return_value = mock_tx
+        mock_tx_cm.__exit__.return_value = None
+        mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock session.run() to return 2 created, 1 updated
@@ -351,7 +355,11 @@ class TestNeo4jClientBatchOperations:
         """Test batch upsert handles nodes missing key property."""
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
+        # Create context manager for begin_transaction
+        mock_tx_cm = MagicMock()
+        mock_tx_cm.__enter__.return_value = mock_tx
+        mock_tx_cm.__exit__.return_value = None
+        mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         client = Neo4jClient(neo4j_config)
@@ -370,7 +378,11 @@ class TestNeo4jClientBatchOperations:
         """Test batch upsert handles transaction errors gracefully."""
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
+        # Create context manager for begin_transaction
+        mock_tx_cm = MagicMock()
+        mock_tx_cm.__enter__.return_value = mock_tx
+        mock_tx_cm.__exit__.return_value = None
+        mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Make session.run() raise exception
@@ -471,7 +483,11 @@ class TestNeo4jClientBatchRelationships:
         """Test batch relationship creation."""
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
+        # Create context manager for begin_transaction
+        mock_tx_cm = MagicMock()
+        mock_tx_cm.__enter__.return_value = mock_tx
+        mock_tx_cm.__exit__.return_value = None
+        mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock tx.run() to return result with created_count
@@ -496,7 +512,11 @@ class TestNeo4jClientBatchRelationships:
         """Test batch relationship creation with some failures."""
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
-        mock_session.begin_transaction.return_value.__enter__.return_value = mock_tx
+        # Create context manager for begin_transaction
+        mock_tx_cm = MagicMock()
+        mock_tx_cm.__enter__.return_value = mock_tx
+        mock_tx_cm.__exit__.return_value = None
+        mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
         # Mock tx.run() to return result with created_count
