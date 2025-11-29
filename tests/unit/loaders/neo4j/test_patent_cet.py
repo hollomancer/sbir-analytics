@@ -1,3 +1,5 @@
+from tests.mocks import Neo4jMocks
+
 """Tests for Neo4j Patent-CET loader."""
 
 from unittest.mock import MagicMock, Mock, patch
@@ -14,7 +16,7 @@ pytestmark = pytest.mark.fast
 def _create_mock_client():
     """Create a mock Neo4jClient for testing."""
     mock_client = Mock(spec=Neo4jClient)
-    mock_session = MagicMock()
+    mock_session = Neo4jMocks.session()
     mock_tx = Mock()
     mock_result = Mock()
     mock_result.consume.return_value = None
@@ -228,7 +230,7 @@ class TestNeo4jPatentCETLoaderUpsertCETAreas:
     def test_upsert_cet_areas_single(self):
         """Test upserting single CET area."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -243,7 +245,7 @@ class TestNeo4jPatentCETLoaderUpsertCETAreas:
     def test_upsert_cet_areas_multiple(self):
         """Test upserting multiple CET areas."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -262,7 +264,7 @@ class TestNeo4jPatentCETLoaderUpsertCETAreas:
     def test_upsert_cet_areas_with_keywords(self):
         """Test upserting CET areas with keywords."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -321,7 +323,7 @@ class TestNeo4jPatentCETLoaderUpsertPatents:
     def test_upsert_patents_accepts_id_key(self):
         """Test upsert accepts 'id' key instead of 'patent_id'."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -336,7 +338,7 @@ class TestNeo4jPatentCETLoaderUpsertPatents:
     def test_upsert_patents_multiple(self):
         """Test upserting multiple patents."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -355,7 +357,7 @@ class TestNeo4jPatentCETLoaderUpsertPatents:
     def test_upsert_patents_with_application_year(self):
         """Test upserting patents with application_year."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -399,7 +401,7 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
     def test_link_patent_cet_single(self):
         """Test linking single patent to CET."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -422,7 +424,7 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
     def test_link_patent_cet_multiple(self):
         """Test linking multiple patents to CETs."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -441,7 +443,7 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
     def test_link_patent_cet_handles_missing_score(self):
         """Test link handles missing score."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -456,7 +458,7 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
     def test_link_patent_cet_handles_missing_primary(self):
         """Test link handles missing primary flag."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -471,7 +473,7 @@ class TestNeo4jPatentCETLoaderLinkPatentCET:
     def test_link_patent_cet_with_model_version(self):
         """Test link with model_version and taxonomy_version."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -498,7 +500,7 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_single_batch(self):
         """Test batching with data fitting in one batch."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -515,7 +517,7 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_multiple_batches(self):
         """Test batching with data requiring multiple batches."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -532,7 +534,7 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_exact_multiple(self):
         """Test batching with exact multiple of batch size."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -553,7 +555,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_empty(self):
         """Test load_classifications with empty data."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -567,7 +569,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_with_cet_areas(self):
         """Test load_classifications with provided CET areas."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -592,7 +594,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_with_provided_patents(self):
         """Test load_classifications with provided patents."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -616,7 +618,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_derives_patents(self):
         """Test load_classifications derives patents from classifications."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -636,7 +638,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_deduplicates_derived_patents(self):
         """Test load_classifications deduplicates derived patents."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -657,7 +659,7 @@ class TestNeo4jPatentCETLoaderLoadClassifications:
     def test_load_classifications_calls_ensure_constraints(self):
         """Test load_classifications calls ensure_constraints."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -685,7 +687,7 @@ class TestNeo4jPatentCETLoaderEdgeCases:
     def test_multiple_upserts_accumulate(self):
         """Test multiple upsert calls work correctly."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
@@ -708,7 +710,7 @@ class TestNeo4jPatentCETLoaderEdgeCases:
     def test_string_conversion_in_upsert(self):
         """Test patent_id is converted to string."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = MagicMock()
+        mock_session = Neo4jMocks.session()
         mock_tx = Mock()
         mock_tx.run.return_value.consume.return_value = None
         mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
