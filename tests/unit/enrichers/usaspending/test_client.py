@@ -40,8 +40,16 @@ def mock_config(tmp_path):
 
 
 @pytest.fixture
-def client(mock_config, tmp_path):
-    """USAspendingAPIClient instance with test config."""
+def mock_http_client():
+    """Mock httpx.AsyncClient for testing."""
+    mock_client = AsyncMock()
+    mock_client.aclose = AsyncMock()
+    return mock_client
+
+
+@pytest.fixture
+def client(mock_config, tmp_path, mock_http_client):
+    """USAspendingAPIClient instance with test config and mock HTTP client."""
     with patch("src.enrichers.usaspending.client.get_config", return_value=mock_config):
         # Override state file to use tmp_path
         test_config = mock_config.enrichment_refresh.usaspending.model_dump()
@@ -49,7 +57,7 @@ def client(mock_config, tmp_path):
         test_config["usaspending_api"] = {
             "base_url": "https://api.usaspending.gov/api/v2",
         }
-        return USAspendingAPIClient(config=test_config)
+        return USAspendingAPIClient(config=test_config, http_client=mock_http_client)
 
 
 @pytest.fixture
@@ -220,7 +228,7 @@ class TestHTTPRequests:
     """Tests for HTTP request making."""
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_get_success(self, mock_client_class, client, sample_recipient_data):
         """Test successful GET request."""
         # Mock httpx response
@@ -243,7 +251,7 @@ class TestHTTPRequests:
         assert "api.usaspending.gov/api/v2/recipients/UEI123" in call_kwargs.get("url", "")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_post_success(
         self, mock_client_class, client, sample_recipient_data
     ):
@@ -272,7 +280,7 @@ class TestHTTPRequests:
             await client._make_request("PUT", "/test/")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_rate_limit_429(self, mock_client_class, client):
         """Test 429 rate limit error handling."""
         mock_response = Mock()
@@ -290,7 +298,7 @@ class TestHTTPRequests:
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_http_error_404(self, mock_client_class, client):
         """Test HTTP 404 error handling."""
         mock_response = Mock()
@@ -308,7 +316,7 @@ class TestHTTPRequests:
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_timeout(self, mock_client_class, client):
         """Test timeout error handling after retries."""
         mock_client_instance = AsyncMock()
@@ -321,7 +329,7 @@ class TestHTTPRequests:
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_network_error(self, mock_client_class, client):
         """Test network error handling."""
         mock_client_instance = AsyncMock()
@@ -334,7 +342,7 @@ class TestHTTPRequests:
             await client._make_request("GET", "/test/")
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient")
+    @patch("src.enrichers.usaspending.client.httpx.AsyncClient")
     async def test_make_request_with_custom_headers(self, mock_client_class, client):
         """Test request with custom headers."""
         mock_response = Mock()
