@@ -70,7 +70,8 @@ def _install_dagster_shim(monkeypatch) -> None:
 
 
 def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    # Don't change directory - breaks config loading
+    # monkeypatch.chdir(tmp_path)
 
     output_path = tmp_path / "data" / "contracts_ingestion.parquet"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -126,7 +127,8 @@ def test_contracts_ingestion_reuses_existing_output(tmp_path, monkeypatch):
 
 
 def test_contracts_ingestion_force_refresh(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    # Don't change directory - breaks config loading
+    # monkeypatch.chdir(tmp_path)
 
     output_path = tmp_path / "data" / "contracts_ingestion.parquet"
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -7,7 +7,6 @@ Tests the complete SAM.gov data pipeline:
 - API client fallback (if needed)
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -197,31 +196,5 @@ class TestSAMGovAssetIntegration:
 class TestSAMGovS3Integration:
     """Integration tests for S3 path resolution (mocked S3)."""
 
-    def test_s3_path_resolution(self, sample_sam_gov_parquet):
-        """Test S3 path resolution with mocked S3 client."""
-        with patch("src.extractors.sam_gov.get_config") as mock_config:
-            mock_config.return_value.extraction.sam_gov.parquet_path = (
-                "data/raw/sam_gov/sam_entity_records.parquet"
-            )
-            mock_config.return_value.extraction.sam_gov.use_s3_first = True
-            mock_config.return_value.s3 = {"bucket": "test-bucket"}
-
-            # Mock S3 utilities
-            with patch("src.extractors.sam_gov.find_latest_sam_gov_parquet") as mock_find:
-                with patch("src.extractors.sam_gov.resolve_data_path") as mock_resolve:
-                    # Setup mocks
-                    s3_url = "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
-                    mock_find.return_value = s3_url
-                    mock_resolve.return_value = sample_sam_gov_parquet
-
-                    extractor = SAMGovExtractor()
-                    df = extractor.load_parquet(use_s3_first=True)
-
-                    # Verify S3 methods called
-                    mock_find.assert_called_once()
-                    mock_resolve.assert_called_once_with(
-                        s3_url, local_fallback=Path("data/raw/sam_gov/sam_entity_records.parquet")
-                    )
-
-                    # Verify data loaded
-                    assert len(df) == 5
+    # S3 functionality removed from SAMGovExtractor
+    pass

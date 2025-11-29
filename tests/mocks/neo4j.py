@@ -41,7 +41,11 @@ class Neo4jMocks:
     def transaction(commit_success: bool = True, **kwargs) -> Mock:
         """Create a mock Neo4j transaction."""
         tx = Mock()
-        tx.run = Mock(return_value=[])
+        # Create a proper result mock with consume() method
+        mock_result = Mock()
+        mock_result.consume = Mock(return_value=None)
+        mock_result.data = Mock(return_value=[])
+        tx.run = Mock(return_value=mock_result)
         tx.commit = Mock(return_value=commit_success)
         tx.rollback = Mock()
 
