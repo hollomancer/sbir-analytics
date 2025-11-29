@@ -108,11 +108,13 @@ jobs:
     if: needs.determine-source.outputs.sbir == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -143,7 +145,6 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -160,11 +161,16 @@ jobs:
           uv pip install aiohttp aioboto3
 
       - name: Download and process USAspending database (parallel)
-        run: |
-          uv run python scripts/data/download_usaspending_parallel.py \
-            --s3-bucket ${{ env.S3_BUCKET }} \
-            --database-type full \
-            --max-concurrent 10
+        uses: nick-fields/retry-action@v3
+        with:
+          timeout_minutes: 90
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            uv run python scripts/data/download_usaspending_parallel.py \
+              --s3-bucket ${{ env.S3_BUCKET }} \
+              --database-type full \
+              --max-concurrent 10
 
   refresh-uspto:
     name: Refresh USPTO Patents
@@ -176,7 +182,6 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        continue-on-error: true
         uses: ./.github/actions/setup-aws-credentials
         with:
           role-arn: ${{ secrets.AWS_ROLE_ARN }}
@@ -188,12 +193,12 @@ jobs:
           python-version: "3.11"
           install-dev-deps: "false"
 
-      - name: Download and process USPTO data
+      - name: Trigger USPTO data downloads via Lambda
         run: |
-          uv run python scripts/data/download_uspto_data.py \
-            --output-dir data/raw/uspto \
-            --upload-to-s3 \
-            --s3-bucket ${{ env.S3_BUCKET }}
+          # Trigger Lambda functions for USPTO data downloads
+          aws lambda invoke --function-name sbir-analytics-download-uspto-patentsview response.json
+          aws lambda invoke --function-name sbir-analytics-download-uspto-assignments response.json
+          aws lambda invoke --function-name sbir-analytics-download-uspto-ai-patents response.json
 
   summary:
     name: Refresh Summary
