@@ -667,8 +667,8 @@ class TestFiscalPreparation:
 
         adjusted_df = pd.DataFrame(
             {
-                "amount_nominal": [100000, 150000, 200000],
-                "amount_real": [110000, 165000, 220000],
+                "award_amount": [100000, 150000, 200000],
+                "inflation_adjusted_amount": [110000, 165000, 220000],
                 "inflation_factor": [1.1, 1.1, 1.1],
             }
         )
@@ -704,19 +704,35 @@ class TestTaxAndROI:
 
         mock_estimator = Mock()
 
-        tax_df = sample_economic_impacts.copy()
-        tax_df["federal_individual_income_tax"] = 5000
-        tax_df["federal_corporate_income_tax"] = 3000
-        tax_df["federal_social_insurance_tax"] = 2000
-        tax_df["total_federal_tax"] = 10000
+        # Create tax base components (input)
+        tax_base_df = sample_economic_impacts.copy()
 
-        mock_estimator.estimate_taxes.return_value = tax_df
+        # Create tax estimates (output)
+        tax_df = sample_economic_impacts.copy()
+        tax_df["individual_income_tax"] = 5000
+        tax_df["payroll_tax"] = 3000
+        tax_df["corporate_income_tax"] = 2000
+        tax_df["excise_tax"] = 1000
+        tax_df["total_tax_receipts"] = 11000
+
+        mock_estimator.estimate_taxes_from_components.return_value = tax_df
+
+        # Mock statistics
+        mock_stats = Mock()
+        mock_stats.total_tax_receipts = 33000.0
+        mock_stats.total_individual_income_tax = 15000.0
+        mock_stats.total_payroll_tax = 9000.0
+        mock_stats.total_corporate_income_tax = 6000.0
+        mock_stats.total_excise_tax = 3000.0
+        mock_stats.avg_effective_rate = 22.0
+        mock_estimator.get_estimation_statistics.return_value = mock_stats
+
         mock_tax_estimator_class.return_value = mock_estimator
 
-        result = federal_tax_estimates(mock_context, sample_economic_impacts)
+        result = federal_tax_estimates(mock_context, tax_base_df)
 
         assert isinstance(result, Output)
-        assert "total_federal_tax" in result.value.columns
+        assert "total_tax_receipts" in result.value.columns
 
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.assets.fiscal_assets.FiscalROICalculator")

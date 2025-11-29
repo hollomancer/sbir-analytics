@@ -2536,6 +2536,43 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-json-report"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+    { name = "pytest-metadata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/d3/765dae9712fcd68d820338908c1337e077d5fdadccd5cacf95b9b0bea278/pytest-json-report-1.5.0.tar.gz", hash = "sha256:2dde3c647851a19b5f3700729e8310a6e66efb2077d674f27ddea3d34dc615de", size = 21241, upload-time = "2022-03-15T21:03:10.2Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/35/d07400c715bf8a88aa0c1ee9c9eb6050ca7fe5b39981f0eea773feeb0681/pytest_json_report-1.5.0-py3-none-any.whl", hash = "sha256:9897b68c910b12a2e48dd849f9a284b2c79a732a8a9cb398452ddd23d3c8c325", size = 13222, upload-time = "2022-03-15T21:03:08.65Z" },
+]
+
+[[package]]
+name = "pytest-metadata"
+version = "3.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a6/85/8c969f8bec4e559f8f2b958a15229a35495f5b4ce499f6b865eac54b878d/pytest_metadata-3.1.1.tar.gz", hash = "sha256:d2a29b0355fbc03f168aa96d41ff88b1a3b44a3b02acbe491801c98a048017c8", size = 9952, upload-time = "2024-02-12T19:38:44.887Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3e/43/7e7b2ec865caa92f67b8f0e9231a798d102724ca4c0e1f414316be1c1ef2/pytest_metadata-3.1.1-py3-none-any.whl", hash = "sha256:c8e0844db684ee1c798cfa38908d20d67d0463ecb6137c72e91f418558dd5f4b", size = 11428, upload-time = "2024-02-12T19:38:42.531Z" },
+]
+
+[[package]]
+name = "pytest-shard"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/ca/3efa6f3b84dab83220db45997e785be726684c2c2c4267bffb7d80101c7f/pytest-shard-0.1.2.tar.gz", hash = "sha256:b86a967fbfd1c8e50295095ccda031b7e890862ee06531d5142844f4c1d1cd67", size = 3579, upload-time = "2020-12-11T19:52:55.083Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/65/7a/dbeb4c54e9fc3b59622f410091365f354a69cda1af10c3b83ac0ca6e6f4f/pytest_shard-0.1.2-py3-none-any.whl", hash = "sha256:407a1df385cebe1feb9b4d2e7eeee8b044f8a24f0919421233159a17c59be2b9", size = 4608, upload-time = "2020-12-11T19:52:54.226Z" },
+]
+
+[[package]]
 name = "pytest-xdist"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2987,6 +3024,8 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "pytest-json-report" },
+    { name = "pytest-shard" },
     { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "types-psutil" },
@@ -3012,6 +3051,8 @@ r = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest-json-report" },
+    { name = "pytest-shard" },
     { name = "pytest-xdist" },
 ]
 
@@ -3027,7 +3068,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.0.0,<2.0.0" },
     { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
     { name = "huggingface-hub", specifier = ">=0.20.0,<1.0.0" },
-    { name = "ipykernel", marker = "extra == 'ml'", specifier = ">=6.29.0,<7.0.0" },
+    { name = "ipykernel", marker = "extra == 'ml'", specifier = ">=6.29.0,<8.0.0" },
     { name = "jellyfish", specifier = ">=1.0.0,<2.0.0" },
     { name = "joblib", specifier = ">=1.4.2,<2.0.0" },
     { name = "jupyterlab", marker = "extra == 'ml'", specifier = ">=4.0.0,<5.0.0" },
@@ -3035,30 +3076,32 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'ml'", specifier = ">=3.8.0,<4.0.0" },
     { name = "memory-profiler" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0,<2.0.0" },
-    { name = "neo4j", specifier = ">=5.20.0,<6.0.0" },
+    { name = "neo4j", specifier = ">=5.20.0,<7.0.0" },
     { name = "notebook", marker = "extra == 'ml'", specifier = ">=7.0.0,<8.0.0" },
-    { name = "numpy", specifier = "<2" },
+    { name = "numpy", specifier = "<3" },
     { name = "pandas", specifier = ">=2.2.0,<3.0.0" },
     { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2.0,<3.0.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<4.0.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<5.0.0" },
     { name = "psutil" },
-    { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=14.0.0,<15.0.0" },
+    { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=14.0.0,<23.0.0" },
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyreadstat", marker = "extra == 'dev'", specifier = ">=1.1.4,<2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0,<9.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0,<1.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0,<2.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0,<6.0.0" },
+    { name = "pytest-json-report", marker = "extra == 'dev'", specifier = ">=1.5.0" },
+    { name = "pytest-shard", marker = "extra == 'dev'", specifier = ">=0.1.2" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7.0.0" },
     { name = "rapidfuzz", specifier = ">=3.0.0,<4.0.0" },
-    { name = "rich", specifier = ">=13.7.0,<14.0.0" },
+    { name = "rich", specifier = ">=13.7.0,<15.0.0" },
     { name = "rpy2", marker = "extra == 'r'", specifier = ">=3.5.0,<4.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5.0,<1.0.0" },
     { name = "scikit-learn", specifier = ">=1.4.0,<2.0.0" },
     { name = "seaborn", marker = "extra == 'ml'", specifier = ">=0.13.0,<1.0.0" },
-    { name = "sentence-transformers", marker = "extra == 'paecter-local'", specifier = ">=2.7.0,<3.0.0" },
+    { name = "sentence-transformers", marker = "extra == 'paecter-local'", specifier = ">=2.7.0,<6.0.0" },
     { name = "spacy", specifier = ">=3.7.0,<4.0.0" },
-    { name = "tenacity", specifier = ">=8.2.3,<9.0.0" },
+    { name = "tenacity", specifier = ">=8.2.3,<10.0.0" },
     { name = "torch", marker = "extra == 'paecter-local'", specifier = ">=2.0.0,<3.0.0" },
     { name = "transformers", marker = "extra == 'paecter-local'", specifier = ">=4.35.0,<5.0.0" },
     { name = "typer", specifier = ">=0.12.0,<1.0.0" },
@@ -3070,7 +3113,11 @@ requires-dist = [
 provides-extras = ["r", "paecter-local", "dev", "ml", "cloud"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest-xdist", specifier = ">=3.8.0" }]
+dev = [
+    { name = "pytest-json-report", specifier = ">=1.5.0" },
+    { name = "pytest-shard", specifier = ">=0.1.2" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
+]
 
 [[package]]
 name = "scikit-learn"
