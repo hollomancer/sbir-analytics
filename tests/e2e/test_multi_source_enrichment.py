@@ -16,7 +16,7 @@ import pytest
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
 
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.weekly]
 
 
 @pytest.fixture
@@ -360,6 +360,7 @@ class TestRealDataEnrichmentPipeline:
 
     @pytest.mark.real_data
     @pytest.mark.slow
+    @pytest.mark.weekly
     def test_real_sbir_with_real_usaspending(self, tmp_path):
         """Test real SBIR data with real USAspending dump (requires real data files)."""
         pytest.skip(
@@ -369,6 +370,7 @@ class TestRealDataEnrichmentPipeline:
 
     @pytest.mark.real_data
     @pytest.mark.slow
+    @pytest.mark.weekly
     def test_real_sbir_with_real_sam_gov(self, tmp_path):
         """Test real SBIR data with real SAM.gov parquet (requires real data files)."""
         pytest.skip(

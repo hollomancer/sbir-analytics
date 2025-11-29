@@ -157,8 +157,10 @@ class TestCETAwardClassificationsQualityCheck:
             mock_path.open.return_value = mock_file_context
             mock_path_class.return_value = mock_path
 
-            check_fn = _get_check_compute_fn(cet_award_classifications_quality_check)
-            result = check_fn(mock_context)
+            # Call the check function directly (it's decorated but still callable)
+            from src.assets.cet.classifications import cet_award_classifications_quality_check
+
+            result = cet_award_classifications_quality_check(mock_context)
 
         assert result.passed is True
         assert "meets thresholds" in result.description.lower()

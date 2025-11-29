@@ -27,7 +27,7 @@ from src.transformers.fiscal.taxes import FiscalTaxEstimator
 from src.transformers.naics_to_bea import NAICSToBEAMapper
 
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.weekly]
 
 
 @pytest.fixture

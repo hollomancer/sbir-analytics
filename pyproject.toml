@@ -171,11 +171,12 @@ module = [
 
 [tool.pytest.ini_options]
 markers = [
-    "fast: fast unit tests (< 1 second each)",
-    "integration: integration tests",
-    "slow: long-running tests",
-    "e2e: end-to-end tests",
-    "real_data: tests that use real SBIR data from data/raw/sbir/ instead of fixtures"
+    "fast: fast unit tests (< 1 second each) - run on every commit",
+    "integration: integration tests - run on PR",
+    "slow: long-running tests - run nightly",
+    "e2e: end-to-end tests - run nightly/weekly",
+    "real_data: tests using real data - run weekly",
+    "weekly: comprehensive validation - run weekly only"
 ]
 testpaths = ["tests", "sbir-analytics/tests"]
 python_files = ["test_*.py"]

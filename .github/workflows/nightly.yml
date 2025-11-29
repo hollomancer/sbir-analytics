@@ -48,17 +48,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - suite: unit
+          - suite: slow-unit
             pytest_target: "tests/unit/"
             pytest_args: '-m "slow" -v'
             needs_neo4j: false
           - suite: integration
             pytest_target: "tests/integration/"
-            pytest_args: "-v"
+            pytest_args: '-m "integration and not slow" -v'
             needs_neo4j: true
-          - suite: e2e
+          - suite: e2e-smoke
             pytest_target: "tests/e2e/"
-            pytest_args: "-v"
+            pytest_args: '-m "e2e and not weekly" -v'
             needs_neo4j: false
     steps:
       - uses: actions/checkout@v4
