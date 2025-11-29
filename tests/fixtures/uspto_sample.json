@@ -1,0 +1,18 @@
+[
+  {
+    "rf_id": "RF-001",
+    "patent_number": "10000001",
+    "assignee_name": "Test Company 1",
+    "assignor_name": "John Inventor",
+    "execution_date": "2023-01-15",
+    "record_date": "2023-02-01"
+  },
+  {
+    "rf_id": "RF-002",
+    "patent_number": "10000002",
+    "assignee_name": "Test Company 2",
+    "assignor_name": "Jane Inventor",
+    "execution_date": "2023-03-10",
+    "record_date": "2023-03-25"
+  }
+]

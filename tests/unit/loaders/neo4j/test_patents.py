@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from pydantic import ValidationError
 
 from src.loaders.neo4j.client import Neo4jClient
 from src.loaders.neo4j.patents import PatentLoader, PatentLoaderConfig
@@ -150,6 +151,7 @@ class TestPatentLoaderIndexes:
         mock_client = Mock(spec=Neo4jClient)
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Index already exists")
+        mock_client.session.return_value = MagicMock()
         mock_client.session.return_value.__enter__.return_value = mock_session
 
         loader = PatentLoader(mock_client)
@@ -252,14 +254,9 @@ class TestPatentLoaderEdgeCases:
     """Tests for edge cases in PatentLoader."""
 
     def test_zero_batch_size(self):
-        """Test loader handles zero batch size."""
-        mock_client = Mock(spec=Neo4jClient)
-        config = PatentLoaderConfig(batch_size=0)
-
-        loader = PatentLoader(mock_client, config)
-
-        # Should accept the value (validation happens at runtime)
-        assert loader.config.batch_size == 0
+        """Test loader rejects zero batch size."""
+        with pytest.raises(ValidationError):
+            PatentLoaderConfig(batch_size=0)
 
     def test_very_large_batch_size(self):
         """Test loader handles very large batch size."""
@@ -271,14 +268,9 @@ class TestPatentLoaderEdgeCases:
         assert loader.config.batch_size == 1000000
 
     def test_negative_batch_size(self):
-        """Test loader with negative batch size."""
-        mock_client = Mock(spec=Neo4jClient)
-        config = PatentLoaderConfig(batch_size=-100)
-
-        loader = PatentLoader(mock_client, config)
-
-        # Should accept (validation is runtime concern)
-        assert loader.config.batch_size == -100
+        """Test loader rejects negative batch size."""
+        with pytest.raises(ValidationError):
+            PatentLoaderConfig(batch_size=-100)
 
     def test_multiple_constraint_creation_calls(self):
         """Test calling create_constraints multiple times."""
@@ -294,7 +286,7 @@ class TestPatentLoaderEdgeCases:
         loader.create_constraints()
 
         # Should execute statements each time (idempotent with IF NOT EXISTS)
-        assert mock_session.run.call_count == 6  # 3 constraints × 2 calls
+        assert mock_session.run.call_count == 8  # 4 constraints × 2 calls
 
     def test_multiple_index_creation_calls(self):
         """Test calling create_indexes multiple times."""

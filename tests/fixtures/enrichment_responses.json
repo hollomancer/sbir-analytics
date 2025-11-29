@@ -1,0 +1,18 @@
+{
+  "sam_gov_responses": [
+    {
+      "uei": "TEST123UEI456",
+      "legal_business_name": "Test Company 1",
+      "naics_code": "541712",
+      "address": "123 Test St"
+    }
+  ],
+  "usaspending_responses": [
+    {
+      "award_id": "AWARD-001",
+      "recipient_uei": "TEST123UEI456",
+      "naics_code": "541712",
+      "award_amount": 150000
+    }
+  ]
+}

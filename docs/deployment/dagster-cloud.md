@@ -183,61 +183,6 @@ NEO4J_URI=neo4j+s://staging.databases.neo4j.io
 
 **Alternative**: Upgrade to Starter Plan for multiple deployments
 
-## Hybrid Deployment
-
-**Use Case**: Run compute in your own infrastructure while using Dagster Cloud UI
-
-### Setup
-
-1. **Install Hybrid Agent:**
-```bash
-pip install dagster-cloud[hybrid]
-```
-
-2. **Configure Agent:**
-```yaml
-# dagster_cloud.yaml
-instance_class:
-  module: dagster_cloud.instance
-  class: DagsterCloudAgentInstance
-
-dagster_cloud_api:
-  agent_token: ${DAGSTER_CLOUD_AGENT_TOKEN}
-  deployment: prod
-```
-
-3. **Run Agent:**
-```bash
-export DAGSTER_CLOUD_AGENT_TOKEN=<token>
-dagster-cloud agent run
-```
-
-### Benefits
-
-- Run on your own infrastructure
-- Access private resources
-- Custom compute requirements
-- Data stays in your network
-
-### Deployment Options
-
-**Docker:**
-```bash
-docker run \
-  -e DAGSTER_CLOUD_AGENT_TOKEN=<token> \
-  dagster/dagster-cloud-agent:latest
-```
-
-**Kubernetes:**
-```bash
-helm install dagster-cloud-agent \
-  dagster-cloud/dagster-cloud-agent \
-  --set dagsterCloud.agentToken=<token>
-```
-
-**ECS:**
-See [AWS Deployment Guide](aws-deployment.md#hybrid-agent)
-
 ## Testing
 
 ### Quick Smoke Test (5 minutes)

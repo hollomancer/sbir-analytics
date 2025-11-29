@@ -226,57 +226,15 @@ aws batch create-compute-environment \
 
 **Estimated Cost**: $20-50/month (with Spot)
 
-## Hybrid Deployment
-
-**Use Case**: Dagster Cloud UI + AWS compute
-
-### Setup
-
-**1. Install Dagster Cloud Agent on ECS:**
-```bash
-# Create ECS cluster
-aws ecs create-cluster --cluster-name dagster-cloud-agent
-
-# Create task definition
-aws ecs register-task-definition \
-  --cli-input-json file://agent-task-definition.json
-
-# Run agent service
-aws ecs create-service \
-  --cluster dagster-cloud-agent \
-  --service-name dagster-agent \
-  --task-definition dagster-cloud-agent \
-  --desired-count 1
-```
-
-**2. Configure Dagster Cloud:**
-- **Settings** → **Agents** → **Add Agent**
-- Copy agent token
-- Set in ECS task environment
-
-**3. Deploy Code Location:**
-- Dagster Cloud builds and deploys to your ECS cluster
-- Jobs run on your infrastructure
-- UI hosted by Dagster Cloud
-
-### Benefits
-
-- Use Dagster Cloud UI
-- Run on your AWS infrastructure
-- Access private resources (VPC, RDS, etc.)
-- Control compute costs
-
-See [Dagster Cloud Guide](dagster-cloud.md#hybrid-deployment) for details.
-
 ## Comparison
 
-| Feature | Serverless | Batch | Hybrid |
-|---------|-----------|-------|--------|
-| **Cost** | $5-10/mo | $20-50/mo | $10-30/mo |
-| **Setup** | Easy | Medium | Medium |
-| **Scalability** | Auto | Manual | Auto |
-| **Use Case** | Scheduled refresh | Heavy processing | Best of both |
-| **Maintenance** | Low | Medium | Low |
+| Feature | Serverless | Batch |
+|---------|-----------|-------|
+| **Cost** | $5-10/mo | $20-50/mo |
+| **Setup** | Easy | Medium |
+| **Scalability** | Auto | Manual |
+| **Use Case** | Scheduled refresh | Heavy processing |
+| **Maintenance** | Low | Medium |
 
 ## Migration Guide
 

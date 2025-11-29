@@ -1,10 +1,12 @@
 """Unit tests for R StateIO adapter."""
 
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
+
+from tests.mocks import RMocks
 
 
 pytestmark = pytest.mark.fast
@@ -36,8 +38,7 @@ def sample_shocks():
 @pytest.fixture
 def mock_r_packages():
     """Mock R packages for testing."""
-    mock_stateio = MagicMock()
-    return mock_stateio
+    return RMocks.stateio_package()
 
 
 @pytest.fixture
@@ -62,8 +63,8 @@ class TestRStateIOAdapterInitialization:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_init_success(self, mock_pandas2ri, mock_importr, mock_config):
         """Test successful initialization with R packages available."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config)
         assert adapter.stateio is not None
@@ -91,8 +92,8 @@ class TestRStateIOAdapterInitialization:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_init_custom_cache_dir(self, mock_pandas2ri, mock_importr, mock_config, tmp_path):
         """Test initialization with custom cache directory."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         cache_dir = tmp_path / "custom_cache"
         adapter = RStateIOAdapter(config=mock_config, cache_dir=str(cache_dir))
@@ -109,8 +110,8 @@ class TestRStateIOAdapterCaching:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_key_generation(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test cache key generation."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config)
         cache_key = adapter._get_cache_key(sample_shocks)
@@ -123,8 +124,8 @@ class TestRStateIOAdapterCaching:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_hit(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks, tmp_path):
         """Test cache hit scenario."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         cache_dir = tmp_path / "cache"
         adapter = RStateIOAdapter(config=mock_config, cache_dir=str(cache_dir))
@@ -145,8 +146,8 @@ class TestRStateIOAdapterCaching:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_cache_miss(self, mock_pandas2ri, mock_importr, mock_config):
         """Test cache miss scenario."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config)
         result = adapter._load_from_cache("nonexistent_key")
@@ -161,10 +162,10 @@ class TestRStateIOAdapterDataConversion:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_convert_shocks_to_r(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test conversion of shocks DataFrame to R format."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
-        mock_r_obj = MagicMock()
+        mock_r_obj = RMocks.r_dataframe()
         mock_pandas2ri.py2rpy.return_value = mock_r_obj
 
         adapter = RStateIOAdapter(config=mock_config)
@@ -178,11 +179,11 @@ class TestRStateIOAdapterDataConversion:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_convert_r_to_pandas(self, mock_pandas2ri, mock_importr, mock_config):
         """Test conversion of R result to pandas DataFrame."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         # Create mock R result with impact columns
-        mock_r_result = MagicMock()
+        mock_r_result = RMocks.r_result()
         result_df = pd.DataFrame(
             {
                 "state": ["CA"],
@@ -223,8 +224,8 @@ class TestRStateIOAdapterImpactComputation:
         sample_shocks,
     ):
         """Test successful impact computation using R functions."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         # Mock R function call returning result DataFrame
         mock_r_result = pd.DataFrame(
@@ -261,8 +262,8 @@ class TestRStateIOAdapterImpactComputation:
         sample_shocks,
     ):
         """Test fallback to placeholder when R functions fail."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         # Mock all R function calls failing
         mock_call_r_function.side_effect = RFunctionError("Function not found")
@@ -295,8 +296,8 @@ class TestRStateIOAdapterImpactComputation:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_ensure_impact_columns(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test _ensure_impact_columns adds missing columns."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         # Create incomplete result DataFrame
         incomplete_result = pd.DataFrame(
@@ -347,8 +348,8 @@ class TestRStateIOAdapterIntegration:
         tmp_path,
     ):
         """Test compute_impacts uses cache when available."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config, cache_enabled=True, cache_dir=str(tmp_path))
 
@@ -370,8 +371,8 @@ class TestRStateIOAdapterIntegration:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_validate_input(self, mock_pandas2ri, mock_importr, mock_config, sample_shocks):
         """Test input validation."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config)
 
@@ -388,8 +389,8 @@ class TestRStateIOAdapterIntegration:
     @patch("src.transformers.r_stateio_adapter.pandas2ri")
     def test_is_available(self, mock_pandas2ri, mock_importr, mock_config):
         """Test is_available check."""
-        mock_stateio = MagicMock()
-        mock_importr.side_effect = lambda pkg: mock_stateio if pkg == "stateior" else MagicMock()
+        mock_stateio = RMocks.stateio_package()
+        mock_importr.side_effect = RMocks.importr_side_effect(mock_stateio)
 
         adapter = RStateIOAdapter(config=mock_config)
         assert adapter.is_available() is True

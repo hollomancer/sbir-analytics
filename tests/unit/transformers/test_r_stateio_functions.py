@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
+from tests.mocks import RMocks
+
 # Import the module - will handle rpy2 availability gracefully
 import src.transformers.r_stateio_functions as r_stateio
 from src.exceptions import DependencyError
@@ -28,8 +30,8 @@ class TestBuildStateModel:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_default_specs(self, mock_call_r, mock_ro):
         """Test build_state_model with default specs."""
-        mock_pkg = Mock()
-        mock_model = Mock()
+        mock_pkg = RMocks.stateio_package()
+        mock_model = RMocks.r_result()
         mock_call_r.return_value = mock_model
 
         result = r_stateio.build_state_model(mock_pkg, "CA", 2020)
@@ -44,8 +46,8 @@ class TestBuildStateModel:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_custom_specs(self, mock_call_r, mock_ro):
         """Test build_state_model with custom specs."""
-        mock_pkg = Mock()
-        mock_model = Mock()
+        mock_pkg = RMocks.stateio_package()
+        mock_model = RMocks.r_result()
         mock_call_r.return_value = mock_model
 
         custom_specs = {"BaseIOSchema": "2012", "detail": "full"}
@@ -59,7 +61,7 @@ class TestBuildStateModel:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_build_state_model_handles_error(self, mock_call_r, mock_ro):
         """Test build_state_model handles R function errors."""
-        mock_pkg = Mock()
+        mock_pkg = RMocks.stateio_package()
         mock_call_r.side_effect = RFunctionError("R error", "buildFullTwoRegionIOTable")
 
         with pytest.raises(RFunctionError):
@@ -74,7 +76,7 @@ class TestGetStateValueAdded:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_all_components(self, mock_call_r, mock_ro):
         """Test getting all value added components."""
-        mock_pkg = Mock()
+        mock_pkg = RMocks.stateio_package()
 
         # Mock successful returns for all components
         mock_call_r.side_effect = [
@@ -97,7 +99,7 @@ class TestGetStateValueAdded:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_partial_failure(self, mock_call_r, mock_ro):
         """Test getting value added with some component failures."""
-        mock_pkg = Mock()
+        mock_pkg = RMocks.stateio_package()
 
         # Mock mixed success/failure
         def mock_calls(*args, **kwargs):
@@ -126,7 +128,7 @@ class TestGetStateValueAdded:
     @patch("src.transformers.r_stateio_functions.call_r_function")
     def test_get_state_value_added_custom_specs(self, mock_call_r, mock_ro):
         """Test get_state_value_added with custom specs."""
-        mock_pkg = Mock()
+        mock_pkg = RMocks.stateio_package()
         mock_call_r.return_value = Mock()
 
         custom_specs = {"BaseIOSchema": "2012"}
@@ -155,7 +157,7 @@ class TestValueAddedRatioCalculation:
     @patch("src.transformers.r_stateio_functions.ro")
     def test_convert_r_gva_to_dataframe_success(self, mock_ro):
         """Test successful conversion of R GVA object to DataFrame."""
-        mock_r_obj = Mock()
+        mock_r_obj = RMocks.r_dataframe()
         mock_df = pd.DataFrame({"sector": ["11", "21"], "value": [1000, 2000]})
 
         # Mock pandas2ri conversion
@@ -169,7 +171,7 @@ class TestValueAddedRatioCalculation:
     @patch("src.transformers.r_stateio_functions.ro")
     def test_convert_r_gva_series_to_dataframe(self, mock_ro):
         """Test conversion of R object to Series, then to DataFrame."""
-        mock_r_obj = Mock()
+        mock_r_obj = RMocks.r_dataframe()
         mock_series = pd.Series([1000, 2000], index=["11", "21"])
 
         with patch("rpy2.robjects.pandas2ri.rpy2py", return_value=mock_series):
@@ -414,7 +416,7 @@ class TestMatrixCalculations:
     @patch("src.transformers.r_stateio_functions.ro")
     def test_extract_use_table_from_model(self, mock_ro):
         """Test extracting Use table from StateIO model."""
-        mock_model = Mock()
+        mock_model = RMocks.r_result()
         mock_use_table = pd.DataFrame(
             [[10, 20], [5, 10]],
             index=["C1", "C2"],
@@ -434,7 +436,7 @@ class TestMatrixCalculations:
     @patch("src.transformers.r_stateio_functions.ro")
     def test_extract_industry_output_from_model(self, mock_ro):
         """Test extracting industry output from StateIO model."""
-        mock_model = Mock()
+        mock_model = RMocks.r_result()
         mock_output = pd.Series([100, 200], index=["I1", "I2"])
 
         mock_model.rx2.return_value = mock_output
