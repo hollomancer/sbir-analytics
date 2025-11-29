@@ -500,10 +500,6 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_single_batch(self):
         """Test batching with data fitting in one batch."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = Neo4jMocks.session()
-        mock_tx = Mock()
-        mock_tx.run.return_value.consume.return_value = None
-        mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
 
         loader = Neo4jPatentCETLoader(client=mock_client, batch_size=10)
 
@@ -517,10 +513,6 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_multiple_batches(self):
         """Test batching with data requiring multiple batches."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = Neo4jMocks.session()
-        mock_tx = Mock()
-        mock_tx.run.return_value.consume.return_value = None
-        mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
 
         loader = Neo4jPatentCETLoader(client=mock_client, batch_size=5)
 
@@ -534,10 +526,6 @@ class TestNeo4jPatentCETLoaderBatching:
     def test_batching_exact_multiple(self):
         """Test batching with exact multiple of batch size."""
         mock_client, mock_session = _create_mock_client()
-        mock_session = Neo4jMocks.session()
-        mock_tx = Mock()
-        mock_tx.run.return_value.consume.return_value = None
-        mock_session.execute_write.side_effect = lambda fn: fn(mock_tx)
 
         loader = Neo4jPatentCETLoader(client=mock_client, batch_size=5)
 
