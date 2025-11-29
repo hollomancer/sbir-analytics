@@ -63,7 +63,7 @@ class TestPatentLoaderInitialization:
     )
     def test_initialization(self, config, expected_batch_size, expected_create_indexes):
         """Test PatentLoader initialization with various configurations."""
-        mock_client = Neo4jMocks.client()
+        mock_client = Mock(spec=Neo4jClient)
         loader = PatentLoader(mock_client, config) if config else PatentLoader(mock_client)
 
         assert loader.client == mock_client
