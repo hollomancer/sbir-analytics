@@ -97,6 +97,82 @@ jobs:
               - '!Makefile'
               - '!.github/**'
 
+      - name: Generate workflow visualization
+        run: |
+          echo "## 🔄 CI Workflow Execution Plan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
+          echo "graph TD" >> $GITHUB_STEP_SUMMARY
+          echo "  A[Detect Changes] --> B[Lint]" >> $GITHUB_STEP_SUMMARY
+          echo "  A --> C[Type Check]" >> $GITHUB_STEP_SUMMARY
+          echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
+          echo "  B --> E[Unit Tests]" >> $GITHUB_STEP_SUMMARY
+          echo "  C --> E" >> $GITHUB_STEP_SUMMARY
+          echo "  D --> E" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.detect.outputs.cet }}" = "true" ]; then
+            echo "  E --> F[CET Tests]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.detect.outputs.transition }}" = "true" ]; then
+            echo "  E --> G[Transition MVP]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.detect.outputs.performance }}" = "true" ]; then
+            echo "  A --> H[Performance Check]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.detect.outputs.docker }}" = "true" ]; then
+            echo "  A --> I[Container Build]" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
+  lint:
+    name: Lint (Ruff)
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+
+      - name: Run Ruff lint
+        run: uv run python -m ruff check src tests
+
+      - name: Run Ruff format check
+        run: uv run python -m ruff format --check src tests
+
+  type-check:
+    name: Type Check (MyPy)
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+          cache-pytest: "false"
+          install-pyreadstat: "false"
+
+      - name: Run MyPy type checker
+        run: uv run python -m mypy src
 
   verify-setup-script:
     name: Verify Setup Script
@@ -131,7 +207,7 @@ jobs:
 
   test:
     name: Unit Tests
-    needs: [detect-changes]
+    needs: [detect-changes, lint, type-check]
     runs-on: ubuntu-latest
     timeout-minutes: 15  # Reduced from 30 for faster failure
     # Skip test job on PRs if only docs changed (but always run on push to main/develop)
@@ -579,12 +655,10 @@ jobs:
 
   cet-tests:
     name: CET Tests (Smoke Only on PR)
-    needs: test
+    needs: [detect-changes]
     # Optimized: Only run smoke tests on PR, full pipeline on push (via cet-dev-e2e)
     # This saves ~15 min on PRs by skipping pipeline test
     if: |
-      always() &&
-      needs.test.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
@@ -881,12 +955,10 @@ jobs:
 
   transition-mvp:
     name: Run Transition MVP (shim) and gate on validation summary
-    needs: test
+    needs: [detect-changes]
     # Run on PR only if transition files changed, always run on push to main/develop
     if: |
-      always() &&
-      needs.test.result == 'success' &&
-      (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
+      github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15  # Reduced from 20 for faster failure
     permissions:
@@ -965,3 +1037,71 @@ jobs:
             data/processed/contracts_sample.*
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
+
+  ci-summary:
+    name: CI Summary
+    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate CI summary
+        run: |
+          echo "## 📊 CI Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Core jobs
+          echo "| 🔍 Detect Changes | ${{ needs.detect-changes.result == 'success' && '✅' || '❌' }} ${{ needs.detect-changes.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 Lint | ${{ needs.lint.result == 'success' && '✅' || needs.lint.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔎 Type Check | ${{ needs.type-check.result == 'success' && '✅' || needs.type-check.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.type-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Verify Setup | ${{ needs.verify-setup-script.result == 'success' && '✅' || needs.verify-setup-script.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.verify-setup-script.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Unit Tests | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+
+          # Conditional jobs
+          if [ "${{ needs.container-build-test.result }}" != "skipped" ]; then
+            echo "| 🐳 Container Build | ${{ needs.container-build-test.result == 'success' && '✅' || '❌' }} ${{ needs.container-build-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.performance-check.result }}" != "skipped" ]; then
+            echo "| ⚡ Performance Check | ${{ needs.performance-check.result == 'success' && '✅' || '❌' }} ${{ needs.performance-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.cet-tests.result }}" != "skipped" ]; then
+            echo "| 🤖 CET Tests | ${{ needs.cet-tests.result == 'success' && '✅' || '❌' }} ${{ needs.cet-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.cet-dev-e2e.result }}" != "skipped" ]; then
+            echo "| 🔬 CET E2E | ${{ needs.cet-dev-e2e.result == 'success' && '✅' || '❌' }} ${{ needs.cet-dev-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.transition-mvp.result }}" != "skipped" ]; then
+            echo "| 🔄 Transition MVP | ${{ needs.transition-mvp.result == 'success' && '✅' || '❌' }} ${{ needs.transition-mvp.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Execution Flow" >> $GITHUB_STEP_SUMMARY
+          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
+          echo "graph LR" >> $GITHUB_STEP_SUMMARY
+          echo "  A[Detect Changes] --> B[Lint]" >> $GITHUB_STEP_SUMMARY
+          echo "  A --> C[Type Check]" >> $GITHUB_STEP_SUMMARY
+          echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
+          echo "  B --> E[Tests]" >> $GITHUB_STEP_SUMMARY
+          echo "  C --> E" >> $GITHUB_STEP_SUMMARY
+          echo "  D --> E" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for failures
+        if: |
+          needs.lint.result == 'failure' ||
+          needs.type-check.result == 'failure' ||
+          needs.test.result == 'failure' ||
+          needs.container-build-test.result == 'failure' ||
+          needs.performance-check.result == 'failure' ||
+          needs.cet-tests.result == 'failure' ||
+          needs.cet-dev-e2e.result == 'failure' ||
+          needs.transition-mvp.result == 'failure'
+        run: |
+          echo "::error::One or more CI jobs failed"
+          exit 1

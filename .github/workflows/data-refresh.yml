@@ -1,0 +1,221 @@
+name: Data Refresh
+
+on:
+  schedule:
+    # SBIR Awards: Weekly on Monday at 9 AM UTC
+    - cron: "0 9 * * 1"
+    # USAspending: Monthly on 6th at 2 AM UTC
+    - cron: "0 2 6 * *"
+    # USPTO: Monthly on 1st at 9 AM UTC
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Data source to refresh"
+        required: true
+        type: choice
+        options:
+          - sbir
+          - usaspending
+          - uspto
+          - all
+      force_refresh:
+        description: "Force refresh even if no changes detected"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: data-refresh-${{ github.event.inputs.source || 'scheduled' }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+
+jobs:
+  determine-source:
+    name: Determine Refresh Source
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sbir: ${{ steps.determine.outputs.sbir }}
+      usaspending: ${{ steps.determine.outputs.usaspending }}
+      uspto: ${{ steps.determine.outputs.uspto }}
+    steps:
+      - name: Determine which sources to refresh
+        id: determine
+        run: |
+          # Manual trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SOURCE="${{ github.event.inputs.source }}"
+            if [ "$SOURCE" = "all" ]; then
+              echo "sbir=true" >> $GITHUB_OUTPUT
+              echo "usaspending=true" >> $GITHUB_OUTPUT
+              echo "uspto=true" >> $GITHUB_OUTPUT
+            else
+              echo "sbir=$([[ $SOURCE == 'sbir' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "usaspending=$([[ $SOURCE == 'usaspending' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "uspto=$([[ $SOURCE == 'uspto' ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+            fi
+          # Scheduled trigger - determine by cron schedule
+          else
+            CRON_SCHEDULE="${{ github.event.schedule }}"
+            case "$CRON_SCHEDULE" in
+              "0 9 * * 1")  # Weekly Monday
+                echo "sbir=true" >> $GITHUB_OUTPUT
+                echo "usaspending=false" >> $GITHUB_OUTPUT
+                echo "uspto=false" >> $GITHUB_OUTPUT
+                ;;
+              "0 2 6 * *")  # Monthly 6th
+                echo "sbir=false" >> $GITHUB_OUTPUT
+                echo "usaspending=true" >> $GITHUB_OUTPUT
+                echo "uspto=false" >> $GITHUB_OUTPUT
+                ;;
+              "0 9 1 * *")  # Monthly 1st
+                echo "sbir=false" >> $GITHUB_OUTPUT
+                echo "usaspending=false" >> $GITHUB_OUTPUT
+                echo "uspto=true" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          fi
+
+      - name: Generate workflow summary
+        run: |
+          echo "## 📊 Data Refresh Plan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
+          echo "graph LR" >> $GITHUB_STEP_SUMMARY
+          echo "  A[Determine Source] --> B{Which Source?}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.determine.outputs.sbir }}" = "true" ]; then
+            echo "  B -->|SBIR| C[Refresh SBIR Awards]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.determine.outputs.usaspending }}" = "true" ]; then
+            echo "  B -->|USAspending| D[Refresh USAspending DB]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.determine.outputs.uspto }}" = "true" ]; then
+            echo "  B -->|USPTO| E[Refresh USPTO Patents]" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
+  refresh-sbir:
+    name: Refresh SBIR Awards
+    needs: determine-source
+    if: needs.determine-source.outputs.sbir == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Start SBIR refresh Step Functions
+        run: |
+          INPUT_PAYLOAD=$(jq -n \
+            --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
+            --arg s3_bucket "${{ env.S3_BUCKET }}" \
+            '{
+              force_refresh: ($force_refresh == "true"),
+              s3_bucket: $s3_bucket
+            }')
+
+          aws stepfunctions start-execution \
+            --state-machine-arn "${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
+            --input "$INPUT_PAYLOAD" \
+            --region ${{ env.AWS_REGION }}
+
+  refresh-usaspending:
+    name: Refresh USAspending Database
+    needs: determine-source
+    if: needs.determine-source.outputs.usaspending == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "false"
+
+      - name: Download and process USAspending database
+        run: |
+          uv run python scripts/data/download_usaspending_db.py \
+            --output-dir data/raw/usaspending \
+            --upload-to-s3 \
+            --s3-bucket ${{ env.S3_BUCKET }}
+
+  refresh-uspto:
+    name: Refresh USPTO Patents
+    needs: determine-source
+    if: needs.determine-source.outputs.uspto == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "false"
+
+      - name: Download and process USPTO data
+        run: |
+          uv run python scripts/data/download_uspto_data.py \
+            --output-dir data/raw/uspto \
+            --upload-to-s3 \
+            --s3-bucket ${{ env.S3_BUCKET }}
+
+  summary:
+    name: Refresh Summary
+    needs: [determine-source, refresh-sbir, refresh-usaspending, refresh-uspto]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 📊 Data Refresh Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Source | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.determine-source.outputs.sbir }}" = "true" ]; then
+            STATUS="${{ needs.refresh-sbir.result }}"
+            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
+            echo "| SBIR Awards | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.determine-source.outputs.usaspending }}" = "true" ]; then
+            STATUS="${{ needs.refresh-usaspending.result }}"
+            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
+            echo "| USAspending | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.determine-source.outputs.uspto }}" = "true" ]; then
+            STATUS="${{ needs.refresh-uspto.result }}"
+            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
+            echo "| USPTO Patents | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+          fi
