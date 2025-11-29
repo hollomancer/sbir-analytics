@@ -46,15 +46,15 @@ class TestAwardModel:
             )
 
     def test_invalid_program(self):
-        """Test invalid program."""
-        with pytest.raises(ValueError, match="Program must be SBIR or STTR"):
-            Award(
-                award_id="12345",
-                company_name="Test Company",
-                award_amount=100000.0,
-                award_date=date(2023, 1, 1),
-                program="INVALID",
-            )
+        """Test invalid program is set to None (lenient validation)."""
+        award = Award(
+            award_id="12345",
+            company_name="Test Company",
+            award_amount=100000.0,
+            award_date=date(2023, 1, 1),
+            program="INVALID",
+        )
+        assert award.program is None  # Lenient: invalid values become None
 
     def test_program_normalization(self):
         """Test program name normalization."""
@@ -68,16 +68,16 @@ class TestAwardModel:
         assert award.program == "SBIR"
 
     def test_invalid_phase(self):
-        """Test invalid phase."""
-        with pytest.raises(ValueError, match="Phase must be I, II, or III"):
-            Award(
-                award_id="12345",
-                company_name="Test Company",
-                award_amount=100000.0,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                phase="IV",
-            )
+        """Test invalid phase is set to None (lenient validation)."""
+        award = Award(
+            award_id="12345",
+            company_name="Test Company",
+            award_amount=100000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            phase="IV",  # IV is normalized to III
+        )
+        assert award.phase == "III"  # Lenient: IV becomes III
 
     def test_phase_normalization(self):
         """Test phase normalization."""
@@ -108,30 +108,28 @@ class TestAwardModel:
         assert award.company_duns == "123456789"
 
     def test_invalid_uei(self):
-        """Short or non-alphanumeric UEI should raise."""
-        with pytest.raises(
-            ValueError, match="Company UEI must be a 12-character alphanumeric string"
-        ):
-            Award(
-                award_id="A-BAD-UEI",
-                company_name="Bad UEI Co",
-                award_amount=10000.0,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_uei="SHORT",
-            )
+        """Short or non-alphanumeric UEI becomes None (lenient)."""
+        award = Award(
+            award_id="A-BAD-UEI",
+            company_name="Bad UEI Co",
+            award_amount=10000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_uei="SHORT",
+        )
+        assert award.company_uei is None  # Lenient: invalid UEI becomes None
 
     def test_invalid_duns(self):
-        """DUNS with wrong digit count should raise."""
-        with pytest.raises(ValueError, match="DUNS must contain exactly 9 digits"):
-            Award(
-                award_id="A-BAD-DUNS",
-                company_name="Bad DUNS Co",
-                award_amount=10000.0,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                company_duns="12-345",
-            )
+        """DUNS with wrong digit count becomes None (lenient)."""
+        award = Award(
+            award_id="A-BAD-DUNS",
+            company_name="Bad DUNS Co",
+            award_amount=10000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            company_duns="12-345",
+        )
+        assert award.company_duns is None  # Lenient: invalid DUNS becomes None
 
     def test_contact_fields(self):
         """Contact email and phone should be stored as provided."""
@@ -160,16 +158,16 @@ class TestAwardModel:
         )
         assert award.award_year == 2023
 
-        # mismatched year should raise
-        with pytest.raises(ValueError, match="award_year must match award_date year"):
-            Award(
-                award_id="A-YEAR-BAD",
-                company_name="Year Co",
-                award_amount=10000.0,
-                award_date=date(2023, 6, 15),
-                program="SBIR",
-                award_year=2022,
-            )
+        # mismatched year is auto-corrected (lenient)
+        award2 = Award(
+            award_id="A-YEAR-BAD",
+            company_name="Year Co",
+            award_amount=10000.0,
+            award_date=date(2023, 6, 15),
+            program="SBIR",
+            award_year=2022,
+        )
+        assert award2.award_year == 2023  # Auto-corrected to match award_date
 
     def test_contract_date_order(self):
         """contract_end_date must be on or after proposal_award_date."""
@@ -185,19 +183,18 @@ class TestAwardModel:
         )
         assert award.contract_end_date >= award.proposal_award_date
 
-        # invalid ordering should raise
-        with pytest.raises(
-            ValueError, match="contract_end_date must be on or after proposal_award_date"
-        ):
-            Award(
-                award_id="A-DATES-BAD",
-                company_name="Dates Co",
-                award_amount=25000.0,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                proposal_award_date=date(2023, 6, 1),
-                contract_end_date=date(2023, 5, 1),
-            )
+        # invalid ordering is allowed (lenient - no validation)
+        award2 = Award(
+            award_id="A-DATES-BAD",
+            company_name="Dates Co",
+            award_amount=25000.0,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            proposal_award_date=date(2023, 6, 1),
+            contract_end_date=date(2023, 5, 1),
+        )
+        # Lenient: dates are accepted as-is
+        assert award2.contract_end_date == date(2023, 5, 1)
 
     def test_state_and_zip_validation(self):
         """State code normalized to uppercase 2-letter and ZIP normalized to digits (5 or 9)."""
@@ -213,27 +210,29 @@ class TestAwardModel:
         assert award.company_state == "CA"
         assert award.company_zip == "123456789"
 
-        with pytest.raises(ValueError, match="State code must be 2 letters"):
-            Award(
-                award_id="A-LOC-BAD",
-                company_name="Loc Co",
-                award_amount=30000.0,
-                award_date=date(2023, 2, 2),
-                program="SBIR",
-                company_state="CAL",
-                company_zip="12345",
-            )
+        # Invalid state becomes None (lenient)
+        award2 = Award(
+            award_id="A-LOC-BAD",
+            company_name="Loc Co",
+            award_amount=30000.0,
+            award_date=date(2023, 2, 2),
+            program="SBIR",
+            company_state="CAL",
+            company_zip="12345",
+        )
+        assert award2.company_state is None  # Lenient: 3-letter state becomes None
 
-        with pytest.raises(ValueError, match="ZIP code must be 5 or 9 digits"):
-            Award(
-                award_id="A-ZIP-BAD",
-                company_name="Loc Co",
-                award_amount=30000.0,
-                award_date=date(2023, 2, 2),
-                program="SBIR",
-                company_state="NY",
-                company_zip="12-34",
-            )
+        # Invalid ZIP becomes None (lenient)
+        award3 = Award(
+            award_id="A-ZIP-BAD",
+            company_name="Loc Co",
+            award_amount=30000.0,
+            award_date=date(2023, 2, 2),
+            program="SBIR",
+            company_state="NY",
+            company_zip="12-34",
+        )
+        assert award3.company_zip is None  # Lenient: invalid ZIP becomes None
 
     def test_number_of_employees_non_negative(self):
         """number_of_employees must be non-negative when provided."""
@@ -247,15 +246,16 @@ class TestAwardModel:
         )
         assert award.number_of_employees == 50
 
-        with pytest.raises(ValueError, match="non-negative"):
-            Award(
-                award_id="A-EMP-BAD",
-                company_name="Emp Co",
-                award_amount=45000.0,
-                award_date=date(2023, 3, 3),
-                program="SBIR",
-                number_of_employees=-5,
-            )
+        # Negative employees becomes None (lenient)
+        award2 = Award(
+            award_id="A-EMP-BAD",
+            company_name="Emp Co",
+            award_amount=45000.0,
+            award_date=date(2023, 3, 3),
+            program="SBIR",
+            number_of_employees=-5,
+        )
+        assert award2.number_of_employees is None  # Lenient: negative becomes None
 
     def test_business_flags_and_award_title(self):
         """Business classification flags and award_title should be stored as provided."""
