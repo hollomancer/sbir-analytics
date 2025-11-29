@@ -14,7 +14,7 @@ description: |
         - 7687:7687
         - 7474:7474
       env:
-        NEO4J_AUTH: ${{ inputs.auth-mode == 'none' && 'none' || format('{0}/{1}', inputs.username, inputs.password) }}
+        NEO4J_AUTH: neo4j/password
       options: >-
         --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
         --health-interval=10s
