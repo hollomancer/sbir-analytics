@@ -73,6 +73,15 @@ runs:
         restore-keys: |
           venv-${{ runner.os }}-${{ inputs.python-version }}-
 
+    - name: Cache UV cache directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: uv-cache-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          uv-cache-${{ runner.os }}-${{ inputs.python-version }}-
+          uv-cache-${{ runner.os }}-
+
     - name: Cache pytest cache
       if: inputs.cache-pytest == 'true'
       uses: actions/cache@v4
