@@ -151,7 +151,7 @@ jobs:
 
       - name: Open PR with fixes
         if: steps.commit.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           branch: ${{ steps.branch.outputs.branch }}
           base: main
