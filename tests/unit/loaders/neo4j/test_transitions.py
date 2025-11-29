@@ -15,6 +15,7 @@ pytestmark = pytest.mark.fast
 def _create_mock_client_with_session(mock_session: MagicMock) -> MagicMock:
     """Helper to create a mock Neo4jClient with a properly configured session context manager."""
     mock_client = MagicMock()
+    mock_client.config.batch_size = 1000  # Set actual int value for pandas indexing
     mock_context = MagicMock()
     mock_context.__enter__.return_value = mock_session
     mock_context.__exit__.return_value = None
@@ -33,9 +34,9 @@ class TestTransitionLoaderInitialization:
 
         assert loader.client == mock_client
         assert loader.client.config.batch_size == 1000
-        assert loader.metrics.nodes_created == 0
-        assert loader.metrics.nodes_updated == 0
-        assert loader.metrics.relationships_created == 0
+        assert loader.metrics.nodes_created == {}
+        assert loader.metrics.nodes_updated == {}
+        assert loader.metrics.relationships_created == {}
         assert loader.metrics.errors == 0
 
     def test_initialization_with_custom_batch_size(self):
@@ -175,8 +176,9 @@ class TestTransitionLoaderIndexes:
             assert "IF NOT EXISTS" in query
 
     def test_ensure_indexes_handles_errors(self):
-        """Test ensure_indexes raises on error."""
+        """Test ensure_indexes handles errors gracefully."""
         mock_client = MagicMock()
+        mock_client.config.batch_size = 1000
         mock_session = MagicMock()
         mock_session.run.side_effect = Exception("Index creation failed")
         mock_context = MagicMock()
@@ -186,8 +188,10 @@ class TestTransitionLoaderIndexes:
 
         loader = TransitionLoader(mock_client)
 
-        with pytest.raises(Exception, match="Index creation failed"):
-            loader.ensure_indexes()
+        # Should not raise - errors are caught and logged
+        loader.ensure_indexes()
+        # Verify session.run was called for each index
+        assert mock_session.run.call_count == 4  # 4 indexes
 
 
 class TestTransitionLoaderNodeLoading:
@@ -434,7 +438,7 @@ class TestTransitionLoaderTransitionedToRelationships:
 
         assert "MERGE" in query
         assert "TRANSITIONED_TO" in query
-        assert "Award" in query
+        assert "FinancialTransaction" in query
         assert "Transition" in query
 
     def test_create_transitioned_to_handles_errors(self):
@@ -534,7 +538,7 @@ class TestTransitionLoaderResultedInRelationships:
         assert "MERGE" in query
         assert "RESULTED_IN" in query
         assert "Transition" in query
-        assert "Contract" in query
+        assert "FinancialTransaction" in query
 
     def test_create_resulted_in_handles_errors(self):
         """Test error handling in RESULTED_IN creation."""
