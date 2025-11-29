@@ -123,6 +123,9 @@ jobs:
       - name: Start SBIR refresh Step Functions
         id: sbir-stepfunctions
         run: |
+          echo "## 🎯 SBIR Awards Refresh Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           INPUT_PAYLOAD=$(jq -n \
             --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
             --arg s3_bucket "${{ env.S3_BUCKET }}" \
@@ -131,19 +134,35 @@ jobs:
               s3_bucket: $s3_bucket
             }')
 
+          echo "### ⚙️ Configuration" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          echo "$INPUT_PAYLOAD" | jq '.' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           EXECUTION=$(aws stepfunctions start-execution \
             --state-machine-arn "${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
             --input "$INPUT_PAYLOAD" \
             --region ${{ env.AWS_REGION }})
 
           EXECUTION_ARN=$(echo $EXECUTION | jq -r '.executionArn')
+          EXECUTION_NAME=$(echo $EXECUTION_ARN | rev | cut -d: -f1 | rev)
+          START_DATE=$(echo $EXECUTION | jq -r '.startDate')
+
           echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
 
-          echo "## 🚀 SBIR Refresh Started" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Step Functions Execution Started" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Execution ARN:** \`$EXECUTION_ARN\`" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Execution Name** | \`$EXECUTION_NAME\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Started At** | $START_DATE |" >> $GITHUB_STEP_SUMMARY
+          echo "| **State Machine** | SBIR ETL Pipeline |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Monitor at: https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Monitor execution:** [AWS Console](https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ℹ️ The Step Functions workflow will continue running asynchronously. Check the AWS Console link above to monitor progress." >> $GITHUB_STEP_SUMMARY
 
   refresh-usaspending:
     name: Refresh USAspending Database
@@ -181,23 +200,71 @@ jobs:
             uv run python scripts/data/download_usaspending_parallel.py \
               --s3-bucket ${{ env.S3_BUCKET }} \
               --database-type full \
-              --max-concurrent 10 | tee usaspending_output.txt
+              --max-concurrent 10 2>&1 | tee usaspending_output.txt
 
       - name: Report USAspending status
         if: always()
         run: |
-          echo "## 💾 USAspending Database Download" >> $GITHUB_STEP_SUMMARY
+          echo "## 💾 USAspending Database Download Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f usaspending_output.txt ]; then
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -20 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Check if download was successful
+          if [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
+            echo "### ✅ Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### S3 Status:" >> $GITHUB_STEP_SUMMARY
+
+          # Extract and display key metrics from output
+          if [ -f usaspending_output.txt ]; then
+            echo "### 📊 Download Metrics" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            # Extract key information
+            grep -E "^(📊|📦|⏱️|⚡|📍|✨)" usaspending_output.txt | tail -20 || echo "No metrics found"
+
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Show final summary section if it exists
+            if grep -q "DOWNLOAD COMPLETE" usaspending_output.txt; then
+              echo "### ✨ Completion Summary" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              sed -n '/DOWNLOAD COMPLETE/,/^=\+$/p' usaspending_output.txt | head -20 >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Show error details if failed
+            if grep -q "ERROR DURING DOWNLOAD" usaspending_output.txt; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### ❌ Error Details" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              sed -n '/ERROR DURING DOWNLOAD/,/^=\+$/p' usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ No output file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 S3 Status" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/usaspending/ --human-readable >> $GITHUB_STEP_SUMMARY
+          echo "Latest files in s3://${{ env.S3_BUCKET }}/raw/usaspending/database/:" >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive --human-readable | tail -5 || echo "No files found"
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Full Output Log" >> $GITHUB_STEP_SUMMARY
+          echo "<details>" >> $GITHUB_STEP_SUMMARY
+          echo "<summary>Click to expand full output</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f usaspending_output.txt ]; then
+            cat usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
   refresh-uspto:
     name: Refresh USPTO Patents
@@ -223,33 +290,79 @@ jobs:
       - name: Trigger USPTO data downloads via Lambda
         id: uspto-lambda
         run: |
-          echo "## 📥 USPTO Data Downloads" >> $GITHUB_STEP_SUMMARY
+          echo "## 📥 USPTO Patent Data Download Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          LAMBDA_SUCCESS=true
+
           # PatentsView
-          echo "### PatentsView Data" >> $GITHUB_STEP_SUMMARY
-          aws lambda invoke --function-name sbir-analytics-download-uspto-patentsview response.json
-          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+          echo "### 1️⃣ PatentsView Data" >> $GITHUB_STEP_SUMMARY
+          if aws lambda invoke --function-name sbir-analytics-download-uspto-patentsview response.json; then
+            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            LAMBDA_SUCCESS=false
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Assignments
-          echo "### Patent Assignments" >> $GITHUB_STEP_SUMMARY
-          aws lambda invoke --function-name sbir-analytics-download-uspto-assignments response.json
-          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+          echo "### 2️⃣ Patent Assignments" >> $GITHUB_STEP_SUMMARY
+          if aws lambda invoke --function-name sbir-analytics-download-uspto-assignments response.json; then
+            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            LAMBDA_SUCCESS=false
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # AI Patents
-          echo "### AI Patents" >> $GITHUB_STEP_SUMMARY
-          aws lambda invoke --function-name sbir-analytics-download-uspto-ai-patents response.json
-          cat response.json | jq -r '.body' >> $GITHUB_STEP_SUMMARY
+          echo "### 3️⃣ AI Patents" >> $GITHUB_STEP_SUMMARY
+          if aws lambda invoke --function-name sbir-analytics-download-uspto-ai-patents response.json; then
+            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            LAMBDA_SUCCESS=false
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$LAMBDA_SUCCESS" = "false" ]; then
+            echo "::warning::One or more USPTO Lambda functions failed to execute"
+            exit 1
+          fi
 
       - name: Check S3 uploads
+        if: always()
         run: |
-          echo "## 📦 S3 Upload Status" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 USPTO S3 Upload Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Latest USPTO files:" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 📂 Latest Files by Category" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "**PatentsView:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/ --recursive --human-readable | tail -10 >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/patentsview/ --recursive --human-readable | tail -3 || echo "No files found"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "**Assignments:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/assignments/ --recursive --human-readable | tail -3 || echo "No files found"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "**AI Patents:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          aws s3 ls s3://${{ env.S3_BUCKET }}/uspto/ai-patents/ --recursive --human-readable | tail -3 || echo "No files found"
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   summary:
@@ -261,25 +374,117 @@ jobs:
     steps:
       - name: Generate summary
         run: |
-          echo "## 📊 Data Refresh Results" >> $GITHUB_STEP_SUMMARY
+          echo "# 📊 Data Refresh Workflow Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Source | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "**Requested Source:** ${{ github.event.inputs.source }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Force Refresh:** ${{ github.event.inputs.force_refresh }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall status
+          OVERALL_SUCCESS=true
+
+          # Count statuses
+          TOTAL=0
+          SUCCESS_COUNT=0
+          FAILED_COUNT=0
+          SKIPPED_COUNT=0
+
+          echo "## 📋 Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Data Source | Status | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------------|--------|--------|" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.determine-source.outputs.sbir }}" = "true" ]; then
+            TOTAL=$((TOTAL + 1))
             STATUS="${{ needs.refresh-sbir.result }}"
-            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
-            echo "| SBIR Awards | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+            if [ "$STATUS" = "success" ]; then
+              EMOJI="✅"
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+              RESULT="Successfully started Step Functions execution"
+            elif [ "$STATUS" = "failure" ]; then
+              EMOJI="❌"
+              FAILED_COUNT=$((FAILED_COUNT + 1))
+              RESULT="Failed to start execution - check logs"
+              OVERALL_SUCCESS=false
+            else
+              EMOJI="⏭️"
+              SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+              RESULT="Job was skipped or cancelled"
+            fi
+            echo "| 🎯 SBIR Awards | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.determine-source.outputs.usaspending }}" = "true" ]; then
+            TOTAL=$((TOTAL + 1))
             STATUS="${{ needs.refresh-usaspending.result }}"
-            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
-            echo "| USAspending | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+            if [ "$STATUS" = "success" ]; then
+              EMOJI="✅"
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+              RESULT="Database downloaded and uploaded to S3"
+            elif [ "$STATUS" = "failure" ]; then
+              EMOJI="❌"
+              FAILED_COUNT=$((FAILED_COUNT + 1))
+              RESULT="Download or upload failed - check detailed report above"
+              OVERALL_SUCCESS=false
+            else
+              EMOJI="⏭️"
+              SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+              RESULT="Job was skipped or cancelled"
+            fi
+            echo "| 💰 USAspending DB | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.determine-source.outputs.uspto }}" = "true" ]; then
+            TOTAL=$((TOTAL + 1))
             STATUS="${{ needs.refresh-uspto.result }}"
-            EMOJI=$([[ $STATUS == "success" ]] && echo "✅" || echo "❌")
-            echo "| USPTO Patents | $EMOJI $STATUS |" >> $GITHUB_STEP_SUMMARY
+            if [ "$STATUS" = "success" ]; then
+              EMOJI="✅"
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+              RESULT="Patent data downloaded via Lambda functions"
+            elif [ "$STATUS" = "failure" ]; then
+              EMOJI="❌"
+              FAILED_COUNT=$((FAILED_COUNT + 1))
+              RESULT="Lambda invocation failed - check logs"
+              OVERALL_SUCCESS=false
+            else
+              EMOJI="⏭️"
+              SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+              RESULT="Job was skipped or cancelled"
+            fi
+            echo "| 📜 USPTO Patents | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Statistics
+          echo "## 📈 Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total jobs:** $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Successful:** $SUCCESS_COUNT ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed:** $FAILED_COUNT ❌" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skipped:** $SKIPPED_COUNT ⏭️" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Final verdict
+          if [ "$OVERALL_SUCCESS" = "true" ] && [ "$TOTAL" -gt 0 ]; then
+            echo "## ✅ Overall Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All data refresh jobs completed successfully!" >> $GITHUB_STEP_SUMMARY
+          elif [ "$TOTAL" -eq 0 ]; then
+            echo "## ⚠️ Overall Status: NO JOBS RUN" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No data sources were selected for refresh." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Overall Status: FAILURES DETECTED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ One or more data refresh jobs failed. Please review the detailed reports above and check the job logs." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow completed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:** \`${{ env.S3_BUCKET }}\`" >> $GITHUB_STEP_SUMMARY
