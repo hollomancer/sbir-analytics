@@ -60,6 +60,7 @@ def test_to_award_raises_on_unparseable_award_amount():
     with pytest.raises(ValueError, match="award_amount must be numeric"):
         raw.to_award()
 
+
 # Test for date validation removed - validation no longer enforced in model
 
 
@@ -96,15 +97,4 @@ def test_uei_and_duns_parsing_variants():
     assert award2.company_uei == "ABC123DEF456"
     assert award2.company_duns == "123456789"
 
-    # Invalid UEI (after stripping) should raise during validation
-    raw_bad = RawAward(
-        award_id="R-UEI-BAD",
-        company_name="UEIBad",
-        award_amount="500",
-        award_date="2023-01-01",
-        program="SBIR",
-        company_uei="short-ue",
-        company_duns="123-456-789",
-    )
-    # UEI validation removed from model - this test is no longer relevant
-    # Award model accepts UEI without length validation
+    # UEI validation removed from model - test for invalid UEI removed
