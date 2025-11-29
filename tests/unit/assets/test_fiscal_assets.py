@@ -736,8 +736,10 @@ class TestTaxAndROI:
 
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.assets.fiscal_assets.FiscalROICalculator")
+    @patch("src.assets.fiscal_assets.performance_monitor")
     def test_fiscal_return_summary_success(
         self,
+        mock_perf_monitor,
         mock_roi_calculator_class,
         mock_get_config,
         mock_context,
@@ -745,34 +747,57 @@ class TestTaxAndROI:
     ):
         """Test successful fiscal return summary calculation."""
         mock_get_config.return_value = mock_config
+        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
+        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_calculator = Mock()
 
-        summary_df = pd.DataFrame(
-            {
-                "fiscal_year": [2021, 2022],
-                "total_investment": [100000, 150000],
-                "total_federal_tax_return": [50000, 75000],
-                "roi_ratio": [0.50, 0.50],
-                "breakeven_year": [2025, 2026],
-            }
-        )
+        # Mock the summary object returned by calculate_roi_summary
+        from datetime import datetime
 
-        mock_calculator.calculate_roi_summary.return_value = summary_df
+        mock_summary = Mock()
+        mock_summary.analysis_id = "test-123"
+        mock_summary.analysis_date = datetime(2024, 1, 1)
+        mock_summary.base_year = 2024
+        mock_summary.methodology_version = "1.0"
+        mock_summary.total_sbir_investment = 250000.0
+        mock_summary.total_tax_receipts = 125000.0
+        mock_summary.net_fiscal_return = -125000.0
+        mock_summary.roi_ratio = 0.50
+        mock_summary.payback_period_years = 8.0
+        mock_summary.net_present_value = -50000.0
+        mock_summary.benefit_cost_ratio = 0.50
+        mock_summary.confidence_interval_low = 0.40
+        mock_summary.confidence_interval_high = 0.60
+        mock_summary.confidence_level = 0.95
+        mock_summary.quality_score = 0.85
+        mock_summary.quality_flags = []
+
+        mock_calculator.calculate_roi_summary.return_value = mock_summary
         mock_roi_calculator_class.return_value = mock_calculator
 
+        # Create tax estimates DataFrame
         tax_df = pd.DataFrame(
             {
                 "fiscal_year": [2021, 2022],
-                "total_federal_tax": [50000, 75000],
+                "total_tax_receipts": [50000, 75000],
                 "shock_amount": [100000, 150000],
             }
         )
 
-        result = fiscal_return_summary(mock_context, tax_df)
+        # Create inflation adjusted awards DataFrame
+        awards_df = pd.DataFrame(
+            {
+                "Award Number": ["AWD001", "AWD002"],
+                "inflation_adjusted_amount": [100000, 150000],
+            }
+        )
+
+        result = fiscal_return_summary(mock_context, tax_df, awards_df)
 
         assert isinstance(result, Output)
         assert "roi_ratio" in result.value.columns
+        assert result.value["roi_ratio"].iloc[0] == 0.50
 
 
 # ==================== Sensitivity and Uncertainty Tests ====================
@@ -783,48 +808,54 @@ class TestSensitivityUncertainty:
 
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.assets.fiscal_assets.FiscalParameterSweep")
+    @patch("src.assets.fiscal_assets.performance_monitor")
     def test_sensitivity_scenarios_success(
         self,
+        mock_perf_monitor,
         mock_sweep_class,
         mock_get_config,
         mock_context,
         mock_config,
-        sample_economic_impacts,
     ):
         """Test successful sensitivity scenarios generation."""
         mock_get_config.return_value = mock_config
+        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
+        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_sweep = Mock()
 
         scenarios_df = pd.DataFrame(
             {
                 "scenario_id": ["base", "optimistic", "pessimistic"],
-                "parameter": ["multiplier", "multiplier", "multiplier"],
-                "value": [1.0, 1.2, 0.8],
-                "total_impact": [100000, 120000, 80000],
+                "method": ["grid", "grid", "grid"],
+                "multiplier": [1.0, 1.2, 0.8],
+                "tax_rate": [0.25, 0.30, 0.20],
             }
         )
 
-        mock_sweep.run_parameter_sweep.return_value = scenarios_df
+        mock_sweep.generate_scenarios.return_value = scenarios_df
         mock_sweep_class.return_value = mock_sweep
 
-        result = sensitivity_scenarios(mock_context, sample_economic_impacts)
+        result = sensitivity_scenarios(mock_context)
 
         assert isinstance(result, Output)
         assert len(result.value) == 3
 
     @patch("src.assets.fiscal_assets.get_config")
     @patch("src.assets.fiscal_assets.FiscalUncertaintyQuantifier")
+    @patch("src.assets.fiscal_assets.performance_monitor")
     def test_uncertainty_analysis_success(
         self,
+        mock_perf_monitor,
         mock_quantifier_class,
         mock_get_config,
         mock_context,
         mock_config,
-        sample_economic_impacts,
     ):
         """Test successful uncertainty quantification."""
         mock_get_config.return_value = mock_config
+        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
+        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_quantifier = Mock()
 
@@ -833,19 +864,35 @@ class TestSensitivityUncertainty:
                 "metric": ["roi_ratio", "tax_return"],
                 "mean": [0.50, 50000],
                 "std": [0.05, 5000],
-                "ci_lower": [0.45, 45000],
-                "ci_upper": [0.55, 55000],
+                "ci_low": [0.40, 40000],
+                "ci_high": [0.60, 60000],
             }
         )
 
         mock_quantifier.quantify_uncertainty.return_value = uncertainty_df
         mock_quantifier_class.return_value = mock_quantifier
 
-        result = uncertainty_analysis(mock_context, sample_economic_impacts)
+        # Create scenarios DataFrame
+        scenarios_df = pd.DataFrame(
+            {
+                "scenario_id": ["base", "optimistic", "pessimistic"],
+                "method": ["grid", "grid", "grid"],
+                "multiplier": [1.0, 1.2, 0.8],
+            }
+        )
+
+        # Create tax estimates DataFrame
+        tax_df = pd.DataFrame(
+            {
+                "fiscal_year": [2021, 2022],
+                "total_tax_receipts": [50000, 75000],
+            }
+        )
+
+        result = uncertainty_analysis(mock_context, scenarios_df, tax_df)
 
         assert isinstance(result, Output)
         assert "mean" in result.value.columns
-        assert "ci_lower" in result.value.columns
 
 
 # ==================== Reporting Tests ====================

@@ -59,16 +59,14 @@ def _seed_contracts(path: Path, verbose: bool) -> None:
         typer.echo(f"[yellow]PyArrow missing; wrote contracts seed to {csv_path}[/yellow]")
 
 
-def _transition_asset_keys() -> list:
-    """Return AssetKey objects for transition MVP assets."""
-    from dagster import AssetKey
-
+def _transition_asset_keys() -> list[str]:
+    """Return asset key strings for transition MVP assets."""
     return [
-        AssetKey("validated_contracts_sample"),
-        AssetKey("enriched_vendor_resolution"),
-        AssetKey("transformed_transition_scores"),
-        AssetKey("transformed_transition_evidence"),
-        AssetKey("transformed_transition_detections"),
+        "validated_contracts_sample",
+        "enriched_vendor_resolution",
+        "transformed_transition_scores",
+        "transformed_transition_evidence",
+        "transformed_transition_detections",
     ]
 
 
@@ -101,7 +99,7 @@ def run_transition_mvp(
 
     try:
         result = context.dagster_client.trigger_materialization(
-            asset_keys=list(_transition_asset_keys()),
+            asset_keys=_transition_asset_keys(),
         )
     except Exception as exc:
         context.console.print(f"[red]Failed to trigger transition MVP: {exc}[/red]")
