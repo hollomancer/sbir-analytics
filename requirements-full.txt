@@ -223,7 +223,7 @@ mypy-extensions==1.1.0
     #   mypy
 narwhals==2.12.0
     # via pyreadstat
-neo4j==5.28.2
+neo4j==6.0.3
     # via sbir-analytics (pyproject.toml)
 nodeenv==1.9.1
     # via pre-commit
