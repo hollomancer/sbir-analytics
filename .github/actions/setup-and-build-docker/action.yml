@@ -1,0 +1,55 @@
+name: Setup and Build Docker
+description: Common pattern for Docker build with caching
+
+inputs:
+  image-name:
+    description: Docker image name
+    required: true
+  tags:
+    description: Docker image tags (newline separated)
+    required: true
+  push:
+    description: Push image to registry
+    required: false
+    default: "false"
+  build-args:
+    description: Build arguments (newline separated)
+    required: false
+    default: ""
+  registry:
+    description: Container registry
+    required: false
+    default: "ghcr.io"
+  cache-scope:
+    description: Cache scope for GHA cache
+    required: false
+    default: "main"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: ./.github/actions/setup-docker-buildx
+      with:
+        setup-qemu: "true"
+
+    - name: Log in to Container Registry
+      if: inputs.push == 'true'
+      uses: docker/login-action@v3
+      shell: bash
+      run: |
+        echo "${{ github.token }}" | docker login ${{ inputs.registry }} -u ${{ github.actor }} --password-stdin
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile
+        push: ${{ inputs.push }}
+        load: ${{ inputs.push == 'false' }}
+        tags: ${{ inputs.tags }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: |
+          type=registry,ref=${{ inputs.registry }}/${{ inputs.image-name }}:latest
+          type=gha,scope=${{ inputs.cache-scope }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.cache-scope }}

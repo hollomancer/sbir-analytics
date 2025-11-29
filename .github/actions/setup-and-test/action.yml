@@ -1,0 +1,57 @@
+name: Setup and Test
+description: Common pattern for setting up Python/UV and running tests
+
+inputs:
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.11"
+  test-marker:
+    description: Pytest marker to run (e.g., 'fast', 'integration')
+    required: false
+    default: "fast"
+  shard-id:
+    description: Shard ID for parallel execution
+    required: false
+    default: "1"
+  num-shards:
+    description: Total number of shards
+    required: false
+    default: "1"
+  coverage:
+    description: Enable coverage reporting
+    required: false
+    default: "true"
+  install-pyreadstat:
+    description: Install pyreadstat
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python and UV
+      uses: ./.github/actions/setup-python-uv
+      with:
+        python-version: ${{ inputs.python-version }}
+        install-dev-deps: "true"
+        cache-venv: "true"
+        cache-pytest: "true"
+        install-pyreadstat: ${{ inputs.install-pyreadstat }}
+
+    - name: Run tests
+      shell: bash
+      run: |
+        PYTEST_ARGS="-m ${{ inputs.test-marker }}"
+
+        if [ "${{ inputs.coverage }}" = "true" ]; then
+          PYTEST_ARGS="$PYTEST_ARGS --cov=src --cov-report=xml --cov-report=term-missing"
+        fi
+
+        if [ "${{ inputs.num-shards }}" != "1" ]; then
+          PYTEST_ARGS="$PYTEST_ARGS --shard-id=${{ inputs.shard-id }} --num-shards=${{ inputs.num-shards }}"
+        fi
+
+        PYTEST_ARGS="$PYTEST_ARGS --json-report --json-report-file=test-results.json -n 2"
+
+        uv run pytest $PYTEST_ARGS

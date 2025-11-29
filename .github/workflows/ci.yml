@@ -133,16 +133,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
 
       - name: Run Ruff lint
         run: uv run python -m ruff check src tests
@@ -160,16 +154,10 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "true"
-          cache-venv: "true"
-          cache-pytest: "false"
-          install-pyreadstat: "false"
 
       - name: Run MyPy type checker
         run: uv run python -m mypy src
