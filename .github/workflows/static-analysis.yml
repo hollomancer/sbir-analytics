@@ -73,10 +73,9 @@ jobs:
           install-pyreadstat: "false"
       - name: Install pre-commit
         run: |
-          uv pip install pre-commit
-          pre-commit --version
+          uv run pre-commit --version
       - name: Run all pre-commit hooks
-        run: pre-commit run --all-files
+        run: uv run pre-commit run --all-files
         env:
           SKIP: docs-link-check # Skip external link checks in CI to avoid rate limiting
 
@@ -103,7 +102,6 @@ jobs:
           install-pyreadstat: "false"
       - name: Ensure Ruff is installed
         run: |
-          uv pip install ruff
           uv run python -m ruff --version
       - name: "Run Ruff lint (matches pre-commit: ruff check src tests)"
         run: uv run python -m ruff check src tests
@@ -130,7 +128,6 @@ jobs:
           install-pyreadstat: "false"
       - name: Ensure MyPy is installed
         run: |
-          uv pip install mypy
           uv run python -m mypy --version
       - name: "Run MyPy type checker (matches pre-commit: mypy src)"
         run: uv run python -m mypy src

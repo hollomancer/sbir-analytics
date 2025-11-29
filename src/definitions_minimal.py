@@ -11,26 +11,21 @@ Why minimal?
 """
 
 import os
-from dagster import Definitions
 
-# Set environment variable to skip heavy assets
+# CRITICAL: Set this BEFORE any src imports to prevent heavy modules from loading
 os.environ["DAGSTER_LOAD_HEAVY_ASSETS"] = "false"
 
-# Import only essential lightweight assets explicitly
-# These are the core SBIR data ingestion assets
-from src.assets.sbir_ingestion import (
-    raw_sbir_awards,
-    validated_sbir_awards,
-    sbir_validation_report,
-)
+from dagster import Definitions, load_assets_from_modules
+
+# Import only the specific lightweight module we need
+from src.assets import sbir_ingestion
+
+# Load assets from the sbir_ingestion module
+all_assets = load_assets_from_modules([sbir_ingestion])
 
 # Create minimal definitions with just core SBIR ingestion
 defs = Definitions(
-    assets=[
-        raw_sbir_awards,
-        validated_sbir_awards,
-        sbir_validation_report,
-    ],
+    assets=all_assets,
     jobs=[],
     schedules=[],
     sensors=[],
