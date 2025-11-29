@@ -25,7 +25,7 @@ jobs:
   run-ml-job:
     name: Run ML Job
     runs-on: ubuntu-latest
-    timeout-minutes: 180  # 3 hours max
+    timeout-minutes: 300  # 5 hours max (GitHub Actions limit is 6 hours)
 
     permissions:
       contents: read
