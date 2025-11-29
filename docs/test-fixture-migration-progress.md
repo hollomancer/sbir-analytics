@@ -4,7 +4,7 @@
 
 **Goal**: Reduce inline Mock() usage by adopting reusable mock factories and fixtures.
 
-**Progress**: 185 Mock() usages eliminated (28% reduction: 664 → 479)
+**Progress**: 221 Mock() usages eliminated (33% reduction: 664 → 443)
 
 ## Mock Factories Created
 
@@ -22,7 +22,11 @@
 - `r_dataframe()`: R DataFrame object mock
 - `r_result()`: R function result mock
 
-### 4. Existing Factories (from previous work)
+### 4. TransitionMocks (`tests/mocks/transition.py`)
+- `vendor_record()`: Vendor record mock with name and metadata
+- `vendor_match()`: Vendor match result with record and score
+
+### 5. Existing Factories (from previous work)
 - `Neo4jMocks`: Session, driver, transaction, result mocks
 - `EnrichmentMocks`: Enrichment service mocks
 - `ConfigMocks`: Configuration mocks
@@ -41,7 +45,10 @@
 | test_r_stateio_adapter.py | 29 | 0 | 29 | 100% | skipped (rpy2) |
 | test_r_stateio_functions.py | 27 | 15 | 12 | 44% | skipped (rpy2) |
 | test_sensitivity.py | 30 | 0 | 30 | 100% | 37/38 |
-| **Total** | **322** | **48** | **274** | **85%** | **261/275** |
+| test_patents.py | 26 | 2 | 24 | 92% | passing |
+| test_detector.py | 17 | 0 | 17 | 100% | passing |
+| test_chunked_enrichment.py | 20 | 2 | 18 | 90% | 95/106 |
+| **Total** | **385** | **52** | **333** | **86%** | **356/381** |
 
 Note: Total Mock() count includes files not yet migrated.
 
