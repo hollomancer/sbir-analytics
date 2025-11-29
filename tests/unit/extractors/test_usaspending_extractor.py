@@ -123,6 +123,7 @@ class TestConnectionManagement:
         mock_connect.return_value = mock_conn
 
         with DuckDBUSAspendingExtractor() as extractor:
+            extractor.connect()  # Establish connection
             assert extractor is not None
 
         # Should have closed connection on exit

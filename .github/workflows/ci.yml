@@ -1179,7 +1179,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp]
+    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp, ml-smoke-test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1205,6 +1205,10 @@ jobs:
 
           if [ "${{ needs.performance-check.result }}" != "skipped" ]; then
             echo "| ⚡ Performance Check | ${{ needs.performance-check.result == 'success' && '✅' || '❌' }} ${{ needs.performance-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.ml-smoke-test.result }}" != "skipped" ]; then
+            echo "| 🤖 ML Smoke Test | ${{ needs.ml-smoke-test.result == 'success' && '✅' || '❌' }} ${{ needs.ml-smoke-test.result }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.cet-tests.result }}" != "skipped" ]; then
@@ -1238,6 +1242,7 @@ jobs:
           needs.test.result == 'failure' ||
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||
+          needs.ml-smoke-test.result == 'failure' ||
           needs.cet-tests.result == 'failure' ||
           needs.cet-dev-e2e.result == 'failure' ||
           needs.transition-mvp.result == 'failure'
