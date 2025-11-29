@@ -593,6 +593,9 @@ class TestCalculateChainMetadata:
         assignment.metadata = {}
         assignment.execution_date = date(2023, 1, 1)
         assignment.recorded_date = date(2023, 1, 31)
+        assignment.conveyance = None  # No conveyance info
+        assignment.assignee = None
+        assignment.assignor = None
 
         transformer._calculate_chain_metadata(assignment, {})
 
@@ -607,6 +610,9 @@ class TestCalculateChainMetadata:
         assignment.metadata = {}
         assignment.execution_date = date(2023, 1, 1)
         assignment.recorded_date = date(2023, 6, 1)  # 151 days
+        assignment.conveyance = None
+        assignment.assignee = None
+        assignment.assignor = None
 
         transformer._calculate_chain_metadata(assignment, {})
 

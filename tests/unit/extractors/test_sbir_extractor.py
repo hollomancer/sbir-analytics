@@ -23,11 +23,11 @@ def sample_csv_file(tmp_path):
     """Create a sample SBIR CSV file."""
     csv_file = tmp_path / "sbir_sample.csv"
 
-    # Create a minimal SBIR CSV with header
-    csv_content = """award_id,company_name,award_amount,award_year,agency
-AWARD001,Test Company,100000,2023,DOD
-AWARD002,Another Company,150000,2023,NASA
-AWARD003,Third Company,200000,2024,NSF
+    # Create a minimal SBIR CSV with header (title case as expected by extractor)
+    csv_content = """Company,Award Amount,Agency,Phase,Award Number,Award Year
+Test Company,100000,DOD,I,AWARD001,2023
+Another Company,150000,NASA,II,AWARD002,2023
+Third Company,200000,NSF,I,AWARD003,2024
 """
     csv_file.write_text(csv_content)
     return csv_file

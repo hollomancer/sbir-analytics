@@ -1,8 +1,7 @@
-name: Nightly & Weekly Tests
+name: Weekly Tests & Security
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # 03:00 UTC nightly
     - cron: "0 2 * * 0"   # 02:00 UTC Sunday (weekly comprehensive)
   workflow_dispatch:
     inputs:
@@ -15,13 +14,13 @@ on:
           - dry-run
           - live
       test_level:
-        description: 'Test level: "nightly" (standard) or "weekly" (comprehensive)'
+        description: 'Test level: "standard" (core tests) or "comprehensive" (full suite)'
         required: false
-        default: nightly
+        default: standard
         type: choice
         options:
-          - nightly
-          - weekly
+          - standard
+          - comprehensive
       NEO4J_USER:
         description: "Optional NEO4J user to use for live mode (overrides repository secret if provided)"
         required: false
@@ -566,7 +565,7 @@ jobs:
     name: Weekly Comprehensive Test Suite
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'weekly'
+    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
       - uses: actions/checkout@v4
 
@@ -642,7 +641,7 @@ jobs:
     name: Weekly Real Data Validation
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'weekly'
+    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
       - uses: actions/checkout@v4
 
@@ -672,7 +671,7 @@ jobs:
     name: Weekly Performance Profiling
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'weekly'
+    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
     steps:
       - uses: actions/checkout@v4
 
