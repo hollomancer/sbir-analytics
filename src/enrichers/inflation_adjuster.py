@@ -313,8 +313,8 @@ class InflationAdjuster:
 
                 # Handle different date formats
                 try:
-                    # If it's already a year (integer)
-                    if isinstance(value, int | float) and 1980 <= value <= 2030:
+                    # If it's already a year (integer or numeric)
+                    if isinstance(value, (int, float)) and 1980 <= value <= 2030:
                         return int(value)
 
                     # If it's a date string or datetime
