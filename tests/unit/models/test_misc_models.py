@@ -19,11 +19,11 @@ class TestTransitionModels:
 
     def test_transition_type_enum_values(self):
         """Test TransitionType enum has correct values."""
-        assert TransitionType.MERGER == "merger"
-        assert TransitionType.ACQUISITION == "acquisition"
-        assert TransitionType.BANKRUPTCY == "bankruptcy"
-        assert TransitionType.SPIN_OFF == "spin_off"
-        assert TransitionType.IPO == "ipo"
+        assert TransitionType.MERGER.value == "merger"
+        assert TransitionType.ACQUISITION.value == "acquisition"
+        assert TransitionType.BANKRUPTCY.value == "bankruptcy"
+        assert TransitionType.SPIN_OFF.value == "spin_off"
+        assert TransitionType.IPO.value == "ipo"
 
     def test_company_transition_valid(self):
         """Test creating a valid company transition."""
@@ -384,7 +384,8 @@ class TestCompanyModels:
                 confidence_score=-0.1,
                 match_method="test",
             )
-        assert "Confidence score must be between 0.0 and 1.0" in str(exc_info.value)
+        # Pydantic 2.x uses "greater than or equal to" message
+        assert "greater than or equal to 0" in str(exc_info.value).lower()
 
     def test_company_match_confidence_validator_rejects_too_high(self):
         """Test confidence_score validator rejects values > 1.0."""
@@ -398,7 +399,8 @@ class TestCompanyModels:
                 confidence_score=1.5,
                 match_method="test",
             )
-        assert "Confidence score must be between 0.0 and 1.0" in str(exc_info.value)
+        # Pydantic 2.x uses "less than or equal to" message
+        assert "less than or equal to 1" in str(exc_info.value).lower()
 
     def test_company_match_various_methods(self):
         """Test CompanyMatch with various matching methods."""

@@ -1,0 +1,72 @@
+name: Developer Experience Verification
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run nightly at midnight UTC
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  verify-local-workflow:
+    name: Verify Local Developer Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Configure Local Environment
+        run: make setup-local
+
+      - name: Generate Sample Data
+        run: make sample-data
+
+      - name: Verify Pipeline with Local Data
+        env:
+          SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST: "false"
+          SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST: "false"
+        run: |
+          # Run a subset of tests that rely on data extraction to verify the sample data works
+          # We skip tests marked 'real_data' or 'slow' to keep this fast
+          uv run pytest -m "not real_data and not slow" tests/unit/extractors/
+
+  verify-ml-workflow:
+    name: Verify ML/Cloud Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+          cache-venv: "true"
+
+      - name: Install ML Dependencies
+        run: make install-ml
+
+      - name: Configure ML Environment
+        env:
+          # Dummy token for CI verification (we won't actually hit HF API in this smoke test)
+          HF_TOKEN: "hf_dummy_token_for_ci"
+        run: |
+          # Manually set the token in .env since make setup-ml prompts for it
+          echo "HF_TOKEN=hf_dummy_token_for_ci" >> .env
+          # Run setup-ml to configure S3 settings (it will warn about existing token but proceed)
+          make setup-ml
+
+      - name: Verify Notebook Execution
+        run: |
+          # Execute the getting_started notebook to ensure imports and basic setup work
+          # We use nbconvert to run it headless
+          uv run --extra ml jupyter nbconvert --to notebook --execute notebooks/getting_started.ipynb --output notebooks/getting_started_executed.ipynb
