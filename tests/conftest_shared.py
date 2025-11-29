@@ -10,6 +10,7 @@ import pytest
 
 # Neo4j fixtures
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
+from tests.factories import DataFrameBuilder
 from tests.mocks import Neo4jMocks
 from tests.utils.config_mocks import create_mock_neo4j_config
 from tests.utils.fixtures import (
@@ -411,3 +412,32 @@ def default_config():
             "likely": 0.65,
         },
     }
+
+
+# ============================================================================
+# DataFrame Builder Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def builder_awards_df():
+    """Sample awards DataFrame using builder (5 awards)."""
+    return DataFrameBuilder.awards(5).build()
+
+
+@pytest.fixture
+def builder_contracts_df():
+    """Sample contracts DataFrame using builder (5 contracts)."""
+    return DataFrameBuilder.contracts(5).build()
+
+
+@pytest.fixture
+def builder_companies_df():
+    """Sample companies DataFrame using builder (5 companies)."""
+    return DataFrameBuilder.companies(5).build()
+
+
+@pytest.fixture
+def builder_patents_df():
+    """Sample patents DataFrame using builder (5 patents)."""
+    return DataFrameBuilder.patents(5).build()
