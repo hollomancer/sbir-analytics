@@ -221,8 +221,8 @@ jobs:
             echo "### 📊 Download Metrics" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
 
-            # Extract key information
-            grep -E "^(📊|📦|⏱️|⚡|📍|✨)" usaspending_output.txt | tail -20 || echo "No metrics found"
+            # Extract key information - show lines with emoji indicators or key summary lines
+            grep -E "File size:|Split into|Max concurrent|Starting parallel|Part [0-9]+/|DOWNLOAD COMPLETE|Total size:|Total parts:|Download time:|Average speed:|S3 location:" usaspending_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY || echo "No metrics found" >> $GITHUB_STEP_SUMMARY
 
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -231,7 +231,8 @@ jobs:
             if grep -q "DOWNLOAD COMPLETE" usaspending_output.txt; then
               echo "### ✨ Completion Summary" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
-              sed -n '/DOWNLOAD COMPLETE/,/^=\+$/p' usaspending_output.txt | head -20 >> $GITHUB_STEP_SUMMARY
+              # Extract the complete summary block between the two === lines
+              awk '/^=+$/{if(p)exit;p=1}p' usaspending_output.txt | tail -15 >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
             fi
 
@@ -240,9 +241,17 @@ jobs:
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "### ❌ Error Details" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
-              sed -n '/ERROR DURING DOWNLOAD/,/^=\+$/p' usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+              # Extract error block between === markers
+              awk '/ERROR DURING DOWNLOAD/,/^=+$/' usaspending_output.txt >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
             fi
+
+            # Show recent progress
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📈 Recent Progress" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ No output file found" >> $GITHUB_STEP_SUMMARY
           fi
