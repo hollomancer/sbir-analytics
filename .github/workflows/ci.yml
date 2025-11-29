@@ -1145,6 +1145,38 @@ jobs:
           if-no-files-found: warn
           retention-days: ${{ env.DEFAULT_RETENTION_DAYS }}
 
+  ml-smoke-test:
+    name: ML Smoke Test
+    needs: [detect-changes]
+    if: |
+      needs.detect-changes.outputs.docs-only != 'true' &&
+      (needs.detect-changes.outputs.cet == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "false"
+          cache-venv: "true"
+
+      - name: Run ML smoke test
+        env:
+          SBIR_ETL__CET__SAMPLE_SIZE: 50
+        run: |
+          uv run python scripts/ci/cet_smoke_test.py
+
+      - name: Validate model loading
+        run: |
+          uv run python -c "
+          from src.ml.cet_classifier import CETClassifier
+          clf = CETClassifier()
+          print('✅ Model loads successfully')
+          "
+
   ci-summary:
     name: CI Summary
     needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp]

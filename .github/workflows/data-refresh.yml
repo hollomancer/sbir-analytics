@@ -138,7 +138,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90  # Reduced from 180 with parallel download
     steps:
       - uses: actions/checkout@v6
 
@@ -155,12 +155,16 @@ jobs:
           python-version: "3.11"
           install-dev-deps: "false"
 
-      - name: Download and process USAspending database
+      - name: Install async dependencies
         run: |
-          uv run python scripts/data/download_usaspending_db.py \
-            --output-dir data/raw/usaspending \
-            --upload-to-s3 \
-            --s3-bucket ${{ env.S3_BUCKET }}
+          uv pip install aiohttp aioboto3
+
+      - name: Download and process USAspending database (parallel)
+        run: |
+          uv run python scripts/data/download_usaspending_parallel.py \
+            --s3-bucket ${{ env.S3_BUCKET }} \
+            --database-type full \
+            --max-concurrent 10
 
   refresh-uspto:
     name: Refresh USPTO Patents
