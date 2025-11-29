@@ -1,10 +1,10 @@
 """Tests for fiscal assets pipeline."""
 
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from dagster import AssetCheckSeverity, Output, build_asset_context
+from dagster import AssetCheckSeverity, Output
 
 from src.assets.fiscal_assets import (
     _create_placeholder_impacts,
@@ -38,14 +38,9 @@ from tests.utils.fixtures import create_sample_enriched_awards_df
 @pytest.fixture
 def mock_context():
     """Mock Dagster execution context."""
-    context = build_asset_context()
-    # Mock the log property since it's read-only
-    mock_log = Mock()
-    mock_log.info = Mock()
-    mock_log.warning = Mock()
-    mock_log.error = Mock()
-    type(context).log = PropertyMock(return_value=mock_log)
-    return context
+    from tests.mocks import ContextMocks
+
+    return ContextMocks.context_with_logging()
 
 
 @pytest.fixture
@@ -219,8 +214,6 @@ class TestFiscalNAICSEnrichment:
     ):
         """Test successful NAICS enrichment."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
         mock_perf_monitor.get_metrics_summary.return_value = {
             "fiscal_naics_enrichment": {
                 "total_duration": 10.5,
@@ -341,8 +334,6 @@ class TestBEAMapping:
     ):
         """Test successful BEA sector mapping."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mapping_stats = Mock()
         mapping_stats.coverage_rate = 0.95
@@ -413,8 +404,6 @@ class TestEconomicShocks:
         """Test successful economic shock aggregation."""
         mock_get_config.return_value = mock_config
         mock_shocks_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_aggregator = Mock()
         mock_aggregator.aggregate_shocks_to_dataframe.return_value = sample_economic_shocks
@@ -509,8 +498,6 @@ class TestEconomicImpacts:
     ):
         """Test successful economic impact computation."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_adapter = Mock()
         mock_adapter.is_available.return_value = True
@@ -643,8 +630,6 @@ class TestFiscalPreparation:
     ):
         """Test successful inflation adjustment."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         adjusted_df = sample_bea_mapped_awards.copy()
         adjusted_df["amount_nominal"] = adjusted_df["Amount"]
@@ -699,8 +684,6 @@ class TestTaxAndROI:
     ):
         """Test successful federal tax estimation."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_estimator = Mock()
 
@@ -747,8 +730,6 @@ class TestTaxAndROI:
     ):
         """Test successful fiscal return summary calculation."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_calculator = Mock()
 
@@ -819,8 +800,6 @@ class TestSensitivityUncertainty:
     ):
         """Test successful sensitivity scenarios generation."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_sweep = Mock()
 
@@ -854,8 +833,6 @@ class TestSensitivityUncertainty:
     ):
         """Test successful uncertainty quantification."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         mock_quantifier = Mock()
 
@@ -912,8 +889,6 @@ class TestReporting:
     ):
         """Test successful fiscal returns report generation."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
 
         fiscal_return_summary = pd.DataFrame(
             {
@@ -1038,8 +1013,6 @@ class TestEdgeCases:
     ):
         """Test NAICS enrichment works without USAspending data."""
         mock_get_config.return_value = mock_config
-        mock_perf_monitor.monitor_block.return_value.__enter__ = Mock()
-        mock_perf_monitor.monitor_block.return_value.__exit__ = Mock()
         mock_perf_monitor.get_metrics_summary.return_value = {
             "fiscal_naics_enrichment": {
                 "total_duration": 5.0,

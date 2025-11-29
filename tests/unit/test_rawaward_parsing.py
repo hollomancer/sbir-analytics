@@ -60,25 +60,7 @@ def test_to_award_raises_on_unparseable_award_amount():
     with pytest.raises(ValueError, match="award_amount must be numeric"):
         raw.to_award()
 
-
-def test_to_award_contract_date_before_proposal_raises():
-    """to_award should parse dates and then Award validation should reject inconsistent dates."""
-    raw = RawAward(
-        award_id="R-DATE-BAD",
-        company_name="DateCo",
-        award_amount="2000",
-        award_date="2023-01-01",
-        proposal_award_date="2023-06-01",
-        contract_end_date="2023-05-01",  # earlier than proposal_award_date
-        program="SBIR",
-    )
-
-    # Date validation removed from model - skip this test
-    pytest.skip("Date validation no longer enforced in to_award()")
-    with pytest.raises(
-        ValueError, match="contract_end_date must be on or after proposal_award_date"
-    ):
-        raw.to_award()
+# Test for date validation removed - validation no longer enforced in model
 
 
 def test_uei_and_duns_parsing_variants():
@@ -124,8 +106,5 @@ def test_uei_and_duns_parsing_variants():
         company_uei="short-ue",
         company_duns="123-456-789",
     )
-
-    # UEI validation removed from model - skip this test
-    pytest.skip("UEI validation no longer enforced in to_award()")
-    with pytest.raises(ValueError, match="12-character"):
-        raw_bad.to_award()
+    # UEI validation removed from model - this test is no longer relevant
+    # Award model accepts UEI without length validation

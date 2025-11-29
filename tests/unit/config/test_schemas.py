@@ -454,20 +454,8 @@ class TestDuckDBConfig:
 class TestStatisticalReportingConfig:
     """Tests for StatisticalReportingConfig model."""
 
-    @pytest.mark.skip(reason="Schema no longer has generation attribute")
-    def test_default_generation_config(self):
-        """Test StatisticalReportingConfig default generation config."""
-        config = StatisticalReportingConfig()
-        assert config.generation["enabled"] is True
-        assert config.generation["formats"] == ["html", "json", "markdown"]
-        assert config.generation["output_directory"] == "reports/statistical"
-
-    @pytest.mark.skip(reason="Schema no longer has modules attribute")
-    def test_default_modules_config(self):
-        """Test StatisticalReportingConfig default modules config."""
-        config = StatisticalReportingConfig()
-        assert config.modules["sbir_enrichment"]["enabled"] is True
-        assert config.modules["patent_analysis"]["enabled"] is True
+    # Tests for removed schema attributes have been removed
+    # generation and modules attributes no longer exist in StatisticalReportingConfig
 
     def test_default_quality_thresholds(self):
         """Test StatisticalReportingConfig default quality thresholds."""

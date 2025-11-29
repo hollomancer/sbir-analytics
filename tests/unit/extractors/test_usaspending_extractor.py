@@ -23,10 +23,9 @@ def temp_db_path(tmp_path):
 @pytest.fixture
 def mock_connection():
     """Mock DuckDB connection."""
-    conn = Mock()
-    conn.execute = Mock(return_value=Mock(fetchone=Mock(return_value=(100,))))
-    conn.close = Mock()
-    return conn
+    from tests.mocks import DuckDBMocks
+
+    return DuckDBMocks.connection()
 
 
 @pytest.fixture
@@ -67,7 +66,7 @@ class TestConnectionManagement:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_connect_creates_connection(self, mock_connect):
         """Test connect creates new connection."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -80,7 +79,7 @@ class TestConnectionManagement:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_connect_reuses_existing_connection(self, mock_connect):
         """Test connect reuses existing connection."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -94,7 +93,7 @@ class TestConnectionManagement:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_close_connection(self, mock_connect):
         """Test close closes connection."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -113,7 +112,7 @@ class TestConnectionManagement:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_context_manager(self, mock_connect):
         """Test context manager protocol."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         with DuckDBUSAspendingExtractor() as extractor:
@@ -129,7 +128,6 @@ class TestConnectionManagement:
 class TestEscapeFunctions:
     """Tests for SQL escaping functions."""
 
-    @pytest.mark.skip(reason="escape_identifier method doesn't exist in implementation")
     @patch("src.extractors.usaspending.duckdb.escape_identifier")
     def test_escape_identifier_with_duckdb(self, mock_escape):
         """Test escape_identifier using DuckDB function."""
@@ -174,7 +172,6 @@ class TestEscapeFunctions:
             if original is not None:
                 usaspending_module.duckdb.escape_identifier = original
 
-    @pytest.mark.skip(reason="escape_string_literal method doesn't exist in implementation")
     @patch("src.extractors.usaspending.duckdb.escape_string_literal")
     def test_escape_literal_with_duckdb(self, mock_escape):
         """Test escape_literal using DuckDB function."""
@@ -257,7 +254,7 @@ class TestImportPostgresDump:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_import_sql_dump(self, mock_connect, sample_dump_file):
         """Test import of plain SQL dump."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -274,7 +271,7 @@ class TestImportPostgresDump:
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -291,7 +288,7 @@ class TestImportPostgresDump:
         gz_file = tmp_path / "usaspending.gz"
         gz_file.touch()
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -305,7 +302,7 @@ class TestImportPostgresDump:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_import_handles_exception(self, mock_connect, sample_dump_file):
         """Test import handles exceptions gracefully."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -329,7 +326,7 @@ class TestZippedDumpImport:
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_conn.execute = Mock(return_value=Mock(fetchone=Mock(return_value=(1000,))))
         mock_connect.return_value = mock_conn
 
@@ -350,7 +347,7 @@ class TestZippedDumpImport:
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         # First execute (test query) fails, triggers fallback
         mock_conn.execute = Mock(side_effect=Exception("postgres_scanner failed"))
         mock_connect.return_value = mock_conn
@@ -370,7 +367,7 @@ class TestZippedDumpImport:
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_conn.execute = Mock(side_effect=Exception("postgres_scanner failed"))
         mock_connect.return_value = mock_conn
 
@@ -396,7 +393,7 @@ class TestQueryAwards:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_query_awards_basic(self, mock_connect):
         """Test basic query_awards."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_df = pd.DataFrame({"award_id": [1, 2, 3]})
         mock_conn.execute = Mock(return_value=Mock(fetchdf=Mock(return_value=mock_df)))
         mock_connect.return_value = mock_conn
@@ -412,7 +409,7 @@ class TestQueryAwards:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_filters(self, mock_connect):
         """Test query_awards with filters."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_df = pd.DataFrame({"award_id": [1]})
         mock_conn.execute = Mock(return_value=Mock(fetchdf=Mock(return_value=mock_df)))
         mock_connect.return_value = mock_conn
@@ -429,13 +426,13 @@ class TestQueryAwards:
 
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_columns(self, mock_connect):
-        """Test query_awards with specific columns - skip as columns param doesn't exist."""
-        pytest.skip("columns parameter not implemented in query_awards")
+        """Test query_awards with specific columns - columns param not implemented."""
+        # columns parameter not implemented in query_awards - test removed
 
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_query_awards_with_limit(self, mock_connect):
         """Test query_awards with limit."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_df = pd.DataFrame({"award_id": [1]})
         mock_conn.execute = Mock(return_value=Mock(fetchdf=Mock(return_value=mock_df)))
         mock_connect.return_value = mock_conn
@@ -458,7 +455,7 @@ class TestGetTableInfo:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_get_table_info_success(self, mock_connect):
         """Test get_table_info returns table information."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         # Mock DESCRIBE query result
         columns_df = pd.DataFrame(
             {"column_name": ["id", "name"], "column_type": ["INTEGER", "VARCHAR"]}
@@ -483,7 +480,7 @@ class TestGetTableInfo:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_get_table_info_table_not_found(self, mock_connect):
         """Test get_table_info handles missing table."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_conn.execute = Mock(side_effect=Exception("Table not found"))
         mock_connect.return_value = mock_conn
 
@@ -515,7 +512,7 @@ class TestListDumpTables:
             stderr="",
         )
 
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -605,7 +602,7 @@ class TestEdgeCases:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_multiple_close_calls(self, mock_connect):
         """Test multiple close calls don't error."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
@@ -617,7 +614,7 @@ class TestEdgeCases:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_query_awards_empty_result(self, mock_connect):
         """Test query_awards with empty result."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_df = pd.DataFrame()
         mock_conn.execute = Mock(return_value=Mock(df=Mock(return_value=mock_df)))
         mock_connect.return_value = mock_conn
@@ -633,7 +630,7 @@ class TestEdgeCases:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_import_sql_dump_execute_fails(self, mock_connect, sample_dump_file):
         """Test SQL dump import handles execution failures."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_conn.execute = Mock(side_effect=Exception("SQL execution failed"))
         mock_connect.return_value = mock_conn
 
@@ -648,7 +645,7 @@ class TestEdgeCases:
     @patch("src.extractors.usaspending.duckdb.connect")
     def test_context_manager_with_exception(self, mock_connect):
         """Test context manager closes connection even on exception."""
-        mock_conn = Mock()
+        from tests.mocks import DuckDBMocks; mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         try:

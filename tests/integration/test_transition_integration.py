@@ -17,9 +17,16 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
+from tests.conftest_neo4j_helper import neo4j_available
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
+    ),
+]
 
 
 class TestFullDetectionPipeline:

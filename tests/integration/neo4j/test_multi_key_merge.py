@@ -1,8 +1,13 @@
 """Integration tests for multi-key MERGE functionality."""
 
 import pytest
+from tests.conftest_neo4j_helper import neo4j_available
 
 from src.loaders.neo4j import Neo4jClient, Neo4jConfig
+
+pytestmark = pytest.mark.skipif(
+    not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
+)
 
 
 @pytest.fixture

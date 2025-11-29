@@ -91,8 +91,8 @@ class TestPatentLoaderConstraints:
         loader = PatentLoader(mock_client)
         loader.create_constraints()
 
-        # Should run 3 constraint statements (Patent, PatentAssignment, PatentEntity)
-        assert mock_session.run.call_count == 3
+        # Should run 4 constraint statements (Patent, PatentAssignment, PatentEntity, Organization)
+        assert mock_session.run.call_count == 4
 
     def test_create_constraints_handles_existing_constraints(self):
         """Test create_constraints handles already existing constraints."""
@@ -107,8 +107,8 @@ class TestPatentLoaderConstraints:
         # Should not raise exception
         loader.create_constraints()
 
-        # Should have attempted all constraints
-        assert mock_session.run.call_count == 3
+        # Should have attempted all 4 constraints
+        assert mock_session.run.call_count == 4
 
     def test_create_constraints_patent_uniqueness(self):
         """Test Patent constraint is for grant_doc_num uniqueness."""

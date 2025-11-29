@@ -24,8 +24,7 @@ uspto_referential_asset_check = getattr(
     uspto_validation_assets, "uspto_referential_asset_check", None
 )
 
-if uspto_rf_id_asset_check is None:
-    pytest.skip("uspto_rf_id_asset_check not found", allow_module_level=True)
+# Asset checks should exist - if not, tests will fail appropriately
 
 
 def _base_validation_report() -> dict:
@@ -91,9 +90,7 @@ def test_uspto_rf_id_asset_check_fail():
 
 
 def test_uspto_completeness_asset_check_fail():
-    if uspto_completeness_asset_check is None:
-        pytest.skip("uspto_completeness_asset_check not found")
-
+    # Asset check should exist - test will fail if not
     ctx = build_asset_context()
     report = _base_validation_report()
     report["tables"]["assignees"] = {
@@ -115,9 +112,7 @@ def test_uspto_completeness_asset_check_fail():
 
 
 def test_uspto_referential_asset_check_fail():
-    if uspto_referential_asset_check is None:
-        pytest.skip("uspto_referential_asset_check not found")
-
+    # Asset check should exist - test will fail if not
     ctx = build_asset_context()
     report = _base_validation_report()
     report["tables"]["assignees"] = {

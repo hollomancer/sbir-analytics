@@ -1,16 +1,20 @@
 """Integration tests for Neo4j client.
 
-
-pytestmark = pytest.mark.integration
-
-
 These tests require a running Neo4j instance.
 Run with: docker-compose up -d neo4j
 """
 
 import pytest
+from tests.conftest_neo4j_helper import neo4j_available
 
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
+    ),
+]
 
 
 @pytest.mark.integration
