@@ -176,16 +176,10 @@ dev: ## Run Dagster dev server locally
 	@$(call info,Starting Dagster dev server)
 	$(call run,uv run dagster dev -m src.definitions)
 
-.PHONY: install-ml
-install-ml: ## Install ML dependencies (jupyter, matplotlib, etc.)
-	@$(call info,Installing ML dependencies)
-	$(call run,uv sync --extra ml)
-
-.PHONY: notebook
-notebook: install-ml ## Start Jupyter Lab for ML analysis
-	@$(call info,Starting Jupyter Lab)
-	@mkdir -p notebooks
-	$(call run,uv run --extra ml jupyter lab --notebook-dir=notebooks)
+.PHONY: sample-data
+sample-data: ## Generate sample data for local development
+	@$(call info,Generating sample data)
+	$(call run,uv run python scripts/dev/generate_sample_data.py)
 
 .PHONY: setup-local
 setup-local: env-check ## Configure environment for local development (no cloud)
@@ -197,6 +191,7 @@ setup-local: env-check ## Configure environment for local development (no cloud)
 	else \
 		$(call warn,Local configuration already present in .env); \
 	fi
+	@$(call info,You can now generate sample data with: make sample-data)
 
 .PHONY: setup-cloud
 setup-cloud: env-check ## Configure environment for cloud development

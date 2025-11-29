@@ -171,7 +171,7 @@ class ChunkedEnricher:
         Yields:
             DataFrame chunks of size chunk_size
         """
-        from src.utils.chunking import chunk_dataframe
+        from src.utils.data.chunking import chunk_dataframe
 
         yield from chunk_dataframe(self.sbir_df, self.chunk_size)
 

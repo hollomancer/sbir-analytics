@@ -510,6 +510,7 @@ class TestTrainingExample:
             solicitation="AI in Healthcare",
             labels=["artificial_intelligence", "biotechnology"],
             label_confidence=0.95,
+            source="test",  # Required field
         )
         assert example.example_id == "TRAIN-001"
         assert len(example.labels) == 2
@@ -521,6 +522,7 @@ class TestTrainingExample:
             example_id="TRAIN-002",
             text="Quantum computing research",
             labels=["quantum_computing"],
+            source="test",  # Required field
         )
         assert example.title is None
         assert example.keywords is None
@@ -582,7 +584,7 @@ class TestPatentDocument:
         # Normalizer removes spaces, slashes, commas and uppercases
         assert doc.application_number == "16123456"
         assert doc.publication_number == "US20210123456A1"
-        assert doc.grant_number == "US10123456B2"
+        assert doc.grant_number == "US-10123456-B2"  # Hyphens preserved
 
     def test_date_parsing_iso_format(self):
         """Test date parsing from ISO format strings."""

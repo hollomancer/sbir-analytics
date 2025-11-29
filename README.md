@@ -44,21 +44,6 @@ A robust, consolidated ETL pipeline for processing SBIR program data into a Neo4
     # Enables S3 usage. Ensure AWS credentials are set in your environment.
     ```
 
-#### 3. ML Engineer / Data Scientist
-**Best for:** Fiscal analysis, CET classification, and notebook-based exploration.
-
-1.  **Install ML Tools:**
-    ```bash
-    make install-ml
-    # Installs Jupyter, Matplotlib, etc.
-    ```
-
-2.  **Start Analysis:**
-    ```bash
-    make notebook
-    # Opens Jupyter Lab. See notebooks/getting_started.ipynb
-    ```
-
 ### Production Deployment
 
 The SBIR ETL pipeline supports multiple production deployment strategies optimized for different use cases:
