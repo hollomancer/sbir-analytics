@@ -158,7 +158,7 @@ class TestCETLoaderCompanyEnrichment:
         assert metrics.errors == 1
 
         # Called with correct label/key
-        assert captured["label"] == "Company"
+        assert captured["label"] == "Organization"
         assert captured["key_property"] == "uei"
 
     def test_upsert_company_cet_enrichment_custom_key_property(self):

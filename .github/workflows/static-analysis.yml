@@ -1,4 +1,9 @@
-name: Static Analysis
+name: Static Analysis (DEPRECATED - Merged into ci.yml)
+
+# ⚠️ DEPRECATION NOTICE:
+# This workflow has been merged into ci.yml for faster feedback and reduced CI time.
+# Lint and type-check now run as early-stage parallel jobs in the main CI workflow.
+# This file is kept temporarily for reference and will be removed in a future release.
 
 # Permissions: Minimal required permissions for security
 permissions:

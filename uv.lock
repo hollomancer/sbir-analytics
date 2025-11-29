@@ -3010,6 +3010,11 @@ r = [
     { name = "rpy2" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-xdist" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0,<2.0.0" },
@@ -3063,6 +3068,9 @@ requires-dist = [
     { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.66.0,<5.0.0" },
 ]
 provides-extras = ["r", "paecter-local", "dev", "ml", "cloud"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest-xdist", specifier = ">=3.8.0" }]
 
 [[package]]
 name = "scikit-learn"

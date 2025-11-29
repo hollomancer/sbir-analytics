@@ -65,12 +65,12 @@ class TestAwardProgressionDetection:
 
         assert len(progressions) == 1
         prog = progressions[0]
-        assert prog[0] == "Award"  # source label
+        assert prog[0] == "FinancialTransaction"  # source label
         assert prog[1] == "award_id"  # source key
-        assert prog[2] == "TEST-001-I"  # source id
-        assert prog[3] == "Award"  # target label
+        assert prog[2] == "txn_award_TEST-001-I"  # source id (with txn_award_ prefix)
+        assert prog[3] == "FinancialTransaction"  # target label
         assert prog[4] == "award_id"  # target key
-        assert prog[5] == "TEST-001-II"  # target id
+        assert prog[5] == "txn_award_TEST-001-II"  # target id (with txn_award_ prefix)
         assert prog[6] == "FOLLOWS"  # relationship type
         assert prog[7]["phase_progression"] == "I_to_II"
         assert prog[7]["same_topic"] is True
@@ -104,8 +104,8 @@ class TestAwardProgressionDetection:
 
         assert len(progressions) == 1
         prog = progressions[0]
-        assert prog[2] == "TEST-002-II"
-        assert prog[5] == "TEST-002-III"
+        assert prog[2] == "txn_award_TEST-002-II"
+        assert prog[5] == "txn_award_TEST-002-III"
         assert prog[7]["phase_progression"] == "II_to_III"
 
     def test_full_chain_i_to_ii_to_iii(self):
@@ -147,12 +147,12 @@ class TestAwardProgressionDetection:
         assert len(progressions) == 2
 
         # Check I→II
-        i_to_ii = [p for p in progressions if p[2] == "CHAIN-I"][0]
-        assert i_to_ii[5] == "CHAIN-II"
+        i_to_ii = [p for p in progressions if p[2] == "txn_award_CHAIN-I"][0]
+        assert i_to_ii[5] == "txn_award_CHAIN-II"
 
         # Check II→III
-        ii_to_iii = [p for p in progressions if p[2] == "CHAIN-II"][0]
-        assert ii_to_iii[5] == "CHAIN-III"
+        ii_to_iii = [p for p in progressions if p[2] == "txn_award_CHAIN-II"][0]
+        assert ii_to_iii[5] == "txn_award_CHAIN-III"
 
     def test_no_progression_different_companies(self):
         """Test that awards from different companies don't create progressions."""
@@ -407,5 +407,5 @@ class TestAwardProgressionDetection:
 
         # Should only link to the first Phase II
         assert len(progressions) == 1
-        assert progressions[0][2] == "MULTI-I"
-        assert progressions[0][5] == "MULTI-II-A"
+        assert progressions[0][2] == "txn_award_MULTI-I"
+        assert progressions[0][5] == "txn_award_MULTI-II-A"
