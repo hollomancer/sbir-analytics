@@ -1,10 +1,10 @@
 import shutil
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
-from dagster import AssetExecutionContext, Output
+from dagster import Output, build_asset_context
 
 from src.assets.fiscal_assets import fiscal_prepared_sbir_awards
 
@@ -34,10 +34,8 @@ def test_asset_uses_fixture(tmp_path):
         ]
     )
 
-    # Mock the context and call the asset
-    mock_context = Mock(spec=AssetExecutionContext)
-    mock_context.log = Mock()
-    mock_context.log.info = Mock()
+    # Use build_asset_context instead of Mock
+    context = build_asset_context()
 
     with patch("src.assets.fiscal_assets.get_config") as mock_get_config:
         from tests.utils.config_mocks import create_mock_pipeline_config
@@ -45,7 +43,7 @@ def test_asset_uses_fixture(tmp_path):
         mock_config = create_mock_pipeline_config()
         mock_get_config.return_value = mock_config
 
-        result = fiscal_prepared_sbir_awards(mock_context, raw_awards)
+        result = fiscal_prepared_sbir_awards(context, raw_awards)
 
     # Asset returns Output[pd.DataFrame], extract the value
     assert isinstance(result, Output)
