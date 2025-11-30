@@ -320,7 +320,6 @@ class TestNeo4jClientBatchOperations:
         assert metrics.nodes_created["Company"] == 5
         # No explicit commit in implementation - uses auto-commit transactions
 
-    @pytest.mark.xfail(reason="Test isolation issue - passes individually but fails in full suite")
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_tracks_creates_and_updates(self, mock_session_cm, neo4j_config):
         """Test batch upsert correctly tracks creates vs updates."""
@@ -351,7 +350,6 @@ class TestNeo4jClientBatchOperations:
         assert metrics.nodes_updated["Company"] == 1
         assert metrics.errors == 0
 
-    @pytest.mark.xfail(reason="Test isolation issue - passes individually but fails in full suite")
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_handles_missing_key(self, mock_session_cm, neo4j_config):
         """Test batch upsert handles nodes missing key property."""
@@ -364,6 +362,15 @@ class TestNeo4jClientBatchOperations:
         mock_session.begin_transaction.return_value = mock_tx_cm
         mock_session_cm.return_value.__enter__.return_value = mock_session
 
+        # Mock session.run() to return proper result for valid nodes
+        mock_result = Neo4jMocks.result()
+        mock_record = MagicMock()
+        mock_record.__getitem__.side_effect = lambda key: {"created_count": 2, "updated_count": 0}[
+            key
+        ]
+        mock_result.single.return_value = mock_record
+        mock_session.run.return_value = mock_result
+
         client = Neo4jClient(neo4j_config)
         nodes = [
             {"uei": "ABC123", "name": "Valid"},
@@ -374,6 +381,7 @@ class TestNeo4jClientBatchOperations:
         metrics = client.batch_upsert_nodes("Company", "uei", nodes)
 
         assert metrics.errors == 1  # One node had missing key
+        assert metrics.nodes_created["Company"] == 2  # Two valid nodes created
 
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_handles_transaction_error(self, mock_session_cm, neo4j_config):
@@ -509,7 +517,6 @@ class TestNeo4jClientBatchRelationships:
 
         assert metrics.relationships_created["HAS_AWARD"] == 2
 
-    @pytest.mark.xfail(reason="Test isolation issue - passes individually but fails in full suite")
     @patch.object(Neo4jClient, "session")
     def test_batch_create_relationships_with_failures(self, mock_session_cm, neo4j_config):
         """Test batch relationship creation with some failures."""
