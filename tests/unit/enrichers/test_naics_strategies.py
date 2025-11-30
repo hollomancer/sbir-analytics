@@ -77,51 +77,53 @@ class TestNAICSEnrichmentResult:
 class TestUtilityFunctions:
     """Tests for NAICS utility functions."""
 
-    def test_validate_naics_code_valid(self):
-        """Test validating valid NAICS codes."""
-        assert validate_naics_code("541715") is True
-        assert validate_naics_code("5417") is True
-        assert validate_naics_code("54") is True
+    @pytest.mark.parametrize(
+        "code,expected",
+        [
+            ("541715", True),
+            ("5417", True),
+            ("54", True),
+            ("1", False),  # Too short
+            ("1234567", False),  # Too long
+            ("", False),
+            (None, False),
+        ],
+        ids=["6digit", "4digit", "2digit", "too_short", "too_long", "empty", "none"],
+    )
+    def test_validate_naics_code(self, code, expected):
+        """Test validating NAICS codes."""
+        assert validate_naics_code(code) is expected
 
-    def test_validate_naics_code_invalid_length(self):
-        """Test validating NAICS codes with invalid length."""
-        assert validate_naics_code("1") is False  # Too short
-        assert validate_naics_code("1234567") is False  # Too long
-
-    def test_validate_naics_code_empty(self):
-        """Test validating empty NAICS code."""
-        assert validate_naics_code("") is False
-        assert validate_naics_code(None) is False  # type: ignore
-
-    def test_validate_naics_code_non_numeric(self):
-        """Test validating non-numeric NAICS codes."""
-        # After cleaning, should still be valid
-        assert validate_naics_code("541715") is True
-
-    def test_normalize_naics_code_valid(self):
-        """Test normalizing valid NAICS codes."""
-        assert normalize_naics_code("541715") == "541715"
-        assert normalize_naics_code("5417") == "5417"
-
-    def test_normalize_naics_code_with_leading_zeros(self):
-        """Test normalizing NAICS code with leading zeros."""
-        assert normalize_naics_code("005417") == "5417"
-        assert normalize_naics_code("00054") == "54"
-
-    def test_normalize_naics_code_with_non_digits(self):
-        """Test normalizing NAICS code with non-digit characters."""
-        assert normalize_naics_code("54-17-15") == "541715"
-        assert normalize_naics_code("NAICS:5417") == "5417"
-
-    def test_normalize_naics_code_invalid(self):
-        """Test normalizing invalid NAICS codes."""
-        assert normalize_naics_code("") is None
-        assert normalize_naics_code("1") is None  # Too short
-        assert normalize_naics_code("1234567") is None  # Too long
-
-    def test_normalize_naics_code_all_zeros(self):
-        """Test normalizing all zeros."""
-        assert normalize_naics_code("0000") is None
+    @pytest.mark.parametrize(
+        "code,expected",
+        [
+            ("541715", "541715"),
+            ("5417", "5417"),
+            ("005417", "5417"),  # Leading zeros stripped
+            ("00054", "54"),
+            ("54-17-15", "541715"),  # Non-digits removed
+            ("NAICS:5417", "5417"),
+            ("", None),
+            ("1", None),  # Too short
+            ("1234567", None),  # Too long
+            ("0000", None),  # All zeros
+        ],
+        ids=[
+            "6digit",
+            "4digit",
+            "leading_zeros",
+            "leading_zeros_short",
+            "dashes",
+            "prefix",
+            "empty",
+            "too_short",
+            "too_long",
+            "all_zeros",
+        ],
+    )
+    def test_normalize_naics_code(self, code, expected):
+        """Test normalizing NAICS codes."""
+        assert normalize_naics_code(code) == expected
 
 
 # =============================================================================

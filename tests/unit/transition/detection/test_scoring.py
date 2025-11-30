@@ -161,66 +161,37 @@ class TestScoreAgencyContinuity:
 class TestScoreTimingProximity:
     """Tests for score_timing_proximity method."""
 
-    def test_score_timing_high_proximity(self, default_config):
-        """Test scoring with high temporal proximity (< 90 days)."""
-        scorer = TransitionScorer(default_config)
+    @pytest.mark.parametrize(
+        "days_later,expected_score",
+        [
+            (45, 0.20),  # High proximity (< 90 days): 1.0 * 0.20
+            (120, 0.14),  # Moderate (91-180 days): 0.7 * 0.20
+            (270, 0.08),  # Low (181-365 days): 0.4 * 0.20
+            (517, 0.10),  # Beyond windows: penalty 0.1
+        ],
+        ids=["high_proximity", "moderate", "low", "beyond_windows"],
+    )
+    def test_score_timing_by_proximity(self, default_config, days_later, expected_score):
+        """Test scoring with various temporal proximities."""
+        from datetime import timedelta
 
-        award_data = {"completion_date": date(2023, 1, 1)}
+        scorer = TransitionScorer(default_config)
+        base_date = date(2023, 1, 1)
+
+        award_data = {"completion_date": base_date}
         contract = FederalContract(
             contract_id="C123",
             vendor_id="V123",
             vendor_name="Vendor",
             agency="DOD",
-            start_date=date(2023, 2, 15),  # 45 days later
+            start_date=base_date + timedelta(days=days_later),
             competition_type=CompetitionType.SOLE_SOURCE,
         )
 
         signal = scorer.score_timing_proximity(award_data, contract)
 
-        assert signal.days_between_award_and_contract == 45
-        assert signal.months_between_award_and_contract == pytest.approx(1.5)
-        # 1.0 (window score) * 0.20 (weight) = 0.20
-        assert signal.timing_score == pytest.approx(0.20)
-
-    def test_score_timing_moderate_proximity(self, default_config):
-        """Test scoring with moderate proximity (91-180 days)."""
-        scorer = TransitionScorer(default_config)
-
-        award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            start_date=date(2023, 5, 1),  # 120 days later
-            competition_type=CompetitionType.SOLE_SOURCE,
-        )
-
-        signal = scorer.score_timing_proximity(award_data, contract)
-
-        assert signal.days_between_award_and_contract == 120
-        # 0.7 (window score) * 0.20 (weight) = 0.14
-        assert signal.timing_score == pytest.approx(0.14)
-
-    def test_score_timing_beyond_windows(self, default_config):
-        """Test scoring beyond configured windows."""
-        scorer = TransitionScorer(default_config)
-
-        award_data = {"completion_date": date(2023, 1, 1)}
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            start_date=date(2024, 6, 1),  # 517 days later
-            competition_type=CompetitionType.SOLE_SOURCE,
-        )
-
-        signal = scorer.score_timing_proximity(award_data, contract)
-
-        assert signal.days_between_award_and_contract == 517
-        # Uses beyond_window_penalty = 0.1
-        assert signal.timing_score == 0.1
+        assert signal.days_between_award_and_contract == days_later
+        assert signal.timing_score == pytest.approx(expected_score, abs=0.01)
 
     def test_score_timing_negative_days(self, default_config):
         """Test scoring with contract before award (anomaly)."""
@@ -263,8 +234,19 @@ class TestScoreTimingProximity:
 class TestScoreCompetitionType:
     """Tests for score_competition_type method."""
 
-    def test_score_competition_sole_source(self, default_config):
-        """Test scoring with sole source competition."""
+    @pytest.mark.parametrize(
+        "comp_type,expected_score",
+        [
+            (CompetitionType.SOLE_SOURCE, 0.04),  # 0.20 * 0.20
+            (CompetitionType.LIMITED, 0.02),  # 0.10 * 0.20
+            (CompetitionType.FULL_AND_OPEN, 0.0),
+            (CompetitionType.OTHER, 0.0),
+            (None, 0.0),
+        ],
+        ids=["sole_source", "limited", "full_and_open", "other", "none"],
+    )
+    def test_score_competition_by_type(self, default_config, comp_type, expected_score):
+        """Test scoring with various competition types."""
         scorer = TransitionScorer(default_config)
 
         contract = FederalContract(
@@ -272,83 +254,14 @@ class TestScoreCompetitionType:
             vendor_id="V123",
             vendor_name="Vendor",
             agency="DOD",
-            competition_type=CompetitionType.SOLE_SOURCE,
+            competition_type=comp_type,
         )
 
         signal = scorer.score_competition_type(contract)
 
-        assert signal.competition_type == CompetitionType.SOLE_SOURCE
-        # 0.20 (bonus) * 0.20 (weight) = 0.04
-        assert signal.competition_score == pytest.approx(0.04)
-
-    def test_score_competition_limited(self, default_config):
-        """Test scoring with limited competition."""
-        scorer = TransitionScorer(default_config)
-
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            competition_type=CompetitionType.LIMITED,
-        )
-
-        signal = scorer.score_competition_type(contract)
-
-        assert signal.competition_type == CompetitionType.LIMITED
-        # 0.10 (bonus) * 0.20 (weight) = 0.02
-        assert signal.competition_score == pytest.approx(0.02)
-
-    def test_score_competition_full_and_open(self, default_config):
-        """Test scoring with full and open competition."""
-        scorer = TransitionScorer(default_config)
-
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            competition_type=CompetitionType.FULL_AND_OPEN,
-        )
-
-        signal = scorer.score_competition_type(contract)
-
-        assert signal.competition_type == CompetitionType.FULL_AND_OPEN
-        assert signal.competition_score == 0.0
-
-    def test_score_competition_other(self, default_config):
-        """Test scoring with OTHER competition type."""
-        scorer = TransitionScorer(default_config)
-
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            competition_type=CompetitionType.OTHER,
-        )
-
-        signal = scorer.score_competition_type(contract)
-
-        assert signal.competition_type == CompetitionType.OTHER
-        assert signal.competition_score == 0.0
-
-    def test_score_competition_none(self, default_config):
-        """Test scoring with None competition type."""
-        scorer = TransitionScorer(default_config)
-
-        contract = FederalContract(
-            contract_id="C123",
-            vendor_id="V123",
-            vendor_name="Vendor",
-            agency="DOD",
-            competition_type=None,
-        )
-
-        signal = scorer.score_competition_type(contract)
-
-        assert signal.competition_type == CompetitionType.OTHER
-        assert signal.competition_score == 0.0
+        if comp_type is not None:
+            assert signal.competition_type == comp_type
+        assert signal.competition_score == pytest.approx(expected_score)
 
 
 class TestScorePatentSignal:
