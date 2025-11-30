@@ -112,63 +112,47 @@ class TestAwardModel:
         )
         assert award.award_amount == 1234.56
 
-    def test_award_amount_validator_rejects_zero(self):
-        """Test award_amount validator rejects zero."""
+    @pytest.mark.parametrize(
+        "invalid_amount,error_msg",
+        [
+            (0, "Award amount must be positive"),
+            (-1000, "Award amount must be positive"),
+            ("not_a_number", "Award amount must be a number"),
+        ],
+        ids=["zero", "negative", "non_numeric"],
+    )
+    def test_award_amount_validator_rejects_invalid(self, invalid_amount, error_msg):
+        """Test award_amount validator rejects invalid amounts."""
         with pytest.raises(ValidationError) as exc_info:
             Award(
-                award_id="TEST-3",
+                award_id="TEST-INVALID",
                 company_name="Test Corp",
-                award_amount=0,
+                award_amount=invalid_amount,
                 award_date=date(2023, 1, 1),
                 program="SBIR",
             )
-        assert "Award amount must be positive" in str(exc_info.value)
+        assert error_msg in str(exc_info.value)
 
-    def test_award_amount_validator_rejects_negative(self):
-        """Test award_amount validator rejects negative amounts."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-4",
-                company_name="Test Corp",
-                award_amount=-1000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-            )
-        assert "Award amount must be positive" in str(exc_info.value)
-
-    def test_award_amount_validator_rejects_non_numeric_string(self):
-        """Test award_amount validator rejects non-numeric strings."""
-        with pytest.raises(ValidationError) as exc_info:
-            Award(
-                award_id="TEST-5",
-                company_name="Test Corp",
-                award_amount="not_a_number",
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-            )
-        assert "Award amount must be a number" in str(exc_info.value)
-
-    def test_program_validator_normalizes_to_uppercase(self):
-        """Test program validator normalizes to uppercase."""
+    @pytest.mark.parametrize(
+        "program_input,expected",
+        [
+            ("sbir", "SBIR"),
+            ("SBIR", "SBIR"),
+            ("sttr", "STTR"),
+            ("STTR", "STTR"),
+        ],
+        ids=["sbir_lower", "sbir_upper", "sttr_lower", "sttr_upper"],
+    )
+    def test_program_validator_normalizes(self, program_input, expected):
+        """Test program validator normalizes valid programs."""
         award = Award(
-            award_id="TEST-6",
+            award_id="TEST-PROG",
             company_name="Test Corp",
             award_amount=10000,
             award_date=date(2023, 1, 1),
-            program="sbir",
+            program=program_input,
         )
-        assert award.program == "SBIR"
-
-    def test_program_validator_accepts_sttr(self):
-        """Test program validator accepts STTR."""
-        award = Award(
-            award_id="TEST-7",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="sttr",
-        )
-        assert award.program == "STTR"
+        assert award.program == expected
 
     def test_program_validator_rejects_invalid_program(self):
         """Test program validator returns None for invalid program (lenient)."""
@@ -179,21 +163,30 @@ class TestAwardModel:
             award_date=date(2023, 1, 1),
             program="INVALID",
         )
-        # Lenient: invalid program is set to None instead of raising exception
         assert award.program is None
 
-    def test_phase_validator_normalizes_roman_numerals(self):
+    @pytest.mark.parametrize(
+        "phase_input,expected",
+        [
+            ("i", "I"),
+            ("ii", "II"),
+            ("iii", "III"),
+            ("I", "I"),
+            ("II", "II"),
+        ],
+        ids=["i_lower", "ii_lower", "iii_lower", "I_upper", "II_upper"],
+    )
+    def test_phase_validator_normalizes_roman_numerals(self, phase_input, expected):
         """Test phase validator accepts and normalizes roman numerals."""
-        for phase_input, expected in [("i", "I"), ("ii", "II"), ("iii", "III")]:
-            award = Award(
-                award_id=f"TEST-{phase_input}",
-                company_name="Test Corp",
-                award_amount=10000,
-                award_date=date(2023, 1, 1),
-                program="SBIR",
-                phase=phase_input,
-            )
-            assert award.phase == expected
+        award = Award(
+            award_id=f"TEST-{phase_input}",
+            company_name="Test Corp",
+            award_amount=10000,
+            award_date=date(2023, 1, 1),
+            program="SBIR",
+            phase=phase_input,
+        )
+        assert award.phase == expected
 
     def test_phase_validator_handles_phase_prefix(self):
         """Test phase validator handles 'Phase I' format."""
