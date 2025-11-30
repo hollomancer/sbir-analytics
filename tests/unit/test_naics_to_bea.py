@@ -43,6 +43,7 @@ def test_map_bea_excel(bea_mapping: Path):
     naics_col = "NAICS" if "NAICS" in df.columns else "naics_prefix"
     bea_col = "BEA_Code" if "BEA_Code" in df.columns else "bea_sector"
 
-    naics_541712 = df[df[naics_col] == "541712"]
+    # NAICS may be read as int or string, handle both
+    naics_541712 = df[df[naics_col].astype(str) == "541712"]
     assert len(naics_541712) > 0
-    assert naics_541712.iloc[0][bea_col] == "5415"
+    assert str(naics_541712.iloc[0][bea_col]) == "5415"
