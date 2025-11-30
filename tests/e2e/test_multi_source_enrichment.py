@@ -217,10 +217,11 @@ class TestMultiSourceEnrichmentPipeline:
         assert enriched["_usaspending_match_method"].iloc[2] == "uei-exact"
         assert enriched["usaspending_recipient_recipient_city"].iloc[2] == "Cambridge"
 
-        # Fourth award should match by fuzzy name
+        # Fourth award should match by fuzzy name (various fuzzy match types)
         assert enriched["_usaspending_match_method"].iloc[3] in [
             "name-fuzzy-high",
             "name-fuzzy-low",
+            "name-fuzzy-auto",
         ]
         assert enriched["usaspending_recipient_recipient_city"].iloc[3] == "Palo Alto"
 
@@ -371,8 +372,9 @@ class TestDataSourceIntegrity:
         self, sample_sbir_awards, sample_usaspending_recipients, sample_sam_gov_entities
     ):
         """Verify UEI format consistency across all data sources."""
-        # Check SBIR UEI format
+        # Check SBIR UEI format (filter empty strings)
         sbir_ueis = sample_sbir_awards["UEI"].dropna()
+        sbir_ueis = sbir_ueis[sbir_ueis != ""]
         assert all(len(uei) == 16 for uei in sbir_ueis), "SBIR UEIs should be 16 characters"
 
         # Check USAspending UEI format

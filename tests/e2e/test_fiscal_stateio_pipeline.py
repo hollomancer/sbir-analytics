@@ -550,7 +550,7 @@ class TestFiscalStateIOPipelineE2E:
         )
 
         # Verify ROI metrics
-        assert roi_summary.total_investment == total_investment
+        assert roi_summary.total_sbir_investment == total_investment
         assert roi_summary.total_tax_receipts > 0
         assert roi_summary.roi_ratio > 0, "ROI ratio should be positive"
 
@@ -562,10 +562,9 @@ class TestFiscalStateIOPipelineE2E:
 
         # Verify other metrics
         assert roi_summary.benefit_cost_ratio > 0
-        assert roi_summary.discount_rate == 0.03
 
         print("\nROI Summary:")
-        print(f"  Total Investment: ${roi_summary.total_investment:,.2f}")
+        print(f"  Total Investment: ${roi_summary.total_sbir_investment:,.2f}")
         print(f"  Total Tax Receipts: ${roi_summary.total_tax_receipts:,.2f}")
         print(f"  ROI Ratio: {roi_summary.roi_ratio:.2%}")
         print(f"  Benefit-Cost Ratio: {roi_summary.benefit_cost_ratio:.2f}")

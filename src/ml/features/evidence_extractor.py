@@ -62,8 +62,16 @@ class EvidenceExtractor:
                     self.keyword_to_cets[keyword_lower] = []
                 self.keyword_to_cets[keyword_lower].append(cet_id)
 
-        # Evidence extraction config
-        evidence_config = config.get("evidence", {})
+        # Evidence extraction config - handle both dict and Pydantic model
+        if hasattr(config, "model_dump"):
+            config_dict = config.model_dump()
+        elif hasattr(config, "dict"):
+            config_dict = config.dict()
+        elif isinstance(config, dict):
+            config_dict = config
+        else:
+            config_dict = {}
+        evidence_config = config_dict.get("evidence", {})
         self.max_statements = evidence_config.get("max_statements", 3)
         self.excerpt_max_words = evidence_config.get("excerpt_max_words", 50)
         self.min_keyword_matches = evidence_config.get("min_keyword_matches", 1)
