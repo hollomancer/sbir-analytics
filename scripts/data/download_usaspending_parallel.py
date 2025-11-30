@@ -48,13 +48,38 @@ async def parallel_download_to_s3(
     print(f"📊 File size: {file_size_gb:.2f} GB ({file_size:,} bytes)")
     print(f"🔗 Source: {source_url}")
 
-    # Create multipart upload
-    multipart = s3_client.create_multipart_upload(
-        Bucket=s3_bucket,
-        Key=s3_key,
-        ContentType="application/zip",
-    )
-    upload_id = multipart["UploadId"]
+    # Check for existing multipart upload
+    existing_uploads = s3_client.list_multipart_uploads(Bucket=s3_bucket, Prefix=s3_key)
+    upload_id = None
+    existing_parts = {}
+
+    for upload in existing_uploads.get("Uploads", []):
+        if upload["Key"] == s3_key:
+            upload_id = upload["UploadId"]
+            print(f"🔄 Found existing upload: {upload_id}")
+
+            # List already uploaded parts
+            parts_response = s3_client.list_parts(
+                Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
+            )
+            for part in parts_response.get("Parts", []):
+                existing_parts[part["PartNumber"]] = {
+                    "ETag": part["ETag"],
+                    "PartNumber": part["PartNumber"],
+                }
+            print(f"✅ Found {len(existing_parts)} already uploaded parts")
+            break
+
+    # Create new multipart upload if none exists
+    if not upload_id:
+        multipart = s3_client.create_multipart_upload(
+            Bucket=s3_bucket,
+            Key=s3_key,
+            ContentType="application/zip",
+        )
+        upload_id = multipart["UploadId"]
+        print(f"🆕 Created new upload: {upload_id}")
+
     print(f"📦 S3 destination: s3://{s3_bucket}/{s3_key}")
     print(f"🆔 Upload ID: {upload_id}")
 
@@ -68,17 +93,25 @@ async def parallel_download_to_s3(
         chunk_size_mb = chunk_size / 1024 / 1024
         print(f"📦 Split into {len(chunks)} chunks of ~{chunk_size_mb:.0f} MB each")
         print(f"⚡ Max concurrent downloads: {max_concurrent}")
+
+        if existing_parts:
+            print(f"⏭️  Skipping {len(existing_parts)} already uploaded parts")
         print()
 
         # Download and upload chunks concurrently
         semaphore = asyncio.Semaphore(max_concurrent)
-        parts = []
-        completed_parts = 0
-        bytes_transferred = 0
+        parts = list(existing_parts.values())  # Start with existing parts
+        completed_parts = len(existing_parts)
+        bytes_transferred = sum(chunk_size for _ in existing_parts)
         download_start = time.time()
 
         async def download_and_upload(chunk: DownloadChunk) -> dict:
             nonlocal completed_parts, bytes_transferred
+
+            # Skip if already uploaded
+            part_number = chunk.chunk_id + 1
+            if part_number in existing_parts:
+                return existing_parts[part_number]
 
             async with semaphore:
                 chunk_start = time.time()
