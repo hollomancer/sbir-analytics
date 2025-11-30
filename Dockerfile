@@ -118,13 +118,17 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         export RPY2_CFFI_MODE=ABI; \
         (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt); \
     else \
+        export R_HOME=/usr/lib/R; \
         (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt); \
     fi \
  && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
  && if [ "$BUILD_WITH_R" = "false" ]; then \
         export RPY2_CFFI_MODE=ABI; \
-    fi \
- && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
+        python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt; \
+    else \
+        export R_HOME=/usr/lib/R; \
+        python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt; \
+    fi
 
 ########################################################################
 # Builder stage: build application wheel (changes frequently)
