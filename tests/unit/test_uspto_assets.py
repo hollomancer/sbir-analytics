@@ -1,3 +1,5 @@
+"""Unit tests for USPTO asset validation checks (rf_id, completeness, date ranges)."""
+
 # sbir-analytics/tests/unit/test_uspto_assets.py
 import copy
 

@@ -1,3 +1,5 @@
+"""Unit tests for M&A (mergers and acquisitions) detection from USPTO patent assignments."""
+
 from datetime import date
 
 import pandas as pd

@@ -1,3 +1,5 @@
+"""Unit tests for fiscal asset preparation and NAICS enrichment."""
+
 import shutil
 from pathlib import Path
 from unittest.mock import patch
