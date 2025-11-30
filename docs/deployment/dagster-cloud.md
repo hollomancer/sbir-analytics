@@ -165,7 +165,7 @@ SBIR_ETL__NEO4J__BATCH_SIZE=2000
 SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
 ```
 
-See [Configuration Patterns](.kiro/steering/configuration-patterns.md) for complete reference.
+See [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) for complete reference.
 
 ### Multiple Neo4j Instances
 
@@ -413,4 +413,4 @@ See [Docker Guide](docker.md) for complete instructions.
 - [Docker Guide](docker.md) - Local development and failover
 - [AWS Deployment](aws-deployment.md) - AWS Lambda and Step Functions
 - [Testing Guide](../testing/index.md) - Testing in Dagster Cloud
-- [Configuration Patterns](.kiro/steering/configuration-patterns.md) - Environment variables
+- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Environment variables

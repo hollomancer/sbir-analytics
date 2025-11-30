@@ -303,7 +303,7 @@ def test_enrichment_performance(benchmark):
     assert result.throughput > 100  # records/second
 ```
 
-See [Performance Testing](../performance/index.md) for details.
+See [Performance Testing for details.
 
 ## Quality Gates
 
@@ -398,4 +398,4 @@ See [archive/testing/IMPROVEMENTS.md](../../archive/testing/IMPROVEMENTS.md) for
 - [E2E Testing Guide](e2e-testing-guide.md) - End-to-end scenarios
 - [CI Sharding Setup](ci-sharding-setup.md) - Parallel test execution
 - [Neo4j Testing Environments](neo4j-testing-environments-guide.md) - Graph database testing
-- [Performance Testing](../performance/index.md) - Benchmarks and regression detection
+- [Performance Testing - Benchmarks and regression detection

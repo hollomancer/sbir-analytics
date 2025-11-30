@@ -58,7 +58,7 @@ docker-compose down
 
 ## Next Steps
 
-- [Docker Troubleshooting](docker-troubleshooting.md) - If you hit issues
+- the troubleshooting section below
 - [Containerization Guide](../deployment/containerization.md) - Full reference
 
 
@@ -137,8 +137,8 @@ ports:
 
 ## Related
 
-- [Docker Quick Start](docker-quickstart.md)
-- [Docker Troubleshooting](docker-troubleshooting.md)
+
+
 
 
 ---
@@ -744,8 +744,8 @@ If you're still stuck:
    ```
 
 3. **Review documentation:**
-   - [Docker Quick Start](docker-quickstart.md)
-   - [Environment Setup](docker-env-setup.md)
+
+
    - [Containerization Guide](../deployment/containerization.md)
 
 4. **Check GitHub issues:**
@@ -781,4 +781,4 @@ If you're still stuck:
 
 ---
 
-**Still need help?** Check the [Docker Quick Start](docker-quickstart.md) or [Containerization Guide](../deployment/containerization.md) for more information.
+**Still need help?** Check the [Containerization Guide](../deployment/containerization.md) for more information.

@@ -12,9 +12,7 @@ This directory contains guides and documentation for developers working on the S
 ## Docker Development
 
 **Getting started with Docker:**
-- **[Docker Quick Start](docker-quickstart.md)** - Complete step-by-step setup guide (start here!)
-- **[Docker Troubleshooting](docker-troubleshooting.md)** - Common issues and solutions
-- **[Docker Environment Setup](docker-env-setup.md)** - Configuration and environment variables
+- **[Docker Guide](docker.md)** - Complete Docker setup and usage guide
 
 **Related:**
 - [Containerization Guide](../deployment/containerization.md) - Advanced Docker usage
@@ -24,16 +22,10 @@ This directory contains guides and documentation for developers working on the S
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
-- [Optimization Summary](optimization-cleanup-summary.md) - Performance improvements
 
 ## Workflow
 
 - [Kiro Workflow Guide](kiro-workflow-guide.md) - Using Kiro specifications
-
-## Analysis & Reports
-
-- [Docker New Developer Experience](docker-new-developer-experience.md) - Comprehensive analysis
-- [Docker Setup Improvements Summary](docker-setup-improvements-summary.md) - Action items and recommendations
 
 ---
 

@@ -222,7 +222,7 @@ export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
 export SBIR_ETL__PIPELINE__CHUNK_SIZE=20000
 ```
 
-See [Configuration Patterns](.kiro/steering/configuration-patterns.md) for complete reference.
+See [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) for complete reference.
 
 ## Build Options
 
@@ -378,7 +378,7 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 - [Docker Troubleshooting](../development/docker.md) - Common issues and solutions
 - [Dagster Cloud Deployment](dagster-cloud.md) - Primary deployment method
 - [Testing Guide](../testing/index.md) - Running tests in Docker
-- [Configuration Patterns](.kiro/steering/configuration-patterns.md) - Environment variable overrides
+- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Environment variable overrides
 # Docker Image Optimization Guide
 
 ## Current Optimizations
@@ -571,7 +571,7 @@ docker run --rm -it debug /bin/bash
 
 **Audience**: DevOps, Advanced Users
 **Prerequisites**: [Docker Guide](docker.md)
-**Related**: [Docker Optimization](docker-optimization.md), [Dockerfile](../../Dockerfile)
+**Related**: [Dockerfile](../../Dockerfile)
 **Last Updated**: 2025-11-29
 
 ## Dockerfile Architecture
@@ -786,7 +786,7 @@ export SBIR_ETL__ENRICHMENT__BATCH_SIZE=200
 export SBIR_ETL__DATA_QUALITY__MIN_ENRICHMENT_SUCCESS=0.85
 ```
 
-See [Configuration Patterns](.kiro/steering/configuration-patterns.md) for complete reference.
+See [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) for complete reference.
 
 ## Volume Management
 
@@ -1032,9 +1032,9 @@ services:
 ## Related Documentation
 
 - [Docker Guide](docker.md) - Getting started and common tasks
-- [Docker Optimization](docker-optimization.md) - Advanced optimization techniques
+
 - [Docker Troubleshooting](../development/docker.md) - Common issues
-- [Configuration Patterns](.kiro/steering/configuration-patterns.md) - Configuration reference
+- [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Configuration reference
 - [Dockerfile](../../Dockerfile) - Source Dockerfile
 - [docker-compose.yml](../../docker-compose.yml) - Source Compose file
 # Docker Configuration Reference

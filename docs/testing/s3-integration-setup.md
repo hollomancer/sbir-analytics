@@ -298,5 +298,3 @@ After S3 integration tests are stable (2 weeks):
 1. **Add infrastructure tests** (Lambda, Step Functions)
 2. **Add E2E cloud tests** (full pipeline with S3)
 3. **Monitor costs** and adjust as needed
-
-See [Cloud Testing Analysis](../architecture/cloud-testing-analysis.md) for full roadmap.

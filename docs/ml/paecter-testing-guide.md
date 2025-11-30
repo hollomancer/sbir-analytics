@@ -781,7 +781,6 @@ ml:
 
 ## 📚 Full Documentation
 
-See [paecter-s3-testing-guide.md](./paecter-s3-testing-guide.md) for:
 - Detailed troubleshooting
 - Performance optimization
 - Advanced configuration

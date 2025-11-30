@@ -85,7 +85,6 @@ uv run pytest -n auto --cov=src
 
 ## 2. Docker & Compose Workflows
 
-For parity with CI and to exercise full stacks (Neo4j, Dagster, DuckDB), use the Make targets backed by `docker-compose.yml` profiles (see [Docker Guide](../deployment/docker-guide.md)).
 
 | Scenario | Command | Description |
 |----------|---------|-------------|

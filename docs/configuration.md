@@ -491,9 +491,9 @@ output_file = config.paths.resolve_path("transition_contracts_output")
 
 ## Related Documentation
 
-- [Configuration Overview](../index.md)
-- [Deployment Guide](../deployment/containerization.md)
-- [Exception Handling](../development/exception-handling.md)
+- [Configuration Overview](index.md)
+- [Deployment Guide](deployment/containerization.md)
+- [Exception Handling](development/exception-handling.md)
 
 ## Change Log
 

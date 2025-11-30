@@ -32,5 +32,5 @@ Ensure PRs that change performance-sensitive paths update baselines/thresholds w
 ## Related Documentation
 
 - **Statistical Reporting**: [`statistical-reporting.md`](statistical-reporting.md) - Report generation and analysis
-- **Performance Monitoring**: [`../performance/index.md`](../performance/index.md) - Performance baselines and alerts
+- **Performance Monitoring**: [`../performance/index.md` - Performance baselines and alerts
 - **Testing Documentation**: [`../testing/README.md`](../testing/README.md) - Testing guides and coverage
