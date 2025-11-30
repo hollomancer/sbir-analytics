@@ -5,7 +5,7 @@ Optimizations:
 - Parallel chunk downloads (configurable concurrency)
 - Direct streaming to S3 multipart upload
 - Automatic retry and resume capability across runs
-- Preserves upload state on failure for next run to resume
+- Batch processing to avoid memory issues
 """
 
 import argparse
@@ -28,18 +28,10 @@ def get_all_uploaded_parts(s3_client, bucket: str, key: str, upload_id: str) -> 
 
     while True:
         response = s3_client.list_parts(
-            Bucket=bucket,
-            Key=key,
-            UploadId=upload_id,
-            PartNumberMarker=part_marker,
+            Bucket=bucket, Key=key, UploadId=upload_id, PartNumberMarker=part_marker
         )
-
         for part in response.get("Parts", []):
-            parts[part["PartNumber"]] = {
-                "ETag": part["ETag"],
-                "PartNumber": part["PartNumber"],
-            }
-
+            parts[part["PartNumber"]] = {"ETag": part["ETag"], "PartNumber": part["PartNumber"]}
         if not response.get("IsTruncated", False):
             break
         part_marker = response.get("NextPartNumberMarker", 0)
@@ -47,12 +39,48 @@ def get_all_uploaded_parts(s3_client, bucket: str, key: str, upload_id: str) -> 
     return parts
 
 
+async def download_and_upload_chunk(
+    s3_client, s3_bucket: str, s3_key: str, upload_id: str,
+    source_url: str, chunk: DownloadChunk, semaphore: asyncio.Semaphore,
+    stats: dict, total_chunks: int, file_size: int
+) -> dict:
+    """Download a single chunk and upload to S3."""
+    async with semaphore:
+        part_num = chunk.chunk_id + 1
+        chunk_start = time.time()
+
+        async with aiohttp.ClientSession() as sess:
+            downloaded = await download_chunk(sess, source_url, chunk)
+
+            part_response = s3_client.upload_part(
+                Bucket=s3_bucket, Key=s3_key, PartNumber=part_num,
+                UploadId=upload_id, Body=downloaded.data
+            )
+
+            stats["completed"] += 1
+            chunk_bytes = len(downloaded.data)
+            stats["bytes_done"] += chunk_bytes
+
+            elapsed = time.time() - stats["start_time"]
+            speed = stats["bytes_done"] / elapsed / 1024 / 1024 if elapsed > 0 else 0
+            pct = stats["completed"] / total_chunks * 100
+            eta = (file_size - stats["bytes_done"]) / (stats["bytes_done"] / elapsed) / 60 if stats["bytes_done"] > 0 else 0
+
+            print(
+                f"✅ Part {stats['completed']:4d}/{total_chunks} ({pct:5.1f}%) | "
+                f"{chunk_bytes / 1024 / 1024:5.1f} MB in {time.time() - chunk_start:4.1f}s | "
+                f"{speed:5.1f} MB/s | ETA: {eta:5.1f}m"
+            )
+
+            # Clear downloaded data immediately to free memory
+            del downloaded.data
+
+            return {"ETag": part_response["ETag"], "PartNumber": part_num}
+
+
 async def parallel_download_to_s3(
-    source_url: str,
-    s3_bucket: str,
-    s3_key: str,
-    chunk_size: int = 50 * 1024 * 1024,  # 50 MB
-    max_concurrent: int = 10,
+    source_url: str, s3_bucket: str, s3_key: str,
+    chunk_size: int = 50 * 1024 * 1024, max_concurrent: int = 3
 ) -> dict:
     """Download file in parallel and upload to S3 with resume support."""
     overall_start = time.time()
@@ -74,7 +102,7 @@ async def parallel_download_to_s3(
     print(f"🔗 Source: {source_url}")
     print(f"📦 S3 destination: s3://{s3_bucket}/{s3_key}")
 
-    # Find existing multipart upload for this exact key
+    # Find existing multipart upload
     existing_uploads = s3_client.list_multipart_uploads(Bucket=s3_bucket, Prefix=s3_key)
     upload_id = None
     existing_parts = {}
@@ -113,61 +141,38 @@ async def parallel_download_to_s3(
         print("✅ All parts already uploaded, completing upload...")
         all_parts = list(existing_parts.values())
     else:
-        # Download remaining chunks
         semaphore = asyncio.Semaphore(max_concurrent)
-        completed = len(existing_parts)
-        bytes_done = len(existing_parts) * chunk_size
-        download_start = time.time()
+        stats = {
+            "completed": len(existing_parts),
+            "bytes_done": len(existing_parts) * chunk_size,
+            "start_time": time.time()
+        }
         new_parts = []
-
-        async def download_and_upload(chunk: DownloadChunk) -> dict:
-            nonlocal completed, bytes_done
-
-            async with semaphore:
-                part_num = chunk.chunk_id + 1
-                chunk_start = time.time()
-
-                async with aiohttp.ClientSession() as sess:
-                    downloaded = await download_chunk(sess, source_url, chunk)
-
-                    part_response = s3_client.upload_part(
-                        Bucket=s3_bucket,
-                        Key=s3_key,
-                        PartNumber=part_num,
-                        UploadId=upload_id,
-                        Body=downloaded.data,
-                    )
-
-                    completed += 1
-                    chunk_bytes = len(downloaded.data)
-                    bytes_done += chunk_bytes
-
-                    elapsed = time.time() - download_start
-                    speed = bytes_done / elapsed / 1024 / 1024 if elapsed > 0 else 0
-                    pct = completed / total_chunks * 100
-                    eta = (file_size - bytes_done) / (bytes_done / elapsed) / 60 if bytes_done > 0 else 0
-
-                    print(
-                        f"✅ Part {completed:4d}/{total_chunks} ({pct:5.1f}%) | "
-                        f"{chunk_bytes / 1024 / 1024:5.1f} MB in {time.time() - chunk_start:4.1f}s | "
-                        f"{speed:5.1f} MB/s | ETA: {eta:5.1f}m"
-                    )
-
-                    return {"ETag": part_response["ETag"], "PartNumber": part_num}
 
         print("🚀 Starting download...")
         try:
-            new_parts = await asyncio.gather(*[download_and_upload(c) for c in remaining_chunks])
+            # Process in batches to avoid memory issues
+            batch_size = max_concurrent * 10  # Process 30 chunks at a time
+            for i in range(0, len(remaining_chunks), batch_size):
+                batch = remaining_chunks[i:i + batch_size]
+                batch_results = await asyncio.gather(*[
+                    download_and_upload_chunk(
+                        s3_client, s3_bucket, s3_key, upload_id,
+                        source_url, chunk, semaphore, stats, total_chunks, file_size
+                    )
+                    for chunk in batch
+                ])
+                new_parts.extend(batch_results)
+
         except Exception as e:
-            # Don't abort - preserve progress for next run
             print()
             print("=" * 80)
             print("⚠️  DOWNLOAD INTERRUPTED - Progress saved for resume")
             print("=" * 80)
             print(f"Error: {e}")
             print(f"Upload ID: {upload_id}")
-            print(f"Parts completed: {completed}/{total_chunks}")
-            print(f"Progress: {bytes_done / 1024 / 1024 / 1024:.2f} GB")
+            print(f"Parts completed: {stats['completed']}/{total_chunks}")
+            print(f"Progress: {stats['bytes_done'] / 1024 / 1024 / 1024:.2f} GB")
             print("Run again to resume from this point.")
             print("=" * 80)
             raise
@@ -178,10 +183,8 @@ async def parallel_download_to_s3(
     print()
     print("🔄 Completing multipart upload...")
     s3_client.complete_multipart_upload(
-        Bucket=s3_bucket,
-        Key=s3_key,
-        UploadId=upload_id,
-        MultipartUpload={"Parts": sorted(all_parts, key=lambda p: p["PartNumber"])},
+        Bucket=s3_bucket, Key=s3_key, UploadId=upload_id,
+        MultipartUpload={"Parts": sorted(all_parts, key=lambda p: p["PartNumber"])}
     )
 
     total_time = time.time() - overall_start
@@ -225,15 +228,12 @@ def main():
     else:
         source_url = args.source_url
 
-    # Use consistent S3 key based on source filename (not today's date)
-    # This ensures resume works across runs
+    # Use consistent S3 key based on source filename
     filename = source_url.split("/")[-1]
     if args.s3_key:
         s3_key = args.s3_key
     else:
-        # Extract date from filename (usaspending-db_20251106.zip -> 2025-11-06)
         import re
-
         match = re.search(r"(\d{4})(\d{2})(\d{2})", filename)
         if match:
             file_date = f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
@@ -246,10 +246,8 @@ def main():
     try:
         asyncio.run(
             parallel_download_to_s3(
-                source_url=source_url,
-                s3_bucket=args.s3_bucket,
-                s3_key=s3_key,
-                max_concurrent=args.max_concurrent,
+                source_url=source_url, s3_bucket=args.s3_bucket,
+                s3_key=s3_key, max_concurrent=args.max_concurrent
             )
         )
         sys.exit(0)
