@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+# Group these tests to run on same worker - they modify sys.modules and chdir
+pytestmark = pytest.mark.xdist_group("transition_mvp")
+
 
 def _unwrap_output(result):
     """
