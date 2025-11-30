@@ -55,24 +55,26 @@ jobs:
         with:
           python-version: "3.11"
           install-dev-deps: "false"
-          cache-venv: "true"
+          cache-venv: "false"  # Don't cache - we install different deps based on job
           cache-pytest: "false"
-          install-pyreadstat: "true"
+          install-pyreadstat: "false"
 
       - name: Install R (for fiscal analysis)
         if: github.event.inputs.job_name == 'fiscal_returns_mvp' || github.event.inputs.job_name == 'all_analysis_jobs' || github.event_name == 'schedule'
         run: |
           sudo apt-get update
           sudo apt-get install -y r-base r-base-dev
+          echo "R_HOME=/usr/lib/R" >> $GITHUB_ENV
 
       - name: Install analysis dependencies
         run: |
-          # Install heavy ML/fiscal extras that aren't in base dependencies
+          # Install dagster for job execution
           uv pip install dagster dagster-cloud
 
           # Install R integration only if R is available (fiscal analysis)
           if command -v R &> /dev/null; then
             echo "R found, installing rpy2..."
+            export R_HOME=/usr/lib/R
             uv pip install "rpy2>=3.5.0,<4.0.0"
           else
             echo "R not found, skipping rpy2 (fiscal jobs will not be available)"

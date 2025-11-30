@@ -95,9 +95,9 @@ runs:
           pytest-${{ runner.os }}-${{ inputs.python-version }}-
 
     - name: Install dependencies
-      env:
-        RPY2_CFFI_MODE: ABI  # Build rpy2 in ABI mode without requiring R (for CI)
       run: |
+        # Note: R dependencies (rpy2) are excluded by default since they require R to build
+        # Use install-r-deps input to include them when R is installed
         if [ "${{ inputs.install-dev-deps }}" = "true" ]; then
           uv sync --extra dev
         else
