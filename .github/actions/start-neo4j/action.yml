@@ -10,11 +10,11 @@ inputs:
     description: Neo4j Docker image
     required: false
     default: "neo4j:5"
-  username:
+  neo4j-user:
     description: Neo4j username
     required: false
     default: "neo4j"
-  password:
+  neo4j-password:
     description: Neo4j password
     required: false
     default: "password"
@@ -35,7 +35,7 @@ runs:
       shell: bash
       run: |
         docker run -d --name ${{ inputs.container-name }} \
-          -e NEO4J_AUTH=${{ inputs.username }}/${{ inputs.password }} \
+          -e NEO4J_AUTH=${{ inputs.neo4j-user }}/${{ inputs.neo4j-password }} \
           -p 7687:7687 -p 7474:7474 \
           ${{ inputs.neo4j-image }}
 
@@ -50,5 +50,5 @@ runs:
       shell: bash
       run: |
         echo "NEO4J_URI=bolt://localhost:7687" >> $GITHUB_ENV
-        echo "NEO4J_USER=${{ inputs.username }}" >> $GITHUB_ENV
-        echo "NEO4J_PASSWORD=${{ inputs.password }}" >> $GITHUB_ENV
+        echo "NEO4J_USER=${{ inputs.neo4j-user }}" >> $GITHUB_ENV
+        echo "NEO4J_PASSWORD=${{ inputs.neo4j-password }}" >> $GITHUB_ENV
