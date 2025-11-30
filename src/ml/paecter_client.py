@@ -208,8 +208,8 @@ class PaECTERClient:
                 for i, embedding in cached_embeddings:
                     embeddings[i] = embedding
 
-                for i, embedding in zip(indices_to_process, new_embeddings, strict=False):
-                    embeddings[i] = embedding
+                for idx, embedding in zip(indices_to_process, new_embeddings, strict=False):
+                    embeddings[idx] = embedding
             else:
                 embeddings = new_embeddings
 
