@@ -1,3 +1,4 @@
+# Lambda layer dependencies for lightweight functions
+# Note: pandas/numpy removed - caused import errors in Lambda environment
+# Functions needing heavy data processing should use Dagster Cloud instead
 requests>=2.31.0
-pandas>=2.2.0
-numpy>=1.26.0
