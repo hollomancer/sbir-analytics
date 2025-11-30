@@ -141,6 +141,17 @@ class SecurityStack(Stack):
                 )
             )
 
+            # CloudFormation permissions for CDK deployments
+            self.github_actions_role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "cloudformation:*",
+                    ],
+                    resources=["*"],
+                )
+            )
+
         else:
             # Import existing roles (default)
             # Import Lambda execution role
