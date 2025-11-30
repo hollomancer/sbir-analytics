@@ -491,7 +491,7 @@ def neo4j_sbir_awards(
                 # Skip records with zero or missing award amounts (likely cancelled/placeholder awards)
                 award_amount = normalized_dict.get("award_amount")
                 if award_amount is None or (
-                    isinstance(award_amount, (int, float)) and award_amount <= 0
+                    isinstance(award_amount, int | float) and award_amount <= 0
                 ):
                     # Try to identify the award for logging
                     tracking = normalized_dict.get("agency_tracking_number", "")

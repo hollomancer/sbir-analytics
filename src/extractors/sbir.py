@@ -235,7 +235,7 @@ class SbirDuckDBExtractor:
         # columns_meta is a list of tuples from DESCRIBE (column_name, type, null, key, default, extra)
         columns = []
         for c in columns_meta:
-            if isinstance(c, (tuple, list)) and len(c) > 0:
+            if isinstance(c, tuple | list) and len(c) > 0:
                 # First element is column name
                 columns.append(str(c[0]))
             elif isinstance(c, dict):

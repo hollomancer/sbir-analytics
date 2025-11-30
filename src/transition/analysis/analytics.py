@@ -432,8 +432,183 @@ class TransitionAnalytics:
             summary["avg_time_to_transition_by_agency"] = (
                 ttt_agency.head(10).to_dict(orient="records") if not ttt_agency.empty else []
             )
+        else:
+            summary["avg_time_to_transition_by_agency"] = []
+
+        # CET-related metrics (empty lists if not available)
+        summary["cet_area_transition_rates"] = []
+        summary["avg_time_to_transition_by_cet_area"] = []
+        summary["patent_backed_rates_by_cet_area"] = []
 
         return summary
+
+    # -----------------------
+    # CET-related methods
+    # -----------------------
+
+    def compute_transition_rates_by_cet_area(
+        self,
+        awards_df: pd.DataFrame,
+        transitions_df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Compute transition rates grouped by CET area.
+
+        Returns DataFrame with columns: cet_area, total_awards, transitioned_awards, rate
+        """
+        # Check if cet_area column exists
+        cet_col = _first_col(awards_df, ["cet_area", "CET_area", "cet"])
+        if not cet_col:
+            return pd.DataFrame(columns=["cet_area", "total_awards", "transitioned_awards", "rate"])
+
+        # Get award_id column
+        award_id_col = _first_col(awards_df, ["award_id", "Award_id", "id"])
+        if not award_id_col:
+            return pd.DataFrame(columns=["cet_area", "total_awards", "transitioned_awards", "rate"])
+
+        # Filter transitions by score threshold
+        trans_award_id_col = _first_col(transitions_df, ["award_id", "Award_id", "id"])
+        if not trans_award_id_col:
+            return pd.DataFrame(columns=["cet_area", "total_awards", "transitioned_awards", "rate"])
+
+        qualified = transitions_df[transitions_df["score"] >= self.score_threshold]
+        transitioned_award_ids = set(qualified[trans_award_id_col].unique())
+
+        # Group by CET area
+        results = []
+        for cet_area in awards_df[cet_col].unique():
+            cet_awards = awards_df[awards_df[cet_col] == cet_area]
+            total = len(cet_awards)
+            transitioned = len(cet_awards[cet_awards[award_id_col].isin(transitioned_award_ids)])
+            rate = transitioned / total if total > 0 else 0.0
+
+            results.append(
+                {
+                    "cet_area": cet_area,
+                    "total_awards": total,
+                    "transitioned_awards": transitioned,
+                    "rate": rate,
+                }
+            )
+
+        return pd.DataFrame(results)
+
+    def compute_avg_time_to_transition_by_cet_area(
+        self,
+        awards_df: pd.DataFrame,
+        transitions_df: pd.DataFrame,
+        contracts_df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Compute average time to transition grouped by CET area.
+
+        Returns DataFrame with columns: cet_area, avg_days_to_transition, count
+        """
+        # Check if required columns exist
+        cet_col = _first_col(awards_df, ["cet_area", "CET_area", "cet"])
+        award_date_col = _first_col(awards_df, ["completion_date", "award_date", "date"])
+        contract_date_col = _first_col(contracts_df, ["action_date", "start_date", "date"])
+
+        if not all([cet_col, award_date_col, contract_date_col]):
+            return pd.DataFrame(columns=["cet_area", "avg_days_to_transition", "count"])
+
+        # Merge data
+        award_id_col = _first_col(awards_df, ["award_id", "Award_id", "id"])
+        trans_award_id_col = _first_col(transitions_df, ["award_id", "Award_id", "id"])
+        contract_id_col = _first_col(contracts_df, ["contract_id", "Contract_id", "id"])
+        trans_contract_id_col = _first_col(transitions_df, ["contract_id", "Contract_id", "id"])
+
+        if not all([award_id_col, trans_award_id_col, contract_id_col, trans_contract_id_col]):
+            return pd.DataFrame(columns=["cet_area", "avg_days_to_transition", "count"])
+
+        # Filter by score threshold
+        qualified = transitions_df[transitions_df["score"] >= self.score_threshold]
+
+        # Merge to get dates
+        merged = qualified.merge(
+            awards_df[[award_id_col, cet_col, award_date_col]],
+            left_on=trans_award_id_col,
+            right_on=award_id_col,
+            how="left",
+        ).merge(
+            contracts_df[[contract_id_col, contract_date_col]],
+            left_on=trans_contract_id_col,
+            right_on=contract_id_col,
+            how="left",
+        )
+
+        # Calculate days to transition
+        merged["days_to_transition"] = (
+            pd.to_datetime(merged[contract_date_col]) - pd.to_datetime(merged[award_date_col])
+        ).dt.days
+
+        # Group by CET area
+        result = (
+            merged.groupby(cet_col)["days_to_transition"]
+            .agg(["mean", "count"])
+            .reset_index()
+            .rename(columns={cet_col: "cet_area", "mean": "avg_days_to_transition"})
+        )
+
+        return result
+
+    def compute_patent_backed_transition_rates_by_cet_area(
+        self,
+        awards_df: pd.DataFrame,
+        transitions_df: pd.DataFrame,
+        patents_df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """
+        Compute patent-backed transition rates grouped by CET area.
+
+        Returns DataFrame with columns: cet_area, total_transitions, patent_backed, rate
+        """
+        # Check if required columns exist
+        cet_col = _first_col(awards_df, ["cet_area", "CET_area", "cet"])
+        if not cet_col:
+            return pd.DataFrame(columns=["cet_area", "total_transitions", "patent_backed", "rate"])
+
+        award_id_col = _first_col(awards_df, ["award_id", "Award_id", "id"])
+        trans_award_id_col = _first_col(transitions_df, ["award_id", "Award_id", "id"])
+        patent_award_id_col = _first_col(patents_df, ["award_id", "Award_id", "id"])
+
+        if not all([award_id_col, trans_award_id_col, patent_award_id_col]):
+            return pd.DataFrame(columns=["cet_area", "total_transitions", "patent_backed", "rate"])
+
+        # Filter by score threshold
+        qualified = transitions_df[transitions_df["score"] >= self.score_threshold]
+
+        # Get patent-backed award IDs
+        patent_backed_ids = set(patents_df[patent_award_id_col].unique())
+
+        # Merge transitions with awards to get CET areas
+        merged = qualified.merge(
+            awards_df[[award_id_col, cet_col]],
+            left_on=trans_award_id_col,
+            right_on=award_id_col,
+            how="left",
+        )
+
+        # Group by CET area
+        results = []
+        for cet_area in merged[cet_col].unique():
+            cet_transitions = merged[merged[cet_col] == cet_area]
+            total = len(cet_transitions)
+            patent_backed = len(
+                cet_transitions[cet_transitions[trans_award_id_col].isin(patent_backed_ids)]
+            )
+            rate = patent_backed / total if total > 0 else 0.0
+
+            results.append(
+                {
+                    "cet_area": cet_area,
+                    "total_transitions": total,
+                    "patent_backed": patent_backed,
+                    "rate": rate,
+                }
+            )
+
+        return pd.DataFrame(results)
 
 
 __all__ = ["TransitionAnalytics", "RateResult"]

@@ -57,7 +57,7 @@ class TaxParameterConfig(BaseModel):
 
         normalized: dict[str, Any] = dict(value)
         for key, raw in normalized.items():
-            if "rate" in key and isinstance(raw, (int, float)):
+            if "rate" in key and isinstance(raw, int | float):
                 rate = float(raw)
                 if not (0.0 <= rate <= 1.0):
                     raise ValueError(f"Tax rate {key} must be between 0.0 and 1.0, got {rate}")
@@ -117,7 +117,7 @@ class SensitivityConfig(BaseModel):
         for param_name, param_config in normalized.items():
             if isinstance(param_config, dict) and "variation_percent" in param_config:
                 variation = param_config["variation_percent"]
-                if isinstance(variation, (int, float)):
+                if isinstance(variation, int | float):
                     variation = float(variation)
                     if not (0.0 <= variation <= 1.0):
                         raise ValueError(

@@ -19,21 +19,27 @@ def test_transition_detector_smoke(
     transition_contracts_sample: pd.DataFrame,
 ):
     """Run a light detection pass to ensure the detector executes end-to-end."""
+    from src.models.transition_models import FederalContract
+
+    # Convert contracts DataFrame to FederalContract objects
+    contracts = [
+        FederalContract(**row.to_dict()) for _, row in transition_contracts_sample.iterrows()
+    ]
+
     detections = []
     for _, award in transition_awards_sample.iloc[:20].iterrows():
-        dets = transition_detector.detect_transitions_for_award(
-            award_dict=award.to_dict(),
-            contracts_df=transition_contracts_sample,
-            score_threshold=0.5,
+        dets = transition_detector.detect_for_award(
+            award=award.to_dict(),
+            candidate_contracts=contracts,
         )
         detections.extend(dets)
 
     assert isinstance(detections, list)
     if detections:
         detection = detections[0]
-        assert "award_id" in detection
-        assert "contract_id" in detection
-        assert "score" in detection
+        assert hasattr(detection, "award_id")
+        assert hasattr(detection, "contract_id")
+        assert hasattr(detection, "score")
 
 
 def test_transition_pipeline_summary(

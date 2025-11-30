@@ -91,13 +91,13 @@ def normalize_path_list(
         >>> normalize_path_list(["file1.csv", "file2.csv"])
         [Path('file1.csv'), Path('file2.csv')]
     """
-    if isinstance(path_or_paths, (str, Path)):
+    if isinstance(path_or_paths, str | Path):
         return [Path(path_or_paths)]
 
     if isinstance(path_or_paths, Iterable):
         paths: list[Path] = []
         for item in path_or_paths:
-            if isinstance(item, (str, Path)):
+            if isinstance(item, str | Path):
                 paths.append(Path(item))
             else:
                 raise TypeError(f"Unsupported path entry type: {type(item)!r}")

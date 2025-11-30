@@ -48,7 +48,7 @@ def test_iter_public_jobs_returns_job_definitions():
 
     jobs = assets_pkg.iter_public_jobs()
     assert jobs, "Auto-discovery should return registered jobs"
-    assert all(isinstance(job, (JobDefinition, UnresolvedAssetJobDefinition)) for job in jobs)
+    assert all(isinstance(job, JobDefinition | UnresolvedAssetJobDefinition) for job in jobs)
     assert any(job.name == "transition_full_job" for job in jobs)
 
 

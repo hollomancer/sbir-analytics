@@ -32,11 +32,11 @@ def _to_python_type(value):
     """Convert numpy/pandas types to Python native types for Dagster metadata."""
     import numpy as np
 
-    if isinstance(value, (np.integer, np.int64, np.int32)):
+    if isinstance(value, np.integer | np.int64 | np.int32):
         return int(value)
-    elif isinstance(value, (np.floating, np.float64, np.float32)):
+    elif isinstance(value, np.floating | np.float64 | np.float32):
         return float(value)
-    elif isinstance(value, (np.bool_, bool)):
+    elif isinstance(value, np.bool_ | bool):
         return bool(value)
     return value
 

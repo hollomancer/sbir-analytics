@@ -101,7 +101,7 @@ def _iso_date(val: str | date | datetime | None) -> str | None:
         return None
 
     # If it's already a date/datetime, format directly
-    if isinstance(val, (date, datetime)):
+    if isinstance(val, date | datetime):
         return format_date_iso(val)
 
     # If it's a string, parse it first

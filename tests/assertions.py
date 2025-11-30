@@ -41,7 +41,7 @@ def assert_valid_extraction_metadata(
     # Validate types
     assert isinstance(metadata["columns"], list), "Columns should be a list"
     assert isinstance(metadata["column_count"], int), "Column count should be int"
-    assert isinstance(metadata["row_count"], (int, str)), "Row count should be int/str"
+    assert isinstance(metadata["row_count"], int | str), "Row count should be int/str"
 
     # Validate consistency
     assert len(metadata["columns"]) == metadata["column_count"], (

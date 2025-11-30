@@ -50,7 +50,7 @@ class TestGetPhoneticCode:
 
         # If jellyfish is available, should return tuple or string
         # If not, returns None
-        assert result is None or isinstance(result, (str, tuple))
+        assert result is None or isinstance(result, str | tuple)
 
     def test_get_phonetic_code_unknown_algorithm(self):
         """Test get_phonetic_code with unknown algorithm."""

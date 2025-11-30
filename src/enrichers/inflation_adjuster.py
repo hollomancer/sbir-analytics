@@ -316,7 +316,7 @@ class InflationAdjuster:
                 # Handle different date formats
                 try:
                     # If it's already a year (integer or numeric, including numpy types)
-                    if isinstance(value, (int, float, np.integer, np.floating)):
+                    if isinstance(value, int | float | np.integer | np.floating):
                         year_val = int(value)
                         if 1980 <= year_val <= 2030:
                             return year_val

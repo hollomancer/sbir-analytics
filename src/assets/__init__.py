@@ -136,7 +136,7 @@ def iter_public_jobs() -> list[JobDefinition]:
     jobs: list[JobDefinition] = []
     for module in iter_job_modules():
         for value in vars(module).values():
-            if isinstance(value, (JobDefinition, UnresolvedAssetJobDefinition)):
+            if isinstance(value, JobDefinition | UnresolvedAssetJobDefinition):
                 jobs.append(value)  # type: ignore[arg-type]
     return jobs
 

@@ -26,7 +26,7 @@ def parse_date(
         return None
 
     # Handle pandas NaT - must check before isinstance checks
-    if isinstance(value, (pd.Timestamp, type(pd.NaT))):
+    if isinstance(value, pd.Timestamp | type(pd.NaT)):
         if pd.isna(value):
             return None
         # Valid pandas Timestamp

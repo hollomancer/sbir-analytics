@@ -175,7 +175,7 @@ class HTMLReportBuilder:
             for header in headers:
                 value = row.get(header, "")
                 # Format value if it's a number
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     if isinstance(value, float):
                         value = f"{value:.2f}"
                     else:

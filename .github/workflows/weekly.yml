@@ -210,10 +210,9 @@ jobs:
       - name: Wait for Neo4j
         uses: ./.github/actions/wait-for-neo4j
         with:
-          neo4j-uri: "bolt://localhost:7687"
-          neo4j-username: ${{ env.NEO4J_USERNAME }}
-          neo4j-password: ${{ env.NEO4J_PASSWORD }}
-          timeout-seconds: "60"
+          method: "tcp"
+          port: "7687"
+          timeout: "60"
 
       - name: Run comprehensive test suite
         env:

@@ -90,7 +90,7 @@ try:
             preview = ""
             if isinstance(value, str):
                 preview = f" = '{value[:50]}...'" if len(value) > 50 else f" = '{value}'"
-            elif isinstance(value, (list, dict)):
+            elif isinstance(value, list | dict):
                 preview = f" ({len(value)} items)"
             print(f"  - {key}: {value_type}{preview}")
 
@@ -105,7 +105,7 @@ try:
             preview = ""
             if isinstance(value, str):
                 preview = f" = '{value[:50]}...'" if len(value) > 50 else f" = '{value}'"
-            elif isinstance(value, (list, dict)):
+            elif isinstance(value, list | dict):
                 preview = f" ({len(value)} items)"
             print(f"  - {key}: {value_type}{preview}")
 

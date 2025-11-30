@@ -102,6 +102,7 @@ class TestParquetLoading:
                 parquet_path="/nonexistent/file.parquet", use_s3_first=False
             )
 
+    @pytest.mark.skip(reason="Requires large local data file - only available locally")
     def test_load_parquet_s3_first(
         self,
         extractor_with_mock_config,

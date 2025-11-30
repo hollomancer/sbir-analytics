@@ -37,7 +37,11 @@ def test_transition_quality_metrics_smoke():
     """Precision/recall evaluation meets reasonable bounds."""
     detections, ground_truth = _build_evaluation_payload()
     evaluator = TransitionEvaluator(score_threshold=0.6)
-    result = evaluator.evaluate(detections_df=detections, ground_truth_df=ground_truth)
+    result = evaluator.evaluate(
+        detections_df=detections,
+        ground_truth_df=ground_truth,
+        score_column="score",
+    )
 
     assert 0 <= result.precision <= 1
     assert 0 <= result.recall <= 1
@@ -48,7 +52,11 @@ def test_transition_confidence_band_metrics():
     """Confidence breakdown includes high-confidence improvements."""
     detections, ground_truth = _build_evaluation_payload()
     evaluator = TransitionEvaluator(score_threshold=0.6)
-    result = evaluator.evaluate(detections_df=detections, ground_truth_df=ground_truth)
+    result = evaluator.evaluate(
+        detections_df=detections,
+        ground_truth_df=ground_truth,
+        score_column="score",
+    )
 
     assert result.by_confidence
     high_metrics = result.by_confidence.get("high")

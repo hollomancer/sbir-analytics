@@ -69,7 +69,7 @@ def _to_jsonable(x: Any) -> Any:
     # Containers
     if isinstance(x, dict):
         return {str(k): _to_jsonable(v) for k, v in x.items()}
-    if isinstance(x, (list, tuple, set)):
+    if isinstance(x, list | tuple | set):
         return [_to_jsonable(v) for v in list(x)]
 
     return x
