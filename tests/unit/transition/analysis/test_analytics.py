@@ -359,7 +359,7 @@ class TestComputeCompanyTransitionRate:
         uei001_row = company_df[company_df["company_id"] == "uei:UEI001"].iloc[0]
         assert uei001_row["total_awards"] == 2
         assert uei001_row["transitioned_awards"] == 1
-        assert uei001_row["transitioned"] is True
+        assert uei001_row["transitioned"] == True  # noqa: E712
 
     def test_compute_company_transition_rate_sorted(
         self, analytics, sample_awards, sample_transitions
@@ -368,7 +368,7 @@ class TestComputeCompanyTransitionRate:
         _, company_df = analytics.compute_company_transition_rate(sample_awards, sample_transitions)
 
         # First rows should be companies that transitioned
-        assert company_df.iloc[0]["transitioned"] is True
+        assert company_df.iloc[0]["transitioned"] == True  # noqa: E712
         # Within transitioned, should be sorted by total_awards descending
 
 

@@ -269,7 +269,7 @@ class TestCompanyCETMatrix:
 
         # Should create placeholder row
         assert len(matrix) == 1
-        assert matrix.iloc[0]["has_cet"] is False
+        assert matrix.iloc[0]["has_cet"] == False  # noqa: E712
 
 
 class TestCompanyCETAggregatorEdgeCases:
