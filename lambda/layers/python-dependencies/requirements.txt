@@ -2,3 +2,4 @@
 # Note: pandas/numpy removed - caused import errors in Lambda environment
 # Functions needing heavy data processing should use Dagster Cloud instead
 requests>=2.31.0
+neo4j>=5.0.0
