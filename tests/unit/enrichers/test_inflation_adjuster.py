@@ -22,6 +22,7 @@ from src.enrichers.inflation_adjuster import (
     InflationAdjustmentResult,
     adjust_awards_for_inflation,
 )
+from tests.assertions import assert_dataframe_has_columns
 
 
 pytestmark = pytest.mark.fast
@@ -283,9 +284,10 @@ class TestInflationAdjuster:
 
         enriched_df = adjuster.adjust_awards_dataframe(awards_df, 2023)
 
-        assert "fiscal_adjusted_amount" in enriched_df.columns
-        assert "fiscal_inflation_factor" in enriched_df.columns
-        assert "fiscal_inflation_confidence" in enriched_df.columns
+        assert_dataframe_has_columns(
+            enriched_df,
+            ["fiscal_adjusted_amount", "fiscal_inflation_factor", "fiscal_inflation_confidence"],
+        )
         assert len(enriched_df) == 3
         # All should be successfully adjusted
         assert (enriched_df["fiscal_inflation_method"] != "error").sum() == 3

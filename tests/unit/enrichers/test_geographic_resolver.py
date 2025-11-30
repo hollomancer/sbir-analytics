@@ -16,6 +16,7 @@ from src.enrichers.geographic_resolver import (
     GeographicResolver,
     resolve_award_geography,
 )
+from tests.assertions import assert_dataframe_has_columns
 
 
 pytestmark = pytest.mark.fast
@@ -415,9 +416,9 @@ class TestResolveAwardsDataFrame:
 
         result_df = resolver.resolve_awards_dataframe(df)
 
-        assert "fiscal_state_code" in result_df.columns
-        assert "fiscal_state_name" in result_df.columns
-        assert "fiscal_geo_confidence" in result_df.columns
+        assert_dataframe_has_columns(
+            result_df, ["fiscal_state_code", "fiscal_state_name", "fiscal_geo_confidence"]
+        )
         assert result_df["fiscal_state_code"].iloc[0] == "CA"
         assert result_df["fiscal_state_code"].iloc[1] == "NY"
         assert result_df["fiscal_state_code"].iloc[2] == "TX"

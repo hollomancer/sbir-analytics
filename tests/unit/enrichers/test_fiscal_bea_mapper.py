@@ -24,6 +24,7 @@ from src.enrichers.fiscal_bea_mapper import (
     NAICSToBEAResult,
     enrich_awards_with_bea_sectors,
 )
+from tests.assertions import assert_dataframe_has_columns
 
 
 pytestmark = pytest.mark.fast
@@ -313,8 +314,7 @@ class TestNAICSToBEAMapper:
 
         enriched_df = mapper.enrich_awards_with_bea_sectors(awards_df)
 
-        assert "bea_sector_code" in enriched_df.columns
-        assert "bea_mapping_confidence" in enriched_df.columns
+        assert_dataframe_has_columns(enriched_df, ["bea_sector_code", "bea_mapping_confidence"])
         assert len(enriched_df) >= len(awards_df)  # May have multiple rows for weighted allocations
 
     def test_get_mapping_statistics(self, temp_crosswalk_csv, temp_fallback_yaml):
