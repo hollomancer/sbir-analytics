@@ -123,18 +123,25 @@ jobs:
       - name: Check existing SBIR files
         id: check-existing
         run: |
-          echo "## 🎯 SBIR Awards Refresh Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Use shared reporting script for header
+          ./scripts/ci/report-download-status.sh \
+            --title "SBIR Awards Refresh Report" \
+            --emoji "🎯" \
+            --section-level 2
 
-          echo "### 📂 Current S3 Files" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive --human-readable | tail -10 || echo "No existing files"
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Use shared S3 listing script
+          ./scripts/ci/report-s3-files.sh \
+            --title "📂 Current S3 Files" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/sbir/" \
+            --tail 10
 
       - name: Start SBIR refresh Step Functions
         id: sbir-stepfunctions
         run: |
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
           INPUT_PAYLOAD=$(jq -n \
             --arg force_refresh "${{ github.event.inputs.force_refresh || 'false' }}" \
             --arg s3_bucket "${{ env.S3_BUCKET }}" \
@@ -143,11 +150,8 @@ jobs:
               s3_bucket: $s3_bucket
             }')
 
-          echo "### ⚙️ Configuration" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          echo "$INPUT_PAYLOAD" | jq '.' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Display configuration using helper
+          report_config "$INPUT_PAYLOAD"
 
           EXECUTION=$(aws stepfunctions start-execution \
             --state-machine-arn "${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
@@ -160,15 +164,8 @@ jobs:
 
           echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
 
-          echo "### ✅ Step Functions Execution Started" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Execution Name** | \`$EXECUTION_NAME\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Started At** | $START_DATE |" >> $GITHUB_STEP_SUMMARY
-          echo "| **State Machine** | SBIR ETL Pipeline |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Display execution details using helper
+          report_execution_details "$EXECUTION_NAME" "$START_DATE" "SBIR ETL Pipeline" "${{ env.AWS_REGION }}"
           echo "🔗 **Monitor execution:** [AWS Console](https://console.aws.amazon.com/states/home?region=${{ env.AWS_REGION }}#/executions/details/$EXECUTION_ARN)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -214,9 +211,12 @@ jobs:
       - name: Get execution results
         if: always()
         run: |
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
           EXECUTION_ARN="${{ steps.sbir-stepfunctions.outputs.execution_arn }}"
 
-          echo "### 📊 Execution Status" >> $GITHUB_STEP_SUMMARY
+          report_header 3 "📊" "Execution Status"
 
           # Get execution details
           EXECUTION_DETAILS=$(aws stepfunctions describe-execution \
@@ -226,56 +226,50 @@ jobs:
           STATUS=$(echo "$EXECUTION_DETAILS" | jq -r '.status')
           STOP_DATE=$(echo "$EXECUTION_DETAILS" | jq -r '.stopDate // "Still running"')
 
+          # Display status using helper
           if [ "$STATUS" = "SUCCEEDED" ]; then
-            echo "✅ **Status:** SUCCESS" >> $GITHUB_STEP_SUMMARY
+            report_status_badge "success" "Completed at $STOP_DATE"
           elif [ "$STATUS" = "RUNNING" ]; then
-            echo "⏳ **Status:** RUNNING (check console for progress)" >> $GITHUB_STEP_SUMMARY
+            report_status_badge "running" "Check console for progress"
           else
-            echo "❌ **Status:** $STATUS" >> $GITHUB_STEP_SUMMARY
+            report_status_badge "failed" "$STATUS at $STOP_DATE"
           fi
-
-          echo "**Completed:** $STOP_DATE" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Get execution history for errors
           if [ "$STATUS" = "FAILED" ]; then
-            echo "### ❌ Error Details" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            aws stepfunctions get-execution-history \
+            ERROR_DETAILS=$(aws stepfunctions get-execution-history \
               --execution-arn "$EXECUTION_ARN" \
               --region ${{ env.AWS_REGION }} \
               --max-results 10 \
               --reverse-order \
-              | jq '.events[] | select(.type | contains("Failed"))' >> $GITHUB_STEP_SUMMARY || echo "No error details available"
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+              | jq '.events[] | select(.type | contains("Failed"))' || echo "No error details available")
+            report_error "$ERROR_DETAILS"
           fi
 
           # Check CloudWatch logs
-          echo "### 📋 Recent Logs" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
           LOG_GROUP="/aws/lambda/sbir-etl-download"
-          aws logs tail "$LOG_GROUP" --since 5m --format short --region ${{ env.AWS_REGION }} 2>&1 | tail -20 || echo "No recent logs found"
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          LOGS=$(aws logs tail "$LOG_GROUP" --since 5m --format short --region ${{ env.AWS_REGION }} 2>&1 || echo "No recent logs found")
+          report_logs "$LOGS" "Recent Logs" 20
 
       - name: Check downloaded files
         if: always()
         run: |
-          echo "### 📦 Downloaded Files" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "Files in s3://${{ env.S3_BUCKET }}/raw/sbir/:" >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive --human-readable --summarize | tail -20 || echo "No files found"
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
+          # Use S3 listing script
+          ./scripts/ci/report-s3-files.sh \
+            --title "📦 Downloaded Files" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/sbir/" \
+            --tail 20 \
+            --summarize
 
           # Compare before/after
-          echo "### 📈 Changes" >> $GITHUB_STEP_SUMMARY
           CURRENT_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive | wc -l)
-          echo "**Total files:** $CURRENT_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          report_file_changes "$CURRENT_COUNT"
 
-          echo "> ℹ️ The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs." >> $GITHUB_STEP_SUMMARY
+          report_info "The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs."
 
   refresh-usaspending:
     name: Refresh USAspending Database
@@ -305,8 +299,14 @@ jobs:
       - name: Check if new USAspending file available
         id: check-new-file
         run: |
-          echo "## 🔍 USAspending File Availability Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
+          # Use shared reporting script for header
+          ./scripts/ci/report-download-status.sh \
+            --title "USAspending File Availability Check" \
+            --emoji "🔍" \
+            --section-level 2
 
           # Check for new file (exit code 0 = new file, 1 = not new)
           if uv run python scripts/usaspending/check_new_file.py \
@@ -317,19 +317,19 @@ jobs:
             # File is new
             IS_NEW="true"
             echo "is_new=true" >> $GITHUB_OUTPUT
-            echo "### ✅ New File Available" >> $GITHUB_STEP_SUMMARY
+            report_header 3 "✅" "New File Available"
           else
             # File is not new or not available (exit code 1)
             IS_NEW="false"
             echo "is_new=false" >> $GITHUB_OUTPUT
-            echo "### ℹ️ No New File - Using Existing Data" >> $GITHUB_STEP_SUMMARY
+            report_header 3 "ℹ️" "No New File - Using Existing Data"
           fi
 
-          # Display check results
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          cat check_result.json | jq '.' >> $GITHUB_STEP_SUMMARY || echo "No result available" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Display check results using shared script
+          ./scripts/ci/report-download-status.sh \
+            --json-file check_result.json \
+            --json-label "Check Results" \
+            --section-level 4
 
           # Extract and display key information
           if [ -f check_result.json ]; then
@@ -377,81 +377,64 @@ jobs:
       - name: Report USAspending status
         if: always()
         run: |
-          echo "## 💾 USAspending Database Download Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
+          # Use shared reporting script for header
+          ./scripts/ci/report-download-status.sh \
+            --title "USAspending Database Download Report" \
+            --emoji "💾" \
+            --section-level 2
 
           # Check if download was skipped or ran
           if [ "${{ steps.usaspending-download.outcome }}" = "skipped" ]; then
-            echo "### ⏭️ Status: SKIPPED - No New Data Available" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            report_header 3 "⏭️" "Status: SKIPPED - No New Data Available"
             echo "The USAspending database has not changed since the last download." >> $GITHUB_STEP_SUMMARY
             echo "Existing data in S3 is up-to-date." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
-            echo "### ✅ Status: SUCCESS - New Data Downloaded" >> $GITHUB_STEP_SUMMARY
+            report_status_badge "success" "New Data Downloaded"
           elif [ "${{ steps.usaspending-download.outcome }}" = "failure" ]; then
-            echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
+            report_status_badge "failed" "Download failed"
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Extract and display key metrics from output
           if [ -f usaspending_output.txt ]; then
-            echo "### 📊 Download Metrics" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-
-            # Extract key information - show lines with emoji indicators or key summary lines
-            grep -E "File size:|Split into|Max concurrent|Starting parallel|Part [0-9]+/|DOWNLOAD COMPLETE|Total size:|Total parts:|Download time:|Average speed:|S3 location:" usaspending_output.txt | tail -30 >> $GITHUB_STEP_SUMMARY || echo "No metrics found" >> $GITHUB_STEP_SUMMARY
-
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            METRICS=$(grep -E "File size:|Split into|Max concurrent|Starting parallel|Part [0-9]+/|DOWNLOAD COMPLETE|Total size:|Total parts:|Download time:|Average speed:|S3 location:" usaspending_output.txt | tail -30 || echo "No metrics found")
+            report_logs "$METRICS" "📊 Download Metrics" 30
 
             # Show final summary section if it exists
             if grep -q "DOWNLOAD COMPLETE" usaspending_output.txt; then
-              echo "### ✨ Completion Summary" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              # Extract the complete summary block between the two === lines
-              awk '/^=+$/{if(p)exit;p=1}p' usaspending_output.txt | tail -15 >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+              SUMMARY=$(awk '/^=+$/{if(p)exit;p=1}p' usaspending_output.txt | tail -15)
+              report_logs "$SUMMARY" "✨ Completion Summary" 15
             fi
 
             # Show error details if failed
             if grep -q "ERROR DURING DOWNLOAD" usaspending_output.txt; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### ❌ Error Details" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              # Extract error block between === markers
-              awk '/ERROR DURING DOWNLOAD/,/^=+$/' usaspending_output.txt >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+              ERROR_BLOCK=$(awk '/ERROR DURING DOWNLOAD/,/^=+$/' usaspending_output.txt)
+              report_error "$ERROR_BLOCK"
             fi
 
             # Show recent progress
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📈 Recent Progress" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            RECENT_PROGRESS=$(tail -50 usaspending_output.txt)
+            report_logs "$RECENT_PROGRESS" "📈 Recent Progress" 50
           else
-            echo "⚠️ No output file found" >> $GITHUB_STEP_SUMMARY
+            report_warning "No output file found"
           fi
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 S3 Status" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "Latest files in s3://${{ env.S3_BUCKET }}/raw/usaspending/database/:" >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive --human-readable | tail -5 || echo "No files found"
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # S3 Status using shared script
+          ./scripts/ci/report-s3-files.sh \
+            --title "📦 S3 Status" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/usaspending/database/" \
+            --tail 5 \
+            --message "Latest files in s3://${{ env.S3_BUCKET }}/raw/usaspending/database/:"
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📋 Full Output Log" >> $GITHUB_STEP_SUMMARY
-          echo "<details>" >> $GITHUB_STEP_SUMMARY
-          echo "<summary>Click to expand full output</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Full output log in collapsible section
           if [ -f usaspending_output.txt ]; then
-            cat usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            FULL_OUTPUT=$(cat usaspending_output.txt)
+            report_collapsible "📋 Full Output Log - Click to expand" "$FULL_OUTPUT"
           fi
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
   refresh-uspto:
     name: Refresh USPTO Patents
@@ -477,58 +460,70 @@ jobs:
       - name: Trigger USPTO data downloads via Lambda
         id: uspto-lambda
         run: |
-          echo "## 📥 USPTO Patent Data Download Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Source helper functions
+          source ./scripts/ci/report-helpers.sh
+
+          # Use shared reporting script for header
+          ./scripts/ci/report-download-status.sh \
+            --title "USPTO Patent Data Download Report" \
+            --emoji "📥" \
+            --section-level 2
 
           LAMBDA_SUCCESS=true
 
           # PatentsView
-          echo "### 1️⃣ PatentsView Data" >> $GITHUB_STEP_SUMMARY
+          report_header 3 "1️⃣" "PatentsView Data"
           if aws lambda invoke \
             --function-name sbir-analytics-download-uspto \
             --payload '{"dataset": "patentsview", "table_name": "patent"}' \
-            response.json; then
-            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            response_patentsview.json; then
+            ./scripts/ci/report-download-status.sh \
+              --status "success" \
+              --json-file response_patentsview.json \
+              --section-level 4
           else
-            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            ./scripts/ci/report-download-status.sh \
+              --status "failed" \
+              --message "Failed to invoke Lambda" \
+              --section-level 4
             LAMBDA_SUCCESS=false
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Assignments
-          echo "### 2️⃣ Patent Assignments" >> $GITHUB_STEP_SUMMARY
+          report_header 3 "2️⃣" "Patent Assignments"
           if aws lambda invoke \
             --function-name sbir-analytics-download-uspto \
             --payload '{"dataset": "assignments", "format": "csv"}' \
-            response.json; then
-            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            response_assignments.json; then
+            ./scripts/ci/report-download-status.sh \
+              --status "success" \
+              --json-file response_assignments.json \
+              --section-level 4
           else
-            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            ./scripts/ci/report-download-status.sh \
+              --status "failed" \
+              --message "Failed to invoke Lambda" \
+              --section-level 4
             LAMBDA_SUCCESS=false
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           # AI Patents
-          echo "### 3️⃣ AI Patents" >> $GITHUB_STEP_SUMMARY
+          report_header 3 "3️⃣" "AI Patents"
           if aws lambda invoke \
             --function-name sbir-analytics-download-uspto \
             --payload '{"dataset": "ai_patents"}' \
-            response.json; then
-            echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            response_ai_patents.json; then
+            ./scripts/ci/report-download-status.sh \
+              --status "success" \
+              --json-file response_ai_patents.json \
+              --section-level 4
           else
-            echo "❌ Failed to invoke Lambda" >> $GITHUB_STEP_SUMMARY
+            ./scripts/ci/report-download-status.sh \
+              --status "failed" \
+              --message "Failed to invoke Lambda" \
+              --section-level 4
             LAMBDA_SUCCESS=false
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "$LAMBDA_SUCCESS" = "false" ]; then
             echo "::warning::One or more USPTO downloads failed to execute"
@@ -538,48 +533,42 @@ jobs:
       - name: Check S3 uploads
         if: always()
         run: |
-          echo "## 📦 USPTO S3 Upload Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Use shared reporting script for header
+          ./scripts/ci/report-download-status.sh \
+            --title "USPTO S3 Upload Status" \
+            --emoji "📦" \
+            --section-level 2
 
-          echo "### 📂 Downloaded Files with Details" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Use shared S3 listing scripts for each dataset
+          ./scripts/ci/report-s3-files.sh \
+            --title "**PatentsView:**" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/uspto/patentsview/" \
+            --tail 5 \
+            --section-level 3
 
-          # PatentsView
-          echo "**PatentsView:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          ./scripts/ci/report-s3-files.sh \
+            --title "**Assignments:**" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/uspto/assignments/" \
+            --tail 5 \
+            --section-level 3
 
-          # Assignments
-          echo "**Assignments:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          ./scripts/ci/report-s3-files.sh \
+            --title "**AI Patents:**" \
+            --s3-bucket "${{ env.S3_BUCKET }}" \
+            --s3-prefix "raw/uspto/ai_patents/" \
+            --tail 5 \
+            --section-level 3
 
-          # AI Patents
-          echo "**AI Patents:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Summary from Lambda responses
-          echo "### 📊 Download Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Dataset | Status | File Size | S3 Key |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|--------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Extract info from response files if they exist
-          if [ -f response.json ]; then
-            STATUS=$(jq -r '.body.status // "unknown"' response.json)
-            SIZE=$(jq -r '.body.file_size // 0' response.json)
-            KEY=$(jq -r '.body.s3_key // "N/A"' response.json)
-            SIZE_MB=$(echo "scale=2; $SIZE / 1048576" | bc)
-            echo "| Last Dataset | $STATUS | ${SIZE_MB} MB | \`$KEY\` |" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # Summary from Lambda responses using table helper
+          ./scripts/ci/format-summary-table.sh \
+            --title "📊 Download Summary" \
+            --headers "Dataset,Status,File Size,S3 Key" \
+            --section-level 3 \
+            "PatentsView|$(jq -r '.body.status // "unknown"' response_patentsview.json 2>/dev/null || echo "N/A")|$(jq -r '.body.file_size // 0' response_patentsview.json 2>/dev/null | awk '{printf "%.2f MB", $1/1048576}')|$(jq -r '.body.s3_key // "N/A"' response_patentsview.json 2>/dev/null || echo "N/A")" \
+            "Assignments|$(jq -r '.body.status // "unknown"' response_assignments.json 2>/dev/null || echo "N/A")|$(jq -r '.body.file_size // 0' response_assignments.json 2>/dev/null | awk '{printf "%.2f MB", $1/1048576}')|$(jq -r '.body.s3_key // "N/A"' response_assignments.json 2>/dev/null || echo "N/A")" \
+            "AI Patents|$(jq -r '.body.status // "unknown"' response_ai_patents.json 2>/dev/null || echo "N/A")|$(jq -r '.body.file_size // 0' response_ai_patents.json 2>/dev/null | awk '{printf "%.2f MB", $1/1048576}')|$(jq -r '.body.s3_key // "N/A"' response_ai_patents.json 2>/dev/null || echo "N/A")"
 
   summary:
     name: Refresh Summary
