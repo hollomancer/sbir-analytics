@@ -281,7 +281,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90  # Reduced from 180 with parallel download
+    timeout-minutes: 240  # 4 hours for 217GB download with resume capability
     steps:
       - uses: actions/checkout@v6
 
@@ -305,7 +305,7 @@ jobs:
         id: usaspending-download
         uses: nick-invision/retry@v2
         with:
-          timeout_minutes: 90
+          timeout_minutes: 240
           max_attempts: 3
           retry_wait_seconds: 60
           command: |
