@@ -70,8 +70,8 @@ jobs:
         with:
           container-name: weekly-neo4j
           neo4j-image: ${{ env.NEO4J_IMAGE }}
-          username: ${{ env.NEO4J_USERNAME }}
-          password: ${{ env.NEO4J_PASSWORD }}
+          neo4j-user: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
       - name: Run ${{ matrix.suite }} tests
         run: uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}
@@ -198,8 +198,8 @@ jobs:
         with:
           container-name: comprehensive-neo4j
           neo4j-image: ${{ env.NEO4J_IMAGE }}
-          username: ${{ env.NEO4J_USERNAME }}
-          password: ${{ env.NEO4J_PASSWORD }}
+          neo4j-user: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
           timeout: "60"
 
       - name: Run comprehensive test suite

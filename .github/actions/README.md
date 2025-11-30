@@ -75,8 +75,8 @@ Starts a Neo4j Docker container and waits for it to be ready.
   with:
     container-name: "test-neo4j"    # Optional, default: "test-neo4j"
     neo4j-image: "neo4j:5"          # Optional, default: "neo4j:5"
-    username: "neo4j"               # Optional, default: "neo4j"
-    password: "password"            # Optional, default: "password"  # pragma: allowlist secret
+    neo4j-user: "neo4j"             # Optional, default: "neo4j"
+    neo4j-password: "password"      # Optional, default: "password"  # pragma: allowlist secret
     timeout: "60"                   # Optional, default: "60"
 ```
 
@@ -88,13 +88,21 @@ Starts a Neo4j Docker container and waits for it to be ready.
 - Waits for Neo4j to be ready using TCP health check
 - Sets NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD environment variables
 
-**Note:** Remember to stop the container in a cleanup step:
+**Note:** Use `stop-neo4j` action for cleanup (see below).
+
+---
+
+### `stop-neo4j`
+
+Stops and removes a Neo4j Docker container.
+
+**Usage:**
 ```yaml
 - name: Stop Neo4j
   if: always()
-  run: |
-    docker stop test-neo4j || true
-    docker rm test-neo4j || true
+  uses: ./.github/actions/stop-neo4j
+  with:
+    container-name: "test-neo4j"    # Optional, default: "test-neo4j"
 ```
 
 ---

@@ -220,8 +220,8 @@ jobs:
         with:
           container-name: test-neo4j
           neo4j-image: ${{ env.NEO4J_IMAGE }}
-          username: ${{ env.NEO4J_USERNAME }}
-          password: ${{ env.NEO4J_PASSWORD }}
+          neo4j-user: ${{ env.NEO4J_USERNAME }}
+          neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
       - name: Run ${{ matrix.suite.name }} tests
         env:
