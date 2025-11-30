@@ -106,45 +106,41 @@ class TestEvidenceStatement:
         assert statement.source_location == "abstract"
         assert "quantum" in statement.excerpt
 
-    def test_excerpt_length_validator_accepts_valid(self):
-        """Test excerpt validator accepts text under 60 words."""
-        words = " ".join(["word"] * 50)
-        statement = EvidenceStatement(
-            excerpt=words,
-            source_location="keywords",
-            rationale_tag="test",
-        )
-        assert len(statement.excerpt.split()) == 50
-
-    def test_excerpt_length_validator_rejects_too_long(self):
-        """Test excerpt validator rejects text over 60 words."""
-        words = " ".join(["word"] * 70)
-        with pytest.raises(ValidationError) as exc_info:
-            EvidenceStatement(
-                excerpt=words,
-                source_location="abstract",
-                rationale_tag="test",
-            )
-        assert "approximately 50 words or less" in str(exc_info.value)
-
-    def test_source_location_validator_accepts_valid(self):
-        """Test source_location validator accepts valid locations."""
-        valid_locations = ["abstract", "keywords", "solicitation", "title", "description"]
-        for location in valid_locations:
+    @pytest.mark.parametrize(
+        "word_count,should_pass",
+        [(50, True), (70, False)],
+        ids=["valid_length", "too_long"],
+    )
+    def test_excerpt_length_validator(self, word_count, should_pass):
+        """Test excerpt validator enforces word limit."""
+        words = " ".join(["word"] * word_count)
+        if should_pass:
             statement = EvidenceStatement(
-                excerpt="Test excerpt",
-                source_location=location,
-                rationale_tag="test",
+                excerpt=words, source_location="abstract", rationale_tag="test"
             )
-            assert statement.source_location == location
+            assert len(statement.excerpt.split()) == word_count
+        else:
+            with pytest.raises(ValidationError) as exc_info:
+                EvidenceStatement(excerpt=words, source_location="abstract", rationale_tag="test")
+            assert "approximately 50 words or less" in str(exc_info.value)
+
+    @pytest.mark.parametrize(
+        "location",
+        ["abstract", "keywords", "solicitation", "title", "description"],
+        ids=["abstract", "keywords", "solicitation", "title", "description"],
+    )
+    def test_source_location_validator_accepts_valid(self, location):
+        """Test source_location validator accepts valid locations."""
+        statement = EvidenceStatement(
+            excerpt="Test excerpt", source_location=location, rationale_tag="test"
+        )
+        assert statement.source_location == location
 
     def test_source_location_validator_rejects_invalid(self):
         """Test source_location validator rejects invalid locations."""
         with pytest.raises(ValidationError) as exc_info:
             EvidenceStatement(
-                excerpt="Test",
-                source_location="invalid_location",
-                rationale_tag="test",
+                excerpt="Test", source_location="invalid_location", rationale_tag="test"
             )
         assert "Source location must be one of" in str(exc_info.value)
 
@@ -174,117 +170,74 @@ class TestCETClassification:
         assert classification.classification == ClassificationLevel.HIGH
         assert classification.primary is True
 
-    def test_score_constraints(self):
+    @pytest.mark.parametrize(
+        "score,level,should_pass",
+        [
+            (0.0, ClassificationLevel.LOW, True),
+            (100.0, ClassificationLevel.HIGH, True),
+            (-1.0, ClassificationLevel.LOW, False),
+            (105.0, ClassificationLevel.HIGH, False),
+        ],
+        ids=["min_valid", "max_valid", "negative_invalid", "over_100_invalid"],
+    )
+    def test_score_constraints(self, score, level, should_pass):
         """Test score field has 0-100 constraints."""
-        # Valid bounds
-        CETClassification(
-            cet_id="test",
-            score=0.0,
-            classification=ClassificationLevel.LOW,
-            primary=True,
-        )
-        CETClassification(
-            cet_id="test",
-            score=100.0,
-            classification=ClassificationLevel.HIGH,
-            primary=True,
-        )
+        if should_pass:
+            c = CETClassification(cet_id="test", score=score, classification=level, primary=True)
+            assert c.score == score
+        else:
+            with pytest.raises(ValidationError):
+                CETClassification(cet_id="test", score=score, classification=level, primary=True)
 
-        # Invalid bounds
-        with pytest.raises(ValidationError):
-            CETClassification(
-                cet_id="test",
-                score=-1.0,
-                classification=ClassificationLevel.LOW,
-                primary=True,
-            )
-        with pytest.raises(ValidationError):
-            CETClassification(
-                cet_id="test",
-                score=105.0,
-                classification=ClassificationLevel.HIGH,
-                primary=True,
-            )
-
-    def test_evidence_count_validator_accepts_valid(self):
-        """Test evidence validator accepts up to 3 statements."""
+    @pytest.mark.parametrize(
+        "count,should_pass",
+        [(3, True), (4, False)],
+        ids=["valid_count", "too_many"],
+    )
+    def test_evidence_count_validator(self, count, should_pass):
+        """Test evidence validator enforces max 3 statements."""
         evidence = [
             EvidenceStatement(
                 excerpt=f"Evidence {i}", source_location="abstract", rationale_tag="test"
             )
-            for i in range(3)
+            for i in range(count)
         ]
-        classification = CETClassification(
-            cet_id="test",
-            score=75.0,
-            classification=ClassificationLevel.HIGH,
-            primary=True,
-            evidence=evidence,
-        )
-        assert len(classification.evidence) == 3
-
-    def test_evidence_count_validator_rejects_too_many(self):
-        """Test evidence validator rejects more than 3 statements."""
-        evidence = [
-            EvidenceStatement(
-                excerpt=f"Evidence {i}", source_location="abstract", rationale_tag="test"
-            )
-            for i in range(4)
-        ]
-        with pytest.raises(ValidationError) as exc_info:
-            CETClassification(
+        if should_pass:
+            c = CETClassification(
                 cet_id="test",
                 score=75.0,
                 classification=ClassificationLevel.HIGH,
                 primary=True,
                 evidence=evidence,
             )
-        assert "Maximum 3 evidence statements" in str(exc_info.value)
+            assert len(c.evidence) == count
+        else:
+            with pytest.raises(ValidationError) as exc_info:
+                CETClassification(
+                    cet_id="test",
+                    score=75.0,
+                    classification=ClassificationLevel.HIGH,
+                    primary=True,
+                    evidence=evidence,
+                )
+            assert "Maximum 3 evidence statements" in str(exc_info.value)
 
-    def test_classification_validator_high_score(self):
-        """Test classification validator for HIGH (score >= 70)."""
-        CETClassification(
-            cet_id="test",
-            score=70.0,
-            classification=ClassificationLevel.HIGH,
-            primary=True,
-        )
-        CETClassification(
-            cet_id="test",
-            score=95.0,
-            classification=ClassificationLevel.HIGH,
-            primary=True,
-        )
-
-    def test_classification_validator_medium_score(self):
-        """Test classification validator for MEDIUM (40 <= score < 70)."""
-        CETClassification(
-            cet_id="test",
-            score=40.0,
-            classification=ClassificationLevel.MEDIUM,
-            primary=True,
-        )
-        CETClassification(
-            cet_id="test",
-            score=69.9,
-            classification=ClassificationLevel.MEDIUM,
-            primary=True,
-        )
-
-    def test_classification_validator_low_score(self):
-        """Test classification validator for LOW (score < 40)."""
-        CETClassification(
-            cet_id="test",
-            score=0.0,
-            classification=ClassificationLevel.LOW,
-            primary=True,
-        )
-        CETClassification(
-            cet_id="test",
-            score=39.9,
-            classification=ClassificationLevel.LOW,
-            primary=True,
-        )
+    @pytest.mark.parametrize(
+        "score,level",
+        [
+            (70.0, ClassificationLevel.HIGH),
+            (95.0, ClassificationLevel.HIGH),
+            (40.0, ClassificationLevel.MEDIUM),
+            (69.9, ClassificationLevel.MEDIUM),
+            (0.0, ClassificationLevel.LOW),
+            (39.9, ClassificationLevel.LOW),
+        ],
+        ids=["high_min", "high_max", "medium_min", "medium_max", "low_min", "low_max"],
+    )
+    def test_classification_validator_score_ranges(self, score, level):
+        """Test classification validator accepts correct score/level combinations."""
+        c = CETClassification(cet_id="test", score=score, classification=level, primary=True)
+        assert c.classification == level
 
     def test_classification_validator_rejects_mismatch(self):
         """Test classification validator rejects score/level mismatch."""
