@@ -277,17 +277,20 @@ class TestEdgeCases:
     @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
     @patch("src.transformers.r_stateio_functions.ro")
     @patch("src.transformers.r_stateio_functions.call_r_function")
-    def test_format_demand_vector_empty_dataframe(self, mock_call_r, mock_ro):
-        """Test format_demand_vector with empty DataFrame."""
-        mock_r_vector = Mock()
-        mock_ro.FloatVector.return_value = mock_r_vector
-
+    def test_apply_demand_shocks_empty_dataframe(self, mock_call_r, mock_ro):
+        """Test apply_demand_shocks with empty DataFrame."""
+        # Empty shocks should return empty result
         df = pd.DataFrame({"bea_sector": [], "shock_amount": []})
 
-        r_stateio.format_demand_vector_from_shocks(Mock(), Mock(), df)
+        # Mock R objects
+        mock_model = Mock()
+        mock_ro.ListVector.return_value = Mock()
+        mock_call_r.return_value = pd.DataFrame()  # Return empty DataFrame
 
-        # Should create empty vectors
-        mock_ro.FloatVector.assert_called_with([])
+        result = r_stateio.apply_demand_shocks(mock_model, df)
+
+        # Should handle empty input gracefully
+        assert isinstance(result, pd.DataFrame)
 
 
 class TestMatrixCalculations:

@@ -200,7 +200,7 @@ class NAICSToBEAMapper:
         # Try progressively shorter codes: 4-digit, 3-digit, 2-digit
         for level in [4, 3, 2]:
             prefix = naics_code[:level]
-            prefix = prefix.zfill(6)  # Pad to 6 for lookup
+            prefix = prefix.ljust(6, "0")  # Pad to 6 digits on the right
 
             matches = self.crosswalk_df[self.crosswalk_df["naics_code"] == prefix]
             if not matches.empty:

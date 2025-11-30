@@ -44,6 +44,7 @@ def test_map_bea_excel(bea_mapping: Path):
     bea_col = "BEA_Code" if "BEA_Code" in df.columns else "bea_sector"
 
     # NAICS may be read as int or string, handle both
-    naics_541712 = df[df[naics_col].astype(str) == "541712"]
-    assert len(naics_541712) > 0
-    assert str(naics_541712.iloc[0][bea_col]) == "5415"
+    # Use a code that exists in the fixture (5413 -> 5400)
+    naics_5413 = df[df[naics_col].astype(str) == "5413"]
+    assert len(naics_5413) > 0
+    assert str(naics_5413.iloc[0][bea_col]) == "5400"

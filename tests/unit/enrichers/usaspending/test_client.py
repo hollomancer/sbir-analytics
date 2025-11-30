@@ -681,6 +681,7 @@ class TestAwardEnrichment:
         # Add modification_number to sample data
         sample_award_data["modification_number"] = "0"
         sample_award_data["action_date"] = "2023-01-15"
+        sample_award_data["award_id"] = "AWD001"  # Add award_id to payload
 
         with patch.object(client, "get_recipient_by_uei", return_value=sample_award_data):
             result = await client.enrich_award("AWD001", uei="UEI123456789")
