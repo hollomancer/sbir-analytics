@@ -305,6 +305,21 @@ jobs:
 
               echo "[$(date '+%Y-%m-%d %H:%M:%S')] Job $JOB_ID status: $STATUS"
 
+              # Show detailed info if stuck in RUNNABLE for more than 2 minutes
+              if [ "$STATUS" = "RUNNABLE" ] && [ $ELAPSED -gt 120 ]; then
+                echo "⚠️  Job stuck in RUNNABLE, checking details..."
+                aws batch describe-jobs --jobs "$JOB_ID" \
+                  --query 'jobs[0].{Status:status,StatusReason:statusReason,Container:container.{Image:image,Vcpus:vcpus,Memory:memory}}' \
+                  --output json
+
+                # Check compute environment
+                echo "Compute environment status:"
+                aws batch describe-compute-environments \
+                  --compute-environments sbir-analytics-analysis-compute-env \
+                  --query 'computeEnvironments[0].{State:state,Status:status,StatusReason:statusReason,DesiredvCpus:computeResources.desiredvCpus,MaxvCpus:computeResources.maxvCpus}' \
+                  --output json
+              fi
+
               if [ "$STATUS" = "SUCCEEDED" ]; then
                 echo "✅ Job $JOB_ID completed successfully"
                 break
