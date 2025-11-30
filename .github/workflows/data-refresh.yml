@@ -310,10 +310,19 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 60
           command: |
+            set -e
+            echo "Starting USAspending download..."
             uv run python scripts/data/download_usaspending_parallel.py \
               --s3-bucket ${{ env.S3_BUCKET }} \
               --database-type full \
               --max-concurrent 10 2>&1 | tee usaspending_output.txt
+            EXIT_CODE=${PIPESTATUS[0]}
+            echo "Download script exited with code: $EXIT_CODE"
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo "ERROR: Download failed with exit code $EXIT_CODE"
+              cat usaspending_output.txt
+              exit $EXIT_CODE
+            fi
 
       - name: Report USAspending status
         if: always()
