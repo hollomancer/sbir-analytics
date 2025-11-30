@@ -92,7 +92,7 @@ class TestCompletenessCheckModel:
     """Tests for CompletenessCheck model."""
 
     def test_valid_completeness_check(self):
-        """Test creating a valid CompletenessCheck."""
+        """Test creating a valid CompletenessCheck with all fields."""
         check = CompletenessCheck(
             required_fields=["award_id", "company_name", "award_amount"],
             threshold=0.95,
@@ -106,52 +106,42 @@ class TestCompletenessCheckModel:
         assert check.required_fields == []
         assert check.threshold == 0.95
 
-    def test_completeness_check_custom_threshold(self):
-        """Test CompletenessCheck with custom threshold."""
-        check = CompletenessCheck(
-            required_fields=["field1", "field2"],
-            threshold=0.80,
-        )
-        assert check.threshold == 0.80
+    @pytest.mark.parametrize(
+        "threshold,should_pass",
+        [
+            (0.0, True),
+            (0.5, True),
+            (1.0, True),
+            (-0.1, False),
+            (1.5, False),
+        ],
+        ids=["min_bound", "mid_range", "max_bound", "negative_invalid", "above_one_invalid"],
+    )
+    def test_threshold_validator(self, threshold, should_pass):
+        """Test threshold validator accepts 0.0-1.0 range."""
+        if should_pass:
+            check = CompletenessCheck(threshold=threshold)
+            assert check.threshold == threshold
+        else:
+            with pytest.raises(ValidationError):
+                CompletenessCheck(threshold=threshold)
 
-    def test_threshold_validator_accepts_valid_bounds(self):
-        """Test threshold validator accepts 0.0 and 1.0."""
-        check_min = CompletenessCheck(threshold=0.0)
-        assert check_min.threshold == 0.0
-
-        check_max = CompletenessCheck(threshold=1.0)
-        assert check_max.threshold == 1.0
-
-    def test_threshold_validator_rejects_negative(self):
-        """Test threshold validator rejects negative values."""
-        with pytest.raises(ValidationError) as exc_info:
-            CompletenessCheck(threshold=-0.1)
-        assert "greater than or equal to 0" in str(exc_info.value).lower()
-
-    def test_threshold_validator_rejects_above_one(self):
-        """Test threshold validator rejects values above 1.0."""
-        with pytest.raises(ValidationError) as exc_info:
-            CompletenessCheck(threshold=1.5)
-        assert "less than or equal to 1" in str(exc_info.value).lower()
-
-    def test_completeness_check_empty_required_fields(self):
-        """Test CompletenessCheck with empty required_fields list."""
-        check = CompletenessCheck(required_fields=[], threshold=0.90)
-        assert check.required_fields == []
-        assert check.threshold == 0.90
-
-    def test_completeness_check_single_field(self):
-        """Test CompletenessCheck with single required field."""
-        check = CompletenessCheck(required_fields=["award_id"])
-        assert len(check.required_fields) == 1
-        assert check.required_fields[0] == "award_id"
+    @pytest.mark.parametrize(
+        "fields",
+        [[], ["award_id"], ["field1", "field2", "field3"]],
+        ids=["empty", "single", "multiple"],
+    )
+    def test_completeness_check_required_fields(self, fields):
+        """Test CompletenessCheck with various required_fields configurations."""
+        check = CompletenessCheck(required_fields=fields)
+        assert check.required_fields == fields
 
 
 class TestUniquenessCheckModel:
     """Tests for UniquenessCheck model."""
 
     def test_valid_uniqueness_check(self):
-        """Test creating a valid UniquenessCheck."""
+        """Test creating a valid UniquenessCheck with all fields."""
         check = UniquenessCheck(
             fields=["award_id", "duns"],
             case_sensitive=True,
@@ -165,30 +155,28 @@ class TestUniquenessCheckModel:
         assert check.fields == []
         assert check.case_sensitive is True
 
-    def test_uniqueness_check_case_insensitive(self):
-        """Test UniquenessCheck with case_sensitive=False."""
+    @pytest.mark.parametrize(
+        "case_sensitive",
+        [True, False],
+        ids=["case_sensitive", "case_insensitive"],
+    )
+    def test_uniqueness_check_case_sensitivity(self, case_sensitive):
+        """Test UniquenessCheck with different case_sensitive settings."""
         check = UniquenessCheck(
-            fields=["company_name", "email"],
-            case_sensitive=False,
+            fields=["company_name"],
+            case_sensitive=case_sensitive,
         )
-        assert check.case_sensitive is False
+        assert check.case_sensitive is case_sensitive
 
-    def test_uniqueness_check_single_field(self):
-        """Test UniquenessCheck with single field."""
-        check = UniquenessCheck(fields=["award_id"])
-        assert len(check.fields) == 1
-
-    def test_uniqueness_check_multiple_fields(self):
-        """Test UniquenessCheck with multiple fields."""
-        check = UniquenessCheck(
-            fields=["field1", "field2", "field3", "field4"],
-        )
-        assert len(check.fields) == 4
-
-    def test_uniqueness_check_empty_fields(self):
-        """Test UniquenessCheck with empty fields list."""
-        check = UniquenessCheck(fields=[])
-        assert check.fields == []
+    @pytest.mark.parametrize(
+        "fields",
+        [[], ["award_id"], ["field1", "field2", "field3", "field4"]],
+        ids=["empty", "single", "multiple"],
+    )
+    def test_uniqueness_check_fields(self, fields):
+        """Test UniquenessCheck with various field configurations."""
+        check = UniquenessCheck(fields=fields)
+        assert check.fields == fields
 
 
 class TestValueRangeCheckModel:
@@ -217,74 +205,42 @@ class TestValueRangeCheckModel:
         assert check.min_value is None
         assert check.max_value is None
 
-    def test_value_range_check_minimal(self):
-        """Test ValueRangeCheck with only required field."""
-        check = ValueRangeCheck(field="test_field")
-        assert check.field == "test_field"
-        assert check.min_value is None
-        assert check.max_value is None
-        assert check.allowed_values is None
+    @pytest.mark.parametrize(
+        "min_val,max_val",
+        [
+            (None, None),
+            (1983.0, None),
+            (None, 2026.0),
+            (0.0, 10000000.0),
+        ],
+        ids=["neither", "min_only", "max_only", "both"],
+    )
+    def test_value_range_check_min_max_combinations(self, min_val, max_val):
+        """Test ValueRangeCheck with various min/max combinations."""
+        check = ValueRangeCheck(field="test_field", min_value=min_val, max_value=max_val)
+        assert check.min_value == min_val
+        assert check.max_value == max_val
 
-    def test_value_range_check_min_only(self):
-        """Test ValueRangeCheck with only min_value."""
-        check = ValueRangeCheck(
-            field="award_year",
-            min_value=1983.0,
-        )
-        assert check.min_value == 1983.0
-        assert check.max_value is None
-
-    def test_value_range_check_max_only(self):
-        """Test ValueRangeCheck with only max_value."""
-        check = ValueRangeCheck(
-            field="award_year",
-            max_value=2026.0,
-        )
-        assert check.max_value == 2026.0
-        assert check.min_value is None
-
-    def test_allowed_values_validator_accepts_non_empty_list(self):
-        """Test allowed_values validator accepts non-empty list."""
-        check = ValueRangeCheck(
-            field="program",
-            allowed_values=["SBIR", "STTR"],
-        )
-        assert check.allowed_values == ["SBIR", "STTR"]
-
-    def test_allowed_values_validator_rejects_empty_list(self):
-        """Test allowed_values validator rejects empty list."""
-        with pytest.raises(ValidationError) as exc_info:
-            ValueRangeCheck(
-                field="test",
-                allowed_values=[],
-            )
-        assert "allowed_values cannot be empty" in str(exc_info.value)
-
-    def test_allowed_values_validator_accepts_none(self):
-        """Test allowed_values validator accepts None."""
-        check = ValueRangeCheck(
-            field="test",
-            allowed_values=None,
-        )
-        assert check.allowed_values is None
-
-    def test_value_range_check_with_mixed_types_in_allowed_values(self):
-        """Test ValueRangeCheck with mixed types in allowed_values."""
-        check = ValueRangeCheck(
-            field="mixed_field",
-            allowed_values=["string", 123, 45.6, True],
-        )
-        assert len(check.allowed_values) == 4
-        assert "string" in check.allowed_values
-        assert 123 in check.allowed_values
-
-    def test_value_range_check_with_single_allowed_value(self):
-        """Test ValueRangeCheck with single value in allowed_values."""
-        check = ValueRangeCheck(
-            field="single",
-            allowed_values=["only_value"],
-        )
-        assert len(check.allowed_values) == 1
+    @pytest.mark.parametrize(
+        "allowed,should_pass",
+        [
+            (["SBIR", "STTR"], True),
+            (["only_value"], True),
+            (["string", 123, 45.6, True], True),
+            (None, True),
+            ([], False),
+        ],
+        ids=["multiple", "single", "mixed_types", "none", "empty_invalid"],
+    )
+    def test_allowed_values_validator(self, allowed, should_pass):
+        """Test allowed_values validator accepts non-empty lists or None."""
+        if should_pass:
+            check = ValueRangeCheck(field="test", allowed_values=allowed)
+            assert check.allowed_values == allowed
+        else:
+            with pytest.raises(ValidationError) as exc_info:
+                ValueRangeCheck(field="test", allowed_values=allowed)
+            assert "allowed_values cannot be empty" in str(exc_info.value)
 
 
 class TestValidationConfigModel:
