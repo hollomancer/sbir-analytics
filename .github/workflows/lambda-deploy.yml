@@ -274,20 +274,36 @@ jobs:
 
           if [ "$STACK_STATUS" = "UPDATE_ROLLBACK_FAILED" ]; then
             echo "Stack in UPDATE_ROLLBACK_FAILED. Attempting recovery..."
-            aws cloudformation continue-update-rollback \
+
+            # Get failed resources to skip
+            FAILED_RESOURCES=$(aws cloudformation describe-stack-resources \
               --stack-name sbir-analytics-lambda \
-              --region ${{ env.AWS_REGION }}
+              --region ${{ env.AWS_REGION }} \
+              --query "StackResources[?ResourceStatus=='UPDATE_FAILED'].LogicalResourceId" \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "$FAILED_RESOURCES" ]; then
+              echo "Skipping failed resources: $FAILED_RESOURCES"
+              aws cloudformation continue-update-rollback \
+                --stack-name sbir-analytics-lambda \
+                --region ${{ env.AWS_REGION }} \
+                --resources-to-skip $FAILED_RESOURCES
+            else
+              aws cloudformation continue-update-rollback \
+                --stack-name sbir-analytics-lambda \
+                --region ${{ env.AWS_REGION }}
+            fi
 
             echo "Waiting for rollback to complete..."
             aws cloudformation wait stack-rollback-complete \
               --stack-name sbir-analytics-lambda \
               --region ${{ env.AWS_REGION }}
 
-            STACK_STATUS="ROLLBACK_COMPLETE"
+            STACK_STATUS="UPDATE_ROLLBACK_COMPLETE"
           fi
 
-          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
-            echo "Stack in ROLLBACK_COMPLETE. Deleting for fresh deployment..."
+          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+            echo "Stack in $STACK_STATUS. Deleting for fresh deployment..."
             aws cloudformation delete-stack \
               --stack-name sbir-analytics-lambda \
               --region ${{ env.AWS_REGION }}
