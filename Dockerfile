@@ -260,10 +260,10 @@ COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
 
 # Deduplicate wheels: keep only the latest version of each package
 RUN python3 -c "
-import os
 import re
 from pathlib import Path
 from collections import defaultdict
+from packaging.version import parse as parse_version
 
 wheels_dir = Path('/wheels')
 packages = defaultdict(list)
@@ -281,8 +281,8 @@ for wheel in wheels_dir.glob('*.whl'):
 # Keep only the latest version of each package
 for pkg_name, versions in packages.items():
     if len(versions) > 1:
-        # Sort by version (simple string sort works for most cases)
-        versions.sort(key=lambda x: x[0], reverse=True)
+        # Sort by semantic version
+        versions.sort(key=lambda x: parse_version(x[0]), reverse=True)
         # Remove all but the latest
         for _, wheel_path in versions[1:]:
             print(f'Removing duplicate: {wheel_path.name}')
