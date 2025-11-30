@@ -158,13 +158,19 @@ class PaECTERClient:
 
         if self.config.enable_cache:
             cached_embeddings = []
-            texts_to_process = []
+            texts_to_process: list[str] = []
             indices_to_process = []
+            text_to_first_index = {}  # Track first occurrence of each text
 
             for i, text in enumerate(texts):
                 if text in self.cache:
                     cached_embeddings.append((i, self.cache[text]))
+                elif text in text_to_first_index:
+                    # Duplicate text not yet cached - will copy from first occurrence later
+                    pass
                 else:
+                    # First occurrence of this uncached text
+                    text_to_first_index[text] = len(texts_to_process)
                     texts_to_process.append(text)
                     indices_to_process.append(i)
 
@@ -200,16 +206,14 @@ class PaECTERClient:
                 )
 
             if self.config.enable_cache:
+                # Cache the new embeddings
                 for text, embedding in zip(texts_to_process, new_embeddings, strict=False):
                     self.cache[text] = embedding
 
-                # Combine cached and new embeddings
+                # Build result by looking up each text in cache
                 embeddings = np.zeros((len(texts), self.embedding_dim))
-                for i, embedding in cached_embeddings:
-                    embeddings[i] = embedding
-
-                for idx, embedding in zip(indices_to_process, new_embeddings, strict=False):
-                    embeddings[idx] = embedding
+                for i, text in enumerate(texts):
+                    embeddings[i] = self.cache[text]
             else:
                 embeddings = new_embeddings
 

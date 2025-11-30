@@ -136,6 +136,7 @@ def sample_award() -> dict:
     # Add fields needed by this test suite
     award["department"] = "Air Force"
     award["vendor_cage"] = "CAGE001"
+    award["vendor_uei"] = "UEI123"  # Match the contract UEI
     return award
 
 
