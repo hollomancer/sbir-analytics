@@ -12,23 +12,23 @@ s3_client = boto3.client("s3")
 
 # USPTO AI Patent Dataset URLs
 # Research datasets page: https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset
-# Developer portal: https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv
 #
-# Direct download URLs (latest 2023 release)
+# Direct download URLs (2023 release - latest available)
+# CSV: 764 MB, DTA: 649 MB
 USPTO_AI_PATENT_BASE = "https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023"
 USPTO_AI_PATENT_DEFAULT_URLS = {
     "csv": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions.csv.zip",
     "dta": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions.dta.zip",
-    # Note: TSV format is available in 2020 release only
 }
 
-USPTO_AI_PATENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
-USPTO_AI_PATENT_DEVELOPER_PORTAL = "https://developer.uspto.gov/product/artificial-intelligence-patent-dataset-stata-dta-and-ms-excel-csv"
+USPTO_AI_PATENT_DATASET_PAGE = (
+    "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
+)
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    Download USPTO AI Patent Dataset and upload to S3.
+    Download USPTO AI Patent Dataset and stream to S3.
 
     Event structure:
     {
@@ -42,73 +42,125 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not s3_bucket:
             raise ValueError("S3_BUCKET not provided in event or environment")
 
-        source_url = event.get("source_url")
+        source_url = event.get("source_url") or USPTO_AI_PATENT_DEFAULT_URLS["csv"]
+        print(f"Using USPTO AI Patent Dataset URL: {source_url}")
 
-        # Construct URL if not provided
-        if not source_url:
-            # Use default CSV format URL (2023 release)
-            source_url = USPTO_AI_PATENT_DEFAULT_URLS.get("csv")
-            print(f"Using default USPTO AI Patent Dataset URL (CSV format): {source_url}")
-            print(f"Note: Other formats available at {USPTO_AI_PATENT_DATASET_PAGE}")
+        # Generate S3 key
+        timestamp = datetime.now(UTC)
+        date_str = timestamp.strftime("%Y-%m-%d")
+        s3_key = f"raw/uspto/ai_patents/{date_str}/ai_patent_dataset.zip"
 
-        # Download data
-        print(f"Downloading USPTO AI Patent Dataset from {source_url}")
+        # Stream download to S3
+        print(f"Streaming from {source_url} to s3://{s3_bucket}/{s3_key}")
         req = Request(source_url)
         req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0")
 
-        with urlopen(req, timeout=600) as response:  # Longer timeout for large files
-            data = response.read()
-            content_type = response.headers.get("Content-Type", "") or ""
+        with urlopen(req, timeout=600) as response:
+            # Check response
+            content_type = response.headers.get("Content-Type", "")
+            if "text/html" in content_type:
+                raise ValueError("Received HTML instead of ZIP - likely error page")
 
-        # Compute hash
-        file_hash = hashlib.sha256(data).hexdigest()
+            # Read first chunk to validate
+            first_chunk = response.read(8192)
+            if not first_chunk.startswith(b'PK\x03\x04'):
+                raise ValueError("Not a valid ZIP file")
 
-        # Generate S3 key with date
-        timestamp = datetime.now(UTC)
-        date_str = timestamp.strftime("%Y-%m-%d")
+            # Stream to S3 using multipart upload
+            upload = s3_client.create_multipart_upload(
+                Bucket=s3_bucket,
+                Key=s3_key,
+                ContentType="application/zip",
+                Metadata={
+                    "source_url": source_url,
+                    "downloaded_at": timestamp.isoformat(),
+                    "dataset": "ai_patents",
+                },
+            )
+            upload_id = upload["UploadId"]
 
-        # Determine file extension from content type or URL
-        lower_content_type = content_type.lower()
-        lower_url = source_url.lower()
-        if "zip" in lower_content_type or lower_url.endswith(".zip"):
-            file_ext = ".zip"
-        elif "csv" in lower_content_type or lower_url.endswith(".csv"):
-            file_ext = ".csv"
-        elif "json" in lower_content_type or lower_url.endswith(".json"):
-            file_ext = ".json"
-        else:
-            file_ext = ".csv"  # Default
+            try:
+                parts = []
+                part_num = 1
+                hasher = hashlib.sha256()
+                total_size = 0
+                chunk_size = 10 * 1024 * 1024  # 10 MB chunks
 
-        s3_key = f"raw/uspto/ai_patents/{date_str}/ai_patent_dataset{file_ext}"
+                # Upload first chunk
+                hasher.update(first_chunk)
+                total_size += len(first_chunk)
+                buffer = first_chunk
 
-        # Upload to S3
-        print(f"Uploading to s3://{s3_bucket}/{s3_key}")
-        s3_client.put_object(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            Body=data,
-            ContentType=content_type
-            or ("application/zip" if file_ext == ".zip" else "application/octet-stream"),
-            Metadata={
-                "sha256": file_hash,
-                "source_url": source_url,
-                "downloaded_at": timestamp.isoformat(),
-                "dataset": "ai_patents",
-            },
-        )
+                while True:
+                    chunk = response.read(chunk_size - len(buffer))
+                    if not chunk:
+                        # Upload final buffer
+                        if buffer:
+                            part = s3_client.upload_part(
+                                Bucket=s3_bucket,
+                                Key=s3_key,
+                                PartNumber=part_num,
+                                UploadId=upload_id,
+                                Body=buffer,
+                            )
+                            parts.append({"PartNumber": part_num, "ETag": part["ETag"]})
+                        break
 
-        return {
-            "statusCode": 200,
-            "body": {
-                "status": "success",
-                "s3_bucket": s3_bucket,
-                "s3_key": s3_key,
-                "sha256": file_hash,
-                "file_size": len(data),
-                "source_url": source_url,
-                "downloaded_at": timestamp.isoformat(),
-            },
-        }
+                    buffer += chunk
+                    hasher.update(chunk)
+                    total_size += len(chunk)
+
+                    if len(buffer) >= chunk_size:
+                        part = s3_client.upload_part(
+                            Bucket=s3_bucket,
+                            Key=s3_key,
+                            PartNumber=part_num,
+                            UploadId=upload_id,
+                            Body=buffer,
+                        )
+                        parts.append({"PartNumber": part_num, "ETag": part["ETag"]})
+                        part_num += 1
+                        buffer = b""
+                        print(f"Uploaded part {part_num-1}, total: {total_size / 1_000_000:.1f} MB")
+
+                # Complete upload
+                s3_client.complete_multipart_upload(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    UploadId=upload_id,
+                    MultipartUpload={"Parts": parts},
+                )
+
+                file_hash = hasher.hexdigest()
+
+                # Validate size (2023 CSV is 764 MB)
+                MIN_EXPECTED_SIZE = 100_000_000  # 100 MB
+                if total_size < MIN_EXPECTED_SIZE:
+                    raise ValueError(
+                        f"Downloaded file is too small ({total_size} bytes, expected >{MIN_EXPECTED_SIZE}). "
+                        f"2023 dataset should be ~650-760 MB."
+                    )
+
+                print(f"Upload complete: {total_size / 1_000_000:.1f} MB, SHA256: {file_hash}")
+
+                return {
+                    "statusCode": 200,
+                    "body": {
+                        "status": "success",
+                        "s3_bucket": s3_bucket,
+                        "s3_key": s3_key,
+                        "sha256": file_hash,
+                        "file_size": total_size,
+                        "source_url": source_url,
+                        "downloaded_at": timestamp.isoformat(),
+                    },
+                }
+
+            except Exception as e:
+                s3_client.abort_multipart_upload(
+                    Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
+                )
+                raise
 
     except Exception as e:
         print(f"Error downloading USPTO AI Patent data: {e}")

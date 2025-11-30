@@ -12,33 +12,29 @@ s3_client = boto3.client("s3")
 
 # USPTO Patent Assignment Dataset URLs
 # Research datasets page: https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset
-# Legacy page: https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data
 #
-# Direct download URLs (2024 release - latest as of 2025)
+# Direct download URLs (2023 release - latest available as of 2025-11-29)
+# Full dataset bundles (all tables): csv.zip (1.78 GB), dta.zip (1.56 GB)
 USPTO_ASSIGNMENT_BASE = "https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023"
 USPTO_ASSIGNMENT_DEFAULT_URLS = {
-    "csv": f"{USPTO_ASSIGNMENT_BASE}/csv.zip",
-    "dta": f"{USPTO_ASSIGNMENT_BASE}/dta.zip",
-    # Parquet format may not be available - CSV and DTA are the standard formats
+    "csv": f"{USPTO_ASSIGNMENT_BASE}/csv.zip",  # Full dataset: 1.78 GB
+    "dta": f"{USPTO_ASSIGNMENT_BASE}/dta.zip",  # Full dataset: 1.56 GB
 }
 
 USPTO_ASSIGNMENT_DATASET_PAGE = (
     "https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset"
 )
-USPTO_ASSIGNMENT_LEGACY_PAGE = (
-    "https://www.uspto.gov/learning-and-resources/fee-schedules/patent-assignment-data"
-)
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    Download USPTO Patent Assignment Dataset and upload to S3.
+    Download USPTO Patent Assignment Dataset and stream to S3.
 
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",
         "source_url": "https://...",  # Optional, defaults to USPTO
-        "format": "csv",  # or "dta", "parquet" - defaults to csv
+        "format": "csv",  # or "dta" - defaults to csv
         "force_refresh": false
     }
     """
@@ -50,85 +46,133 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         source_url = event.get("source_url")
         file_format = event.get("format", "csv")
 
-        # Construct URL if not provided
         if not source_url:
-            # Use default URL based on format (2023 release)
             if file_format in USPTO_ASSIGNMENT_DEFAULT_URLS:
                 source_url = USPTO_ASSIGNMENT_DEFAULT_URLS[file_format]
-                print(
-                    f"Using default USPTO Patent Assignment URL ({file_format} format): {source_url}"
-                )
-                print(
-                    f"Note: This is the 2023 release. Check {USPTO_ASSIGNMENT_DATASET_PAGE} for newer releases."
-                )
+                print(f"Using default USPTO Patent Assignment URL ({file_format}): {source_url}")
             else:
-                # Unknown format - try to construct URL or provide helpful error
-                if file_format == "parquet":
-                    raise ValueError(
-                        f"Parquet format is not available for USPTO Patent Assignment Dataset. "
-                        f"Available formats: csv, dta. "
-                        f"See {USPTO_ASSIGNMENT_DATASET_PAGE} for available formats."
-                    )
-                else:
-                    raise ValueError(
-                        f"Unknown format '{file_format}'. Available formats: csv, dta. "
-                        f"Or provide source_url directly. "
-                        f"See {USPTO_ASSIGNMENT_DATASET_PAGE} for more information."
-                    )
+                raise ValueError(
+                    f"Unknown format '{file_format}'. Available: csv, dta. "
+                    f"See {USPTO_ASSIGNMENT_DATASET_PAGE}"
+                )
 
-        # Download data
-        print(f"Downloading USPTO Patent Assignment data ({file_format}) from {source_url}")
+        # Generate S3 key
+        timestamp = datetime.now(UTC)
+        date_str = timestamp.strftime("%Y-%m-%d")
+        s3_key = f"raw/uspto/assignments/{date_str}/patent_assignments_{file_format}.zip"
+
+        # Stream download to S3
+        print(f"Streaming from {source_url} to s3://{s3_bucket}/{s3_key}")
         req = Request(source_url)
         req.add_header("User-Agent", "SBIR-Analytics-Lambda/1.0")
 
-        with urlopen(req, timeout=600) as response:  # Longer timeout for large files
-            data = response.read()
+        with urlopen(req, timeout=600) as response:
+            # Check response
+            content_type = response.headers.get("Content-Type", "")
+            if "text/html" in content_type:
+                raise ValueError("Received HTML instead of ZIP - likely error page")
 
-        # Compute hash
-        file_hash = hashlib.sha256(data).hexdigest()
+            # Read first chunk to validate
+            first_chunk = response.read(8192)
+            if not first_chunk.startswith(b'PK\x03\x04'):
+                raise ValueError("Not a valid ZIP file")
 
-        # Generate S3 key with date
-        timestamp = datetime.now(UTC)
-        date_str = timestamp.strftime("%Y-%m-%d")
-        file_ext = file_format if file_format.startswith(".") else f".{file_format}"
-        s3_key = f"raw/uspto/assignments/{date_str}/patent_assignments{file_ext}"
+            # Stream to S3 using multipart upload
+            upload = s3_client.create_multipart_upload(
+                Bucket=s3_bucket,
+                Key=s3_key,
+                ContentType="application/zip",
+                Metadata={
+                    "source_url": source_url,
+                    "downloaded_at": timestamp.isoformat(),
+                    "format": file_format,
+                },
+            )
+            upload_id = upload["UploadId"]
 
-        # Determine content type
-        content_type_map = {
-            "csv": "text/csv",
-            "dta": "application/x-stata",
-            "parquet": "application/parquet",
-        }
-        content_type = content_type_map.get(file_format, "application/octet-stream")
+            try:
+                parts = []
+                part_num = 1
+                hasher = hashlib.sha256()
+                total_size = 0
+                chunk_size = 10 * 1024 * 1024  # 10 MB chunks
 
-        # Upload to S3
-        print(f"Uploading to s3://{s3_bucket}/{s3_key}")
-        s3_client.put_object(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            Body=data,
-            ContentType=content_type,
-            Metadata={
-                "sha256": file_hash,
-                "source_url": source_url,
-                "downloaded_at": timestamp.isoformat(),
-                "format": file_format,
-            },
-        )
+                # Upload first chunk
+                hasher.update(first_chunk)
+                total_size += len(first_chunk)
+                buffer = first_chunk
 
-        return {
-            "statusCode": 200,
-            "body": {
-                "status": "success",
-                "s3_bucket": s3_bucket,
-                "s3_key": s3_key,
-                "sha256": file_hash,
-                "file_size": len(data),
-                "source_url": source_url,
-                "downloaded_at": timestamp.isoformat(),
-                "format": file_format,
-            },
-        }
+                while True:
+                    chunk = response.read(chunk_size - len(buffer))
+                    if not chunk:
+                        # Upload final buffer
+                        if buffer:
+                            part = s3_client.upload_part(
+                                Bucket=s3_bucket,
+                                Key=s3_key,
+                                PartNumber=part_num,
+                                UploadId=upload_id,
+                                Body=buffer,
+                            )
+                            parts.append({"PartNumber": part_num, "ETag": part["ETag"]})
+                        break
+
+                    buffer += chunk
+                    hasher.update(chunk)
+                    total_size += len(chunk)
+
+                    if len(buffer) >= chunk_size:
+                        part = s3_client.upload_part(
+                            Bucket=s3_bucket,
+                            Key=s3_key,
+                            PartNumber=part_num,
+                            UploadId=upload_id,
+                            Body=buffer,
+                        )
+                        parts.append({"PartNumber": part_num, "ETag": part["ETag"]})
+                        part_num += 1
+                        buffer = b""
+                        print(f"Uploaded part {part_num-1}, total: {total_size / 1_000_000:.1f} MB")
+
+                # Complete upload
+                s3_client.complete_multipart_upload(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    UploadId=upload_id,
+                    MultipartUpload={"Parts": parts},
+                )
+
+                file_hash = hasher.hexdigest()
+
+                # Validate size
+                MIN_EXPECTED_SIZE = 100_000_000  # 100 MB
+                if total_size < MIN_EXPECTED_SIZE:
+                    raise ValueError(
+                        f"Downloaded file is too small ({total_size} bytes, expected >{MIN_EXPECTED_SIZE}). "
+                        f"Full dataset should be ~1.5-1.8 GB."
+                    )
+
+                print(f"Upload complete: {total_size / 1_000_000:.1f} MB, SHA256: {file_hash}")
+
+                return {
+                    "statusCode": 200,
+                    "body": {
+                        "status": "success",
+                        "s3_bucket": s3_bucket,
+                        "s3_key": s3_key,
+                        "sha256": file_hash,
+                        "file_size": total_size,
+                        "source_url": source_url,
+                        "downloaded_at": timestamp.isoformat(),
+                        "format": file_format,
+                    },
+                }
+
+            except Exception as e:
+                s3_client.abort_multipart_upload(
+                    Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
+                )
+                raise
 
     except Exception as e:
         print(f"Error downloading USPTO Assignment data: {e}")

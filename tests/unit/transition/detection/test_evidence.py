@@ -701,10 +701,10 @@ class TestValidateBundle:
 
     def test_validate_bundle_score_out_of_range(self):
         """Test validating bundle with score out of range."""
-        generator = EvidenceGenerator()
+        from pydantic import ValidationError
 
-        bundle = EvidenceBundle()
-        bundle.items = [
+        # Pydantic should prevent creating item with invalid score
+        with pytest.raises(ValidationError, match="less than or equal to 1"):
             EvidenceItem(
                 source="test",
                 signal="test_signal",
@@ -712,9 +712,6 @@ class TestValidateBundle:
                 score=1.5,  # Out of range
                 metadata={},
             )
-        ]
-
-        assert generator.validate_bundle(bundle) is False
 
     def test_validate_bundle_negative_score(self):
         """Test validating bundle with negative score."""

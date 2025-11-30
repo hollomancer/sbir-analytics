@@ -50,9 +50,9 @@ def test_import_csv_raises_on_missing_columns(tmp_path: Path):
     with pytest.raises(RuntimeError) as excinfo:
         extractor.import_csv(use_incremental=False)
 
-    # Error message should indicate expected vs found columns
+    # Error message should indicate missing columns
     msg = str(excinfo.value)
-    assert "expected" in msg.lower() and "columns" in msg.lower()
+    assert "missing required columns" in msg.lower()
 
 
 # ============================================================================

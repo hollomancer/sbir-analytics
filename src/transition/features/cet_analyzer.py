@@ -260,6 +260,10 @@ class CETSignalExtractor:
         award_cet_norm = award_cet.strip().lower()
         contract_cet_norm = contract_cet.strip().lower()
 
+        # Handle whitespace-only strings
+        if not award_cet_norm or not contract_cet_norm:
+            return 0.0
+
         # Exact match
         if award_cet_norm == contract_cet_norm:
             return 1.0
