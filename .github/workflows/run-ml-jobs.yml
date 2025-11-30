@@ -18,6 +18,10 @@ on:
   schedule:
     - cron: '0 3 * * 1'  # Monday 3 AM UTC
 
+permissions:
+  contents: read
+  id-token: write  # For AWS OIDC
+
 env:
   AWS_REGION: us-east-2
 
@@ -26,10 +30,6 @@ jobs:
     name: Run ML Job
     runs-on: ubuntu-latest
     timeout-minutes: 300  # 5 hours max (GitHub Actions limit is 6 hours)
-
-    permissions:
-      contents: read
-      id-token: write  # For AWS OIDC
 
     steps:
       - name: Checkout code
