@@ -262,17 +262,28 @@ jobs:
       - name: Check downloaded files
         if: always()
         run: |
-          echo "### 📦 Downloaded Files" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 S3 Files Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # List files with dates
+          echo "**Current SBIR files in S3:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "Files in s3://${{ env.S3_BUCKET }}/raw/sbir/:" >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive --human-readable --summarize | tail -20 || echo "No files found"
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/awards/ --recursive --human-readable 2>/dev/null | tail -10 || echo "No files found"
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Compare before/after
-          echo "### 📈 Changes" >> $GITHUB_STEP_SUMMARY
-          CURRENT_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive | wc -l)
-          echo "**Total files:** $CURRENT_COUNT" >> $GITHUB_STEP_SUMMARY
+          # Get latest file date
+          LATEST_FILE=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/awards/ --recursive 2>/dev/null | sort | tail -1)
+          if [ -n "$LATEST_FILE" ]; then
+            LATEST_DATE=$(echo "$LATEST_FILE" | awk '{print $1}')
+            LATEST_SIZE=$(echo "$LATEST_FILE" | awk '{print $3}')
+            LATEST_KEY=$(echo "$LATEST_FILE" | awk '{print $4}')
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Latest File Date** | $LATEST_DATE |" >> $GITHUB_STEP_SUMMARY
+            echo "| **File Size** | $(numfmt --to=iec-i --suffix=B $LATEST_SIZE 2>/dev/null || echo $LATEST_SIZE bytes) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **S3 Key** | \`$LATEST_KEY\` |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "> ℹ️ The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs." >> $GITHUB_STEP_SUMMARY
@@ -304,25 +315,24 @@ jobs:
 
       - name: Download and process USAspending database (parallel)
         id: usaspending-download
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 240
-          max_attempts: 3
-          retry_wait_seconds: 60
-          command: |
-            set -e
-            echo "Starting USAspending download..."
-            uv run python scripts/data/download_usaspending_parallel.py \
-              --s3-bucket ${{ env.S3_BUCKET }} \
-              --database-type full \
-              --max-concurrent 10 2>&1 | tee usaspending_output.txt
-            EXIT_CODE=${PIPESTATUS[0]}
-            echo "Download script exited with code: $EXIT_CODE"
-            if [ $EXIT_CODE -ne 0 ]; then
-              echo "ERROR: Download failed with exit code $EXIT_CODE"
-              cat usaspending_output.txt
-              exit $EXIT_CODE
-            fi
+        timeout-minutes: 180
+        run: |
+          set -e
+          echo "Starting USAspending download..."
+          echo "Timeout: 180 minutes"
+          echo ""
+
+          uv run python scripts/data/download_usaspending_parallel.py \
+            --s3-bucket ${{ env.S3_BUCKET }} \
+            --database-type full \
+            --max-concurrent 10 2>&1 | tee usaspending_output.txt
+
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "Download script exited with code: $EXIT_CODE"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Download failed with exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
 
       - name: Report USAspending status
         if: always()
@@ -379,10 +389,28 @@ jobs:
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 S3 Status" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 S3 Files Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get latest file info
+          LATEST_FILE=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive 2>/dev/null | sort | tail -1)
+          if [ -n "$LATEST_FILE" ]; then
+            LATEST_DATE=$(echo "$LATEST_FILE" | awk '{print $1}')
+            LATEST_SIZE=$(echo "$LATEST_FILE" | awk '{print $3}')
+            LATEST_KEY=$(echo "$LATEST_FILE" | awk '{print $4}')
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| **Latest File Date** | $LATEST_DATE |" >> $GITHUB_STEP_SUMMARY
+            echo "| **File Size** | $(numfmt --to=iec-i --suffix=B $LATEST_SIZE 2>/dev/null || echo $LATEST_SIZE bytes) |" >> $GITHUB_STEP_SUMMARY
+            echo "| **S3 Key** | \`$LATEST_KEY\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No USAspending files found in S3" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recent files:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "Latest files in s3://${{ env.S3_BUCKET }}/raw/usaspending/database/:" >> $GITHUB_STEP_SUMMARY
-          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive --human-readable | tail -5 || echo "No files found"
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/usaspending/database/ --recursive --human-readable 2>/dev/null | tail -5 || echo "No files found"
           echo '```' >> $GITHUB_STEP_SUMMARY
 
           echo "" >> $GITHUB_STEP_SUMMARY
