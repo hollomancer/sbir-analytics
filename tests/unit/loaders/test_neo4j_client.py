@@ -28,6 +28,16 @@ pytestmark = pytest.mark.fast
 # are now in tests/unit/loaders/conftest.py and automatically available
 
 
+@pytest.fixture(autouse=True)
+def reset_patches():
+    """Ensure patches are clean between tests."""
+    yield
+    # Force garbage collection to clean up any lingering mocks
+    import gc
+
+    gc.collect()
+
+
 class TestNeo4jConfig:
     """Tests for Neo4jConfig model."""
 
@@ -323,6 +333,9 @@ class TestNeo4jClientBatchOperations:
     @patch.object(Neo4jClient, "session")
     def test_batch_upsert_tracks_creates_and_updates(self, mock_session_cm, neo4j_config):
         """Test batch upsert correctly tracks creates vs updates."""
+        # Ensure batch size is large enough for all nodes
+        neo4j_config.batch_size = 1000
+
         mock_session = Neo4jMocks.session()
         mock_tx = Neo4jMocks.transaction()
         # Create context manager for begin_transaction
