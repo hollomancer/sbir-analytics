@@ -213,37 +213,21 @@ class TestInflationAdjuster:
         assert factor is not None
         assert "extrapolated" in str(flags)
 
-    def test_extract_award_year_from_year_column(self, adjuster):
-        """Test extracting award year from year column."""
-        row = pd.Series({"Award_Year": 2020, "amount": 100000})
-
+    @pytest.mark.parametrize(
+        "row_data,expected",
+        [
+            ({"Award_Year": 2020, "amount": 100000}, 2020),  # year column
+            ({"Award_Date": "2020-06-15", "amount": 100000}, 2020),  # date string
+            ({"Award_Date": pd.Timestamp("2020-06-15"), "amount": 100000}, 2020),  # datetime
+            ({"amount": 100000}, None),  # missing
+        ],
+        ids=["year_column", "date_string", "datetime", "missing"],
+    )
+    def test_extract_award_year(self, adjuster, row_data, expected):
+        """Test extracting award year from various formats."""
+        row = pd.Series(row_data)
         year = adjuster.extract_award_year(row)
-
-        assert year == 2020
-
-    def test_extract_award_year_from_date_string(self, adjuster):
-        """Test extracting award year from date string."""
-        row = pd.Series({"Award_Date": "2020-06-15", "amount": 100000})
-
-        year = adjuster.extract_award_year(row)
-
-        assert year == 2020
-
-    def test_extract_award_year_from_datetime(self, adjuster):
-        """Test extracting award year from datetime object."""
-        row = pd.Series({"Award_Date": pd.Timestamp("2020-06-15"), "amount": 100000})
-
-        year = adjuster.extract_award_year(row)
-
-        assert year == 2020
-
-    def test_extract_award_year_missing(self, adjuster):
-        """Test extracting award year when not present."""
-        row = pd.Series({"amount": 100000})
-
-        year = adjuster.extract_award_year(row)
-
-        assert year is None
+        assert year == expected
 
     def test_adjust_single_award_success(self, adjuster):
         """Test adjusting a single award successfully."""

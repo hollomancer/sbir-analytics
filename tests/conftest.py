@@ -3,12 +3,13 @@
 # Test bootstrap for pytest: ensure repository root is on sys.path so tests can import
 # the `src` package without requiring PYTHONPATH to be explicitly set by the caller.
 #
-# This file is intentionally small and robust: it walks up from the tests directory
-# until it finds a likely project root (pyproject.toml, src/ directory, or .git),
-# then inserts that path at the front of sys.path.
+# Fixture Organization:
+# - This file: Core fixtures (repo_root, config, data paths, dependency checks)
+# - tests/conftest_shared.py: Domain fixtures (Neo4j, enrichment, fiscal, transition)
+#   Import these explicitly in subdirectory conftest.py files as needed.
+# - tests/factories.py: Test data factories (AwardFactory, DataFrameBuilder)
+# - tests/mocks/: Mock factories (Neo4jMocks, ConfigMocks, etc.)
 #
-# It also configures a sane default logging level for tests and exposes a simple
-# fixture providing the repo root path for use in tests.
 from __future__ import annotations
 
 import sys

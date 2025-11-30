@@ -1,4 +1,23 @@
-# Shared fixtures for the test suite
+"""Shared domain fixtures for the test suite.
+
+This module contains fixtures for specific domains that require explicit imports.
+Import these in subdirectory conftest.py files as needed:
+
+    from tests.conftest_shared import (
+        neo4j_config, neo4j_client, neo4j_helper,
+        sample_sbir_df, sample_recipient_df,
+        sample_award, sample_contract,
+        default_config, default_transition_config,
+    )
+
+Fixture Categories:
+- Neo4j: neo4j_config, neo4j_client, neo4j_helper, cleanup_test_data
+- Mocks: mock_driver, mock_session, mock_transaction
+- Enrichment: mock_enrichment_config, sample_sbir_df, sample_recipient_df
+- Fiscal: sample_fiscal_awards_df, sample_fiscal_impacts_df, sample_tax_parameters
+- Transition: default_transition_config, sample_award, sample_contract, mock_scorer
+- DataFrame Builders: builder_awards_df, builder_contracts_df, builder_companies_df
+"""
 
 import os
 from datetime import date, datetime, timedelta

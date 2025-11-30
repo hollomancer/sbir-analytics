@@ -183,7 +183,7 @@ class TestResolveFromStateField:
     """Tests for resolve_from_state_field method."""
 
     def test_resolve_direct_state_code(self, resolver):
-        """Test resolution from direct state code."""
+        """Test resolution from direct state code with full validation."""
         row = pd.Series({"State": "CA", "Company": "Acme Corp"})
         result = resolver.resolve_from_state_field(row)
 
@@ -195,7 +195,7 @@ class TestResolveFromStateField:
         assert result.method == "direct_code"
 
     def test_resolve_state_name(self, resolver):
-        """Test resolution from state name."""
+        """Test resolution from state name with full validation."""
         row = pd.Series({"State": "California"})
         result = resolver.resolve_from_state_field(row)
 
@@ -205,40 +205,34 @@ class TestResolveFromStateField:
         assert result.confidence == 0.90
         assert result.method == "name_mapping"
 
-    def test_resolve_state_variation(self, resolver):
-        """Test resolution from state variation."""
-        row = pd.Series({"State": "Calif"})
+    @pytest.mark.parametrize(
+        "row_data,expected_code",
+        [
+            ({"State": "Calif"}, "CA"),  # variation
+            ({"state": "ca"}, "CA"),  # lowercase
+            ({"company_state": "NY"}, "NY"),  # alternative column
+        ],
+        ids=["variation", "lowercase", "alt_column"],
+    )
+    def test_resolve_state_field_variants(self, resolver, row_data, expected_code):
+        """Test resolution from various state field formats."""
+        row = pd.Series(row_data)
         result = resolver.resolve_from_state_field(row)
 
         assert result is not None
-        assert result.state_code == "CA"
+        assert result.state_code == expected_code
 
-    def test_resolve_lowercase_input(self, resolver):
-        """Test resolution handles lowercase input."""
-        row = pd.Series({"state": "ca"})
-        result = resolver.resolve_from_state_field(row)
-
-        assert result is not None
-        assert result.state_code == "CA"
-
-    def test_resolve_alternative_column_names(self, resolver):
-        """Test resolution tries multiple column names."""
-        row = pd.Series({"company_state": "NY"})
-        result = resolver.resolve_from_state_field(row)
-
-        assert result is not None
-        assert result.state_code == "NY"
-
-    def test_resolve_no_state_column(self, resolver):
-        """Test resolution returns None when no state column."""
-        row = pd.Series({"Company": "Acme"})
-        result = resolver.resolve_from_state_field(row)
-
-        assert result is None
-
-    def test_resolve_empty_state_value(self, resolver):
-        """Test resolution returns None for empty state value."""
-        row = pd.Series({"State": ""})
+    @pytest.mark.parametrize(
+        "row_data",
+        [
+            {"Company": "Acme"},  # no state column
+            {"State": ""},  # empty value
+        ],
+        ids=["no_column", "empty_value"],
+    )
+    def test_resolve_state_field_returns_none(self, resolver, row_data):
+        """Test resolution returns None for invalid inputs."""
+        row = pd.Series(row_data)
         result = resolver.resolve_from_state_field(row)
 
         assert result is None
