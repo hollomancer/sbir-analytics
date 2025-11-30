@@ -285,7 +285,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 21600  # 6 hours for long downloads
+          role-duration-seconds: 14400  # 4 hours (IAM role max)
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
