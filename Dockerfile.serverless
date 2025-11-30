@@ -1,7 +1,7 @@
 # Minimal Dockerfile for Dagster Cloud Serverless
 # Optimized for fast builds and small image size with aggressive layer caching
 
-FROM python:3.14-slim AS base
+FROM python:3.11-slim AS base
 
 # Install system dependencies in a single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
