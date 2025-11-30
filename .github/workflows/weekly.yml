@@ -282,7 +282,7 @@ jobs:
     name: Performance Profiling
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: github.event.schedule == '0 2 * * 0' || github.event.inputs.test_level == 'comprehensive'
+    if: false  # Disabled - pytest-benchmark not installed, no benchmark tests exist
     steps:
       - uses: actions/checkout@v6
 
