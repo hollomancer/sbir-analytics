@@ -126,7 +126,8 @@ class TestBaseDataFrameCache:
         cache.set(df, uei="TEST123")
 
         mock_save.assert_called_once()
-        assert cache.cache_dir / "*.meta.json" in list(cache.cache_dir.glob("*.meta.json"))
+        # Check that at least one meta.json file was created
+        assert len(list(cache.cache_dir.glob("*.meta.json"))) > 0
 
     def test_get_default_cache_type(self, cache):
         """Test default cache type."""

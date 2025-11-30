@@ -47,7 +47,7 @@ class TestConfigAccessor:
 
     def test_get_nested_returns_default_when_not_found(self):
         """Test get_nested returns default when path not found."""
-        config = MagicMock()
+        config = MagicMock(spec=[])  # Empty spec means no attributes
 
         result = ConfigAccessor.get_nested(config, "nonexistent.path", default="default_value")
         assert result == "default_value"

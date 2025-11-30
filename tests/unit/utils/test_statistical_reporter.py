@@ -434,7 +434,9 @@ class TestFormatGeneration:
 
         assert json_path.exists()
         assert json_path.suffix == ".json"
-        assert json_path.parent == temp_output_dir
+        # File is in run_id subdirectory
+        assert json_path.parent.parent == temp_output_dir
+        assert json_path.parent.name == "run_123"
 
         # Verify JSON is valid
         with open(json_path) as f:
