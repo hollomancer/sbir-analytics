@@ -99,16 +99,23 @@ def check_file_availability(
         try:
             s3_obj = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
             s3_last_modified = s3_obj["LastModified"]
+            s3_size = s3_obj.get("ContentLength", 0)
             result["s3_last_modified"] = s3_last_modified
+            result["s3_content_length"] = s3_size
 
-            # Check if source file is newer
+            # Check if S3 file is incomplete (size mismatch)
+            if result["content_length"] and s3_size:
+                if result["content_length"] != s3_size:
+                    # S3 file is incomplete or different - treat as new
+                    result["is_new"] = True
+                    result["size_mismatch"] = True
+                    result["expected_size"] = result["content_length"]
+                    result["actual_size"] = s3_size
+                    return result
+
+            # Check if source file is newer by date
             if result["last_modified"]:
                 result["is_new"] = result["last_modified"] > s3_last_modified
-            else:
-                # If no Last-Modified header, compare Content-Length
-                s3_size = s3_obj.get("ContentLength")
-                if result["content_length"] and s3_size:
-                    result["is_new"] = result["content_length"] != s3_size
 
         except s3_client.exceptions.ClientError as e:
             # File doesn't exist in S3, so it's new
