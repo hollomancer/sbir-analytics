@@ -70,21 +70,26 @@ def test_enrich_exact_duns_match_with_hyphens():
 
 
 def test_enrich_fuzzy_name_match_auto_accept():
-    companies = pd.DataFrame(
-        [
-            {"company": "TechStart Incorporated", "UEI": "", "Duns": "", "industry": "AI"},
-            {"company": "Other Corp", "UEI": "", "Duns": "", "industry": "Other"},
-        ]
+    """Test fuzzy name matching with auto-accept threshold."""
+    companies = (
+        DataFrameBuilder.companies(2)
+        .build()
+        .assign(
+            company=["TechStart Incorporated", "Other Corp"],
+            UEI=["", ""],
+            Duns=["", ""],
+            industry=["AI", "Other"],
+        )
     )
-    awards = pd.DataFrame(
-        [
-            {
-                "company": "TechStart Inc",
-                "UEI": "",
-                "Duns": "",
-                "award_id": "C-2022-0003",
-            }
-        ]
+    awards = (
+        DataFrameBuilder.awards(1)
+        .build()
+        .drop(
+            columns=[
+                c for c in DataFrameBuilder.awards(1).build().columns if c.startswith("company_")
+            ]
+        )
+        .assign(company="TechStart Inc", UEI="", Duns="", award_id="C-2022-0003")
     )
 
     # Lower high_threshold to accept fuzzy match in test environment
