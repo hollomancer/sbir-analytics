@@ -65,9 +65,9 @@ except Exception:
 
 # Transformers
 try:  # pragma: no cover - defensive import
-    from ..transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
+    from src.transformers.patent_transformer import PatentAssignmentTransformer  # type: ignore
 except Exception:
-    PatentAssignmentTransformer = None
+    PatentAssignmentTransformer = None  # type: ignore[assignment,misc]
 
 # Models
 try:  # pragma: no cover - defensive import
