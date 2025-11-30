@@ -1,0 +1,54 @@
+name: Start Neo4j Container
+description: Starts a Neo4j Docker container and waits for it to be ready
+
+inputs:
+  container-name:
+    description: Name for the Neo4j container
+    required: false
+    default: "test-neo4j"
+  neo4j-image:
+    description: Neo4j Docker image
+    required: false
+    default: "neo4j:5"
+  username:
+    description: Neo4j username
+    required: false
+    default: "neo4j"
+  password:
+    description: Neo4j password
+    required: false
+    default: "password"
+  timeout:
+    description: Timeout in seconds to wait for Neo4j
+    required: false
+    default: "60"
+
+outputs:
+  neo4j-uri:
+    description: Neo4j bolt URI
+    value: "bolt://localhost:7687"
+
+runs:
+  using: composite
+  steps:
+    - name: Start Neo4j container
+      shell: bash
+      run: |
+        docker run -d --name ${{ inputs.container-name }} \
+          -e NEO4J_AUTH=${{ inputs.username }}/${{ inputs.password }} \
+          -p 7687:7687 -p 7474:7474 \
+          ${{ inputs.neo4j-image }}
+
+    - name: Wait for Neo4j
+      uses: ./.github/actions/wait-for-neo4j
+      with:
+        method: "tcp"
+        port: "7687"
+        timeout: ${{ inputs.timeout }}
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        echo "NEO4J_URI=bolt://localhost:7687" >> $GITHUB_ENV
+        echo "NEO4J_USER=${{ inputs.username }}" >> $GITHUB_ENV
+        echo "NEO4J_PASSWORD=${{ inputs.password }}" >> $GITHUB_ENV

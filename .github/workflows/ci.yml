@@ -216,19 +216,12 @@ jobs:
 
       - name: Start Neo4j service
         if: matrix.suite.needs_neo4j
-        run: |
-          docker run -d --name test-neo4j \
-            -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
-            -p 7687:7687 -p 7474:7474 \
-            ${{ env.NEO4J_IMAGE }}
-          for i in {1..12}; do
-            if curl -s -f -o /dev/null http://localhost:7474; then
-              echo "Neo4j is ready"
-              break
-            fi
-            echo "Waiting for Neo4j... ($i/12)"
-            sleep 5
-          done
+        uses: ./.github/actions/start-neo4j
+        with:
+          container-name: test-neo4j
+          neo4j-image: ${{ env.NEO4J_IMAGE }}
+          username: ${{ env.NEO4J_USERNAME }}
+          password: ${{ env.NEO4J_PASSWORD }}
 
       - name: Run ${{ matrix.suite.name }} tests
         env:

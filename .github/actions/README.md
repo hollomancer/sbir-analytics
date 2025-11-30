@@ -64,6 +64,41 @@ Sets up Docker Buildx for multi-platform builds and caching.
 
 ---
 
+### `start-neo4j`
+
+Starts a Neo4j Docker container and waits for it to be ready.
+
+**Usage:**
+```yaml
+- name: Start Neo4j
+  uses: ./.github/actions/start-neo4j
+  with:
+    container-name: "test-neo4j"    # Optional, default: "test-neo4j"
+    neo4j-image: "neo4j:5"          # Optional, default: "neo4j:5"
+    username: "neo4j"               # Optional, default: "neo4j"
+    password: "password"            # Optional, default: "password"  # pragma: allowlist secret
+    timeout: "60"                   # Optional, default: "60"
+```
+
+**Outputs:**
+- `neo4j-uri`: Neo4j bolt URI (bolt://localhost:7687)
+
+**Features:**
+- Starts Neo4j container with specified credentials
+- Waits for Neo4j to be ready using TCP health check
+- Sets NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD environment variables
+
+**Note:** Remember to stop the container in a cleanup step:
+```yaml
+- name: Stop Neo4j
+  if: always()
+  run: |
+    docker stop test-neo4j || true
+    docker rm test-neo4j || true
+```
+
+---
+
 ### `setup-neo4j-service`
 
 Sets up Neo4j environment variables for service containers.

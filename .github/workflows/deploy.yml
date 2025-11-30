@@ -15,9 +15,7 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 concurrency:
-  # Cancel in-progress deploys to same branch
-  # Use different groups for PR vs push to allow parallel deployments
-  group: ${{ github.event_name == 'pull_request' && github.ref }}/${{ github.event_name == 'pull_request' && 'branch_deployments' || 'deploy' }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
 env:
   DAGSTER_CLOUD_URL: "http://sbir.dagster.cloud"

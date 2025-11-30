@@ -66,19 +66,12 @@ jobs:
 
       - name: Start Neo4j service
         if: matrix.needs_neo4j == true
-        run: |
-          docker run -d --name weekly-neo4j \
-            -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
-            -p 7687:7687 -p 7474:7474 \
-            ${{ env.NEO4J_IMAGE }}
-          for i in {1..12}; do
-            if curl -s -f -o /dev/null http://localhost:7474; then
-              echo "Neo4j is ready"
-              break
-            fi
-            echo "Waiting for Neo4j... ($i/12)"
-            sleep 5
-          done
+        uses: ./.github/actions/start-neo4j
+        with:
+          container-name: weekly-neo4j
+          neo4j-image: ${{ env.NEO4J_IMAGE }}
+          username: ${{ env.NEO4J_USERNAME }}
+          password: ${{ env.NEO4J_PASSWORD }}
 
       - name: Run ${{ matrix.suite }} tests
         run: uv run pytest ${{ matrix.pytest_target }} ${{ matrix.pytest_args }}
@@ -201,17 +194,12 @@ jobs:
           install-pyreadstat: "true"
 
       - name: Start Neo4j service
-        run: |
-          docker run -d --name comprehensive-neo4j \
-            -e NEO4J_AUTH=${{ env.NEO4J_USERNAME }}/${{ env.NEO4J_PASSWORD }} \
-            -p 7687:7687 -p 7474:7474 \
-            ${{ env.NEO4J_IMAGE }}
-
-      - name: Wait for Neo4j
-        uses: ./.github/actions/wait-for-neo4j
+        uses: ./.github/actions/start-neo4j
         with:
-          method: "tcp"
-          port: "7687"
+          container-name: comprehensive-neo4j
+          neo4j-image: ${{ env.NEO4J_IMAGE }}
+          username: ${{ env.NEO4J_USERNAME }}
+          password: ${{ env.NEO4J_PASSWORD }}
           timeout: "60"
 
       - name: Run comprehensive test suite
