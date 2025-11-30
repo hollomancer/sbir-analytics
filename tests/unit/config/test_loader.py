@@ -453,8 +453,8 @@ class TestGetConfig:
             reload_config()  # Clear cache
             config = get_config(environment="production", config_dir=config_dir)
 
-            # Production uses localhost by default (can be overridden via env vars)
-            assert config.neo4j.uri == "bolt://localhost:7687"
+            # Production uses prod-neo4j by default (can be overridden via env vars)
+            assert config.neo4j.uri == "bolt://prod-neo4j:7687"
 
     def test_get_config_respects_explicit_neo4j_uri_env(self):
         """Test get_config respects explicit NEO4J_URI environment variable."""

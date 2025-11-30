@@ -32,13 +32,13 @@ def transformed_cet_analytics() -> Output:
 
     try:
         import pandas as pd
-    except Exception:
+    except Exception:  # nosec B110
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy imports at module import time
     try:
         from src.utils.performance_alerts import AlertCollector
-    except Exception:
+    except Exception:  # nosec B110
         AlertCollector = None  # type: ignore
 
     processed_dir = Path("data/processed")
@@ -63,8 +63,8 @@ def transformed_cet_analytics() -> Output:
                     if cols:
                         df = df[cols]
                 return df
-            except Exception:
-                pass
+            except Exception:  # nosec B110
+                pass  # noqa: B110 - fallback to JSON
         if json_path.exists():
             try:
                 rows = []
@@ -82,7 +82,7 @@ def transformed_cet_analytics() -> Output:
                     if cols:
                         df = df[cols]
                 return df
-            except Exception:
+            except Exception:  # nosec B110
                 return pd.DataFrame()
         return pd.DataFrame()
 
@@ -147,7 +147,7 @@ def transformed_cet_analytics() -> Output:
     try:
         with checks_path.open("w", encoding="utf-8") as fh:
             json.dump(checks, fh, indent=2)
-    except Exception:
+    except Exception:  # nosec B110
         # best-effort
         pass
 
@@ -180,13 +180,13 @@ def transformed_cet_analytics_aggregates() -> Output:
 
     try:
         import pandas as pd
-    except Exception:
+    except Exception:  # nosec B110
         pd = None  # type: ignore
 
     # Lazy import to avoid heavy deps at module import time
     try:
         from src.utils.performance_alerts import AlertCollector
-    except Exception:
+    except Exception:  # nosec B110
         AlertCollector = None  # type: ignore
 
     processed_dir = Path("data/processed")
@@ -215,8 +215,8 @@ def transformed_cet_analytics_aggregates() -> Output:
                     if cols:
                         df = df[cols]
                 return df
-            except Exception:
-                pass
+            except Exception:  # nosec B110
+                pass  # noqa: B110 - fallback to JSON
         if json_path.exists():
             try:
                 rows = []
@@ -234,7 +234,7 @@ def transformed_cet_analytics_aggregates() -> Output:
                     if cols:
                         df = df[cols]
                 return df
-            except Exception:
+            except Exception:  # nosec B110
                 return pd.DataFrame()
         return pd.DataFrame()
 
@@ -261,7 +261,7 @@ def transformed_cet_analytics_aggregates() -> Output:
         def _year_of(x):
             try:
                 return str(datetime.fromisoformat(str(x).replace("Z", "+00:00")).year)
-            except Exception:
+            except Exception:  # nosec B110
                 return "unknown"
 
         df_tmp = df_awards.copy()
@@ -291,7 +291,7 @@ def transformed_cet_analytics_aggregates() -> Output:
                     0
                 ]
                 latest_coverage = float(latest_row["coverage_rate"])
-        except Exception:
+        except Exception:  # nosec B110
             latest_year = None
             latest_coverage = None
 
@@ -332,13 +332,13 @@ def transformed_cet_analytics_aggregates() -> Output:
             if not coverage_by_year.empty:
                 coverage_by_year.to_csv(coverage_csv, index=False)
                 coverage_by_year.to_json(coverage_json, orient="records", indent=2)
-        except Exception:
+        except Exception:  # nosec B110
             pass
         try:
             if not specialization_dist.empty:
                 specialization_dist.to_csv(spec_csv, index=False)
                 specialization_dist.to_json(spec_json, orient="records", indent=2)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # Regression alert vs baseline
@@ -357,7 +357,7 @@ def transformed_cet_analytics_aggregates() -> Output:
                         baseline_min = float(baseline["cet"].get("coverage_min", 0.0))
                     elif "coverage_min" in baseline:
                         baseline_min = float(baseline.get("coverage_min", 0.0))
-        except Exception:
+        except Exception:  # nosec B110
             baseline_min = None
 
         # If baseline exists and latest_coverage available, compare
@@ -376,7 +376,7 @@ def transformed_cet_analytics_aggregates() -> Output:
                 "w", encoding="utf-8"
             ) as fh:
                 json.dump(alerts, fh, indent=2)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     metadata = {

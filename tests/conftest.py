@@ -130,6 +130,26 @@ def pytest_configure(config):
         "markers",
         "requires_ml: Tests requiring ML dependencies",
     )
+    config.addinivalue_line(
+        "markers",
+        "s3: Tests requiring S3 access",
+    )
+    config.addinivalue_line(
+        "markers",
+        "unit: Pure unit tests with no I/O",
+    )
+    config.addinivalue_line(
+        "markers",
+        "smoke: Quick smoke tests for CI",
+    )
+    config.addinivalue_line(
+        "markers",
+        "regression: Regression tests for known bugs",
+    )
+    config.addinivalue_line(
+        "markers",
+        "performance: Performance/benchmark tests",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -470,6 +490,22 @@ def _check_import(module_name: str) -> bool:
     import importlib.util
 
     return importlib.util.find_spec(module_name) is not None
+
+
+def neo4j_running() -> bool:
+    """Check if Neo4j is available and running for testing.
+
+    This is a helper function (not a fixture) for use with pytest.mark.skipif.
+    """
+    try:
+        from neo4j import GraphDatabase
+
+        driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "test"))
+        driver.verify_connectivity()
+        driver.close()
+        return True
+    except Exception:
+        return False
 
 
 @pytest.fixture

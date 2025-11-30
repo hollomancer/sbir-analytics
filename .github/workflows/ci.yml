@@ -7,6 +7,7 @@ permissions:
   checks: write  # For Codecov and performance checks
 
 on:
+  workflow_call:  # Allow other workflows to call this CI workflow
   pull_request:
     branches-ignore: []
     # Run on any PR to any branch
@@ -103,11 +104,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "```mermaid" >> $GITHUB_STEP_SUMMARY
           echo "graph TD" >> $GITHUB_STEP_SUMMARY
-          echo "  A[Detect Changes] --> B[Lint]" >> $GITHUB_STEP_SUMMARY
-          echo "  A --> C[Type Check]" >> $GITHUB_STEP_SUMMARY
+          echo "  A[Detect Changes] --> B[Code Quality]" >> $GITHUB_STEP_SUMMARY
           echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
-          echo "  B --> E[Unit Tests]" >> $GITHUB_STEP_SUMMARY
-          echo "  C --> E" >> $GITHUB_STEP_SUMMARY
+          echo "  B --> E[Tests]" >> $GITHUB_STEP_SUMMARY
           echo "  D --> E" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.detect.outputs.cet }}" = "true" ]; then
             echo "  E --> F[CET Tests]" >> $GITHUB_STEP_SUMMARY
@@ -123,15 +122,12 @@ jobs:
           fi
           echo "```" >> $GITHUB_STEP_SUMMARY
 
-  lint:
-    name: Lint (Ruff)
+  code-quality:
+    name: Code Quality (Lint + Type Check)
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -148,25 +144,6 @@ jobs:
       - name: Run Ruff format check
         run: uv run python -m ruff format --check src tests
 
-  type-check:
-    name: Type Check (MyPy)
-    needs: [detect-changes]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "true"
-          cache-venv: "true"
-
       - name: Run MyPy type checker
         run: uv run python -m mypy src
 
@@ -175,11 +152,7 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Skip on docs-only changes to save CI time
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -203,14 +176,10 @@ jobs:
 
   test:
     name: Tests (${{ matrix.suite.name }})
-    needs: [detect-changes]
+    needs: [detect-changes, code-quality, verify-setup-script]
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Reduced from 15 for faster parallel execution
-    # Skip test job on PRs if only docs changed (but always run on push to main/develop)
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docs-only != 'true')
+    timeout-minutes: 10
+    if: needs.detect-changes.outputs.docs-only != 'true'
 
     env:
       ENVIRONMENT: test
@@ -307,7 +276,7 @@ jobs:
       - name: Download all test results
         uses: actions/download-artifact@v6
         with:
-          pattern: test-results-shard-*
+          pattern: test-results-*
           path: test-results/
 
       - name: Aggregate test results
@@ -320,24 +289,30 @@ jobs:
           TOTAL_PASSED=0
           TOTAL_FAILED=0
           TOTAL_SKIPPED=0
-          FAILED_TESTS=""
 
-          for shard in 1 2 3 4; do
-            if [ -f "test-results/test-results-shard-${shard}/test-results-shard-${shard}.json" ]; then
-              RESULT_FILE="test-results/test-results-shard-${shard}/test-results-shard-${shard}.json"
+          for suite in unit-fast unit-slow integration; do
+            XML_FILE="test-results/test-results-${suite}/test-results-${suite}.xml"
+            if [ -f "$XML_FILE" ]; then
+              # Parse JUnit XML for test counts
+              TESTS=$(grep -oP 'tests="\K[0-9]+' "$XML_FILE" | head -1 || echo "0")
+              FAILURES=$(grep -oP 'failures="\K[0-9]+' "$XML_FILE" | head -1 || echo "0")
+              ERRORS=$(grep -oP 'errors="\K[0-9]+' "$XML_FILE" | head -1 || echo "0")
+              SKIPPED=$(grep -oP 'skipped="\K[0-9]+' "$XML_FILE" | head -1 || echo "0")
 
-              PASSED=$(jq -r '.summary.passed // 0' "$RESULT_FILE")
-              FAILED=$(jq -r '.summary.failed // 0' "$RESULT_FILE")
-              SKIPPED=$(jq -r '.summary.skipped // 0' "$RESULT_FILE")
+              FAILED=$((FAILURES + ERRORS))
+              PASSED=$((TESTS - FAILED - SKIPPED))
 
               TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
               TOTAL_FAILED=$((TOTAL_FAILED + FAILED))
               TOTAL_SKIPPED=$((TOTAL_SKIPPED + SKIPPED))
 
               if [ "$FAILED" -gt 0 ]; then
-                echo "### ❌ Shard $shard Failures" >> /tmp/test_summary.md
+                echo "### ❌ ${suite} Failures" >> /tmp/test_summary.md
                 echo "" >> /tmp/test_summary.md
-                jq -r '.tests[] | select(.outcome == "failed") | "- **\(.nodeid)**\n  ```\n  \(.call.longrepr // "No details")\n  ```"' "$RESULT_FILE" >> /tmp/test_summary.md
+                # Extract failure messages from JUnit XML
+                grep -oP '<failure[^>]*message="\K[^"]+' "$XML_FILE" | head -5 | while read msg; do
+                  echo "- $msg" >> /tmp/test_summary.md
+                done
                 echo "" >> /tmp/test_summary.md
               fi
             fi
@@ -759,20 +734,14 @@ jobs:
           fi
 
   cet-tests:
-    name: CET Tests (Smoke Only on PR)
+    name: CET Smoke Test
     needs: [detect-changes]
-    # Optimized: Only run smoke tests on PR, full pipeline on push (via cet-dev-e2e)
-    # This saves ~15 min on PRs by skipping pipeline test
     if: |
       needs.detect-changes.outputs.docs-only != 'true' &&
       github.event_name == 'pull_request' &&
       needs.detect-changes.outputs.cet == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Reduced from 30 since only running smoke
-
-    strategy:
-      matrix:
-        test-type: [smoke]  # Only smoke tests on PR, pipeline runs on push via cet-dev-e2e
+    timeout-minutes: 20
 
     services:
       neo4j:
@@ -785,8 +754,9 @@ jobs:
         options: >-
           --health-cmd="bash -c 'cypher-shell -u neo4j -p password \"RETURN 1\" || exit 1'"
           --health-interval=10s
-          --health-timeout=5s
+          --health-timeout=10s
           --health-retries=12
+          --health-start-period=30s
 
     steps:
       - name: Checkout repository
@@ -803,13 +773,6 @@ jobs:
           neo4j-password: ${{ env.NEO4J_PASSWORD }}
           default-timeout: ${{ env.DEFAULT_TIMEOUT }}
 
-      - name: Wait for Neo4j
-        uses: ./.github/actions/wait-for-neo4j
-        with:
-          method: "tcp"
-          port: "7687"
-          timeout: "120"
-
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
@@ -824,25 +787,8 @@ jobs:
           set -eux
           mkdir -p config/cet data/processed
 
-          # Generate taxonomy (pipeline needs 2 areas, smoke needs 1)
-          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
-            cat > config/cet/taxonomy.yaml << 'YAML'
-          version: "TEST-2025Q1"
-          last_updated: "2025-01-01"
-          cet_areas:
-            - cet_id: artificial_intelligence
-              name: Artificial Intelligence
-              definition: AI and ML technologies
-              keywords: ["machine learning", "neural network"]
-              parent_cet_id: null
-            - cet_id: quantum_information_science
-              name: Quantum Information Science
-              definition: Quantum computing and algorithms
-              keywords: ["quantum", "qubit", "entanglement"]
-              parent_cet_id: null
-          YAML
-          else
-            cat > config/cet/taxonomy.yaml << 'YAML'
+          # Generate taxonomy for smoke test
+          cat > config/cet/taxonomy.yaml << 'YAML'
           version: "TEST-2025Q1"
           last_updated: "2025-01-01"
           cet_areas:
@@ -852,19 +798,9 @@ jobs:
               keywords: ["machine learning", "neural network"]
               parent_cet_id: null
           YAML
-          fi
 
-          # Generate classification config
-          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
-            cat > config/cet/classification.yaml << 'YAML'
-          model_version: vtest
-          created_date: "2025-01-01"
-          confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
-          batch: {size: 256}
-          evidence: {max_statements: 2, excerpt_max_words: 40}
-          YAML
-          else
-            cat > config/cet/classification.yaml << 'YAML'
+          # Generate classification config for smoke test
+          cat > config/cet/classification.yaml << 'YAML'
           model_version: "vtest"
           created_date: "2025-01-01"
           confidence_thresholds: {high: 70.0, medium: 40.0, low: 0.0}
@@ -878,19 +814,11 @@ jobs:
           feature_selection: {enabled: false}
           calibration: {method: "sigmoid", cv: 2}
           YAML
-          fi
 
-          # Generate test data
-          if [ "${{ matrix.test-type }}" = "pipeline" ]; then
-            cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
-          {"award_id":"award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
-          {"award_id":"award_002","title":"Quantum sensor","abstract":"Research on qubit coherence and entanglement for sensors.","keywords":["quantum","qubit"]}
-          NDJSON
-          else
-            cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
+          # Generate test data for smoke test
+          cat > data/processed/enriched_sbir_awards.ndjson << 'NDJSON'
           {"award_id":"smoke_award_001","title":"ML imaging","abstract":"This project uses machine learning for image classification.","keywords":["machine learning","imaging"]}
           NDJSON
-          fi
 
       - name: Setup Neo4j environment variables
         uses: ./.github/actions/setup-neo4j-service
@@ -900,16 +828,7 @@ jobs:
           auth-mode: password
           uri: ${{ env.NEO4J_URI }}
 
-      - name: Run CET pipeline test
-        if: matrix.test-type == 'pipeline'
-        env:
-          SBIR_ETL__CET__NEO4J_OUTPUT_DIR: data/loaded/neo4j
-        run: |
-          set -eux
-          uv run dagster job execute -m src.definitions -j cet_full_pipeline_job
-
       - name: Run CET smoke test
-        if: matrix.test-type == 'smoke'
         run: |
           set -eux
           uv run python scripts/ci/cet_smoke_test.py
@@ -924,7 +843,7 @@ jobs:
         if: always()
         uses: ./.github/actions/upload-artifacts
         with:
-          name: cet-${{ matrix.test-type }}-artifacts
+          name: cet-smoke-artifacts
           retention-days: ${{ env.CET_ARTIFACT_RETENTION_DAYS }}
           path: |
             data/processed/cet_*.parquet
@@ -936,7 +855,7 @@ jobs:
 
       - name: Success note
         if: success()
-        run: echo "CET ${{ matrix.test-type }} test completed successfully"
+        run: echo "CET smoke test completed successfully"
 
   cet-dev-e2e:
     name: CET Dev E2E (Docker Compose)
@@ -1234,7 +1153,7 @@ jobs:
 
   ci-summary:
     name: CI Summary
-    needs: [detect-changes, lint, type-check, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp, ml-smoke-test, test-s3-integration]
+    needs: [detect-changes, code-quality, verify-setup-script, test, container-build-test, performance-check, cet-tests, cet-dev-e2e, transition-mvp, ml-smoke-test, test-s3-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1248,10 +1167,9 @@ jobs:
 
           # Core jobs
           echo "| 🔍 Detect Changes | ${{ needs.detect-changes.result == 'success' && '✅' || '❌' }} ${{ needs.detect-changes.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧹 Lint | ${{ needs.lint.result == 'success' && '✅' || needs.lint.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔎 Type Check | ${{ needs.type-check.result == 'success' && '✅' || needs.type-check.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.type-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 Code Quality | ${{ needs.code-quality.result == 'success' && '✅' || needs.code-quality.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ✅ Verify Setup | ${{ needs.verify-setup-script.result == 'success' && '✅' || needs.verify-setup-script.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.verify-setup-script.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 Unit Tests (4 shards) | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Tests (3 suites) | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
 
           # Conditional jobs
           if [ "${{ needs.container-build-test.result }}" != "skipped" ]; then
@@ -1286,18 +1204,15 @@ jobs:
           echo "### Execution Flow" >> $GITHUB_STEP_SUMMARY
           echo "```mermaid" >> $GITHUB_STEP_SUMMARY
           echo "graph LR" >> $GITHUB_STEP_SUMMARY
-          echo "  A[Detect Changes] --> B[Lint]" >> $GITHUB_STEP_SUMMARY
-          echo "  A --> C[Type Check]" >> $GITHUB_STEP_SUMMARY
+          echo "  A[Detect Changes] --> B[Code Quality]" >> $GITHUB_STEP_SUMMARY
           echo "  A --> D[Verify Setup]" >> $GITHUB_STEP_SUMMARY
           echo "  B --> E[Tests]" >> $GITHUB_STEP_SUMMARY
-          echo "  C --> E" >> $GITHUB_STEP_SUMMARY
           echo "  D --> E" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
 
       - name: Check for failures
         if: |
-          needs.lint.result == 'failure' ||
-          needs.type-check.result == 'failure' ||
+          needs.code-quality.result == 'failure' ||
           needs.test.result == 'failure' ||
           needs.container-build-test.result == 'failure' ||
           needs.performance-check.result == 'failure' ||

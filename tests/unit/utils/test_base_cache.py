@@ -12,8 +12,8 @@ pytestmark = pytest.mark.fast
 from src.utils.cache.base_cache import BaseDataFrameCache
 
 
-class TestCache(BaseDataFrameCache):
-    """Test implementation of BaseDataFrameCache."""
+class _SampleCache(BaseDataFrameCache):
+    """Sample implementation of BaseDataFrameCache for testing."""
 
     def _get_default_cache_type(self) -> str:
         return "test"
@@ -25,19 +25,19 @@ class TestBaseDataFrameCache:
     @pytest.fixture
     def cache(self, tmp_path):
         """Create a test cache instance."""
-        return TestCache(cache_dir=tmp_path / "cache", enabled=True, ttl_hours=24)
+        return _SampleCache(cache_dir=tmp_path / "cache", enabled=True, ttl_hours=24)
 
     @pytest.fixture
     def disabled_cache(self, tmp_path):
         """Create a disabled test cache instance."""
-        return TestCache(cache_dir=tmp_path / "cache", enabled=False, ttl_hours=24)
+        return _SampleCache(cache_dir=tmp_path / "cache", enabled=False, ttl_hours=24)
 
     def test_init_creates_cache_dir(self, tmp_path):
         """Test that cache directory is created on initialization."""
         cache_dir = tmp_path / "cache"
         assert not cache_dir.exists()
 
-        TestCache(cache_dir=cache_dir, enabled=True)
+        _SampleCache(cache_dir=cache_dir, enabled=True)
 
         assert cache_dir.exists()
 

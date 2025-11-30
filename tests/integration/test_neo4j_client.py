@@ -5,7 +5,7 @@ Run with: docker-compose up -d neo4j
 """
 
 import pytest
-from tests.conftest_neo4j_helper import neo4j_available
+from tests.conftest import neo4j_running as neo4j_available
 
 from src.loaders.neo4j.client import LoadMetrics, Neo4jClient
 

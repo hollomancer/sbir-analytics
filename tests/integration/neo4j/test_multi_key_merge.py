@@ -1,7 +1,7 @@
 """Integration tests for multi-key MERGE functionality."""
 
 import pytest
-from tests.conftest_neo4j_helper import neo4j_available
+from tests.conftest import neo4j_running as neo4j_available
 
 from src.loaders.neo4j import Neo4jClient, Neo4jConfig
 

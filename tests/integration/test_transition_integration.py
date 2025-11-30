@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
-from tests.conftest_neo4j_helper import neo4j_available
+from tests.conftest import neo4j_running as neo4j_available
 
 
 pytestmark = [
