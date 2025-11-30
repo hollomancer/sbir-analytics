@@ -312,12 +312,12 @@ jobs:
                   --query 'jobs[0].{Status:status,StatusReason:statusReason,Container:container.{Image:image,Vcpus:vcpus,Memory:memory}}' \
                   --output json
 
-                # Check compute environment
+                # Check compute environment (may fail due to permissions)
                 echo "Compute environment status:"
                 aws batch describe-compute-environments \
                   --compute-environments sbir-analytics-analysis-compute-env \
                   --query 'computeEnvironments[0].{State:state,Status:status,StatusReason:statusReason,DesiredvCpus:computeResources.desiredvCpus,MaxvCpus:computeResources.maxvCpus}' \
-                  --output json
+                  --output json 2>&1 || echo "(Permission denied - this is informational only)"
               fi
 
               if [ "$STATUS" = "SUCCEEDED" ]; then
