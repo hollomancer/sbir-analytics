@@ -123,18 +123,26 @@ jobs:
       - name: Check existing SBIR files
         id: check-existing
         run: |
-          # Use shared reporting script for header
-          ./scripts/ci/report-download-status.sh \
-            --title "SBIR Awards Refresh Report" \
-            --emoji "🎯" \
-            --section-level 2
+          echo "## 🎯 SBIR Awards Refresh Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📂 Current SBIR Files in S3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | Last Modified |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|---------------|" >> $GITHUB_STEP_SUMMARY
 
-          # Use shared S3 listing script
-          ./scripts/ci/report-s3-files.sh \
-            --title "📂 Current S3 Files" \
-            --s3-bucket "${{ env.S3_BUCKET }}" \
-            --s3-prefix "raw/sbir/" \
-            --tail 10
+          # List files with details
+          aws s3api list-objects-v2 \
+            --bucket "${{ env.S3_BUCKET }}" \
+            --prefix "raw/awards/" \
+            --query 'Contents[*].[Key,Size,LastModified]' \
+            --output text | while read key size modified; do
+              if [ -n "$key" ]; then
+                size_mb=$(echo "scale=2; $size / 1048576" | bc)
+                echo "| \`${key}\` | ${size_mb} MB | ${modified} |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Start SBIR refresh Step Functions
         id: sbir-stepfunctions
@@ -254,22 +262,24 @@ jobs:
       - name: Check downloaded files
         if: always()
         run: |
-          # Source helper functions
-          source ./scripts/ci/report-helpers.sh
+          echo "### 📦 SBIR Files After Refresh" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | Last Modified |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|---------------|" >> $GITHUB_STEP_SUMMARY
 
-          # Use S3 listing script
-          ./scripts/ci/report-s3-files.sh \
-            --title "📦 Downloaded Files" \
-            --s3-bucket "${{ env.S3_BUCKET }}" \
-            --s3-prefix "raw/sbir/" \
-            --tail 20 \
-            --summarize
+          aws s3api list-objects-v2 \
+            --bucket "${{ env.S3_BUCKET }}" \
+            --prefix "raw/awards/" \
+            --query 'Contents[*].[Key,Size,LastModified]' \
+            --output text | while read key size modified; do
+              if [ -n "$key" ]; then
+                size_mb=$(echo "scale=2; $size / 1048576" | bc)
+                echo "| \`${key}\` | ${size_mb} MB | ${modified} |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
 
-          # Compare before/after
-          CURRENT_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive | wc -l)
-          report_file_changes "$CURRENT_COUNT"
-
-          report_info "The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs."
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs." >> $GITHUB_STEP_SUMMARY
 
   refresh-usaspending:
     name: Refresh USAspending Database
@@ -300,55 +310,49 @@ jobs:
       - name: Check if new USAspending file available
         id: check-new-file
         run: |
-          # Source helper functions
-          source ./scripts/ci/report-helpers.sh
-
-          # Use shared reporting script for header
-          ./scripts/ci/report-download-status.sh \
-            --title "USAspending File Availability Check" \
-            --emoji "🔍" \
-            --section-level 2
+          echo "## 🔍 USAspending File Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check for new file (exit code 0 = new file, 1 = not new)
           if uv run python scripts/usaspending/check_new_file.py \
             --s3-bucket ${{ env.S3_BUCKET }} \
             --database-type full \
-            --json > check_result.json; then
-
-            # File is new
+            --json > check_result.json 2>&1; then
             IS_NEW="true"
             echo "is_new=true" >> $GITHUB_OUTPUT
-            report_header 3 "✅" "New File Available"
+            echo "### ✅ New/Updated File Detected - Will Download" >> $GITHUB_STEP_SUMMARY
           else
-            # File is not new or not available (exit code 1)
             IS_NEW="false"
             echo "is_new=false" >> $GITHUB_OUTPUT
-            report_header 3 "ℹ️" "No New File - Using Existing Data"
+            echo "### ℹ️ No New File - Skipping Download" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Display check results using shared script
-          ./scripts/ci/report-download-status.sh \
-            --json-file check_result.json \
-            --json-label "Check Results" \
-            --section-level 4
-
-          # Extract and display key information
+          # Show check details
           if [ -f check_result.json ]; then
             SOURCE_URL=$(jq -r '.source_url // "N/A"' check_result.json)
             AVAILABLE=$(jq -r '.available // false' check_result.json)
-            LAST_MODIFIED=$(jq -r '.last_modified // "N/A"' check_result.json)
-            S3_LAST_MODIFIED=$(jq -r '.s3_last_modified // "N/A"' check_result.json)
+            CONTENT_LENGTH=$(jq -r '.content_length // 0' check_result.json)
+            S3_CONTENT_LENGTH=$(jq -r '.s3_content_length // 0' check_result.json)
+            SIZE_MISMATCH=$(jq -r '.size_mismatch // false' check_result.json)
 
-            echo "**Source URL:** $SOURCE_URL" >> $GITHUB_STEP_SUMMARY
-            echo "**Available:** $AVAILABLE" >> $GITHUB_STEP_SUMMARY
-            echo "**Is New:** $IS_NEW" >> $GITHUB_STEP_SUMMARY
-            if [ "$LAST_MODIFIED" != "N/A" ]; then
-              echo "**Source Last Modified:** $LAST_MODIFIED" >> $GITHUB_STEP_SUMMARY
-            fi
-            if [ "$S3_LAST_MODIFIED" != "N/A" ]; then
-              echo "**S3 Last Modified:** $S3_LAST_MODIFIED" >> $GITHUB_STEP_SUMMARY
-            fi
+            SOURCE_SIZE_GB=$(echo "scale=2; $CONTENT_LENGTH / 1073741824" | bc 2>/dev/null || echo "0")
+            S3_SIZE_GB=$(echo "scale=2; $S3_CONTENT_LENGTH / 1073741824" | bc 2>/dev/null || echo "0")
+
+            echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Source URL | \`${SOURCE_URL}\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| Source Available | ${AVAILABLE} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Source Size | ${SOURCE_SIZE_GB} GB |" >> $GITHUB_STEP_SUMMARY
+            echo "| S3 Size | ${S3_SIZE_GB} GB |" >> $GITHUB_STEP_SUMMARY
+            echo "| Size Mismatch | ${SIZE_MISMATCH} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Will Download | ${IS_NEW} |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$SIZE_MISMATCH" = "true" ]; then
+              echo "⚠️ **Size mismatch detected** - S3 file appears incomplete. Will re-download." >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
 
       - name: Download and process USAspending database (parallel)
@@ -379,64 +383,68 @@ jobs:
       - name: Report USAspending status
         if: always()
         run: |
-          # Source helper functions
-          source ./scripts/ci/report-helpers.sh
-
-          # Use shared reporting script for header
-          ./scripts/ci/report-download-status.sh \
-            --title "USAspending Database Download Report" \
-            --emoji "💾" \
-            --section-level 2
+          echo "## 💾 USAspending Database Download Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check if download was skipped or ran
           if [ "${{ steps.usaspending-download.outcome }}" = "skipped" ]; then
-            report_header 3 "⏭️" "Status: SKIPPED - No New Data Available"
-            echo "The USAspending database has not changed since the last download." >> $GITHUB_STEP_SUMMARY
-            echo "Existing data in S3 is up-to-date." >> $GITHUB_STEP_SUMMARY
+            echo "### ⏭️ Status: SKIPPED" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Show why it was skipped
+            if [ -f check_result.json ]; then
+              echo "**Reason:** File in S3 matches source (same size and date)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Check Results:**" >> $GITHUB_STEP_SUMMARY
+              echo '```json' >> $GITHUB_STEP_SUMMARY
+              cat check_result.json >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
           elif [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
-            report_status_badge "success" "New Data Downloaded"
+            echo "### ✅ Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ steps.usaspending-download.outcome }}" = "failure" ]; then
-            report_status_badge "failed" "Download failed"
+            echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Note:** Progress is saved. Re-run workflow to resume download." >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Extract and display key metrics from output
+          # Show download progress if output exists
           if [ -f usaspending_output.txt ]; then
-            METRICS=$(grep -E "File size:|Total chunks:|Already uploaded:|Remaining:|Concurrency:|Part [0-9]+/|DOWNLOAD COMPLETE|INTERRUPTED|Total size:|Total parts:|Total time:|S3:" usaspending_output.txt | tail -30 || echo "No metrics found")
-            report_logs "$METRICS" "📊 Download Metrics" 30
+            echo "### 📊 Download Progress" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "File size:|Total chunks:|Already uploaded:|Remaining:|DOWNLOAD COMPLETE|INTERRUPTED|Parts completed:" usaspending_output.txt | head -20 >> $GITHUB_STEP_SUMMARY || echo "No progress info"
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
 
-            # Show final summary section if it exists
-            if grep -q "DOWNLOAD COMPLETE" usaspending_output.txt; then
-              SUMMARY=$(awk '/^=+$/{if(p)exit;p=1}p' usaspending_output.txt | tail -15)
-              report_logs "$SUMMARY" "✨ Completion Summary" 15
-            fi
-
-            # Show interrupted message if present (progress saved for resume)
-            if grep -q "INTERRUPTED" usaspending_output.txt; then
-              INTERRUPTED_BLOCK=$(awk '/INTERRUPTED/,/^=+$/' usaspending_output.txt)
-              report_logs "$INTERRUPTED_BLOCK" "⚠️ Download Interrupted - Will Resume Next Run" 15
-            fi
-
-            # Show error details if failed
-            if grep -q "ERROR DURING DOWNLOAD" usaspending_output.txt; then
-              ERROR_BLOCK=$(awk '/ERROR DURING DOWNLOAD/,/^=+$/' usaspending_output.txt)
-              report_error "$ERROR_BLOCK"
-            fi
-
-            # Show recent progress
-            RECENT_PROGRESS=$(tail -50 usaspending_output.txt)
-            report_logs "$RECENT_PROGRESS" "📈 Recent Progress" 50
-          else
-            report_warning "No output file found"
+            # Show last few parts
+            echo "<details><summary>Last 20 parts uploaded</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep "✅ Part" usaspending_output.txt | tail -20 >> $GITHUB_STEP_SUMMARY || echo "No parts uploaded"
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # S3 Status using shared script
-          ./scripts/ci/report-s3-files.sh \
-            --title "📦 S3 Status" \
-            --s3-bucket "${{ env.S3_BUCKET }}" \
-            --s3-prefix "raw/usaspending/database/" \
-            --tail 5 \
-            --message "Latest files in s3://${{ env.S3_BUCKET }}/raw/usaspending/database/:"
+          # Show current S3 files
+          echo "### 📦 USAspending Files in S3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | Last Modified |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|---------------|" >> $GITHUB_STEP_SUMMARY
+
+          aws s3api list-objects-v2 \
+            --bucket "${{ env.S3_BUCKET }}" \
+            --prefix "raw/usaspending/" \
+            --query 'Contents[*].[Key,Size,LastModified]' \
+            --output text | while read key size modified; do
+              if [ -n "$key" ]; then
+                size_gb=$(echo "scale=2; $size / 1073741824" | bc)
+                echo "| \`${key}\` | ${size_gb} GB | ${modified} |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
 
           # Full output log in collapsible section
           if [ -f usaspending_output.txt ]; then
