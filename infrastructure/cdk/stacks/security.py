@@ -115,6 +115,19 @@ class SecurityStack(Stack):
                 )
             )
 
+            # Lambda layer permissions for GitHub Actions
+            self.github_actions_role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "lambda:PublishLayerVersion",
+                        "lambda:GetLayerVersion",
+                        "lambda:DeleteLayerVersion",
+                    ],
+                    resources=[f"arn:aws:lambda:{self.region}:{self.account}:layer:sbir-analytics-*"],
+                )
+            )
+
             # CloudWatch Logs read permission for GitHub Actions
             self.github_actions_role.add_to_policy(
                 iam.PolicyStatement(
