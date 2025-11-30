@@ -16,15 +16,17 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-
-pytestmark = pytest.mark.fast
-
-import pytest
-
 from src.quality.dashboard import DashboardMetrics, QualityDashboard
 
-
 pytestmark = pytest.mark.fast
+
+# Check if plotly is available
+try:
+    import plotly  # noqa: F401
+
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
 
 
 @pytest.fixture
@@ -158,6 +160,7 @@ class TestQualityDashboard:
 
         assert len(metrics_list) == 0
 
+    @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.subplots.make_subplots")
     def test_generate_trend_dashboard_with_plotly(self, mock_subplots, dashboard, metrics_history):
@@ -187,6 +190,7 @@ class TestQualityDashboard:
 
         assert "empty_dashboard" in str(output_file)
 
+    @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.subplots.make_subplots")
     def test_generate_distribution_dashboard(self, mock_subplots, dashboard, sample_metrics):
@@ -209,6 +213,7 @@ class TestQualityDashboard:
             data = json.load(f)
         assert "metrics" in data
 
+    @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="plotly not installed")
     @patch("src.quality.dashboard.PLOTLY_AVAILABLE", True)
     @patch("plotly.graph_objects.Figure")
     def test_generate_comparison_dashboard(self, mock_figure, dashboard):

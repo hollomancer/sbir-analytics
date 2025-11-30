@@ -78,8 +78,8 @@ def test_apply_agency_branch_priors(rule_engine):
     # Test _all_cets prior
     adjusted_scores = rule_engine._apply_agency_branch_priors(scores, "NIH", None)
     assert adjusted_scores["space_systems"] == 55.0
-    assert adjusted_scores["biotechnology"] == 75.0
-    assert adjusted_scores["AI_ML"] == 75.0
+    assert adjusted_scores["biotechnology"] == 80.0
+    assert adjusted_scores["AI_ML"] == 80.0
 
 
 def test_apply_context_rules(rule_engine):

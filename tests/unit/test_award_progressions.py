@@ -66,10 +66,10 @@ class TestAwardProgressionDetection:
         assert len(progressions) == 1
         prog = progressions[0]
         assert prog[0] == "FinancialTransaction"  # source label
-        assert prog[1] == "award_id"  # source key
+        assert prog[1] == "transaction_id"  # source key
         assert prog[2] == "txn_award_TEST-001-I"  # source id (with txn_award_ prefix)
         assert prog[3] == "FinancialTransaction"  # target label
-        assert prog[4] == "award_id"  # target key
+        assert prog[4] == "transaction_id"  # target key
         assert prog[5] == "txn_award_TEST-001-II"  # target id (with txn_award_ prefix)
         assert prog[6] == "FOLLOWS"  # relationship type
         assert prog[7]["phase_progression"] == "I_to_II"

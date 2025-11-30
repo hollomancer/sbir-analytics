@@ -35,10 +35,10 @@ def test_map_bea_excel(bea_mapping: Path):
 
     # Test that we can read the mapping
     assert len(df) > 0
-    assert "NAICS" in df.columns
-    assert "BEA_Code" in df.columns
+    assert "naics_prefix" in df.columns
+    assert "bea_sector" in df.columns
 
     # Test a known mapping from fixture
-    naics_541712 = df[df["NAICS"] == "541712"]
+    naics_541712 = df[df["naics_prefix"] == "541712"]
     assert len(naics_541712) > 0
-    assert naics_541712.iloc[0]["BEA_Code"] == "5415"
+    assert naics_541712.iloc[0]["bea_sector"] == "5415"

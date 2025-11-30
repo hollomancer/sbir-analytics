@@ -741,7 +741,7 @@ class TestCalculatePatentScore:
         )
 
         # 0.3 (base) - 0.1 (tech transfer) = 0.2
-        assert score == 0.2
+        assert score == pytest.approx(0.2)
 
     def test_calculate_patent_score_maximum(self, extractor):
         """Test maximum patent score."""
@@ -754,7 +754,7 @@ class TestCalculatePatentScore:
         )
 
         # 0.3 + 0.2 + 0.2 + 0.2 = 0.9
-        assert score == 0.9
+        assert score == pytest.approx(0.9)
 
     def test_calculate_patent_score_capped_at_one(self, extractor):
         """Test patent score capped at 1.0."""

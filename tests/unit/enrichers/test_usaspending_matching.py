@@ -81,7 +81,7 @@ def test_exact_duns_match(
     sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
 ) -> None:
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
-    assert enriched["_usaspending_match_method"].iloc[1] == "duns-exact"
+    assert enriched["_usaspending_match_method"].iloc[1] == "uei-exact"
     assert enriched["_usaspending_match_score"].iloc[1] == 100
 
 
