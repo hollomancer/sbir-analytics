@@ -1,91 +1,73 @@
-"""Unit tests for column finder utilities."""
+"""Unit tests for column finder utilities.
+
+Tests the ColumnFinder class which provides flexible column name detection
+for DataFrames with varying column naming conventions.
+"""
 
 import pandas as pd
 import pytest
 
-
-pytestmark = pytest.mark.fast
-
 from src.utils.column_finder import ColumnFinder
 
 
-class TestColumnFinder:
-    """Tests for ColumnFinder utility class."""
+pytestmark = pytest.mark.fast
 
-    def test_find_id_column_award(self):
-        """Test finding award ID column."""
-        df = pd.DataFrame({"Contract_ID": [1, 2], "name": ["A", "B"]})
 
-        result = ColumnFinder.find_id_column(df, "award")
+class TestColumnFinderIdColumn:
+    """Tests for find_id_column method."""
 
-        assert result == "Contract_ID"
-
-    def test_find_id_column_patent(self):
-        """Test finding patent ID column."""
-        df = pd.DataFrame({"grant_doc_num": ["US123", "US456"], "title": ["A", "B"]})
-
-        result = ColumnFinder.find_id_column(df, "patent")
-
-        assert result == "grant_doc_num"
-
-    def test_find_id_column_company(self):
-        """Test finding company ID column."""
-        df = pd.DataFrame({"company_id": ["C1", "C2"], "name": ["A", "B"]})
-
-        result = ColumnFinder.find_id_column(df, "company")
-
-        assert result == "company_id"
-
-    def test_find_id_column_case_insensitive(self):
-        """Test finding ID column with case-insensitive matching."""
-        df = pd.DataFrame({"CONTRACT_ID": [1, 2], "name": ["A", "B"]})
-
-        result = ColumnFinder.find_id_column(df, "award")
-
-        assert result == "CONTRACT_ID"
+    @pytest.mark.parametrize(
+        "columns,entity_type,expected",
+        [
+            ({"Contract_ID": [1, 2], "name": ["A", "B"]}, "award", "Contract_ID"),
+            ({"grant_doc_num": ["US123", "US456"], "title": ["A", "B"]}, "patent", "grant_doc_num"),
+            ({"company_id": ["C1", "C2"], "name": ["A", "B"]}, "company", "company_id"),
+            ({"CONTRACT_ID": [1, 2], "name": ["A", "B"]}, "award", "CONTRACT_ID"),
+            ({"id": [1, 2], "name": ["A", "B"]}, "unknown_entity", "id"),
+        ],
+        ids=["award", "patent", "company", "case_insensitive", "unknown_entity"],
+    )
+    def test_find_id_column_scenarios(self, columns, entity_type, expected):
+        """Test finding ID columns for various entity types and naming conventions."""
+        df = pd.DataFrame(columns)
+        result = ColumnFinder.find_id_column(df, entity_type)
+        assert result == expected
 
     def test_find_id_column_returns_none_when_not_found(self):
-        """Test find_id_column returns None when column not found."""
+        """Test find_id_column returns None when no matching column exists."""
         df = pd.DataFrame({"name": ["A", "B"], "value": [1, 2]})
-
         result = ColumnFinder.find_id_column(df, "award")
-
         assert result is None
 
-    def test_find_id_column_unknown_entity_type(self):
-        """Test find_id_column with unknown entity type uses generic patterns."""
-        df = pd.DataFrame({"id": [1, 2], "name": ["A", "B"]})
 
-        result = ColumnFinder.find_id_column(df, "unknown_entity")
+class TestColumnFinderByPatterns:
+    """Tests for find_column_by_patterns method."""
 
-        assert result == "id"
+    @pytest.mark.parametrize(
+        "columns,patterns,expected",
+        [
+            ({"contract_id": [1, 2], "name": ["A", "B"]}, ["contract", "tracking"], "contract_id"),
+            (
+                {"tracking_id": [1, 2], "contract_id": [3, 4], "name": ["A", "B"]},
+                ["contract", "tracking"],
+                "contract_id",
+            ),
+            ({"name": ["A", "B"], "value": [1, 2]}, ["contract", "tracking"], None),
+        ],
+        ids=["single_match", "priority_order", "no_match"],
+    )
+    def test_find_column_by_patterns(self, columns, patterns, expected):
+        """Test finding columns by pattern matching with priority."""
+        df = pd.DataFrame(columns)
+        result = ColumnFinder.find_column_by_patterns(df, patterns)
+        assert result == expected
 
-    def test_find_column_by_patterns(self):
-        """Test finding column by patterns."""
-        df = pd.DataFrame({"contract_id": [1, 2], "name": ["A", "B"]})
 
-        result = ColumnFinder.find_column_by_patterns(df, ["contract", "tracking"])
+class TestColumnFinderMultiplePatterns:
+    """Tests for find_columns_by_patterns method."""
 
-        assert result == "contract_id"
-
-    def test_find_column_by_patterns_priority(self):
-        """Test pattern matching prioritizes earlier patterns."""
-        df = pd.DataFrame({"tracking_id": [1, 2], "contract_id": [3, 4], "name": ["A", "B"]})
-
-        result = ColumnFinder.find_column_by_patterns(df, ["contract", "tracking"])
-
-        assert result == "contract_id"  # "contract" comes first in patterns
-
-    def test_find_column_by_patterns_returns_none_when_not_found(self):
-        """Test find_column_by_patterns returns None when no match."""
-        df = pd.DataFrame({"name": ["A", "B"], "value": [1, 2]})
-
-        result = ColumnFinder.find_column_by_patterns(df, ["contract", "tracking"])
-
-        assert result is None
-
-    def test_find_columns_by_patterns(self):
-        """Test finding multiple columns by pattern mappings."""
+    def test_find_columns_by_patterns_all_found(self):
+        """Test finding multiple columns when all patterns match."""
         df = pd.DataFrame({"Award_Title": ["A"], "Abstract": ["B"], "Solicitation": ["C"]})
         pattern_map = {
             "title": ["title"],
@@ -98,7 +80,7 @@ class TestColumnFinder:
         assert result["solicitation"] == "Solicitation"
 
     def test_find_columns_by_patterns_partial_match(self):
-        """Test finding multiple columns with partial matches."""
+        """Test finding columns with partial pattern matches."""
         df = pd.DataFrame({"Title_Text": ["A"], "Abstract_Content": ["B"]})
         pattern_map = {"title": ["title"], "abstract": ["abstract"]}
         result = ColumnFinder.find_columns_by_patterns(df, pattern_map)
@@ -106,7 +88,7 @@ class TestColumnFinder:
         assert result["abstract"] == "Abstract_Content"
 
     def test_find_columns_by_patterns_some_not_found(self):
-        """Test finding columns when some are not found."""
+        """Test finding columns when some patterns don't match."""
         df = pd.DataFrame({"Title": ["A"], "Other": ["B"]})
         pattern_map = {"title": ["title"], "abstract": ["abstract"]}
         result = ColumnFinder.find_columns_by_patterns(df, pattern_map)

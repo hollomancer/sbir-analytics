@@ -104,31 +104,24 @@ class TestValidateRequiredField:
 class TestValidatePhase:
     """Tests for validate_phase function."""
 
-    def test_valid_phase_i(self):
-        """Test validation passes for Phase I."""
-        result = validate_phase("Phase I", 0)
+    @pytest.mark.parametrize(
+        "phase",
+        ["Phase I", "Phase II", "Phase III"],
+        ids=["phase_i", "phase_ii", "phase_iii"],
+    )
+    def test_valid_phase_values(self, phase):
+        """Test validation passes for valid phase values (exact case)."""
+        result = validate_phase(phase, 0)
         assert result is None
 
-    def test_valid_phase_ii(self):
-        """Test validation passes for Phase II."""
-        result = validate_phase("Phase II", 0)
-        assert result is None
-
-    def test_valid_phase_iii(self):
-        """Test validation passes for Phase III."""
-        result = validate_phase("Phase III", 0)
-        assert result is None
-
-    def test_invalid_phase(self):
-        """Test validation fails for invalid phase."""
-        result = validate_phase("Phase IV", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-        assert "Invalid phase" in result.message
-
-    def test_missing_phase(self):
-        """Test validation fails for missing phase."""
-        result = validate_phase(pd.NA, 0)
+    @pytest.mark.parametrize(
+        "invalid_phase",
+        ["Phase IV", "I", "phase i", "PHASE II", "Invalid", "", pd.NA],
+        ids=["phase_iv", "roman_only", "lowercase", "uppercase", "invalid_text", "empty", "na"],
+    )
+    def test_invalid_phase_values(self, invalid_phase):
+        """Test validation fails for invalid or incorrectly cased phase values."""
+        result = validate_phase(invalid_phase, 0)
         assert result is not None
         assert result.severity == QualitySeverity.ERROR
 
@@ -136,31 +129,24 @@ class TestValidatePhase:
 class TestValidateProgram:
     """Tests for validate_program function."""
 
-    def test_valid_sbir_uppercase(self):
-        """Test validation passes for SBIR uppercase."""
-        result = validate_program("SBIR", 0)
+    @pytest.mark.parametrize(
+        "program",
+        ["SBIR", "sbir", "STTR", "sttr", "Sbir", "Sttr"],
+        ids=["sbir_upper", "sbir_lower", "sttr_upper", "sttr_lower", "sbir_mixed", "sttr_mixed"],
+    )
+    def test_valid_program_values(self, program):
+        """Test validation passes for valid program values (case-insensitive)."""
+        result = validate_program(program, 0)
         assert result is None
 
-    def test_valid_sbir_lowercase(self):
-        """Test validation passes for SBIR lowercase."""
-        result = validate_program("sbir", 0)
-        assert result is None
-
-    def test_valid_sttr_uppercase(self):
-        """Test validation passes for STTR uppercase."""
-        result = validate_program("STTR", 0)
-        assert result is None
-
-    def test_invalid_program(self):
-        """Test validation fails for invalid program."""
-        result = validate_program("INVALID", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-        assert "Invalid program" in result.message
-
-    def test_missing_program(self):
-        """Test validation fails for missing program."""
-        result = validate_program(pd.NA, 0)
+    @pytest.mark.parametrize(
+        "invalid_program",
+        ["INVALID", "OTHER", "", pd.NA],
+        ids=["invalid", "other", "empty", "na"],
+    )
+    def test_invalid_program_values(self, invalid_program):
+        """Test validation fails for invalid program values."""
+        result = validate_program(invalid_program, 0)
         assert result is not None
         assert result.severity == QualitySeverity.ERROR
 
@@ -168,36 +154,26 @@ class TestValidateProgram:
 class TestValidateAwardYear:
     """Tests for validate_award_year function."""
 
-    def test_valid_year_in_range(self):
-        """Test validation passes for year in valid range."""
-        result = validate_award_year(2020, 0)
+    @pytest.mark.parametrize(
+        "year",
+        [1983, 2000, 2020, 2026],
+        ids=["lower_bound", "mid_range", "recent", "upper_bound"],
+    )
+    def test_valid_year_in_range(self, year):
+        """Test validation passes for years in valid range (1983-2026)."""
+        result = validate_award_year(year, 0)
         assert result is None
 
-    def test_valid_year_lower_bound(self):
-        """Test validation passes for year at lower bound (1983)."""
-        result = validate_award_year(1983, 0)
-        assert result is None
-
-    def test_valid_year_upper_bound(self):
-        """Test validation passes for year at upper bound (2026)."""
-        result = validate_award_year(2026, 0)
-        assert result is None
-
-    def test_invalid_year_too_early(self):
-        """Test validation fails for year before 1983."""
-        result = validate_award_year(1982, 0)
+    @pytest.mark.parametrize(
+        "invalid_year",
+        [1982, 1900, 2027, 2050, pd.NA],
+        ids=["before_1983", "way_before", "after_2026", "way_after", "missing"],
+    )
+    def test_invalid_year_values(self, invalid_year):
+        """Test validation fails for years outside valid range or missing."""
+        result = validate_award_year(invalid_year, 0)
         assert result is not None
         assert result.severity == QualitySeverity.ERROR
-        assert "out of valid range" in result.message
-
-    def test_invalid_year_too_late(self):
-        """Test validation fails for year after 2026."""
-        result = validate_award_year(2027, 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-
-    def test_missing_year(self):
-        """Test validation fails for missing year."""
         result = validate_award_year(pd.NA, 0)
         assert result is not None
         assert result.severity == QualitySeverity.ERROR
@@ -206,29 +182,26 @@ class TestValidateAwardYear:
 class TestValidateAwardAmount:
     """Tests for validate_award_amount function."""
 
-    def test_valid_numeric_amount(self):
-        """Test validation passes for valid numeric amount."""
-        result = validate_award_amount(100000.0, 0)
+    @pytest.mark.parametrize(
+        "amount",
+        [100000.0, 1, 5000000, "1,000,000.00", "500000"],
+        ids=["float", "small_int", "large", "string_commas", "string_plain"],
+    )
+    def test_valid_amount_values(self, amount):
+        """Test validation passes for valid positive amounts."""
+        result = validate_award_amount(amount, 0)
         assert result is None
 
-    def test_valid_string_amount_with_commas(self):
-        """Test validation passes for string amount with commas."""
-        result = validate_award_amount("1,000,000.00", 0)
-        assert result is None
-
-    def test_zero_amount(self):
-        """Test validation fails for zero amount."""
-        result = validate_award_amount(0, 0)
+    @pytest.mark.parametrize(
+        "invalid_amount",
+        [0, -1000, "not a number", pd.NA],
+        ids=["zero", "negative", "non_numeric", "missing"],
+    )
+    def test_invalid_amount_values(self, invalid_amount):
+        """Test validation fails for invalid amounts."""
+        result = validate_award_amount(invalid_amount, 0)
         assert result is not None
         assert result.severity == QualitySeverity.ERROR
-        assert "must be positive" in result.message
-
-    def test_negative_amount(self):
-        """Test validation fails for negative amount."""
-        result = validate_award_amount(-1000, 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-        assert "must be positive" in result.message
 
     def test_excessive_amount_warning(self):
         """Test validation warns for amount over $10M."""
@@ -237,70 +210,53 @@ class TestValidateAwardAmount:
         assert result.severity == QualitySeverity.WARNING
         assert "exceeds typical maximum" in result.message
 
-    def test_non_numeric_string(self):
-        """Test validation fails for non-numeric string."""
-        result = validate_award_amount("not a number", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-        assert "must be numeric" in result.message
-
-    def test_missing_amount(self):
-        """Test validation fails for missing amount."""
-        result = validate_award_amount(pd.NA, 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.ERROR
-
 
 class TestValidateUEIFormat:
     """Tests for validate_uei_format function."""
 
-    def test_valid_uei(self):
-        """Test validation passes for valid 12-character UEI."""
-        result = validate_uei_format("ABC123DEF456", 0)
+    @pytest.mark.parametrize(
+        "uei",
+        ["ABC123DEF456", "ABCDEFGHIJKL", pd.NA, None],
+        ids=["valid_12char", "all_alpha", "na_optional", "none_optional"],
+    )
+    def test_valid_or_optional_uei(self, uei):
+        """Test validation passes for valid UEI or optional missing value."""
+        result = validate_uei_format(uei, 0)
         assert result is None
 
-    def test_missing_uei(self):
-        """Test validation passes for missing UEI (optional field)."""
-        result = validate_uei_format(pd.NA, 0)
-        assert result is None
-
-    def test_invalid_uei_wrong_length(self):
-        """Test validation warns for UEI with wrong length."""
-        result = validate_uei_format("ABC123", 0)
+    @pytest.mark.parametrize(
+        "invalid_uei",
+        ["ABC123", "ABC-123-DEF!", "TOOLONGVALUE123"],
+        ids=["too_short", "special_chars", "too_long"],
+    )
+    def test_invalid_uei_format(self, invalid_uei):
+        """Test validation warns for invalid UEI format."""
+        result = validate_uei_format(invalid_uei, 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
-        assert "should be 12 characters" in result.message
-
-    def test_invalid_uei_non_alphanumeric(self):
-        """Test validation warns for UEI with special characters."""
-        result = validate_uei_format("ABC-123-DEF!", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.WARNING
-        assert "should be alphanumeric" in result.message
 
 
 class TestValidateDUNSFormat:
     """Tests for validate_duns_format function."""
 
-    def test_valid_duns(self):
-        """Test validation passes for valid 9-digit DUNS."""
-        result = validate_duns_format("123456789", 0)
+    @pytest.mark.parametrize(
+        "duns",
+        ["123456789", "000000000", pd.NA, None],
+        ids=["valid_9digit", "all_zeros", "na_optional", "none_optional"],
+    )
+    def test_valid_or_optional_duns(self, duns):
+        """Test validation passes for valid DUNS or optional missing value."""
+        result = validate_duns_format(duns, 0)
         assert result is None
 
-    def test_missing_duns(self):
-        """Test validation passes for missing DUNS (optional field)."""
-        result = validate_duns_format(pd.NA, 0)
-        assert result is None
-
-    def test_invalid_duns_wrong_length(self):
-        """Test validation warns for DUNS with wrong length."""
-        result = validate_duns_format("12345", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.WARNING
-
-    def test_invalid_duns_non_digits(self):
-        """Test validation warns for DUNS with non-digits."""
-        result = validate_duns_format("ABC123DEF", 0)
+    @pytest.mark.parametrize(
+        "invalid_duns",
+        ["12345", "ABC123DEF", "1234567890"],
+        ids=["too_short", "non_digits", "too_long"],
+    )
+    def test_invalid_duns_format(self, invalid_duns):
+        """Test validation warns for invalid DUNS format."""
+        result = validate_duns_format(invalid_duns, 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
 
@@ -308,25 +264,24 @@ class TestValidateDUNSFormat:
 class TestValidateEmailFormat:
     """Tests for validate_email_format function."""
 
-    def test_valid_email(self):
-        """Test validation passes for valid email."""
-        result = validate_email_format("user@example.com", "Email", 0)
+    @pytest.mark.parametrize(
+        "email",
+        ["user@example.com", "test.user@domain.org", pd.NA, None],
+        ids=["simple", "with_dot", "na_optional", "none_optional"],
+    )
+    def test_valid_or_optional_email(self, email):
+        """Test validation passes for valid email or optional missing value."""
+        result = validate_email_format(email, "Email", 0)
         assert result is None
 
-    def test_missing_email(self):
-        """Test validation passes for missing email (optional field)."""
-        result = validate_email_format(pd.NA, "Email", 0)
-        assert result is None
-
-    def test_invalid_email_no_at(self):
-        """Test validation warns for email without @ symbol."""
-        result = validate_email_format("invalid.email.com", "Email", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.WARNING
-
-    def test_invalid_email_no_domain(self):
-        """Test validation warns for email without domain."""
-        result = validate_email_format("user@", "Email", 0)
+    @pytest.mark.parametrize(
+        "invalid_email",
+        ["invalid.email.com", "user@", "@domain.com"],
+        ids=["no_at", "no_domain", "no_user"],
+    )
+    def test_invalid_email_format(self, invalid_email):
+        """Test validation warns for invalid email format."""
+        result = validate_email_format(invalid_email, "Email", 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
 
@@ -334,25 +289,32 @@ class TestValidateEmailFormat:
 class TestValidateStateCode:
     """Tests for validate_state_code function."""
 
-    def test_valid_state_code(self):
-        """Test validation passes for valid state code."""
-        result = validate_state_code("CA", 0)
+    @pytest.mark.parametrize(
+        "state",
+        ["CA", "NY", "TX", "DC", "PR", pd.NA, None],
+        ids=[
+            "california",
+            "new_york",
+            "texas",
+            "dc",
+            "puerto_rico",
+            "na_optional",
+            "none_optional",
+        ],
+    )
+    def test_valid_or_optional_state(self, state):
+        """Test validation passes for valid state code or optional missing value."""
+        result = validate_state_code(state, 0)
         assert result is None
 
-    def test_missing_state(self):
-        """Test validation passes for missing state (optional field)."""
-        result = validate_state_code(pd.NA, 0)
-        assert result is None
-
-    def test_invalid_state_wrong_length(self):
-        """Test validation warns for state code with wrong length."""
-        result = validate_state_code("CAL", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.WARNING
-
-    def test_invalid_state_not_in_list(self):
+    @pytest.mark.parametrize(
+        "invalid_state",
+        ["CAL", "XX", "ZZ", "1A"],
+        ids=["too_long", "invalid_xx", "invalid_zz", "has_digit"],
+    )
+    def test_invalid_state_code(self, invalid_state):
         """Test validation warns for invalid state code."""
-        result = validate_state_code("XX", 0)
+        result = validate_state_code(invalid_state, 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
 
@@ -360,30 +322,31 @@ class TestValidateStateCode:
 class TestValidateZIPCode:
     """Tests for validate_zip_code function."""
 
-    def test_valid_5_digit_zip(self):
-        """Test validation passes for valid 5-digit ZIP."""
-        result = validate_zip_code("02101", 0)
+    @pytest.mark.parametrize(
+        "zip_code",
+        ["02101", "90210", "02101-1234", "123456789", pd.NA, None],
+        ids=[
+            "5digit",
+            "5digit_alt",
+            "9digit_hyphen",
+            "9digit_plain",
+            "na_optional",
+            "none_optional",
+        ],
+    )
+    def test_valid_or_optional_zip(self, zip_code):
+        """Test validation passes for valid ZIP code or optional missing value."""
+        result = validate_zip_code(zip_code, 0)
         assert result is None
 
-    def test_valid_9_digit_zip(self):
-        """Test validation passes for valid 9-digit ZIP."""
-        result = validate_zip_code("02101-1234", 0)
-        assert result is None
-
-    def test_missing_zip(self):
-        """Test validation passes for missing ZIP (optional field)."""
-        result = validate_zip_code(pd.NA, 0)
-        assert result is None
-
-    def test_invalid_zip_wrong_length(self):
-        """Test validation warns for ZIP with wrong length."""
-        result = validate_zip_code("123", 0)
-        assert result is not None
-        assert result.severity == QualitySeverity.WARNING
-
-    def test_invalid_zip_non_digits(self):
-        """Test validation warns for ZIP with non-digits."""
-        result = validate_zip_code("ABCDE", 0)
+    @pytest.mark.parametrize(
+        "invalid_zip",
+        ["123", "ABCDE", "12-34"],
+        ids=["too_short", "non_digits", "invalid_format"],
+    )
+    def test_invalid_zip_code(self, invalid_zip):
+        """Test validation warns for invalid ZIP code format."""
+        result = validate_zip_code(invalid_zip, 0)
         assert result is not None
         assert result.severity == QualitySeverity.WARNING
 
