@@ -3,7 +3,7 @@
 Split from test_fiscal_assets.py for better organization.
 """
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
@@ -145,14 +145,24 @@ class TestEconomicImpacts:
     ):
         """Test economic impacts returns Output type."""
         with patch("src.assets.fiscal_assets.get_config", return_value=mock_config):
-            with patch("src.assets.fiscal_assets._run_stateio_model") as mock_stateio:
-                mock_stateio.return_value = pd.DataFrame(
+            with patch("src.assets.fiscal_assets.RStateIOAdapter") as mock_adapter_class:
+                mock_adapter = Mock()
+                mock_adapter.is_available.return_value = True
+                mock_adapter.get_model_version.return_value = "test-1.0"
+                mock_adapter.compute_impacts.return_value = pd.DataFrame(
                     {
                         "state": ["CA"],
-                        "wage_impact": [50000],
-                        "consumption_impact": [30000],
+                        "bea_sector": ["11"],
+                        "fiscal_year": [2023],
+                        "wage_impact": [50000.0],
+                        "proprietor_income_impact": [10000.0],
+                        "gross_operating_surplus": [20000.0],
+                        "consumption_impact": [30000.0],
+                        "tax_impact": [5000.0],
+                        "production_impact": [100000.0],
                     }
                 )
+                mock_adapter_class.return_value = mock_adapter
                 result = economic_impacts(mock_context, sample_economic_shocks)
 
         assert hasattr(result, "value")

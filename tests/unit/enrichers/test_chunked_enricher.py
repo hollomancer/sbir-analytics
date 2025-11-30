@@ -93,49 +93,45 @@ class TestChunkedEnricherInitialization:
         assert enricher.progress.checkpoint_dir == temp_checkpoint_dir
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_initialization_with_custom_chunk_size(
+    def test_initialization_with_config_chunk_size(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
-        """Test initialization with custom chunk size."""
+        """Test initialization uses chunk size from config."""
         mock_get_config.return_value = mock_config
+        mock_config.enrichment.performance.chunk_size = 50
 
-        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df, chunk_size=50)
+        enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
 
         assert enricher.chunk_size == 50
 
 
-class TestChunkGeneration:
-    """Tests for chunk generation."""
+class TestChunkProcessing:
+    """Tests for chunk processing."""
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_generate_chunks(
+    def test_progress_total_chunks(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
-        """Test chunk generation."""
+        """Test progress tracks total chunks correctly."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 2
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
-        chunks = list(enricher.generate_chunks())
 
-        assert len(chunks) == 3
-        assert len(chunks[0]) == 2
-        assert len(chunks[1]) == 2
-        assert len(chunks[2]) == 1
+        # 5 records / 2 chunk_size = 3 chunks
+        assert enricher.progress.total_chunks == 3
 
     @patch("src.enrichers.chunked_enrichment.get_config")
-    def test_generate_chunks_single_chunk(
+    def test_progress_single_chunk(
         self, mock_get_config, mock_config, sample_sbir_df, sample_recipient_df
     ):
-        """Test chunk generation with single chunk."""
+        """Test progress with single chunk."""
         mock_get_config.return_value = mock_config
         mock_config.enrichment.performance.chunk_size = 100
 
         enricher = ChunkedEnricher(sample_sbir_df, sample_recipient_df)
-        chunks = list(enricher.generate_chunks())
 
-        assert len(chunks) == 1
-        assert len(chunks[0]) == 5
+        assert enricher.progress.total_chunks == 1
 
 
 class TestMemoryEstimation:
