@@ -260,3 +260,130 @@ def assert_dict_subset(actual: dict, expected_subset: dict) -> None:
         assert actual_val == expected_val, (
             f"Key '{key}' mismatch: expected {expected_val!r}, got {actual_val!r}"
         )
+
+
+# =============================================================================
+# DataFrame Assertions
+# =============================================================================
+
+
+def assert_dataframe_has_columns(df: Any, required_columns: list[str]) -> None:
+    """Assert DataFrame has all required columns.
+
+    Args:
+        df: pandas DataFrame
+        required_columns: List of column names that must exist
+
+    Raises:
+        AssertionError: If any required column is missing
+    """
+    import pandas as pd
+
+    assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+    missing = set(required_columns) - set(df.columns)
+    assert not missing, f"Missing columns: {missing}"
+
+
+def assert_no_null_values(df: Any, columns: list[str] | None = None) -> None:
+    """Assert DataFrame has no null values in specified columns.
+
+    Args:
+        df: pandas DataFrame
+        columns: Columns to check (all if None)
+
+    Raises:
+        AssertionError: If null values found
+    """
+    import pandas as pd
+
+    assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+    cols_to_check = columns or df.columns.tolist()
+
+    for col in cols_to_check:
+        if col in df.columns:
+            null_count = df[col].isna().sum()
+            assert null_count == 0, f"Column '{col}' has {null_count} null values"
+
+
+def assert_dataframe_not_empty(df: Any, min_rows: int = 1) -> None:
+    """Assert DataFrame has at least min_rows rows.
+
+    Args:
+        df: pandas DataFrame
+        min_rows: Minimum number of rows required
+
+    Raises:
+        AssertionError: If DataFrame has fewer rows than required
+    """
+    import pandas as pd
+
+    assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+    assert len(df) >= min_rows, f"Expected at least {min_rows} rows, got {len(df)}"
+
+
+def assert_column_values_in_set(df: Any, column: str, valid_values: set) -> None:
+    """Assert all values in a column are from a valid set.
+
+    Args:
+        df: pandas DataFrame
+        column: Column name to check
+        valid_values: Set of allowed values
+
+    Raises:
+        AssertionError: If invalid values found
+    """
+    import pandas as pd
+
+    assert isinstance(df, pd.DataFrame), f"Expected DataFrame, got {type(df)}"
+    assert column in df.columns, f"Column '{column}' not found"
+
+    actual_values = set(df[column].dropna().unique())
+    invalid = actual_values - valid_values
+    assert not invalid, f"Invalid values in '{column}': {invalid}"
+
+
+# =============================================================================
+# Transition Assertions
+# =============================================================================
+
+
+def assert_valid_transition(transition: Any) -> None:
+    """Assert transition object has valid structure.
+
+    Args:
+        transition: Transition instance
+
+    Raises:
+        AssertionError: If transition is invalid
+    """
+    assert hasattr(transition, "transition_id"), "Missing transition_id"
+    assert hasattr(transition, "award_id"), "Missing award_id"
+    assert hasattr(transition, "likelihood_score"), "Missing likelihood_score"
+    assert hasattr(transition, "confidence"), "Missing confidence"
+
+    # Validate score range
+    score = transition.likelihood_score
+    assert 0 <= score <= 1, f"Likelihood score must be 0-1, got {score}"
+
+
+def assert_valid_enrichment_result(result: Any, expected_source: str | None = None) -> None:
+    """Assert enrichment result has valid structure.
+
+    Args:
+        result: Enrichment result object
+        expected_source: Expected source name (optional)
+
+    Raises:
+        AssertionError: If result is invalid
+    """
+    assert hasattr(result, "confidence"), "Missing confidence"
+    assert hasattr(result, "source"), "Missing source"
+
+    # Validate confidence range
+    conf = result.confidence
+    assert 0 <= conf <= 1, f"Confidence must be 0-1, got {conf}"
+
+    if expected_source:
+        assert result.source == expected_source, (
+            f"Expected source '{expected_source}', got '{result.source}'"
+        )

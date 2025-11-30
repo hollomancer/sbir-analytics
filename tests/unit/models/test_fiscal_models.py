@@ -59,11 +59,20 @@ class TestEconomicShockModel:
         )
         assert shock.state == "TX"
 
-    def test_state_validator_rejects_invalid_length(self):
-        """Test state validator rejects non-2-letter codes."""
+    @pytest.mark.parametrize(
+        "invalid_state,error_msg",
+        [
+            ("CAL", "State code must be exactly two letters"),
+            ("C1", "State code must be exactly two letters"),
+            ("X", "State code must be exactly two letters"),
+        ],
+        ids=["too_long", "non_alpha", "too_short"],
+    )
+    def test_state_validator_rejects_invalid(self, invalid_state, error_msg):
+        """Test state validator rejects invalid state codes."""
         with pytest.raises(ValidationError) as exc_info:
             EconomicShock(
-                state="CAL",
+                state=invalid_state,
                 bea_sector="54",
                 fiscal_year=2022,
                 shock_amount=Decimal("500000"),
@@ -73,30 +82,15 @@ class TestEconomicShockModel:
                 geographic_resolution_rate=0.95,
                 base_year=2020,
             )
-        assert "State code must be exactly two letters" in str(exc_info.value)
+        assert error_msg in str(exc_info.value)
 
-    def test_state_validator_rejects_non_alpha(self):
-        """Test state validator rejects non-alphabetic codes."""
-        with pytest.raises(ValidationError) as exc_info:
-            EconomicShock(
-                state="C1",
-                bea_sector="54",
-                fiscal_year=2022,
-                shock_amount=Decimal("500000"),
-                award_ids=["AWARD-005"],
-                confidence=0.9,
-                naics_coverage_rate=0.85,
-                geographic_resolution_rate=0.95,
-                base_year=2020,
-            )
-        assert "State code must be exactly two letters" in str(exc_info.value)
-
-    def test_fiscal_year_validator_accepts_valid_range(self):
+    @pytest.mark.parametrize("valid_year", [1980, 2000, 2022, 2025, 2030])
+    def test_fiscal_year_validator_accepts_valid_range(self, valid_year):
         """Test fiscal_year validator accepts 1980-2030 range."""
         shock = EconomicShock(
             state="MA",
             bea_sector="54",
-            fiscal_year=2025,
+            fiscal_year=valid_year,
             shock_amount=Decimal("500000"),
             award_ids=["AWARD-006"],
             confidence=0.9,
@@ -104,33 +98,22 @@ class TestEconomicShockModel:
             geographic_resolution_rate=0.95,
             base_year=2020,
         )
-        assert shock.fiscal_year == 2025
+        assert shock.fiscal_year == valid_year
 
-    def test_fiscal_year_validator_rejects_too_early(self):
-        """Test fiscal_year validator rejects years before 1980."""
+    @pytest.mark.parametrize(
+        "invalid_year",
+        [1979, 1900, 2031, 2050],
+        ids=["before_1980", "way_before", "after_2030", "way_after"],
+    )
+    def test_fiscal_year_validator_rejects_invalid(self, invalid_year):
+        """Test fiscal_year validator rejects years outside 1980-2030."""
         with pytest.raises(ValidationError) as exc_info:
             EconomicShock(
                 state="NY",
                 bea_sector="54",
-                fiscal_year=1979,
+                fiscal_year=invalid_year,
                 shock_amount=Decimal("500000"),
                 award_ids=["AWARD-007"],
-                confidence=0.9,
-                naics_coverage_rate=0.85,
-                geographic_resolution_rate=0.95,
-                base_year=2020,
-            )
-        assert "Fiscal year must be between 1980 and 2030" in str(exc_info.value)
-
-    def test_fiscal_year_validator_rejects_too_late(self):
-        """Test fiscal_year validator rejects years after 2030."""
-        with pytest.raises(ValidationError) as exc_info:
-            EconomicShock(
-                state="FL",
-                bea_sector="54",
-                fiscal_year=2031,
-                shock_amount=Decimal("500000"),
-                award_ids=["AWARD-008"],
                 confidence=0.9,
                 naics_coverage_rate=0.85,
                 geographic_resolution_rate=0.95,

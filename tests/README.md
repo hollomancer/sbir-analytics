@@ -1,99 +1,162 @@
 # Test Suite Documentation
 
 ## Overview
-This repository contains a comprehensive test suite for the **SBIR Analytics** project.  The tests are organized under the `tests/` directory and are split into three main groups:
+Comprehensive test suite for the **SBIR Analytics** project with 3,400+ tests organized into:
 
-- **unit** – Fast, isolated tests that focus on individual functions and models.
-- **integration** – Tests that interact with external services (e.g., Neo4j) or larger data flows.
-- **e2e / slow** – End‑to‑end scenarios that run the full pipeline (run on CI only).
+- **unit/** – Fast, isolated tests (~3,400 tests, <20s)
+- **integration/** – Tests requiring external services (Neo4j, APIs)
+- **e2e/** – End-to-end pipeline scenarios
+- **validation/** – Data validation scripts
 
-## Running the Tests
+## Quick Start
 ```bash
-# Ensure the development environment is set up (Python 3.11)
-source .venv/bin/activate
+# Run all unit tests
+uv run pytest tests/unit
 
-# Run the entire test suite
-python -m pytest
+# Run with coverage
+uv run pytest tests/unit --cov=src --cov-report=html
 
-# Run only unit tests (fast)
-python -m pytest tests/unit
-
-# Run a specific test file
-python -m pytest tests/unit/test_sbir_extractor.py -k "rawaward"
+# Run specific markers
+uv run pytest -m "fast"           # Fast tests only
+uv run pytest -m "not slow"       # Skip slow tests
+uv run pytest -m "integration"    # Integration tests
 ```
 
-The helper script `scripts/test_new_tests.sh` also runs the new tests inside the virtual environment.
+## Fixture Organization
 
-## Test Utilities
-### Factories (`tests/factories.py`)
-We use **custom factories** to generate realistic model instances without pulling data from CSV files.
+### Main conftest.py (`tests/conftest.py`)
+Core fixtures available to all tests:
+- `repo_root` - Repository root path
+- `test_config` - Loaded pipeline configuration
+- `sbir_csv_path` - Smart fixture (sample or real data)
+- `neo4j_driver` - Session-scoped Neo4j connection
+- Dependency check fixtures (`neo4j_available`, `pandas_available`, etc.)
 
-**Core Models:**
+### Domain Fixtures (`tests/conftest_shared.py`)
+Import explicitly in subdirectory conftest.py files:
 ```python
-from tests.factories import RawAwardFactory, AwardFactory
-raw = RawAwardFactory.create(award_amount="1,000,000.00")
-award = raw.to_award()
+from tests.conftest_shared import (
+    neo4j_config, neo4j_client, neo4j_helper,
+    sample_sbir_df, sample_award, sample_contract,
+    default_config, mock_vendor_resolver,
+)
 ```
 
-**ML Models:**
+### Mock Factories (`tests/mocks/`)
+Reusable mock objects:
 ```python
-from tests.factories import CETClassificationFactory, CETAssessmentFactory
-classification = CETClassificationFactory.create(score=85.0, primary=True)
-assessment = CETAssessmentFactory.create(primary_cet=classification)
+from tests.mocks import Neo4jMocks, ConfigMocks, EnrichmentMocks
+
+driver = Neo4jMocks.driver()
+session = Neo4jMocks.session()
+config = ConfigMocks.pipeline_config()
 ```
 
-The factories provide sensible defaults and handle data cleaning.
+## Test Data Factories (`tests/factories.py`)
 
-### Custom Assertions (`tests/assertions.py`)
-Common validation logic lives here to keep tests DRY:
-- `assert_valid_award(award)` – checks required fields and value types.
-- `assert_award_fields_equal(actual, expected)` – deep field‑by‑field comparison.
-- `assert_dict_subset(subset, superset)` – useful for partial JSON checks.
-
-## Integration Tests
-Integration tests (marked with `@pytest.mark.integration`) use a dedicated `conftest.py` in `tests/integration/`.
-
-### Neo4j Helper
-Use the `neo4j_helper` fixture to simplify node creation in tests:
+### Model Factories
 ```python
-def test_relationship(neo4j_client, neo4j_helper):
-    # Setup using helper
-    neo4j_helper.create_company(uei="UEI001")
-    neo4j_helper.create_award(award_id="AWARD001")
+from tests.factories import AwardFactory, RawAwardFactory
 
-    # Test logic...
+# Single instance
+award = AwardFactory.create(agency="DOD", phase="II")
+
+# Batch creation
+awards = AwardFactory.create_batch(10, agency="NASA")
 ```
 
-## Adding New Tests
-1. **Prefer factories** – Use factories to build test data.
-2. **Parametrize** – Leverage `@pytest.mark.parametrize` for multiple input scenarios.
-3. **Use custom assertions** – Call helpers from `tests/assertions.py` instead of repeating `assert` statements.
-4. **Keep tests fast** – Place heavy‑weight setup (e.g., Neo4j) in `tests/integration/` and mark with `@pytest.mark.integration`.
+### DataFrame Builders
+```python
+from tests.factories import DataFrameBuilder
 
-## CI/CD and Guardrails
-We use **GitHub Actions** and **pre-commit** to enforce quality standards.
+# Fluent API for test DataFrames
+df = (DataFrameBuilder.awards(10)
+      .with_agency("DOD")
+      .with_phase("II")
+      .with_amount_range(100000, 500000)
+      .build())
 
-### Pre-commit Hooks
-Runs automatically on commit to check formatting and static analysis.
-```bash
-# Install hooks (done automatically by setup_dev.sh)
-pre-commit install
-
-# Run manually
-pre-commit run --all-files
+contracts_df = DataFrameBuilder.contracts(5).with_agency("NASA").build()
 ```
 
-### CI Workflow
-The `.github/workflows/ci.yml` pipeline runs on every PR:
-1. **Verifies Setup**: Runs `scripts/setup_dev.sh` to ensure the dev environment is reproducible.
-2. **Runs Tests**: Executes `pytest` with coverage reporting.
-3. **Checks Taxonomy**: Validates CET taxonomy configuration.
-5. **Document intent** – Add a short docstring describing the purpose of each test.
+## Custom Assertions (`tests/assertions.py`)
+```python
+from tests.assertions import (
+    assert_valid_award,
+    assert_valid_cet_classification,
+    assert_valid_neo4j_load_metrics,
+    assert_dict_subset,
+    assert_dataframe_has_columns,
+    assert_no_null_values,
+)
+```
 
-## Future Improvements
-- Add more factory methods for other models (e.g., `Company`, `Contract`).
-- Introduce a shared `conftest.py` fixture for the Neo4j client to reduce duplication.
-- Expand parametrization for edge‑case date formats and large numeric values.
+## Test Markers
+Register in `conftest.py`, use with `@pytest.mark.<marker>`:
 
----
-*Generated by Antigravity – your AI‑powered coding assistant.*
+| Marker | Description |
+|--------|-------------|
+| `fast` | Tests completing in <1 second |
+| `slow` | Tests taking >1 second |
+| `integration` | Requires external services |
+| `e2e` | End-to-end pipeline tests |
+| `neo4j` | Requires Neo4j database |
+| `requires_aws` | Requires AWS credentials |
+| `requires_r` | Requires R/rpy2 |
+
+## Writing Tests
+
+### Best Practices
+1. **Use factories** - Avoid inline test data creation
+2. **Parametrize** - Use `@pytest.mark.parametrize` for variants
+3. **Use shared assertions** - Import from `tests/assertions.py`
+4. **Keep tests focused** - One concept per test
+5. **Add docstrings** - Describe what's being tested
+
+### Example Test
+```python
+import pytest
+from tests.factories import AwardFactory
+from tests.assertions import assert_valid_award
+
+pytestmark = pytest.mark.fast
+
+class TestAwardProcessing:
+    """Tests for award processing logic."""
+
+    @pytest.mark.parametrize("phase", ["I", "II", "III"])
+    def test_process_award_by_phase(self, phase):
+        """Test processing works for all phases."""
+        award = AwardFactory.create(phase=phase)
+        result = process_award(award)
+        assert_valid_award(result)
+        assert result.phase == phase
+```
+
+## Directory Structure
+```
+tests/
+├── conftest.py              # Core fixtures, markers
+├── conftest_shared.py       # Domain fixtures (import explicitly)
+├── factories.py             # Test data factories
+├── assertions.py            # Custom assertion helpers
+├── mocks/                   # Mock factories
+│   ├── neo4j.py
+│   ├── config.py
+│   └── enrichment.py
+├── fixtures/                # Test data files
+├── unit/                    # Unit tests by module
+│   ├── assets/
+│   ├── enrichers/
+│   ├── loaders/
+│   ├── models/
+│   └── ...
+├── integration/             # Integration tests
+└── e2e/                     # End-to-end tests
+```
+
+## CI/CD
+Tests run automatically via GitHub Actions:
+- **ci.yml** - Runs on every PR (unit tests, linting)
+- **weekly.yml** - Full test suite including slow tests
+- **nightly.yml** - Security scans and smoke tests
