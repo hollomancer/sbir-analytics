@@ -11,17 +11,30 @@ from src.models.award import Award, RawAward
 pytestmark = pytest.mark.fast
 
 
+# Helper to create Award with defaults
+def _make_award(**overrides):
+    """Create Award with sensible defaults."""
+    defaults = {
+        "award_id": "TEST-001",
+        "company_name": "Test Corp",
+        "award_amount": 10000,
+        "award_date": date(2023, 1, 1),
+        "program": "SBIR",
+    }
+    defaults.update(overrides)
+    return Award(**defaults)
+
+
 class TestAwardModel:
     """Tests for the Award Pydantic model."""
 
     def test_minimal_valid_award(self):
         """Test creating award with only required fields."""
-        award = Award(
+        award = _make_award(
             award_id="TEST-123",
             company_name="Acme Corp",
             award_amount=100000.0,
             award_date=date(2023, 1, 15),
-            program="SBIR",
         )
         assert award.award_id == "TEST-123"
         assert award.company_name == "Acme Corp"
@@ -304,154 +317,77 @@ class TestAwardModel:
         )
         assert award.award_year == 2022
 
-    def test_company_uei_validator_normalizes_to_uppercase(self):
-        """Test company_uei validator normalizes to uppercase."""
-        award = Award(
-            award_id="TEST-16",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_uei="abc123def456",  # pragma: allowlist secret
-        )
-        assert award.company_uei == "ABC123DEF456"
+    @pytest.mark.parametrize(
+        "uei_input,expected",
+        [
+            ("abc123def456", "ABC123DEF456"),  # lowercase normalized
+            ("ABC-123-DEF-456", "ABC123DEF456"),  # separators removed
+            ("ABC123DEF456", "ABC123DEF456"),  # already valid
+            ("ABC123", None),  # too short - lenient returns None
+            ("ABC123DEF456789", None),  # too long - lenient returns None
+        ],
+        ids=["lowercase", "with_separators", "valid", "too_short", "too_long"],
+    )
+    def test_company_uei_validator(self, uei_input, expected):
+        """Test company_uei validator normalizes valid UEIs and rejects invalid."""
+        award = _make_award(company_uei=uei_input)
+        assert award.company_uei == expected
 
-    def test_company_uei_validator_removes_separators(self):
-        """Test company_uei validator removes hyphens and spaces."""
-        award = Award(
-            award_id="TEST-17",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_uei="ABC-123-DEF-456",
-        )
-        assert award.company_uei == "ABC123DEF456"
+    @pytest.mark.parametrize(
+        "duns_input,expected",
+        [
+            ("12-345-6789", "123456789"),  # separators removed
+            ("123456789", "123456789"),  # already valid
+            ("12345", None),  # too short - lenient returns None
+        ],
+        ids=["with_separators", "valid", "too_short"],
+    )
+    def test_company_duns_validator(self, duns_input, expected):
+        """Test company_duns validator extracts 9 digits or returns None."""
+        award = _make_award(company_duns=duns_input)
+        assert award.company_duns == expected
 
-    def test_company_uei_validator_rejects_wrong_length(self):
-        """Test company_uei validator returns None for non-12-character UEI (lenient)."""
-        award = Award(
-            award_id="TEST-18",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_uei="ABC123",  # Too short, should become None
-        )
-        # Lenient: invalid UEI is set to None instead of raising exception
-        assert award.company_uei is None
+    @pytest.mark.parametrize(
+        "state_input,expected",
+        [
+            ("ca", "CA"),  # lowercase normalized
+            ("CA", "CA"),  # already valid
+            ("CAL", None),  # too long - lenient returns None
+        ],
+        ids=["lowercase", "valid", "too_long"],
+    )
+    def test_company_state_validator(self, state_input, expected):
+        """Test company_state validator normalizes to uppercase or returns None."""
+        award = _make_award(company_state=state_input)
+        assert award.company_state == expected
 
-    def test_company_duns_validator_extracts_digits(self):
-        """Test company_duns validator extracts 9 digits."""
-        award = Award(
-            award_id="TEST-19",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_duns="12-345-6789",
-        )
-        assert award.company_duns == "123456789"
+    @pytest.mark.parametrize(
+        "zip_input,expected",
+        [
+            ("02101", "02101"),  # 5-digit valid
+            ("02101-1234", "021011234"),  # 9-digit ZIP+4
+            ("123", None),  # too short - lenient returns None
+        ],
+        ids=["5_digit", "9_digit", "too_short"],
+    )
+    def test_company_zip_validator(self, zip_input, expected):
+        """Test company_zip validator accepts valid ZIPs or returns None."""
+        award = _make_award(company_zip=zip_input)
+        assert award.company_zip == expected
 
-    def test_company_duns_validator_rejects_wrong_length(self):
-        """Test company_duns validator returns None for non-9-digit DUNS (lenient)."""
-        award = Award(
-            award_id="TEST-20",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_duns="12345",  # Too short, should become None
-        )
-        # Lenient: invalid DUNS is set to None instead of raising exception
-        assert award.company_duns is None
-
-    def test_company_state_validator_normalizes_to_uppercase(self):
-        """Test company_state validator normalizes to uppercase."""
-        award = Award(
-            award_id="TEST-21",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_state="ca",
-        )
-        assert award.company_state == "CA"
-
-    def test_company_state_validator_rejects_invalid_length(self):
-        """Test company_state validator returns None for non-2-letter codes (lenient)."""
-        award = Award(
-            award_id="TEST-22",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_state="CAL",  # Too long, should become None
-        )
-        # Lenient: invalid state code is set to None instead of raising exception
-        assert award.company_state is None
-
-    def test_company_zip_validator_extracts_5_digits(self):
-        """Test company_zip validator accepts 5-digit ZIP."""
-        award = Award(
-            award_id="TEST-23",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_zip="02101",
-        )
-        assert award.company_zip == "02101"
-
-    def test_company_zip_validator_extracts_9_digits(self):
-        """Test company_zip validator accepts 9-digit ZIP+4."""
-        award = Award(
-            award_id="TEST-24",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_zip="02101-1234",
-        )
-        assert award.company_zip == "021011234"
-
-    def test_company_zip_validator_rejects_invalid_length(self):
-        """Test company_zip validator returns None for invalid digit count (lenient)."""
-        award = Award(
-            award_id="TEST-25",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            company_zip="123",  # Too short, should become None
-        )
-        # Lenient: invalid ZIP code is set to None instead of raising exception
-        assert award.company_zip is None
-
-    def test_number_of_employees_validator_coerces_string(self):
-        """Test number_of_employees validator coerces string to int."""
-        award = Award(
-            award_id="TEST-26",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            number_of_employees="1,234",
-        )
-        assert award.number_of_employees == 1234
-
-    def test_number_of_employees_validator_rejects_negative(self):
-        """Test number_of_employees validator returns None for negative values (lenient)."""
-        award = Award(
-            award_id="TEST-27",
-            company_name="Test Corp",
-            award_amount=10000,
-            award_date=date(2023, 1, 1),
-            program="SBIR",
-            number_of_employees=-5,
-        )
-        # Lenient: negative employee count is set to None instead of raising exception
-        assert award.number_of_employees is None
+    @pytest.mark.parametrize(
+        "employees_input,expected",
+        [
+            ("1,234", 1234),  # string with commas coerced
+            (50, 50),  # int preserved
+            (-5, None),  # negative - lenient returns None
+        ],
+        ids=["string_with_commas", "int_valid", "negative_invalid"],
+    )
+    def test_number_of_employees_validator(self, employees_input, expected):
+        """Test number_of_employees validator coerces strings and rejects negatives."""
+        award = _make_award(number_of_employees=employees_input)
+        assert award.number_of_employees == expected
 
     def test_contract_end_date_validator_accepts_valid_order(self):
         """Test contract_end_date validator accepts valid date order."""
