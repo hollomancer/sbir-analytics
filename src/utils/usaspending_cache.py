@@ -11,7 +11,7 @@ from typing import Any
 
 from loguru import logger
 
-from .base_cache import BaseDataFrameCache
+from .cache.base_cache import BaseDataFrameCache
 
 
 class USAspendingCache(BaseDataFrameCache):
