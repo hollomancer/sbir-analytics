@@ -164,11 +164,18 @@ jobs:
           EXECUTION=$(aws stepfunctions start-execution \
             --state-machine-arn "${{ secrets.STEP_FUNCTIONS_STATE_MACHINE_ARN }}" \
             --input "$INPUT_PAYLOAD" \
-            --region ${{ env.AWS_REGION }})
+            --region ${{ env.AWS_REGION }} 2>&1)
 
-          EXECUTION_ARN=$(echo $EXECUTION | jq -r '.executionArn')
-          EXECUTION_NAME=$(echo $EXECUTION_ARN | rev | cut -d: -f1 | rev)
-          START_DATE=$(echo $EXECUTION | jq -r '.startDate')
+          # Check if execution started successfully
+          if ! echo "$EXECUTION" | jq -e '.executionArn' > /dev/null 2>&1; then
+            echo "❌ Failed to start Step Functions execution"
+            echo "$EXECUTION"
+            exit 1
+          fi
+
+          EXECUTION_ARN=$(echo "$EXECUTION" | jq -r '.executionArn')
+          EXECUTION_NAME=$(echo "$EXECUTION_ARN" | rev | cut -d: -f1 | rev)
+          START_DATE=$(echo "$EXECUTION" | jq -r '.startDate')
 
           echo "execution_arn=$EXECUTION_ARN" >> $GITHUB_OUTPUT
 
