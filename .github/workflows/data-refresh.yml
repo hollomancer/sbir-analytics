@@ -428,7 +428,10 @@ jobs:
 
           # PatentsView
           echo "### 1️⃣ PatentsView Data" >> $GITHUB_STEP_SUMMARY
-          if aws lambda invoke --function-name sbir-analytics-download-uspto-patentsview response.json; then
+          if aws lambda invoke \
+            --function-name sbir-analytics-download-uspto \
+            --payload '{"dataset": "patentsview", "table_name": "patent"}' \
+            response.json; then
             echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
@@ -441,7 +444,10 @@ jobs:
 
           # Assignments
           echo "### 2️⃣ Patent Assignments" >> $GITHUB_STEP_SUMMARY
-          if aws lambda invoke --function-name sbir-analytics-download-uspto-assignments response.json; then
+          if aws lambda invoke \
+            --function-name sbir-analytics-download-uspto \
+            --payload '{"dataset": "assignments", "format": "csv"}' \
+            response.json; then
             echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
@@ -454,7 +460,10 @@ jobs:
 
           # AI Patents
           echo "### 3️⃣ AI Patents" >> $GITHUB_STEP_SUMMARY
-          if aws lambda invoke --function-name sbir-analytics-download-uspto-ai-patents response.json; then
+          if aws lambda invoke \
+            --function-name sbir-analytics-download-uspto \
+            --payload '{"dataset": "ai_patents"}' \
+            response.json; then
             echo "✅ Lambda invoked successfully" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
             cat response.json | jq '.' >> $GITHUB_STEP_SUMMARY
@@ -466,7 +475,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "$LAMBDA_SUCCESS" = "false" ]; then
-            echo "::warning::One or more USPTO Lambda functions failed to execute"
+            echo "::warning::One or more USPTO downloads failed to execute"
             exit 1
           fi
 

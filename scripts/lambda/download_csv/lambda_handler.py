@@ -1,14 +1,14 @@
 """Lambda function to download SBIR awards CSV and upload to S3."""
 
-import hashlib
 import os
+import sys
 from datetime import datetime, UTC
 from typing import Any
-from urllib.request import urlopen
 
-import boto3
+# Add common module to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-s3_client = boto3.client("s3")
+from common.download_utils import create_standard_response, download_file, upload_to_s3
 
 DEFAULT_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 
@@ -33,15 +33,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Download CSV
         print(f"Downloading CSV from {source_url}")
-        with urlopen(source_url) as response:
-            csv_data = response.read()
-
-        # Compute hash
-        file_hash = hashlib.sha256(csv_data).hexdigest()
+        csv_data, content_type = download_file(source_url, max_size_mb=500)
 
         # Count rows (approximate from bytes, or parse header)
         row_count = csv_data.count(b"\n") - 1  # Subtract header
-        file_size = len(csv_data)
 
         # Generate S3 key with date
         timestamp = datetime.now(UTC)
@@ -49,39 +44,27 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         s3_key = f"raw/awards/{date_str}/award_data.csv"
 
         # Upload to S3
-        print(f"Uploading to s3://{s3_bucket}/{s3_key}")
-        s3_client.put_object(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            Body=csv_data,
-            ContentType="text/csv",
-            Metadata={
-                "sha256": file_hash,
+        file_hash = upload_to_s3(
+            data=csv_data,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            content_type="text/csv",
+            metadata={
                 "source_url": source_url,
                 "downloaded_at": timestamp.isoformat(),
             },
         )
 
-        return {
-            "statusCode": 200,
-            "body": {
-                "status": "success",
-                "s3_bucket": s3_bucket,
-                "s3_key": s3_key,
-                "sha256": file_hash,
-                "file_size": file_size,
-                "row_count": row_count,
-                "source_url": source_url,
-                "downloaded_at": timestamp.isoformat(),
-            },
-        }
+        return create_standard_response(
+            success=True,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            sha256=file_hash,
+            file_size=len(csv_data),
+            source_url=source_url,
+            row_count=row_count,
+        )
 
     except Exception as e:
         print(f"Error downloading CSV: {e}")
-        return {
-            "statusCode": 500,
-            "body": {
-                "status": "error",
-                "error": str(e),
-            },
-        }
+        return create_standard_response(success=False, error=str(e))
