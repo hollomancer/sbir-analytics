@@ -38,6 +38,10 @@ def _assert_artifact_exists(base_path: Path) -> Path:
 
 
 def _install_dagster_shim(monkeypatch) -> None:
+    # Skip if dagster already imported - shim won't work
+    if "dagster" in sys.modules:
+        pytest.skip("dagster already imported, cannot install shim")
+
     shim = types.SimpleNamespace()
 
     def _asset(*_args, **_kwargs):
