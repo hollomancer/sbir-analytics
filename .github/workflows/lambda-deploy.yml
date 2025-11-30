@@ -259,6 +259,42 @@ jobs:
               --region ${{ env.AWS_REGION }}
           fi
 
+      - name: Check Lambda stack status
+        run: |
+          STACK_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name sbir-analytics-lambda \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+          echo "Lambda stack status: $STACK_STATUS"
+
+          if [ "$STACK_STATUS" = "UPDATE_ROLLBACK_FAILED" ]; then
+            echo "Stack in UPDATE_ROLLBACK_FAILED. Attempting recovery..."
+            aws cloudformation continue-update-rollback \
+              --stack-name sbir-analytics-lambda \
+              --region ${{ env.AWS_REGION }}
+
+            echo "Waiting for rollback to complete..."
+            aws cloudformation wait stack-rollback-complete \
+              --stack-name sbir-analytics-lambda \
+              --region ${{ env.AWS_REGION }}
+
+            STACK_STATUS="ROLLBACK_COMPLETE"
+          fi
+
+          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Stack in ROLLBACK_COMPLETE. Deleting for fresh deployment..."
+            aws cloudformation delete-stack \
+              --stack-name sbir-analytics-lambda \
+              --region ${{ env.AWS_REGION }}
+
+            echo "Waiting for deletion..."
+            aws cloudformation wait stack-delete-complete \
+              --stack-name sbir-analytics-lambda \
+              --region ${{ env.AWS_REGION }}
+          fi
+
       - name: Deploy Lambda stack
         working-directory: infrastructure/cdk
         env:
