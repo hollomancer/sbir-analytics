@@ -2,10 +2,10 @@
 """Parallel USAspending database download with S3 multipart upload.
 
 Optimizations:
-- Parallel chunk downloads (10 concurrent)
+- Parallel chunk downloads (configurable concurrency)
 - Direct streaming to S3 multipart upload
-- Automatic retry and resume capability
-- 2-3x faster than sequential download
+- Automatic retry and resume capability across runs
+- Preserves upload state on failure for next run to resume
 """
 
 import argparse
@@ -21,6 +21,32 @@ from scripts.data.parallel_download import DownloadChunk, download_chunk
 from scripts.usaspending.check_new_file import find_latest_available_file
 
 
+def get_all_uploaded_parts(s3_client, bucket: str, key: str, upload_id: str) -> dict:
+    """Get all uploaded parts with pagination (handles >1000 parts)."""
+    parts = {}
+    part_marker = 0
+
+    while True:
+        response = s3_client.list_parts(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumberMarker=part_marker,
+        )
+
+        for part in response.get("Parts", []):
+            parts[part["PartNumber"]] = {
+                "ETag": part["ETag"],
+                "PartNumber": part["PartNumber"],
+            }
+
+        if not response.get("IsTruncated", False):
+            break
+        part_marker = response.get("NextPartNumberMarker", 0)
+
+    return parts
+
+
 async def parallel_download_to_s3(
     source_url: str,
     s3_bucket: str,
@@ -28,15 +54,15 @@ async def parallel_download_to_s3(
     chunk_size: int = 50 * 1024 * 1024,  # 50 MB
     max_concurrent: int = 10,
 ) -> dict:
-    """Download file in parallel and upload to S3."""
+    """Download file in parallel and upload to S3 with resume support."""
     overall_start = time.time()
     s3_client = boto3.client("s3")
 
-    # Get file size
     print("=" * 80)
-    print("📥 USAspending Database Download")
+    print("📥 USAspending Database Download (with resume support)")
     print("=" * 80)
 
+    # Get file size
     async with aiohttp.ClientSession() as session:
         async with session.head(source_url) as response:
             file_size = int(response.headers.get("Content-Length", 0))
@@ -46,8 +72,9 @@ async def parallel_download_to_s3(
     file_size_gb = file_size / 1024 / 1024 / 1024
     print(f"📊 File size: {file_size_gb:.2f} GB ({file_size:,} bytes)")
     print(f"🔗 Source: {source_url}")
+    print(f"📦 S3 destination: s3://{s3_bucket}/{s3_key}")
 
-    # Check for existing multipart upload
+    # Find existing multipart upload for this exact key
     existing_uploads = s3_client.list_multipart_uploads(Bucket=s3_bucket, Prefix=s3_key)
     upload_id = None
     existing_parts = {}
@@ -55,161 +82,120 @@ async def parallel_download_to_s3(
     for upload in existing_uploads.get("Uploads", []):
         if upload["Key"] == s3_key:
             upload_id = upload["UploadId"]
-            print(f"🔄 Found existing upload: {upload_id}")
-
-            # List already uploaded parts
-            parts_response = s3_client.list_parts(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
-            for part in parts_response.get("Parts", []):
-                existing_parts[part["PartNumber"]] = {
-                    "ETag": part["ETag"],
-                    "PartNumber": part["PartNumber"],
-                }
+            print(f"🔄 Resuming existing upload: {upload_id[:20]}...")
+            existing_parts = get_all_uploaded_parts(s3_client, s3_bucket, s3_key, upload_id)
             print(f"✅ Found {len(existing_parts)} already uploaded parts")
             break
 
-    # Create new multipart upload if none exists
     if not upload_id:
         multipart = s3_client.create_multipart_upload(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            ContentType="application/zip",
+            Bucket=s3_bucket, Key=s3_key, ContentType="application/zip"
         )
         upload_id = multipart["UploadId"]
-        print(f"🆕 Created new upload: {upload_id}")
+        print(f"🆕 Created new upload: {upload_id[:20]}...")
 
-    print(f"📦 S3 destination: s3://{s3_bucket}/{s3_key}")
-    print(f"🆔 Upload ID: {upload_id}")
+    # Calculate chunks
+    chunks = []
+    for i in range(0, file_size, chunk_size):
+        end = min(i + chunk_size - 1, file_size - 1)
+        chunks.append(DownloadChunk(chunk_id=len(chunks), start_byte=i, end_byte=end))
 
-    try:
-        # Create chunks
-        chunks = []
-        for i in range(0, file_size, chunk_size):
-            end = min(i + chunk_size - 1, file_size - 1)
-            chunks.append(DownloadChunk(chunk_id=len(chunks), start_byte=i, end_byte=end))
+    total_chunks = len(chunks)
+    remaining_chunks = [c for c in chunks if (c.chunk_id + 1) not in existing_parts]
 
-        chunk_size_mb = chunk_size / 1024 / 1024
-        print(f"📦 Split into {len(chunks)} chunks of ~{chunk_size_mb:.0f} MB each")
-        print(f"⚡ Max concurrent downloads: {max_concurrent}")
+    print(f"📦 Total chunks: {total_chunks} (~{chunk_size / 1024 / 1024:.0f} MB each)")
+    print(f"⏭️  Already uploaded: {len(existing_parts)}")
+    print(f"📥 Remaining: {len(remaining_chunks)}")
+    print(f"⚡ Concurrency: {max_concurrent}")
+    print()
 
-        if existing_parts:
-            print(f"⏭️  Skipping {len(existing_parts)} already uploaded parts")
-        print()
-
-        # Download and upload chunks concurrently
+    if not remaining_chunks:
+        print("✅ All parts already uploaded, completing upload...")
+        all_parts = list(existing_parts.values())
+    else:
+        # Download remaining chunks
         semaphore = asyncio.Semaphore(max_concurrent)
-        parts = list(existing_parts.values())  # Start with existing parts
-        completed_parts = len(existing_parts)
-        bytes_transferred = sum(chunk_size for _ in existing_parts)
+        completed = len(existing_parts)
+        bytes_done = len(existing_parts) * chunk_size
         download_start = time.time()
+        new_parts = []
 
         async def download_and_upload(chunk: DownloadChunk) -> dict:
-            nonlocal completed_parts, bytes_transferred
-
-            # Skip if already uploaded
-            part_number = chunk.chunk_id + 1
-            if part_number in existing_parts:
-                return existing_parts[part_number]
+            nonlocal completed, bytes_done
 
             async with semaphore:
+                part_num = chunk.chunk_id + 1
                 chunk_start = time.time()
-                async with aiohttp.ClientSession() as session:
-                    downloaded = await download_chunk(session, source_url, chunk)
 
-                    # Upload to S3
+                async with aiohttp.ClientSession() as sess:
+                    downloaded = await download_chunk(sess, source_url, chunk)
+
                     part_response = s3_client.upload_part(
                         Bucket=s3_bucket,
                         Key=s3_key,
-                        PartNumber=chunk.chunk_id + 1,
+                        PartNumber=part_num,
                         UploadId=upload_id,
                         Body=downloaded.data,
                     )
 
-                    completed_parts += 1
+                    completed += 1
                     chunk_bytes = len(downloaded.data)
-                    bytes_transferred += chunk_bytes
+                    bytes_done += chunk_bytes
 
-                    # Calculate progress and speed
-                    progress_pct = (completed_parts / len(chunks)) * 100
                     elapsed = time.time() - download_start
-                    speed_mbps = (bytes_transferred / elapsed / 1024 / 1024) if elapsed > 0 else 0
-                    eta_seconds = (
-                        ((file_size - bytes_transferred) / (bytes_transferred / elapsed))
-                        if elapsed > 0 and bytes_transferred > 0
-                        else 0
-                    )
-
-                    chunk_time = time.time() - chunk_start
-                    chunk_mb = chunk_bytes / 1024 / 1024
+                    speed = bytes_done / elapsed / 1024 / 1024 if elapsed > 0 else 0
+                    pct = completed / total_chunks * 100
+                    eta = (file_size - bytes_done) / (bytes_done / elapsed) / 60 if bytes_done > 0 else 0
 
                     print(
-                        f"✅ Part {completed_parts:3d}/{len(chunks)} ({progress_pct:5.1f}%) | "
-                        f"{chunk_mb:6.1f} MB in {chunk_time:5.1f}s | "
-                        f"Speed: {speed_mbps:6.1f} MB/s | "
-                        f"ETA: {eta_seconds / 60:5.1f}m"
+                        f"✅ Part {completed:4d}/{total_chunks} ({pct:5.1f}%) | "
+                        f"{chunk_bytes / 1024 / 1024:5.1f} MB in {time.time() - chunk_start:4.1f}s | "
+                        f"{speed:5.1f} MB/s | ETA: {eta:5.1f}m"
                     )
 
-                    return {
-                        "ETag": part_response["ETag"],
-                        "PartNumber": chunk.chunk_id + 1,
-                    }
+                    return {"ETag": part_response["ETag"], "PartNumber": part_num}
 
-        print("🚀 Starting parallel download and upload...")
-        parts = await asyncio.gather(*[download_and_upload(chunk) for chunk in chunks])
-        download_time = time.time() - download_start
+        print("🚀 Starting download...")
+        try:
+            new_parts = await asyncio.gather(*[download_and_upload(c) for c in remaining_chunks])
+        except Exception as e:
+            # Don't abort - preserve progress for next run
+            print()
+            print("=" * 80)
+            print("⚠️  DOWNLOAD INTERRUPTED - Progress saved for resume")
+            print("=" * 80)
+            print(f"Error: {e}")
+            print(f"Upload ID: {upload_id}")
+            print(f"Parts completed: {completed}/{total_chunks}")
+            print(f"Progress: {bytes_done / 1024 / 1024 / 1024:.2f} GB")
+            print("Run again to resume from this point.")
+            print("=" * 80)
+            raise
 
-        print()
-        print("🔄 Completing multipart upload...")
+        all_parts = list(existing_parts.values()) + new_parts
 
-        # Complete multipart upload
-        complete_start = time.time()
-        s3_client.complete_multipart_upload(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            UploadId=upload_id,
-            MultipartUpload={"Parts": sorted(parts, key=lambda p: p["PartNumber"])},
-        )
-        complete_time = time.time() - complete_start
-        total_time = time.time() - overall_start
+    # Complete upload
+    print()
+    print("🔄 Completing multipart upload...")
+    s3_client.complete_multipart_upload(
+        Bucket=s3_bucket,
+        Key=s3_key,
+        UploadId=upload_id,
+        MultipartUpload={"Parts": sorted(all_parts, key=lambda p: p["PartNumber"])},
+    )
 
-        # Print summary
-        print()
-        print("=" * 80)
-        print("✨ DOWNLOAD COMPLETE")
-        print("=" * 80)
-        print(f"📊 Total size: {file_size_gb:.2f} GB ({file_size:,} bytes)")
-        print(f"📦 Total parts: {len(chunks)}")
-        print(f"⏱️  Download time: {download_time:.1f}s ({download_time / 60:.1f}m)")
-        print(f"⏱️  Completion time: {complete_time:.1f}s")
-        print(f"⏱️  Total time: {total_time:.1f}s ({total_time / 60:.1f}m)")
-        print(f"⚡ Average speed: {file_size / download_time / 1024 / 1024:.1f} MB/s")
-        print(f"📍 S3 location: s3://{s3_bucket}/{s3_key}")
-        print("=" * 80)
+    total_time = time.time() - overall_start
+    print()
+    print("=" * 80)
+    print("✨ DOWNLOAD COMPLETE")
+    print("=" * 80)
+    print(f"📊 Total size: {file_size_gb:.2f} GB")
+    print(f"📦 Total parts: {total_chunks}")
+    print(f"⏱️  Total time: {total_time / 60:.1f} minutes")
+    print(f"📍 S3: s3://{s3_bucket}/{s3_key}")
+    print("=" * 80)
 
-        return {
-            "status": "success",
-            "s3_bucket": s3_bucket,
-            "s3_key": s3_key,
-            "file_size": file_size,
-            "file_size_gb": round(file_size_gb, 2),
-            "chunks": len(chunks),
-            "download_time_seconds": round(download_time, 1),
-            "total_time_seconds": round(total_time, 1),
-            "average_speed_mbps": round(file_size / download_time / 1024 / 1024, 1),
-        }
-
-    except Exception as e:
-        print()
-        print("=" * 80)
-        print("❌ ERROR DURING DOWNLOAD")
-        print("=" * 80)
-        print(f"Error: {e}")
-        print(f"Upload ID: {upload_id}")
-        print(f"Completed parts: {completed_parts}/{len(chunks)}")
-        print(f"Bytes transferred: {bytes_transferred / 1024 / 1024 / 1024:.2f} GB")
-        print("Aborting multipart upload...")
-        print("=" * 80)
-        s3_client.abort_multipart_upload(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
-        raise
+    return {"status": "success", "s3_bucket": s3_bucket, "s3_key": s3_key, "file_size": file_size}
 
 
 def main():
@@ -217,46 +203,46 @@ def main():
     parser = argparse.ArgumentParser(description="Parallel USAspending database download")
     parser.add_argument("--s3-bucket", required=True, help="S3 bucket name")
     parser.add_argument("--database-type", choices=["full", "test"], default="full")
-    parser.add_argument("--date", help="Date in YYYYMMDD format (auto-detect if not provided)")
     parser.add_argument("--source-url", help="Override source URL")
-    parser.add_argument("--max-concurrent", type=int, default=10, help="Max concurrent downloads")
+    parser.add_argument("--s3-key", help="Override S3 key (for resume)")
+    parser.add_argument("--max-concurrent", type=int, default=3, help="Max concurrent downloads")
 
     args = parser.parse_args()
 
-    # Find latest file if not specified
+    # Find latest file
     if not args.source_url:
         print("🔍 Finding latest available file...")
-        print(f"   Database type: {args.database_type}")
-        print("   Checking last 3 months of releases...")
-
         try:
             latest = find_latest_available_file(database_type=args.database_type, s3_bucket=None)
             if not latest:
                 print("❌ No available file found")
-                print("   Checked dates: 1st, 6th, and 15th of each month")
-                print("   Base URL: https://files.usaspending.gov/database_download/")
-                print("   Pattern: usaspending-db_YYYYMMDD.zip")
                 sys.exit(1)
             source_url = latest["source_url"]
-            date_str = latest["date_str"]
-            print(f"✅ Found file dated {date_str}")
-            print(f"   URL: {source_url}")
+            print(f"✅ Found: {source_url}")
         except Exception as e:
-            print(f"❌ Error finding file: {e}")
-            import traceback
-
-            traceback.print_exc()
+            print(f"❌ Error: {e}")
             sys.exit(1)
     else:
         source_url = args.source_url
-        date_str = args.date or "unknown"
 
-    # Generate S3 key
-    s3_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    # Use consistent S3 key based on source filename (not today's date)
+    # This ensures resume works across runs
     filename = source_url.split("/")[-1]
-    s3_key = f"raw/usaspending/database/{s3_date}/{filename}"
+    if args.s3_key:
+        s3_key = args.s3_key
+    else:
+        # Extract date from filename (usaspending-db_20251106.zip -> 2025-11-06)
+        import re
 
-    # Run parallel download
+        match = re.search(r"(\d{4})(\d{2})(\d{2})", filename)
+        if match:
+            file_date = f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+        else:
+            file_date = datetime.now(UTC).strftime("%Y-%m-%d")
+        s3_key = f"raw/usaspending/database/{file_date}/{filename}"
+
+    print(f"📦 S3 key: {s3_key}")
+
     try:
         asyncio.run(
             parallel_download_to_s3(
@@ -266,15 +252,9 @@ def main():
                 max_concurrent=args.max_concurrent,
             )
         )
-        print()
-        print("✅ All operations completed successfully!")
         sys.exit(0)
     except Exception as e:
-        print()
-        print(f"❌ Fatal error: {e}")
-        import traceback
-
-        traceback.print_exc()
+        print(f"❌ Error: {e}")
         sys.exit(1)
 
 

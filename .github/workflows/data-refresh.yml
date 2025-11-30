@@ -276,7 +276,7 @@ jobs:
     needs: determine-source
     if: needs.determine-source.outputs.usaspending == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 240  # 4 hours for 217GB download with resume capability
+    timeout-minutes: 360  # 6 hours for 217GB download with resume capability
     steps:
       - uses: actions/checkout@v6
 
@@ -285,7 +285,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 14400  # 4 hours for long downloads
+          role-duration-seconds: 21600  # 6 hours for long downloads
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -355,14 +355,15 @@ jobs:
         id: usaspending-download
         # Download if new file available OR force_refresh is enabled
         if: steps.check-new-file.outputs.is_new == 'true' || github.event.inputs.force_refresh == 'true'
-        timeout-minutes: 180
+        timeout-minutes: 330  # 5.5 hours for full download with resume
         run: |
           set -e
-          echo "Starting USAspending download..."
-          echo "Timeout: 180 minutes"
+          echo "Starting USAspending download with resume support..."
+          echo "Timeout: 330 minutes (5.5 hours)"
           echo ""
 
-          # Reduced concurrency from 10 to 3 to prevent OOM on GitHub runner
+          # Concurrency of 3 to prevent OOM on GitHub runner
+          # Script uses consistent S3 key based on source file date for resume
           uv run python scripts/data/download_usaspending_parallel.py \
             --s3-bucket ${{ env.S3_BUCKET }} \
             --database-type full \
@@ -401,13 +402,19 @@ jobs:
 
           # Extract and display key metrics from output
           if [ -f usaspending_output.txt ]; then
-            METRICS=$(grep -E "File size:|Split into|Max concurrent|Starting parallel|Part [0-9]+/|DOWNLOAD COMPLETE|Total size:|Total parts:|Download time:|Average speed:|S3 location:" usaspending_output.txt | tail -30 || echo "No metrics found")
+            METRICS=$(grep -E "File size:|Total chunks:|Already uploaded:|Remaining:|Concurrency:|Part [0-9]+/|DOWNLOAD COMPLETE|INTERRUPTED|Total size:|Total parts:|Total time:|S3:" usaspending_output.txt | tail -30 || echo "No metrics found")
             report_logs "$METRICS" "📊 Download Metrics" 30
 
             # Show final summary section if it exists
             if grep -q "DOWNLOAD COMPLETE" usaspending_output.txt; then
               SUMMARY=$(awk '/^=+$/{if(p)exit;p=1}p' usaspending_output.txt | tail -15)
               report_logs "$SUMMARY" "✨ Completion Summary" 15
+            fi
+
+            # Show interrupted message if present (progress saved for resume)
+            if grep -q "INTERRUPTED" usaspending_output.txt; then
+              INTERRUPTED_BLOCK=$(awk '/INTERRUPTED/,/^=+$/' usaspending_output.txt)
+              report_logs "$INTERRUPTED_BLOCK" "⚠️ Download Interrupted - Will Resume Next Run" 15
             fi
 
             # Show error details if failed
