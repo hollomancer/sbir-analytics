@@ -69,7 +69,7 @@ jobs:
        needs.detect-changes.outputs.cdk-changed == 'true' ||
        github.event.inputs.force_deploy == 'true') &&
       github.event.inputs.skip_layer_build != 'true'
-    timeout-minutes: 10  # Reduced from 15 for faster failure
+    timeout-minutes: 10
     outputs:
       layer-arn: ${{ steps.publish-layer.outputs.layer-arn }}
       layer-version: ${{ steps.publish-layer.outputs.layer-version }}
@@ -162,7 +162,7 @@ jobs:
        needs.detect-changes.outputs.layer-functions-changed == 'true' ||
        github.event.inputs.force_deploy == 'true' ||
        needs.build-layer.result == 'success')
-    timeout-minutes: 15  # Reduced from 20 for faster failure
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 

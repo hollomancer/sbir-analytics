@@ -235,9 +235,9 @@ jobs:
 
       - name: Stop Neo4j service
         if: always() && matrix.suite.needs_neo4j
-        run: |
-          docker stop test-neo4j || true
-          docker rm test-neo4j || true
+        uses: ./.github/actions/stop-neo4j
+        with:
+          container-name: test-neo4j
 
       - name: Upload coverage
         if: always()
@@ -356,7 +356,7 @@ jobs:
     name: Container Build and Test
     needs: [detect-changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Reduced from 30 for faster failure
+    timeout-minutes: 20
     # Optimized: Only required on push to main/develop, optional on PRs with docker changes
     # Skip on PRs without docker changes or docs-only to save ~20 min
     if: |
@@ -468,7 +468,7 @@ jobs:
       needs.detect-changes.outputs.docs-only != 'true' &&
       needs.detect-changes.outputs.performance == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Reduced from 30 for faster failure
+    timeout-minutes: 20
     continue-on-error: true  # Don't block PRs on performance checks
     permissions:
       id-token: write        # For OIDC authentication to AWS
@@ -859,7 +859,7 @@ jobs:
       needs.test.result == 'success' &&
       github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Reduced from 45 for faster failure
+    timeout-minutes: 30
     env:
       # Allow override via repository secrets; fall back to defaults for dev runs
       NEO4J_URI: bolt://localhost:7687
@@ -992,7 +992,7 @@ jobs:
       needs.detect-changes.outputs.docs-only != 'true' &&
       (github.event_name == 'push' || needs.detect-changes.outputs.transition == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Reduced from 20 for faster failure
+    timeout-minutes: 15
     permissions:
       contents: read
 

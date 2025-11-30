@@ -21,7 +21,7 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 The codebase uses a consolidated architecture with well-structured modules:
 - **231 Python files** in `src/` organized by ETL stage
 - **Configuration system:** 33/33 tests passing, 88% coverage
-- **Workflows:** ci, deploy, nightly, static-analysis, lambda-deploy, uspto-data-refresh, weekly-award-data-refresh, branch_deployments
+- **Workflows:** ci, deploy, nightly, weekly, lambda-deploy, data-refresh, build-r-base, run-ml-jobs
 
 ## Key Directories
 
@@ -57,13 +57,13 @@ archive/openspec/       # Archived OpenSpec content (historical reference)
 
 .github/workflows/
   ci.yml                # Main CI pipeline
-  deploy.yml            # Deployment workflows
-  nightly.yml           # Nightly builds and tests
-  static-analysis.yml   # Code quality checks
+  deploy.yml            # Dagster serverless deployment
+  nightly.yml           # Nightly security scans and smoke tests
+  weekly.yml            # Weekly comprehensive tests
   lambda-deploy.yml     # Lambda function deployment
-  uspto-data-refresh.yml # USPTO data refresh automation
-  weekly-award-data-refresh.yml # Weekly award data refresh
-  branch_deployments.yml # Branch-based deployments
+  data-refresh.yml      # SBIR/USAspending/USPTO data refresh
+  build-r-base.yml      # R base image build for fiscal analysis
+  run-ml-jobs.yml       # ML job execution (PaECTER, CET)
 ```
 
 ## Workflows & Guidelines

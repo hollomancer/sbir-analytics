@@ -2,7 +2,7 @@
 
 **Audience**: DevOps, Production Deployment
 **Prerequisites**: GitHub access, Neo4j Aura instance
-**Related**: [Docker Guide](docker-guide.md), [AWS Deployment](aws-deployment.md)
+**Related**: [Docker Guide](docker.md), [AWS Deployment](aws-deployment.md)
 **Last Updated**: 2025-11-29
 
 ## Overview
@@ -393,7 +393,7 @@ make docker-verify
 open http://localhost:3000
 ```
 
-See [Docker Guide](docker-guide.md) for complete instructions.
+See [Docker Guide](docker.md) for complete instructions.
 
 ## Support
 
@@ -410,7 +410,7 @@ See [Docker Guide](docker-guide.md) for complete instructions.
 
 ## Related Documentation
 
-- [Docker Guide](docker-guide.md) - Local development and failover
+- [Docker Guide](docker.md) - Local development and failover
 - [AWS Deployment](aws-deployment.md) - AWS Lambda and Step Functions
 - [Testing Guide](../testing/index.md) - Testing in Dagster Cloud
 - [Configuration Patterns](.kiro/steering/configuration-patterns.md) - Environment variables

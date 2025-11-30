@@ -61,10 +61,10 @@ NEO4J_PASSWORD=password
 
 ## Troubleshooting
 
-See [Docker Troubleshooting](../development/docker-troubleshooting.md) for common issues.
+See [Docker Troubleshooting](../development/docker.md) for common issues.
 
 ## Related
 
-- [Docker Reference](docker-reference.md) - Detailed configuration
-- [Docker Guide](docker-guide.md) - Extended usage
+- [Docker Reference](docker.md) - Detailed configuration
+- [Docker Guide](docker.md) - Extended usage
 - [AWS Deployment](aws-deployment.md) - Production deployment

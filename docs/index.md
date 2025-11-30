@@ -43,9 +43,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 
 ### Development Guides
 - **Docker Setup:**
-  - [Docker Quick Start](development/docker-quickstart.md) - Step-by-step setup guide
-  - [Docker Troubleshooting](development/docker-troubleshooting.md) - Common issues and solutions
-  - [Docker Environment Setup](development/docker-env-setup.md) - Configuration guide
+  - [Docker Development](development/docker.md) - Setup, configuration, and troubleshooting
 - [Exception Handling](development/exception-handling.md)
 - [Logging Standards](development/logging-standards.md)
 - [Kiro Workflow](development/kiro-workflow-guide.md)

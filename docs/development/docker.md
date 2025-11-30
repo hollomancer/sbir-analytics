@@ -1,3 +1,150 @@
+# Docker Quick Start
+
+Get the SBIR ETL pipeline running in Docker in 5 minutes.
+
+## Prerequisites
+
+- Docker Desktop installed
+- Git
+
+## Steps
+
+### 1. Clone and Enter Directory
+
+```bash
+git clone https://github.com/hollomancer/sbir-analytics.git
+cd sbir-analytics
+```
+
+### 2. Create Environment File
+
+```bash
+cp .env.example .env
+```
+
+### 3. Start Services
+
+```bash
+docker-compose --profile dev up -d
+```
+
+### 4. Verify
+
+```bash
+# Check services are running
+docker-compose ps
+
+# Run tests
+docker-compose exec app uv run pytest tests/unit/ -v
+```
+
+### 5. Access Services
+
+- **Dagster UI**: http://localhost:3000
+- **Neo4j Browser**: http://localhost:7474 (neo4j/password)
+
+## Common Tasks
+
+```bash
+# View logs
+docker-compose logs -f app
+
+# Run specific test
+docker-compose exec app uv run pytest tests/unit/test_config.py -v
+
+# Stop everything
+docker-compose down
+```
+
+## Next Steps
+
+- [Docker Troubleshooting](docker-troubleshooting.md) - If you hit issues
+- [Containerization Guide](../deployment/containerization.md) - Full reference
+
+
+---
+
+# Environment Setup
+
+# Docker Environment Setup
+
+Configuration guide for Docker-based development.
+
+## Environment Variables
+
+Create `.env` from template:
+
+```bash
+cp .env.example .env
+```
+
+### Required Variables
+
+```bash
+# Neo4j connection (local Docker)
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password
+```
+
+### Optional Variables
+
+```bash
+# S3 bucket for data (AWS deployment)
+S3_BUCKET=sbir-etl-production-data
+
+# Dagster home directory
+DAGSTER_HOME=/app/.dagster
+
+# Python environment
+PYTHONPATH=/app/src
+```
+
+## Docker Compose Configuration
+
+The `docker-compose.yml` uses profiles to separate environments:
+
+```yaml
+# Development profile
+docker-compose --profile dev up -d
+
+# Test profile (CI)
+docker-compose --profile test up -d
+```
+
+## Volume Mounts
+
+Development profile mounts local directories for live editing:
+
+| Local | Container | Purpose |
+|-------|-----------|---------|
+| `./src` | `/app/src` | Source code |
+| `./tests` | `/app/tests` | Test files |
+| `./config` | `/app/config` | Configuration |
+
+## Neo4j Configuration
+
+Local Neo4j uses these settings:
+
+```yaml
+environment:
+  NEO4J_AUTH: neo4j/password
+  NEO4J_PLUGINS: '["apoc"]'
+ports:
+  - "7474:7474"  # HTTP
+  - "7687:7687"  # Bolt
+```
+
+## Related
+
+- [Docker Quick Start](docker-quickstart.md)
+- [Docker Troubleshooting](docker-troubleshooting.md)
+
+
+---
+
+# Troubleshooting
+
 ---
 Type: Guide
 Owner: devops@project

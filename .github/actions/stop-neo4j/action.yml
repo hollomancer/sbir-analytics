@@ -1,0 +1,17 @@
+name: Stop Neo4j Container
+description: Stops and removes a Neo4j Docker container
+
+inputs:
+  container-name:
+    description: Name of the Neo4j container to stop
+    required: false
+    default: "test-neo4j"
+
+runs:
+  using: composite
+  steps:
+    - name: Stop and remove Neo4j container
+      shell: bash
+      run: |
+        docker stop ${{ inputs.container-name }} || true
+        docker rm ${{ inputs.container-name }} || true

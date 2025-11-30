@@ -78,9 +78,9 @@ jobs:
 
       - name: Stop Neo4j service
         if: always() && matrix.needs_neo4j == true
-        run: |
-          docker stop weekly-neo4j || true
-          docker rm weekly-neo4j || true
+        uses: ./.github/actions/stop-neo4j
+        with:
+          container-name: weekly-neo4j
 
   diagnose:
     name: Diagnose Test Failures
@@ -238,9 +238,9 @@ jobs:
 
       - name: Stop Neo4j service
         if: always()
-        run: |
-          docker stop comprehensive-neo4j || true
-          docker rm comprehensive-neo4j || true
+        uses: ./.github/actions/stop-neo4j
+        with:
+          container-name: comprehensive-neo4j
 
   real-data-validation:
     name: Real Data Validation

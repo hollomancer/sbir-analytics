@@ -37,7 +37,7 @@ make dev          # Start Dagster UI
 **Next steps:**
 1. Materialize `raw_sbir_awards` asset in Dagster UI
 2. Explore data in Neo4j Browser (http://localhost:7474)
-3. See [Getting Started Guide](docs/getting-started/local-development.md) for detailed walkthrough
+3. See [Getting Started Guide](docs/getting-started/README.md) for detailed walkthrough
 
 ### Production Deployment
 
@@ -73,12 +73,12 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 
 | Topic | Description |
 |-------|-------------|
-| [Getting Started](docs/getting-started/) | Detailed setup guides for local, cloud, and ML workflows |
+| [Getting Started](docs/getting-started/README.md) | Detailed setup guides for local, cloud, and ML workflows |
 | [Architecture](docs/architecture/) | System design, patterns, and technical decisions |
 | [Deployment](docs/deployment/) | Production deployment options and guides |
-| [Testing](docs/testing/) | Testing strategy, guides, and coverage |
+| [Testing](docs/testing/README.md) | Testing strategy, guides, and coverage |
 | [Schemas](docs/schemas/) | Neo4j graph schema and data models |
-| [API Reference](docs/api/) | Code documentation and API reference |
+| [API Reference](docs/api/README.md) | Code documentation and API reference |
 
 See [Documentation Index](docs/index.md) for complete map.
 
