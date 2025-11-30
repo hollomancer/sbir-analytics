@@ -92,31 +92,33 @@ class TestParquetLoading:
                 parquet_path="/nonexistent/file.parquet", use_s3_first=False
             )
 
-    @patch("src.extractors.sam_gov.resolve_data_path")
-    @patch("src.extractors.sam_gov.find_latest_sam_gov_parquet")
     def test_load_parquet_s3_first(
         self,
-        mock_find_latest,
-        mock_resolve_path,
         extractor_with_mock_config,
         sample_parquet_file,
     ):
         """Test loading parquet with S3-first strategy."""
+        # Read sample data first
+        sample_df = pd.read_parquet(sample_parquet_file)
+
         # Mock S3 bucket configured
         extractor_with_mock_config.config.s3 = {"bucket": "test-bucket"}
 
-        # Mock S3 file found and resolved
-        mock_find_latest.return_value = (
-            "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
-        )
-        mock_resolve_path.return_value = sample_parquet_file
+        with patch("src.utils.cloud_storage.find_latest_sam_gov_parquet") as mock_find_latest:
+            with patch("src.extractors.sam_gov.pd.read_parquet") as mock_read_parquet:
+                # Mock S3 file found
+                mock_find_latest.return_value = (
+                    "s3://test-bucket/data/raw/sam_gov/sam_entity_records.parquet"
+                )
 
-        df = extractor_with_mock_config.load_parquet(use_s3_first=True)
+                # Mock read_parquet to return sample data
+                mock_read_parquet.return_value = sample_df
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 3
-        mock_find_latest.assert_called_once()
-        mock_resolve_path.assert_called_once()
+                df = extractor_with_mock_config.load_parquet(use_s3_first=True)
+
+                assert isinstance(df, pd.DataFrame)
+                assert len(df) == 3
+                mock_find_latest.assert_called_once()
 
 
 class TestEntityLookups:
