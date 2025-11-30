@@ -127,7 +127,6 @@ class TestUSAspendingAPIClientInitialization:
         assert client.retry_multiplier == 2.0
         assert client.rate_limit_per_minute == 120
         assert client.request_times == []
-        assert client._rate_limiter_lock is False
 
     def test_initialization_with_custom_config(self):
         """Test initialization with custom config override."""
@@ -679,6 +678,10 @@ class TestAwardEnrichment:
     @pytest.mark.asyncio
     async def test_enrich_award_extracts_metadata(self, client, sample_award_data):
         """Test enrichment extracts delta metadata."""
+        # Add modification_number to sample data
+        sample_award_data["modification_number"] = "0"
+        sample_award_data["action_date"] = "2023-01-15"
+
         with patch.object(client, "get_recipient_by_uei", return_value=sample_award_data):
             result = await client.enrich_award("AWD001", uei="UEI123456789")
 

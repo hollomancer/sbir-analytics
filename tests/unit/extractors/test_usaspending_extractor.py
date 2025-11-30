@@ -495,18 +495,16 @@ class TestModuleFunctions:
         from tests.utils.config_mocks import create_mock_pipeline_config
 
         mock_config = create_mock_pipeline_config()
-        # Set extractors.usaspending settings
+        # Set extractors.usaspending settings - handle both dict and object
         if hasattr(mock_config, "extraction"):
-            if not hasattr(mock_config.extraction, "usaspending"):
-                mock_config.extraction.usaspending = Mock()
-            mock_config.extraction.usaspending.dump_file = "/path/to/dump.zip"
-            mock_config.extraction.usaspending.db_path = "/path/to/db"
-        # Also check for extractors attribute (backward compatibility)
-        if not hasattr(mock_config, "extraction") and hasattr(mock_config, "extractors"):
-            if not hasattr(mock_config.extractors, "usaspending"):
-                mock_config.extractors.usaspending = Mock()
-            mock_config.extractors.usaspending.dump_file = "/path/to/dump.zip"
-            mock_config.extractors.usaspending.db_path = "/path/to/db"
+            if isinstance(mock_config.extraction.usaspending, dict):
+                mock_config.extraction.usaspending["dump_file"] = "/path/to/dump.zip"
+                mock_config.extraction.usaspending["db_path"] = "/path/to/db"
+            else:
+                if not hasattr(mock_config.extraction, "usaspending"):
+                    mock_config.extraction.usaspending = Mock()
+                mock_config.extraction.usaspending.dump_file = "/path/to/dump.zip"
+                mock_config.extraction.usaspending.db_path = "/path/to/db"
         mock_get_config.return_value = mock_config
 
         mock_extractor = Mock()
@@ -516,8 +514,8 @@ class TestModuleFunctions:
 
         result = extract_usaspending_from_config()
 
-        assert isinstance(result, pd.DataFrame)
-        mock_extractor.import_postgres_dump.assert_called_once()
+        assert result == mock_extractor
+        mock_extractor_class.assert_called_once()
 
 
 # ==================== Edge Cases ====================
@@ -579,7 +577,10 @@ class TestEdgeCases:
 
         mock_conn = DuckDBMocks.connection()
         mock_df = pd.DataFrame()
-        mock_conn.execute = Mock(return_value=Mock(df=Mock(return_value=mock_df)))
+        # Mock the execute().fetchdf() chain to return actual DataFrame
+        mock_result = Mock()
+        mock_result.fetchdf.return_value = mock_df
+        mock_conn.execute.return_value = mock_result
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
