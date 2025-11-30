@@ -14,15 +14,15 @@ on:
           - paecter_embeddings
           - all_analysis_jobs
       execution_mode:
-        description: 'Where to run the job'
+        description: 'Where to run (aws-batch requires CDK deployment first)'
         required: true
         type: choice
         default: 'github-actions'
         options:
           - github-actions
-          - aws-batch
+          - aws-batch (requires setup)
 
-  # Or weekly schedule (optional)
+  # Or weekly schedule (optional) - uses GitHub Actions
   schedule:
     - cron: '0 3 * * 1'  # Monday 3 AM UTC
 
@@ -184,7 +184,7 @@ jobs:
 
   run-analysis-job-batch:
     name: Run Analysis Job on AWS Batch
-    if: ${{ github.event.inputs.execution_mode == 'aws-batch' }}
+    if: ${{ github.event.inputs.execution_mode == 'aws-batch (requires setup)' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Just for orchestration, actual job runs on Batch
 
