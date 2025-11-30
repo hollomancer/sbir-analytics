@@ -49,11 +49,10 @@ step_functions_stack = StepFunctionsStack(
 )
 
 # AWS Batch stack for analysis jobs (independent)
-# Temporarily disabled - requires account/region for VPC lookup
-# batch_stack = BatchStack(
-#     app,
-#     "sbir-analytics-batch",
-#     env=env,
-# )
+batch_stack = BatchStack(
+    app,
+    "sbir-analytics-batch",
+    env=env,
+)
 
 app.synth()

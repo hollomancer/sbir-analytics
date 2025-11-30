@@ -174,9 +174,10 @@ class BatchStack(Stack):
                 maxv_cpus=32,  # Maximum 32 vCPUs across all jobs
                 desiredv_cpus=0,  # Start at 0
                 instance_types=[
-                    "c5.2xlarge",   # 8 vCPUs, 16 GB RAM - good for CPU-intensive ML
-                    "c5.4xlarge",   # 16 vCPUs, 32 GB RAM - for larger jobs
-                    "m5.2xlarge",   # 8 vCPUs, 32 GB RAM - more memory for data processing
+                    "c5.large",     # 2 vCPUs, 4 GB RAM - minimum viable
+                    "c5.xlarge",    # 4 vCPUs, 8 GB RAM
+                    "m5.large",     # 2 vCPUs, 8 GB RAM - more memory
+                    "m5.xlarge",    # 4 vCPUs, 16 GB RAM
                 ],
                 subnets=[subnet.subnet_id for subnet in vpc.public_subnets],
                 security_group_ids=[security_group.security_group_id],
@@ -212,8 +213,8 @@ class BatchStack(Stack):
             platform_capabilities=["EC2"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
                 image=f"{self.ecr_repository.repository_uri}:latest",
-                vcpus=8,
-                memory=16384,  # 16 GB
+                vcpus=2,
+                memory=4096,  # 4 GB
                 job_role_arn=job_task_role.role_arn,
                 execution_role_arn=job_execution_role.role_arn,
                 command=[
@@ -316,8 +317,8 @@ class BatchStack(Stack):
             platform_capabilities=["EC2"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
                 image=f"{self.ecr_repository.repository_uri}:latest",
-                vcpus=8,
-                memory=16384,  # 16 GB for embeddings
+                vcpus=2,
+                memory=4096,  # 4 GB for embeddings
                 job_role_arn=job_task_role.role_arn,
                 execution_role_arn=job_execution_role.role_arn,
                 command=[
