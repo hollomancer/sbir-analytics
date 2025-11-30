@@ -164,58 +164,49 @@ def test_enrich_multiple_awards_batch_behavior():
     assert enriched["company_industry"].iloc[2] in ("C", None)
 
 
-def test_build_block_key_normal():
+@pytest.mark.parametrize(
+    "name,prefix_len,expected",
+    [
+        ("acme innovations", 2, "ac"),
+        ("a", 2, "a"),
+        ("", 2, ""),
+        ("test company", 3, "tes"),
+    ],
+    ids=["normal", "short", "empty", "longer_prefix"],
+)
+def test_build_block_key(name, prefix_len, expected):
     """Test building block key from normalized name."""
     from src.enrichers.company_enricher import build_block_key
 
-    key = build_block_key("acme innovations", prefix_len=2)
-
-    assert key == "ac"
+    assert build_block_key(name, prefix_len=prefix_len) == expected
 
 
-def test_build_block_key_short_name():
-    """Test building block key from name shorter than prefix."""
-    from src.enrichers.company_enricher import build_block_key
-
-    key = build_block_key("a", prefix_len=2)
-
-    assert key == "a"
-
-
-def test_build_block_key_empty_name():
-    """Test building block key from empty name."""
-    from src.enrichers.company_enricher import build_block_key
-
-    key = build_block_key("", prefix_len=2)
-
-    assert key == ""
-
-
-def test_coerce_int_valid():
-    """Test coercing valid values to int."""
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (42, 42),
+        ("42", 42),
+        (42.0, 42),
+        (None, None),
+        ("abc", None),
+        ([], None),
+    ],
+    ids=["int", "str", "float", "none", "invalid_str", "list"],
+)
+def test_coerce_int(value, expected):
+    """Test coercing various values to int."""
     from src.enrichers.company_enricher import _coerce_int
 
-    assert _coerce_int(42) == 42
-    assert _coerce_int("42") == 42
-    assert _coerce_int(42.0) == 42
-
-
-def test_coerce_int_invalid():
-    """Test coercing invalid values to int returns None."""
-    from src.enrichers.company_enricher import _coerce_int
-
-    assert _coerce_int(None) is None
-    assert _coerce_int("abc") is None
-    assert _coerce_int([]) is None
+    assert _coerce_int(value) == expected
 
 
 def test_enrich_empty_awards():
     """Test enriching empty awards DataFrame."""
-    companies = pd.DataFrame(
-        [
-            {"company": "Test Corp", "UEI": "U1", "Duns": "111111111"},
-        ]
-    )
+    companies = DataFrameBuilder.companies(1).build()
+    companies["company"] = "Test Corp"
+    companies["UEI"] = "U1"
+    companies["Duns"] = "111111111"
+
     awards = pd.DataFrame(columns=["company", "UEI", "Duns"])
 
     enriched = enrich_awards_with_companies(awards, companies)
@@ -226,18 +217,18 @@ def test_enrich_empty_awards():
 
 def test_enrich_empty_companies():
     """Test enriching awards with empty companies DataFrame."""
+    from tests.assertions import assert_dataframe_has_columns
+
     companies = pd.DataFrame(columns=["company", "UEI", "Duns"])
-    awards = pd.DataFrame(
-        [
-            {"company": "Test Award", "UEI": "U1", "Duns": "111111111"},
-        ]
-    )
+    awards = DataFrameBuilder.awards(1).build()
+    awards["company"] = "Test Award"
+    awards["UEI"] = "U1"
+    awards["Duns"] = "111111111"
 
     enriched = enrich_awards_with_companies(awards, companies)
 
-    # Should complete without error
     assert len(enriched) == 1
-    assert "_match_method" in enriched.columns
+    assert_dataframe_has_columns(enriched, ["_match_method"])
 
 
 def test_enrich_missing_award_company_column():

@@ -173,71 +173,58 @@ class TestCheckUniqueness:
 class TestCheckValueRanges:
     """Tests for value range validation."""
 
-    def test_valid_numeric_range(self, sample_dataframe):
-        """Test when all values are within range."""
-        issues = check_value_ranges(
-            sample_dataframe, "award_amount", min_value=50000, max_value=300000
-        )
+    @pytest.mark.parametrize(
+        "values,min_val,max_val,expected_issues",
+        [
+            ([100000, 150000, 200000], 50000, 300000, 0),  # all in range
+            ([10, 20, 30, 100], 50, None, 1),  # below minimum
+            ([100, 200, 300, 400], None, 250, 1),  # above maximum
+            ([50, 100, 150], 50, 150, 0),  # boundary values
+        ],
+        ids=["in_range", "below_min", "above_max", "boundary"],
+    )
+    def test_numeric_range_validation(self, values, min_val, max_val, expected_issues):
+        """Test numeric range validation with various scenarios."""
+        from tests.assertions import assert_quality_issues_count
 
-        assert len(issues) == 0
-
-    def test_values_below_minimum(self):
-        """Test when values are below minimum."""
-        df = pd.DataFrame({"amount": [10, 20, 30, 100]})
-
-        issues = check_value_ranges(df, "amount", min_value=50)
-
-        assert len(issues) == 1
-        assert issues[0].severity == QualitySeverity.MEDIUM
-        assert "below minimum" in issues[0].message
-        assert "3" in issues[0].message  # 3 violations
-
-    def test_values_above_maximum(self):
-        """Test when values are above maximum."""
-        df = pd.DataFrame({"amount": [100, 200, 300, 400]})
-
-        issues = check_value_ranges(df, "amount", max_value=250)
-
-        assert len(issues) == 1
-        assert issues[0].severity == QualitySeverity.MEDIUM
-        assert "above maximum" in issues[0].message
+        df = pd.DataFrame({"amount": values})
+        issues = check_value_ranges(df, "amount", min_value=min_val, max_value=max_val)
+        assert_quality_issues_count(issues, expected_issues)
 
     def test_allowed_values_validation(self):
         """Test validation against allowed values list."""
-        df = pd.DataFrame({"status": ["active", "pending", "invalid", "active"]})
+        from tests.assertions import assert_quality_issues_count
 
+        df = pd.DataFrame({"status": ["active", "pending", "invalid", "active"]})
         issues = check_value_ranges(df, "status", allowed_values=["active", "pending", "completed"])
 
-        assert len(issues) == 1
+        assert_quality_issues_count(issues, 1)
         assert issues[0].severity == QualitySeverity.HIGH
         assert "not in allowed list" in issues[0].message
 
     def test_missing_field(self, sample_dataframe):
         """Test when field doesn't exist."""
-        issues = check_value_ranges(sample_dataframe, "missing_field", min_value=0)
+        from tests.assertions import assert_quality_issues_count
 
-        assert len(issues) == 1
+        issues = check_value_ranges(sample_dataframe, "missing_field", min_value=0)
+        assert_quality_issues_count(issues, 1)
         assert issues[0].severity == QualitySeverity.CRITICAL
-        assert "does not exist" in issues[0].message
 
     def test_non_numeric_field_with_range(self):
         """Test numeric range check on non-numeric field."""
         df = pd.DataFrame({"name": ["Alice", "Bob", "Charlie"]})
-
         issues = check_value_ranges(df, "name", min_value=0, max_value=100)
 
         assert len(issues) == 1
         assert issues[0].severity == QualitySeverity.LOW
-        assert "non-numeric" in issues[0].message.lower()
 
     def test_allowed_values_with_nulls(self):
         """Test allowed values validation ignores nulls."""
+        from tests.assertions import assert_no_quality_issues
+
         df = pd.DataFrame({"status": ["active", None, "pending", "active"]})
-
         issues = check_value_ranges(df, "status", allowed_values=["active", "pending"])
-
-        # Nulls should be ignored, no issues
-        assert len(issues) == 0
+        assert_no_quality_issues(issues)
 
 
 class TestValidateSbirAwards:

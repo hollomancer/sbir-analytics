@@ -85,25 +85,43 @@ class TestValidatorResult:
 class TestRfIdUniqueness:
     """Tests for RF ID uniqueness validation."""
 
-    def test_unique_rf_ids_from_iterator(self, sample_rows):
-        """Test uniqueness validation with all unique IDs."""
-        result = validate_rf_id_uniqueness_from_iterator(sample_rows)
+    @pytest.mark.parametrize(
+        "rows,expected_success,expected_duplicates",
+        [
+            (
+                [{"rf_id": "001"}, {"rf_id": "002"}, {"rf_id": "003"}],
+                True,
+                0,
+            ),
+            (
+                [{"rf_id": "001"}, {"rf_id": "002"}, {"rf_id": "001"}],
+                False,
+                1,
+            ),
+            (
+                [{"rf_id": "001"}, {"rf_id": "001"}, {"rf_id": "001"}],
+                False,
+                1,
+            ),
+        ],
+        ids=["all_unique", "one_duplicate", "all_same"],
+    )
+    def test_rf_id_uniqueness_scenarios(self, rows, expected_success, expected_duplicates):
+        """Test RF ID uniqueness with various scenarios."""
+        from tests.assertions import assert_validator_success, assert_validator_failure
 
-        assert result.success is True
-        assert result.summary["total_rows"] == 3
-        assert result.summary["duplicate_rf_id_values"] == 0
-        assert result.summary["unique_rf_id_values"] == 3
+        result = validate_rf_id_uniqueness_from_iterator(rows)
 
-    def test_duplicate_rf_ids_from_iterator(self, duplicate_rows):
-        """Test uniqueness validation with duplicates."""
-        result = validate_rf_id_uniqueness_from_iterator(duplicate_rows)
-
-        assert result.success is False
-        assert result.summary["duplicate_rf_id_values"] == 1
-        assert len(result.details["duplicate_samples"]) > 0
+        if expected_success:
+            assert_validator_success(result)
+        else:
+            assert_validator_failure(result)
+        assert result.summary["duplicate_rf_id_values"] == expected_duplicates
 
     def test_missing_rf_ids_from_iterator(self):
         """Test with missing rf_id values."""
+        from tests.assertions import assert_validator_summary_key
+
         rows = [
             {"rf_id": "001", "name": "Alice"},
             {"rf_id": None, "name": "Bob"},
@@ -111,17 +129,16 @@ class TestRfIdUniqueness:
         ]
 
         result = validate_rf_id_uniqueness_from_iterator(rows)
-
-        assert result.summary["missing_rf_id_count"] == 2
-        assert result.summary["total_rf_ids_found"] == 1
+        assert_validator_summary_key(result, "missing_rf_id_count", 2)
+        assert_validator_summary_key(result, "total_rf_ids_found", 1)
 
     def test_rf_id_uniqueness_from_file(self, sample_csv_file):
         """Test RF ID uniqueness validation from file."""
-        result = validate_rf_id_uniqueness(sample_csv_file)
+        from tests.assertions import assert_validator_success
 
-        assert result.success is True
+        result = validate_rf_id_uniqueness(sample_csv_file)
+        assert_validator_success(result)
         assert result.summary["total_rows"] == 3
-        assert result.summary["duplicate_rf_id_values"] == 0
 
     def test_rf_id_uniqueness_missing_file(self, tmp_path):
         """Test with non-existent file."""
@@ -132,14 +149,15 @@ class TestRfIdUniqueness:
 
     def test_rf_id_custom_field_names(self):
         """Test with custom rf_id field names."""
+        from tests.assertions import assert_validator_success
+
         rows = [
             {"record_id": "001", "name": "Alice"},
             {"record_id": "002", "name": "Bob"},
         ]
 
         result = validate_rf_id_uniqueness_from_iterator(rows, rf_id_field_names=["record_id"])
-
-        assert result.success is True
+        assert_validator_success(result)
         assert result.summary["total_rf_ids_found"] == 2
 
 

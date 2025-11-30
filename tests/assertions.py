@@ -387,3 +387,102 @@ def assert_valid_enrichment_result(result: Any, expected_source: str | None = No
         assert result.source == expected_source, (
             f"Expected source '{expected_source}', got '{result.source}'"
         )
+
+
+# =============================================================================
+# Quality Check Assertions
+# =============================================================================
+
+
+def assert_quality_issues_count(
+    issues: list, expected_count: int, severity: str | None = None
+) -> None:
+    """Assert quality issues list has expected count.
+
+    Args:
+        issues: List of quality issues
+        expected_count: Expected number of issues
+        severity: Filter by severity (optional)
+
+    Raises:
+        AssertionError: If count doesn't match
+    """
+    if severity:
+        filtered = [i for i in issues if str(i.severity).upper() == severity.upper()]
+        actual = len(filtered)
+        assert actual == expected_count, (
+            f"Expected {expected_count} {severity} issues, got {actual}"
+        )
+    else:
+        assert len(issues) == expected_count, f"Expected {expected_count} issues, got {len(issues)}"
+
+
+def assert_no_quality_issues(issues: list) -> None:
+    """Assert no quality issues found."""
+    assert len(issues) == 0, f"Expected no issues, got {len(issues)}: {issues}"
+
+
+def assert_quality_issue_field(issues: list, field: str) -> None:
+    """Assert at least one issue exists for the given field."""
+    fields = [i.field for i in issues]
+    assert field in fields, f"Expected issue for field '{field}', found: {fields}"
+
+
+# =============================================================================
+# Evidence Assertions
+# =============================================================================
+
+
+def assert_valid_evidence_item(evidence: Any, expected_signal: str | None = None) -> None:
+    """Assert evidence item has valid structure.
+
+    Args:
+        evidence: Evidence item
+        expected_signal: Expected signal type (optional)
+
+    Raises:
+        AssertionError: If evidence is invalid
+    """
+    assert hasattr(evidence, "source"), "Missing source"
+    assert hasattr(evidence, "signal"), "Missing signal"
+    assert hasattr(evidence, "score"), "Missing score"
+    assert hasattr(evidence, "snippet"), "Missing snippet"
+
+    assert 0 <= evidence.score <= 1, f"Score must be 0-1, got {evidence.score}"
+    assert len(evidence.snippet) > 0, "Snippet should not be empty"
+
+    if expected_signal:
+        assert evidence.signal == expected_signal, (
+            f"Expected signal '{expected_signal}', got '{evidence.signal}'"
+        )
+
+
+def assert_evidence_contains_text(evidence: Any, text: str) -> None:
+    """Assert evidence snippet contains expected text."""
+    assert text.lower() in evidence.snippet.lower(), (
+        f"Expected '{text}' in snippet: {evidence.snippet}"
+    )
+
+
+# =============================================================================
+# Validator Result Assertions
+# =============================================================================
+
+
+def assert_validator_success(result: Any) -> None:
+    """Assert validator result indicates success."""
+    assert result.success is True, f"Expected success, got failure: {result.summary}"
+
+
+def assert_validator_failure(result: Any) -> None:
+    """Assert validator result indicates failure."""
+    assert result.success is False, f"Expected failure, got success: {result.summary}"
+
+
+def assert_validator_summary_key(result: Any, key: str, expected_value: Any = None) -> None:
+    """Assert validator summary contains expected key/value."""
+    assert key in result.summary, f"Missing summary key: {key}"
+    if expected_value is not None:
+        assert result.summary[key] == expected_value, (
+            f"Summary[{key}] expected {expected_value}, got {result.summary[key]}"
+        )

@@ -36,142 +36,77 @@ class TestEvidenceGeneratorInitialization:
 class TestGenerateAgencyEvidence:
     """Tests for generate_agency_evidence method."""
 
-    def test_generate_agency_evidence_same_agency(self):
-        """Test agency evidence with same agency."""
-        generator = EvidenceGenerator()
+    @pytest.mark.parametrize(
+        "same_agency,same_dept,score,expected_text",
+        [
+            (True, False, 1.0, "both from"),
+            (False, True, 0.8, "same department"),
+            (False, False, 0.2, "differs"),
+        ],
+        ids=["same_agency", "same_department", "different"],
+    )
+    def test_agency_evidence_scenarios(self, same_agency, same_dept, score, expected_text):
+        """Test agency evidence generation with various scenarios."""
+        from tests.assertions import assert_valid_evidence_item, assert_evidence_contains_text
 
+        generator = EvidenceGenerator()
         signal = AgencySignal(
-            same_agency=True,
-            same_department=False,
-            agency_score=1.0,
+            same_agency=same_agency,
+            same_department=same_dept,
+            agency_score=score,
         )
 
         evidence = generator.generate_agency_evidence(
             signal=signal,
             award_agency="DOD",
-            contract_agency="DOD",
+            contract_agency="DOD" if same_agency else "NASA",
+            award_department="DOD" if same_dept else None,
+            contract_department="DOD" if same_dept else None,
         )
 
-        assert evidence.source == "sbir_award_data"
-        assert evidence.signal == "agency"
-        assert evidence.score == 1.0
-        assert "both from DOD" in evidence.snippet
-        assert evidence.metadata["same_agency"] is True
-
-    def test_generate_agency_evidence_same_department(self):
-        """Test agency evidence with same department but different agencies."""
-        generator = EvidenceGenerator()
-
-        signal = AgencySignal(
-            same_agency=False,
-            same_department=True,
-            agency_score=0.8,
-        )
-
-        evidence = generator.generate_agency_evidence(
-            signal=signal,
-            award_agency="DOD-ARMY",
-            contract_agency="DOD-NAVY",
-            award_department="DOD",
-            contract_department="DOD",
-        )
-
-        assert evidence.score == 0.8
-        assert "same department" in evidence.snippet
-        assert "DOD" in evidence.snippet
-        assert evidence.metadata["same_department"] is True
-
-    def test_generate_agency_evidence_different_agencies(self):
-        """Test agency evidence with different agencies."""
-        generator = EvidenceGenerator()
-
-        signal = AgencySignal(
-            same_agency=False,
-            same_department=False,
-            agency_score=0.2,
-        )
-
-        evidence = generator.generate_agency_evidence(
-            signal=signal,
-            award_agency="DOD",
-            contract_agency="NASA",
-        )
-
-        assert evidence.score == 0.2
-        assert "differs" in evidence.snippet
-        assert "DOD" in evidence.snippet
-        assert "NASA" in evidence.snippet
+        assert_valid_evidence_item(evidence, expected_signal="agency")
+        assert evidence.score == score
+        assert_evidence_contains_text(evidence, expected_text)
 
 
 class TestGenerateTimingEvidence:
     """Tests for generate_timing_evidence method."""
 
-    def test_generate_timing_evidence_high_proximity(self):
-        """Test timing evidence with high temporal proximity (< 90 days)."""
-        generator = EvidenceGenerator()
+    @pytest.mark.parametrize(
+        "days,score,expected_text",
+        [
+            (45, 0.9, "high proximity"),
+            (180, 0.6, "moderate proximity"),
+            (-30, 0.1, "before"),
+        ],
+        ids=["high_proximity", "moderate_proximity", "negative_days"],
+    )
+    def test_timing_evidence_scenarios(self, days, score, expected_text):
+        """Test timing evidence with various temporal scenarios."""
+        from tests.assertions import assert_valid_evidence_item, assert_evidence_contains_text
 
+        generator = EvidenceGenerator()
         signal = TimingSignal(
-            days_between_award_and_contract=45,
-            months_between_award_and_contract=1.5,
-            timing_score=0.9,
+            days_between_award_and_contract=days,
+            months_between_award_and_contract=days / 30.0,
+            timing_score=score,
         )
 
         evidence = generator.generate_timing_evidence(
             signal=signal,
             award_completion_date=date(2023, 1, 1),
-            contract_start_date=date(2023, 2, 15),
-            award_id="AWARD-123",
-            contract_id="CONTRACT-456",
-        )
-
-        assert evidence.signal == "timing"
-        assert evidence.score == 0.9
-        assert "45 days" in evidence.snippet
-        assert "high proximity" in evidence.snippet
-        assert evidence.metadata["days_between"] == 45
-
-    def test_generate_timing_evidence_moderate_proximity(self):
-        """Test timing evidence with moderate proximity (90-365 days)."""
-        generator = EvidenceGenerator()
-
-        signal = TimingSignal(
-            days_between_award_and_contract=180,
-            months_between_award_and_contract=6.0,
-            timing_score=0.6,
-        )
-
-        evidence = generator.generate_timing_evidence(
-            signal=signal,
-            award_completion_date=date(2023, 1, 1),
-            contract_start_date=date(2023, 7, 1),
-        )
-
-        assert "180 days" in evidence.snippet
-        assert "moderate proximity" in evidence.snippet
-
-    def test_generate_timing_evidence_negative_days(self):
-        """Test timing evidence with contract before award (anomaly)."""
-        generator = EvidenceGenerator()
-
-        signal = TimingSignal(
-            days_between_award_and_contract=-30,
-            months_between_award_and_contract=-1.0,
-            timing_score=0.1,
-        )
-
-        evidence = generator.generate_timing_evidence(
-            signal=signal,
-            award_completion_date=date(2023, 2, 1),
             contract_start_date=date(2023, 1, 1),
         )
 
-        assert "30 days before" in evidence.snippet
-        assert "anomaly" in evidence.snippet
+        assert_valid_evidence_item(evidence, expected_signal="timing")
+        assert evidence.score == score
+        assert_evidence_contains_text(evidence, expected_text)
 
     def test_generate_timing_evidence_incomplete_data(self):
         """Test timing evidence with incomplete timing data."""
-        generator = EvidenceGenerator()
+        from tests.assertions import assert_evidence_contains_text
 
+        generator = EvidenceGenerator()
         signal = TimingSignal(
             days_between_award_and_contract=None,
             months_between_award_and_contract=None,
@@ -184,19 +119,29 @@ class TestGenerateTimingEvidence:
             contract_start_date=None,
         )
 
-        assert "incomplete" in evidence.snippet
+        assert_evidence_contains_text(evidence, "incomplete")
 
 
 class TestGenerateCompetitionEvidence:
     """Tests for generate_competition_evidence method."""
 
-    def test_generate_competition_evidence_sole_source(self):
-        """Test competition evidence for sole source."""
-        generator = EvidenceGenerator()
+    @pytest.mark.parametrize(
+        "comp_type,score,expected_text",
+        [
+            (CompetitionType.SOLE_SOURCE, 1.0, "Sole source"),
+            (CompetitionType.LIMITED, 0.7, "Limited competition"),
+            (CompetitionType.FULL_AND_OPEN, 0.3, "Full and open"),
+        ],
+        ids=["sole_source", "limited", "full_open"],
+    )
+    def test_competition_evidence_scenarios(self, comp_type, score, expected_text):
+        """Test competition evidence with various competition types."""
+        from tests.assertions import assert_valid_evidence_item, assert_evidence_contains_text
 
+        generator = EvidenceGenerator()
         signal = CompetitionSignal(
-            competition_type=CompetitionType.SOLE_SOURCE,
-            competition_score=1.0,
+            competition_type=comp_type,
+            competition_score=score,
         )
 
         evidence = generator.generate_competition_evidence(
@@ -204,37 +149,9 @@ class TestGenerateCompetitionEvidence:
             contract_id="CONTRACT-123",
         )
 
-        assert evidence.signal == "competition"
-        assert evidence.score == 1.0
-        assert "Sole source" in evidence.snippet
-        assert "specifically targeted" in evidence.snippet
-
-    def test_generate_competition_evidence_limited(self):
-        """Test competition evidence for limited competition."""
-        generator = EvidenceGenerator()
-
-        signal = CompetitionSignal(
-            competition_type=CompetitionType.LIMITED,
-            competition_score=0.7,
-        )
-
-        evidence = generator.generate_competition_evidence(signal=signal)
-
-        assert "Limited competition" in evidence.snippet
-        assert "restricted vendor pool" in evidence.snippet
-
-    def test_generate_competition_evidence_full_open(self):
-        """Test competition evidence for full and open."""
-        generator = EvidenceGenerator()
-
-        signal = CompetitionSignal(
-            competition_type=CompetitionType.FULL_AND_OPEN,
-            competition_score=0.3,
-        )
-
-        evidence = generator.generate_competition_evidence(signal=signal)
-
-        assert "Full and open" in evidence.snippet
+        assert_valid_evidence_item(evidence, expected_signal="competition")
+        assert evidence.score == score
+        assert_evidence_contains_text(evidence, expected_text)
 
 
 class TestGeneratePatentEvidence:

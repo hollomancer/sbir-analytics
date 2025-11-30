@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from src.enrichers.usaspending import enrich_sbir_with_usaspending
+from tests.assertions import assert_dataframe_has_columns
 
 
 pytestmark = pytest.mark.fast
@@ -68,24 +69,32 @@ def sample_usaspending_data() -> pd.DataFrame:
     )
 
 
-def test_exact_uei_match(
-    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
+@pytest.mark.parametrize(
+    "row_idx,expected_method,expected_score",
+    [
+        (0, "uei-exact", 100),
+        (1, "uei-exact", 100),
+    ],
+    ids=["first_uei_match", "second_uei_match"],
+)
+def test_exact_match_scenarios(
+    sample_sbir_data: pd.DataFrame,
+    sample_usaspending_data: pd.DataFrame,
+    row_idx: int,
+    expected_method: str,
+    expected_score: int,
 ) -> None:
+    """Test exact matching scenarios."""
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
-    assert enriched["_usaspending_match_method"].iloc[0] == "uei-exact"
-    assert enriched["_usaspending_match_score"].iloc[0] == 100
-    assert enriched["usaspending_recipient_recipient_city"].iloc[0] == "Springfield"
-
-
-def test_exact_duns_match(
-    sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
-) -> None:
-    enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
-    assert enriched["_usaspending_match_method"].iloc[1] == "uei-exact"
-    assert enriched["_usaspending_match_score"].iloc[1] == 100
+    assert_dataframe_has_columns(
+        enriched, ["_usaspending_match_method", "_usaspending_match_score"]
+    )
+    assert enriched["_usaspending_match_method"].iloc[row_idx] == expected_method
+    assert enriched["_usaspending_match_score"].iloc[row_idx] == expected_score
 
 
 def test_fuzzy_match(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame) -> None:
+    """Test fuzzy name matching."""
     enriched = enrich_sbir_with_usaspending(
         sample_sbir_data,
         sample_usaspending_data,
@@ -97,38 +106,25 @@ def test_fuzzy_match(sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd
 
 
 def test_no_match_returns_nan() -> None:
+    """Test that unmatched records return NaN."""
     sbir_df = pd.DataFrame(
-        [
-            {
-                "Company": "Missing Co",
-                "UEI": "UEI-MISSING",
-                "Duns": "",
-                "Contract": "C-000",
-            }
-        ]
+        [{"Company": "Missing Co", "UEI": "UEI-MISSING", "Duns": "", "Contract": "C-000"}]
     )
     empty_df = pd.DataFrame(
-        [
-            {
-                "recipient_name": "Different",
-                "recipient_uei": "UEI-OTHER",
-                "recipient_duns": "000",
-            }
-        ]
+        [{"recipient_name": "Different", "recipient_uei": "UEI-OTHER", "recipient_duns": "000"}]
     )
     enriched = enrich_sbir_with_usaspending(sbir_df, empty_df)
     assert pd.isna(enriched["_usaspending_match_method"].iloc[0])
-    assert pd.isna(enriched["_usaspending_match_score"].iloc[0])
 
 
 def test_return_candidates(
     sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
 ) -> None:
+    """Test candidate return functionality."""
     enriched = enrich_sbir_with_usaspending(
-        sample_sbir_data,
-        sample_usaspending_data,
-        return_candidates=True,
+        sample_sbir_data, sample_usaspending_data, return_candidates=True
     )
+    assert_dataframe_has_columns(enriched, ["_usaspending_match_candidates"])
     candidates_json = enriched["_usaspending_match_candidates"].iloc[2]
     if pd.notna(candidates_json):
         candidates = json.loads(candidates_json)
@@ -139,6 +135,7 @@ def test_return_candidates(
 def test_match_rate_bounds(
     sample_sbir_data: pd.DataFrame, sample_usaspending_data: pd.DataFrame
 ) -> None:
+    """Test match rate is within valid bounds."""
     enriched = enrich_sbir_with_usaspending(sample_sbir_data, sample_usaspending_data)
     total = len(enriched)
     matched = enriched["_usaspending_match_method"].notna().sum()

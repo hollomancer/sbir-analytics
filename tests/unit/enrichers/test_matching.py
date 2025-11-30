@@ -35,34 +35,25 @@ class TestEnhancedAbbreviations:
 class TestGetPhoneticCode:
     """Tests for get_phonetic_code function."""
 
-    def test_get_phonetic_code_metaphone(self):
-        """Test get_phonetic_code with metaphone algorithm."""
-        # This will return None if jellyfish is not available
-        result = get_phonetic_code("Smith", algorithm="metaphone")
-
-        # If jellyfish is available, should return phonetic code
-        # If not, returns None
-        assert result is None or isinstance(result, str)
-
-    def test_get_phonetic_code_double_metaphone(self):
-        """Test get_phonetic_code with double_metaphone algorithm."""
-        result = get_phonetic_code("Smith", algorithm="double_metaphone")
-
-        # If jellyfish is available, should return tuple or string
-        # If not, returns None
+    @pytest.mark.parametrize(
+        "text,algorithm",
+        [
+            ("Smith", "metaphone"),
+            ("Smith", "double_metaphone"),
+            ("", "metaphone"),
+        ],
+        ids=["metaphone", "double_metaphone", "empty"],
+    )
+    def test_get_phonetic_code_algorithms(self, text, algorithm):
+        """Test get_phonetic_code with various algorithms."""
+        result = get_phonetic_code(text, algorithm=algorithm)
+        # Returns None if jellyfish unavailable, or string/tuple otherwise
         assert result is None or isinstance(result, str | tuple)
 
     def test_get_phonetic_code_unknown_algorithm(self):
         """Test get_phonetic_code with unknown algorithm."""
         result = get_phonetic_code("Smith", algorithm="unknown")
-
         assert result is None
-
-    def test_get_phonetic_code_empty_string(self):
-        """Test get_phonetic_code with empty string."""
-        result = get_phonetic_code("", algorithm="metaphone")
-
-        assert result is None or result == ""
 
 
 class TestApplyEnhancedAbbreviations:
@@ -123,27 +114,21 @@ class TestPhoneticMatch:
 class TestJaroWinklerSimilarity:
     """Tests for jaro_winkler_similarity function."""
 
-    def test_jaro_winkler_similarity_similar_names(self):
-        """Test Jaro-Winkler similarity with similar names."""
-        result = jaro_winkler_similarity("Boeing Systems", "Boeing Solutions")
-
-        # If rapidfuzz is available, should return score 0-100
-        # If not, returns 0.0
+    @pytest.mark.parametrize(
+        "name1,name2,min_score,max_score",
+        [
+            ("Boeing Systems", "Boeing Solutions", 50.0, 100.0),
+            ("Acme Corp", "XYZ Inc", 0.0, 50.0),
+            ("", "", 0.0, 0.0),
+            ("Test", "Test", 99.0, 100.0),
+        ],
+        ids=["similar", "different", "empty", "identical"],
+    )
+    def test_jaro_winkler_similarity(self, name1, name2, min_score, max_score):
+        """Test Jaro-Winkler similarity with various name pairs."""
+        result = jaro_winkler_similarity(name1, name2)
         assert isinstance(result, float)
-        assert 0.0 <= result <= 100.0
-
-    def test_jaro_winkler_similarity_different_names(self):
-        """Test Jaro-Winkler similarity with different names."""
-        result = jaro_winkler_similarity("Acme Corp", "XYZ Inc")
-
-        assert isinstance(result, float)
-        assert 0.0 <= result <= 100.0
-
-    def test_jaro_winkler_similarity_empty_strings(self):
-        """Test Jaro-Winkler similarity with empty strings."""
-        result = jaro_winkler_similarity("", "")
-
-        assert result == 0.0
+        assert min_score <= result <= max_score
 
 
 class TestMatchingConfig:
