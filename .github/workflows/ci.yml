@@ -409,12 +409,13 @@ jobs:
           build-args: |
             BUILD_WITH_R=false
             BUILDKIT_INLINE_CACHE=1
+          # Unified cache scope shared across workflows
           cache-from: |
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-            type=gha,scope=ci-no-r
+            type=gha,scope=sbir-python-deps
           cache-to: |
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
-            type=gha,mode=max,scope=ci-no-r
+            type=gha,mode=max,scope=sbir-python-deps
 
       - name: Tag and push to registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
