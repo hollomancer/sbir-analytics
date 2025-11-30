@@ -186,7 +186,7 @@ jobs:
 
   run-analysis-job-batch:
     name: Run Analysis Job on AWS Batch
-    if: ${{ github.event.inputs.execution_mode == 'aws-batch (requires setup)' }}
+    if: ${{ github.event.inputs.execution_mode == 'aws-batch' || github.event.inputs.execution_mode == 'aws-batch (requires setup)' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Just for orchestration, actual job runs on Batch
 
