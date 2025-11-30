@@ -52,10 +52,16 @@ async def download_and_upload_chunk(
         async with aiohttp.ClientSession() as sess:
             downloaded = await download_chunk(sess, source_url, chunk)
 
-            part_response = s3_client.upload_part(
-                Bucket=s3_bucket, Key=s3_key, PartNumber=part_num,
-                UploadId=upload_id, Body=downloaded.data
-            )
+            try:
+                part_response = s3_client.upload_part(
+                    Bucket=s3_bucket, Key=s3_key, PartNumber=part_num,
+                    UploadId=upload_id, Body=downloaded.data
+                )
+            except s3_client.exceptions.NoSuchUpload:
+                raise RuntimeError(
+                    f"Upload {upload_id[:20]}... no longer exists. "
+                    "It may have expired or been aborted. Please restart the download."
+                )
 
             stats["completed"] += 1
             chunk_bytes = len(downloaded.data)
@@ -109,11 +115,20 @@ async def parallel_download_to_s3(
 
     for upload in existing_uploads.get("Uploads", []):
         if upload["Key"] == s3_key:
-            upload_id = upload["UploadId"]
-            print(f"🔄 Resuming existing upload: {upload_id[:20]}...")
-            existing_parts = get_all_uploaded_parts(s3_client, s3_bucket, s3_key, upload_id)
-            print(f"✅ Found {len(existing_parts)} already uploaded parts")
-            break
+            candidate_id = upload["UploadId"]
+            # Validate the upload still exists by trying to list its parts
+            try:
+                test_parts = s3_client.list_parts(
+                    Bucket=s3_bucket, Key=s3_key, UploadId=candidate_id, MaxParts=1
+                )
+                upload_id = candidate_id
+                print(f"🔄 Resuming existing upload: {upload_id[:20]}...")
+                existing_parts = get_all_uploaded_parts(s3_client, s3_bucket, s3_key, upload_id)
+                print(f"✅ Found {len(existing_parts)} already uploaded parts")
+                break
+            except s3_client.exceptions.NoSuchUpload:
+                print(f"⚠️  Stale upload found, will create new one")
+                continue
 
     if not upload_id:
         multipart = s3_client.create_multipart_upload(
