@@ -1,3 +1,5 @@
+"""Tests for company enricher."""
+
 import json
 
 import pandas as pd

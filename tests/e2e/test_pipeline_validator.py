@@ -17,8 +17,8 @@ from tests.e2e.pipeline_validator import (
 )
 from tests.e2e.validation_models import (
     RecommendationPriority,
-    TestReport,
-    TestScenario,
+    ValidationReport,
+    ValidationScenario,
     ValidationReporter,
     ValidationResult,
 )
@@ -275,7 +275,7 @@ class TestValidationModels:
 
         validation_result = ValidationResult(
             test_id="test_001",
-            scenario=TestScenario.STANDARD,
+            scenario=ValidationScenario.STANDARD,
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.FAILED,
             total_duration_seconds=3.0,
@@ -289,7 +289,7 @@ class TestValidationModels:
         assert len(validation_result.critical_issues) == 1
 
     def test_test_report_generation(self):
-        """Test TestReport generation with recommendations."""
+        """Test ValidationReport generation with recommendations."""
         from tests.e2e.pipeline_validator import StageValidationResult
 
         # Create validation result with critical issue
@@ -309,17 +309,17 @@ class TestValidationModels:
 
         validation_result = ValidationResult(
             test_id="test_002",
-            scenario=TestScenario.MINIMAL,
+            scenario=ValidationScenario.MINIMAL,
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.FAILED,
             total_duration_seconds=1.0,
             stage_results=[stage_result],
         )
 
-        report = TestReport(
+        report = ValidationReport(
             report_id="report_002",
             test_id="test_002",
-            scenario=TestScenario.MINIMAL,
+            scenario=ValidationScenario.MINIMAL,
             timestamp=pd.Timestamp.now(),
             validation_result=validation_result,
         )
@@ -363,7 +363,7 @@ class TestValidationModels:
 
             validation_result = ValidationResult(
                 test_id="test_003",
-                scenario=TestScenario.STANDARD,
+                scenario=ValidationScenario.STANDARD,
                 timestamp=pd.Timestamp.now(),
                 overall_status=ValidationStatus.PASSED,
                 total_duration_seconds=1.0,
@@ -376,7 +376,7 @@ class TestValidationModels:
             )
 
             assert report.test_id == "test_003"
-            assert report.scenario == TestScenario.STANDARD
+            assert report.scenario == ValidationScenario.STANDARD
             assert len(report.artifacts) == 2  # JSON and Markdown
 
             # Check that artifact files were created
@@ -437,7 +437,7 @@ class TestIntegration:
         # Create overall validation result
         validation_result = ValidationResult(
             test_id="integration_test",
-            scenario=TestScenario.STANDARD,
+            scenario=ValidationScenario.STANDARD,
             timestamp=pd.Timestamp.now(),
             overall_status=ValidationStatus.PASSED,
             total_duration_seconds=extraction_result.duration_seconds

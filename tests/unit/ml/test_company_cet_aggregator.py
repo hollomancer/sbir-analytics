@@ -1,3 +1,5 @@
+"""Tests for company cet aggregator."""
+
 from datetime import datetime
 
 import pandas as pd

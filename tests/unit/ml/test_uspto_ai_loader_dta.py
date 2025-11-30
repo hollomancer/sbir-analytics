@@ -1,3 +1,5 @@
+"""Tests for uspto ai loader dta."""
+
 import importlib
 from pathlib import Path
 

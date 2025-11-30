@@ -17,7 +17,7 @@ from tests.e2e.pipeline_validator import (
 )
 
 
-class TestScenario(str, Enum):
+class ValidationScenario(str, Enum):
     """E2E test scenarios."""
 
     MINIMAL = "minimal"
@@ -40,7 +40,7 @@ class ValidationResult:
     """Comprehensive validation result for E2E testing."""
 
     test_id: str
-    scenario: TestScenario
+    scenario: ValidationScenario
     timestamp: datetime
     overall_status: ValidationStatus
     total_duration_seconds: float
@@ -97,12 +97,12 @@ class Recommendation:
 
 
 @dataclass
-class TestReport:
+class ValidationReport:
     """Comprehensive test report with validation results and recommendations."""
 
     report_id: str
     test_id: str
-    scenario: TestScenario
+    scenario: ValidationScenario
     timestamp: datetime
     validation_result: ValidationResult
     recommendations: list[Recommendation] = field(default_factory=list)
@@ -261,7 +261,7 @@ class ValidationReporter:
         validation_result: ValidationResult,
         test_id: str | None = None,
         include_artifacts: bool = True,
-    ) -> TestReport:
+    ) -> ValidationReport:
         """Generate comprehensive test report.
 
         Args:
@@ -270,14 +270,14 @@ class ValidationReporter:
             include_artifacts: Whether to generate artifact files
 
         Returns:
-            TestReport with validation results and recommendations
+            ValidationReport with validation results and recommendations
         """
         if not test_id:
             test_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         report_id = f"report_{test_id}"
 
-        report = TestReport(
+        report = ValidationReport(
             report_id=report_id,
             test_id=test_id,
             scenario=validation_result.scenario,
@@ -291,7 +291,7 @@ class ValidationReporter:
 
         return report
 
-    def _generate_artifacts(self, report: TestReport) -> dict[str, str]:
+    def _generate_artifacts(self, report: ValidationReport) -> dict[str, str]:
         """Generate report artifacts (files).
 
         Args:
@@ -370,7 +370,7 @@ class ValidationReporter:
 
         return artifacts
 
-    def _generate_markdown_report(self, report: TestReport) -> str:
+    def _generate_markdown_report(self, report: ValidationReport) -> str:
         """Generate markdown report content.
 
         Args:

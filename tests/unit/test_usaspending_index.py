@@ -1,3 +1,5 @@
+"""Tests for usaspending index."""
+
 from pathlib import Path
 
 import pytest

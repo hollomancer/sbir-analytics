@@ -1,3 +1,5 @@
+"""Tests for cet loader."""
+
 from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock

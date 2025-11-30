@@ -1,3 +1,5 @@
+"""Tests for transition analytics."""
+
 import pandas as pd
 
 from src.transition.analysis.analytics import TransitionAnalytics

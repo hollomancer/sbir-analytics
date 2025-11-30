@@ -1,3 +1,5 @@
+"""Tests for cet award relationships."""
+
 import json
 from typing import Any
 from unittest.mock import MagicMock

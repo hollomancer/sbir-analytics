@@ -1,3 +1,5 @@
+"""Tests for transition scores stability."""
+
 import pandas as pd
 import pytest
 

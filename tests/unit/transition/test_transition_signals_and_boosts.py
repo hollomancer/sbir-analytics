@@ -1,3 +1,5 @@
+"""Tests for transition signals and boosts."""
+
 import pandas as pd
 import pytest
 

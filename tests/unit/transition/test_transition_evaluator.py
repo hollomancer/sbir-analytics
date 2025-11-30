@@ -1,3 +1,5 @@
+"""Tests for transition evaluator."""
+
 import pandas as pd
 import pytest
 

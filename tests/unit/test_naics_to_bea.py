@@ -1,3 +1,5 @@
+"""Tests for naics to bea."""
+
 from pathlib import Path
 
 import pytest

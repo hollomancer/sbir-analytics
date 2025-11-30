@@ -1,3 +1,5 @@
+"""Tests for taxonomy asset."""
+
 import json
 from pathlib import Path
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test company categorization against high-volume SBIR companies dataset.
+"""Company categorization validation script.
 
 This script validates the categorization system against the 200+ company validation
 dataset with known high award volumes. It analyzes non-SBIR/STTR federal contract
@@ -10,14 +10,14 @@ contract revenue that reflects the company's product vs service business model.
 
 Usage:
     # Test first 10 companies (quick)
-    poetry run python tests/validation/test_categorization_validation.py --limit 10
+    uv run python scripts/validation/categorization_validation.py --limit 10
 
     # Test all companies
-    poetry run python tests/validation/test_categorization_validation.py
+    uv run python scripts/validation/categorization_validation.py
 
-    # Test with a different CSV file (all equivalent):
-    poetry run python tests/validation/test_categorization_validation.py --dataset path/to/companies.csv
-    poetry run python tests/validation/test_categorization_validation.py -d path/to/companies.csv
+    # Test with a different CSV file:
+    uv run python scripts/validation/categorization_validation.py --dataset path/to/companies.csv
+    uv run python scripts/validation/categorization_validation.py -d path/to/companies.csv
     poetry run python tests/validation/test_categorization_validation.py --csv path/to/companies.csv
 
     # Test specific company by UEI

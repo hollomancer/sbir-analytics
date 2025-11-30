@@ -1,3 +1,5 @@
+"""Tests for vendor resolver."""
+
 import pytest
 
 

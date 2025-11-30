@@ -1,3 +1,5 @@
+"""Tests for transition assets unit."""
+
 import json
 from pathlib import Path
 

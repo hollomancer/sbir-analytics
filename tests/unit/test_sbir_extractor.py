@@ -1,3 +1,5 @@
+"""Tests for sbir extractor."""
+
 from pathlib import Path
 
 import pytest

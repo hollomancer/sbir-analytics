@@ -1,3 +1,5 @@
+"""Tests for cet patent asset."""
+
 import json
 import pickle
 from datetime import datetime

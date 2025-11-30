@@ -1,3 +1,5 @@
+"""Tests for contract extractor parent child."""
+
 import pytest
 
 
