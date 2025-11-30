@@ -1,11 +1,9 @@
-"""Integration tests for CLI commands."""
+"""Functional tests for CLI commands."""
 
 import pytest
 from typer.testing import CliRunner
 
 from src.cli.main import app
-
-pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
@@ -14,8 +12,8 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-class TestCLIIntegration:
-    """Integration tests for CLI application."""
+class TestCLI:
+    """Functional tests for CLI application."""
 
     def test_main_app_help(self, runner: CliRunner) -> None:
         """Test main app help output."""

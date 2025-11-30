@@ -585,3 +585,54 @@ class CompanyTransitionFactory:
         }
         defaults.update(kwargs)
         return CompanyTransition(**defaults)
+
+
+class PatentFactory:
+    """Factory for Patent model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a Patent instance with sensible defaults."""
+        from src.models.patent import Patent
+
+        defaults = {
+            "patent_number": "US123456",
+            "title": "Advanced Machine Learning System",
+            "abstract": "A novel machine learning system for data analysis",
+            "filing_date": date(2023, 3, 1),
+            "assignee": "Acme Corporation",
+        }
+        defaults.update(kwargs)
+        return Patent(**defaults)
+
+    @staticmethod
+    def create_batch(count: int, **kwargs: Any) -> list:
+        """Create multiple Patent instances with sequential numbers."""
+        patents = []
+        for i in range(1, count + 1):
+            overrides = kwargs.copy()
+            if "patent_number" not in overrides:
+                overrides["patent_number"] = f"US{123456 + i}"
+            if "title" not in overrides:
+                overrides["title"] = f"Test Patent {i}"
+            patents.append(PatentFactory.create(**overrides))
+        return patents
+
+
+class FederalContractFactory:
+    """Factory for FederalContract model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a FederalContract instance with sensible defaults."""
+        from src.models.transition_models import CompetitionType, FederalContract
+
+        defaults = {
+            "contract_id": "C123",
+            "vendor_id": "V123",
+            "vendor_name": "Acme Corporation",
+            "agency": "DOD",
+            "competition_type": CompetitionType.SOLE_SOURCE,
+        }
+        defaults.update(kwargs)
+        return FederalContract(**defaults)
