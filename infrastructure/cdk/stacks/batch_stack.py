@@ -170,9 +170,9 @@ class BatchStack(Stack):
                 type="SPOT",
                 allocation_strategy="SPOT_CAPACITY_OPTIMIZED",
                 bid_percentage=100,  # Maximum spot price = on-demand price
-                min_vcpus=0,  # Scale down to 0 when idle
-                max_vcpus=32,  # Maximum 32 vCPUs across all jobs
-                desired_vcpus=0,  # Start at 0
+                minv_cpus=0,  # Scale down to 0 when idle
+                maxv_cpus=32,  # Maximum 32 vCPUs across all jobs
+                desiredv_cpus=0,  # Start at 0
                 instance_types=[
                     "c5.2xlarge",   # 8 vCPUs, 16 GB RAM - good for CPU-intensive ML
                     "c5.4xlarge",   # 16 vCPUs, 32 GB RAM - for larger jobs
