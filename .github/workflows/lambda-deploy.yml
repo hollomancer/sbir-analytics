@@ -99,12 +99,34 @@ jobs:
           # Install dependencies to the layer directory
           pip install -r "${LAYER_DIR}/requirements.txt" -t "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
 
+          # Remove unnecessary files to reduce size
+          cd "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
+
+          # Remove test files and documentation
+          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete
+          find . -name "*.pyo" -delete
+          find . -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+
+          # Remove documentation
+          rm -rf */docs */doc */examples */example
+
+          # Remove large unnecessary files
+          find . -name "*.so" -o -name "*.dylib" | grep -E "(test|example)" | xargs rm -f 2>/dev/null || true
+
           # Create zip file
           cd "${OUTPUT_DIR}"
-          zip -r /tmp/python-dependencies-layer.zip python/
+          zip -r9 /tmp/python-dependencies-layer.zip python/
 
           echo "Layer built: /tmp/python-dependencies-layer.zip"
           ls -lh /tmp/python-dependencies-layer.zip
+
+          # Show size breakdown
+          echo "Size breakdown:"
+          du -sh python/lib/python${PYTHON_VERSION}/site-packages/* | sort -hr | head -10
 
       - name: Publish Lambda layer
         id: publish-layer
