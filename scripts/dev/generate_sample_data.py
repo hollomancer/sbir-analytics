@@ -15,6 +15,7 @@ DATA_ROOT = Path("data")
 RAW_DIR = DATA_ROOT / "raw"
 USASPENDING_DIR = DATA_ROOT / "usaspending"
 
+
 def setup_directories():
     """Create necessary directories."""
     dirs = [
@@ -26,6 +27,7 @@ def setup_directories():
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
         logger.info(f"Created directory: {d}")
+
 
 def generate_sbir_awards():
     """Generate sample SBIR awards CSV."""
@@ -79,6 +81,7 @@ def generate_sbir_awards():
     df.to_csv(output_path, index=False)
     logger.success(f"Created {output_path}")
 
+
 def generate_sam_gov_entities():
     """Generate sample SAM.gov entity records Parquet."""
     output_path = RAW_DIR / "sam_gov" / "sam_entity_records.parquet"
@@ -104,6 +107,7 @@ def generate_sam_gov_entities():
     df.to_parquet(output_path)
     logger.success(f"Created {output_path}")
 
+
 def generate_uspto_patents():
     """Generate sample USPTO patent assignments CSV."""
     output_path = RAW_DIR / "uspto" / "patent_assignments.csv"
@@ -125,6 +129,7 @@ def generate_uspto_patents():
     df = pd.DataFrame(data)
     df.to_csv(output_path, index=False)
     logger.success(f"Created {output_path}")
+
 
 def generate_usaspending_dump():
     """Generate a dummy USAspending dump zip file compatible with the extractor."""
@@ -158,6 +163,7 @@ def generate_usaspending_dump():
 
         # 2. Gzip it
         import gzip
+
         gz_file = temp_path / "5420.dat.gz"
         with open(dat_file, "rb") as f_in:
             with gzip.open(gz_file, "wb") as f_out:
@@ -165,10 +171,12 @@ def generate_usaspending_dump():
 
         # 3. Zip it into the final output
         import zipfile
-        with zipfile.ZipFile(output_path, 'w') as zf:
+
+        with zipfile.ZipFile(output_path, "w") as zf:
             zf.write(gz_file, arcname="5420.dat.gz")
 
     logger.success(f"Created {output_path}")
+
 
 def main():
     setup_directories()
@@ -177,6 +185,7 @@ def main():
     generate_uspto_patents()
     generate_usaspending_dump()
     logger.success("Sample data generation complete.")
+
 
 if __name__ == "__main__":
     main()

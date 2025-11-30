@@ -271,6 +271,7 @@ def run_enrichment_benchmark(sbir_df: pd.DataFrame, usaspending_df: pd.DataFrame
 
     except Exception as e:
         import traceback
+
         logger.error(f"Enrichment benchmark failed: {e!r}")
         traceback.print_exc()
         raise

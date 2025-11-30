@@ -21,9 +21,7 @@ USPTO_AI_PATENT_DEFAULT_URLS = {
     "dta": f"{USPTO_AI_PATENT_BASE}/ai_model_predictions.dta.zip",
 }
 
-USPTO_AI_PATENT_DATASET_PAGE = (
-    "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
-)
+USPTO_AI_PATENT_DATASET_PAGE = "https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset"
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -63,7 +61,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             # Read first chunk to validate
             first_chunk = response.read(8192)
-            if not first_chunk.startswith(b'PK\x03\x04'):
+            if not first_chunk.startswith(b"PK\x03\x04"):
                 raise ValueError("Not a valid ZIP file")
 
             # Stream to S3 using multipart upload
@@ -121,7 +119,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         parts.append({"PartNumber": part_num, "ETag": part["ETag"]})
                         part_num += 1
                         buffer = b""
-                        print(f"Uploaded part {part_num-1}, total: {total_size / 1_000_000:.1f} MB")
+                        print(
+                            f"Uploaded part {part_num - 1}, total: {total_size / 1_000_000:.1f} MB"
+                        )
 
                 # Complete upload
                 s3_client.complete_multipart_upload(
@@ -157,9 +157,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 }
 
             except Exception:
-                s3_client.abort_multipart_upload(
-                    Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
-                )
+                s3_client.abort_multipart_upload(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
                 raise
 
     except Exception as e:

@@ -77,8 +77,20 @@ class TestSbirDuckDBConfig:
     @pytest.mark.parametrize(
         "csv_path,db_path,table_name,batch_size,encoding",
         [
-            ("data/raw/sbir/awards_data.csv", ":memory:", "sbir_awards", 10000, "utf-8"),  # defaults
-            ("/custom/path/data.csv", "/tmp/sbir.duckdb", "custom_table", 5000, "latin-1"),  # custom
+            (
+                "data/raw/sbir/awards_data.csv",
+                ":memory:",
+                "sbir_awards",
+                10000,
+                "utf-8",
+            ),  # defaults
+            (
+                "/custom/path/data.csv",
+                "/tmp/sbir.duckdb",
+                "custom_table",
+                5000,
+                "latin-1",
+            ),  # custom
         ],
         ids=["defaults", "custom"],
     )
@@ -247,7 +259,15 @@ class TestNeo4jConfig:
         "uri,username,password,database,batch_size,threads,timeout",
         [
             ("bolt://localhost:7687", "neo4j", None, "neo4j", 1000, 4, 300),  # defaults
-            ("bolt://prod-neo4j:7687", "admin", "secret", "sbir", 1000, 4, 300),  # custom connection
+            (
+                "bolt://prod-neo4j:7687",
+                "admin",
+                "secret",
+                "sbir",
+                1000,
+                4,
+                300,
+            ),  # custom connection
             ("bolt://localhost:7687", "neo4j", None, "neo4j", 5000, 8, 600),  # custom performance
         ],
         ids=["defaults", "custom_connection", "custom_performance"],

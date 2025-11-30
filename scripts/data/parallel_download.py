@@ -37,7 +37,9 @@ async def download_chunk(
 
     for attempt in range(max_retries):
         try:
-            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=300)) as response:
+            async with session.get(
+                url, headers=headers, timeout=aiohttp.ClientTimeout(total=300)
+            ) as response:
                 if response.status in (200, 206):
                     chunk.data = await response.read()
                     return chunk

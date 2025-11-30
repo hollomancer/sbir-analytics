@@ -3,6 +3,7 @@
 
 from pathlib import Path
 
+
 def add_fast_marker(file_path: Path) -> bool:
     """Add fast marker to test file if needed."""
     content = file_path.read_text()
@@ -29,10 +30,10 @@ def add_fast_marker(file_path: Path) -> bool:
             # Find end of docstring
             for j in range(i + 1, len(lines)):
                 if '"""' in lines[j]:
-                    new_lines.extend(lines[:j+1])
+                    new_lines.extend(lines[: j + 1])
                     new_lines.append("")
                     new_lines.append("import pytest")
-                    new_lines.extend(lines[j+1:])
+                    new_lines.extend(lines[j + 1 :])
                     modified = True
                     has_pytest_import = True
                     break
@@ -42,7 +43,7 @@ def add_fast_marker(file_path: Path) -> bool:
             new_lines.append(line)
             if i + 1 < len(lines) and not lines[i + 1].startswith("import"):
                 new_lines.append("import pytest")
-                new_lines.extend(lines[i+1:])
+                new_lines.extend(lines[i + 1 :])
                 modified = True
                 has_pytest_import = True
                 break
@@ -55,7 +56,7 @@ def add_fast_marker(file_path: Path) -> bool:
     for i, line in enumerate(new_lines):
         if line.strip().startswith("def test_") and i > 0:
             # Check if previous line is already a decorator
-            prev_line = new_lines[i-1].strip()
+            prev_line = new_lines[i - 1].strip()
             if not prev_line.startswith("@"):
                 final_lines.append("    @pytest.mark.fast")
         final_lines.append(line)
@@ -65,6 +66,7 @@ def add_fast_marker(file_path: Path) -> bool:
         return True
 
     return False
+
 
 def main():
     """Add fast markers to all unit tests."""
@@ -77,6 +79,7 @@ def main():
             modified_count += 1
 
     print(f"\nModified {modified_count} files")
+
 
 if __name__ == "__main__":
     main()

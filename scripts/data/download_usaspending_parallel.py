@@ -58,9 +58,7 @@ async def parallel_download_to_s3(
             print(f"🔄 Found existing upload: {upload_id}")
 
             # List already uploaded parts
-            parts_response = s3_client.list_parts(
-                Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
-            )
+            parts_response = s3_client.list_parts(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
             for part in parts_response.get("Parts", []):
                 existing_parts[part["PartNumber"]] = {
                     "ETag": part["ETag"],
@@ -134,15 +132,21 @@ async def parallel_download_to_s3(
                     progress_pct = (completed_parts / len(chunks)) * 100
                     elapsed = time.time() - download_start
                     speed_mbps = (bytes_transferred / elapsed / 1024 / 1024) if elapsed > 0 else 0
-                    eta_seconds = ((file_size - bytes_transferred) / (bytes_transferred / elapsed)) if elapsed > 0 and bytes_transferred > 0 else 0
+                    eta_seconds = (
+                        ((file_size - bytes_transferred) / (bytes_transferred / elapsed))
+                        if elapsed > 0 and bytes_transferred > 0
+                        else 0
+                    )
 
                     chunk_time = time.time() - chunk_start
                     chunk_mb = chunk_bytes / 1024 / 1024
 
-                    print(f"✅ Part {completed_parts:3d}/{len(chunks)} ({progress_pct:5.1f}%) | "
-                          f"{chunk_mb:6.1f} MB in {chunk_time:5.1f}s | "
-                          f"Speed: {speed_mbps:6.1f} MB/s | "
-                          f"ETA: {eta_seconds/60:5.1f}m")
+                    print(
+                        f"✅ Part {completed_parts:3d}/{len(chunks)} ({progress_pct:5.1f}%) | "
+                        f"{chunk_mb:6.1f} MB in {chunk_time:5.1f}s | "
+                        f"Speed: {speed_mbps:6.1f} MB/s | "
+                        f"ETA: {eta_seconds / 60:5.1f}m"
+                    )
 
                     return {
                         "ETag": part_response["ETag"],
@@ -174,9 +178,9 @@ async def parallel_download_to_s3(
         print("=" * 80)
         print(f"📊 Total size: {file_size_gb:.2f} GB ({file_size:,} bytes)")
         print(f"📦 Total parts: {len(chunks)}")
-        print(f"⏱️  Download time: {download_time:.1f}s ({download_time/60:.1f}m)")
+        print(f"⏱️  Download time: {download_time:.1f}s ({download_time / 60:.1f}m)")
         print(f"⏱️  Completion time: {complete_time:.1f}s")
-        print(f"⏱️  Total time: {total_time:.1f}s ({total_time/60:.1f}m)")
+        print(f"⏱️  Total time: {total_time:.1f}s ({total_time / 60:.1f}m)")
         print(f"⚡ Average speed: {file_size / download_time / 1024 / 1024:.1f} MB/s")
         print(f"📍 S3 location: s3://{s3_bucket}/{s3_key}")
         print("=" * 80)
@@ -240,6 +244,7 @@ def main():
         except Exception as e:
             print(f"❌ Error finding file: {e}")
             import traceback
+
             traceback.print_exc()
             sys.exit(1)
     else:
@@ -268,6 +273,7 @@ def main():
         print()
         print(f"❌ Fatal error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

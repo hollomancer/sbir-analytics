@@ -94,13 +94,15 @@ jobs:
           PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
 
           # Create output directory structure
-          mkdir -p "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
+          mkdir -p "${OUTPUT_DIR}/python"
 
-          # Install dependencies to the layer directory
-          pip install --only-binary=:all: -r "${LAYER_DIR}/requirements.txt" -t "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
+          # Install dependencies using pip with proper target
+          pip install --upgrade pip
+          pip install --only-binary=:all: --platform manylinux2014_x86_64 --target "${OUTPUT_DIR}/python" --python-version ${PYTHON_VERSION} --no-deps -r "${LAYER_DIR}/requirements.txt"
+          pip install --only-binary=:all: --platform manylinux2014_x86_64 --target "${OUTPUT_DIR}/python" --python-version ${PYTHON_VERSION} -r "${LAYER_DIR}/requirements.txt"
 
           # Remove unnecessary files to reduce size
-          cd "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
+          cd "${OUTPUT_DIR}/python"
 
           # Remove test files and documentation
           find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
@@ -114,8 +116,11 @@ jobs:
           # Remove documentation
           rm -rf */docs */doc */examples */example
 
-          # Remove large unnecessary files
-          find . -name "*.so" -o -name "*.dylib" | grep -E "(test|example)" | xargs rm -f 2>/dev/null || true
+          # Remove numpy source files that cause import errors
+          find . -type f -name "*.pyx" -delete
+          find . -type f -name "*.pxd" -delete
+          find . -type d -name "numpy/core/src" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "numpy/random/src" -exec rm -rf {} + 2>/dev/null || true
 
           # Create zip file
           cd "${OUTPUT_DIR}"
@@ -126,7 +131,7 @@ jobs:
 
           # Show size breakdown
           echo "Size breakdown:"
-          du -sh python/lib/python${PYTHON_VERSION}/site-packages/* | sort -hr | head -10
+          du -sh python/* | sort -hr | head -10
 
       - name: Publish Lambda layer
         id: publish-layer

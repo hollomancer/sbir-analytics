@@ -14,12 +14,13 @@ EXPECTED_SIZES = {
     "AI Patents (CSV)": 764_000_000,  # 764 MB
 }
 
+
 def test_url(name: str, url: str):
     """Test downloading from a URL and report diagnostics."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {name}")
     print(f"URL: {url}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     try:
         req = Request(url)
@@ -38,9 +39,9 @@ def test_url(name: str, url: str):
             print(f"First 100 bytes (text): {first_kb[:100]}")
 
             # Check if it's a ZIP file
-            if first_kb.startswith(b'PK\x03\x04'):
+            if first_kb.startswith(b"PK\x03\x04"):
                 print("✅ Valid ZIP file magic bytes detected")
-            elif first_kb.startswith(b'<!DOCTYPE') or first_kb.startswith(b'<html'):
+            elif first_kb.startswith(b"<!DOCTYPE") or first_kb.startswith(b"<html"):
                 print("❌ HTML content detected - likely an error page")
                 print(f"HTML preview: {first_kb.decode('utf-8', errors='ignore')[:200]}")
                 return
@@ -57,9 +58,13 @@ def test_url(name: str, url: str):
             expected = EXPECTED_SIZES.get(name, 0)
             if expected > 0:
                 if file_size < expected * 0.5:
-                    print(f"❌ File is suspiciously small (expected ~{expected / 1_000_000:.0f} MB)")
+                    print(
+                        f"❌ File is suspiciously small (expected ~{expected / 1_000_000:.0f} MB)"
+                    )
                 else:
-                    print(f"✅ File size looks reasonable (expected ~{expected / 1_000_000:.0f} MB)")
+                    print(
+                        f"✅ File size looks reasonable (expected ~{expected / 1_000_000:.0f} MB)"
+                    )
 
             # Compute hash
             file_hash = hashlib.sha256(data).hexdigest()
@@ -68,15 +73,17 @@ def test_url(name: str, url: str):
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     for name, url in URLS.items():
         test_url(name, url)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("If both downloads show small file sizes (<100 MB), the issue is:")
     print("  1. USPTO data portal is down/misconfigured")
     print("  2. Files were moved to different URLs")

@@ -124,7 +124,9 @@ class SecurityStack(Stack):
                         "lambda:GetLayerVersion",
                         "lambda:DeleteLayerVersion",
                     ],
-                    resources=[f"arn:aws:lambda:{self.region}:{self.account}:layer:sbir-analytics-*"],
+                    resources=[
+                        f"arn:aws:lambda:{self.region}:{self.account}:layer:sbir-analytics-*"
+                    ],
                 )
             )
 
