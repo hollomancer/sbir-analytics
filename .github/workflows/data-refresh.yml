@@ -198,7 +198,8 @@ jobs:
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "TIMED_OUT" ] || [ "$STATUS" = "ABORTED" ]; then
               echo "❌ Execution failed with status: $STATUS"
               echo "status=failed" >> $GITHUB_OUTPUT
-              break
+              echo "::error::Step Functions execution failed with status: $STATUS"
+              exit 1
             fi
 
             sleep $INTERVAL
@@ -549,22 +550,26 @@ jobs:
           # SBIR
           if [ "${{ needs.determine-source.outputs.sbir }}" = "true" ]; then
             TOTAL=$((TOTAL + 1))
-            STATUS="${{ needs.refresh-sbir.result }}"
-            if [ "$STATUS" = "success" ]; then
+            JOB_STATUS="${{ needs.refresh-sbir.result }}"
+
+            # Check if job succeeded (Step Functions started)
+            if [ "$JOB_STATUS" = "success" ]; then
+              # Job succeeded, but check execution status from the detailed report
+              # The execution status is shown in the SBIR job's own summary
               EMOJI="✅"
               SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-              RESULT="Step Functions execution started"
-            elif [ "$STATUS" = "failure" ]; then
+              RESULT="Step Functions execution completed - check detailed report above"
+            elif [ "$JOB_STATUS" = "failure" ]; then
               EMOJI="❌"
               FAILED_COUNT=$((FAILED_COUNT + 1))
-              RESULT="Failed to start execution"
+              RESULT="Failed to start or complete execution"
               OVERALL_SUCCESS=false
             else
               EMOJI="⏭️"
               SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
               RESULT="Skipped or cancelled"
             fi
-            echo "| 🎯 SBIR Awards | $EMOJI $STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🎯 SBIR Awards | $EMOJI $JOB_STATUS | $RESULT |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| 🎯 SBIR Awards | ⏭️ skipped | Not scheduled for this run |" >> $GITHUB_STEP_SUMMARY
           fi
