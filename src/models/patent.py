@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class Patent(BaseModel):
@@ -60,9 +60,12 @@ class Patent(BaseModel):
             raise ValueError("Inventors list cannot be empty")
         return v
 
-    model_config = ConfigDict(
-        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("filing_date", "grant_date", "publication_date", when_used="json")
+    def serialize_date(self, v: date | None) -> str | None:
+        """Serialize date to ISO format."""
+        return v.isoformat() if v else None
 
 
 class RawPatent(BaseModel):
@@ -79,9 +82,7 @@ class RawPatent(BaseModel):
     uspc_class: str | None = None
     cpc_class: str | None = None
 
-    model_config = ConfigDict(
-        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class PatentCitation(BaseModel):
@@ -92,9 +93,12 @@ class PatentCitation(BaseModel):
     citation_type: str = Field(..., description="Type of citation")
     citation_date: date | None = Field(None, description="Date of citation")
 
-    model_config = ConfigDict(
-        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("citation_date", when_used="json")
+    def serialize_date(self, v: date | None) -> str | None:
+        """Serialize date to ISO format."""
+        return v.isoformat() if v else None
 
 
 class PatentsViewPatent(BaseModel):
@@ -116,9 +120,12 @@ class PatentsViewPatent(BaseModel):
     # Inventor information
     inventors: list[str] = Field(default_factory=list, description="List of inventor names")
 
-    model_config = ConfigDict(
-        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("patent_date", "filing_date", "grant_date", when_used="json")
+    def serialize_date(self, v: date | None) -> str | None:
+        """Serialize date to ISO format."""
+        return v.isoformat() if v else None
 
 
 class PatentAssignment(BaseModel):
@@ -133,6 +140,9 @@ class PatentAssignment(BaseModel):
         None, description="Assignment type (e.g., ASSIGNMENT, LICENSE)"
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True, json_encoders={date: lambda v: v.isoformat()}
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("execution_date", "recorded_date", when_used="json")
+    def serialize_date(self, v: date | None) -> str | None:
+        """Serialize date to ISO format."""
+        return v.isoformat() if v else None

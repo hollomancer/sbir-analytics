@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class EnrichmentStatus(str, Enum):
@@ -101,10 +101,12 @@ class EnrichmentFreshnessRecordModel(BaseModel):
     attempt_count: int = Field(default=0, description="Total number of enrichment attempts")
     success_count: int = Field(default=0, description="Total number of successful enrichments")
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("last_attempt_at", "last_success_at", when_used="json")
+    def serialize_datetime(self, v: datetime | None) -> str | None:
+        """Serialize datetime to ISO format."""
+        return v.isoformat() if v else None
 
     @classmethod
     def from_dataclass(cls, record: EnrichmentFreshnessRecord) -> EnrichmentFreshnessRecordModel:
@@ -156,7 +158,9 @@ class EnrichmentDeltaEvent(BaseModel):
     )
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional delta metadata")
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("timestamp", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()

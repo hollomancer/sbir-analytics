@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 
 class EconomicShock(BaseModel):
@@ -40,10 +40,17 @@ class EconomicShock(BaseModel):
     )
     base_year: int = Field(..., description="Base year for inflation adjustment")
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("shock_amount", when_used="json")
+    def serialize_decimal(self, v: Decimal) -> str:
+        """Serialize Decimal to string."""
+        return str(v)
+
+    @field_serializer("created_at", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator("state")
     @classmethod
@@ -115,10 +122,24 @@ class TaxImpactEstimate(BaseModel):
         default_factory=datetime.now, description="When estimate was computed"
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer(
+        "individual_income_tax",
+        "payroll_tax",
+        "corporate_income_tax",
+        "excise_tax",
+        "total_tax_receipt",
+        when_used="json",
     )
+    def serialize_decimal(self, v: Decimal) -> str:
+        """Serialize Decimal to string."""
+        return str(v)
+
+    @field_serializer("computed_at", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator(
         "individual_income_tax",
@@ -222,10 +243,25 @@ class FiscalReturnSummary(BaseModel):
     )
     quality_flags: list[str] = Field(default_factory=list, description="Quality issues identified")
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer(
+        "total_sbir_investment",
+        "total_tax_receipts",
+        "net_fiscal_return",
+        "net_present_value",
+        "confidence_interval_low",
+        "confidence_interval_high",
+        when_used="json",
     )
+    def serialize_decimal(self, v: Decimal) -> str:
+        """Serialize Decimal to string."""
+        return str(v)
+
+    @field_serializer("analysis_date", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator("total_sbir_investment")
     @classmethod
@@ -297,10 +333,17 @@ class InflationAdjustment(BaseModel):
         default_factory=datetime.now, description="When adjustment was computed"
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={Decimal: str, datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("original_amount", "adjusted_amount", when_used="json")
+    def serialize_decimal(self, v: Decimal) -> str:
+        """Serialize Decimal to string."""
+        return str(v)
+
+    @field_serializer("adjusted_at", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator("original_amount", "adjusted_amount")
     @classmethod
@@ -350,10 +393,12 @@ class NAICSMapping(BaseModel):
         default_factory=datetime.now, description="When mapping was performed"
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("mapped_at", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator("naics_code")
     @classmethod
@@ -397,10 +442,12 @@ class GeographicResolution(BaseModel):
         default_factory=datetime.now, description="When resolution was performed"
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-        json_encoders={datetime: lambda v: v.isoformat()},
-    )
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_serializer("resolved_at", when_used="json")
+    def serialize_datetime(self, v: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return v.isoformat()
 
     @field_validator("resolved_state")
     @classmethod

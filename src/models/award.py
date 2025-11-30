@@ -3,7 +3,14 @@
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 
 class Award(BaseModel):
@@ -547,8 +554,22 @@ class Award(BaseModel):
         validate_assignment=True,
         populate_by_name=True,  # Allow both field names and aliases
         str_strip_whitespace=True,
-        json_encoders={date: lambda v: v.isoformat()},
     )
+
+    @field_serializer(
+        "award_date",
+        "proposal_award_date",
+        "contract_start_date",
+        "contract_end_date",
+        "solicitation_date",
+        "solicitation_close_date",
+        "proposal_receipt_date",
+        "date_of_notification",
+        when_used="json",
+    )
+    def serialize_date(self, v: date | None) -> str | None:
+        """Serialize date fields to ISO format."""
+        return v.isoformat() if v else None
 
     @classmethod
     def from_sbir_csv(cls, data: dict) -> "Award":
