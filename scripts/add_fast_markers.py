@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Add @pytest.mark.fast to unit tests that don't have markers."""
 
-import re
 from pathlib import Path
 
 def add_fast_marker(file_path: Path) -> bool:

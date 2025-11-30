@@ -13,7 +13,6 @@ import asyncio
 import sys
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 
 import aiohttp
 import boto3
@@ -224,7 +223,7 @@ def main():
     if not args.source_url:
         print("🔍 Finding latest available file...")
         print(f"   Database type: {args.database_type}")
-        print(f"   Checking last 3 months of releases...")
+        print("   Checking last 3 months of releases...")
 
         try:
             latest = find_latest_available_file(database_type=args.database_type, s3_bucket=None)
@@ -232,7 +231,7 @@ def main():
                 print("❌ No available file found")
                 print("   Checked dates: 1st, 6th, and 15th of each month")
                 print("   Base URL: https://files.usaspending.gov/database_download/")
-                print(f"   Pattern: usaspending-db_YYYYMMDD.zip")
+                print("   Pattern: usaspending-db_YYYYMMDD.zip")
                 sys.exit(1)
             source_url = latest["source_url"]
             date_str = latest["date_str"]
@@ -254,7 +253,7 @@ def main():
 
     # Run parallel download
     try:
-        result = asyncio.run(
+        asyncio.run(
             parallel_download_to_s3(
                 source_url=source_url,
                 s3_bucket=args.s3_bucket,

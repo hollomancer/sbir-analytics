@@ -23,6 +23,14 @@ from src.exceptions import ConfigurationError
 pytestmark = pytest.mark.fast
 
 
+@pytest.fixture(autouse=True)
+def clear_config_cache():
+    """Clear config cache before each test to ensure isolation."""
+    get_config.cache_clear()
+    yield
+    get_config.cache_clear()
+
+
 class TestDeepMergeDicts:
     """Tests for _deep_merge_dicts function."""
 

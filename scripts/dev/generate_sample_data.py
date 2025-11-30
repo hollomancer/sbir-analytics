@@ -3,7 +3,6 @@ Generate sample data for local development.
 Creates minimal valid CSV/Parquet files for the SBIR ETL pipeline.
 """
 
-import os
 import shutil
 import tempfile
 import pandas as pd

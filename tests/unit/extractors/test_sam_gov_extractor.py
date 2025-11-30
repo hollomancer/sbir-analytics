@@ -18,6 +18,16 @@ from src.extractors.sam_gov import SAMGovExtractor
 pytestmark = pytest.mark.fast
 
 
+@pytest.fixture(autouse=True)
+def clear_config_cache():
+    """Clear config cache to ensure test isolation."""
+    from src.config.loader import get_config
+
+    get_config.cache_clear()
+    yield
+    get_config.cache_clear()
+
+
 @pytest.fixture
 def sample_parquet_file(tmp_path):
     """Create a sample SAM.gov parquet file."""

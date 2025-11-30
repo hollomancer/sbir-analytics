@@ -12,7 +12,6 @@ import asyncio
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import aiohttp
 
@@ -24,7 +23,7 @@ class DownloadChunk:
     chunk_id: int
     start_byte: int
     end_byte: int
-    data: Optional[bytes] = None
+    data: bytes | None = None
 
 
 async def download_chunk(
@@ -43,7 +42,7 @@ async def download_chunk(
                     chunk.data = await response.read()
                     return chunk
                 response.raise_for_status()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        except (TimeoutError, aiohttp.ClientError):
             if attempt == max_retries - 1:
                 raise
             await asyncio.sleep(2**attempt)

@@ -168,7 +168,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     },
                 }
 
-            except Exception as e:
+            except Exception:
                 s3_client.abort_multipart_upload(
                     Bucket=s3_bucket, Key=s3_key, UploadId=upload_id
                 )
