@@ -302,8 +302,10 @@ jobs:
             STACK_STATUS="UPDATE_ROLLBACK_COMPLETE"
           fi
 
-          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ] || [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
-            echo "Stack in $STACK_STATUS. Deleting for fresh deployment..."
+          # ROLLBACK_COMPLETE (from failed create) needs deletion
+          # UPDATE_ROLLBACK_COMPLETE (from failed update) can be updated directly
+          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Stack in ROLLBACK_COMPLETE. Deleting for fresh deployment..."
             aws cloudformation delete-stack \
               --stack-name sbir-analytics-lambda \
               --region ${{ env.AWS_REGION }}
@@ -312,6 +314,10 @@ jobs:
             aws cloudformation wait stack-delete-complete \
               --stack-name sbir-analytics-lambda \
               --region ${{ env.AWS_REGION }}
+          fi
+
+          if [ "$STACK_STATUS" = "UPDATE_ROLLBACK_COMPLETE" ]; then
+            echo "Stack in UPDATE_ROLLBACK_COMPLETE. Will attempt update deployment..."
           fi
 
       - name: Deploy Lambda stack
