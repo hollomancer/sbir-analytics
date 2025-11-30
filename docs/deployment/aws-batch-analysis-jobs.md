@@ -1,10 +1,10 @@
-# Running ML Jobs with AWS Batch
+# Running Analysis Jobs with AWS Batch
 
-This guide explains how to run ML jobs (CET, Fiscal Returns, PaECTER) using AWS Batch for cost-effective, scalable execution.
+This guide explains how to run analysis jobs (CET, Fiscal Returns, PaECTER) using AWS Batch for cost-effective, scalable execution.
 
 ## Overview
 
-AWS Batch provides on-demand compute for running ML jobs in containers, with automatic scaling and Spot instance support for 70% cost savings.
+AWS Batch provides on-demand compute for running analysis jobs in containers, with automatic scaling and Spot instance support for 70% cost savings.
 
 ### Architecture
 
@@ -51,33 +51,33 @@ cdk deploy sbir-analytics-batch
 ```
 
 This creates:
-- ✅ ECR repository for ML job images
+- ✅ ECR repository for analysis job images
 - ✅ Compute environment with Spot instances
 - ✅ Job queue for scheduling
-- ✅ Job definitions for each ML job type
+- ✅ Job definitions for each analysis job type
 - ✅ IAM roles for job execution
 
 ### 2. Build and Push Docker Image
 
-Build the ML job Docker image and push to ECR:
+Build the analysis job Docker image and push to ECR:
 
 ```bash
 # Trigger the build workflow manually
-gh workflow run build-ml-image.yml
+gh workflow run build-analysis-image.yml
 
 # Or build locally and push
 aws ecr get-login-password --region us-east-2 | \
   docker login --username AWS --password-stdin \
   658445659195.dkr.ecr.us-east-2.amazonaws.com
 
-docker build -f Dockerfile.batch-ml \
-  -t sbir-analytics-ml-jobs:latest .
+docker build -f Dockerfile.batch-analysis \
+  -t sbir-analytics-analysis-jobs:latest .
 
-docker tag sbir-analytics-ml-jobs:latest \
-  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-ml-jobs:latest
+docker tag sbir-analytics-analysis-jobs:latest \
+  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-analysis-jobs:latest
 
 docker push \
-  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-ml-jobs:latest
+  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-analysis-jobs:latest
 ```
 
 The build workflow automatically:
@@ -93,20 +93,20 @@ Check that infrastructure is ready:
 ```bash
 # Check compute environment
 aws batch describe-compute-environments \
-  --compute-environments sbir-analytics-ml-compute-env
+  --compute-environments sbir-analytics-analysis-compute-env
 
 # Check job queue
 aws batch describe-job-queues \
-  --job-queues sbir-analytics-ml-job-queue
+  --job-queues sbir-analytics-analysis-job-queue
 
 # Check job definitions
 aws batch describe-job-definitions \
-  --job-definition-name sbir-analytics-ml-cet-pipeline \
+  --job-definition-name sbir-analytics-analysis-cet-pipeline \
   --status ACTIVE
 
 # Verify ECR image
 aws ecr describe-images \
-  --repository-name sbir-analytics-ml-jobs \
+  --repository-name sbir-analytics-analysis-jobs \
   --image-ids imageTag=latest
 ```
 
@@ -114,7 +114,7 @@ aws ecr describe-images \
 
 ### Option 1: GitHub Actions Workflow (Recommended)
 
-1. Go to **Actions** → **ML Jobs On-Demand**
+1. Go to **Actions** → **Analysis Jobs On-Demand**
 2. Click **Run workflow**
 3. Select:
    - **Job to run**: `cet_full_pipeline`, `fiscal_returns_mvp`, `paecter_embeddings`, or `all_ml_jobs`
@@ -141,20 +141,20 @@ Submit jobs directly using the AWS CLI:
 # Submit CET pipeline job
 aws batch submit-job \
   --job-name cet-pipeline-$(date +%Y%m%d-%H%M%S) \
-  --job-queue sbir-analytics-ml-job-queue \
-  --job-definition sbir-analytics-ml-cet-pipeline
+  --job-queue sbir-analytics-analysis-job-queue \
+  --job-definition sbir-analytics-analysis-cet-pipeline
 
 # Submit Fiscal Returns job
 aws batch submit-job \
   --job-name fiscal-returns-$(date +%Y%m%d-%H%M%S) \
-  --job-queue sbir-analytics-ml-job-queue \
-  --job-definition sbir-analytics-ml-fiscal-returns
+  --job-queue sbir-analytics-analysis-job-queue \
+  --job-definition sbir-analytics-analysis-fiscal-returns
 
 # Submit PaECTER job
 aws batch submit-job \
   --job-name paecter-embeddings-$(date +%Y%m%d-%H%M%S) \
-  --job-queue sbir-analytics-ml-job-queue \
-  --job-definition sbir-analytics-ml-paecter-embeddings
+  --job-queue sbir-analytics-analysis-job-queue \
+  --job-definition sbir-analytics-analysis-paecter-embeddings
 ```
 
 ### Option 3: AWS Console
@@ -163,8 +163,8 @@ aws batch submit-job \
 2. Select **Jobs** → **Submit new job**
 3. Configure:
    - **Job name**: `ml-cet-20250130`
-   - **Job definition**: `sbir-analytics-ml-cet-pipeline`
-   - **Job queue**: `sbir-analytics-ml-job-queue`
+   - **Job definition**: `sbir-analytics-analysis-cet-pipeline`
+   - **Job queue**: `sbir-analytics-analysis-job-queue`
 4. Click **Submit job**
 
 ## Monitoring Jobs
@@ -215,7 +215,7 @@ aws batch describe-jobs --jobs <JOB_ID>
 
 # List recent jobs
 aws batch list-jobs \
-  --job-queue sbir-analytics-ml-job-queue \
+  --job-queue sbir-analytics-analysis-job-queue \
   --job-status RUNNING
 
 # Cancel a job
@@ -233,7 +233,7 @@ aws batch terminate-job \
 | Instance Type | vCPUs | RAM | Spot Price/hr | Use Case |
 |---------------|-------|-----|---------------|----------|
 | c5.2xlarge | 8 | 16 GB | ~$0.10 | CET, PaECTER |
-| c5.4xlarge | 16 | 32 GB | ~$0.20 | Large ML jobs |
+| c5.4xlarge | 16 | 32 GB | ~$0.20 | Large analysis jobs |
 | m5.2xlarge | 8 | 32 GB | ~$0.12 | Memory-intensive |
 
 **Example Monthly Costs:**
@@ -267,7 +267,7 @@ aws batch terminate-job \
 
 ### CET Full Pipeline
 
-**Job Definition:** `sbir-analytics-ml-cet-pipeline`
+**Job Definition:** `sbir-analytics-analysis-cet-pipeline`
 
 - **vCPUs**: 8
 - **Memory**: 16 GB
@@ -278,7 +278,7 @@ Runs: Company Emerging Technologies classification pipeline
 
 ### Fiscal Returns MVP
 
-**Job Definition:** `sbir-analytics-ml-fiscal-returns`
+**Job Definition:** `sbir-analytics-analysis-fiscal-returns`
 
 - **vCPUs**: 4
 - **Memory**: 8 GB
@@ -289,7 +289,7 @@ Runs: Economic impact analysis using R (stateior package)
 
 ### PaECTER Embeddings
 
-**Job Definition:** `sbir-analytics-ml-paecter-embeddings`
+**Job Definition:** `sbir-analytics-analysis-paecter-embeddings`
 
 - **vCPUs**: 8
 - **Memory**: 16 GB
@@ -313,7 +313,7 @@ Runs: Patent-award matching using sentence-transformers
 ```bash
 # Check compute environment status
 aws batch describe-compute-environments \
-  --compute-environments sbir-analytics-ml-compute-env
+  --compute-environments sbir-analytics-analysis-compute-env
 
 # View detailed job status
 aws batch describe-jobs --jobs <JOB_ID>
@@ -345,8 +345,8 @@ aws logs tail /aws/batch/sbir-analytics-ml \
 ```bash
 aws batch submit-job \
   --job-name retry-$(date +%Y%m%d-%H%M%S) \
-  --job-queue sbir-analytics-ml-job-queue \
-  --job-definition sbir-analytics-ml-cet-pipeline \
+  --job-queue sbir-analytics-analysis-job-queue \
+  --job-definition sbir-analytics-analysis-cet-pipeline \
   --container-overrides '{
     "vcpus": 16,
     "memory": 32768
@@ -380,10 +380,10 @@ Consider switching to on-demand for critical jobs:
 ```bash
 # Verify image exists in ECR
 aws ecr describe-images \
-  --repository-name sbir-analytics-ml-jobs
+  --repository-name sbir-analytics-analysis-jobs
 
 # Re-build and push image
-gh workflow run build-ml-image.yml
+gh workflow run build-analysis-image.yml
 ```
 
 ### Permission Denied Errors
@@ -415,8 +415,8 @@ Run with custom configuration:
 ```bash
 aws batch submit-job \
   --job-name custom-cet-$(date +%Y%m%d-%H%M%S) \
-  --job-queue sbir-analytics-ml-job-queue \
-  --job-definition sbir-analytics-ml-cet-pipeline \
+  --job-queue sbir-analytics-analysis-job-queue \
+  --job-definition sbir-analytics-analysis-cet-pipeline \
   --container-overrides '{
     "vcpus": 16,
     "memory": 32768,
@@ -435,8 +435,8 @@ Submit multiple jobs to run in parallel:
 for JOB in cet-pipeline fiscal-returns paecter-embeddings; do
   aws batch submit-job \
     --job-name "ml-${JOB}-$(date +%Y%m%d-%H%M%S)" \
-    --job-queue sbir-analytics-ml-job-queue \
-    --job-definition "sbir-analytics-ml-${JOB}"
+    --job-queue sbir-analytics-analysis-job-queue \
+    --job-definition "sbir-analytics-analysis-${JOB}"
 done
 ```
 
@@ -446,11 +446,11 @@ Use specific image versions:
 
 ```bash
 # Build with custom tag
-docker build -f Dockerfile.batch-ml -t sbir-analytics-ml-jobs:v1.2.3 .
-docker tag sbir-analytics-ml-jobs:v1.2.3 \
-  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-ml-jobs:v1.2.3
+docker build -f Dockerfile.batch-analysis -t sbir-analytics-analysis-jobs:v1.2.3 .
+docker tag sbir-analytics-analysis-jobs:v1.2.3 \
+  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-analysis-jobs:v1.2.3
 docker push \
-  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-ml-jobs:v1.2.3
+  658445659195.dkr.ecr.us-east-2.amazonaws.com/sbir-analytics-analysis-jobs:v1.2.3
 
 # Update job definition to use specific tag
 # (Edit in CDK stack or create new revision)
@@ -470,7 +470,7 @@ aws events put-rule \
 # Add Batch target
 aws events put-targets \
   --rule weekly-ml-jobs \
-  --targets "Id"="1","Arn"="arn:aws:batch:us-east-2:ACCOUNT:job-queue/sbir-analytics-ml-job-queue","RoleArn"="ROLE_ARN","BatchParameters"={"JobDefinition"="sbir-analytics-ml-cet-pipeline","JobName"="weekly-cet"}
+  --targets "Id"="1","Arn"="arn:aws:batch:us-east-2:ACCOUNT:job-queue/sbir-analytics-analysis-job-queue","RoleArn"="ROLE_ARN","BatchParameters"={"JobDefinition"="sbir-analytics-analysis-cet-pipeline","JobName"="weekly-cet"}
 ```
 
 ## Comparison: GitHub Actions vs AWS Batch
@@ -499,11 +499,11 @@ To migrate from GitHub Actions to AWS Batch:
 
 2. **Build Docker image** (automatic on push to main)
    ```bash
-   git push origin main  # Triggers build-ml-image.yml
+   git push origin main  # Triggers build-analysis-image.yml
    ```
 
 3. **Test single job**
-   - Go to Actions → ML Jobs On-Demand
+   - Go to Actions → Analysis Jobs On-Demand
    - Select execution mode: `aws-batch`
    - Choose job and run
 
@@ -527,7 +527,7 @@ To migrate from GitHub Actions to AWS Batch:
 ## Support
 
 - **Infrastructure issues**: Check CDK stack deployment
-- **Docker build failures**: Review build-ml-image.yml logs
+- **Docker build failures**: Review build-analysis-image.yml logs
 - **Job execution errors**: Check CloudWatch Logs
 - **Cost concerns**: Review AWS Cost Explorer
 - **Questions**: See [deployment-comparison.md](./deployment-comparison.md)

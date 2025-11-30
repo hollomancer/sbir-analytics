@@ -1,4 +1,4 @@
-name: Build ML Docker Image
+name: Build Analysis Docker Image
 
 on:
   # Build on push to main (for production deployments)
@@ -6,11 +6,11 @@ on:
     branches:
       - main
     paths:
-      - 'Dockerfile.batch-ml'
+      - 'Dockerfile.batch-analysis'
       - 'pyproject.toml'
       - 'uv.lock'
       - 'src/**'
-      - '.github/workflows/build-ml-image.yml'
+      - '.github/workflows/build-analysis-image.yml'
 
   # Build on demand
   workflow_dispatch:
@@ -23,7 +23,7 @@ on:
   # Build on PR for testing
   pull_request:
     paths:
-      - 'Dockerfile.batch-ml'
+      - 'Dockerfile.batch-analysis'
       - 'pyproject.toml'
       - 'src/**'
 
@@ -33,11 +33,11 @@ permissions:
 
 env:
   AWS_REGION: us-east-2
-  ECR_REPOSITORY: sbir-analytics-ml-jobs
+  ECR_REPOSITORY: sbir-analytics-analysis-jobs
 
 jobs:
   build-and-push:
-    name: Build and Push ML Docker Image
+    name: Build and Push Analysis Docker Image
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -76,7 +76,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile.batch-ml
+          file: ./Dockerfile.batch-analysis
           push: ${{ github.event_name != 'pull_request' }}  # Don't push on PRs
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

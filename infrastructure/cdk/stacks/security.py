@@ -154,7 +154,7 @@ class SecurityStack(Stack):
                 )
             )
 
-            # AWS Batch permissions for ML job execution
+            # AWS Batch permissions for analysis job execution
             self.github_actions_role.add_to_policy(
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
@@ -165,13 +165,13 @@ class SecurityStack(Stack):
                         "batch:TerminateJob",
                     ],
                     resources=[
-                        f"arn:aws:batch:{self.region}:{self.account}:job-definition/sbir-analytics-ml-*",
-                        f"arn:aws:batch:{self.region}:{self.account}:job-queue/sbir-analytics-ml-*",
+                        f"arn:aws:batch:{self.region}:{self.account}:job-definition/sbir-analytics-analysis-*",
+                        f"arn:aws:batch:{self.region}:{self.account}:job-queue/sbir-analytics-analysis-*",
                     ],
                 )
             )
 
-            # ECR permissions for building and pushing ML job images
+            # ECR permissions for building and pushing analysis job images
             self.github_actions_role.add_to_policy(
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
@@ -195,7 +195,7 @@ class SecurityStack(Stack):
                         "ecr:UploadLayerPart",
                     ],
                     resources=[
-                        f"arn:aws:ecr:{self.region}:{self.account}:repository/sbir-analytics-ml-jobs"
+                        f"arn:aws:ecr:{self.region}:{self.account}:repository/sbir-analytics-analysis-jobs"
                     ],
                 )
             )

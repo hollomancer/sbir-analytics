@@ -14,7 +14,7 @@ from constructs import Construct
 
 
 class BatchStack(Stack):
-    """AWS Batch infrastructure for running ML jobs on-demand."""
+    """AWS Batch infrastructure for running analysis jobs on-demand."""
 
     def __init__(
         self,
@@ -24,15 +24,15 @@ class BatchStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # Get or create ECR repository for ML job images
+        # Get or create ECR repository for analysis job images
         create_new = self.node.try_get_context("create_new_resources") == "true"
 
         if create_new:
             # Create new ECR repository
             self.ecr_repository = ecr.Repository(
                 self,
-                "MLJobsRepository",
-                repository_name="sbir-analytics-ml-jobs",
+                "AnalysisJobsRepository",
+                repository_name="sbir-analytics-analysis-jobs",
                 image_scan_on_push=True,
                 lifecycle_rules=[
                     ecr.LifecycleRule(
@@ -44,10 +44,10 @@ class BatchStack(Stack):
             )
         else:
             # Import existing ECR repository
-            repo_name = self.node.try_get_context("ecr_repository_name") or "sbir-analytics-ml-jobs"
+            repo_name = self.node.try_get_context("ecr_repository_name") or "sbir-analytics-analysis-jobs"
             self.ecr_repository = ecr.Repository.from_repository_name(
                 self,
-                "MLJobsRepository",
+                "AnalysisJobsRepository",
                 repository_name=repo_name,
             )
 
@@ -55,7 +55,7 @@ class BatchStack(Stack):
         log_group = logs.LogGroup(
             self,
             "BatchJobLogGroup",
-            log_group_name="/aws/batch/sbir-analytics-ml",
+            log_group_name="/aws/batch/sbir-analytics-analysis",
             retention=logs.RetentionDays.ONE_MONTH,
             removal_policy=RemovalPolicy.RETAIN,  # Keep logs even if stack is deleted
         )
@@ -73,7 +73,7 @@ class BatchStack(Stack):
             self,
             "BatchSecurityGroup",
             vpc=vpc,
-            description="Security group for AWS Batch ML job compute environment",
+            description="Security group for AWS Batch analysis job compute environment",
             allow_all_outbound=True,  # Need to pull Docker images from ECR and access S3
         )
 
@@ -163,7 +163,7 @@ class BatchStack(Stack):
         # Compute environment using Spot instances (70% cost savings)
         compute_environment = batch.CfnComputeEnvironment(
             self,
-            "MLComputeEnvironment",
+            "AnalysisComputeEnvironment",
             type="MANAGED",
             service_role=batch_service_role.role_arn,
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
@@ -182,18 +182,18 @@ class BatchStack(Stack):
                 security_group_ids=[security_group.security_group_id],
                 instance_role=instance_profile.attr_arn,
                 tags={
-                    "Name": "sbir-analytics-ml-batch",
+                    "Name": "sbir-analytics-analysis-batch",
                     "ManagedBy": "CDK",
                 },
             ),
-            compute_environment_name="sbir-analytics-ml-compute-env",
+            compute_environment_name="sbir-analytics-analysis-compute-env",
         )
 
         # Job queue
         job_queue = batch.CfnJobQueue(
             self,
-            "MLJobQueue",
-            job_queue_name="sbir-analytics-ml-job-queue",
+            "AnalysisJobQueue",
+            job_queue_name="sbir-analytics-analysis-job-queue",
             priority=1,
             compute_environment_order=[
                 batch.CfnJobQueue.ComputeEnvironmentOrderProperty(
@@ -207,7 +207,7 @@ class BatchStack(Stack):
         cet_job_definition = batch.CfnJobDefinition(
             self,
             "CETJobDefinition",
-            job_definition_name="sbir-analytics-ml-cet-pipeline",
+            job_definition_name="sbir-analytics-analysis-cet-pipeline",
             type="container",
             platform_capabilities=["EC2"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
@@ -242,7 +242,7 @@ class BatchStack(Stack):
                 log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
                     log_driver="awslogs",
                     options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-ml",
+                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
                         "awslogs-stream-prefix": "cet",
                     },
                 ),
@@ -259,7 +259,7 @@ class BatchStack(Stack):
         fiscal_job_definition = batch.CfnJobDefinition(
             self,
             "FiscalJobDefinition",
-            job_definition_name="sbir-analytics-ml-fiscal-returns",
+            job_definition_name="sbir-analytics-analysis-fiscal-returns",
             type="container",
             platform_capabilities=["EC2"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
@@ -294,7 +294,7 @@ class BatchStack(Stack):
                 log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
                     log_driver="awslogs",
                     options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-ml",
+                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
                         "awslogs-stream-prefix": "fiscal",
                     },
                 ),
@@ -311,7 +311,7 @@ class BatchStack(Stack):
         paecter_job_definition = batch.CfnJobDefinition(
             self,
             "PaecterJobDefinition",
-            job_definition_name="sbir-analytics-ml-paecter-embeddings",
+            job_definition_name="sbir-analytics-analysis-paecter-embeddings",
             type="container",
             platform_capabilities=["EC2"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
@@ -346,7 +346,7 @@ class BatchStack(Stack):
                 log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
                     log_driver="awslogs",
                     options={
-                        "awslogs-group": "/aws/batch/sbir-analytics-ml",
+                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
                         "awslogs-stream-prefix": "paecter",
                     },
                 ),

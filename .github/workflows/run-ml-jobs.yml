@@ -1,4 +1,4 @@
-name: ML Jobs On-Demand
+name: Analysis Jobs On-Demand
 
 on:
   # Run manually
@@ -12,7 +12,7 @@ on:
           - cet_full_pipeline
           - fiscal_returns_mvp
           - paecter_embeddings
-          - all_ml_jobs
+          - all_analysis_jobs
       execution_mode:
         description: 'Where to run the job'
         required: true
@@ -34,8 +34,8 @@ env:
   AWS_REGION: us-east-2
 
 jobs:
-  run-ml-job-github:
-    name: Run ML Job on GitHub Actions
+  run-analysis-job-github:
+    name: Run Analysis Job on GitHub Actions
     if: ${{ github.event.inputs.execution_mode == 'github-actions' || github.event.inputs.execution_mode == '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 300  # 5 hours max (GitHub Actions limit is 6 hours)
@@ -59,7 +59,7 @@ jobs:
           cache-pytest: "false"
           install-pyreadstat: "true"
 
-      - name: Install ML dependencies
+      - name: Install analysis dependencies
         run: |
           # Install heavy ML/fiscal extras that aren't in base dependencies
           uv pip install dagster dagster-cloud
@@ -68,11 +68,11 @@ jobs:
           # Install sentence-transformers for PaECTER embeddings
           uv pip install "sentence-transformers>=2.7.0,<3.0.0"
 
-      - name: Verify ML jobs are available
+      - name: Verify analysis jobs are available
         env:
           DAGSTER_LOAD_HEAVY_ASSETS: "true"
         run: |
-          echo "Verifying that ML jobs loaded correctly..."
+          echo "Verifying that analysis jobs loaded correctly..."
           uv run python -c "
           import os
           import sys
@@ -104,7 +104,7 @@ jobs:
               print(f'   This likely means heavy dependencies are not installed correctly.')
               sys.exit(1)
 
-          print('✅ All ML jobs loaded successfully:')
+          print('✅ All analysis jobs loaded successfully:')
           for job_name in required_jobs:
               job = auto_jobs[job_name]
               # Check if it's a placeholder (empty selection)
@@ -114,7 +114,7 @@ jobs:
                   print(f'   ✅ {job_name}: OK')
           "
 
-      - name: Run ML Job
+      - name: Run Analysis Job
         env:
           DAGSTER_LOAD_HEAVY_ASSETS: "true"
           DAGSTER_HOME: /tmp/dagster_home
@@ -123,7 +123,7 @@ jobs:
           mkdir -p $DAGSTER_HOME
 
           # Determine which job to run
-          JOB_NAME="${{ github.event.inputs.job_name || 'all_ml_jobs' }}"
+          JOB_NAME="${{ github.event.inputs.job_name || 'all_analysis_jobs' }}"
 
           case $JOB_NAME in
             cet_full_pipeline)
@@ -138,8 +138,8 @@ jobs:
               echo "Running PaECTER embeddings..."
               dagster job execute -m src.definitions_ml -j paecter_job
               ;;
-            all_ml_jobs)
-              echo "Running all ML jobs..."
+            all_analysis_jobs)
+              echo "Running all analysis jobs..."
               dagster job execute -m src.definitions_ml -j cet_full_pipeline_job
               dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job
               dagster job execute -m src.definitions_ml -j paecter_job
@@ -154,14 +154,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: ml-job-results
+          name: analysis-job-results
           path: |
             /tmp/dagster_home
             reports/
           retention-days: 7
 
-  run-ml-job-batch:
-    name: Run ML Job on AWS Batch
+  run-analysis-job-batch:
+    name: Run Analysis Job on AWS Batch
     if: ${{ github.event.inputs.execution_mode == 'aws-batch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20  # Just for orchestration, actual job runs on Batch
@@ -180,31 +180,31 @@ jobs:
         id: batch-submit
         run: |
           # Determine which job to run
-          JOB_NAME="${{ github.event.inputs.job_name || 'all_ml_jobs' }}"
+          JOB_NAME="${{ github.event.inputs.job_name || 'all_analysis_jobs' }}"
 
           # Map job name to job definition
           case $JOB_NAME in
             cet_full_pipeline)
-              JOB_DEFINITION="sbir-analytics-ml-cet-pipeline"
+              JOB_DEFINITION="sbir-analytics-analysis-cet-pipeline"
               DAGSTER_JOB="cet_full_pipeline_job"
               ;;
             fiscal_returns_mvp)
-              JOB_DEFINITION="sbir-analytics-ml-fiscal-returns"
+              JOB_DEFINITION="sbir-analytics-analysis-fiscal-returns"
               DAGSTER_JOB="fiscal_returns_mvp_job"
               ;;
             paecter_embeddings)
-              JOB_DEFINITION="sbir-analytics-ml-paecter-embeddings"
+              JOB_DEFINITION="sbir-analytics-analysis-paecter-embeddings"
               DAGSTER_JOB="paecter_job"
               ;;
-            all_ml_jobs)
-              # For "all_ml_jobs", submit each job separately
-              echo "Submitting all ML jobs to AWS Batch..."
+            all_analysis_jobs)
+              # For "all_analysis_jobs", submit each job separately
+              echo "Submitting all analysis jobs to AWS Batch..."
 
               # Submit CET job
               CET_JOB_ID=$(aws batch submit-job \
                 --job-name "ml-cet-${{ github.run_id }}" \
-                --job-queue sbir-analytics-ml-job-queue \
-                --job-definition sbir-analytics-ml-cet-pipeline \
+                --job-queue sbir-analytics-analysis-job-queue \
+                --job-definition sbir-analytics-analysis-cet-pipeline \
                 --query 'jobId' \
                 --output text)
               echo "Submitted CET job: $CET_JOB_ID"
@@ -213,8 +213,8 @@ jobs:
               # Submit Fiscal job
               FISCAL_JOB_ID=$(aws batch submit-job \
                 --job-name "ml-fiscal-${{ github.run_id }}" \
-                --job-queue sbir-analytics-ml-job-queue \
-                --job-definition sbir-analytics-ml-fiscal-returns \
+                --job-queue sbir-analytics-analysis-job-queue \
+                --job-definition sbir-analytics-analysis-fiscal-returns \
                 --query 'jobId' \
                 --output text)
               echo "Submitted Fiscal job: $FISCAL_JOB_ID"
@@ -223,8 +223,8 @@ jobs:
               # Submit PaECTER job
               PAECTER_JOB_ID=$(aws batch submit-job \
                 --job-name "ml-paecter-${{ github.run_id }}" \
-                --job-queue sbir-analytics-ml-job-queue \
-                --job-definition sbir-analytics-ml-paecter-embeddings \
+                --job-queue sbir-analytics-analysis-job-queue \
+                --job-definition sbir-analytics-analysis-paecter-embeddings \
                 --query 'jobId' \
                 --output text)
               echo "Submitted PaECTER job: $PAECTER_JOB_ID"
@@ -244,7 +244,7 @@ jobs:
           echo "Submitting $JOB_NAME to AWS Batch..."
           JOB_ID=$(aws batch submit-job \
             --job-name "ml-${JOB_NAME}-${{ github.run_id }}" \
-            --job-queue sbir-analytics-ml-job-queue \
+            --job-queue sbir-analytics-analysis-job-queue \
             --job-definition "$JOB_DEFINITION" \
             --query 'jobId' \
             --output text)
@@ -356,5 +356,5 @@ jobs:
             echo "$JOB_IDS" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "View logs in [AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/queue/sbir-analytics-ml-job-queue)" >> $GITHUB_STEP_SUMMARY
+            echo "View logs in [AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/queue/sbir-analytics-analysis-job-queue)" >> $GITHUB_STEP_SUMMARY
           fi

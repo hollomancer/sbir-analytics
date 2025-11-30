@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 #
-# AWS Batch ML Jobs Dockerfile
-# Optimized for running ML jobs (CET, Fiscal, PaECTER) in AWS Batch
+# AWS Batch Analysis Jobs Dockerfile
+# Optimized for running analysis jobs (CET, Fiscal, PaECTER) in AWS Batch
 #
 # Key differences from main Dockerfile:
 # - Always includes R dependencies for fiscal analysis
@@ -10,7 +10,7 @@
 # - Smaller runtime footprint
 #
 # Usage:
-#   docker build -f Dockerfile.batch-ml -t sbir-analytics-ml-jobs:latest .
+#   docker build -f Dockerfile.batch-analysis -t sbir-analytics-analysis-jobs:latest .
 #
 ARG PYTHON_VERSION=3.11.9
 ARG IMAGE_PY=python:${PYTHON_VERSION}-slim-bookworm

@@ -39,7 +39,7 @@ step_functions_stack = StepFunctionsStack(
     execution_role=security_stack.step_functions_role,
 )
 
-# AWS Batch stack for ML jobs (independent)
+# AWS Batch stack for analysis jobs (independent)
 batch_stack = BatchStack(
     app,
     "sbir-analytics-batch",
