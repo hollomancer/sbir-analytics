@@ -61,7 +61,7 @@ class TestChunkProgress:
     """Tests for ChunkProgress dataclass."""
 
     def test_initialization(self):
-        """Test ChunkProgress initialization."""
+        """Test ChunkProgress initialization with default values."""
         progress = ChunkProgress(total_records=1000, chunk_size=100)
 
         assert progress.total_records == 1000
@@ -73,59 +73,47 @@ class TestChunkProgress:
         assert progress.errors == []
         assert progress.checkpoint_dir is None
 
-    def test_total_chunks_calculation(self):
-        """Test total chunks calculation."""
-        progress = ChunkProgress(total_records=1000, chunk_size=100)
-        assert progress.total_chunks == 10
+    @pytest.mark.parametrize(
+        "total_records,chunk_size,expected_chunks",
+        [
+            (1000, 100, 10),
+            (1050, 100, 11),
+            (500, 50, 10),
+            (1, 100, 1),
+            (0, 100, 0),
+        ],
+        ids=["exact_division", "partial_last", "different_size", "single_record", "zero_records"],
+    )
+    def test_total_chunks_calculation(self, total_records, chunk_size, expected_chunks):
+        """Test total chunks calculation with various inputs."""
+        progress = ChunkProgress(total_records=total_records, chunk_size=chunk_size)
+        assert progress.total_chunks == expected_chunks
 
-        # Test with partial last chunk
-        progress = ChunkProgress(total_records=1050, chunk_size=100)
-        assert progress.total_chunks == 11
-
-        # Test exact division
-        progress = ChunkProgress(total_records=500, chunk_size=50)
-        assert progress.total_chunks == 10
-
-    def test_total_chunks_edge_cases(self):
-        """Test total chunks calculation edge cases."""
-        # Single record
-        progress = ChunkProgress(total_records=1, chunk_size=100)
-        assert progress.total_chunks == 1
-
-        # Zero records
-        progress = ChunkProgress(total_records=0, chunk_size=100)
-        assert progress.total_chunks == 0
-
-    def test_percent_complete(self):
-        """Test percent complete calculation."""
-        progress = ChunkProgress(total_records=1000, chunk_size=100)
-
-        # 0% complete
-        assert progress.percent_complete == 0.0
-
-        # 50% complete
-        progress.records_processed = 500
-        assert progress.percent_complete == 50.0
-
-        # 100% complete
-        progress.records_processed = 1000
-        assert progress.percent_complete == 100.0
-
-    def test_percent_complete_zero_total(self):
-        """Test percent complete with zero total records."""
-        progress = ChunkProgress(total_records=0, chunk_size=100)
-        assert progress.percent_complete == 0.0
+    @pytest.mark.parametrize(
+        "total_records,records_processed,expected_percent",
+        [
+            (1000, 0, 0.0),
+            (1000, 500, 50.0),
+            (1000, 1000, 100.0),
+            (0, 0, 0.0),
+        ],
+        ids=["zero_percent", "fifty_percent", "hundred_percent", "zero_total"],
+    )
+    def test_percent_complete(self, total_records, records_processed, expected_percent):
+        """Test percent complete calculation with various progress states."""
+        progress = ChunkProgress(total_records=total_records, chunk_size=100)
+        progress.records_processed = records_processed
+        assert progress.percent_complete == expected_percent
 
     def test_elapsed_seconds(self):
         """Test elapsed seconds calculation."""
-        # Create progress with known start time
         start_time = datetime.now() - timedelta(seconds=10)
         progress = ChunkProgress(total_records=1000, chunk_size=100)
         progress.start_time = start_time
 
         elapsed = progress.elapsed_seconds
         assert elapsed >= 10.0
-        assert elapsed < 15.0  # Allow some tolerance
+        assert elapsed < 15.0
 
     def test_estimated_remaining_seconds(self):
         """Test estimated remaining time calculation."""
@@ -133,24 +121,23 @@ class TestChunkProgress:
         progress.start_time = datetime.now() - timedelta(seconds=10)
         progress.records_processed = 500
 
-        # Should estimate roughly 10 more seconds (50% done, took 10s)
         remaining = progress.estimated_remaining_seconds
         assert remaining >= 8.0
         assert remaining <= 12.0
 
     def test_estimated_remaining_seconds_no_progress(self):
-        """Test estimated remaining with no progress."""
+        """Test estimated remaining with no progress returns zero."""
         progress = ChunkProgress(total_records=1000, chunk_size=100)
         assert progress.estimated_remaining_seconds == 0.0
 
     def test_save_checkpoint_no_directory(self):
-        """Test checkpoint save with no directory."""
+        """Test checkpoint save with no directory returns None."""
         progress = ChunkProgress(total_records=1000, chunk_size=100)
         result = progress.save_checkpoint({"test": "data"})
         assert result is None
 
     def test_save_checkpoint_success(self, temp_checkpoint_dir):
-        """Test successful checkpoint save."""
+        """Test successful checkpoint save creates valid JSON file."""
         progress = ChunkProgress(
             total_records=1000,
             chunk_size=100,
@@ -166,7 +153,6 @@ class TestChunkProgress:
         assert checkpoint_path.exists()
         assert checkpoint_path.name == "checkpoint_0005.json"
 
-        # Verify contents
         with open(checkpoint_path) as f:
             data = json.load(f)
 
@@ -193,7 +179,7 @@ class TestChunkProgress:
         assert checkpoint_path.exists()
 
     def test_log_progress(self):
-        """Test progress logging."""
+        """Test progress logging doesn't raise errors."""
         progress = ChunkProgress(total_records=1000, chunk_size=100)
         progress.chunks_processed = 5
         progress.records_processed = 500
