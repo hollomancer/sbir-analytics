@@ -334,13 +334,25 @@ class TestFilterByTiming:
 class TestCalculateTopicSimilarity:
     """Tests for _calculate_topic_similarity method."""
 
-    def test_calculate_topic_similarity_with_similar_content(self, extractor):
-        """Test topic similarity with similar patent and contract content."""
+    @pytest.mark.parametrize(
+        "patent_title,patent_abstract,contract_desc,min_sim,max_sim",
+        [
+            ("Machine Learning System", "Advanced machine learning for data analysis",
+             "Machine learning data analysis system", 0.5, 1.0),
+            ("Medical Device Innovation", "Novel approach to medical diagnostics",
+             "Software development for financial systems", 0.0, 0.5),
+        ],
+        ids=["similar_content", "different_content"],
+    )
+    def test_calculate_topic_similarity_content_matching(
+        self, extractor, patent_title, patent_abstract, contract_desc, min_sim, max_sim
+    ):
+        """Test topic similarity with various content combinations."""
         patents = [
             Patent(
                 patent_number="US123456",
-                title="Machine Learning System",
-                abstract="Advanced machine learning for data analysis",
+                title=patent_title,
+                abstract=patent_abstract,
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
             ),
@@ -348,41 +360,31 @@ class TestCalculateTopicSimilarity:
 
         similarity = extractor._calculate_topic_similarity(
             patents=patents,
-            contract_description="Machine learning data analysis system",
+            contract_description=contract_desc,
         )
 
         assert similarity is not None
-        assert similarity > 0.5  # Should be fairly similar
+        assert min_sim <= similarity <= max_sim
 
-    def test_calculate_topic_similarity_with_different_content(self, extractor):
-        """Test topic similarity with unrelated content."""
-        patents = [
-            Patent(
-                patent_number="US123456",
-                title="Medical Device Innovation",
-                abstract="Novel approach to medical diagnostics",
-                filing_date=date(2023, 7, 1),
-                assignee="Acme",
-            ),
-        ]
-
-        similarity = extractor._calculate_topic_similarity(
-            patents=patents,
-            contract_description="Software development for financial systems",
-        )
-
-        assert similarity is not None
-        assert similarity < 0.5  # Should be dissimilar
-
-    def test_calculate_topic_similarity_uses_title_only(self):
-        """Test topic similarity uses only title when configured."""
-        extractor = PatentSignalExtractor(use_title=True, use_abstract=False)
+    @pytest.mark.parametrize(
+        "use_title,use_abstract,title,abstract,expected_min",
+        [
+            (True, False, "Machine Learning", "Unrelated biology content", 0.3),
+            (False, True, "Unrelated Title", "Machine learning data analysis system", 0.3),
+        ],
+        ids=["title_only", "abstract_only"],
+    )
+    def test_calculate_topic_similarity_field_selection(
+        self, use_title, use_abstract, title, abstract, expected_min
+    ):
+        """Test topic similarity uses configured fields."""
+        extractor = PatentSignalExtractor(use_title=use_title, use_abstract=use_abstract)
 
         patents = [
             Patent(
                 patent_number="US123456",
-                title="Machine Learning",
-                abstract="Unrelated abstract about biology",  # Should be ignored
+                title=title,
+                abstract=abstract,
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
             ),
@@ -393,32 +395,8 @@ class TestCalculateTopicSimilarity:
             contract_description="Machine learning system",
         )
 
-        # Should still find similarity based on title
         assert similarity is not None
-        assert similarity > 0.3
-
-    def test_calculate_topic_similarity_uses_abstract_only(self):
-        """Test topic similarity uses only abstract when configured."""
-        extractor = PatentSignalExtractor(use_title=False, use_abstract=True)
-
-        patents = [
-            Patent(
-                patent_number="US123456",
-                title="Unrelated Title",  # Should be ignored
-                abstract="Machine learning data analysis system",
-                filing_date=date(2023, 7, 1),
-                assignee="Acme",
-            ),
-        ]
-
-        similarity = extractor._calculate_topic_similarity(
-            patents=patents,
-            contract_description="Machine learning analysis",
-        )
-
-        # Should find similarity based on abstract
-        assert similarity is not None
-        assert similarity > 0.3
+        assert similarity > expected_min
 
     def test_calculate_topic_similarity_includes_award_description(self, extractor):
         """Test topic similarity includes award description in contract text."""
@@ -432,7 +410,6 @@ class TestCalculateTopicSimilarity:
             ),
         ]
 
-        # Award and contract both mention quantum - should boost similarity
         similarity = extractor._calculate_topic_similarity(
             patents=patents,
             contract_description="Research services",
@@ -441,40 +418,38 @@ class TestCalculateTopicSimilarity:
 
         assert similarity is not None
 
-    def test_calculate_topic_similarity_no_patents(self, extractor):
-        """Test topic similarity with no patents returns None."""
-        similarity = extractor._calculate_topic_similarity(
-            patents=[],
-            contract_description="Some contract description",
-        )
-
-        assert similarity is None
-
-    def test_calculate_topic_similarity_no_contract_description(self, extractor):
-        """Test topic similarity without contract description returns None."""
-        patents = [
-            Patent(
-                patent_number="US123456",
-                title="Test",
-                abstract="Test abstract",
-                filing_date=date(2023, 7, 1),
-                assignee="Acme",
-            ),
-        ]
-
+    @pytest.mark.parametrize(
+        "patents,contract_desc,expected",
+        [
+            ([], "Some contract description", None),
+            (None, None, None),
+        ],
+        ids=["no_patents", "no_description"],
+    )
+    def test_calculate_topic_similarity_edge_cases(self, extractor, patents, contract_desc, expected):
+        """Test topic similarity returns None for edge cases."""
+        if patents is None:
+            patents = [
+                Patent(
+                    patent_number="US123456",
+                    title="Test",
+                    abstract="Test abstract",
+                    filing_date=date(2023, 7, 1),
+                    assignee="Acme",
+                ),
+            ]
         similarity = extractor._calculate_topic_similarity(
             patents=patents,
-            contract_description=None,
+            contract_description=contract_desc,
         )
-
-        assert similarity is None
+        assert similarity is expected
 
     def test_calculate_topic_similarity_patents_without_text(self, extractor):
         """Test topic similarity with patents missing title/abstract."""
         patents = [
             Patent(
                 patent_number="US123456",
-                title="",  # Empty string instead of None (title is required)
+                title="",
                 abstract=None,
                 filing_date=date(2023, 7, 1),
                 assignee="Acme",
@@ -512,7 +487,6 @@ class TestCalculateTopicSimilarity:
             contract_description="Machine learning research",
         )
 
-        # Should return max similarity (from US002)
         assert similarity is not None
         assert similarity > 0.3
 
