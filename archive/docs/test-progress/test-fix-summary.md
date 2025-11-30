@@ -1,6 +1,6 @@
 # Test Fix Summary & Action Plan
 
-**Date**: 2025-01-29  
+**Date**: 2025-01-29
 **Test Suite Status**: 99.2% Passing (514/521 tests)
 
 ## Current Test Health
@@ -12,7 +12,7 @@
 - **Skipped**: 2
 
 ### Integration Tests
-- **Total**: 100 tests  
+- **Total**: 100 tests
 - **Passing**: 99 (99%)
 - **Failing**: 1 (1%)
 - **Skipped**: 67 (mostly require external services)
@@ -28,61 +28,61 @@
 ### Unit Test Failures (7)
 
 #### 1. test_chunked_enrichment.py::TestDataFrameProcessing::test_process_to_dataframe
-**Issue**: Test expects 5 rows but gets 15 (data concatenated 3 times)  
-**Root Cause**: Test bug - chunks are being appended instead of replaced  
-**Impact**: Low - test logic issue, not production code  
-**Fix**: Update test to expect correct behavior or fix chunking logic  
+**Issue**: Test expects 5 rows but gets 15 (data concatenated 3 times)
+**Root Cause**: Test bug - chunks are being appended instead of replaced
+**Impact**: Low - test logic issue, not production code
+**Fix**: Update test to expect correct behavior or fix chunking logic
 **Priority**: Medium
 
 #### 2. test_usaspending_extractor.py::TestModuleFunctions::test_extract_usaspending_from_config
-**Issue**: AttributeError: 'dict' object has no attribute 'dump_file'  
-**Root Cause**: Config mock returns dict instead of object with attributes  
-**Impact**: Low - test configuration issue  
-**Fix**: Use proper config mock with attributes  
+**Issue**: AttributeError: 'dict' object has no attribute 'dump_file'
+**Root Cause**: Config mock returns dict instead of object with attributes
+**Impact**: Low - test configuration issue
+**Fix**: Use proper config mock with attributes
 **Priority**: Low
 
 #### 3. test_usaspending_matching.py::test_exact_duns_match
-**Issue**: Test failure (details needed)  
-**Root Cause**: Unknown  
-**Impact**: Low - matching logic test  
-**Fix**: Investigate and fix  
+**Issue**: Test failure (details needed)
+**Root Cause**: Unknown
+**Impact**: Low - matching logic test
+**Fix**: Investigate and fix
 **Priority**: Medium
 
 #### 4. test_geographic_resolver.py::TestValidateResolutionQuality::test_validate_quality_high_resolution
-**Issue**: Test failure (details needed)  
-**Root Cause**: Unknown  
-**Impact**: Low - quality validation test  
-**Fix**: Investigate and fix  
+**Issue**: Test failure (details needed)
+**Root Cause**: Unknown
+**Impact**: Low - quality validation test
+**Fix**: Investigate and fix
 **Priority**: Low
 
 #### 5. test_naics/test_core.py::TestLineProcessing::test_process_line_filters_invalid_naics
-**Issue**: Test failure (details needed)  
-**Root Cause**: Unknown  
-**Impact**: Low - NAICS validation test  
-**Fix**: Investigate and fix  
+**Issue**: Test failure (details needed)
+**Root Cause**: Unknown
+**Impact**: Low - NAICS validation test
+**Fix**: Investigate and fix
 **Priority**: Low
 
 #### 6. test_sam_gov_extractor.py::TestParquetLoading::test_load_parquet_s3_first
-**Issue**: Test failure (details needed)  
-**Root Cause**: Likely S3 mocking issue  
-**Impact**: Low - S3 loading test  
-**Fix**: Update S3 mocks  
+**Issue**: Test failure (details needed)
+**Root Cause**: Likely S3 mocking issue
+**Impact**: Low - S3 loading test
+**Fix**: Update S3 mocks
 **Priority**: Low
 
 #### 7. test_fiscal_assets.py::TestSensitivityUncertainty::test_uncertainty_analysis_success
-**Issue**: AttributeError: 'DataFrame' object has no attribute 'min_estimate'  
-**Root Cause**: Test expects different DataFrame structure  
-**Impact**: Low - sensitivity analysis test  
-**Fix**: Update test expectations  
+**Issue**: AttributeError: 'DataFrame' object has no attribute 'min_estimate'
+**Root Cause**: Test expects different DataFrame structure
+**Impact**: Low - sensitivity analysis test
+**Fix**: Update test expectations
 **Priority**: Low
 
 ### Integration Test Failures (1)
 
 #### 1. test_usaspending_iterative_enrichment.py::TestFreshnessTrackingCycle::test_fresh_award_not_refreshed
-**Issue**: Test failure (details needed)  
-**Root Cause**: Freshness tracking logic  
-**Impact**: Low - freshness tracking test  
-**Fix**: Investigate freshness logic  
+**Issue**: Test failure (details needed)
+**Root Cause**: Freshness tracking logic
+**Impact**: Low - freshness tracking test
+**Fix**: Investigate freshness logic
 **Priority**: Medium
 
 ## Improvements Applied
@@ -116,22 +116,22 @@
 ```
 DeprecationWarning: Function `AssetSelection.keys` is deprecated
 ```
-**Fix**: Replace `AssetSelection.keys()` with `AssetSelection.assets()`  
-**Files**: job_registry.py, paecter_job.py, uspto_ai_job.py  
+**Fix**: Replace `AssetSelection.keys()` with `AssetSelection.assets()`
+**Files**: job_registry.py, paecter_job.py, uspto_ai_job.py
 **Impact**: Will break in Dagster 2.0
 
 #### 2. Pydantic Deprecation Warnings
 ```
 PydanticDeprecatedSince20: `json_encoders` is deprecated
 ```
-**Fix**: Update to Pydantic 2.x serialization patterns  
+**Fix**: Update to Pydantic 2.x serialization patterns
 **Impact**: Will break in Pydantic 3.0
 
 #### 3. Unknown pytest Config Options
 ```
 PytestConfigWarning: Unknown config option: asyncio_mode
 ```
-**Fix**: Remove or update pytest config options  
+**Fix**: Remove or update pytest config options
 **Impact**: None (just warnings)
 
 ## Action Plan
