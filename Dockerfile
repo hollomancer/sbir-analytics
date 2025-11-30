@@ -306,7 +306,7 @@ COPY --from=builder /usr/local/lib/R/site-library/ /usr/local/lib/R/site-library
 # test-time install step.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip setuptools wheel \
- && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt \
+ && pip install --no-cache-dir /wheels/*.whl \
  && rm -rf /wheels
 
 # Install gosu (used to drop privileges when needed)
