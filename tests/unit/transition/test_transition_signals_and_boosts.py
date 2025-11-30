@@ -31,7 +31,8 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
     monkeypatch.setenv("SBIR_ETL__TRANSITION__LIMIT_PER_AWARD", "50")
 
     # Import locally so env/working dir changes apply
-    from src.assets.transition import AssetExecutionContext, transformed_transition_scores
+    from dagster import build_asset_context
+    from src.assets.transition import transformed_transition_scores
 
     # Contracts sample: one contract intended to match A2 by fuzzy name; include fields for all boosts
     contracts_df = pd.DataFrame(
@@ -80,7 +81,7 @@ def test_signals_and_boosts_for_name_fuzzy(monkeypatch, tmp_path):
         ]
     )
 
-    ctx = AssetExecutionContext()
+    ctx = build_asset_context()
     scores_out = transformed_transition_scores(ctx, vendor_res_df, contracts_df, awards_df)
     scores_df, _ = _unwrap_output(scores_out)
 
