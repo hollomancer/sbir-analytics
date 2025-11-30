@@ -124,7 +124,8 @@ class TestParquetLoading:
                 # Mock read_parquet to return sample data
                 mock_read_parquet.return_value = sample_df
 
-                df = extractor_with_mock_config.load_parquet(use_s3_first=True)
+                # Don't provide parquet_path so it uses S3
+                df = extractor_with_mock_config.load_parquet(parquet_path=None, use_s3_first=True)
 
                 assert isinstance(df, pd.DataFrame)
                 assert len(df) == 3
