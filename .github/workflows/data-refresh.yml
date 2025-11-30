@@ -298,10 +298,11 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: ./.github/actions/setup-aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 14400  # 4 hours for long downloads
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
