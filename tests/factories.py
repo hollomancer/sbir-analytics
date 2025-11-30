@@ -445,3 +445,81 @@ class PatentDataFrameBuilder:
             patents.append(patent_data)
 
         return pd.DataFrame(patents)
+
+
+# =============================================================================
+# Fiscal Model Factories
+# =============================================================================
+
+
+class EconomicShockFactory:
+    """Factory for EconomicShock model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create an EconomicShock instance with sensible defaults."""
+        from decimal import Decimal
+        from src.models.fiscal_models import EconomicShock
+
+        defaults = {
+            "state": "CA",
+            "bea_sector": "54",
+            "fiscal_year": 2022,
+            "shock_amount": Decimal("500000"),
+            "award_ids": ["AWARD-001"],
+            "confidence": 0.9,
+            "naics_coverage_rate": 0.85,
+            "geographic_resolution_rate": 0.95,
+            "base_year": 2020,
+        }
+        defaults.update(kwargs)
+        return EconomicShock(**defaults)
+
+
+class FiscalReturnSummaryFactory:
+    """Factory for FiscalReturnSummary model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a FiscalReturnSummary instance with sensible defaults."""
+        from decimal import Decimal
+        from src.models.fiscal_models import FiscalReturnSummary
+
+        defaults = {
+            "analysis_id": "ANALYSIS-001",
+            "base_year": 2020,
+            "methodology_version": "v2.1",
+            "total_sbir_investment": Decimal("10000000"),
+            "total_tax_receipts": Decimal("15000000"),
+            "net_fiscal_return": Decimal("5000000"),
+            "roi_ratio": 1.5,
+            "net_present_value": Decimal("4500000"),
+            "benefit_cost_ratio": 1.5,
+            "confidence_interval_low": Decimal("14000000"),
+            "confidence_interval_high": Decimal("16000000"),
+            "quality_score": 0.85,
+        }
+        defaults.update(kwargs)
+        return FiscalReturnSummary(**defaults)
+
+
+class NAICSMappingFactory:
+    """Factory for NAICSMapping model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a NAICSMapping instance with sensible defaults."""
+        from src.models.fiscal_models import NAICSMapping
+
+        defaults = {
+            "award_id": "AWARD-001",
+            "naics_code": "541715",
+            "bea_sector_code": "54",
+            "bea_sector_name": "Professional Services",
+            "crosswalk_version": "2022",
+            "naics_source": "usaspending",
+            "naics_confidence": 0.95,
+            "mapping_confidence": 0.90,
+        }
+        defaults.update(kwargs)
+        return NAICSMapping(**defaults)
