@@ -3,7 +3,10 @@
 import re
 from pathlib import Path
 from collections import defaultdict
-from packaging.version import parse as parse_version
+
+def parse_version(v):
+    """Parse version string into comparable tuple."""
+    return tuple(int(x) if x.isdigit() else x for x in re.split(r'[.-]', v))
 
 wheels_dir = Path('/wheels')
 packages = defaultdict(list)
