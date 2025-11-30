@@ -268,6 +268,7 @@ from packaging.version import parse as parse_version
 wheels_dir = Path('/wheels')
 packages = defaultdict(list)
 
+print('=== Deduplicating wheels ===')
 # Group wheels by package name
 for wheel in wheels_dir.glob('*.whl'):
     # Extract package name and version from wheel filename
@@ -279,15 +280,22 @@ for wheel in wheels_dir.glob('*.whl'):
         packages[pkg_name].append((version, wheel))
 
 # Keep only the latest version of each package
+removed_count = 0
 for pkg_name, versions in packages.items():
     if len(versions) > 1:
+        print(f'Found {len(versions)} versions of {pkg_name}')
         # Sort by semantic version
         versions.sort(key=lambda x: parse_version(x[0]), reverse=True)
+        print(f'  Keeping: {versions[0][1].name}')
         # Remove all but the latest
         for _, wheel_path in versions[1:]:
-            print(f'Removing duplicate: {wheel_path.name}')
+            print(f'  Removing: {wheel_path.name}')
             wheel_path.unlink()
-"
+            removed_count += 1
+
+print(f'Removed {removed_count} duplicate wheels')
+print(f'Remaining wheels: {len(list(wheels_dir.glob(\"*.whl\")))}')
+" && ls -lh /wheels/anyio*.whl || echo "No anyio wheels found"
 
 # Copy R packages from builder to runtime (only if BUILD_WITH_R=true)
 # R packages installed via install.packages() go to /usr/local/lib/R/site-library
