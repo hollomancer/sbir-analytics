@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """AWS CDK app for SBIR ETL infrastructure."""
 
+import subprocess
+from pathlib import Path
+
 import aws_cdk as cdk
 from stacks.storage import StorageStack
 from stacks.security import SecurityStack
 from stacks.lambda_stack import LambdaStack
 from stacks.step_functions_stack import StepFunctionsStack
 from stacks.batch_stack import BatchStack
+
+# Prepare Lambda functions before synthesis
+project_root = Path(__file__).parent.parent.parent
+prepare_script = project_root / "scripts" / "lambda" / "prepare_lambdas.sh"
+print("Preparing Lambda functions...")
+subprocess.run([str(prepare_script)], check=True)
 
 app = cdk.App()
 
@@ -40,10 +49,11 @@ step_functions_stack = StepFunctionsStack(
 )
 
 # AWS Batch stack for analysis jobs (independent)
-batch_stack = BatchStack(
-    app,
-    "sbir-analytics-batch",
-    env=env,
-)
+# Temporarily disabled - requires account/region for VPC lookup
+# batch_stack = BatchStack(
+#     app,
+#     "sbir-analytics-batch",
+#     env=env,
+# )
 
 app.synth()

@@ -5,7 +5,7 @@ and trigger the download workflow if a new file is detected.
 """
 
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import boto3
@@ -151,11 +151,36 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Construct URL if not provided
         if not source_url:
             if not date_str:
+                # Search for most recent available file (check last 30 days)
+                from datetime import timedelta
                 now = datetime.now(UTC)
-                date_str = now.strftime("%Y%m%d")
+                url_template = USASPENDING_DOWNLOADS[database_type]
 
-            url_template = USASPENDING_DOWNLOADS[database_type]
-            source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
+                for days_back in range(30):
+                    check_date = now - timedelta(days=days_back)
+                    candidate_date_str = check_date.strftime("%Y%m%d")
+                    candidate_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=candidate_date_str)
+
+                    # Quick HEAD check
+                    try:
+                        req = Request(candidate_url, method="HEAD")
+                        req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")
+                        with urlopen(req, timeout=10) as response:
+                            if response.getcode() == 200:
+                                date_str = candidate_date_str
+                                source_url = candidate_url
+                                print(f"Found available file dated {date_str}")
+                                break
+                    except:
+                        continue
+
+                if not source_url:
+                    # Fallback to today's date if nothing found
+                    date_str = now.strftime("%Y%m%d")
+                    source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
+            else:
+                url_template = USASPENDING_DOWNLOADS[database_type]
+                source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
 
         print(f"Checking for new USAspending database file: {source_url}")
 

@@ -1,4 +1,5 @@
 {
+  "lambda_layer_arn": "arn:aws:lambda:us-east-2:658445659195:layer:sbir-analytics-python-dependencies:33",
   "vpc-provider:account=658445659195:filter.isDefault=true:region=us-east-2:returnAsymmetricSubnets=true": {
     "vpcId": "vpc-071faf723b3144e8f",
     "vpcCidrBlock": "172.31.0.0/16",
