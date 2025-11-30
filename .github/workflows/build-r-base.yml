@@ -84,7 +84,7 @@ jobs:
           echo "${{ steps.meta.outputs.tags }}"
           echo ""
           echo "To use this image in production builds:"
-          echo "  docker build --build-arg BUILD_WITH_R=true --build-arg USE_R_BASE_IMAGE=true -t sbir-analytics:latest ."
+          echo "  docker build --build-arg BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-r-base:latest --build-arg WITH_R=true -t sbir-analytics:latest ."
 
       - name: Summary
         run: |

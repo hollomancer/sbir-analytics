@@ -3,8 +3,9 @@
 # AWS Batch Analysis Jobs Dockerfile
 # Optimized for running analysis jobs (CET, Fiscal, PaECTER) in AWS Batch
 #
-# OPTIMIZATION: Uses pre-built r-base image with R and stateio already installed
-# This saves ~10-15 minutes of R package compilation time per build.
+# OPTIMIZATION:
+# - Uses pre-built r-base image with R and stateio already installed (~10-15 min saved)
+# - PaECTER uses HuggingFace API mode (no torch, ~2GB smaller image)
 #
 # Cache sharing: Uses unified GHA cache scope "sbir-python-deps" shared with CI workflow
 #
@@ -57,7 +58,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=cache,target=/root/.cache/pip \
     mkdir -p /wheels \
     && python -m pip install --upgrade pip setuptools wheel \
-    && uv export --extra r --extra paecter-local --no-hashes --no-editable --format requirements-txt -o requirements.txt \
+    && uv export --extra r --no-hashes --no-editable --format requirements-txt -o requirements.txt \
     && sed -i '/^\.$/d' requirements.txt \
     && RPY2_CFFI_MODE=ABI python -m pip wheel --wheel-dir=/wheels -r requirements.txt
 

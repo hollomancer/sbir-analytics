@@ -407,7 +407,7 @@ jobs:
           tags: |
             sbir-analytics:ci-${{ github.sha }}
           build-args: |
-            BUILD_WITH_R=false
+            WITH_R=false
             BUILDKIT_INLINE_CACHE=1
           # Unified cache scope shared across workflows
           cache-from: |
