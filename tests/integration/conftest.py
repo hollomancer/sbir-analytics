@@ -7,11 +7,26 @@ from tests.conftest_shared import Neo4jTestHelper, neo4j_client, neo4j_config, n
 
 
 @pytest.fixture(autouse=True)
-def cleanup_test_data(neo4j_client):
-    """Clean up test data before and after each test (autouse for integration tests)."""
+def cleanup_test_data(request):
+    """Clean up test data before and after each test (autouse for integration tests).
+
+    Only runs cleanup if the test actually uses neo4j_client fixture.
+    """
+    # Check if test uses neo4j_client
+    if "neo4j_client" not in request.fixturenames:
+        yield
+        return
+
+    # Get neo4j_client if available
+    try:
+        client = request.getfixturevalue("neo4j_client")
+    except Exception:
+        yield
+        return
+
     # Clean before test
     try:
-        with neo4j_client.session() as session:
+        with client.session() as session:
             session.run("MATCH (n:TestCompany) DETACH DELETE n")
             session.run("MATCH (n:TestAward) DETACH DELETE n")
     except Exception:
@@ -21,7 +36,7 @@ def cleanup_test_data(neo4j_client):
 
     # Clean after test
     try:
-        with neo4j_client.session() as session:
+        with client.session() as session:
             session.run("MATCH (n:TestCompany) DETACH DELETE n")
             session.run("MATCH (n:TestAward) DETACH DELETE n")
     except Exception:

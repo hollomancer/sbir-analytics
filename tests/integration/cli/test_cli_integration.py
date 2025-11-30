@@ -42,11 +42,8 @@ class TestCLIIntegration:
         # Should handle missing metrics gracefully
         assert result.exit_code in [0, 1]
 
-    def test_ingest_dry_run(self, runner: CliRunner, tmp_path, monkeypatch) -> None:
+    def test_ingest_dry_run(self, runner: CliRunner) -> None:
         """Test ingest run with dry-run."""
-        # Set up minimal config for dry-run
-        monkeypatch.chdir(tmp_path)
-
         result = runner.invoke(app, ["ingest", "run", "--dry-run"])
         # Dry-run should not require actual services
         assert result.exit_code in [0, 1]

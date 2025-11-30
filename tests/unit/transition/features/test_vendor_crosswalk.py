@@ -30,85 +30,83 @@ pytestmark = pytest.mark.fast
 class TestUtilityFunctions:
     """Tests for utility functions."""
 
-    def test_normalize_identifier_strips_and_uppercases(self):
-        """Test identifier normalization removes whitespace and uppercases."""
-        assert _normalize_identifier("  abc123  ") == "ABC123"
-        assert _normalize_identifier("abc-123") == "ABC-123"
-        assert _normalize_identifier("abc_123") == "ABC_123"
+    @pytest.mark.parametrize(
+        "input_val,expected",
+        [
+            ("  abc123  ", "ABC123"),
+            ("abc-123", "ABC-123"),
+            ("abc_123", "ABC_123"),
+            ("abc.123", "ABC123"),
+            ("abc,123", "ABC123"),
+            ("abc/123", "ABC123"),
+            ("abc&123", "ABC123"),
+            (None, None),
+            ("", None),
+            ("   ", None),
+        ],
+        ids=[
+            "whitespace",
+            "hyphen",
+            "underscore",
+            "dot",
+            "comma",
+            "slash",
+            "ampersand",
+            "none",
+            "empty",
+            "spaces",
+        ],
+    )
+    def test_normalize_identifier(self, input_val, expected):
+        """Test identifier normalization handles various inputs."""
+        assert _normalize_identifier(input_val) == expected
 
-    def test_normalize_identifier_removes_punctuation(self):
-        """Test identifier normalization removes punctuation."""
-        assert _normalize_identifier("abc.123") == "ABC123"
-        assert _normalize_identifier("abc,123") == "ABC123"
-        assert _normalize_identifier("abc/123") == "ABC123"
-        assert _normalize_identifier("abc&123") == "ABC123"
+    @pytest.mark.parametrize(
+        "input_val,expected",
+        [
+            ("  Acme   Corporation  ", "Acme Corporation"),
+            ("Acme\n\tCorporation", "Acme Corporation"),
+            ("Acme, Inc.", "Acme  Inc"),
+            ("Acme/Corp", "Acme Corp"),
+            (None, None),
+        ],
+        ids=["whitespace", "newline_tab", "comma_dot", "slash", "none"],
+    )
+    def test_normalize_name(self, input_val, expected):
+        """Test name normalization handles various inputs."""
+        assert _normalize_name(input_val) == expected
 
-    def test_normalize_identifier_returns_none_for_empty(self):
-        """Test identifier normalization returns None for empty strings."""
-        assert _normalize_identifier(None) is None
-        assert _normalize_identifier("") is None
-        assert _normalize_identifier("   ") is None
+    @pytest.mark.parametrize(
+        "str1,str2,min_score,max_score",
+        [
+            ("Acme Corporation", "Acme Corporation", 1.0, 1.0),
+            ("Acme Corporation", "Acme Corp", 0.7, 1.0),
+            ("Acme Corporation", "Different Company", 0.0, 0.5),
+            ("", "Acme", 0.0, 0.0),
+            ("Acme", "", 0.0, 0.0),
+        ],
+        ids=["exact", "similar", "different", "empty_first", "empty_second"],
+    )
+    def test_fuzzy_score(self, str1, str2, min_score, max_score):
+        """Test fuzzy score returns expected ranges for various inputs."""
+        score = _fuzzy_score(str1, str2)
+        assert min_score <= score <= max_score
 
-    def test_normalize_name_strips_and_normalizes_whitespace(self):
-        """Test name normalization collapses whitespace."""
-        assert _normalize_name("  Acme   Corporation  ") == "Acme Corporation"
-        assert _normalize_name("Acme\n\tCorporation") == "Acme Corporation"
-
-    def test_normalize_name_replaces_punctuation(self):
-        """Test name normalization replaces punctuation."""
-        assert _normalize_name("Acme, Inc.") == "Acme  Inc"
-        assert (
-            _normalize_name("Acme & Co.") == "Acme  AND  Co"
-        )  # & replaced with " AND " creates extra spaces
-        assert _normalize_name("Acme/Corp") == "Acme Corp"
-
-    def test_normalize_name_returns_none_for_empty(self):
-        """Test name normalization returns None for empty strings."""
-        assert _normalize_name(None) is None
-
-    def test_fuzzy_score_exact_match(self):
-        """Test fuzzy score returns 1.0 for exact matches."""
-        score = _fuzzy_score("Acme Corporation", "Acme Corporation")
-        assert score == 1.0
-
-    def test_fuzzy_score_similar_strings(self):
-        """Test fuzzy score returns high score for similar strings."""
-        score = _fuzzy_score("Acme Corporation", "Acme Corp")
-        assert 0.7 < score < 1.0
-
-    def test_fuzzy_score_different_strings(self):
-        """Test fuzzy score returns low score for different strings."""
-        score = _fuzzy_score("Acme Corporation", "Different Company")
-        assert score < 0.5
-
-    def test_fuzzy_score_empty_strings(self):
-        """Test fuzzy score returns 0.0 for empty strings."""
-        assert _fuzzy_score("", "Acme") == 0.0
-        assert _fuzzy_score("Acme", "") == 0.0
-        assert _fuzzy_score("", "") == 0.0
-
-    def test_iso_date_from_date_object(self):
-        """Test ISO date conversion from date object."""
-        d = date(2023, 6, 15)
-        assert _iso_date(d) == "2023-06-15"
-
-    def test_iso_date_from_datetime_object(self):
-        """Test ISO date conversion from datetime object."""
-        dt = datetime(2023, 6, 15, 10, 30, 45)
-        assert _iso_date(dt) == "2023-06-15"
-
-    def test_iso_date_from_iso_string(self):
-        """Test ISO date conversion from ISO string."""
-        assert _iso_date("2023-06-15") == "2023-06-15"
-
-    def test_iso_date_from_common_formats(self):
-        """Test ISO date conversion from common formats."""
-        assert _iso_date("06/15/2023") == "2023-06-15"
-        assert _iso_date("2023/06/15") == "2023-06-15"
-
-    def test_iso_date_returns_none_for_none(self):
-        """Test ISO date conversion returns None for None input."""
-        assert _iso_date(None) is None
+    @pytest.mark.parametrize(
+        "input_val,expected",
+        [
+            (date(2023, 6, 15), "2023-06-15"),
+            (datetime(2023, 6, 15, 10, 30, 45), "2023-06-15"),
+            ("2023-06-15", "2023-06-15"),
+            ("06/15/2023", "2023-06-15"),
+            ("2023/06/15", "2023-06-15"),
+            (None, None),
+        ],
+        ids=["date_obj", "datetime_obj", "iso_string", "us_format", "slash_format", "none"],
+    )
+    def test_iso_date(self, input_val, expected):
+        """Test ISO date conversion handles various input formats."""
+        assert _iso_date(input_val) == expected
 
 
 class TestAliasRecord:

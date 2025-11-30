@@ -39,10 +39,8 @@ class LambdaStack(Stack):
             "reset-neo4j",
             "smoke-checks",
             "trigger-dagster-refresh",  # Simple Lambda to trigger Dagster Cloud jobs
-            # USPTO download functions
-            "download-uspto-patentsview",
-            "download-uspto-assignments",
-            "download-uspto-ai-patents",
+            # USPTO download function (unified - replaces 3 separate functions)
+            "download-uspto",
             # Note: USAspending database download moved to EC2 automation
             # See: .github/workflows/usaspending-database-download.yml
         ]
@@ -65,11 +63,11 @@ class LambdaStack(Stack):
             lambda_dir_name = func_name.replace("-", "_")
             lambda_code_path = str(project_root / "scripts" / "lambda" / lambda_dir_name)
 
-            # AWS currently caps Lambda timeout at 15 minutes, so USPTO download
-            # functions cannot request the 30 minutes noted in the spec.
+            # AWS currently caps Lambda timeout at 15 minutes
             timeout_minutes = 15
             memory_size = 512
-            if func_name.startswith("download-uspto"):
+            if func_name == "download-uspto":
+                # Unified USPTO function handles large files (up to 1.8 GB)
                 memory_size = 1024
 
             func = lambda_.Function(

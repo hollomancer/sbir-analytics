@@ -523,3 +523,65 @@ class NAICSMappingFactory:
         }
         defaults.update(kwargs)
         return NAICSMapping(**defaults)
+
+
+class VendorMatchFactory:
+    """Factory for VendorMatch model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a VendorMatch instance with sensible defaults."""
+        from src.models.contract_models import VendorMatch
+
+        defaults = {
+            "vendor_id": "VENDOR-001",
+            "method": "uei",
+            "score": 0.95,
+            "matched_name": "Test Corporation",
+            "matched_uei": "ABC123DEF456",
+            "metadata": {},
+        }
+        defaults.update(kwargs)
+        return VendorMatch(**defaults)
+
+
+class ContractPartyFactory:
+    """Factory for ContractParty model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a ContractParty instance with sensible defaults."""
+        from src.models.contract_models import ContractParty
+
+        defaults = {
+            "name": "Test Vendor Inc",
+            "uei": "ABC123DEF456",
+            "cage_code": "1A2B3",
+            "duns_number": "123456789",
+            "address": "123 Main St",
+            "city": "Boston",
+            "state": "MA",
+            "zip_code": "02101",
+            "country": "USA",
+        }
+        defaults.update(kwargs)
+        return ContractParty(**defaults)
+
+
+class CompanyTransitionFactory:
+    """Factory for CompanyTransition model."""
+
+    @staticmethod
+    def create(**kwargs: Any):
+        """Create a CompanyTransition instance with sensible defaults."""
+        from src.models.transitions import CompanyTransition, TransitionType
+
+        defaults = {
+            "company_id": 123,
+            "transition_type": TransitionType.ACQUISITION,
+            "date": "2023-06-15",
+            "confidence": 0.95,
+            "source": "sec_filings",
+        }
+        defaults.update(kwargs)
+        return CompanyTransition(**defaults)
