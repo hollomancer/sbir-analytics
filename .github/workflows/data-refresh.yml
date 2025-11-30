@@ -321,22 +321,35 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check for new file (exit code 0 = new file, 1 = not new)
+          # Capture stderr separately to avoid corrupting JSON
           if uv run python scripts/usaspending/check_new_file.py \
             --s3-bucket ${{ env.S3_BUCKET }} \
             --database-type full \
-            --json > check_result.json 2>&1; then
+            --json > check_result.json 2>check_stderr.txt; then
             IS_NEW="true"
             echo "is_new=true" >> $GITHUB_OUTPUT
             echo "### ✅ New/Updated File Detected - Will Download" >> $GITHUB_STEP_SUMMARY
           else
+            EXIT_CODE=$?
             IS_NEW="false"
             echo "is_new=false" >> $GITHUB_OUTPUT
-            echo "### ℹ️ No New File - Skipping Download" >> $GITHUB_STEP_SUMMARY
+            echo "### ℹ️ No New File - Skipping Download (exit code: $EXIT_CODE)" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Show check details
-          if [ -f check_result.json ]; then
+          # Show any stderr output
+          if [ -s check_stderr.txt ]; then
+            echo "<details><summary>Script output</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat check_stderr.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Show check details if valid JSON
+          if [ -f check_result.json ] && jq -e . check_result.json > /dev/null 2>&1; then
             SOURCE_URL=$(jq -r '.source_url // "N/A"' check_result.json)
             AVAILABLE=$(jq -r '.available // false' check_result.json)
             CONTENT_LENGTH=$(jq -r '.content_length // 0' check_result.json)
