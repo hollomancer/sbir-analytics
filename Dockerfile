@@ -257,45 +257,10 @@ WORKDIR /app
 # Copy built wheels and requirements from builder
 COPY --from=builder /wheels /wheels
 COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
+COPY scripts/docker/dedupe_wheels.py /tmp/dedupe_wheels.py
 
 # Deduplicate wheels: keep only the latest version of each package
-RUN python3 -c "
-import re
-from pathlib import Path
-from collections import defaultdict
-from packaging.version import parse as parse_version
-
-wheels_dir = Path('/wheels')
-packages = defaultdict(list)
-
-print('=== Deduplicating wheels ===')
-# Group wheels by package name
-for wheel in wheels_dir.glob('*.whl'):
-    # Extract package name and version from wheel filename
-    # Format: package_name-version-py_tag-abi_tag-platform_tag.whl
-    match = re.match(r'^([a-zA-Z0-9_]+)-([0-9.]+[a-zA-Z0-9.]*)-', wheel.name)
-    if match:
-        pkg_name = match.group(1).lower().replace('_', '-')
-        version = match.group(2)
-        packages[pkg_name].append((version, wheel))
-
-# Keep only the latest version of each package
-removed_count = 0
-for pkg_name, versions in packages.items():
-    if len(versions) > 1:
-        print(f'Found {len(versions)} versions of {pkg_name}')
-        # Sort by semantic version
-        versions.sort(key=lambda x: parse_version(x[0]), reverse=True)
-        print(f'  Keeping: {versions[0][1].name}')
-        # Remove all but the latest
-        for _, wheel_path in versions[1:]:
-            print(f'  Removing: {wheel_path.name}')
-            wheel_path.unlink()
-            removed_count += 1
-
-print(f'Removed {removed_count} duplicate wheels')
-print(f'Remaining wheels: {len(list(wheels_dir.glob(\"*.whl\")))}')
-" && ls -lh /wheels/anyio*.whl || echo "No anyio wheels found"
+RUN python3 /tmp/dedupe_wheels.py && rm /tmp/dedupe_wheels.py
 
 # Copy R packages from builder to runtime (only if BUILD_WITH_R=true)
 # R packages installed via install.packages() go to /usr/local/lib/R/site-library
