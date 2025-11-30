@@ -147,55 +147,34 @@ class TestNormalizeStateInput:
 class TestExtractStateFromAddress:
     """Tests for extract_state_from_address method."""
 
-    def test_extract_state_from_zip_pattern(self, resolver):
-        """Test extracting state from address with ZIP code."""
-        address = "123 Main St, San Francisco, CA 94102"
+    @pytest.mark.parametrize(
+        "address,expected",
+        [
+            ("123 Main St, San Francisco, CA 94102", "CA"),  # ZIP pattern
+            ("456 Oak Ave, New York, NY 10001-1234", "NY"),  # ZIP+4
+            ("123 Main St, Boston, MA", "MA"),  # code without ZIP
+            ("123 Main St, California", "CA"),  # full state name
+            ("123 Main St, North Carolina", "NC"),  # multi-word name
+            ("123 Main St, Calif", "CA"),  # variation
+        ],
+        ids=["zip_pattern", "zip_plus_4", "code_no_zip", "full_name", "multi_word", "variation"],
+    )
+    def test_extract_state_from_address_valid(self, resolver, address, expected):
+        """Test extracting state from various valid address formats."""
         result = resolver.extract_state_from_address(address)
-        assert result == "CA"
+        assert result == expected
 
-    def test_extract_state_with_zip_plus_4(self, resolver):
-        """Test extracting state with ZIP+4 format."""
-        address = "456 Oak Ave, New York, NY 10001-1234"
-        result = resolver.extract_state_from_address(address)
-        assert result == "NY"
-
-    def test_extract_state_code_without_zip(self, resolver):
-        """Test extracting standalone state code."""
-        address = "123 Main St, Boston, MA"
-        result = resolver.extract_state_from_address(address)
-        assert result == "MA"
-
-    def test_extract_state_name_match(self, resolver):
-        """Test extracting state from full state name."""
-        address = "123 Main St, California"
-        result = resolver.extract_state_from_address(address)
-        assert result == "CA"
-
-    def test_extract_state_multi_word_name(self, resolver):
-        """Test extracting multi-word state names."""
-        address = "123 Main St, North Carolina"
-        result = resolver.extract_state_from_address(address)
-        assert result == "NC"
-
-    def test_extract_state_variation(self, resolver):
-        """Test extracting state from variation."""
-        address = "123 Main St, Calif"
-        result = resolver.extract_state_from_address(address)
-        assert result == "CA"
-
-    def test_extract_state_empty_address(self, resolver):
-        """Test extraction returns None for empty address."""
-        result = resolver.extract_state_from_address("")
-        assert result is None
-
-    def test_extract_state_none_address(self, resolver):
-        """Test extraction returns None for None address."""
-        result = resolver.extract_state_from_address(None)
-        assert result is None
-
-    def test_extract_state_no_match(self, resolver):
-        """Test extraction returns None when no state found."""
-        address = "123 Main St, Some City"
+    @pytest.mark.parametrize(
+        "address",
+        [
+            "",  # empty
+            None,  # None
+            "123 Main St, Some City",  # no state
+        ],
+        ids=["empty", "none", "no_match"],
+    )
+    def test_extract_state_from_address_invalid(self, resolver, address):
+        """Test extraction returns None for invalid/unresolvable addresses."""
         result = resolver.extract_state_from_address(address)
         assert result is None
 
