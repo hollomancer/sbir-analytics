@@ -537,7 +537,7 @@ def aws_credentials():
     return {
         "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
         "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
-        "region": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+        "region": os.getenv("AWS_DEFAULT_REGION", "us-east-2"),
     }
 
 
