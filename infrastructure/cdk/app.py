@@ -6,6 +6,7 @@ from stacks.storage import StorageStack
 from stacks.security import SecurityStack
 from stacks.lambda_stack import LambdaStack
 from stacks.step_functions_stack import StepFunctionsStack
+from stacks.batch_stack import BatchStack
 
 app = cdk.App()
 
@@ -17,6 +18,7 @@ env = cdk.Environment(
 
 # Stack dependencies:
 # Storage -> Security -> Lambda -> Step Functions
+# Batch (independent, but relies on Security for GitHub Actions role updates)
 
 storage_stack = StorageStack(app, "sbir-analytics-storage", env=env)
 security_stack = SecurityStack(
@@ -35,6 +37,13 @@ step_functions_stack = StepFunctionsStack(
     env=env,
     lambda_functions=lambda_stack.functions,
     execution_role=security_stack.step_functions_role,
+)
+
+# AWS Batch stack for analysis jobs (independent)
+batch_stack = BatchStack(
+    app,
+    "sbir-analytics-batch",
+    env=env,
 )
 
 app.synth()

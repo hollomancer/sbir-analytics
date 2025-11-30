@@ -1,0 +1,202 @@
+# syntax=docker/dockerfile:1.4
+#
+# AWS Batch Analysis Jobs Dockerfile
+# Optimized for running analysis jobs (CET, Fiscal, PaECTER) in AWS Batch
+#
+# Key differences from main Dockerfile:
+# - Always includes R dependencies for fiscal analysis
+# - Always includes sentence-transformers for PaECTER embeddings
+# - Optimized for batch execution (no webserver, no dev tools)
+# - Smaller runtime footprint
+#
+# Usage:
+#   docker build -f Dockerfile.batch-analysis -t sbir-analytics-analysis-jobs:latest .
+#
+ARG PYTHON_VERSION=3.11.9
+ARG IMAGE_PY=python:${PYTHON_VERSION}-slim-bookworm
+
+########################################################################
+# System dependencies stage: install system packages
+########################################################################
+FROM ${IMAGE_PY} AS system-deps
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies (including R for fiscal analysis)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    ca-certificates \
+    git \
+    gcc \
+    libpq-dev \
+    python3-dev \
+    r-base \
+    r-base-dev \
+    ccache \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libicu-dev \
+    cmake \
+    pkg-config \
+    libbz2-dev \
+    liblzma-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+########################################################################
+# Dependencies stage: build Python wheels
+########################################################################
+FROM system-deps AS dependencies
+
+ARG UV_VERSION=0.5.11
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /workspace
+
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv && \
+    uv --version
+
+# Copy dependency files
+COPY pyproject.toml uv.lock* README.md MANIFEST.in /workspace/
+
+# Export requirements including ML extras (r, paecter-local) and build wheels
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,target=/root/.cache/pip \
+    mkdir -p /wheels \
+    && python -m pip install --upgrade pip setuptools wheel \
+    && uv export --extra r --extra paecter-local --no-hashes --no-editable --format requirements-txt -o requirements.txt \
+    && sed -i '/^\.$/d' requirements.txt \
+    && (uv pip sync --system uv.lock 2>/dev/null || uv pip install --system -r requirements.txt) \
+    && python -m pip freeze | grep -v '^-e' > /tmp/frozen.txt \
+    && python -m pip wheel --wheel-dir=/wheels -r /tmp/frozen.txt
+
+########################################################################
+# Builder stage: build application wheel and R packages
+########################################################################
+FROM dependencies AS builder
+
+# Copy application code
+COPY . /workspace/
+
+# Build package wheel
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip wheel --wheel-dir=/wheels .
+
+# Install R packages (stateior) for fiscal analysis
+# Uses RStudio Package Manager (RSPM) for faster binary installs
+RUN --mount=type=cache,target=/root/.cache/R \
+    --mount=type=cache,target=/root/.cache/ccache \
+    export PATH="/usr/lib/ccache:${PATH}" && \
+    export CCACHE_DIR=/root/.cache/ccache && \
+    export MAKEFLAGS="-j$(nproc)" && \
+    export R_SITE_LIB='/usr/local/lib/R/site-library' && \
+    export RSPM_ROOT='https://packagemanager.rstudio.com/all/__linux__/jammy/latest' && \
+    echo "Installing R packages from RSPM (optimized with pre-compiled binaries)..." && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing remotes package from RSPM...\n'); \
+        install.packages('remotes', Ncpus = parallel::detectCores())" && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing arrow package from RSPM (pre-compiled binary)...\n'); \
+        install.packages('arrow', Ncpus = parallel::detectCores()); \
+        arrow_ok <- tryCatch({ \
+            suppressPackageStartupMessages(library(arrow)); \
+            TRUE \
+        }, error = function(err) { \
+            message('arrow failed to load: ', conditionMessage(err)); \
+            FALSE \
+        }); \
+        if (!arrow_ok) { \
+            quit(status = 1); \
+        } else { \
+            cat('✓ arrow loaded successfully\n'); \
+            detach('package:arrow', unload = TRUE); \
+        }" && \
+    R -e ".libPaths(c('${R_SITE_LIB}', '/usr/lib/R/site-library')); \
+        options(repos = c(RSPM = '${RSPM_ROOT}', CRAN = 'https://cloud.r-project.org/')); \
+        cat('Installing stateior package from GitHub...\n'); \
+        remotes::install_github('USEPA/stateior', \
+                                dependencies = TRUE, \
+                                upgrade = 'never', \
+                                Ncpus = parallel::detectCores())" && \
+    R -e "cat('✓ R packages installed successfully\n'); cat('Library paths:', .libPaths(), '\n')"
+
+# List wheels for verification
+RUN ls -la /wheels
+
+########################################################################
+# Runtime stage: minimal runtime for batch execution
+########################################################################
+FROM ${IMAGE_PY} AS runtime
+
+ENV PATH=/usr/local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app \
+    R_HOME=/usr/lib/R
+
+# Install runtime dependencies (minimal set)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    r-base \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user for security
+ARG SBIR_UID=1000
+ARG SBIR_GID=1000
+RUN groupadd -g ${SBIR_GID} sbir \
+    && useradd -m -u ${SBIR_UID} -g ${SBIR_GID} -s /bin/sh sbir
+
+WORKDIR /app
+
+# Copy built wheels and requirements
+COPY --from=builder /wheels /wheels
+COPY --from=builder /workspace/requirements.txt /workspace/requirements.txt
+
+# Copy R packages
+RUN mkdir -p /usr/local/lib/R/site-library
+COPY --from=builder /usr/local/lib/R/site-library/ /usr/local/lib/R/site-library/
+
+# Install Python wheels
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel \
+    && pip install --no-index --find-links=/wheels -r /workspace/requirements.txt
+
+# Copy application code
+COPY . /app
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/reports /app/config /app/metrics /tmp/dagster_home
+
+# Set ownership
+RUN chown -R sbir:sbir /app /tmp/dagster_home
+
+# Switch to non-root user
+USER sbir
+
+# Default environment variables for ML jobs
+ENV DAGSTER_LOAD_HEAVY_ASSETS=true \
+    DAGSTER_HOME=/tmp/dagster_home
+
+# Entry point is dagster CLI - override via AWS Batch job definition
+ENTRYPOINT ["dagster"]
+
+# Default command (can be overridden by Batch job)
+CMD ["job", "list", "-m", "src.definitions_ml"]
