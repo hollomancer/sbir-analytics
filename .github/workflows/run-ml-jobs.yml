@@ -14,17 +14,17 @@ on:
           - paecter_embeddings
           - all_analysis_jobs
       execution_mode:
-        description: 'Where to run (aws-batch requires CDK deployment first)'
+        description: 'Where to run (Note: These jobs require ETL data from S3, use aws-batch)'
         required: true
         type: choice
-        default: 'github-actions'
+        default: 'aws-batch'
         options:
-          - github-actions
-          - aws-batch (requires setup)
+          - aws-batch
+          - github-actions (requires full ETL data)
 
-  # Or weekly schedule (optional) - uses GitHub Actions
-  schedule:
-    - cron: '0 3 * * 1'  # Monday 3 AM UTC
+  # Weekly schedule disabled - these jobs require S3 data from main ETL pipeline
+  # schedule:
+  #   - cron: '0 3 * * 1'  # Monday 3 AM UTC
 
 permissions:
   contents: read
