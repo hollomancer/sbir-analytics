@@ -139,7 +139,7 @@ def fiscal_naics_enriched_awards(
         "performance_peak_memory_mb": round(peak_memory, 2),
         # Quality metrics
         "quality_coverage_threshold": f"{quality_metrics['naics_coverage_threshold']:.1%}",
-        "quality_coverage_meets_threshold": quality_metrics["coverage_meets_threshold"],
+        "quality_coverage_meets_threshold": bool(quality_metrics["coverage_meets_threshold"]),
         "quality_avg_confidence": round(float(avg_confidence), 3),
     }
 
