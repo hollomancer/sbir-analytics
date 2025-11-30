@@ -69,12 +69,15 @@ class TestVendorMatchModel:
         assert match.score == 0.0
         assert match.metadata == {}
 
-    def test_method_validator_accepts_valid(self):
+    @pytest.mark.parametrize(
+        "method",
+        ["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"],
+        ids=["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"],
+    )
+    def test_method_validator_accepts_valid(self, method):
         """Test method validator accepts valid methods."""
-        valid_methods = ["uei", "cage", "duns", "name_fuzzy", "address_match", "manual"]
-        for method in valid_methods:
-            match = VendorMatch(method=method)
-            assert match.method == method
+        match = VendorMatch(method=method)
+        assert match.method == method
 
     def test_method_validator_rejects_invalid(self):
         """Test method validator rejects invalid methods."""
@@ -82,17 +85,25 @@ class TestVendorMatchModel:
             VendorMatch(method="invalid_method")
         assert "method must be one of" in str(exc_info.value)
 
-    def test_score_constraints(self):
+    @pytest.mark.parametrize(
+        "score,should_pass",
+        [
+            (0.0, True),
+            (0.5, True),
+            (1.0, True),
+            (-0.1, False),
+            (1.5, False),
+        ],
+        ids=["min_bound", "mid_range", "max_bound", "negative_invalid", "above_one_invalid"],
+    )
+    def test_score_constraints(self, score, should_pass):
         """Test score field has 0-1 constraints."""
-        # Valid bounds
-        VendorMatch(method="uei", score=0.0)
-        VendorMatch(method="uei", score=1.0)
-
-        # Invalid bounds
-        with pytest.raises(ValidationError):
-            VendorMatch(method="uei", score=-0.1)
-        with pytest.raises(ValidationError):
-            VendorMatch(method="uei", score=1.5)
+        if should_pass:
+            match = VendorMatch(method="uei", score=score)
+            assert match.score == score
+        else:
+            with pytest.raises(ValidationError):
+                VendorMatch(method="uei", score=score)
 
 
 class TestContractPartyModel:
@@ -157,24 +168,35 @@ class TestContractValueModel:
         assert value.currency == "USD"
         assert value.obligated_amount is None
 
-    def test_contract_value_non_negative_constraints(self):
+    @pytest.mark.parametrize(
+        "field,amount,should_pass",
+        [
+            ("obligated_amount", 0.0, True),
+            ("obligated_amount", 100000.0, True),
+            ("obligated_amount", -1000.0, False),
+            ("current_value", 0.0, True),
+            ("current_value", -500.0, False),
+        ],
+        ids=[
+            "obligated_zero",
+            "obligated_positive",
+            "obligated_negative",
+            "current_zero",
+            "current_negative",
+        ],
+    )
+    def test_contract_value_non_negative_constraints(self, field, amount, should_pass):
         """Test contract value fields must be non-negative."""
-        # Valid: zero and positive
-        ContractValue(obligated_amount=0.0)
-        ContractValue(current_value=100000.0)
-
-        # Invalid: negative
-        with pytest.raises(ValidationError):
-            ContractValue(obligated_amount=-1000.0)
-        with pytest.raises(ValidationError):
-            ContractValue(current_value=-500.0)
+        if should_pass:
+            value = ContractValue(**{field: amount})
+            assert getattr(value, field) == amount
+        else:
+            with pytest.raises(ValidationError):
+                ContractValue(**{field: amount})
 
     def test_contract_value_other_currency(self):
         """Test contract value with non-USD currency."""
-        value = ContractValue(
-            obligated_amount=1000000.0,
-            currency="EUR",
-        )
+        value = ContractValue(obligated_amount=1000000.0, currency="EUR")
         assert value.currency == "EUR"
 
 

@@ -211,105 +211,74 @@ class TestCompanyModels:
         assert company.duns is None
         assert company.cage is None
 
-    def test_duns_validator_removes_separators(self):
-        """Test DUNS validator removes hyphens and spaces."""
-        company = Company(
-            name="Test Corp",
-            duns="12-345-6789",
-        )
-        assert company.duns == "123456789"
+    @pytest.mark.parametrize(
+        "duns_input,expected",
+        [
+            ("12-345-6789", "123456789"),
+            ("987654321", "987654321"),
+            ("12 345 6789", "123456789"),
+        ],
+        ids=["with_hyphens", "clean_digits", "with_spaces"],
+    )
+    def test_duns_validator_normalizes(self, duns_input, expected):
+        """Test DUNS validator removes separators and normalizes."""
+        company = Company(name="Test Corp", duns=duns_input)
+        assert company.duns == expected
 
-    def test_duns_validator_accepts_clean_digits(self):
-        """Test DUNS validator accepts 9 clean digits."""
-        company = Company(
-            name="Test Corp",
-            duns="987654321",
-        )
-        assert company.duns == "987654321"
-
-    def test_duns_validator_rejects_wrong_length(self):
-        """Test DUNS validator rejects non-9-digit DUNS."""
+    @pytest.mark.parametrize(
+        "invalid_duns",
+        ["12345", "ABC123DEF", "1234567890"],
+        ids=["too_short", "non_numeric", "too_long"],
+    )
+    def test_duns_validator_rejects_invalid(self, invalid_duns):
+        """Test DUNS validator rejects invalid DUNS numbers."""
         with pytest.raises(ValidationError) as exc_info:
-            Company(
-                name="Test Corp",
-                duns="12345",
-            )
+            Company(name="Test Corp", duns=invalid_duns)
         assert "DUNS must be 9 digits" in str(exc_info.value)
 
-    def test_duns_validator_rejects_non_numeric(self):
-        """Test DUNS validator rejects non-numeric DUNS."""
-        with pytest.raises(ValidationError) as exc_info:
-            Company(
-                name="Test Corp",
-                duns="ABC123DEF",  # pragma: allowlist secret
-            )
-        assert "DUNS must be 9 digits" in str(exc_info.value)
-
-    def test_cage_validator_normalizes_uppercase(self):
+    @pytest.mark.parametrize(
+        "cage_input,expected",
+        [
+            ("1a2b3", "1A2B3"),
+            ("ABCDE", "ABCDE"),
+            ("12345", "12345"),
+        ],
+        ids=["mixed_case", "uppercase", "numeric"],
+    )
+    def test_cage_validator_normalizes(self, cage_input, expected):
         """Test CAGE validator normalizes to uppercase."""
-        company = Company(
-            name="Test Corp",
-            cage="1a2b3",
-        )
-        assert company.cage == "1A2B3"
-
-    def test_cage_validator_accepts_valid(self):
-        """Test CAGE validator accepts 5-character codes."""
-        company = Company(
-            name="Test Corp",
-            cage="ABCDE",
-        )
-        assert company.cage == "ABCDE"
+        company = Company(name="Test Corp", cage=cage_input)
+        assert company.cage == expected
 
     def test_cage_validator_rejects_wrong_length(self):
         """Test CAGE validator rejects non-5-character codes."""
         with pytest.raises(ValidationError) as exc_info:
-            Company(
-                name="Test Corp",
-                cage="ABC",
-            )
+            Company(name="Test Corp", cage="ABC")
         assert "CAGE code must be 5 characters" in str(exc_info.value)
 
-    def test_zip_code_validator_accepts_5_digit(self):
-        """Test ZIP code validator accepts 5-digit codes."""
-        company = Company(
-            name="Test Corp",
-            zip_code="02101",
-        )
-        assert company.zip_code == "02101"
+    @pytest.mark.parametrize(
+        "zip_input,expected",
+        [
+            ("02101", "02101"),
+            ("02101-1234", "02101-1234"),
+            ("021011234", "021011234"),
+        ],
+        ids=["5_digit", "9_digit_hyphen", "9_digit_no_hyphen"],
+    )
+    def test_zip_code_validator_accepts_valid(self, zip_input, expected):
+        """Test ZIP code validator accepts valid formats."""
+        company = Company(name="Test Corp", zip_code=zip_input)
+        assert company.zip_code == expected
 
-    def test_zip_code_validator_accepts_9_digit(self):
-        """Test ZIP code validator accepts 9-digit codes with hyphen."""
-        company = Company(
-            name="Test Corp",
-            zip_code="02101-1234",
-        )
-        assert company.zip_code == "02101-1234"
-
-    def test_zip_code_validator_removes_separators_for_validation(self):
-        """Test ZIP code validator removes separators for validation."""
-        company = Company(
-            name="Test Corp",
-            zip_code="021011234",
-        )
-        assert company.zip_code == "021011234"
-
-    def test_zip_code_validator_rejects_too_short(self):
-        """Test ZIP code validator rejects codes < 5 digits."""
+    @pytest.mark.parametrize(
+        "invalid_zip",
+        ["123", "ABCDE", "1234"],
+        ids=["too_short", "non_numeric", "4_digits"],
+    )
+    def test_zip_code_validator_rejects_invalid(self, invalid_zip):
+        """Test ZIP code validator rejects invalid formats."""
         with pytest.raises(ValidationError) as exc_info:
-            Company(
-                name="Test Corp",
-                zip_code="123",
-            )
-        assert "Invalid ZIP code format" in str(exc_info.value)
-
-    def test_zip_code_validator_rejects_non_numeric(self):
-        """Test ZIP code validator rejects non-numeric codes."""
-        with pytest.raises(ValidationError) as exc_info:
-            Company(
-                name="Test Corp",
-                zip_code="ABCDE",
-            )
+            Company(name="Test Corp", zip_code=invalid_zip)
         assert "Invalid ZIP code format" in str(exc_info.value)
 
     def test_raw_company_all_none(self):
@@ -349,58 +318,38 @@ class TestCompanyModels:
         assert match.confidence_score == 0.95
         assert match.match_method == "uei_exact"
 
-    def test_company_match_confidence_bounds(self):
+    @pytest.mark.parametrize(
+        "score,should_pass",
+        [
+            (0.0, True),
+            (0.5, True),
+            (1.0, True),
+            (-0.1, False),
+            (1.5, False),
+        ],
+        ids=["min_bound", "mid_range", "max_bound", "negative_invalid", "above_one_invalid"],
+    )
+    def test_company_match_confidence_bounds(self, score, should_pass):
         """Test CompanyMatch confidence_score respects 0-1 bounds."""
         source = Company(name="Source")
         matched = Company(name="Matched")
 
-        # Test lower bound
-        match = CompanyMatch(
-            source_company=source,
-            matched_company=matched,
-            confidence_score=0.0,
-            match_method="test",
-        )
-        assert match.confidence_score == 0.0
-
-        # Test upper bound
-        match = CompanyMatch(
-            source_company=source,
-            matched_company=matched,
-            confidence_score=1.0,
-            match_method="test",
-        )
-        assert match.confidence_score == 1.0
-
-    def test_company_match_confidence_validator_rejects_negative(self):
-        """Test confidence_score validator rejects negative values."""
-        source = Company(name="Source")
-        matched = Company(name="Matched")
-
-        with pytest.raises(ValidationError) as exc_info:
-            CompanyMatch(
+        if should_pass:
+            match = CompanyMatch(
                 source_company=source,
                 matched_company=matched,
-                confidence_score=-0.1,
+                confidence_score=score,
                 match_method="test",
             )
-        # Pydantic 2.x uses "greater than or equal to" message
-        assert "greater than or equal to 0" in str(exc_info.value).lower()
-
-    def test_company_match_confidence_validator_rejects_too_high(self):
-        """Test confidence_score validator rejects values > 1.0."""
-        source = Company(name="Source")
-        matched = Company(name="Matched")
-
-        with pytest.raises(ValidationError) as exc_info:
-            CompanyMatch(
-                source_company=source,
-                matched_company=matched,
-                confidence_score=1.5,
-                match_method="test",
-            )
-        # Pydantic 2.x uses "less than or equal to" message
-        assert "less than or equal to 1" in str(exc_info.value).lower()
+            assert match.confidence_score == score
+        else:
+            with pytest.raises(ValidationError):
+                CompanyMatch(
+                    source_company=source,
+                    matched_company=matched,
+                    confidence_score=score,
+                    match_method="test",
+                )
 
     def test_company_match_various_methods(self):
         """Test CompanyMatch with various matching methods."""
