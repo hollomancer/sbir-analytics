@@ -154,6 +154,52 @@ class SecurityStack(Stack):
                 )
             )
 
+            # AWS Batch permissions for ML job execution
+            self.github_actions_role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "batch:SubmitJob",
+                        "batch:DescribeJobs",
+                        "batch:ListJobs",
+                        "batch:TerminateJob",
+                    ],
+                    resources=[
+                        f"arn:aws:batch:{self.region}:{self.account}:job-definition/sbir-analytics-ml-*",
+                        f"arn:aws:batch:{self.region}:{self.account}:job-queue/sbir-analytics-ml-*",
+                    ],
+                )
+            )
+
+            # ECR permissions for building and pushing ML job images
+            self.github_actions_role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "ecr:GetAuthorizationToken",
+                    ],
+                    resources=["*"],  # GetAuthorizationToken doesn't support resource-level permissions
+                )
+            )
+
+            self.github_actions_role.add_to_policy(
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:BatchGetImage",
+                        "ecr:CompleteLayerUpload",
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:InitiateLayerUpload",
+                        "ecr:PutImage",
+                        "ecr:UploadLayerPart",
+                    ],
+                    resources=[
+                        f"arn:aws:ecr:{self.region}:{self.account}:repository/sbir-analytics-ml-jobs"
+                    ],
+                )
+            )
+
         else:
             # Import existing roles (default)
             # Import Lambda execution role

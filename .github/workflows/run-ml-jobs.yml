@@ -13,6 +13,14 @@ on:
           - fiscal_returns_mvp
           - paecter_embeddings
           - all_ml_jobs
+      execution_mode:
+        description: 'Where to run the job'
+        required: true
+        type: choice
+        default: 'github-actions'
+        options:
+          - github-actions
+          - aws-batch
 
   # Or weekly schedule (optional)
   schedule:
@@ -26,8 +34,9 @@ env:
   AWS_REGION: us-east-2
 
 jobs:
-  run-ml-job:
-    name: Run ML Job
+  run-ml-job-github:
+    name: Run ML Job on GitHub Actions
+    if: ${{ github.event.inputs.execution_mode == 'github-actions' || github.event.inputs.execution_mode == '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 300  # 5 hours max (GitHub Actions limit is 6 hours)
 
@@ -150,3 +159,202 @@ jobs:
             /tmp/dagster_home
             reports/
           retention-days: 7
+
+  run-ml-job-batch:
+    name: Run ML Job on AWS Batch
+    if: ${{ github.event.inputs.execution_mode == 'aws-batch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # Just for orchestration, actual job runs on Batch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Submit job to AWS Batch
+        id: batch-submit
+        run: |
+          # Determine which job to run
+          JOB_NAME="${{ github.event.inputs.job_name || 'all_ml_jobs' }}"
+
+          # Map job name to job definition
+          case $JOB_NAME in
+            cet_full_pipeline)
+              JOB_DEFINITION="sbir-analytics-ml-cet-pipeline"
+              DAGSTER_JOB="cet_full_pipeline_job"
+              ;;
+            fiscal_returns_mvp)
+              JOB_DEFINITION="sbir-analytics-ml-fiscal-returns"
+              DAGSTER_JOB="fiscal_returns_mvp_job"
+              ;;
+            paecter_embeddings)
+              JOB_DEFINITION="sbir-analytics-ml-paecter-embeddings"
+              DAGSTER_JOB="paecter_job"
+              ;;
+            all_ml_jobs)
+              # For "all_ml_jobs", submit each job separately
+              echo "Submitting all ML jobs to AWS Batch..."
+
+              # Submit CET job
+              CET_JOB_ID=$(aws batch submit-job \
+                --job-name "ml-cet-${{ github.run_id }}" \
+                --job-queue sbir-analytics-ml-job-queue \
+                --job-definition sbir-analytics-ml-cet-pipeline \
+                --query 'jobId' \
+                --output text)
+              echo "Submitted CET job: $CET_JOB_ID"
+              echo "cet_job_id=$CET_JOB_ID" >> $GITHUB_OUTPUT
+
+              # Submit Fiscal job
+              FISCAL_JOB_ID=$(aws batch submit-job \
+                --job-name "ml-fiscal-${{ github.run_id }}" \
+                --job-queue sbir-analytics-ml-job-queue \
+                --job-definition sbir-analytics-ml-fiscal-returns \
+                --query 'jobId' \
+                --output text)
+              echo "Submitted Fiscal job: $FISCAL_JOB_ID"
+              echo "fiscal_job_id=$FISCAL_JOB_ID" >> $GITHUB_OUTPUT
+
+              # Submit PaECTER job
+              PAECTER_JOB_ID=$(aws batch submit-job \
+                --job-name "ml-paecter-${{ github.run_id }}" \
+                --job-queue sbir-analytics-ml-job-queue \
+                --job-definition sbir-analytics-ml-paecter-embeddings \
+                --query 'jobId' \
+                --output text)
+              echo "Submitted PaECTER job: $PAECTER_JOB_ID"
+              echo "paecter_job_id=$PAECTER_JOB_ID" >> $GITHUB_OUTPUT
+
+              echo "All jobs submitted successfully"
+              echo "job_ids=$CET_JOB_ID,$FISCAL_JOB_ID,$PAECTER_JOB_ID" >> $GITHUB_OUTPUT
+              exit 0
+              ;;
+            *)
+              echo "Unknown job: $JOB_NAME"
+              exit 1
+              ;;
+          esac
+
+          # Submit single job
+          echo "Submitting $JOB_NAME to AWS Batch..."
+          JOB_ID=$(aws batch submit-job \
+            --job-name "ml-${JOB_NAME}-${{ github.run_id }}" \
+            --job-queue sbir-analytics-ml-job-queue \
+            --job-definition "$JOB_DEFINITION" \
+            --query 'jobId' \
+            --output text)
+
+          echo "Submitted AWS Batch job: $JOB_ID"
+          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for job completion
+        run: |
+          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
+
+          if [ -z "$JOB_IDS" ]; then
+            echo "No job IDs found"
+            exit 1
+          fi
+
+          # Split comma-separated job IDs
+          IFS=',' read -ra JOBS <<< "$JOB_IDS"
+
+          echo "Waiting for ${#JOBS[@]} job(s) to complete..."
+
+          FAILED_JOBS=()
+          for JOB_ID in "${JOBS[@]}"; do
+            echo "Monitoring job: $JOB_ID"
+
+            # Wait for job to complete (max 6 hours)
+            MAX_WAIT=21600  # 6 hours in seconds
+            ELAPSED=0
+            INTERVAL=30
+
+            while [ $ELAPSED -lt $MAX_WAIT ]; do
+              STATUS=$(aws batch describe-jobs --jobs "$JOB_ID" \
+                --query 'jobs[0].status' --output text)
+
+              echo "[$(date '+%Y-%m-%d %H:%M:%S')] Job $JOB_ID status: $STATUS"
+
+              if [ "$STATUS" = "SUCCEEDED" ]; then
+                echo "✅ Job $JOB_ID completed successfully"
+                break
+              elif [ "$STATUS" = "FAILED" ]; then
+                echo "❌ Job $JOB_ID failed"
+                FAILED_JOBS+=("$JOB_ID")
+                break
+              fi
+
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            done
+
+            if [ $ELAPSED -ge $MAX_WAIT ]; then
+              echo "⏱️ Job $JOB_ID timed out after 6 hours"
+              FAILED_JOBS+=("$JOB_ID")
+            fi
+          done
+
+          # Check if any jobs failed
+          if [ ${#FAILED_JOBS[@]} -gt 0 ]; then
+            echo "The following jobs failed: ${FAILED_JOBS[*]}"
+            exit 1
+          fi
+
+          echo "All jobs completed successfully! 🎉"
+
+      - name: Get job logs
+        if: always()
+        run: |
+          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
+
+          if [ -z "$JOB_IDS" ]; then
+            echo "No job IDs to fetch logs for"
+            exit 0
+          fi
+
+          IFS=',' read -ra JOBS <<< "$JOB_IDS"
+
+          for JOB_ID in "${JOBS[@]}"; do
+            echo "=== Logs for job: $JOB_ID ==="
+
+            # Get log stream name from job details
+            LOG_STREAM=$(aws batch describe-jobs --jobs "$JOB_ID" \
+              --query 'jobs[0].container.logStreamName' --output text)
+
+            if [ "$LOG_STREAM" != "None" ] && [ -n "$LOG_STREAM" ]; then
+              aws logs tail "/aws/batch/sbir-analytics-ml" \
+                --log-stream-names "$LOG_STREAM" \
+                --format short \
+                --since 6h || echo "Failed to fetch logs for $JOB_ID"
+            else
+              echo "No log stream found for job $JOB_ID"
+            fi
+
+            echo ""
+          done
+
+      - name: Output job summary
+        if: always()
+        run: |
+          echo "### 🚀 AWS Batch Job Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Job Name:** ${{ github.event.inputs.job_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Execution Mode:** AWS Batch" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
+
+          if [ -n "$JOB_IDS" ]; then
+            echo "**Job IDs:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$JOB_IDS" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "View logs in [AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/queue/sbir-analytics-ml-job-queue)" >> $GITHUB_STEP_SUMMARY
+          fi
