@@ -160,21 +160,21 @@ class SecurityStack(Stack):
             self.lambda_role = iam.Role.from_role_name(
                 self,
                 "LambdaExecutionRole",
-                role_name="sbir-analytics-lambda-execution-role",
+                role_name="sbir-etl-lambda-execution-role",
             )
 
             # Import Step Functions execution role
             self.step_functions_role = iam.Role.from_role_name(
                 self,
                 "StepFunctionsExecutionRole",
-                role_name="sbir-analytics-step-functions-execution-role",
+                role_name="sbir-etl-step-functions-execution-role",
             )
 
             # Import GitHub Actions role
             self.github_actions_role = iam.Role.from_role_name(
                 self,
                 "GitHubActionsRole",
-                role_name="sbir-analytics-github-actions-role",
+                role_name="sbir-etl-github-actions-role",
             )
 
         # Output role ARNs
