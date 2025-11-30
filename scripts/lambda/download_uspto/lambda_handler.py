@@ -20,8 +20,10 @@ from common.download_utils import (
     create_standard_response,
     determine_file_extension,
     download_file,
+    has_file_changed,
     stream_download_to_s3,
     try_multiple_urls,
+    upload_to_s3,
 )
 
 # PatentsView configuration
@@ -109,6 +111,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Download USPTO data and upload to S3.
 
+    Supports change detection - will report whether file has changed
+    compared to the most recent version in S3.
+
     Event structure:
     {
         "s3_bucket": "sbir-etl-production-data",  # Optional, can use S3_BUCKET env var
@@ -116,7 +121,20 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         "source_url": "https://...",  # Optional, will use defaults if not provided
         "table_name": "patent",  # Optional, for PatentsView datasets
         "format": "csv",  # Optional, for assignments/ai_patents (csv or dta)
-        "force_refresh": false  # Optional
+        "force_refresh": false  # Optional, skip change detection if true
+    }
+
+    Returns:
+    {
+        "statusCode": 200,
+        "body": {
+            "status": "success",
+            "changed": true/false,  # Whether file has changed
+            "s3_bucket": "...",
+            "s3_key": "...",
+            "sha256": "...",
+            ...
+        }
     }
 
     Examples:
@@ -145,6 +163,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         config = DATASET_CONFIGS[dataset]
         source_url = event.get("source_url")
+        force_refresh = event.get("force_refresh", False)
         urls_to_try = []
 
         # Determine source URLs based on dataset type
@@ -188,16 +207,21 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         date_str = timestamp.strftime("%Y-%m-%d")
         s3_key = f"{config['s3_prefix']}/{date_str}/{filename}.zip"
 
-        # Prepare metadata
+        # Prepare base metadata (SHA256 will be added after download)
         metadata = {
             "source_url": source_url,
             "downloaded_at": timestamp.isoformat(),
             "dataset": dataset,
         }
 
+        # Note: For streaming downloads, SHA256 is computed during upload
+        # and stored in S3 metadata by stream_download_to_s3()
+
         # Download and upload
         if config["use_streaming"]:
             # Use streaming upload for large files
+            # Note: For streaming, we can't check before upload (file too large for memory)
+            # Instead, we check after upload and report whether changed
             print(f"Using streaming download for {dataset}")
 
             def stream_func(url):
@@ -213,8 +237,23 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             (total_size, file_hash), successful_url = try_multiple_urls(urls_to_try, stream_func)
             source_url = successful_url
 
+            # Check if changed after upload (for reporting purposes)
+            # Note: File is already uploaded - we're just checking against previous versions
+            changed = True
+            if not force_refresh:
+                changed, previous = has_file_changed(
+                    current_hash=file_hash,
+                    s3_bucket=s3_bucket,
+                    s3_prefix=f"{config['s3_prefix']}/",
+                    current_size=total_size,
+                )
+                print(f"Change detection (post-upload): changed={changed}")
+            else:
+                print("Force refresh enabled - skipping change detection")
+
         else:
             # Download to memory first for smaller files
+            # Can check before upload and skip if unchanged
             print(f"Using in-memory download for {dataset}")
 
             def download_func(url):
@@ -223,15 +262,35 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             (data, content_type), successful_url = try_multiple_urls(urls_to_try, download_func)
             source_url = successful_url
 
-            # Upload to S3
-            from common.download_utils import upload_to_s3
+            # Compute hash
+            import hashlib
 
+            file_hash = hashlib.sha256(data).hexdigest()
+
+            # Check if changed before upload
+            changed = True
+            if not force_refresh:
+                changed, previous = has_file_changed(
+                    current_hash=file_hash,
+                    s3_bucket=s3_bucket,
+                    s3_prefix=f"{config['s3_prefix']}/",
+                    current_size=len(data),
+                )
+                print(f"Change detection (pre-upload): changed={changed}")
+            else:
+                print("Force refresh enabled - skipping change detection")
+
+            # Upload to S3 (always upload, even if unchanged)
+            # Note: Downstream processes may need the file in a specific location
             file_hash = upload_to_s3(
                 data=data,
                 s3_bucket=s3_bucket,
                 s3_key=s3_key,
                 content_type=content_type or "application/zip",
-                metadata=metadata,
+                metadata={
+                    **metadata,
+                    "sha256": file_hash,
+                },
             )
             total_size = len(data)
 
@@ -245,6 +304,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             file_size=total_size,
             source_url=source_url,
             dataset=dataset,
+            changed=changed,  # Report whether file has changed
         )
 
     except Exception as e:
