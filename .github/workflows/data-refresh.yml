@@ -254,7 +254,7 @@ jobs:
       - name: Check downloaded files
         if: always()
         run: |
-# Source helper functions
+          # Source helper functions
           source ./scripts/ci/report-helpers.sh
 
           # Use S3 listing script
@@ -267,7 +267,7 @@ jobs:
 
           # Compare before/after
           CURRENT_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/raw/sbir/ --recursive | wc -l)
-          report_file_changes "$CURRENT_COUNT"/investigate-data-refresh-workflow-01MShq9Q1AP7ovEj9jHeGjPQ
+          report_file_changes "$CURRENT_COUNT"
 
           report_info "The Step Functions workflow handles SBIR data download. Check the AWS Console link above for detailed execution logs."
 
