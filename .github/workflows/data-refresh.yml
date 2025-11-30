@@ -302,8 +302,58 @@ jobs:
         run: |
           uv pip install aiohttp aioboto3
 
+      - name: Check if new USAspending file available
+        id: check-new-file
+        run: |
+          echo "## 🔍 USAspending File Availability Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for new file (exit code 0 = new file, 1 = not new)
+          if uv run python scripts/usaspending/check_new_file.py \
+            --s3-bucket ${{ env.S3_BUCKET }} \
+            --database-type full \
+            --json > check_result.json; then
+
+            # File is new
+            IS_NEW="true"
+            echo "is_new=true" >> $GITHUB_OUTPUT
+            echo "### ✅ New File Available" >> $GITHUB_STEP_SUMMARY
+          else
+            # File is not new or not available (exit code 1)
+            IS_NEW="false"
+            echo "is_new=false" >> $GITHUB_OUTPUT
+            echo "### ℹ️ No New File - Using Existing Data" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Display check results
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat check_result.json | jq '.' >> $GITHUB_STEP_SUMMARY || echo "No result available" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract and display key information
+          if [ -f check_result.json ]; then
+            SOURCE_URL=$(jq -r '.source_url // "N/A"' check_result.json)
+            AVAILABLE=$(jq -r '.available // false' check_result.json)
+            LAST_MODIFIED=$(jq -r '.last_modified // "N/A"' check_result.json)
+            S3_LAST_MODIFIED=$(jq -r '.s3_last_modified // "N/A"' check_result.json)
+
+            echo "**Source URL:** $SOURCE_URL" >> $GITHUB_STEP_SUMMARY
+            echo "**Available:** $AVAILABLE" >> $GITHUB_STEP_SUMMARY
+            echo "**Is New:** $IS_NEW" >> $GITHUB_STEP_SUMMARY
+            if [ "$LAST_MODIFIED" != "N/A" ]; then
+              echo "**Source Last Modified:** $LAST_MODIFIED" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ "$S3_LAST_MODIFIED" != "N/A" ]; then
+              echo "**S3 Last Modified:** $S3_LAST_MODIFIED" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Download and process USAspending database (parallel)
         id: usaspending-download
+        # Download if new file available OR force_refresh is enabled
+        if: steps.check-new-file.outputs.is_new == 'true' || github.event.inputs.force_refresh == 'true'
         uses: nick-invision/retry@v2
         with:
           timeout_minutes: 240
@@ -330,10 +380,16 @@ jobs:
           echo "## 💾 USAspending Database Download Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Check if download was successful
-          if [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
-            echo "### ✅ Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
-          else
+          # Check if download was skipped or ran
+          if [ "${{ steps.usaspending-download.outcome }}" = "skipped" ]; then
+            echo "### ⏭️ Status: SKIPPED - No New Data Available" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The USAspending database has not changed since the last download." >> $GITHUB_STEP_SUMMARY
+            echo "Existing data in S3 is up-to-date." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.usaspending-download.outcome }}" = "success" ]; then
+            echo "### ✅ Status: SUCCESS - New Data Downloaded" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.usaspending-download.outcome }}" = "failure" ]; then
             echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
