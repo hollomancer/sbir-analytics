@@ -106,12 +106,19 @@ class TransitionProfileLoader(BaseNeo4jLoader):
 
                 if len(company_transitions) > 0:
                     avg_score = company_transitions["likelihood_score"].mean()
-                    high_conf = len(
-                        company_transitions[company_transitions["confidence"] == "high"]
-                    )
-                    likely_conf = len(
-                        company_transitions[company_transitions["confidence"] == "likely"]
-                    )
+
+                    # Handle missing confidence field gracefully
+                    if "confidence" in company_transitions.columns:
+                        high_conf = len(
+                            company_transitions[company_transitions["confidence"] == "high"]
+                        )
+                        likely_conf = len(
+                            company_transitions[company_transitions["confidence"] == "likely"]
+                        )
+                    else:
+                        high_conf = 0
+                        likely_conf = 0
+
                     last_transition = company_transitions["detected_at"].max()
 
                     # Calculate avg time to transition if award dates available
@@ -157,6 +164,16 @@ class TransitionProfileLoader(BaseNeo4jLoader):
             for award_id in awards_with_transitions:
                 award_transitions = transitions_df[transitions_df["award_id"] == award_id]
 
+                # Handle missing confidence field gracefully
+                if "confidence" in award_transitions.columns:
+                    high_conf = len(award_transitions[award_transitions["confidence"] == "high"])
+                    likely_conf = len(
+                        award_transitions[award_transitions["confidence"] == "likely"]
+                    )
+                else:
+                    high_conf = 0
+                    likely_conf = 0
+
                 profile = {
                     "profile_id": f"profile_{award_id}_{datetime.utcnow().timestamp()}",
                     "award_id": award_id,
@@ -164,12 +181,8 @@ class TransitionProfileLoader(BaseNeo4jLoader):
                     "total_transitions": len(award_transitions),
                     "success_rate": 1.0 if len(award_transitions) > 0 else 0.0,
                     "avg_likelihood_score": round(award_transitions["likelihood_score"].mean(), 4),
-                    "high_confidence_count": len(
-                        award_transitions[award_transitions["confidence"] == "high"]
-                    ),
-                    "likely_confidence_count": len(
-                        award_transitions[award_transitions["confidence"] == "likely"]
-                    ),
+                    "high_confidence_count": high_conf,
+                    "likely_confidence_count": likely_conf,
                     "last_transition_date": award_transitions["detected_at"].max().isoformat(),
                     "avg_time_to_transition_days": None,
                     "created_at": datetime.utcnow().isoformat(),

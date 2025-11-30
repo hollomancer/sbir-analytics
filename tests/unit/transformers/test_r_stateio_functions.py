@@ -274,23 +274,17 @@ class TestEdgeCases:
         # Should still convert empty dict to R list
         mock_ro.ListVector.assert_called_with({})
 
-    @patch("src.transformers.r_stateio_functions.RPY2_AVAILABLE", True)
-    @patch("src.transformers.r_stateio_functions.ro")
-    @patch("src.transformers.r_stateio_functions.call_r_function")
-    def test_apply_demand_shocks_empty_dataframe(self, mock_call_r, mock_ro):
+    def test_apply_demand_shocks_empty_dataframe(self):
         """Test apply_demand_shocks with empty DataFrame."""
         # Empty shocks should return empty result
-        df = pd.DataFrame({"bea_sector": [], "shock_amount": []})
+        shocks_df = pd.DataFrame({"bea_sector": [], "shock_amount": []})
+        leontief_inv = pd.DataFrame()  # Empty Leontief inverse
 
-        # Mock R objects
-        mock_model = Mock()
-        mock_ro.ListVector.return_value = Mock()
-        mock_call_r.return_value = pd.DataFrame()  # Return empty DataFrame
-
-        result = r_stateio.apply_demand_shocks(mock_model, df)
+        result = r_stateio.apply_demand_shocks(leontief_inv, shocks_df)
 
         # Should handle empty input gracefully
-        assert isinstance(result, pd.DataFrame)
+        assert isinstance(result, pd.Series)
+        assert len(result) == 0
 
 
 class TestMatrixCalculations:

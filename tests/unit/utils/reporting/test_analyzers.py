@@ -348,7 +348,7 @@ class TestCetClassificationAnalyzer:
         assert "artificial_intelligence" in distribution
         assert distribution["artificial_intelligence"] == 0.4  # 2 out of 5
         assert "quantum_information_technologies" in distribution
-        assert distribution["biotechnology"] in distribution
+        assert "biotechnology" in distribution
 
     def test_calculate_category_distribution_empty(self):
         """Test category distribution with empty DataFrame."""

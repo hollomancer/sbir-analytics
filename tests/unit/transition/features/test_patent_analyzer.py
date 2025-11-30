@@ -123,7 +123,7 @@ class TestExtractSignals:
         )
 
         assert signal.patent_count == 3
-        assert signal.patents_pre_contract == 1  # US001 filed before contract
+        assert signal.patents_pre_contract == 2  # US123456 and US234567 filed before contract
         assert signal.patent_score > 0.0
 
     def test_extract_signals_counts_pre_contract_patents(self, extractor):
