@@ -472,42 +472,21 @@ jobs:
           # PatentsView
           echo "**PatentsView:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable 2>&1 | grep -v "^$"; then
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable | tail -5
-            echo ""
-            echo "Total size:"
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --summarize | grep "Total Size"
-          else
-            echo "No files found in raw/uspto/patentsview/"
-          fi
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/patentsview/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Assignments
           echo "**Assignments:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable 2>&1 | grep -v "^$"; then
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable | tail -5
-            echo ""
-            echo "Total size:"
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --summarize | grep "Total Size"
-          else
-            echo "No files found in raw/uspto/assignments/"
-          fi
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/assignments/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # AI Patents
           echo "**AI Patents:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable 2>&1 | grep -v "^$"; then
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable | tail -5
-            echo ""
-            echo "Total size:"
-            aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --summarize | grep "Total Size"
-          else
-            echo "No files found in raw/uspto/ai_patents/"
-          fi
+          aws s3 ls s3://${{ env.S3_BUCKET }}/raw/uspto/ai_patents/ --recursive --human-readable | tail -5 >> $GITHUB_STEP_SUMMARY || echo "No files found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
