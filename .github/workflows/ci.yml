@@ -972,12 +972,25 @@ jobs:
           neo4j-user: ${{ secrets.NEO4J_USER }}
           neo4j-password: ${{ secrets.NEO4J_PASSWORD }}
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build runtime image
         run: |
           set -eux
           docker build --target runtime \
-            --cache-from ghcr.io/${{ github.repository }}:latest \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             -t "${IMAGE_NAME}:${IMAGE_TAG}" .
+
+          # Move cache to avoid growing indefinitely
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Start development compose stack (dev profile)
         run: |
