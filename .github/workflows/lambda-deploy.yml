@@ -97,7 +97,7 @@ jobs:
           mkdir -p "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
 
           # Install dependencies to the layer directory
-          pip install -r "${LAYER_DIR}/requirements.txt" -t "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
+          pip install --only-binary=:all: -r "${LAYER_DIR}/requirements.txt" -t "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
 
           # Remove unnecessary files to reduce size
           cd "${OUTPUT_DIR}/python/lib/python${PYTHON_VERSION}/site-packages"
