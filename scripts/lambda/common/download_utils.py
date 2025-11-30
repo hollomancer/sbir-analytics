@@ -11,6 +11,7 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 import boto3
+from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
 
@@ -353,3 +354,181 @@ def try_multiple_urls(
     if "403" in str(last_error):
         error_msg += "\n\nNote: Server returned 403 Forbidden. This may indicate authentication is required or the URL is no longer valid."
     raise Exception(error_msg)
+
+
+def get_latest_s3_object(s3_bucket: str, s3_prefix: str) -> dict[str, Any] | None:
+    """
+    Get the most recent S3 object with the given prefix.
+
+    Args:
+        s3_bucket: S3 bucket name
+        s3_prefix: S3 key prefix to search (e.g., "raw/awards/")
+
+    Returns:
+        Dict with object metadata (Key, Size, ETag, Metadata) or None if not found
+    """
+    try:
+        # List objects with prefix, sorted by last modified
+        response = s3_client.list_objects_v2(
+            Bucket=s3_bucket,
+            Prefix=s3_prefix,
+            MaxKeys=1000,  # Reasonable limit
+        )
+
+        if "Contents" not in response or not response["Contents"]:
+            print(f"No existing objects found with prefix: {s3_prefix}")
+            return None
+
+        # Sort by LastModified descending (most recent first)
+        objects = sorted(response["Contents"], key=lambda x: x["LastModified"], reverse=True)
+        latest = objects[0]
+
+        # Get object metadata (including custom metadata like SHA256)
+        try:
+            metadata_response = s3_client.head_object(Bucket=s3_bucket, Key=latest["Key"])
+            return {
+                "Key": latest["Key"],
+                "Size": latest["Size"],
+                "ETag": latest["ETag"],
+                "LastModified": latest["LastModified"],
+                "Metadata": metadata_response.get("Metadata", {}),
+            }
+        except ClientError as e:
+            print(f"Warning: Could not get metadata for {latest['Key']}: {e}")
+            return {
+                "Key": latest["Key"],
+                "Size": latest["Size"],
+                "ETag": latest["ETag"],
+                "LastModified": latest["LastModified"],
+                "Metadata": {},
+            }
+
+    except ClientError as e:
+        print(f"Error listing S3 objects: {e}")
+        return None
+
+
+def has_file_changed(
+    current_hash: str,
+    s3_bucket: str,
+    s3_prefix: str,
+    current_size: int | None = None,
+) -> tuple[bool, dict[str, Any] | None]:
+    """
+    Check if a file has changed compared to the latest version in S3.
+
+    Compares SHA256 hash and optionally file size with the most recent
+    S3 object matching the given prefix.
+
+    Args:
+        current_hash: SHA256 hash of the current file
+        s3_bucket: S3 bucket name
+        s3_prefix: S3 key prefix (e.g., "raw/awards/")
+        current_size: Optional file size for additional validation
+
+    Returns:
+        Tuple of (changed: bool, previous_object: dict | None)
+        - changed=True if file has changed or no previous version exists
+        - changed=False if file is identical to previous version
+        - previous_object contains metadata of the previous version if found
+
+    Examples:
+        >>> has_file_changed("abc123", "my-bucket", "raw/awards/")
+        (True, {"Key": "raw/awards/2024-01-01/data.csv", "Metadata": {"sha256": "xyz789"}})
+
+        >>> has_file_changed("abc123", "my-bucket", "raw/awards/")
+        (False, {"Key": "raw/awards/2024-01-01/data.csv", "Metadata": {"sha256": "abc123"}})
+    """
+    # Get the most recent S3 object
+    previous = get_latest_s3_object(s3_bucket, s3_prefix)
+
+    if previous is None:
+        print("No previous version found - treating as changed")
+        return True, None
+
+    # Extract previous hash from metadata
+    previous_hash = previous["Metadata"].get("sha256")
+
+    if not previous_hash:
+        print(f"Previous object {previous['Key']} has no SHA256 metadata - treating as changed")
+        return True, previous
+
+    # Compare hashes
+    if current_hash == previous_hash:
+        print(f"✓ File unchanged (SHA256 match: {current_hash[:16]}...)")
+
+        # Optional: Also check size for additional validation
+        if current_size is not None and previous["Size"] != current_size:
+            print(
+                f"⚠️  Warning: Hash matches but size differs "
+                f"(previous: {previous['Size']}, current: {current_size})"
+            )
+            # Still consider unchanged if hash matches
+
+        return False, previous
+    else:
+        print(
+            f"✓ File changed (hash mismatch)\n"
+            f"  Previous: {previous_hash[:16]}...\n"
+            f"  Current:  {current_hash[:16]}..."
+        )
+        return True, previous
+
+
+def download_with_change_detection(
+    source_url: str,
+    s3_bucket: str,
+    s3_prefix: str,
+    skip_if_unchanged: bool = True,
+    **download_kwargs: Any,
+) -> tuple[bytes | None, str, bool, dict[str, Any]]:
+    """
+    Download a file and check if it has changed compared to S3.
+
+    This is a higher-level function that combines download and change detection.
+    If skip_if_unchanged=True and the file hasn't changed, returns None for data.
+
+    Args:
+        source_url: URL to download from
+        s3_bucket: S3 bucket name
+        s3_prefix: S3 key prefix for change detection
+        skip_if_unchanged: If True, skip download if file hasn't changed
+        **download_kwargs: Additional arguments passed to download_file()
+
+    Returns:
+        Tuple of (data, hash, changed, previous_object)
+        - data: File data (None if skipped)
+        - hash: SHA256 hash of downloaded file
+        - changed: Whether file has changed
+        - previous_object: Metadata of previous version (if exists)
+
+    Examples:
+        >>> data, hash, changed, prev = download_with_change_detection(
+        ...     "https://example.com/data.csv",
+        ...     "my-bucket",
+        ...     "raw/awards/"
+        ... )
+        >>> if changed:
+        ...     # Upload to S3
+        ...     upload_to_s3(data, bucket, key)
+    """
+    # Download the file
+    data, content_type = download_file(source_url, **download_kwargs)
+
+    # Compute hash
+    file_hash = hashlib.sha256(data).hexdigest()
+
+    # Check if changed
+    changed, previous = has_file_changed(
+        current_hash=file_hash,
+        s3_bucket=s3_bucket,
+        s3_prefix=s3_prefix,
+        current_size=len(data),
+    )
+
+    # Return data only if changed or skip is disabled
+    if not changed and skip_if_unchanged:
+        print(f"Skipping upload - file unchanged")
+        return None, file_hash, False, previous
+    else:
+        return data, file_hash, changed, previous
