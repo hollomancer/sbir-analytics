@@ -434,9 +434,9 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
     metadata = {
         "actual_match_rate": f"{actual_match_rate:.1%}",
         "threshold": f"{min_match_rate:.1%}",
-        "total_awards": total_awards,
-        "matched_awards": matched_awards,
-        "unmatched_awards": total_awards - matched_awards,
+        "total_awards": int(total_awards),
+        "matched_awards": int(matched_awards),
+        "unmatched_awards": int(total_awards - matched_awards),
         "exact_matches": int(exact_matches),
         "fuzzy_matches": int(fuzzy_matches),
         "match_methods": match_methods.to_dict(),

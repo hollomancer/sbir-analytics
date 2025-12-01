@@ -20,7 +20,7 @@ paths:
 
   # USAspending database dumps
   usaspending_dump_dir: "data/usaspending"
-  usaspending_dump_file: "data/usaspending/usaspending-db_20251006.zip"
+  usaspending_dump_file: "data/usaspending/usaspending-db-test_recipient_lookup.zip"
   # S3 path for USAspending database dumps (overrides local path if S3 is configured)
   # Format: s3://bucket-name/raw/usaspending/database/YYYY-MM-DD/filename.zip
   usaspending_dump_s3_path: "s3://sbir-etl-production-data/raw/usaspending/database/latest/usaspending-db-subset.zip"

@@ -179,39 +179,20 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     df = result.value
 
-    # Handle test data with simplified schema
-    # Test data columns: id, award_id, action_date, award_amount, agency, recipient_name, uei
-    # Real recipient_lookup columns: id, recipient_hash, legal_business_name, duns, uei, ...
-    if "legal_business_name" not in df.columns:
-        context.log.warning("Detected test data schema - mapping columns to expected names")
-        # Map test data columns to expected enricher column names
-        column_mapping = {}
-        if "column5" in df.columns:  # Generic column names from header=false
-            column_mapping = {
-                "column0": "id",
-                "column1": "award_id",
-                "column2": "action_date",
-                "column3": "award_amount",
-                "column4": "agency",
-                "column5": "legal_business_name",  # recipient_name -> legal_business_name
-                "column6": "uei",
-            }
-        elif "Sample Company" in str(df.iloc[0].values) if len(df) > 0 else False:
-            # Named columns from test data
-            for col in df.columns:
-                if "company" in col.lower() or "recipient" in col.lower() or "name" in col.lower():
-                    column_mapping[col] = "legal_business_name"
-                elif col.lower() == "uei":
-                    column_mapping[col] = "uei"
+    # Verify expected columns exist (schema applied by extractor for OID 5419)
+    required_cols = ["legal_business_name", "uei", "duns"]
+    missing_cols = [col for col in required_cols if col not in df.columns]
 
-        if column_mapping:
-            df = df.rename(columns=column_mapping)
-            context.log.info(f"Renamed columns: {column_mapping}")
+    if missing_cols:
+        context.log.warning(
+            f"Missing expected columns: {missing_cols}. "
+            "This may indicate old test data or schema mismatch."
+        )
+        # Add missing columns with None values for compatibility
+        for col in missing_cols:
+            df[col] = None
 
-        # Add missing columns with None values
-        for col in ["duns", "legal_business_name", "uei"]:
-            if col not in df.columns:
-                df[col] = None
+    context.log.info(f"Loaded {len(df)} recipient records with columns: {list(df.columns)}")
 
     return Output(value=df, metadata=result.metadata)
 

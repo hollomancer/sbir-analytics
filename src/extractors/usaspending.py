@@ -271,14 +271,49 @@ class DuckDBUSAspendingExtractor:
                         except Exception as e:
                             logger.error(f"Failed to create table {table_name_for_file}: {e}")
 
-                # Create a union view for transaction_normalized if multiple tables
+                # Create views based on table type and OID
                 base_table_identifier = self._escape_identifier(table_name)
+
+                # OID 5419 = recipient_lookup, OID 5420 = transaction_normalized
+                recipient_tables = [
+                    f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5419
+                ]
                 txn_tables = [f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5420]
-                if txn_tables:
+
+                # Handle recipient_lookup (OID 5419) with proper column names
+                if recipient_tables and "recipient" in table_name.lower():
+                    source_table = self._escape_identifier(recipient_tables[0])
+                    # Apply column names from schema
+                    col_aliases = ", ".join(
+                        f"column{i} AS {col}" for i, col in enumerate(RECIPIENT_LOOKUP_COLUMNS)
+                    )
+                    view_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT {col_aliases} FROM {source_table}"  # nosec B608
+                    try:
+                        conn.execute(view_query)
+                        logger.info(
+                            f"Created view {table_name} with schema from {recipient_tables[0]}"
+                        )
+                    except Exception as e:
+                        # Fallback: column count mismatch, use raw table
+                        logger.warning(f"Schema mapping failed ({e}), using raw columns")
+                        fallback_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {source_table}"  # nosec B608
+                        conn.execute(fallback_query)
+                        logger.info(f"Created view {table_name} from {recipient_tables[0]}")
+
+                # Handle transaction_normalized (OID 5420)
+                elif txn_tables:
                     first_table_identifier = self._escape_identifier(txn_tables[0])
                     union_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"  # nosec B608
                     conn.execute(union_query)
                     logger.info(f"Created view {table_name} from {txn_tables[0]}")
+
+                # Fallback: use first available table
+                elif copy_files:
+                    first_table = f"{table_name}_{copy_files[0]['oid']}"
+                    first_table_identifier = self._escape_identifier(first_table)
+                    fallback_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"  # nosec B608
+                    conn.execute(fallback_query)
+                    logger.info(f"Created view {table_name} from {first_table}")
 
                 return True
 
