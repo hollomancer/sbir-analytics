@@ -468,8 +468,12 @@ jobs:
 
           # Full output log in collapsible section
           if [ -f usaspending_output.txt ]; then
-            FULL_OUTPUT=$(cat usaspending_output.txt)
-            report_collapsible "📋 Full Output Log - Click to expand" "$FULL_OUTPUT"
+            echo "<details><summary>📋 Full Output Log - Click to expand</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
 
   refresh-uspto:
