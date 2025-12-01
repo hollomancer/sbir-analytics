@@ -45,11 +45,16 @@ def _get_job(name: str) -> JobDefinition | None:
 # Try to get CET jobs (may not be available if heavy assets are skipped)
 cet_full_pipeline_job = _get_job("cet_full_pipeline_job")
 
-# Define SBIR ingestion job (just the ingestion assets)
+# Define SBIR ingestion job (extraction + validation + enrichment)
 sbir_ingestion_job = define_asset_job(
     name="sbir_ingestion_job",
-    selection=AssetSelection.groups("sbir_ingestion"),
-    description="Extract, validate, and prepare SBIR awards data",
+    selection=AssetSelection.keys(
+        "raw_sbir_awards",
+        "validated_sbir_awards",
+        "raw_usaspending_recipients",
+        "enriched_sbir_awards",
+    ),
+    description="Extract, validate, and enrich SBIR awards data",
 )
 
 # Define a job that materializes all assets

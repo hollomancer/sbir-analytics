@@ -129,6 +129,44 @@ def build_s3_path(relative_path: str, bucket: str | None = None) -> str:
     return f"s3://{bucket}/{relative_path}"
 
 
+def find_latest_sbir_awards(bucket: str | None = None, prefix: str = "raw/awards/") -> str | None:
+    """
+    Find the latest SBIR awards CSV file in S3.
+
+    Args:
+        bucket: S3 bucket name
+        prefix: S3 prefix to search
+
+    Returns:
+        S3 URL of latest file, or None if not found
+    """
+    import boto3
+
+    bucket = bucket or get_s3_bucket_from_env()
+    if not bucket:
+        return None
+
+    try:
+        s3 = boto3.client("s3")
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+
+        if "Contents" not in response:
+            return None
+
+        # Find latest award_data.csv by LastModified
+        csv_files = [obj for obj in response["Contents"] if obj["Key"].endswith("award_data.csv")]
+
+        if not csv_files:
+            return None
+
+        latest = max(csv_files, key=lambda x: x["LastModified"])
+        return f"s3://{bucket}/{latest['Key']}"
+
+    except Exception as e:
+        logger.warning(f"Failed to find latest SBIR awards in S3: {e}")
+        return None
+
+
 def find_latest_usaspending_dump(
     bucket: str | None = None,
     database_type: str = "full",

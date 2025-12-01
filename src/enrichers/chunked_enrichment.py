@@ -203,9 +203,10 @@ class ChunkedEnricher:
                     sbir_company_col="Company",
                     sbir_uei_col="UEI",
                     sbir_duns_col="Duns",
-                    recipient_name_col="recipient_name",
-                    recipient_uei_col="recipient_uei",
-                    recipient_duns_col="recipient_duns",
+                    # USAspending recipient_lookup table column names
+                    recipient_name_col="legal_business_name",
+                    recipient_uei_col="uei",
+                    recipient_duns_col="duns",
                     high_threshold=int(self.high_threshold * 100),  # Convert 0.0-1.0 to 0-100
                     low_threshold=int(self.low_threshold * 100),  # Convert 0.0-1.0 to 0-100
                     return_candidates=True,

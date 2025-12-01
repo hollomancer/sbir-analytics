@@ -250,7 +250,9 @@ def validate_duns_format(duns: Any, row_index: int) -> QualityIssue | None:
     if pd.isna(duns) or duns == "":
         return None  # DUNS is optional
 
-    if len(duns) != 9 or not duns.isdigit():
+    # Convert to string if numeric
+    duns_str = str(duns).strip()
+    if len(duns_str) != 9 or not duns_str.isdigit():
         return QualityIssue(
             severity=QualitySeverity.WARNING,
             field="Duns",

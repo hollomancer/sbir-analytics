@@ -17,6 +17,31 @@ from ..config.loader import get_config
 from ..utils import log_with_context
 from ..utils.cloud_storage import resolve_data_path
 
+# USAspending recipient_lookup table schema (from Django model)
+# https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/recipient/models.py
+RECIPIENT_LOOKUP_COLUMNS = [
+    "id",
+    "recipient_hash",
+    "legal_business_name",
+    "duns",
+    "uei",
+    "parent_uei",
+    "parent_duns",
+    "parent_legal_business_name",
+    "address_line_1",
+    "address_line_2",
+    "city",
+    "state",
+    "zip5",
+    "zip4",
+    "country_code",
+    "congressional_district",
+    "business_types_codes",
+    "update_date",
+    "source",
+    "alternate_names",
+]
+
 
 class DuckDBUSAspendingExtractor:
     """Extractor for USAspending data using DuckDB."""

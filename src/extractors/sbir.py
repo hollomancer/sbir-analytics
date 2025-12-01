@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from ..utils.cloud_storage import build_s3_path, get_s3_bucket_from_env, resolve_data_path
+from ..utils.cloud_storage import get_s3_bucket_from_env, resolve_data_path
 from ..utils.data.duckdb_client import DuckDBClient
 
 
@@ -46,7 +46,10 @@ class SbirDuckDBExtractor:
         if csv_path_s3 is None:
             bucket = get_s3_bucket_from_env()
             if bucket and use_s3_first:
-                csv_path_s3 = build_s3_path(str(csv_path), bucket)
+                # Try to find latest SBIR awards file in S3
+                from ..utils.cloud_storage import find_latest_sbir_awards
+
+                csv_path_s3 = find_latest_sbir_awards(bucket)
 
         # Resolve path with S3-first, local fallback
         self.csv_path = resolve_data_path(
