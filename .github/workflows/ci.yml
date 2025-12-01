@@ -244,12 +244,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Setup Node.js (for CDK CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install CDK dependencies
         working-directory: infrastructure/cdk
         run: |
           python -m venv .venv
           source .venv/bin/activate
           pip install -r requirements.txt
+          npm install -g aws-cdk
 
       - name: Prepare Lambda functions
         run: |
@@ -270,7 +276,8 @@ jobs:
           echo "## 🏗️ CDK Validation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if npx cdk synth --quiet 2>&1; then
+          # Run CDK synth with python directly (bypass cdk.json's uv command)
+          if cdk synth --app "python app.py" --quiet 2>&1; then
             echo "✅ CDK synth successful" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ CDK synth failed" >> $GITHUB_STEP_SUMMARY
