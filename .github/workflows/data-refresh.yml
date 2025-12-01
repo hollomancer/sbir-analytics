@@ -794,3 +794,74 @@ jobs:
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "**Workflow completed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**S3 Bucket:** \`${{ env.S3_BUCKET }}\`" >> $GITHUB_STEP_SUMMARY
+
+  trigger-dagster:
+    name: Trigger Dagster ETL
+    needs: [determine-source, refresh-sbir, refresh-usaspending, refresh-uspto, summary]
+    if: |
+      always() &&
+      (github.event.inputs.trigger_dagster != 'false') &&
+      (needs.refresh-sbir.result == 'success' || needs.refresh-usaspending.result == 'success' || needs.refresh-uspto.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Determine which Dagster jobs to trigger
+        id: determine-jobs
+        run: |
+          JOBS_TO_TRIGGER=""
+
+          # SBIR refresh triggers sbir_ingestion_job
+          if [ "${{ needs.refresh-sbir.result }}" = "success" ]; then
+            JOBS_TO_TRIGGER="sbir_ingestion_job"
+          fi
+
+          echo "jobs=$JOBS_TO_TRIGGER" >> $GITHUB_OUTPUT
+          echo "Jobs to trigger: $JOBS_TO_TRIGGER"
+
+      - name: Trigger Dagster Cloud run
+        if: steps.determine-jobs.outputs.jobs != ''
+        env:
+          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
+        run: |
+          echo "## 🚀 Dagster ETL Trigger" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Dagster Cloud GraphQL endpoint
+          DAGSTER_URL="https://sbir.dagster.cloud/prod/graphql"
+
+          for JOB in ${{ steps.determine-jobs.outputs.jobs }}; do
+            echo "Triggering job: $JOB"
+
+            # GraphQL mutation to launch a run
+            RESPONSE=$(curl -s -X POST "$DAGSTER_URL" \
+              -H "Content-Type: application/json" \
+              -H "Dagster-Cloud-Api-Token: $DAGSTER_CLOUD_API_TOKEN" \
+              -d "{
+                \"query\": \"mutation LaunchRun(\$jobName: String!) { launchRun(executionParams: { selector: { jobName: \$jobName, repositoryLocationName: \\\"sbir-analytics-core\\\", repositoryName: \\\"__repository__\\\" } }) { __typename ... on LaunchRunSuccess { run { runId } } ... on PythonError { message } ... on InvalidSubsetError { message } ... on InvalidOutputError { message } } }\",
+                \"variables\": { \"jobName\": \"$JOB\" }
+              }")
+
+            # Check response
+            RUN_ID=$(echo "$RESPONSE" | jq -r '.data.launchRun.run.runId // empty')
+            ERROR=$(echo "$RESPONSE" | jq -r '.data.launchRun.message // empty')
+
+            if [ -n "$RUN_ID" ]; then
+              echo "✅ **$JOB**: Triggered successfully" >> $GITHUB_STEP_SUMMARY
+              echo "   - Run ID: \`$RUN_ID\`" >> $GITHUB_STEP_SUMMARY
+              echo "   - [View in Dagster Cloud](https://sbir.dagster.cloud/prod/runs/$RUN_ID)" >> $GITHUB_STEP_SUMMARY
+            elif [ -n "$ERROR" ]; then
+              echo "❌ **$JOB**: Failed to trigger" >> $GITHUB_STEP_SUMMARY
+              echo "   - Error: $ERROR" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "⚠️ **$JOB**: Unknown response" >> $GITHUB_STEP_SUMMARY
+              echo "   - Response: $RESPONSE" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Skip notification
+        if: steps.determine-jobs.outputs.jobs == ''
+        run: |
+          echo "## ⏭️ Dagster ETL Trigger Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No data refresh jobs completed successfully, skipping Dagster trigger." >> $GITHUB_STEP_SUMMARY
