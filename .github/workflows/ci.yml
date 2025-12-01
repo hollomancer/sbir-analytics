@@ -192,7 +192,10 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: needs.detect-changes.outputs.workflows == 'true'
+    # Run if workflows changed OR on push to main/develop (to catch failed re-runs)
+    if: |
+      needs.detect-changes.outputs.workflows == 'true' ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
     steps:
       - uses: actions/checkout@v6
 
@@ -235,7 +238,10 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: needs.detect-changes.outputs.infrastructure == 'true'
+    # Run if infrastructure changed OR on push to main/develop (to catch failed re-runs)
+    if: |
+      needs.detect-changes.outputs.infrastructure == 'true' ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
     steps:
       - uses: actions/checkout@v6
 
