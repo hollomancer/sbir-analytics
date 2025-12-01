@@ -139,51 +139,16 @@ class DuckDBUSAspendingExtractor:
                 return False
 
     def _import_zipped_dump(self, dump_file: Path, table_name: str) -> bool:
-        """Import zipped PostgreSQL dump using postgres_scanner, COPY files, or pg_restore."""
+        """Import zipped PostgreSQL dump using COPY file extraction."""
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
-            conn = self.connect()
-            table_identifier = self._escape_identifier(table_name)
-            dump_literal = self._escape_literal(str(dump_file))
+            logger.info("Extracting COPY files from ZIP archive")
 
-            try:
-                # Try direct postgres_scanner access first
-                logger.info("Attempting direct postgres_scanner access to zipped dump")
-                test_query = (
-                    f"SELECT 1 FROM postgres_scan({dump_literal}, 'transaction_normalized') LIMIT 1"
-                )
-                conn.execute(test_query)
-                logger.info("Direct postgres_scanner access successful")
-
-                # Create view for the main table
-                create_view_query = f"""
-                CREATE OR REPLACE VIEW {table_identifier} AS
-                SELECT * FROM postgres_scan({dump_literal}, 'transaction_normalized')
-                """  # nosec B608
-                conn.execute(create_view_query)
-
-                # Get approximate row count (this may be slow on removable media)
-                try:
-                    count_query = f"SELECT COUNT(*) FROM {table_identifier}"  # nosec B608
-                    result = conn.execute(count_query).fetchone()
-                    row_count = result[0] if result else 0
-                    logger.info(f"Created view with approximately {row_count} rows")
-                except Exception:
-                    logger.warning("Could not determine row count from zipped dump")
-
+            # Import COPY files (primary method for pg_dump archives)
+            if self._import_copy_files(dump_file, table_name):
                 return True
 
-            except Exception as e:
-                logger.warning(f"Direct postgres_scanner access failed: {e}")
-                logger.info("Attempting COPY file extraction")
-
-                # Try extracting COPY files
-                if self._import_copy_files(dump_file, table_name):
-                    return True
-
-                logger.info("Falling back to pg_restore extraction")
-
-                # Fallback: extract dump temporarily and import
-                return self._extract_and_import_dump(dump_file, table_name)
+            logger.warning("COPY file extraction failed, trying pg_restore fallback")
+            return self._extract_and_import_dump(dump_file, table_name)
 
     def _import_copy_files(self, dump_file: Path, table_name: str) -> bool:
         """Import PostgreSQL COPY files from ZIP archive."""
