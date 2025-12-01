@@ -865,3 +865,53 @@ jobs:
           echo "## ⏭️ Dagster ETL Trigger Skipped" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "No data refresh jobs completed successfully, skipping Dagster trigger." >> $GITHUB_STEP_SUMMARY
+
+  load-neo4j:
+    name: Load Data to Neo4j
+    needs: [refresh-sbir]
+    if: needs.refresh-sbir.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run SBIR pipeline with Neo4j loading
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          SBIR_ETL__PIPELINE__ENVIRONMENT: production
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 🔷 SBIR Pipeline + Neo4j Loading" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Run full SBIR pipeline: extract → validate → load to Neo4j
+          uv run dagster job execute \
+            -f src/definitions.py \
+            -j sbir_weekly_refresh_job \
+            2>&1 | tee pipeline_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ Pipeline completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 pipeline_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
