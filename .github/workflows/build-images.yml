@@ -100,8 +100,8 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.REPO }}-r-base:${{ github.sha }}
           build-args: |
             PYTHON_BASE=${{ env.REGISTRY }}/${{ env.REPO }}-python-base:latest
-          cache-from: type=gha,scope=r-base
-          cache-to: type=gha,mode=max,scope=r-base
+          cache-from: type=gha,scope=r-base-v2
+          cache-to: type=gha,mode=max,scope=r-base-v2
 
   etl:
     name: Build ETL Image
