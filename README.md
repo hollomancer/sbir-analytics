@@ -42,8 +42,8 @@ make dev          # Start Dagster UI
 ### Production Deployment
 
 For production use, see [Deployment Guide](docs/deployment/README.md) for:
-- **Dagster Cloud** ($10/month, recommended for full ETL orchestration)
-- **AWS Lambda** (serverless, recommended for scheduled data refresh)
+- **GitHub Actions** (orchestrates ETL pipelines via `dagster job execute`)
+- **AWS Lambda** (serverless, for scheduled data downloads)
 
 ## Key Features
 
@@ -51,7 +51,7 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 - **Five-stage ETL**: Extract → Validate → Enrich → Transform → Load
 - **Asset-based orchestration**: Dagster with dependency management
 - **Data quality gates**: Comprehensive validation at each stage
-- **Cloud-first design**: AWS S3 + Neo4j Aura + Dagster Cloud
+- **Cloud-first design**: AWS S3 + Neo4j Aura + GitHub Actions
 
 ### Specialized Analysis Systems
 
@@ -63,11 +63,11 @@ For production use, see [Deployment Guide](docs/deployment/README.md) for:
 | **Patent Analysis** | USPTO patent chains and tech transfer tracking | [docs/schemas/patent-neo4j-schema.md](docs/schemas/patent-neo4j-schema.md) |
 
 ### Technology Stack
-- **Orchestration**: Dagster 1.7+ (asset-based pipeline)
+- **Orchestration**: Dagster 1.7+ (asset-based pipeline), GitHub Actions
 - **Database**: Neo4j 5.x (graph database for relationships)
 - **Processing**: DuckDB 1.0+ (analytical queries), Pandas 2.2+
 - **Configuration**: Pydantic 2.8+ (type-safe YAML config)
-- **Deployment**: Docker, AWS Lambda, Dagster Cloud
+- **Deployment**: Docker, AWS Lambda, GitHub Actions
 
 ## Documentation
 

@@ -1,101 +1,99 @@
 ---
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-11-21
+Last-Reviewed: 2025-12-01
 Status: active
-
 ---
 
 # Deployment Documentation
 
-This directory contains comprehensive deployment documentation for the SBIR ETL project.
+This directory contains deployment documentation for the SBIR ETL project.
 
 ## Deployment Overview
 
-The SBIR ETL project supports multiple deployment strategies optimized for different use cases:
+The SBIR ETL project uses GitHub Actions for orchestration with AWS infrastructure:
 
-1.  **Dagster Cloud + AWS (Primary Production)** - Fully managed cloud deployment (recommended)
-2.  **AWS Lambda + Step Functions** - Serverless scheduled workflows
-3.  **Docker Compose (Development/Failover)** - Self-hosted containerized deployment
+1. **GitHub Actions (Primary)** - Orchestrates all ETL pipelines via `dagster job execute`
+2. **AWS Batch** - Heavy compute jobs (ML, fiscal analysis)
+3. **AWS Lambda + Step Functions** - Data download workflows
+4. **Docker (Development)** - Local development and testing
 
-## Deployment Decision Tree
+## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│   What are you deploying?           │
-└──────────────┬──────────────────────┘
-               │
-               ├─── Production ETL pipeline? ───────────────────┐
-               │                                                │
-               │                                                ▼
-               │                               ┌───────────────────────────┐
-               │                               │  Use Dagster Cloud        │
-               │                               │  + Neo4j Aura + S3        │
-               │                               │                           │
-               │                               │  Benefits:                │
-               │                               │  • Fully managed          │
-               │                               │  • Auto-scaling           │
-               │                               │  • Built-in observability │
-               │                               │  • Cost-effective         │
-               │                               └───────────────────────────┘
-               │
-               ├─── Scheduled AWS workflows? ───────────────────┐
-               │                                                │
-               │                                                ▼
-               │                               ┌───────────────────────────┐
-               │                               │  Use AWS Lambda           │
-               │                               │  + Step Functions         │
-               │                               │                           │
-               │                               │  Benefits:                │
-               │                               │  • Serverless (no servers)│
-               │                               │  • Pay-per-execution      │
-               │                               │  • CloudWatch monitoring  │
-               │                               │  • Ideal for weekly runs  │
-               │                               └───────────────────────────┘
-               │
-               └─── Local Development/Testing? ─────────────────┐
-                                                                │
-                                                                ▼
-                                                 ┌───────────────────────────┐
-                                                 │  Use Docker Compose       │
-                                                 │  + Local Dagster          │
-                                                 │                           │
-                                                 │  Benefits:                │
-                                                 │  • Fast local iteration   │
-                                                 │  • No cloud costs         │
-                                                 │  • Full control           │
-                                                 │  • Works offline          │
-                                                 └───────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    GitHub Actions                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ ETL Pipeline│  │Data Refresh │  │  ML Jobs    │         │
+│  │   (weekly)  │  │  (scheduled)│  │ (on-demand) │         │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘         │
+└─────────┼────────────────┼────────────────┼─────────────────┘
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         AWS                                  │
+│  ┌─────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │   S3    │  │Step Functions│  │  AWS Batch  │             │
+│  │ (data)  │  │ (downloads)  │  │ (heavy ML)  │             │
+│  └─────────┘  └─────────────┘  └─────────────┘             │
+└─────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Neo4j Aura                               │
+│                   (Graph Database)                           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Quick Deployment Selector
+## Quick Start
 
-| Scenario | Recommended Deployment | Guide |
-|----------|----------------------|-------|
-| **Production ETL pipeline** | Dagster Cloud + Neo4j Aura + S3 | [Dagster Cloud Deployment Guide](dagster-cloud.md) |
-| **Weekly SBIR data refresh** | AWS Lambda + Step Functions | [AWS Serverless Deployment Guide](aws-deployment.md) |
-| **Local development** | Docker Compose + Local Dagster | [Containerization Guide](docker.md) |
-| **CI/CD testing** | Docker Compose (ci profile) | [Containerization Guide](docker.md) |
-| **Emergency failover** | Docker Compose | [Containerization Guide](docker.md) |
+### Run ETL Pipeline Manually
 
-## Detailed Deployment Guides
+1. Go to **Actions** → **ETL Pipeline** → **Run workflow**
+2. Select job: `sbir_weekly_refresh`, `usaspending_ingestion`, `uspto_pipeline`, etc.
+3. Click **Run workflow**
 
--   **[Dagster Cloud Overview](dagster-cloud.md)**: Single source of truth for prerequisites, environment variables, and validation steps referenced by other docs.
--   **[Dagster Cloud Deployment Guide](dagster-cloud.md)**: Comprehensive guide for deploying to Dagster Cloud, including UI and CLI-based methods, managing multiple Neo4j instances, and S3 data access.
--   **[AWS Serverless Deployment Guide](aws-deployment.md)**: Detailed instructions for setting up AWS infrastructure using Step Functions and Lambda, covering architecture, deployment steps, and S3 data migration.
--   **[Containerization Guide](docker.md)**: Explains how to build, run, and validate the SBIR ETL stack with Docker Compose for local development and failover scenarios.
+### Scheduled Runs
 
-## Related Documentation
+| Workflow | Schedule | Description |
+|----------|----------|-------------|
+| ETL Pipeline | Monday 10 AM UTC | Full weekly pipeline |
+| Data Refresh (SBIR) | Monday 9 AM UTC | Download fresh SBIR data |
+| Data Refresh (USAspending) | 6th of month | Download USAspending dump |
+| Data Refresh (USPTO) | 1st of month | Download USPTO patents |
 
--   **[Testing Documentation](../testing/)** - Testing guides and setup
--   **[Architecture Documentation](../architecture/)** - System architecture
--   **[Configuration Documentation](../../config/)** - Configuration files and settings
--   **[Quick Start Guide](../../README.md#quick-start)** - Getting started with the project
+## Deployment Guides
 
-## Troubleshooting
+| Guide | Description |
+|-------|-------------|
+| [AWS Deployment](aws-deployment.md) | Lambda, Step Functions, S3 setup |
+| [AWS Batch Jobs](aws-batch-analysis-jobs.md) | Heavy ML/fiscal analysis jobs |
+| [Docker](docker.md) | Local development setup |
+| [Neo4j Runbook](neo4j-runbook.md) | Neo4j Aura operations |
+| [GitHub Actions ML](github-actions-ml.md) | ML job configuration |
 
-For detailed troubleshooting, please refer to the specific deployment guide relevant to your issue.
+## Required Secrets
 
----
+Set these in GitHub → Settings → Secrets:
 
-For questions about deployment, consult the relevant guide above or refer to the main [project README](../../README.md).
+| Secret | Description |
+|--------|-------------|
+| `AWS_ROLE_ARN` | IAM role for AWS access |
+| `NEO4J_URI` | Neo4j Aura connection URI |
+| `NEO4J_USER` | Neo4j username |
+| `NEO4J_PASSWORD` | Neo4j password |
+
+## Local Development
+
+```bash
+# Start local Neo4j
+make neo4j-up
+
+# Run Dagster UI
+uv run dagster dev
+
+# Run specific job
+uv run dagster job execute -m src.definitions -j sbir_weekly_refresh_job
+```
+
+See [Docker Guide](docker.md) for full local setup.

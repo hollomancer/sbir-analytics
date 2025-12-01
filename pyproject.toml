@@ -65,9 +65,6 @@ ml = [
     "seaborn>=0.13.0,<1.0.0",
     "ipykernel>=6.29.0,<8.0.0",
 ]
-cloud = [
-    "dagster-cloud>=1.7.0,<2.0.0",  # CLI for Serverless deployment
-]
 
 [project.scripts]
 sbir-cli = "src.cli.main:app"
