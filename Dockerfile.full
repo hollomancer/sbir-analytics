@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install R packages (StateIO and dependencies)
 RUN R -e "install.packages(c('devtools', 'tidyverse', 'data.table'), repos='https://cloud.r-project.org/')" && \
-    R -e "devtools::install_github('USEPA/stateior', ref='main', dependencies=TRUE)"
+    R -e "devtools::install_github('USEPA/stateior', ref='master', dependencies=TRUE)"
 
 # Install ETL dependencies
 RUN pip install \
