@@ -50,6 +50,8 @@ jobs:
       cet: ${{ steps.detect.outputs.cet }}
       transition: ${{ steps.detect.outputs.transition }}
       docker: ${{ steps.detect.outputs.docker }}
+      workflows: ${{ steps.detect.outputs.workflows }}
+      infrastructure: ${{ steps.detect.outputs.infrastructure }}
       docs-only: ${{ steps.detect.outputs.docs-only }}
     steps:
       - uses: actions/checkout@v6
@@ -82,10 +84,15 @@ jobs:
               - 'tests/integration/transition/**'
               - 'docs/transition/**'
             docker:
-              - 'Dockerfile'
-              - 'docker-compose.yml'
+              - 'Dockerfile*'
+              - 'docker-compose*.yml'
               - '.dockerignore'
               - 'docker/**'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+            infrastructure:
+              - 'infrastructure/cdk/**'
             docs-only:
               - '**/*.md'
               - 'docs/**'
@@ -119,6 +126,12 @@ jobs:
           fi
           if [ "${{ steps.detect.outputs.docker }}" = "true" ]; then
             echo "  A --> I[Container Build]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.detect.outputs.workflows }}" = "true" ]; then
+            echo "  A --> J[Workflow Lint]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.detect.outputs.infrastructure }}" = "true" ]; then
+            echo "  A --> K[CDK Validate]" >> $GITHUB_STEP_SUMMARY
           fi
           echo "```" >> $GITHUB_STEP_SUMMARY
 
@@ -173,6 +186,96 @@ jobs:
           source .venv/bin/activate
           python --version
           python -c "import pydantic; print('Pydantic installed')"
+
+  workflow-lint:
+    name: Validate GitHub Actions Workflows
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: needs.detect-changes.outputs.workflows == 'true'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate workflow YAML syntax
+        run: |
+          echo "## 🔍 Workflow Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          ERRORS=0
+          for f in .github/workflows/*.yml; do
+            if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null; then
+              echo "✅ $f" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ $f - Invalid YAML" >> $GITHUB_STEP_SUMMARY
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**$ERRORS workflow(s) have invalid YAML**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Check for common workflow issues
+        run: |
+          # Check for deprecated actions
+          if grep -r "actions/checkout@v3\|actions/setup-python@v4" .github/workflows/; then
+            echo "::warning::Found deprecated action versions. Consider upgrading."
+          fi
+
+          # Check for hardcoded secrets (basic check)
+          if grep -rE "(password|secret|token)\s*[:=]\s*['\"][^$]" .github/workflows/ --include="*.yml" | grep -v "pragma: allowlist"; then
+            echo "::error::Potential hardcoded secrets found in workflows"
+            exit 1
+          fi
+
+  infrastructure-validate:
+    name: Validate CDK Infrastructure
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: needs.detect-changes.outputs.infrastructure == 'true'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install CDK dependencies
+        working-directory: infrastructure/cdk
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Prepare Lambda functions
+        run: |
+          # Copy common module to Lambda directories (required for CDK synth)
+          for dir in scripts/lambda/*/; do
+            if [ -d "$dir" ] && [ "$(basename $dir)" != "common" ]; then
+              cp -r scripts/lambda/common/* "$dir" 2>/dev/null || true
+            fi
+          done
+
+      - name: CDK Synth (validate templates)
+        working-directory: infrastructure/cdk
+        env:
+          CDK_DEFAULT_ACCOUNT: "123456789012"
+          CDK_DEFAULT_REGION: "us-east-2"
+        run: |
+          source .venv/bin/activate
+          echo "## 🏗️ CDK Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if npx cdk synth --quiet 2>&1; then
+            echo "✅ CDK synth successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ CDK synth failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
   test:
     name: Tests (${{ matrix.suite.name }})

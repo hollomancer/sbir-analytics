@@ -24,6 +24,12 @@ outputs:
   docker:
     description: Whether Docker-related files changed
     value: ${{ steps.filter.outputs.docker }}
+  workflows:
+    description: Whether GitHub Actions workflow files changed
+    value: ${{ steps.filter.outputs.workflows }}
+  infrastructure:
+    description: Whether infrastructure/CDK files changed
+    value: ${{ steps.filter.outputs.infrastructure }}
   # Static analysis outputs
   code-changed:
     description: Whether code files changed
