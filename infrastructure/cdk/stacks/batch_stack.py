@@ -51,13 +51,11 @@ class BatchStack(Stack):
                 repository_name=repo_name,
             )
 
-        # CloudWatch Log Group for Batch job logs
-        log_group = logs.LogGroup(
+        # CloudWatch Log Group for Batch job logs (import existing or create)
+        log_group = logs.LogGroup.from_log_group_name(
             self,
             "BatchJobLogGroup",
             log_group_name="/aws/batch/sbir-analytics-analysis",
-            retention=logs.RetentionDays.ONE_MONTH,
-            removal_policy=RemovalPolicy.RETAIN,  # Keep logs even if stack is deleted
         )
 
         # Use default VPC (simplest approach) or allow VPC ID to be specified
@@ -160,32 +158,17 @@ class BatchStack(Stack):
             )
         )
 
-        # Compute environment using Spot instances (70% cost savings)
+        # Compute environment using Fargate (serverless)
+        # Avoids EC2 instance type restrictions and quota issues
         compute_environment = batch.CfnComputeEnvironment(
             self,
             "AnalysisComputeEnvironment",
             type="MANAGED",
-            service_role=batch_service_role.role_arn,
             compute_resources=batch.CfnComputeEnvironment.ComputeResourcesProperty(
-                type="SPOT",
-                allocation_strategy="SPOT_CAPACITY_OPTIMIZED",
-                bid_percentage=100,  # Maximum spot price = on-demand price
-                minv_cpus=0,  # Scale down to 0 when idle
-                maxv_cpus=32,  # Maximum 32 vCPUs across all jobs
-                desiredv_cpus=0,  # Start at 0
-                instance_types=[
-                    "c5.large",     # 2 vCPUs, 4 GB RAM - minimum viable
-                    "c5.xlarge",    # 4 vCPUs, 8 GB RAM
-                    "m5.large",     # 2 vCPUs, 8 GB RAM - more memory
-                    "m5.xlarge",    # 4 vCPUs, 16 GB RAM
-                ],
+                type="FARGATE",
+                maxv_cpus=8,  # Limit to 8 vCPUs to control costs
                 subnets=[subnet.subnet_id for subnet in vpc.public_subnets],
                 security_group_ids=[security_group.security_group_id],
-                instance_role=instance_profile.attr_arn,
-                tags={
-                    "Name": "sbir-analytics-analysis-batch",
-                    "ManagedBy": "CDK",
-                },
             ),
             compute_environment_name="sbir-analytics-analysis-compute-env",
         )
@@ -204,19 +187,24 @@ class BatchStack(Stack):
             ],
         )
 
-        # Job definition for CET pipeline
+        # Job definition for CET pipeline (Fargate)
         cet_job_definition = batch.CfnJobDefinition(
             self,
             "CETJobDefinition",
             job_definition_name="sbir-analytics-analysis-cet-pipeline",
             type="container",
-            platform_capabilities=["EC2"],
+            platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
                 image=f"{self.ecr_repository.repository_uri}:latest",
-                vcpus=2,
-                memory=4096,  # 4 GB
+                resource_requirements=[
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
+                ],
                 job_role_arn=job_task_role.role_arn,
                 execution_role_arn=job_execution_role.role_arn,
+                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
+                    assign_public_ip="ENABLED",
+                ),
                 command=[
                     "dagster",
                     "job",
@@ -249,26 +237,31 @@ class BatchStack(Stack):
                 ),
             ),
             retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
-                attempts=2,  # Retry once on failure (Spot interruptions)
+                attempts=2,  # Retry once on failure
             ),
             timeout=batch.CfnJobDefinition.TimeoutProperty(
                 attempt_duration_seconds=21600,  # 6 hours max
             ),
         )
 
-        # Job definition for Fiscal Returns
+        # Job definition for Fiscal Returns (Fargate)
         fiscal_job_definition = batch.CfnJobDefinition(
             self,
             "FiscalJobDefinition",
             job_definition_name="sbir-analytics-analysis-fiscal-returns",
             type="container",
-            platform_capabilities=["EC2"],
+            platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
                 image=f"{self.ecr_repository.repository_uri}:latest",
-                vcpus=4,
-                memory=8192,  # 8 GB
+                resource_requirements=[
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="4"),
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="8192"),
+                ],
                 job_role_arn=job_task_role.role_arn,
                 execution_role_arn=job_execution_role.role_arn,
+                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
+                    assign_public_ip="ENABLED",
+                ),
                 command=[
                     "dagster",
                     "job",
@@ -308,19 +301,24 @@ class BatchStack(Stack):
             ),
         )
 
-        # Job definition for PaECTER embeddings
+        # Job definition for PaECTER embeddings (Fargate)
         paecter_job_definition = batch.CfnJobDefinition(
             self,
             "PaecterJobDefinition",
             job_definition_name="sbir-analytics-analysis-paecter-embeddings",
             type="container",
-            platform_capabilities=["EC2"],
+            platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
                 image=f"{self.ecr_repository.repository_uri}:latest",
-                vcpus=2,
-                memory=4096,  # 4 GB for embeddings
+                resource_requirements=[
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
+                ],
                 job_role_arn=job_task_role.role_arn,
                 execution_role_arn=job_execution_role.role_arn,
+                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
+                    assign_public_ip="ENABLED",
+                ),
                 command=[
                     "dagster",
                     "job",

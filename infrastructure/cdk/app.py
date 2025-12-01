@@ -20,9 +20,11 @@ subprocess.run([str(prepare_script)], check=True)
 app = cdk.App()
 
 # Environment configuration
+# Use explicit account/region for VPC lookups (required by Batch stack)
+import os
 env = cdk.Environment(
-    account=app.node.try_get_context("account") or None,
-    region=app.node.try_get_context("region") or "us-east-2",
+    account=app.node.try_get_context("account") or os.environ.get("CDK_DEFAULT_ACCOUNT"),
+    region=app.node.try_get_context("region") or os.environ.get("CDK_DEFAULT_REGION") or "us-east-2",
 )
 
 # Stack dependencies:
