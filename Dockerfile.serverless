@@ -13,14 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /opt/dagster/app
 
-# Copy only requirements first for better caching
-# This layer is cached unless requirements.txt changes
-COPY requirements.txt .
+# Copy minimal requirements for serverless (excludes heavy ML deps)
+COPY requirements-serverless.txt .
 
-# Install Python dependencies with pip cache
-# Use --mount=type=cache to cache pip downloads across builds
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-serverless.txt
 
 # Copy source code (separate layer for code changes)
 # This layer only rebuilds when source code changes
