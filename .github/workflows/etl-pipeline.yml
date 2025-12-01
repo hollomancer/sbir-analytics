@@ -117,45 +117,49 @@ jobs:
             exit $EXIT_CODE
           fi
 
-  usaspending-pipeline:
-    name: USAspending Pipeline
-    if: github.event.inputs.job == 'usaspending_ingestion' || github.event.inputs.job == 'all'
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    container:
-      image: ghcr.io/hollomancer/sbir-analytics:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Run USAspending pipeline
-        env:
-          S3_BUCKET: ${{ env.S3_BUCKET }}
-        shell: bash
-        run: |
-          echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
-
-          dagster job execute \
-            -m src.definitions \
-            -j usaspending_iterative_enrichment_job \
-            2>&1 | tee usaspending_output.txt
-
-          EXIT_CODE=${PIPESTATUS[0]}
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ USAspending pipeline completed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ USAspending pipeline failed" >> $GITHUB_STEP_SUMMARY
-            tail -100 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+  # TODO: Re-enable when S3-based asset persistence is implemented
+  # The usaspending_iterative_enrichment_job requires enriched_sbir_awards
+  # which must be persisted to S3 by the SBIR pipeline first
+  # usaspending-pipeline:
+  #   name: USAspending Pipeline
+  #   if: github.event.inputs.job == 'usaspending_ingestion' || github.event.inputs.job == 'all'
+  #   needs: [sbir-pipeline]
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 180
+  #   container:
+  #     image: ghcr.io/hollomancer/sbir-analytics:latest
+  #     credentials:
+  #       username: ${{ github.actor }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #
+  #     - name: Run USAspending pipeline
+  #       env:
+  #         S3_BUCKET: ${{ env.S3_BUCKET }}
+  #       shell: bash
+  #       run: |
+  #         echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
+  #
+  #         dagster job execute \
+  #           -m src.definitions \
+  #           -j usaspending_iterative_enrichment_job \
+  #           2>&1 | tee usaspending_output.txt
+  #
+  #         EXIT_CODE=${PIPESTATUS[0]}
+  #         if [ $EXIT_CODE -eq 0 ]; then
+  #           echo "✅ USAspending pipeline completed" >> $GITHUB_STEP_SUMMARY
+  #         else
+  #           echo "❌ USAspending pipeline failed" >> $GITHUB_STEP_SUMMARY
+  #           tail -100 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+  #           exit 1
+  #         fi
 
   uspto-pipeline:
     name: USPTO Pipeline

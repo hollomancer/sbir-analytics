@@ -71,6 +71,35 @@ def usaspending_freshness_ledger(context: AssetExecutionContext) -> Output[pd.Da
     )
 
 
+def _load_enriched_awards_from_s3(context: AssetExecutionContext) -> pd.DataFrame | None:
+    """Load enriched SBIR awards from S3 if available."""
+    import os
+
+    try:
+        import boto3
+
+        bucket = os.environ.get("S3_BUCKET", "sbir-etl-production-data")
+        key = "enriched/sbir_awards.parquet"
+
+        s3 = boto3.client("s3")
+        # Check if file exists
+        try:
+            s3.head_object(Bucket=bucket, Key=key)
+        except s3.exceptions.ClientError:
+            context.log.info(f"No enriched data found at s3://{bucket}/{key}")
+            return None
+
+        # Download and read
+        local_path = "/tmp/enriched_sbir_awards.parquet"
+        s3.download_file(bucket, key, local_path)
+        df = pd.read_parquet(local_path)
+        context.log.info(f"Loaded {len(df)} enriched awards from S3")
+        return df
+    except Exception as e:
+        context.log.warning(f"Failed to load enriched data from S3: {e}")
+        return None
+
+
 @asset(
     description="Awards that need USAspending refresh (exceed SLA)",
     group_name="enrichment",
@@ -79,17 +108,27 @@ def usaspending_freshness_ledger(context: AssetExecutionContext) -> Output[pd.Da
 def stale_usaspending_awards(
     context: AssetExecutionContext,
     usaspending_freshness_ledger: pd.DataFrame,
-    enriched_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """Identify awards that need USAspending refresh.
 
+    Loads enriched awards from S3 if available. If no enriched data exists,
+    returns empty DataFrame (no awards to refresh yet).
+
     Args:
         usaspending_freshness_ledger: Freshness records
-        enriched_sbir_awards: Enriched SBIR awards
 
     Returns:
         DataFrame of stale awards with enrichment identifiers
     """
+    # Load enriched awards from S3
+    enriched_sbir_awards = _load_enriched_awards_from_s3(context)
+    if enriched_sbir_awards is None or enriched_sbir_awards.empty:
+        context.log.info("No enriched awards available - nothing to refresh")
+        return Output(
+            value=pd.DataFrame(),
+            metadata={"stale_count": 0, "reason": "no_enriched_data"},
+        )
+
     config = get_config()
     sla_days = config.enrichment_refresh.usaspending.sla_staleness_days
 
@@ -104,7 +143,7 @@ def stale_usaspending_awards(
         )
 
     # Filter enriched awards to stale ones
-    from ...utils.asset_column_helper import AssetColumnHelper  # type: ignore[import-not-found]
+    from ..utils.asset_column_helper import AssetColumnHelper
 
     award_id_col = AssetColumnHelper.find_award_id_column(enriched_sbir_awards)
     if not award_id_col:
