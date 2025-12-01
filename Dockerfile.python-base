@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1.4
+#
+# Python Base Image for SBIR Analytics
+# Contains: Python 3.11 + core dependencies (dagster, pandas, duckdb, neo4j, pydantic)
+#
+# Built weekly and on dependency changes
+# Used as base for: sbir-analytics (ETL) and sbir-analytics-full (ML/R)
+#
+ARG PYTHON_VERSION=3.11.9
+
+FROM python:${PYTHON_VERSION}-slim-bookworm
+
+ARG UV_VERSION=0.5.11
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/root/.local/bin:$PATH"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    ca-certificates \
+    git \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh
+
+# Install core Python dependencies (shared across all images)
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install \
+    "dagster>=1.7.0,<2.0.0" \
+    "dagster-webserver>=1.7.0,<2.0.0" \
+    "pandas>=2.2.0,<3.0.0" \
+    "duckdb>=1.0.0,<2.0.0" \
+    "neo4j>=5.20.0,<7.0.0" \
+    "pydantic>=2.8.0,<3.0.0" \
+    "loguru>=0.7.0,<1.0.0" \
+    "pyyaml>=6.0.0,<7.0.0" \
+    "numpy<3" \
+    "pyarrow>=14.0.2,<23.0.0" \
+    "psutil"
+
+WORKDIR /app

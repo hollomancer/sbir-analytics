@@ -1,0 +1,67 @@
+# syntax=docker/dockerfile:1.4
+#
+# SBIR Analytics Full Image
+# Complete image with ETL + ML + R/StateIO for fiscal analysis
+#
+# Used by: AWS Batch, local ML/fiscal development
+#
+ARG BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
+
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install R and system dependencies for ML
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    r-base \
+    r-base-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install R packages (StateIO and dependencies)
+RUN R -e "install.packages(c('devtools', 'tidyverse', 'data.table'), repos='https://cloud.r-project.org/')" && \
+    R -e "devtools::install_github('USEPA/stateior', ref='main', dependencies=TRUE)"
+
+# Install ETL dependencies
+RUN pip install \
+    "boto3>=1.34.0,<2.0.0" \
+    "cloudpathlib[s3]>=0.23.0,<1.0.0" \
+    "rapidfuzz>=3.0.0,<4.0.0" \
+    "jellyfish>=1.0.0,<2.0.0" \
+    "httpx>=0.27.0,<1.0.0" \
+    "tenacity>=8.2.3,<10.0.0" \
+    "typer>=0.12.0,<1.0.0" \
+    "rich>=13.7.0,<15.0.0"
+
+# Install ML/fiscal dependencies
+RUN pip install \
+    "scikit-learn>=1.4.0,<2.0.0" \
+    "spacy>=3.7.0,<4.0.0" \
+    "joblib>=1.4.2,<2.0.0" \
+    "rpy2>=3.5.0,<4.0.0" \
+    "huggingface-hub>=0.20.0,<1.0.0"
+
+# Download spacy model
+RUN python -m spacy download en_core_web_sm
+
+# Copy application code
+COPY src/ /app/src/
+COPY config/ /app/config/
+COPY pyproject.toml /app/
+
+ENV PYTHONPATH=/app \
+    R_HOME=/usr/lib/R
+
+# Create directories
+RUN mkdir -p /app/data /app/logs /app/reports /app/artifacts
+
+CMD ["dagster", "job", "list", "-m", "src.definitions"]
