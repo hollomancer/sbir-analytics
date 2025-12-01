@@ -69,6 +69,9 @@ jobs:
             echo "✅ Downloaded SBIR awards"
           fi
 
+          # Download SAM.gov entity data
+          aws s3 cp "s3://${S3_BUCKET}/raw/sam_gov/sam_entity_records.parquet" data/raw/sam_gov/sam_entity_records.parquet && echo "✅ Downloaded SAM.gov entities" || echo "⚠️ SAM.gov data not found"
+
           # Download latest USAspending database (for recipient enrichment)
           LATEST_USA=$(aws s3 ls "s3://${S3_BUCKET}/raw/usaspending/database/" --recursive | grep "\.zip$" | sort | tail -1 | awk '{print $4}')
           if [ -n "$LATEST_USA" ]; then
