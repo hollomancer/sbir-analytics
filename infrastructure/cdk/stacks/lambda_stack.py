@@ -38,7 +38,6 @@ class LambdaStack(Stack):
             "enrichment-checks",
             "reset-neo4j",
             "smoke-checks",
-            "trigger-dagster-refresh",  # Simple Lambda to trigger GitHub Actions jobs
             # USPTO download function (unified - replaces 3 separate functions)
             "download-uspto",
             # Note: USAspending database download moved to EC2 automation

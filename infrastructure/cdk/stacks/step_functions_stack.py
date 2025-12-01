@@ -128,20 +128,7 @@ class StepFunctionsStack(Stack):
                             },
                         },
                     ],
-                    "Next": "TriggerDagsterRefresh",
-                },
-                "TriggerDagsterRefresh": {
-                    "Type": "Task",
-                    "Resource": lambda_functions["trigger-dagster-refresh"].function_arn,
-                    "Comment": "Triggers sbir_weekly_refresh_job in GitHub Actions (replaces ingestion-checks and load-neo4j)",
                     "Next": "EnrichmentChecks",
-                    "Retry": [
-                        {
-                            "ErrorEquals": ["States.TaskFailed"],
-                            "IntervalSeconds": 5,
-                            "MaxAttempts": 2,
-                        }
-                    ],
                 },
                 "EnrichmentChecks": {
                     "Type": "Task",
