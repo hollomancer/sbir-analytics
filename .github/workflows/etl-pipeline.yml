@@ -57,14 +57,15 @@ jobs:
       - name: Download data from S3
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/raw/awards data/raw/sam_gov data/raw/usaspending
+          mkdir -p data/raw/sbir data/raw/sam_gov data/raw/usaspending
 
-          # Download latest SBIR awards
+          # Download latest SBIR awards to expected path
           LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive | sort | tail -1 | awk '{print $4}')
           if [ -n "$LATEST_SBIR" ]; then
-            aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/awards/Award_All_Years.csv
+            aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/sbir/award_data.csv
             echo "✅ Downloaded SBIR awards: $LATEST_SBIR"
           else
             echo "⚠️ No SBIR awards found in S3"
