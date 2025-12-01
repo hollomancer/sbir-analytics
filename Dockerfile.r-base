@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 #
 # R Base Image for SBIR Analytics
-# Contains: R + StateIO + tidyverse (pre-compiled binaries via r2u)
+# Contains: R + StateIO + tidyverse
 #
 # Built weekly - R package compilation is slow, so we cache it here
 # Used as base for: sbir-analytics-full
@@ -12,34 +12,38 @@ FROM ${PYTHON_BASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install R 4.4 from r2u (Ubuntu binary packages - much faster than CRAN source)
-# r2u provides pre-compiled binaries for 20,000+ R packages
+# Install R from official CRAN repository for Debian Bookworm
+# This provides R 4.4+ which is required for modern R packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
-        gpg \
-        gpg-agent \
-    && wget -q -O- https://eddelbuettel.github.io/r2u/assets/dirk_eddelbuettel_key.asc | tee -a /etc/apt/trusted.gpg.d/cranapt_key.asc \
-    && echo "deb [arch=amd64] https://r2u.stat.illinois.edu/ubuntu jammy main" > /etc/apt/sources.list.d/cranapt.list \
+        gnupg \
+        software-properties-common \
+        dirmngr \
+    && wget -qO- https://cloud.r-project.org/bin/linux/debian/marutter_pubkey.asc | gpg --dearmor -o /usr/share/keyrings/r-project.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/debian bookworm-cran40/" > /etc/apt/sources.list.d/r-project.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         r-base \
         r-base-dev \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libxml2-dev \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install R packages via r2u (binary, fast) where available
-# These are pre-compiled and install in seconds instead of minutes
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    r-cran-devtools \
-    r-cran-tidyverse \
-    r-cran-data.table \
-    r-cran-jsonlite \
-    r-cran-httr \
-    r-cran-curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install R packages from CRAN
+# Note: These compile from source on Debian (slower than r2u binaries)
+RUN R -e "install.packages(c('devtools', 'tidyverse', 'data.table', 'jsonlite', 'httr', 'curl'), repos='https://cloud.r-project.org/', Ncpus=4)"
 
-# Install StateIO from GitHub (not available as binary)
-# This is the slow step, but only runs when R-base image is rebuilt
+# Install StateIO from GitHub
+# Uses master branch per project documentation
 RUN R -e "devtools::install_github('USEPA/stateior', ref='master', dependencies=TRUE, upgrade='never')"
 
 # Verify installations
