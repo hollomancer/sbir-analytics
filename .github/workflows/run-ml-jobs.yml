@@ -360,19 +360,45 @@ jobs:
           IFS=',' read -ra JOBS <<< "$JOB_IDS"
 
           for JOB_ID in "${JOBS[@]}"; do
-            echo "=== Logs for job: $JOB_ID ==="
+            echo ""
+            echo "========================================"
+            echo "=== Job: $JOB_ID ==="
+            echo "========================================"
 
-            # Get log stream name from job details
-            LOG_STREAM=$(aws batch describe-jobs --jobs "$JOB_ID" \
-              --query 'jobs[0].container.logStreamName' --output text)
+            # Get job details including status and log stream
+            JOB_INFO=$(aws batch describe-jobs --jobs "$JOB_ID" --output json)
+            STATUS=$(echo "$JOB_INFO" | jq -r '.jobs[0].status')
+            STATUS_REASON=$(echo "$JOB_INFO" | jq -r '.jobs[0].statusReason // "N/A"')
+            JOB_NAME=$(echo "$JOB_INFO" | jq -r '.jobs[0].jobName')
+            LOG_STREAM=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.logStreamName // "None"')
+            EXIT_CODE=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.exitCode // "N/A"')
 
-            if [ "$LOG_STREAM" != "None" ] && [ -n "$LOG_STREAM" ]; then
-              aws logs tail "/aws/batch/sbir-analytics-ml" \
-                --log-stream-names "$LOG_STREAM" \
-                --format short \
-                --since 6h || echo "Failed to fetch logs for $JOB_ID"
+            echo "Job Name: $JOB_NAME"
+            echo "Status: $STATUS"
+            echo "Status Reason: $STATUS_REASON"
+            echo "Exit Code: $EXIT_CODE"
+            echo "Log Stream: $LOG_STREAM"
+            echo ""
+
+            # Fetch CloudWatch logs if available
+            if [ "$LOG_STREAM" != "None" ] && [ "$LOG_STREAM" != "null" ] && [ -n "$LOG_STREAM" ]; then
+              echo "--- CloudWatch Logs (last 200 lines) ---"
+              aws logs get-log-events \
+                --log-group-name "/aws/batch/sbir-analytics-analysis" \
+                --log-stream-name "$LOG_STREAM" \
+                --limit 200 \
+                --query 'events[*].message' \
+                --output text 2>&1 | tr '\t' '\n' || echo "Failed to fetch logs"
+              echo "--- End of Logs ---"
             else
-              echo "No log stream found for job $JOB_ID"
+              echo "No log stream available for this job"
+            fi
+
+            # If job failed, show attempt details
+            if [ "$STATUS" = "FAILED" ]; then
+              echo ""
+              echo "--- Failure Details ---"
+              echo "$JOB_INFO" | jq '.jobs[0].attempts[] | {attemptNumber: .container.taskArn, exitCode: .container.exitCode, reason: .statusReason}'
             fi
 
             echo ""
@@ -390,10 +416,29 @@ jobs:
           JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
 
           if [ -n "$JOB_IDS" ]; then
-            echo "**Job IDs:**" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "$JOB_IDS" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "| Job ID | Name | Status | Exit Code |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|------|--------|-----------|" >> $GITHUB_STEP_SUMMARY
+
+            IFS=',' read -ra JOBS <<< "$JOB_IDS"
+            for JOB_ID in "${JOBS[@]}"; do
+              JOB_INFO=$(aws batch describe-jobs --jobs "$JOB_ID" --output json)
+              STATUS=$(echo "$JOB_INFO" | jq -r '.jobs[0].status')
+              JOB_NAME=$(echo "$JOB_INFO" | jq -r '.jobs[0].jobName')
+              EXIT_CODE=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.exitCode // "N/A"')
+
+              # Add emoji based on status
+              case $STATUS in
+                SUCCEEDED) EMOJI="✅" ;;
+                FAILED) EMOJI="❌" ;;
+                RUNNING) EMOJI="🔄" ;;
+                *) EMOJI="⏳" ;;
+              esac
+
+              echo "| \`$JOB_ID\` | $JOB_NAME | $EMOJI $STATUS | $EXIT_CODE |" >> $GITHUB_STEP_SUMMARY
+            done
+
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "View logs in [AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/queue/sbir-analytics-analysis-job-queue)" >> $GITHUB_STEP_SUMMARY
+            echo "📋 [View in AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📊 [View CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/home?region=${{ env.AWS_REGION }}#logsV2:log-groups/log-group/\$252Faws\$252Fbatch\$252Fsbir-analytics-analysis)" >> $GITHUB_STEP_SUMMARY
           fi
