@@ -52,9 +52,10 @@ sbir_ingestion_job = define_asset_job(
         "raw_sbir_awards",
         "validated_sbir_awards",
         "raw_usaspending_recipients",
+        "raw_sam_gov_entities",
         "enriched_sbir_awards",
     ),
-    description="Extract, validate, and enrich SBIR awards data",
+    description="Extract, validate, and enrich SBIR awards with USAspending and SAM.gov data",
 )
 
 # Define a job that materializes all assets

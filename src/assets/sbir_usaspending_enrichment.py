@@ -23,7 +23,7 @@ from ..utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
 
 @asset(
-    description="SBIR awards enriched with USAspending recipient data",
+    description="SBIR awards enriched with USAspending and SAM.gov data",
     group_name="enrichment",
     compute_kind="pandas",
 )
@@ -31,27 +31,31 @@ def enriched_sbir_awards(
     context: AssetExecutionContext,
     validated_sbir_awards: pd.DataFrame,
     raw_usaspending_recipients: pd.DataFrame,
+    raw_sam_gov_entities: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     """
-    Enrich validated SBIR awards with USAspending recipient data.
+    Enrich validated SBIR awards with USAspending and SAM.gov data.
 
-    Supports both standard and chunked processing based on dataset size
-    and configured memory thresholds.
+    Enrichment strategy (hierarchical):
+    1. USAspending: UEI/DUNS exact match, then fuzzy name match
+    2. SAM.gov: Fill gaps for unmatched records using UEI/DUNS
 
     Args:
         validated_sbir_awards: Validated SBIR awards DataFrame
         raw_usaspending_recipients: USAspending recipient lookup data
+        raw_sam_gov_entities: SAM.gov entity records
 
     Returns:
-        Enriched SBIR awards with USAspending data and match metadata
+        Enriched SBIR awards with USAspending and SAM.gov data
     """
     config = get_config()
 
     context.log.info(
-        "Starting SBIR-USAspending enrichment",
+        "Starting SBIR enrichment (USAspending + SAM.gov)",
         extra={
             "sbir_records": len(validated_sbir_awards),
             "usaspending_recipients": len(raw_usaspending_recipients),
+            "sam_gov_entities": len(raw_sam_gov_entities),
         },
     )
 
@@ -89,23 +93,133 @@ def enriched_sbir_awards(
                 return_candidates=True,
             )
         enrichment_metrics = {}
-        enricher = None
 
-    # Calculate enrichment statistics
+    # Calculate USAspending enrichment statistics
+    usaspending_matched = enriched_df["_usaspending_match_method"].notna().sum()
+    context.log.info(f"USAspending enrichment: {usaspending_matched}/{len(enriched_df)} matched")
+
+    # --- SAM.gov Enrichment (fill gaps) ---
+    # Only enrich records that didn't match in USAspending
+    unmatched_mask = enriched_df["_usaspending_match_method"].isna()
+    unmatched_count = unmatched_mask.sum()
+
+    if unmatched_count > 0 and not raw_sam_gov_entities.empty:
+        context.log.info(f"Attempting SAM.gov enrichment for {unmatched_count} unmatched records")
+
+        # Build SAM.gov lookup indexes
+        sam_by_uei = {}
+        sam_by_duns = {}
+
+        if "unique_entity_id" in raw_sam_gov_entities.columns:
+            for idx, uei in raw_sam_gov_entities["unique_entity_id"].dropna().items():
+                if uei:
+                    sam_by_uei[str(uei).strip().upper()] = idx
+
+        # SAM.gov uses 'duns_number' or similar
+        duns_col = None
+        for col in ["duns_number", "duns", "DUNS"]:
+            if col in raw_sam_gov_entities.columns:
+                duns_col = col
+                break
+
+        if duns_col:
+            for idx, duns in raw_sam_gov_entities[duns_col].dropna().items():
+                if duns:
+                    digits = "".join(ch for ch in str(duns) if ch.isdigit())
+                    if digits:
+                        sam_by_duns[digits] = idx
+
+        # Initialize SAM.gov match columns
+        enriched_df["_sam_gov_match_method"] = pd.NA
+        enriched_df["_sam_gov_match_idx"] = pd.NA
+
+        # UEI exact match against SAM.gov
+        if "UEI" in enriched_df.columns:
+            uei_series = (
+                enriched_df.loc[unmatched_mask, "UEI"]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
+            uei_matches = uei_series.isin(sam_by_uei.keys())
+            if uei_matches.any():
+                matched_indices = uei_series[uei_matches].index
+                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                    uei_series[uei_matches].map(sam_by_uei).values
+                )
+                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-uei-exact"
+
+        # DUNS exact match against SAM.gov (for remaining unmatched)
+        still_unmatched = unmatched_mask & enriched_df["_sam_gov_match_method"].isna()
+        if "Duns" in enriched_df.columns and still_unmatched.any():
+            duns_series = (
+                enriched_df.loc[still_unmatched, "Duns"]
+                .fillna("")
+                .astype(str)
+                .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
+            )
+            duns_matches = duns_series.isin(sam_by_duns.keys())
+            if duns_matches.any():
+                matched_indices = duns_series[duns_matches].index
+                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                    duns_series[duns_matches].map(sam_by_duns).values
+                )
+                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-duns-exact"
+
+        # Merge SAM.gov data for matched records
+        sam_matched_mask = enriched_df["_sam_gov_match_idx"].notna()
+        sam_matched_count = sam_matched_mask.sum()
+
+        if sam_matched_count > 0:
+            # Select key SAM.gov columns to merge
+            sam_cols = [
+                "unique_entity_id",
+                "legal_business_name",
+                "dba_name",
+                "physical_address_city",
+                "physical_address_state",
+                "cage_code",
+                "naics_code_1",
+                "naics_code_2",
+            ]
+            sam_cols = [c for c in sam_cols if c in raw_sam_gov_entities.columns]
+
+            for col in sam_cols:
+                enriched_df[f"sam_gov_{col}"] = pd.NA
+                matched_idx = enriched_df.loc[sam_matched_mask, "_sam_gov_match_idx"].astype(int)
+                enriched_df.loc[sam_matched_mask, f"sam_gov_{col}"] = raw_sam_gov_entities.loc[
+                    matched_idx, col
+                ].values
+
+        context.log.info(f"SAM.gov enrichment: {sam_matched_count} additional matches")
+
+        # Clean up temporary column
+        enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"], errors="ignore")
+
+    # Calculate final enrichment statistics
     total_awards = len(enriched_df)
-    matched_awards = enriched_df["_usaspending_match_method"].notna().sum()
+    usaspending_matches = enriched_df["_usaspending_match_method"].notna().sum()
+    sam_gov_matches = (
+        enriched_df["_sam_gov_match_method"].notna().sum()
+        if "_sam_gov_match_method" in enriched_df.columns
+        else 0
+    )
+    total_matched = usaspending_matches + sam_gov_matches
     exact_matches = enriched_df["_usaspending_match_method"].str.contains("exact", na=False).sum()
     fuzzy_matches = enriched_df["_usaspending_match_method"].str.contains("fuzzy", na=False).sum()
 
-    match_rate = matched_awards / total_awards if total_awards > 0 else 0
+    match_rate = total_matched / total_awards if total_awards > 0 else 0
 
     context.log.info(
         "Enrichment complete",
         extra={
             "total_awards": total_awards,
-            "matched_awards": matched_awards,
-            "exact_matches": exact_matches,
-            "fuzzy_matches": fuzzy_matches,
+            "usaspending_matches": int(usaspending_matches),
+            "sam_gov_matches": int(sam_gov_matches),
+            "total_matched": int(total_matched),
+            "exact_matches": int(exact_matches),
+            "fuzzy_matches": int(fuzzy_matches),
             "match_rate": f"{match_rate:.1%}",
         },
     )
@@ -143,7 +257,7 @@ def enriched_sbir_awards(
             "duration_seconds": duration,
             "records_per_second": records_per_second,
             "match_rate": match_rate,
-            "matched_records": int(matched_awards),
+            "matched_records": int(total_matched),
             "exact_matches": int(exact_matches),
             "fuzzy_matches": int(fuzzy_matches),
             "processing_mode": "chunked" if use_chunked else "standard",
@@ -170,7 +284,7 @@ def enriched_sbir_awards(
     metadata = {
         "num_records": len(enriched_df),
         "match_rate": f"{match_rate:.1%}",
-        "matched_awards": int(matched_awards),
+        "matched_awards": int(total_matched),
         "exact_matches": int(exact_matches),
         "fuzzy_matches": int(fuzzy_matches),
         "enrichment_columns": [
@@ -197,9 +311,10 @@ def enriched_sbir_awards(
     }
 
     # Add progress metadata if chunked processing was used
-    if use_chunked and enricher:
-        progress_metadata = enricher.get_progress_metadata()
-        metadata.update(progress_metadata)
+    if use_chunked and enrichment_metrics:
+        # Progress metadata is already included in enrichment_metrics from chunked processing
+        if "progress" in enrichment_metrics:
+            metadata.update(enrichment_metrics["progress"])
 
     return Output(value=enriched_df, metadata=metadata)
 
