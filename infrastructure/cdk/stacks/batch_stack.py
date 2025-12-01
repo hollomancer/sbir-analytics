@@ -370,9 +370,9 @@ class BatchStack(Stack):
                         "awslogs-stream-prefix": "usaspending-extract",
                     },
                 ),
-                # Fargate ephemeral storage for 217GB download
+                # Fargate ephemeral storage max is 200GB
                 ephemeral_storage=batch.CfnJobDefinition.EphemeralStorageProperty(
-                    size_in_gi_b=250,  # 250GB ephemeral storage
+                    size_in_gib=200,  # Max Fargate ephemeral storage
                 ),
             ),
             retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
