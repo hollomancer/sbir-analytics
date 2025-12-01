@@ -18,6 +18,8 @@ locations:
         env_vars:
           # Skip heavy ML/fiscal assets in serverless
           - DAGSTER_LOAD_HEAVY_ASSETS=false
+          # Use production config (S3-first for data sources)
+          - SBIR_ETL__PIPELINE__ENVIRONMENT=production
         server_k8s_config:
           container_config:
             resources:
