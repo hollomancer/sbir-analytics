@@ -16,7 +16,11 @@ from dagster import AssetExecutionContext, MetadataValue, Output, asset
 from ..config.loader import get_config
 from ..exceptions import ExtractionError, FileSystemError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..utils.cloud_storage import find_latest_usaspending_dump, resolve_data_path
+from ..utils.cloud_storage import (
+    find_latest_usaspending_dump,
+    get_s3_bucket_from_env,
+    resolve_data_path,
+)
 
 
 def _import_usaspending_table(
@@ -37,7 +41,7 @@ def _import_usaspending_table(
 
     # PRIMARY: Try S3 database dump first
     dump_path = None
-    s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
+    s3_bucket = get_s3_bucket_from_env()
 
     if s3_bucket:
         context.log.info("Attempting to load USAspending data from S3 (PRIMARY)")

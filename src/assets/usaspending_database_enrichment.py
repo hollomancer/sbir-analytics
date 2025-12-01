@@ -11,7 +11,7 @@ from loguru import logger
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
 from ..extractors.usaspending import DuckDBUSAspendingExtractor
-from ..utils.cloud_storage import find_latest_usaspending_dump
+from ..utils.cloud_storage import find_latest_usaspending_dump, get_s3_bucket_from_env
 
 
 @asset(
@@ -42,14 +42,14 @@ def sbir_relevant_usaspending_transactions(
     config = get_config()
 
     # PRIMARY: Get dump file path from S3 (required)
-    s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
+    s3_bucket = get_s3_bucket_from_env()
 
     if not s3_bucket:
         raise ExtractionError(
-            "S3 bucket not configured. USAspending database dump from S3 is required.",
+            "S3 bucket not configured. Set S3_BUCKET or SBIR_ANALYTICS_S3_BUCKET env var.",
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
-            details={"config_s3": hasattr(config, "s3")},
+            details={"env_checked": ["S3_BUCKET", "SBIR_ANALYTICS_S3_BUCKET"]},
         )
 
     # Find the latest dump file in S3
@@ -255,11 +255,11 @@ def sbir_company_usaspending_recipients(
     config = get_config()
 
     # PRIMARY: Get dump file path from S3 (required)
-    s3_bucket = config.s3.get("bucket") if hasattr(config, "s3") else None
+    s3_bucket = get_s3_bucket_from_env()
 
     if not s3_bucket:
         raise ExtractionError(
-            "S3 bucket not configured. USAspending database dump from S3 is required.",
+            "S3 bucket not configured. Set S3_BUCKET or SBIR_ANALYTICS_S3_BUCKET env var.",
             component="assets.usaspending_database_enrichment",
             operation="resolve_dump_path",
         )

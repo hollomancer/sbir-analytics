@@ -10,7 +10,7 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..utils.cloud_storage import resolve_data_path
+from ..utils.cloud_storage import get_s3_bucket_from_env, resolve_data_path
 
 
 class SAMGovExtractor:
@@ -49,7 +49,7 @@ class SAMGovExtractor:
         # Build S3 path if configured
         s3_url = None
         if use_s3_first:
-            s3_bucket = self.config.s3.get("bucket") if hasattr(self.config, "s3") else None
+            s3_bucket = get_s3_bucket_from_env()
             if s3_bucket:
                 # Try to find latest in S3
                 from ..utils.cloud_storage import find_latest_sam_gov_parquet
