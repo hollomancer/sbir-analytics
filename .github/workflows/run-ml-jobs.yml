@@ -69,7 +69,7 @@ jobs:
       - name: Install analysis dependencies
         run: |
           # Install dagster for job execution
-          uv pip install dagster dagster-cloud
+          uv pip install dagster
 
           # Install R integration only if R is available (fiscal analysis)
           if command -v R &> /dev/null; then

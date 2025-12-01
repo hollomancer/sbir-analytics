@@ -1,13 +1,13 @@
-"""Dagster definitions for core SBIR ETL pipeline (serverless-compatible).
+"""Dagster definitions for core SBIR ETL pipeline.
 
-This module contains only lightweight assets suitable for Dagster Cloud Serverless:
+This module contains core ETL assets:
 - Data ingestion (SBIR, USAspending, USPTO)
 - Data enrichment and validation
 - Neo4j graph loading
 - Transition analysis
 - M&A detection
 
-Heavy ML/fiscal assets are excluded and run in the ML location instead.
+Heavy ML/fiscal assets are in definitions_ml.py and run via AWS Batch.
 """
 
 import os
