@@ -1,31 +1,14 @@
 # Dagster Cloud Serverless Deployment
 #
-# Core ETL runs on Dagster Cloud Serverless (lightweight, fast)
-# ML jobs run on-demand via GitHub Actions (see .github/workflows/run-ml-jobs.yml)
-#
-# Documentation: docs/deployment/github-actions-ml.md
+# Environment variables must be set in Dagster Cloud UI:
+# - SBIR_ETL__PIPELINE__ENVIRONMENT=production
+# - S3_BUCKET=sbir-etl-production-data
+# - AWS_REGION=us-east-2
 
 locations:
-  # Core ETL - runs on Dagster Cloud Serverless (Docker deployment for reliability)
   - location_name: sbir-analytics-core
     code_source:
       module_name: src.definitions_minimal
     build:
       directory: .
       dockerfile: Dockerfile.serverless
-    container_context:
-      k8s:
-        env_vars:
-          # Skip heavy ML/fiscal assets in serverless
-          - DAGSTER_LOAD_HEAVY_ASSETS=false
-          # Use production config (S3-first for data sources)
-          - SBIR_ETL__PIPELINE__ENVIRONMENT=production
-        server_k8s_config:
-          container_config:
-            resources:
-              requests:
-                cpu: "500m"
-                memory: "1Gi"
-              limits:
-                cpu: "2000m"
-                memory: "4Gi"
