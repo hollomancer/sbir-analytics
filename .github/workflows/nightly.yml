@@ -42,7 +42,9 @@ jobs:
       - name: Run Bandit security scanner
         run: uv run python -m bandit -r src -c pyproject.toml
       - name: Run detect-secrets
-        run: uv run detect-secrets scan --baseline .secrets.baseline
+        run: |
+          uv pip install detect-secrets
+          uv run detect-secrets scan --baseline .secrets.baseline
 
   markdown-lint:
     name: Markdown Lint
