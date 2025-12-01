@@ -21,7 +21,7 @@ Welcome. This site is the canonical documentation for the SBIR ETL pipeline.
 Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data and loads a Neo4j graph database.
 
 **Production Architecture**:
-- **Orchestration**: Dagster Cloud Solo Plan, AWS Step Functions
+- **Orchestration**: GitHub Actions Solo Plan, AWS Step Functions
 - **Compute**: AWS Lambda (serverless)
 - **Storage**: AWS S3 (data lake)
 - **Database**: Neo4j Aura (cloud graph database)
@@ -37,7 +37,7 @@ Cloud-native, graph-based ETL pipeline that ingests SBIR/USAspending/USPTO data 
 - Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
 
 ### Deployment (Cloud-First)
-- **[Production deployment](deployment/dagster-cloud.md)** - Dagster Cloud (Primary)
+- **[Production deployment](deployment/README.md)** - GitHub Actions (Primary)
 - **[AWS Infrastructure](deployment/aws-deployment.md)** - Lambda + S3 + Step Functions
 - [Containerization guide](deployment/containerization.md) - Docker (Development/Failover)
 

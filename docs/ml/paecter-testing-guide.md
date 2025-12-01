@@ -19,7 +19,7 @@ The PaECTER client supports two modes:
 - Uses HuggingFace Inference API
 - No model download required (~500MB saved)
 - No local GPU/CPU compute needed
-- Perfect for Dagster Cloud deployment
+- Perfect for GitHub Actions deployment
 - Requires HuggingFace API token (free tier available)
 
 **Local Mode (Optional)**
@@ -368,7 +368,7 @@ def test_award_patent_matching_pipeline():
 - **Memory:** Minimal (~100MB for client)
 - **Throughput:** Depends on API rate limits
 - **Cost:** Free tier available, paid tiers for higher volume
-- **Best for:** Development, testing, Dagster Cloud deployment
+- **Best for:** Development, testing, GitHub Actions deployment
 
 **Local Mode:**
 - **Setup time:** ~2-5 minutes (model download on first run)
@@ -641,7 +641,7 @@ Common questions and their answers:
 A:
 - **Start with API mode** - it's simpler and works great for testing and development
 - **Switch to local mode** for high-volume batch processing or offline work
-- **Use API mode in Dagster Cloud** - no model download or GPU management needed
+- **Use API mode in GitHub Actions** - no model download or GPU management needed
 
 **Q: Do I need a GPU?**
 A:
@@ -670,14 +670,14 @@ A: PaECTER embeddings can be used alongside CET classification. In fact, the Bay
 **Q: What's the difference between PaECTER and PatentSBERTa?**
 A: PaECTER is fine-tuned with examiner citations and optimized for prior art search. PatentSBERTa is a more general patent BERT model. Both work with our client.
 
-**Q: Can I run this in Dagster Cloud?**
+**Q: Can I run this in GitHub Actions?**
 A: Yes! **Use API mode** (default) - it's perfect for serverless deployment:
 ```python
 # In your Dagster asset
 client = PaECTERClient()  # Uses API mode by default
 result = client.generate_embeddings(texts)
 ```
-Just set `HF_TOKEN` in your Dagster Cloud environment variables.
+Just set `HF_TOKEN` in your GitHub Actions environment variables.
 
 
 ---

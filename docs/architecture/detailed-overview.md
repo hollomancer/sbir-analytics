@@ -7,11 +7,11 @@ The **sbir-analytics** is a robust, cloud-native ETL (Extract, Transform, Load) 
 **Key Characteristics:**
 - **Data Sources**: SBIR.gov awards, USAspending contracts, USPTO patents, transition detection
 - **Processing**: DuckDB (extraction), Pandas/Python (transformation), Neo4j Aura (cloud graph storage)
-- **Orchestration**: Dagster Cloud Solo Plan (primary), AWS Step Functions (scheduled workflows)
-- **Compute**: AWS Lambda functions (serverless processing), Dagster Cloud agents
+- **Orchestration**: GitHub Actions (primary), AWS Step Functions (scheduled workflows)
+- **Compute**: AWS Lambda functions (serverless processing), GitHub Actions runners
 - **Storage**: AWS S3 (primary data lake), local filesystem (development fallback)
 - **Database**: Neo4j Aura (cloud-hosted production), Docker Neo4j (local development)
-- **Deployment**: Cloud-first (Dagster Cloud + AWS + Neo4j Aura), Docker (local development)
+- **Deployment**: Cloud-first (GitHub Actions + AWS + Neo4j Aura), Docker (local development)
 - **Tech Stack**: Python 3.11/3.12, Neo4j 5.x, AWS Lambda, S3, DuckDB, Pandas, Pydantic, scikit-learn
 
 ---
@@ -718,7 +718,7 @@ Each transition is flagged with:
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Orchestration** | Dagster Cloud Solo Plan | Managed workflow DAG, asset dependencies, cloud observability |
+| **Orchestration** | GitHub Actions Solo Plan | Managed workflow DAG, asset dependencies, cloud observability |
 | **Compute** | AWS Lambda | Serverless compute for scheduled data refresh workflows |
 | **Storage** | AWS S3 | Primary data lake for CSV files, intermediate results, artifacts |
 | **Secrets Management** | AWS Secrets Manager | Secure storage for Neo4j credentials, API keys |
@@ -759,7 +759,7 @@ Each transition is flagged with:
 └─────────────────────┬───────────────────┘
                       ↓
 ┌─────────────────────────────────────────┐
-│   Dagster Cloud / Lambda Processing     │
+│   GitHub Actions / Lambda Processing     │
 ├─────────────────────────────────────────┤
 │ • DuckDB extraction (S3 → DataFrame)    │
 │ • Pydantic validation                   │
@@ -801,7 +801,7 @@ Each transition is flagged with:
 Local Development Alternative:
 - S3 → Local filesystem fallback (data/ directory)
 - Neo4j Aura → Docker Neo4j (docker-compose.yml)
-- Dagster Cloud → Local Dagster (dagster dev)
+- GitHub Actions → Local Dagster (dagster dev)
 ```
 
 ### 6.3 Neo4j Integration

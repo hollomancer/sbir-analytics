@@ -217,7 +217,6 @@ Example monthly costs:
 You currently have **EC2 configuration ready**:
 - ✅ `scripts/setup-ec2-agent.sh` - one-command setup
 - ✅ `docs/deployment/multi-location-setup.md` - full guide
-- ✅ `dagster_cloud.yaml` - configured for ml-queue
 
 To switch to Batch later, you'll have:
 - ✅ `docs/deployment/aws-deployment.md` - full guide (just created)

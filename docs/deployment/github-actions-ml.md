@@ -6,7 +6,7 @@ For infrequent ML workloads (weekly testing, on-demand training), GitHub Actions
 
 ```
 ┌──────────────────────────────────────────────┐
-│        Dagster Cloud Serverless              │
+│        GitHub Actions Serverless              │
 │        Core ETL (always available)           │
 │   - SBIR ingestion                           │
 │   - Enrichment                               │
@@ -279,17 +279,15 @@ steps:
       dagster job execute -m src.definitions_ml -j ${{ matrix.job }}
 ```
 
-### Integration with Dagster Cloud
+### Integration with GitHub Actions
 
-For visibility in Dagster Cloud, report runs:
+For visibility in GitHub Actions, report runs:
 
 ```yaml
-- name: Report to Dagster Cloud
+- name: Report to GitHub Actions
   env:
-    DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
   run: |
-    # Report run to Dagster Cloud for visibility
-    dagster-cloud job sync \
+    # Report run to GitHub Actions for visibility
       --deployment prod \
       --location sbir-analytics-ml
 ```

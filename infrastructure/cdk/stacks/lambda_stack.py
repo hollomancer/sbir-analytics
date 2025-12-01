@@ -28,7 +28,7 @@ class LambdaStack(Stack):
 
         project_root = Path(__file__).parent.parent.parent.parent
 
-        # ECR repository removed - container-based Lambda functions migrated to Dagster Cloud
+        # ECR repository removed - container-based Lambda functions migrated to GitHub Actions
 
         # Lambda functions using Layers (lightweight)
         layer_functions = [
@@ -38,7 +38,7 @@ class LambdaStack(Stack):
             "enrichment-checks",
             "reset-neo4j",
             "smoke-checks",
-            "trigger-dagster-refresh",  # Simple Lambda to trigger Dagster Cloud jobs
+            "trigger-dagster-refresh",  # Simple Lambda to trigger GitHub Actions jobs
             # USPTO download function (unified - replaces 3 separate functions)
             "download-uspto",
             # Note: USAspending database download moved to EC2 automation
@@ -89,9 +89,9 @@ class LambdaStack(Stack):
             self.functions[func_name] = func
 
         # Container-based Lambda functions (ingestion-checks, load-neo4j) have been removed.
-        # These functions have been migrated to Dagster Cloud as the sbir_weekly_refresh_job.
+        # These functions have been migrated to GitHub Actions as the sbir_weekly_refresh_job.
         # See: src/assets/jobs/sbir_weekly_refresh_job.py
-        # The weekly refresh workflow should trigger Dagster Cloud via API instead of Lambda.
+        # The weekly refresh workflow should trigger GitHub Actions via API instead of Lambda.
 
         # Output function ARNs
         for func_name, func in self.functions.items():

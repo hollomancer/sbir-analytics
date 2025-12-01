@@ -133,7 +133,7 @@ class StepFunctionsStack(Stack):
                 "TriggerDagsterRefresh": {
                     "Type": "Task",
                     "Resource": lambda_functions["trigger-dagster-refresh"].function_arn,
-                    "Comment": "Triggers sbir_weekly_refresh_job in Dagster Cloud (replaces ingestion-checks and load-neo4j)",
+                    "Comment": "Triggers sbir_weekly_refresh_job in GitHub Actions (replaces ingestion-checks and load-neo4j)",
                     "Next": "EnrichmentChecks",
                     "Retry": [
                         {

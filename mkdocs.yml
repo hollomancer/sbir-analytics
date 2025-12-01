@@ -17,7 +17,6 @@ nav:
       - Neo4j Aura Setup: docs/data/neo4j-aura-setup.md
   - Deployment:
       - Overview: docs/deployment/README.md
-      - Dagster Cloud: docs/deployment/dagster-cloud-deployment-guide.md
       - AWS Serverless: docs/deployment/aws-serverless-deployment-guide.md
       - Containerization: docs/deployment/containerization.md
   - Testing:

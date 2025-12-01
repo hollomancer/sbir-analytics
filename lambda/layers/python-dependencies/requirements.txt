@@ -1,5 +1,5 @@
 # Lambda layer dependencies for lightweight functions
 # Note: pandas/numpy removed - caused import errors in Lambda environment
-# Functions needing heavy data processing should use Dagster Cloud instead
+# Functions needing heavy data processing should use GitHub Actions instead
 requests>=2.31.0
 neo4j>=5.0.0

@@ -7,7 +7,7 @@
 
 ## Overview
 
-Docker Compose is the **failover option** for local development. **Dagster Cloud Solo Plan** is the primary deployment method. Use Docker for:
+Docker Compose is the **failover option** for local development. **GitHub Actions Solo Plan** is the primary deployment method. Use Docker for:
 - Local development without cloud dependencies
 - CI/CD testing (mirrors production environment)
 - Emergency failover scenarios
@@ -376,7 +376,7 @@ For more troubleshooting, see [Docker Troubleshooting Guide](../development/dock
 
 - [Docker Reference](docker.md) - Configuration and optimization details
 - [Docker Troubleshooting](../development/docker.md) - Common issues and solutions
-- [Dagster Cloud Deployment](dagster-cloud.md) - Primary deployment method
+- [GitHub Actions Deployment](README.md) - Primary deployment method
 - [Testing Guide](../testing/index.md) - Running tests in Docker
 - [Configuration Patterns](../../.kiro/steering/configuration-patterns.md) - Environment variable overrides
 # Docker Image Optimization Guide

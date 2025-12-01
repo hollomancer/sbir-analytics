@@ -18,17 +18,15 @@ Each function is in its own directory:
 - **reset-neo4j**: Resets Neo4j database
 - **smoke-checks**: Runs Neo4j smoke checks
 
-### Container-based Functions (Migrated to Dagster Cloud)
+### Container-based Functions (Migrated to GitHub Actions)
 
-**DEPRECATED**: The following functions have been migrated to Dagster Cloud:
-- ~~**ingestion-checks**~~ → Now part of `sbir_weekly_refresh_job` in Dagster Cloud
-- ~~**load-neo4j**~~ → Now part of `sbir_weekly_refresh_job` in Dagster Cloud
+**DEPRECATED**: The following functions have been migrated to GitHub Actions:
+- ~~**ingestion-checks**~~ → Now part of `sbir_weekly_refresh_job` in GitHub Actions
+- ~~**load-neo4j**~~ → Now part of `sbir_weekly_refresh_job` in GitHub Actions
 
-**Replacement**: Use the `trigger-dagster-refresh` Lambda function to trigger the `sbir_weekly_refresh_job` in Dagster Cloud.
 
 ### New Functions
 
-- **trigger-dagster-refresh**: Triggers Dagster Cloud jobs via API (replaces container-based functions)
 
 ## Building
 
@@ -40,7 +38,7 @@ Each function is in its own directory:
 
 ### Container Images
 
-**DEPRECATED**: Container-based Lambda functions have been migrated to Dagster Cloud. The `build_containers.sh` script is deprecated and will exit with an error if run.
+**DEPRECATED**: Container-based Lambda functions have been migrated to GitHub Actions. The `build_containers.sh` script is deprecated and will exit with an error if run.
 
 See [Lambda to Dagster Migration](../../docs/deployment/lambda-to-dagster-migration.md) for details.
 
@@ -58,7 +56,7 @@ Functions are automatically deployed when changes are pushed to `main` or `maste
 2. **Build and publish Lambda layer** (if layer functions or dependencies changed)
 3. **Deploy via CDK** to update all Lambda functions
 
-**Note**: Container-based functions have been migrated to Dagster Cloud. No container builds are needed.
+**Note**: Container-based functions have been migrated to GitHub Actions. No container builds are needed.
 
 The workflow triggers on:
 - Push to `main`/`master` with changes to:
@@ -85,7 +83,7 @@ uv sync
 cdk deploy sbir-analytics-lambda
 ```
 
-**Note**: Container-based functions have been migrated to Dagster Cloud. No container builds are needed.
+**Note**: Container-based functions have been migrated to GitHub Actions. No container builds are needed.
 
 ### Updating Individual Function Code (Quick Update)
 

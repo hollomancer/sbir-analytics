@@ -2,7 +2,7 @@
 
 **Audience**: DevOps, Cloud Engineers
 **Prerequisites**: AWS account, AWS CLI configured
-**Related**: [Dagster Cloud](dagster-cloud.md), [Docker Guide](docker.md)
+**Related**: [GitHub Actions](README.md), [Docker Guide](docker.md)
 **Last Updated**: 2025-11-29
 
 ## Overview
@@ -270,12 +270,12 @@ aws stepfunctions start-execution \
   --input '{}'
 ```
 
-### From Lambda to Dagster Cloud
+### From Lambda to GitHub Actions
 
 **1. Keep Lambda for data refresh**
-**2. Use Dagster Cloud for orchestration**
+**2. Use GitHub Actions for orchestration**
 **3. Lambda writes to S3**
-**4. Dagster Cloud reads from S3**
+**4. GitHub Actions reads from S3**
 
 ## Troubleshooting
 
@@ -310,7 +310,7 @@ aws stepfunctions start-execution \
 
 ## Related Documentation
 
-- [Dagster Cloud](dagster-cloud.md) - Primary deployment method
+- [GitHub Actions](README.md) - Primary deployment method
 - [Docker Guide](docker.md) - Local development
 - [AWS Serverless Guide](aws-deployment.md) - Detailed Lambda setup (archived)
 - [AWS Batch Setup](aws-deployment.md) - Detailed Batch setup (archived)
