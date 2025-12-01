@@ -283,9 +283,9 @@ class DuckDBUSAspendingExtractor:
                 # Handle recipient_lookup (OID 5419) with proper column names
                 if recipient_tables and "recipient" in table_name.lower():
                     source_table = self._escape_identifier(recipient_tables[0])
-                    # Apply column names from schema
+                    # Apply column names from schema (DuckDB uses column00, column01, etc.)
                     col_aliases = ", ".join(
-                        f"column{i} AS {col}" for i, col in enumerate(RECIPIENT_LOOKUP_COLUMNS)
+                        f"column{i:02d} AS {col}" for i, col in enumerate(RECIPIENT_LOOKUP_COLUMNS)
                     )
                     view_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT {col_aliases} FROM {source_table}"  # nosec B608
                     try:

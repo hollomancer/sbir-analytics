@@ -419,8 +419,8 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
         enriched_sbir_awards["_usaspending_match_method"].str.contains("fuzzy", na=False).sum()
     )
 
-    # Determine if check passes
-    passed = actual_match_rate >= min_match_rate
+    # Determine if check passes (convert to Python bool)
+    passed = bool(actual_match_rate >= min_match_rate)
 
     # Set severity and description
     if passed:
@@ -439,7 +439,7 @@ def enrichment_match_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetChec
         "unmatched_awards": int(total_awards - matched_awards),
         "exact_matches": int(exact_matches),
         "fuzzy_matches": int(fuzzy_matches),
-        "match_methods": match_methods.to_dict(),
+        "match_methods": {str(k): int(v) for k, v in match_methods.to_dict().items()},
     }
 
     return AssetCheckResult(

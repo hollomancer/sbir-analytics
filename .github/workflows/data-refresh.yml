@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      trigger_dagster:
+        description: "Trigger Dagster ETL after data refresh"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   id-token: write
