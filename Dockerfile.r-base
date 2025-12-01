@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.4
+#
+# R Base Image for SBIR Analytics
+# Contains: R + StateIO + tidyverse (pre-compiled binaries via r2u)
+#
+# Built weekly - R package compilation is slow, so we cache it here
+# Used as base for: sbir-analytics-full
+#
+ARG PYTHON_BASE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
+
+FROM ${PYTHON_BASE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install R 4.4 from r2u (Ubuntu binary packages - much faster than CRAN source)
+# r2u provides pre-compiled binaries for 20,000+ R packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        gpg \
+        gpg-agent \
+    && wget -q -O- https://eddelbuettel.github.io/r2u/assets/dirk_eddelbuettel_key.asc | tee -a /etc/apt/trusted.gpg.d/cranapt_key.asc \
+    && echo "deb [arch=amd64] https://r2u.stat.illinois.edu/ubuntu jammy main" > /etc/apt/sources.list.d/cranapt.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        r-base \
+        r-base-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install R packages via r2u (binary, fast) where available
+# These are pre-compiled and install in seconds instead of minutes
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    r-cran-devtools \
+    r-cran-tidyverse \
+    r-cran-data.table \
+    r-cran-jsonlite \
+    r-cran-httr \
+    r-cran-curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install StateIO from GitHub (not available as binary)
+# This is the slow step, but only runs when R-base image is rebuilt
+RUN R -e "devtools::install_github('USEPA/stateior', ref='master', dependencies=TRUE, upgrade='never')"
+
+# Verify installations
+RUN R -e "library(stateior); library(tidyverse); library(data.table); cat('R packages OK\n')"
+
+ENV R_HOME=/usr/lib/R

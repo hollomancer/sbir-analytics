@@ -3,33 +3,12 @@
 # SBIR Analytics Full Image
 # Complete image with ETL + ML + R/StateIO for fiscal analysis
 #
+# Uses pre-built R base image to avoid slow R package compilation
 # Used by: AWS Batch, local ML/fiscal development
 #
-ARG BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
+ARG R_BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-r-base:latest
 
-FROM ${BASE_IMAGE}
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install R and system dependencies for ML
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    r-base \
-    r-base-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev \
-    libfontconfig1-dev \
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libfreetype6-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install R packages (StateIO and dependencies)
-RUN R -e "install.packages(c('devtools', 'tidyverse', 'data.table'), repos='https://cloud.r-project.org/')" && \
-    R -e "devtools::install_github('USEPA/stateior', ref='master', dependencies=TRUE)"
+FROM ${R_BASE_IMAGE}
 
 # Install ETL dependencies
 RUN pip install \
@@ -58,8 +37,7 @@ COPY src/ /app/src/
 COPY config/ /app/config/
 COPY pyproject.toml /app/
 
-ENV PYTHONPATH=/app \
-    R_HOME=/usr/lib/R
+ENV PYTHONPATH=/app
 
 # Create directories
 RUN mkdir -p /app/data /app/logs /app/reports /app/artifacts
