@@ -107,13 +107,18 @@ enrichment:
 
 extraction:
   sbir:
-    csv_path: "data/raw/sbir/awards_data.csv"
+    csv_path: "data/raw/sbir/award_data.csv"
+    use_s3_first: true  # Use S3 in production (Dagster Cloud)
     duckdb:
       database_path: "data/processed/sbir.duckdb"
       table_name: "sbir_awards"
     batch_size: 25000
     chunk_size: 50000  # Larger chunks for production performance
     encoding: "utf-8"
+  sam_gov:
+    parquet_path: "data/raw/sam_gov/sam_entity_records.parquet"
+    use_s3_first: true  # Use S3 in production (Dagster Cloud)
+    batch_size: 25000
   usaspending:
     database_name: "usaspending"
     table_name: "awards"
