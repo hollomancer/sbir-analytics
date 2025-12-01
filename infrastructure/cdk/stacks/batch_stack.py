@@ -6,7 +6,6 @@ from aws_cdk import (
     Stack,
     aws_batch as batch,
     aws_ec2 as ec2,
-    aws_ecr as ecr,
     aws_iam as iam,
     aws_logs as logs,
 )
@@ -16,6 +15,9 @@ from constructs import Construct
 class BatchStack(Stack):
     """AWS Batch infrastructure for running analysis jobs on-demand."""
 
+    # GHCR image for analysis jobs
+    ANALYSIS_IMAGE = "ghcr.io/hollomancer/sbir-analytics-full:latest"
+
     def __init__(
         self,
         scope: Construct,
@@ -23,33 +25,6 @@ class BatchStack(Stack):
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
-        # Get or create ECR repository for analysis job images
-        create_new = self.node.try_get_context("create_new_resources") == "true"
-
-        if create_new:
-            # Create new ECR repository
-            self.ecr_repository = ecr.Repository(
-                self,
-                "AnalysisJobsRepository",
-                repository_name="sbir-analytics-analysis-jobs",
-                image_scan_on_push=True,
-                lifecycle_rules=[
-                    ecr.LifecycleRule(
-                        description="Keep last 10 images",
-                        max_image_count=10,
-                        rule_priority=1,
-                    )
-                ],
-            )
-        else:
-            # Import existing ECR repository
-            repo_name = self.node.try_get_context("ecr_repository_name") or "sbir-analytics-analysis-jobs"
-            self.ecr_repository = ecr.Repository.from_repository_name(
-                self,
-                "AnalysisJobsRepository",
-                repository_name=repo_name,
-            )
 
         # CloudWatch Log Group for Batch job logs (import existing or create)
         log_group = logs.LogGroup.from_log_group_name(
@@ -72,7 +47,7 @@ class BatchStack(Stack):
             "BatchSecurityGroup",
             vpc=vpc,
             description="Security group for AWS Batch analysis job compute environment",
-            allow_all_outbound=True,  # Need to pull Docker images from ECR and access S3
+            allow_all_outbound=True,  # Need to pull Docker images and access S3
         )
 
         # IAM role for Batch service
@@ -120,8 +95,6 @@ class BatchStack(Stack):
             ],
         )
 
-        # Add ECR pull permissions
-        self.ecr_repository.grant_pull(job_execution_role)
 
         # IAM role for Batch job tasks (task role - what the job can do)
         job_task_role = iam.Role(
@@ -195,7 +168,7 @@ class BatchStack(Stack):
             type="container",
             platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=f"{self.ecr_repository.repository_uri}:latest",
+                image=self.ANALYSIS_IMAGE,
                 resource_requirements=[
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
@@ -252,7 +225,7 @@ class BatchStack(Stack):
             type="container",
             platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=f"{self.ecr_repository.repository_uri}:latest",
+                image=self.ANALYSIS_IMAGE,
                 resource_requirements=[
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="4"),
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="8192"),
@@ -309,7 +282,7 @@ class BatchStack(Stack):
             type="container",
             platform_capabilities=["FARGATE"],
             container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
-                image=f"{self.ecr_repository.repository_uri}:latest",
+                image=self.ANALYSIS_IMAGE,
                 resource_requirements=[
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="2"),
                     batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="4096"),
@@ -359,8 +332,7 @@ class BatchStack(Stack):
         )
 
         # Outputs
-        CfnOutput(self, "ECRRepositoryUri", value=self.ecr_repository.repository_uri)
-        CfnOutput(self, "ECRRepositoryName", value=self.ecr_repository.repository_name)
+        CfnOutput(self, "AnalysisImage", value=self.ANALYSIS_IMAGE)
         CfnOutput(self, "ComputeEnvironmentArn", value=compute_environment.attr_compute_environment_arn)
         CfnOutput(self, "JobQueueArn", value=job_queue.attr_job_queue_arn)
         CfnOutput(self, "JobQueueName", value=job_queue.job_queue_name)
