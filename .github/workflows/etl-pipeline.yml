@@ -145,7 +145,7 @@ jobs:
 
           dagster job execute \
             -m src.definitions \
-            -j usaspending_ingestion_job \
+            -j usaspending_iterative_enrichment_job \
             2>&1 | tee usaspending_output.txt
 
           EXIT_CODE=${PIPESTATUS[0]}

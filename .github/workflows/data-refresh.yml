@@ -698,22 +698,24 @@ jobs:
         env:
           SBIR_ETL__PIPELINE__ENVIRONMENT: production
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "## 💰 USAspending Enrichment" >> $GITHUB_STEP_SUMMARY
 
           uv run dagster job execute \
             -m src.definitions \
-            -j usaspending_ingestion_job \
+            -j usaspending_iterative_enrichment_job \
             2>&1 | tee usaspending_output.txt
 
-          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ USAspending enrichment completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ USAspending enrichment failed" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            # Don't fail the whole workflow for enrichment
+            exit 1
           fi
 
       - name: Run USPTO pipeline
