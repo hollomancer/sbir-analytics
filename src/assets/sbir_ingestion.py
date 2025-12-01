@@ -1,6 +1,7 @@
 """Dagster assets for SBIR data ingestion pipeline."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,34 @@ from ..config.loader import get_config
 from ..extractors.sbir import SbirDuckDBExtractor
 from ..utils.monitoring import performance_monitor
 from ..validators.sbir_awards import validate_sbir_awards
+
+
+def _save_to_s3(df: pd.DataFrame, s3_key: str, context: AssetExecutionContext) -> str | None:
+    """Save DataFrame to S3 as parquet. Returns S3 URI or None if not configured."""
+    bucket = os.getenv("S3_BUCKET")
+    if not bucket:
+        context.log.info("S3_BUCKET not set, skipping S3 persistence")
+        return None
+
+    try:
+        import boto3
+        import io
+
+        # Convert to parquet in memory
+        buffer = io.BytesIO()
+        df.to_parquet(buffer, index=False)
+        buffer.seek(0)
+
+        # Upload to S3
+        s3 = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-2"))
+        s3.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
+
+        s3_uri = f"s3://{bucket}/{s3_key}"
+        context.log.info(f"Saved to S3: {s3_uri}")
+        return s3_uri
+    except Exception as e:
+        context.log.warning(f"Failed to save to S3: {e}")
+        return None
 
 
 @asset(
@@ -178,6 +207,9 @@ def validated_sbir_awards(
         },
     )
 
+    # Save to S3 for downstream processing (e.g., Neo4j loading in GitHub Actions)
+    s3_uri = _save_to_s3(validated_df, "validated/sbir_awards.parquet", context)
+
     # Create metadata
     metadata = {
         "num_records": len(validated_df),
@@ -188,6 +220,8 @@ def validated_sbir_awards(
         "validation_status": "PASSED" if quality_report.passed else "FAILED",
         "threshold": f"{pass_rate_threshold:.1%}",
     }
+    if s3_uri:
+        metadata["s3_uri"] = s3_uri
 
     return Output(value=validated_df, metadata=metadata)
 
