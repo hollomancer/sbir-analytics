@@ -54,12 +54,29 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Download data from S3
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "📥 Downloading data from S3..."
+          mkdir -p data/raw/awards data/raw/sam_gov data/raw/usaspending
+
+          # Download latest SBIR awards
+          LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive | sort | tail -1 | awk '{print $4}')
+          if [ -n "$LATEST_SBIR" ]; then
+            aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/awards/Award_All_Years.csv
+            echo "✅ Downloaded SBIR awards: $LATEST_SBIR"
+          else
+            echo "⚠️ No SBIR awards found in S3"
+          fi
+
       - name: Run SBIR pipeline
         env:
           NEO4J_URI: ${{ secrets.NEO4J_URI }}
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
 
@@ -82,12 +99,13 @@ jobs:
             -j "$JOB_NAME" \
             2>&1 | tee sbir_output.txt
 
-          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ SBIR pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
             tail -100 sbir_output.txt >> $GITHUB_STEP_SUMMARY
-            exit 1
+            exit $EXIT_CODE
           fi
 
   usaspending-pipeline:
@@ -112,6 +130,7 @@ jobs:
       - name: Run USAspending pipeline
         env:
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
 
@@ -120,7 +139,8 @@ jobs:
             -j usaspending_ingestion_job \
             2>&1 | tee usaspending_output.txt
 
-          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ USAspending pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ USAspending pipeline failed" >> $GITHUB_STEP_SUMMARY
@@ -153,6 +173,7 @@ jobs:
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
 
@@ -161,7 +182,8 @@ jobs:
             -j uspto_full_pipeline_job \
             2>&1 | tee uspto_output.txt
 
-          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ USPTO pipeline failed" >> $GITHUB_STEP_SUMMARY
@@ -194,6 +216,7 @@ jobs:
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           S3_BUCKET: ${{ env.S3_BUCKET }}
+        shell: bash
         run: |
           echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY
 
@@ -202,7 +225,8 @@ jobs:
             -j cet_full_pipeline_job \
             2>&1 | tee cet_output.txt
 
-          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ CET pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ CET pipeline failed" >> $GITHUB_STEP_SUMMARY
