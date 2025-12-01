@@ -192,10 +192,8 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Run if workflows changed OR on push to main/develop (to catch failed re-runs)
-    if: |
-      needs.detect-changes.outputs.workflows == 'true' ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
+    # Always run - fast job, no need to filter by changes
+    if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
       - uses: actions/checkout@v6
 
@@ -238,10 +236,8 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Run if infrastructure changed OR on push to main/develop (to catch failed re-runs)
-    if: |
-      needs.detect-changes.outputs.infrastructure == 'true' ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'))
+    # Always run - catches CDK issues early, not expensive
+    if: needs.detect-changes.outputs.docs-only != 'true'
     steps:
       - uses: actions/checkout@v6
 
