@@ -1,7 +1,6 @@
-name: Analysis Jobs On-Demand
+name: Analysis Jobs
 
 on:
-  # Run manually
   workflow_dispatch:
     inputs:
       job_name:
@@ -10,435 +9,159 @@ on:
         type: choice
         options:
           - cet_full_pipeline
-          - fiscal_returns_mvp
           - paecter_embeddings
-          - all_analysis_jobs
-      execution_mode:
-        description: 'Where to run (Note: These jobs require ETL data from S3, use aws-batch)'
-        required: true
-        type: choice
-        default: 'aws-batch'
-        options:
-          - aws-batch
-          - github-actions (requires full ETL data)
-
-  # Weekly schedule disabled - these jobs require S3 data from main ETL pipeline
-  # schedule:
-  #   - cron: '0 3 * * 1'  # Monday 3 AM UTC
+          - fiscal_returns_mvp
+          - all
 
 permissions:
   contents: read
-  id-token: write  # For AWS OIDC
+  packages: read
+  id-token: write
 
 env:
   AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+  SBIR_ETL__PIPELINE__ENVIRONMENT: production
 
 jobs:
-  run-analysis-job-github:
-    name: Run Analysis Job on GitHub Actions
-    if: ${{ github.event.inputs.execution_mode == 'github-actions' || github.event.inputs.execution_mode == '' }}
+  # CET runs on GitHub Actions (fits in 7GB)
+  cet-pipeline:
+    name: CET Classification
+    if: github.event.inputs.job_name == 'cet_full_pipeline' || github.event.inputs.job_name == 'all'
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # 5 hours max (GitHub Actions limit is 6 hours)
-
+    timeout-minutes: 60
+    container:
+      image: ghcr.io/hollomancer/sbir-analytics:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: "3.11"
-          install-dev-deps: "false"
-          cache-venv: "false"  # Don't cache - we install different deps based on job
-          cache-pytest: "false"
-          install-pyreadstat: "false"
+      - name: Install ML dependencies
+        run: pip install scikit-learn spacy && python -m spacy download en_core_web_sm
 
-      - name: Install R (for fiscal analysis)
-        if: github.event.inputs.job_name == 'fiscal_returns_mvp' || github.event.inputs.job_name == 'all_analysis_jobs' || github.event_name == 'schedule'
+      - name: Run CET pipeline
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y r-base r-base-dev libtirpc-dev
-          echo "R_HOME=/usr/lib/R" >> $GITHUB_ENV
-
-      - name: Install analysis dependencies
-        run: |
-          # Install dagster for job execution
-          uv pip install dagster
-
-          # Install R integration only if R is available (fiscal analysis)
-          if command -v R &> /dev/null; then
-            echo "R found, installing rpy2..."
-            export R_HOME=/usr/lib/R
-            uv pip install "rpy2>=3.5.0,<4.0.0"
+          echo "## 🏷️ CET Classification" >> $GITHUB_STEP_SUMMARY
+          dagster job execute -m src.definitions -j cet_full_pipeline_job 2>&1 | tee output.txt
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ CET pipeline completed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "R not found, skipping rpy2 (fiscal jobs will not be available)"
+            echo "❌ CET pipeline failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
-          # Install sentence-transformers for PaECTER embeddings
-          uv pip install "sentence-transformers>=2.7.0,<3.0.0"
-
-      - name: Verify analysis jobs are available
-        env:
-          DAGSTER_LOAD_HEAVY_ASSETS: "true"
-        run: |
-          echo "Verifying that analysis jobs loaded correctly..."
-          JOB_NAME="${{ github.event.inputs.job_name || 'all_analysis_jobs' }}"
-          R_AVAILABLE=$(command -v R &> /dev/null && echo "true" || echo "false")
-
-          uv run python -c "
-          import os
-          import sys
-
-          os.environ['DAGSTER_LOAD_HEAVY_ASSETS'] = 'true'
-          job_name = '$JOB_NAME'
-          r_available = '$R_AVAILABLE' == 'true'
-
-          try:
-              from src.definitions_ml import auto_jobs
-          except Exception as e:
-              print(f'❌ Failed to import definitions_ml: {e}')
-              sys.exit(1)
-
-          available_jobs = list(auto_jobs.keys())
-          print(f'Available jobs: {available_jobs}')
-
-          # Determine required jobs based on selection
-          if job_name == 'cet_full_pipeline':
-              required_jobs = ['cet_full_pipeline_job']
-          elif job_name == 'fiscal_returns_mvp':
-              required_jobs = ['fiscal_returns_mvp_job']
-          elif job_name == 'paecter_embeddings':
-              required_jobs = ['paecter_job']
-          else:  # all_analysis_jobs
-              required_jobs = ['cet_full_pipeline_job', 'paecter_job']
-              if r_available:
-                  required_jobs.append('fiscal_returns_mvp_job')
-              else:
-                  print('⚠️  R not installed, fiscal_returns_mvp_job will be skipped')
-
-          missing_jobs = [job for job in required_jobs if job not in available_jobs]
-          if missing_jobs:
-              print(f'❌ Missing required jobs: {missing_jobs}')
-              sys.exit(1)
-
-          print('✅ Required analysis jobs available:')
-          for jn in required_jobs:
-              print(f'   ✅ {jn}')
-          "
-
-      - name: Run Analysis Job
-        env:
-          DAGSTER_LOAD_HEAVY_ASSETS: "true"
-          DAGSTER_HOME: /tmp/dagster_home
-        run: |
-          mkdir -p $DAGSTER_HOME
-          JOB_NAME="${{ github.event.inputs.job_name || 'all_analysis_jobs' }}"
-
-          case $JOB_NAME in
-            cet_full_pipeline)
-              echo "Running CET full pipeline..."
-              uv run dagster job execute -m src.definitions_ml -j cet_full_pipeline_job
-              ;;
-            fiscal_returns_mvp)
-              if command -v R &> /dev/null; then
-                echo "Running fiscal returns analysis..."
-                uv run dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job
-              else
-                echo "❌ R is not installed, cannot run fiscal_returns_mvp"
-                exit 1
-              fi
-              ;;
-            paecter_embeddings)
-              echo "Running PaECTER embeddings..."
-              uv run dagster job execute -m src.definitions_ml -j paecter_job
-              ;;
-            all_analysis_jobs)
-              echo "Running all analysis jobs..."
-              uv run dagster job execute -m src.definitions_ml -j cet_full_pipeline_job
-              if command -v R &> /dev/null; then
-                uv run dagster job execute -m src.definitions_ml -j fiscal_returns_mvp_job
-              else
-                echo "⚠️  Skipping fiscal_returns_mvp (R not installed)"
-              fi
-              uv run dagster job execute -m src.definitions_ml -j paecter_job
-              ;;
-            *)
-              echo "Unknown job: $JOB_NAME"
-              exit 1
-              ;;
-          esac
-
-      - name: Upload job results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: analysis-job-results
-          path: |
-            /tmp/dagster_home
-            reports/
-          retention-days: 7
-
-  run-analysis-job-batch:
-    name: Run Analysis Job on AWS Batch
-    if: ${{ github.event.inputs.execution_mode == 'aws-batch' || github.event.inputs.execution_mode == 'aws-batch (requires setup)' }}
+  # PaECTER runs on GitHub Actions (API mode, fits in 7GB)
+  paecter-pipeline:
+    name: PaECTER Embeddings
+    if: github.event.inputs.job_name == 'paecter_embeddings' || github.event.inputs.job_name == 'all'
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Just for orchestration, actual job runs on Batch
-
+    timeout-minutes: 180
+    container:
+      image: ghcr.io/hollomancer/sbir-analytics:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Submit job to AWS Batch
-        id: batch-submit
+      - name: Install HuggingFace dependencies
+        run: pip install huggingface-hub
+
+      - name: Run PaECTER pipeline
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PAECTER_MODE: api  # Use API mode, not local model
         run: |
-          # Determine which job to run
-          JOB_NAME="${{ github.event.inputs.job_name || 'all_analysis_jobs' }}"
+          echo "## 🔬 PaECTER Embeddings" >> $GITHUB_STEP_SUMMARY
+          dagster job execute -m src.definitions -j paecter_job 2>&1 | tee output.txt
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ PaECTER pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ PaECTER pipeline failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
-          # Map job name to job definition
-          case $JOB_NAME in
-            cet_full_pipeline)
-              JOB_DEFINITION="sbir-analytics-analysis-cet-pipeline"
-              DAGSTER_JOB="cet_full_pipeline_job"
-              ;;
-            fiscal_returns_mvp)
-              JOB_DEFINITION="sbir-analytics-analysis-fiscal-returns"
-              DAGSTER_JOB="fiscal_returns_mvp_job"
-              ;;
-            paecter_embeddings)
-              JOB_DEFINITION="sbir-analytics-analysis-paecter-embeddings"
-              DAGSTER_JOB="paecter_job"
-              ;;
-            all_analysis_jobs)
-              # For "all_analysis_jobs", submit each job separately
-              echo "Submitting all analysis jobs to AWS Batch..."
+  # Fiscal runs on AWS Batch (needs 8GB+ RAM for R/StateIO)
+  fiscal-pipeline:
+    name: Fiscal Returns (AWS Batch)
+    if: github.event.inputs.job_name == 'fiscal_returns_mvp' || github.event.inputs.job_name == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-              # Submit CET job
-              CET_JOB_ID=$(aws batch submit-job \
-                --job-name "ml-cet-${{ github.run_id }}" \
-                --job-queue sbir-analytics-analysis-job-queue \
-                --job-definition sbir-analytics-analysis-cet-pipeline \
-                --query 'jobId' \
-                --output text)
-              echo "Submitted CET job: $CET_JOB_ID"
-              echo "cet_job_id=$CET_JOB_ID" >> $GITHUB_OUTPUT
+      - name: Submit to AWS Batch
+        id: batch
+        run: |
+          echo "## 💰 Fiscal Returns (AWS Batch)" >> $GITHUB_STEP_SUMMARY
 
-              # Submit Fiscal job
-              FISCAL_JOB_ID=$(aws batch submit-job \
-                --job-name "ml-fiscal-${{ github.run_id }}" \
-                --job-queue sbir-analytics-analysis-job-queue \
-                --job-definition sbir-analytics-analysis-fiscal-returns \
-                --query 'jobId' \
-                --output text)
-              echo "Submitted Fiscal job: $FISCAL_JOB_ID"
-              echo "fiscal_job_id=$FISCAL_JOB_ID" >> $GITHUB_OUTPUT
-
-              # Submit PaECTER job
-              PAECTER_JOB_ID=$(aws batch submit-job \
-                --job-name "ml-paecter-${{ github.run_id }}" \
-                --job-queue sbir-analytics-analysis-job-queue \
-                --job-definition sbir-analytics-analysis-paecter-embeddings \
-                --query 'jobId' \
-                --output text)
-              echo "Submitted PaECTER job: $PAECTER_JOB_ID"
-              echo "paecter_job_id=$PAECTER_JOB_ID" >> $GITHUB_OUTPUT
-
-              echo "All jobs submitted successfully"
-              echo "job_ids=$CET_JOB_ID,$FISCAL_JOB_ID,$PAECTER_JOB_ID" >> $GITHUB_OUTPUT
-              exit 0
-              ;;
-            *)
-              echo "Unknown job: $JOB_NAME"
-              exit 1
-              ;;
-          esac
-
-          # Submit single job
-          echo "Submitting $JOB_NAME to AWS Batch..."
           JOB_ID=$(aws batch submit-job \
-            --job-name "ml-${JOB_NAME}-${{ github.run_id }}" \
-            --job-queue sbir-analytics-analysis-job-queue \
-            --job-definition "$JOB_DEFINITION" \
-            --query 'jobId' \
-            --output text)
+            --job-name "fiscal-returns-$(date +%Y%m%d-%H%M%S)" \
+            --job-queue "sbir-analytics-analysis-queue" \
+            --job-definition "sbir-analytics-analysis-fiscal-returns" \
+            --query 'jobId' --output text)
 
-          echo "Submitted AWS Batch job: $JOB_ID"
           echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+          echo "Submitted job: $JOB_ID" >> $GITHUB_STEP_SUMMARY
 
-      - name: Wait for job completion
+      - name: Wait for completion
         run: |
-          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
+          JOB_ID="${{ steps.batch.outputs.job_id }}"
+          echo "Waiting for job $JOB_ID..."
 
-          if [ -z "$JOB_IDS" ]; then
-            echo "No job IDs found"
-            exit 1
-          fi
-
-          # Split comma-separated job IDs
-          IFS=',' read -ra JOBS <<< "$JOB_IDS"
-
-          echo "Waiting for ${#JOBS[@]} job(s) to complete..."
-
-          FAILED_JOBS=()
-          for JOB_ID in "${JOBS[@]}"; do
-            echo "Monitoring job: $JOB_ID"
-
-            # Wait for job to complete (max 6 hours)
-            MAX_WAIT=21600  # 6 hours in seconds
-            ELAPSED=0
-            INTERVAL=30
-
-            while [ $ELAPSED -lt $MAX_WAIT ]; do
-              STATUS=$(aws batch describe-jobs --jobs "$JOB_ID" \
-                --query 'jobs[0].status' --output text)
-
-              echo "[$(date '+%Y-%m-%d %H:%M:%S')] Job $JOB_ID status: $STATUS"
-
-              # Show detailed info if stuck in RUNNABLE for more than 2 minutes
-              if [ "$STATUS" = "RUNNABLE" ] && [ $ELAPSED -gt 120 ]; then
-                echo "⚠️  Job stuck in RUNNABLE, checking details..."
-                aws batch describe-jobs --jobs "$JOB_ID" \
-                  --query 'jobs[0].{Status:status,StatusReason:statusReason,Container:container.{Image:image,Vcpus:vcpus,Memory:memory}}' \
-                  --output json
-
-                # Check compute environment (may fail due to permissions)
-                echo "Compute environment status:"
-                aws batch describe-compute-environments \
-                  --compute-environments sbir-analytics-analysis-compute-env \
-                  --query 'computeEnvironments[0].{State:state,Status:status,StatusReason:statusReason,DesiredvCpus:computeResources.desiredvCpus,MaxvCpus:computeResources.maxvCpus}' \
-                  --output json 2>&1 || echo "(Permission denied - this is informational only)"
-              fi
-
-              if [ "$STATUS" = "SUCCEEDED" ]; then
-                echo "✅ Job $JOB_ID completed successfully"
-                break
-              elif [ "$STATUS" = "FAILED" ]; then
-                echo "❌ Job $JOB_ID failed"
-                FAILED_JOBS+=("$JOB_ID")
-                break
-              fi
-
-              sleep $INTERVAL
-              ELAPSED=$((ELAPSED + INTERVAL))
-            done
-
-            if [ $ELAPSED -ge $MAX_WAIT ]; then
-              echo "⏱️ Job $JOB_ID timed out after 6 hours"
-              FAILED_JOBS+=("$JOB_ID")
-            fi
-          done
-
-          # Check if any jobs failed
-          if [ ${#FAILED_JOBS[@]} -gt 0 ]; then
-            echo "The following jobs failed: ${FAILED_JOBS[*]}"
-            exit 1
-          fi
-
-          echo "All jobs completed successfully! 🎉"
-
-      - name: Get job logs
-        if: always()
-        run: |
-          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
-
-          if [ -z "$JOB_IDS" ]; then
-            echo "No job IDs to fetch logs for"
-            exit 0
-          fi
-
-          IFS=',' read -ra JOBS <<< "$JOB_IDS"
-
-          for JOB_ID in "${JOBS[@]}"; do
-            echo ""
-            echo "========================================"
-            echo "=== Job: $JOB_ID ==="
-            echo "========================================"
-
-            # Get job details including status and log stream
-            JOB_INFO=$(aws batch describe-jobs --jobs "$JOB_ID" --output json)
-            STATUS=$(echo "$JOB_INFO" | jq -r '.jobs[0].status')
-            STATUS_REASON=$(echo "$JOB_INFO" | jq -r '.jobs[0].statusReason // "N/A"')
-            JOB_NAME=$(echo "$JOB_INFO" | jq -r '.jobs[0].jobName')
-            LOG_STREAM=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.logStreamName // "None"')
-            EXIT_CODE=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.exitCode // "N/A"')
-
-            echo "Job Name: $JOB_NAME"
+          while true; do
+            STATUS=$(aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].status' --output text)
             echo "Status: $STATUS"
-            echo "Status Reason: $STATUS_REASON"
-            echo "Exit Code: $EXIT_CODE"
-            echo "Log Stream: $LOG_STREAM"
-            echo ""
 
-            # Fetch CloudWatch logs if available
-            if [ "$LOG_STREAM" != "None" ] && [ "$LOG_STREAM" != "null" ] && [ -n "$LOG_STREAM" ]; then
-              echo "--- CloudWatch Logs (last 200 lines) ---"
-              aws logs get-log-events \
-                --log-group-name "/aws/batch/sbir-analytics-analysis" \
-                --log-stream-name "$LOG_STREAM" \
-                --limit 200 \
-                --query 'events[*].message' \
-                --output text 2>&1 | tr '\t' '\n' || echo "Failed to fetch logs"
-              echo "--- End of Logs ---"
-            else
-              echo "No log stream available for this job"
+            if [ "$STATUS" = "SUCCEEDED" ]; then
+              echo "✅ Fiscal job completed" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            elif [ "$STATUS" = "FAILED" ]; then
+              echo "❌ Fiscal job failed" >> $GITHUB_STEP_SUMMARY
+              aws batch describe-jobs --jobs "$JOB_ID" --query 'jobs[0].statusReason' --output text >> $GITHUB_STEP_SUMMARY
+              exit 1
             fi
 
-            # If job failed, show attempt details
-            if [ "$STATUS" = "FAILED" ]; then
-              echo ""
-              echo "--- Failure Details ---"
-              echo "$JOB_INFO" | jq '.jobs[0].attempts[] | {attemptNumber: .container.taskArn, exitCode: .container.exitCode, reason: .statusReason}'
-            fi
-
-            echo ""
+            sleep 30
           done
 
-      - name: Output job summary
-        if: always()
+  summary:
+    name: Summary
+    needs: [cet-pipeline, paecter-pipeline, fiscal-pipeline]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate summary
         run: |
-          echo "### 🚀 AWS Batch Job Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "# 📊 Analysis Jobs Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Job Name:** ${{ github.event.inputs.job_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Execution Mode:** AWS Batch" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          JOB_IDS="${{ steps.batch-submit.outputs.job_ids || steps.batch-submit.outputs.job_id }}"
-
-          if [ -n "$JOB_IDS" ]; then
-            echo "| Job ID | Name | Status | Exit Code |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|------|--------|-----------|" >> $GITHUB_STEP_SUMMARY
-
-            IFS=',' read -ra JOBS <<< "$JOB_IDS"
-            for JOB_ID in "${JOBS[@]}"; do
-              JOB_INFO=$(aws batch describe-jobs --jobs "$JOB_ID" --output json)
-              STATUS=$(echo "$JOB_INFO" | jq -r '.jobs[0].status')
-              JOB_NAME=$(echo "$JOB_INFO" | jq -r '.jobs[0].jobName')
-              EXIT_CODE=$(echo "$JOB_INFO" | jq -r '.jobs[0].container.exitCode // "N/A"')
-
-              # Add emoji based on status
-              case $STATUS in
-                SUCCEEDED) EMOJI="✅" ;;
-                FAILED) EMOJI="❌" ;;
-                RUNNING) EMOJI="🔄" ;;
-                *) EMOJI="⏳" ;;
-              esac
-
-              echo "| \`$JOB_ID\` | $JOB_NAME | $EMOJI $STATUS | $EXIT_CODE |" >> $GITHUB_STEP_SUMMARY
-            done
-
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📋 [View in AWS Batch Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📊 [View CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/home?region=${{ env.AWS_REGION }}#logsV2:log-groups/log-group/\$252Faws\$252Fbatch\$252Fsbir-analytics-analysis)" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| Job | Status | Platform |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} | GitHub Actions |" >> $GITHUB_STEP_SUMMARY
+          echo "| PaECTER | ${{ needs.paecter-pipeline.result || 'skipped' }} | GitHub Actions |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fiscal | ${{ needs.fiscal-pipeline.result || 'skipped' }} | AWS Batch |" >> $GITHUB_STEP_SUMMARY
