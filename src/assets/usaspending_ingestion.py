@@ -170,20 +170,44 @@ def _import_usaspending_table(
 )
 def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.DataFrame]:
     """
-    Load USAspending recipient_lookup table from COPY dump.
+    Load USAspending recipient_lookup table.
+
+    Priority:
+    1. Parquet extract (~500MB) - preferred, fast
+    2. Full database dump (217GB) - fallback, slow
 
     Returns:
         pandas DataFrame with recipient data
     """
-    result = _import_usaspending_table(
-        context,
-        log_label="recipient_lookup",
-        table_name="raw_usaspending_recipients",
-    )
+    from ..utils.cloud_storage import find_latest_recipient_lookup_parquet
 
-    df = result.value
+    s3_bucket = get_s3_bucket_from_env()
+    df = None
 
-    # Verify expected columns exist (schema applied by extractor for OID 5419)
+    # PRIORITY 1: Try parquet extract (fast, ~500MB)
+    if s3_bucket:
+        parquet_url = find_latest_recipient_lookup_parquet(bucket=s3_bucket)
+        if parquet_url:
+            try:
+                context.log.info(f"Loading recipient_lookup from parquet: {parquet_url}")
+                parquet_path = resolve_data_path(parquet_url)
+                df = pd.read_parquet(parquet_path)
+                context.log.info(f"Loaded {len(df)} recipients from parquet")
+            except Exception as e:
+                context.log.warning(f"Parquet load failed: {e}, falling back to dump")
+                df = None
+
+    # PRIORITY 2: Fall back to full dump extraction
+    if df is None:
+        context.log.info("Falling back to full USAspending dump extraction")
+        result = _import_usaspending_table(
+            context,
+            log_label="recipient_lookup",
+            table_name="raw_usaspending_recipients",
+        )
+        df = result.value
+
+    # Verify expected columns exist
     required_cols = ["legal_business_name", "uei", "duns"]
     missing_cols = [col for col in required_cols if col not in df.columns]
 
@@ -192,13 +216,19 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
             f"Missing expected columns: {missing_cols}. "
             "This may indicate old test data or schema mismatch."
         )
-        # Add missing columns with None values for compatibility
         for col in missing_cols:
             df[col] = None
 
     context.log.info(f"Loaded {len(df)} recipient records with columns: {list(df.columns)}")
 
-    return Output(value=df, metadata=result.metadata)
+    metadata = {
+        "num_records": len(df),
+        "columns": list(df.columns),
+        "source": "parquet" if parquet_url else "dump",
+        "preview": MetadataValue.md(df.head(10).to_markdown()),
+    }
+
+    return Output(value=df, metadata=metadata)
 
 
 @asset(

@@ -235,6 +235,59 @@ def find_latest_usaspending_dump(
         return None
 
 
+def find_latest_recipient_lookup_parquet(
+    bucket: str | None = None,
+    prefix: str = "raw/usaspending/recipient_lookup/",
+) -> str | None:
+    """
+    Find the latest recipient_lookup parquet file in S3.
+
+    This is the extracted recipient data (~500MB) instead of the full 217GB dump.
+
+    Args:
+        bucket: S3 bucket name (defaults to env var)
+        prefix: S3 prefix to search under
+
+    Returns:
+        S3 URL of the latest parquet file, or None if not found
+    """
+    import boto3
+
+    bucket = bucket or get_s3_bucket_from_env()
+    if not bucket:
+        logger.warning("S3 bucket not configured, cannot find recipient_lookup parquet")
+        return None
+
+    s3_client = boto3.client("s3")
+
+    try:
+        paginator = s3_client.get_paginator("list_objects_v2")
+        latest_file = None
+        latest_date = None
+
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.endswith(".parquet"):
+                    if latest_date is None or obj["LastModified"] > latest_date:
+                        latest_file = key
+                        latest_date = obj["LastModified"]
+
+        if latest_file:
+            s3_url = f"s3://{bucket}/{latest_file}"
+            logger.info(
+                f"Found latest recipient_lookup parquet: {s3_url} (modified: {latest_date})"
+            )
+            return s3_url
+
+        logger.warning(f"No recipient_lookup parquet found in s3://{bucket}/{prefix}")
+        return None
+
+    except Exception as e:
+        logger.error(f"Error finding recipient_lookup parquet: {e}")
+        return None
+
+
 def find_latest_sam_gov_parquet(
     bucket: str | None = None,
     prefix: str = "data/raw/sam_gov/",

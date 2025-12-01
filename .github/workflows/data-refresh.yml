@@ -354,6 +354,32 @@ jobs:
             echo "</details>" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Trigger recipient extraction (AWS Batch)
+        if: steps.usaspending-download.outcome == 'success'
+        id: extract-recipients
+        run: |
+          echo "## 🔄 Triggering Recipient Extraction" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Submit AWS Batch job to extract recipient_lookup from the 217GB dump
+          JOB_RESPONSE=$(aws batch submit-job \
+            --job-name "usaspending-recipient-extract-$(date +%Y%m%d-%H%M%S)" \
+            --job-queue "sbir-analytics-analysis-queue" \
+            --job-definition "sbir-analytics-usaspending-extract" \
+            --region ${{ env.AWS_REGION }})
+
+          JOB_ID=$(echo "$JOB_RESPONSE" | jq -r '.jobId')
+          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+
+          echo "✅ Submitted Batch job: \`$JOB_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The extraction job will:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the 217GB USAspending dump" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract only the recipient_lookup table (~500MB)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Save as parquet to \`s3://${{ env.S3_BUCKET }}/raw/usaspending/recipient_lookup/\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Monitor job in AWS Console](https://console.aws.amazon.com/batch/home?region=${{ env.AWS_REGION }}#jobs/detail/$JOB_ID)" >> $GITHUB_STEP_SUMMARY
+
   refresh-uspto:
     name: Refresh USPTO Patents
     needs: determine-source

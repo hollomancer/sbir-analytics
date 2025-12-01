@@ -331,6 +331,58 @@ class BatchStack(Stack):
             ),
         )
 
+        # Job definition for USAspending recipient extraction (Fargate)
+        # Extracts recipient_lookup table from 217GB dump → small parquet
+        usaspending_extract_job_definition = batch.CfnJobDefinition(
+            self,
+            "UsaspendingExtractJobDefinition",
+            job_definition_name="sbir-analytics-usaspending-extract",
+            type="container",
+            platform_capabilities=["FARGATE"],
+            container_properties=batch.CfnJobDefinition.ContainerPropertiesProperty(
+                image=self.ANALYSIS_IMAGE,
+                resource_requirements=[
+                    # Needs enough memory for 217GB ZIP download + processing
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="VCPU", value="4"),
+                    batch.CfnJobDefinition.ResourceRequirementProperty(type="MEMORY", value="30720"),  # 30GB
+                ],
+                job_role_arn=job_task_role.role_arn,
+                execution_role_arn=job_execution_role.role_arn,
+                network_configuration=batch.CfnJobDefinition.NetworkConfigurationProperty(
+                    assign_public_ip="ENABLED",
+                ),
+                command=[
+                    "python",
+                    "scripts/data/extract_recipient_lookup.py",
+                    "--s3-bucket",
+                    "sbir-etl-production-data",
+                ],
+                environment=[
+                    batch.CfnJobDefinition.EnvironmentProperty(
+                        name="AWS_DEFAULT_REGION",
+                        value=self.region,
+                    ),
+                ],
+                log_configuration=batch.CfnJobDefinition.LogConfigurationProperty(
+                    log_driver="awslogs",
+                    options={
+                        "awslogs-group": "/aws/batch/sbir-analytics-analysis",
+                        "awslogs-stream-prefix": "usaspending-extract",
+                    },
+                ),
+                # Fargate ephemeral storage for 217GB download
+                ephemeral_storage=batch.CfnJobDefinition.EphemeralStorageProperty(
+                    size_in_gi_b=250,  # 250GB ephemeral storage
+                ),
+            ),
+            retry_strategy=batch.CfnJobDefinition.RetryStrategyProperty(
+                attempts=2,
+            ),
+            timeout=batch.CfnJobDefinition.TimeoutProperty(
+                attempt_duration_seconds=7200,  # 2 hours max
+            ),
+        )
+
         # Outputs
         CfnOutput(self, "AnalysisImage", value=self.ANALYSIS_IMAGE)
         CfnOutput(self, "ComputeEnvironmentArn", value=compute_environment.attr_compute_environment_arn)
@@ -339,5 +391,6 @@ class BatchStack(Stack):
         CfnOutput(self, "CETJobDefinitionArn", value=cet_job_definition.ref)
         CfnOutput(self, "FiscalJobDefinitionArn", value=fiscal_job_definition.ref)
         CfnOutput(self, "PaecterJobDefinitionArn", value=paecter_job_definition.ref)
+        CfnOutput(self, "UsaspendingExtractJobDefinitionArn", value=usaspending_extract_job_definition.ref)
         CfnOutput(self, "JobTaskRoleArn", value=job_task_role.role_arn)
         CfnOutput(self, "JobExecutionRoleArn", value=job_execution_role.role_arn)
