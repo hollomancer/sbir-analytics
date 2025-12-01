@@ -1,0 +1,238 @@
+name: ETL Pipeline
+
+on:
+  schedule:
+    # Weekly full pipeline on Monday at 10 AM UTC
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run"
+        required: true
+        type: choice
+        options:
+          - sbir_ingestion
+          - sbir_weekly_refresh  # includes Neo4j loading
+          - usaspending_ingestion
+          - uspto_pipeline
+          - cet_pipeline
+          - all
+      skip_neo4j:
+        description: "Skip Neo4j loading"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  S3_BUCKET: sbir-etl-production-data
+  SBIR_ETL__PIPELINE__ENVIRONMENT: production
+
+jobs:
+  sbir-pipeline:
+    name: SBIR Pipeline
+    if: github.event.inputs.job == 'sbir_ingestion' || github.event.inputs.job == 'sbir_weekly_refresh' || github.event.inputs.job == 'all' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run SBIR pipeline
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
+
+          # Determine which job to run
+          if [ "${{ github.event.inputs.job }}" = "sbir_ingestion" ]; then
+            JOB_NAME="sbir_ingestion_job"
+          else
+            JOB_NAME="sbir_weekly_refresh_job"
+          fi
+
+          # Skip Neo4j if requested
+          if [ "${{ github.event.inputs.skip_neo4j }}" = "true" ]; then
+            JOB_NAME="sbir_ingestion_job"
+          fi
+
+          echo "Running job: $JOB_NAME"
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j "$JOB_NAME" \
+            2>&1 | tee sbir_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ SBIR pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
+            tail -100 sbir_output.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  usaspending-pipeline:
+    name: USAspending Pipeline
+    if: github.event.inputs.job == 'usaspending_ingestion' || github.event.inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hours for large data
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run USAspending pipeline
+        env:
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 💰 USAspending Pipeline" >> $GITHUB_STEP_SUMMARY
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j usaspending_ingestion_job \
+            2>&1 | tee usaspending_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ USAspending pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ USAspending pipeline failed" >> $GITHUB_STEP_SUMMARY
+            tail -100 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  uspto-pipeline:
+    name: USPTO Pipeline
+    if: github.event.inputs.job == 'uspto_pipeline' || github.event.inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run USPTO pipeline
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j uspto_full_pipeline_job \
+            2>&1 | tee uspto_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ USPTO pipeline failed" >> $GITHUB_STEP_SUMMARY
+            tail -100 uspto_output.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  cet-pipeline:
+    name: CET Classification Pipeline
+    if: github.event.inputs.job == 'cet_pipeline' || github.event.inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: ./.github/actions/setup-aws-credentials
+        with:
+          role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run CET pipeline
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 🏷️ CET Classification Pipeline" >> $GITHUB_STEP_SUMMARY
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j cet_full_pipeline_job \
+            2>&1 | tee cet_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ CET pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ CET pipeline failed" >> $GITHUB_STEP_SUMMARY
+            tail -100 cet_output.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  summary:
+    name: Pipeline Summary
+    needs: [sbir-pipeline, usaspending-pipeline, uspto-pipeline, cet-pipeline]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# 📊 ETL Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Pipeline | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| SBIR | ${{ needs.sbir-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| USAspending | ${{ needs.usaspending-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| USPTO | ${{ needs.uspto-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CET | ${{ needs.cet-pipeline.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

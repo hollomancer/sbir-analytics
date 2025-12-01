@@ -795,81 +795,13 @@ jobs:
           echo "**Workflow completed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "**S3 Bucket:** \`${{ env.S3_BUCKET }}\`" >> $GITHUB_STEP_SUMMARY
 
-  trigger-dagster:
-    name: Trigger Dagster ETL
+  run-pipeline:
+    name: Run ETL Pipeline
     needs: [determine-source, refresh-sbir, refresh-usaspending, refresh-uspto, summary]
     if: |
       always() &&
       (github.event.inputs.trigger_dagster != 'false') &&
       (needs.refresh-sbir.result == 'success' || needs.refresh-usaspending.result == 'success' || needs.refresh-uspto.result == 'success')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Determine which Dagster jobs to trigger
-        id: determine-jobs
-        run: |
-          JOBS_TO_TRIGGER=""
-
-          # SBIR refresh triggers sbir_ingestion_job
-          if [ "${{ needs.refresh-sbir.result }}" = "success" ]; then
-            JOBS_TO_TRIGGER="sbir_ingestion_job"
-          fi
-
-          echo "jobs=$JOBS_TO_TRIGGER" >> $GITHUB_OUTPUT
-          echo "Jobs to trigger: $JOBS_TO_TRIGGER"
-
-      - name: Trigger Dagster Cloud run
-        if: steps.determine-jobs.outputs.jobs != ''
-        env:
-          DAGSTER_CLOUD_API_TOKEN: ${{ secrets.DAGSTER_CLOUD_API_TOKEN }}
-        run: |
-          echo "## 🚀 Dagster ETL Trigger" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Dagster Cloud GraphQL endpoint
-          DAGSTER_URL="https://sbir.dagster.cloud/prod/graphql"
-
-          for JOB in ${{ steps.determine-jobs.outputs.jobs }}; do
-            echo "Triggering job: $JOB"
-
-            # GraphQL mutation to launch a run
-            RESPONSE=$(curl -s -X POST "$DAGSTER_URL" \
-              -H "Content-Type: application/json" \
-              -H "Dagster-Cloud-Api-Token: $DAGSTER_CLOUD_API_TOKEN" \
-              -d "{
-                \"query\": \"mutation LaunchRun(\$jobName: String!) { launchRun(executionParams: { selector: { jobName: \$jobName, repositoryLocationName: \\\"sbir-analytics-core\\\", repositoryName: \\\"__repository__\\\" } }) { __typename ... on LaunchRunSuccess { run { runId } } ... on PythonError { message } ... on InvalidSubsetError { message } ... on InvalidOutputError { message } } }\",
-                \"variables\": { \"jobName\": \"$JOB\" }
-              }")
-
-            # Check response
-            RUN_ID=$(echo "$RESPONSE" | jq -r '.data.launchRun.run.runId // empty')
-            ERROR=$(echo "$RESPONSE" | jq -r '.data.launchRun.message // empty')
-
-            if [ -n "$RUN_ID" ]; then
-              echo "✅ **$JOB**: Triggered successfully" >> $GITHUB_STEP_SUMMARY
-              echo "   - Run ID: \`$RUN_ID\`" >> $GITHUB_STEP_SUMMARY
-              echo "   - [View in Dagster Cloud](https://sbir.dagster.cloud/prod/runs/$RUN_ID)" >> $GITHUB_STEP_SUMMARY
-            elif [ -n "$ERROR" ]; then
-              echo "❌ **$JOB**: Failed to trigger" >> $GITHUB_STEP_SUMMARY
-              echo "   - Error: $ERROR" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "⚠️ **$JOB**: Unknown response" >> $GITHUB_STEP_SUMMARY
-              echo "   - Response: $RESPONSE" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "" >> $GITHUB_STEP_SUMMARY
-          done
-
-      - name: Skip notification
-        if: steps.determine-jobs.outputs.jobs == ''
-        run: |
-          echo "## ⏭️ Dagster ETL Trigger Skipped" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No data refresh jobs completed successfully, skipping Dagster trigger." >> $GITHUB_STEP_SUMMARY
-
-  load-neo4j:
-    name: Load Data to Neo4j
-    needs: [trigger-dagster]
-    if: needs.trigger-dagster.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -889,12 +821,8 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Wait for Dagster ingestion to complete
-        run: |
-          echo "⏳ Waiting 3 minutes for Dagster ingestion to complete..."
-          sleep 180
-
-      - name: Load to Neo4j
+      - name: Run SBIR pipeline
+        if: needs.refresh-sbir.result == 'success'
         env:
           NEO4J_URI: ${{ secrets.NEO4J_URI }}
           NEO4J_USER: ${{ secrets.NEO4J_USER }}
@@ -902,24 +830,67 @@ jobs:
           SBIR_ETL__PIPELINE__ENVIRONMENT: production
           S3_BUCKET: ${{ env.S3_BUCKET }}
         run: |
-          echo "## 🔷 Neo4j Loading" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 SBIR Pipeline" >> $GITHUB_STEP_SUMMARY
 
-          # Run the full SBIR weekly refresh job which includes Neo4j loading
-          # The job will re-extract from S3 (fast) and load to Neo4j
           uv run dagster job execute \
-            -f src/definitions.py \
+            -m src.definitions \
             -j sbir_weekly_refresh_job \
-            2>&1 | tee neo4j_output.txt
+            2>&1 | tee sbir_output.txt
 
           if [ ${PIPESTATUS[0]} -eq 0 ]; then
-            echo "✅ Neo4j loading completed successfully" >> $GITHUB_STEP_SUMMARY
-            # Extract key metrics from output
-            grep -E "records|nodes|relationships" neo4j_output.txt | tail -10 >> $GITHUB_STEP_SUMMARY || true
+            echo "✅ SBIR pipeline completed (extract → validate → Neo4j)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Neo4j loading failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ SBIR pipeline failed" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -50 neo4j_output.txt >> $GITHUB_STEP_SUMMARY
+            tail -50 sbir_output.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
+          fi
+
+      - name: Run USAspending enrichment
+        if: needs.refresh-usaspending.result == 'success'
+        env:
+          SBIR_ETL__PIPELINE__ENVIRONMENT: production
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 💰 USAspending Enrichment" >> $GITHUB_STEP_SUMMARY
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j usaspending_ingestion_job \
+            2>&1 | tee usaspending_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ USAspending enrichment completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ USAspending enrichment failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 usaspending_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            # Don't fail the whole workflow for enrichment
+          fi
+
+      - name: Run USPTO pipeline
+        if: needs.refresh-uspto.result == 'success'
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          SBIR_ETL__PIPELINE__ENVIRONMENT: production
+          S3_BUCKET: ${{ env.S3_BUCKET }}
+        run: |
+          echo "## 📜 USPTO Pipeline" >> $GITHUB_STEP_SUMMARY
+
+          uv run dagster job execute \
+            -m src.definitions \
+            -j uspto_full_pipeline_job \
+            2>&1 | tee uspto_output.txt
+
+          if [ ${PIPESTATUS[0]} -eq 0 ]; then
+            echo "✅ USPTO pipeline completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ USPTO pipeline failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -50 uspto_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
