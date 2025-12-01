@@ -60,15 +60,20 @@ jobs:
         shell: bash
         run: |
           echo "📥 Downloading data from S3..."
-          mkdir -p data/raw/sbir data/raw/sam_gov data/raw/usaspending
+          mkdir -p data/raw/sbir data/raw/sam_gov data/usaspending
 
-          # Download latest SBIR awards to expected path
+          # Download latest SBIR awards
           LATEST_SBIR=$(aws s3 ls "s3://${S3_BUCKET}/raw/awards/" --recursive | sort | tail -1 | awk '{print $4}')
           if [ -n "$LATEST_SBIR" ]; then
             aws s3 cp "s3://${S3_BUCKET}/${LATEST_SBIR}" data/raw/sbir/award_data.csv
-            echo "✅ Downloaded SBIR awards: $LATEST_SBIR"
-          else
-            echo "⚠️ No SBIR awards found in S3"
+            echo "✅ Downloaded SBIR awards"
+          fi
+
+          # Download latest USAspending database (for recipient enrichment)
+          LATEST_USA=$(aws s3 ls "s3://${S3_BUCKET}/raw/usaspending/database/" --recursive | grep "\.zip$" | sort | tail -1 | awk '{print $4}')
+          if [ -n "$LATEST_USA" ]; then
+            aws s3 cp "s3://${S3_BUCKET}/${LATEST_USA}" data/usaspending/usaspending-db.zip
+            echo "✅ Downloaded USAspending database"
           fi
 
       - name: Run SBIR pipeline
