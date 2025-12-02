@@ -217,15 +217,20 @@ dev: ## Run Dagster dev server locally
 	$(call run,uv run dagster dev -m src.definitions)
 
 .PHONY: install-ml
-install-ml: ## Install ML dependencies (jupyter, paecter, r, etc.)
+install-ml: ## Install ML dependencies (jupyter, paecter)
 	@$(call info,Installing ML dependencies)
-	$(call run,uv sync --extra ml --extra paecter-local --extra r)
+	$(call run,uv sync --extra ml --extra paecter-local)
+
+.PHONY: install-r
+install-r: ## Install R dependencies for fiscal analysis (requires R installed)
+	@$(call info,Installing R dependencies)
+	$(call run,uv sync --extra r)
 
 .PHONY: notebook
 notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
 	@$(call info,Starting Jupyter Lab)
 	@mkdir -p notebooks
-	$(call run,uv run --extra ml --extra paecter-local --extra r jupyter lab --notebook-dir=notebooks)
+	$(call run,uv run --extra ml --extra paecter-local jupyter lab --notebook-dir=notebooks)
 
 .PHONY: setup-ml
 setup-ml: env-check ## Configure environment for ML (Cloud + HF)
