@@ -364,7 +364,7 @@ jobs:
           # Submit AWS Batch job to extract recipient_lookup from the 217GB dump
           JOB_RESPONSE=$(aws batch submit-job \
             --job-name "usaspending-recipient-extract-$(date +%Y%m%d-%H%M%S)" \
-            --job-queue "sbir-analytics-analysis-queue" \
+            --job-queue "sbir-analytics-analysis-job-queue" \
             --job-definition "sbir-analytics-usaspending-extract" \
             --region ${{ env.AWS_REGION }})
 
