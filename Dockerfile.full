@@ -35,9 +35,11 @@ RUN python -m spacy download en_core_web_sm
 # Copy application code
 COPY src/ /app/src/
 COPY config/ /app/config/
+COPY scripts/ /app/scripts/
 COPY pyproject.toml /app/
 
 ENV PYTHONPATH=/app
+WORKDIR /app
 
 # Create directories
 RUN mkdir -p /app/data /app/logs /app/reports /app/artifacts
