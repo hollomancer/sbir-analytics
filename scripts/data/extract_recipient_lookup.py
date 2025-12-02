@@ -26,7 +26,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
 
-USASPENDING_DOWNLOAD_URL = "https://files.usaspending.gov/database_download/"
+USASPENDING_DOWNLOAD_BASE = "https://files.usaspending.gov/database_download"
 
 RECIPIENT_LOOKUP_COLUMNS = [
     "id", "recipient_hash", "legal_business_name", "duns", "uei",
@@ -39,29 +39,46 @@ RECIPIENT_LOOKUP_OID = "5419"
 
 
 def get_latest_dump_info() -> dict:
-    """Get info about the latest dump from USAspending."""
-    import re
-    response = requests.get(USASPENDING_DOWNLOAD_URL, timeout=30)
-    response.raise_for_status()
+    """Get info about the latest dump from USAspending by probing recent dates."""
+    from datetime import timedelta
 
-    matches = re.findall(r'usaspending-db_(\d{8})\.zip', response.text)
-    if not matches:
-        raise ValueError("Could not find USAspending dump files")
+    # Try recent dates (USAspending typically releases on 6th of month)
+    today = datetime.now(timezone.utc)
+    dates_to_try = []
 
-    latest_date = sorted(matches)[-1]
-    filename = f"usaspending-db_{latest_date}.zip"
-    url = f"{USASPENDING_DOWNLOAD_URL}{filename}"
+    # Check current month and 2 months back, trying 6th, 1st, 15th
+    for months_back in range(3):
+        check_date = today - timedelta(days=30 * months_back)
+        for day in [6, 1, 15, 20]:
+            try:
+                test_date = check_date.replace(day=day)
+                if test_date <= today:
+                    dates_to_try.append(test_date.strftime("%Y%m%d"))
+            except ValueError:
+                pass
 
-    # Get file metadata
-    head = requests.head(url, timeout=30)
-    return {
-        "filename": filename,
-        "url": url,
-        "source_date": latest_date,
-        "last_modified": head.headers.get("Last-Modified"),
-        "content_length": int(head.headers.get("Content-Length", 0)),
-        "etag": head.headers.get("ETag", "").strip('"'),
-    }
+    # Remove duplicates and sort newest first
+    dates_to_try = sorted(set(dates_to_try), reverse=True)
+
+    for date_str in dates_to_try:
+        filename = f"usaspending-db_{date_str}.zip"
+        url = f"{USASPENDING_DOWNLOAD_BASE}/{filename}"
+
+        try:
+            head = requests.head(url, timeout=30, allow_redirects=True)
+            if head.status_code == 200:
+                return {
+                    "filename": filename,
+                    "url": url,
+                    "source_date": date_str,
+                    "last_modified": head.headers.get("Last-Modified"),
+                    "content_length": int(head.headers.get("Content-Length", 0)),
+                    "etag": head.headers.get("ETag", "").strip('"'),
+                }
+        except requests.RequestException:
+            continue
+
+    raise ValueError(f"Could not find USAspending dump file (tried dates: {dates_to_try[:5]}...)")
 
 
 def get_current_metadata(s3_client, bucket: str, prefix: str) -> dict | None:
