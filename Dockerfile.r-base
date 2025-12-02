@@ -13,19 +13,12 @@ FROM ${PYTHON_BASE}
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install R from official CRAN repository for Debian Bookworm
-# This provides R 4.4+ which is required for modern R packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
+        ca-certificates \
         gnupg \
-        software-properties-common \
         dirmngr \
-    && wget -qO- https://cloud.r-project.org/bin/linux/debian/marutter_pubkey.asc | gpg --dearmor -o /usr/share/keyrings/r-project.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/debian bookworm-cran40/" > /etc/apt/sources.list.d/r-project.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        r-base \
-        r-base-dev \
         libcurl4-openssl-dev \
         libssl-dev \
         libxml2-dev \
@@ -36,6 +29,19 @@ RUN apt-get update && \
         libpng-dev \
         libtiff5-dev \
         libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add CRAN GPG key and repository separately for better error visibility
+RUN wget -O /tmp/cran_key.asc https://cloud.r-project.org/bin/linux/debian/marutter_pubkey.asc && \
+    gpg --dearmor < /tmp/cran_key.asc > /usr/share/keyrings/r-project.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/debian bookworm-cran40/" > /etc/apt/sources.list.d/r-project.list && \
+    rm /tmp/cran_key.asc
+
+# Install R
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        r-base \
+        r-base-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install R packages from CRAN
