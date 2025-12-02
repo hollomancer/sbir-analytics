@@ -5,6 +5,7 @@ will be evaluated in Phase 2+.
 """
 
 import asyncio
+import tempfile
 from typing import Any
 
 import pandas as pd
@@ -90,9 +91,9 @@ def _load_enriched_awards_from_s3(context: AssetExecutionContext) -> pd.DataFram
             return None
 
         # Download and read
-        local_path = "/tmp/enriched_sbir_awards.parquet"
-        s3.download_file(bucket, key, local_path)
-        df = pd.read_parquet(local_path)
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=True) as tmp:
+            s3.download_file(bucket, key, tmp.name)
+            df = pd.read_parquet(tmp.name)
         context.log.info(f"Loaded {len(df)} enriched awards from S3")
         return df
     except Exception as e:
