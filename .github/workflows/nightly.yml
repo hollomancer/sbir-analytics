@@ -127,7 +127,9 @@ jobs:
           cache-venv: "true"
 
       - name: Configure Local Environment
-        run: make setup-local
+        run: |
+          cp .env.example .env
+          make setup-local
 
       - name: Generate Sample Data
         run: make sample-data
