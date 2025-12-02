@@ -7,7 +7,7 @@
 #
 ARG BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS runtime
 
 # Install ETL-specific dependencies
 RUN pip install \
