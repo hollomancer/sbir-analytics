@@ -12,7 +12,7 @@ FROM ${PYTHON_BASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install R from official CRAN repository for Debian Bookworm
+# Install dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
@@ -31,11 +31,10 @@ RUN apt-get update && \
         libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Add CRAN GPG key and repository separately for better error visibility
-RUN wget -O /tmp/cran_key.asc https://cloud.r-project.org/bin/linux/debian/marutter_pubkey.asc && \
-    gpg --dearmor < /tmp/cran_key.asc > /usr/share/keyrings/r-project.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] https://cloud.r-project.org/bin/linux/debian bookworm-cran40/" > /etc/apt/sources.list.d/r-project.list && \
-    rm /tmp/cran_key.asc
+# Add CRAN GPG key from keyserver and repository
+RUN gpg --keyserver keyserver.ubuntu.com --recv-key '95C0FAF38DB3CCAD0C080A7BDC78B2DDEABC47B7' && \
+    gpg --armor --export '95C0FAF38DB3CCAD0C080A7BDC78B2DDEABC47B7' | gpg --dearmor > /usr/share/keyrings/cran.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/cran.gpg] https://cloud.r-project.org/bin/linux/debian bookworm-cran40/" > /etc/apt/sources.list.d/cran.list
 
 # Install R
 RUN apt-get update && \
