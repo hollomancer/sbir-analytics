@@ -1,138 +1,182 @@
 # Tasks – USPTO Patent Data Lambda Downloads
 
-## Implementation Checklist
+## Current Implementation Status
 
-### Phase 1: Lambda Functions ✅
+**Analysis Summary:** The USPTO download functionality has been implemented using a **GitHub Actions-based approach** rather than Lambda functions. The implementation uses a Python script (`scripts/data/download_uspto.py`) that runs directly in GitHub Actions workflows, which is simpler and more cost-effective than Lambda functions.
 
-- [x] Create `download_uspto_patentsview` Lambda handler
-  - [x] Implement download logic with User-Agent headers
-  - [x] Handle TSV/CSV format detection
-  - [x] Upload to S3 with date-based key
-  - [x] Compute and store SHA-256 hash
-  - [x] Return structured response with metadata
+### Completed Implementation ✅
 
-- [x] Create `download_uspto_assignments` Lambda handler
-  - [x] Support multiple formats (CSV, DTA, Parquet)
-  - [x] Handle large file downloads
-  - [x] Set appropriate Content-Type headers
-  - [x] Upload to S3 with format-specific extension
+- [x] **GitHub Actions Workflow** - Integrated into `.github/workflows/data-refresh.yml`
+  - [x] Scheduled trigger (monthly on 1st at 9 AM UTC)
+  - [x] Manual dispatch with source selection
+  - [x] Parallel downloads for PatentsView, Assignments, and AI Patents
+  - [x] S3 upload verification and status reporting
 
-- [x] Create `download_uspto_ai_patents` Lambda handler
-  - [x] Detect file format from Content-Type or URL
-  - [x] Handle compressed formats (ZIP)
-  - [x] Upload to S3 with appropriate extension
+- [x] **Download Script** - `scripts/data/download_uspto.py`
+  - [x] PatentsView data download (multiple tables supported)
+  - [x] Patent Assignments download (CSV format)
+  - [x] AI Patents download (CSV format)
+  - [x] Streaming download with progress tracking
+  - [x] SHA-256 hash computation
+  - [x] S3 upload with metadata (source_url, sha256, downloaded_at)
+  - [x] Date-based S3 key structure
 
-### Phase 2: Infrastructure ✅
-
-- [x] Update CDK Lambda stack
-  - [x] Add three new functions to `layer_functions` list
-  - [x] Configure timeout (30 minutes) and memory (1024 MB)
-  - [x] Set environment variables (S3_BUCKET)
-
-- [x] Verify IAM permissions
-  - [x] Lambda role has S3 write permissions
-  - [x] Lambda role has CloudWatch Logs permissions
-
-### Phase 3: GitHub Actions Workflow ✅
-
-- [x] Create `.github/workflows/uspto-data-refresh.yml`
-  - [x] Add scheduled trigger (monthly on 1st)
-  - [x] Add manual dispatch with inputs
-  - [x] Implement Lambda invocation steps
-  - [x] Add download summary display
-  - [x] Upload results as artifacts
-
-### Phase 4: Configuration ✅
-
-- [x] Add USPTO download config to `config/base.yaml`
-  - [x] PatentsView configuration
-  - [x] Assignments configuration
+- [x] **Configuration** - `config/base.yaml`
+  - [x] PatentsView configuration with table list
+  - [x] Assignments configuration with format options
   - [x] AI Patents configuration
+  - [x] S3 prefix paths for each dataset
+  - [x] Schedule and info page documentation
 
-### Phase 5: Documentation ✅
-
-- [x] Create specification documents
+- [x] **Specification Documents**
   - [x] Requirements document
   - [x] Design document
   - [x] Tasks document
 
-## Next Steps
+## Remaining Tasks
 
-### Phase 6: Deployment & Testing
+### Phase 1: URL Verification and Updates
 
-- [ ] Deploy Lambda functions via CDK
-  - [ ] Run `cdk deploy sbir-etl-lambda`
-  - [ ] Verify functions appear in AWS Console
-  - [ ] Check IAM roles and permissions
+- [ ] 1. Verify and update USPTO download URLs
+  - [ ] 1.1 Check PatentsView current download URLs
+    - Verify `https://download.patentsview.org/data` is current base URL
+    - Confirm table filenames (g_patent.tsv.zip, g_assignee_disambiguated.tsv.zip, etc.)
+    - Update `PATENTSVIEW_TABLES` dict in `scripts/data/download_uspto.py` if needed
+    - _Requirements: R1_
 
-- [ ] Test Lambda functions manually
-  - [ ] Invoke via AWS CLI with test payloads
-  - [ ] Verify S3 uploads and metadata
-  - [ ] Check CloudWatch Logs for errors
+  - [ ] 1.2 Verify Patent Assignment Dataset URLs
+    - Check current download page at `https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset`
+    - Verify 2023 CSV URL: `https://data.uspto.gov/ui/datasets/products/files/ECORSEXC/2023/csv.zip`
+    - Check if newer releases (2024/2025) are available
+    - Update `USPTO_ASSIGNMENT_URL` in `scripts/data/download_uspto.py` if needed
+    - _Requirements: R2_
 
-- [ ] Test GitHub Actions workflow
-  - [ ] Trigger manual dispatch
-  - [ ] Verify Lambda invocations
-  - [ ] Check workflow artifacts
-  - [ ] Verify S3 file locations
+  - [ ] 1.3 Verify AI Patent Dataset URLs
+    - Check current download page at `https://www.uspto.gov/ip-policy/economic-research/research-datasets/artificial-intelligence-patent-dataset`
+    - Verify 2023 CSV URL: `https://data.uspto.gov/ui/datasets/products/files/ECOPATAI/2023/ai_model_predictions.csv.zip`
+    - Check if newer releases are available
+    - Update `USPTO_AI_PATENT_URL` in `scripts/data/download_uspto.py` if needed
+    - _Requirements: R3_
 
-### Phase 7: URL Verification
+### Phase 2: Enhancement and Error Handling
 
-- [ ] Verify actual USPTO download URLs
-  - [ ] Check PatentsView bulk download page structure
-  - [ ] Verify Patent Assignment Dataset download links
-  - [ ] Confirm AI Patent Dataset download URL
-  - [ ] Update Lambda handlers with correct URLs
+- [ ] 2. Add retry logic and error handling improvements
+  - [ ] 2.1 Implement exponential backoff for network failures
+    - Add retry decorator or manual retry logic with exponential backoff
+    - Handle transient errors (503, timeout, connection errors)
+    - Log retry attempts with context
+    - _Requirements: R5_
 
-### Phase 8: Integration with ETL Pipeline
+  - [ ] 2.2 Add User-Agent headers to requests
+    - Set descriptive User-Agent header (e.g., "SBIR-Analytics/1.0 (GitHub Actions)")
+    - Follow USPTO API guidelines for automated downloads
+    - _Requirements: R1_
 
-- [ ] Update USPTO extractor to read from S3
-  - [ ] Modify `USPTOExtractor` to support S3 paths
-  - [ ] Add S3 client configuration
-  - [ ] Test extraction from S3 files
+  - [ ] 2.3 Improve error reporting in GitHub Actions
+    - Add structured error messages with actionable information
+    - Include download progress in error context
+    - Add error annotations for failed downloads
+    - _Requirements: R5_
 
-- [ ] Update Dagster assets
-  - [ ] Add assets for S3-based USPTO extraction
-  - [ ] Configure asset dependencies
-  - [ ] Test end-to-end pipeline
+### Phase 3: Testing and Validation
 
-## Known Issues & TODOs
+- [ ] 3. Test download functionality end-to-end
+  - [ ] 3.1 Test manual workflow dispatch
+    - Trigger workflow with `source: uspto`
+    - Verify all three datasets download successfully
+    - Check S3 uploads and metadata
+    - Validate SHA-256 hashes
+    - _Requirements: R1, R2, R3, R4_
 
-1. **URL Placeholders:** Lambda handlers contain placeholder URLs that need to be updated with actual USPTO download endpoints
-2. **Format Detection:** PatentsView format detection may need refinement based on actual response headers
-3. **Large File Handling:** For very large files (>5GB), consider using S3 multipart uploads
-4. **Retry Logic:** Add exponential backoff retry logic for network failures
-5. **Cost Monitoring:** Set up CloudWatch alarms for Lambda execution costs
+  - [ ] 3.2 Verify S3 file structure and metadata
+    - Confirm S3 keys follow pattern: `raw/uspto/{dataset}/{YYYY-MM-DD}/{filename}`
+    - Verify metadata includes: source_url, sha256, downloaded_at
+    - Check file sizes are reasonable
+    - _Requirements: R1, R2, R3_
+
+  - [ ] 3.3 Test error scenarios
+    - Test with invalid URLs
+    - Test with network timeouts
+    - Test with S3 permission errors
+    - Verify error handling and logging
+    - _Requirements: R5_
+
+### Phase 4: Documentation and Monitoring
+
+- [ ] 4. Update documentation and add monitoring
+  - [ ] 4.1 Document download process in project docs
+    - Add section to `docs/data/index.md` about USPTO data sources
+    - Document S3 file structure and naming conventions
+    - Add troubleshooting guide for common issues
+    - _Requirements: R6_
+
+  - [ ] 4.2 Add download monitoring and alerts
+    - Set up CloudWatch metrics for S3 upload success/failure
+    - Add GitHub Actions workflow status notifications
+    - Document expected file sizes and download times
+    - _Requirements: R4, R5_
+
+  - [ ] 4.3 Update configuration documentation
+    - Document all USPTO configuration options in `config/base.yaml`
+    - Add examples for overriding URLs via environment variables
+    - Document schedule and update frequency
+    - _Requirements: R6_
+
+## Alternative Implementation Notes
+
+**Lambda vs GitHub Actions Decision:** The current implementation uses GitHub Actions instead of Lambda functions as originally designed. This approach has several advantages:
+
+- **Simpler deployment:** No CDK infrastructure needed
+- **Lower cost:** No Lambda execution charges
+- **Easier debugging:** Direct access to logs in GitHub Actions
+- **Better integration:** Native integration with existing data-refresh workflow
+
+If Lambda functions are still desired, the following tasks would be needed:
+
+### Optional: Lambda Function Implementation
+
+- [ ] A. Create Lambda function handlers (if Lambda approach is preferred)
+  - [ ] A.1 Create `src/lambda/download_uspto_patentsview.py`
+  - [ ] A.2 Create `src/lambda/download_uspto_assignments.py`
+  - [ ] A.3 Create `src/lambda/download_uspto_ai_patents.py`
+  - [ ] A.4 Adapt logic from `scripts/data/download_uspto.py`
+
+- [ ] B. Create CDK Lambda stack (if Lambda approach is preferred)
+  - [ ] B.1 Create `infrastructure/cdk/stacks/lambda_stack.py`
+  - [ ] B.2 Define three Lambda functions with 30-minute timeout and 1024 MB memory
+  - [ ] B.3 Configure IAM roles with S3 write permissions
+  - [ ] B.4 Set environment variables (S3_BUCKET)
+
+- [ ] C. Update GitHub Actions to invoke Lambda functions
+  - [ ] C.1 Replace direct script execution with Lambda invocations
+  - [ ] C.2 Add AWS CLI commands to invoke functions
+  - [ ] C.3 Parse Lambda responses and display results
 
 ## Testing Commands
 
 ```bash
 # Test PatentsView download locally
-aws lambda invoke \
-  --function-name sbir-etl-download-uspto-patentsview \
-  --payload '{"s3_bucket":"sbir-etl-production-data","dataset_type":"patent"}' \
-  response.json
+python scripts/data/download_uspto.py --dataset patentsview --table patent
 
 # Test Assignments download
-aws lambda invoke \
-  --function-name sbir-etl-download-uspto-assignments \
-  --payload '{"s3_bucket":"sbir-etl-production-data","format":"csv"}' \
-  response.json
+python scripts/data/download_uspto.py --dataset assignments
 
 # Test AI Patents download
-aws lambda invoke \
-  --function-name sbir-etl-download-uspto-ai-patents \
-  --payload '{"s3_bucket":"sbir-etl-production-data"}' \
-  response.json
+python scripts/data/download_uspto.py --dataset ai_patents
+
+# Test with custom S3 bucket
+python scripts/data/download_uspto.py --dataset patentsview --table patent --s3-bucket my-test-bucket
+
+# Trigger GitHub Actions workflow manually
+gh workflow run data-refresh.yml -f source=uspto -f force_refresh=false
 ```
 
-## Deployment Checklist
+## Success Criteria
 
-- [ ] CDK stack deployed successfully
-- [ ] Lambda functions visible in AWS Console
-- [ ] IAM roles have correct permissions
-- [ ] GitHub Actions workflow runs successfully
-- [ ] S3 files uploaded with correct structure
-- [ ] CloudWatch Logs show successful executions
-- [ ] Configuration documented in `config/base.yaml`
-- [ ] Specification documents complete
+- [ ] All USPTO datasets download successfully on scheduled runs
+- [ ] S3 files are uploaded with correct structure and metadata
+- [ ] SHA-256 hashes are computed and stored
+- [ ] Download URLs are current and verified
+- [ ] Error handling works correctly for network failures
+- [ ] Documentation is complete and accurate
+- [ ] Monitoring and alerts are in place
